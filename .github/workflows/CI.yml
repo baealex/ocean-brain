@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'server/src/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'server/src/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [21.x]
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+
+    - name: Install (Server)
+      run: npx pnpm i
+      working-directory: server/src
+    
+    - name: Lint (Server)
+      run: npm run lint
+      working-directory: server/src
+    
+    - name: Test (Server)
+      run: npm run test
+      working-directory: server/src
+    
+    - name: Build (Server)
+      run: npm run build
+      working-directory: server/src
+
+    - name: Install (Client)
+      run: npx pnpm i
+      working-directory: server/src/client
+
+    - name: Lint (Client)
+      run: npm run lint
+      working-directory: server/src/client
+
+    - name: Build (Client)
+      run: npm run build
+      working-directory: server/src/client

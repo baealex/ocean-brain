@@ -1,0 +1,13 @@
+version: "2.1"
+
+services:
+  app:
+    # image: USERNAME/IMAGE:TAG
+    build:
+      context: ./server
+      dockerfile: ./Dockerfile
+    volumes:
+      - ./data:/data
+      - ./assets:/assets
+    ports:
+      - 3000:3000

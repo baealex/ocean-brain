@@ -1,0 +1,29 @@
+{
+    "root": true,
+    "env": {
+        "es6": true,
+        "jest": true,
+        "node": true
+    },
+    "extends": [
+        "./node_modules/@baejino/eslint"
+    ],
+    "overrides": [
+        {
+            "env": {
+                "jest/globals": true
+            },
+            "extends": [
+                "plugin:jest/recommended"
+            ],
+            "files": [
+                "**/__tests__/**/*.[jt]s?(x)",
+                "**/?(*.)+(spec|test).[tj]s?(x)",
+                "./jest.setup.ts"
+            ],
+            "plugins": [
+                "jest"
+            ]
+        }
+    ]
+}

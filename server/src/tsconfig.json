@@ -1,0 +1,23 @@
+{
+    "compilerOptions": {
+        "outDir": "dist",
+        "esModuleInterop": true,
+        "moduleResolution": "Node",
+        "baseUrl": "src",
+        "target": "ES6",
+        "paths": {
+            "~/*": [
+                "./*"
+            ]
+        },
+    },
+    "include": [
+        "src/**/*",
+        "script/**/*"
+    ],
+    "ts-node": {
+        "require": [
+            "tsconfig-paths/register"
+        ]
+    }
+}

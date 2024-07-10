@@ -1,0 +1,11 @@
+export { default as ChevronLeft } from './chevron-left.svg?react';
+export { default as ChevronRight } from './chevron-right.svg?react';
+export { default as Menu } from './menu.svg?react';
+export { default as Moon } from './moon.svg?react';
+export { default as Pin } from './pin.svg?react';
+export { default as Plus } from './plus.svg?react';
+export { default as Search } from './search.svg?react';
+export { default as Spinner } from './spinner.svg?react';
+export { default as Sun } from './sun.svg?react';
+export { default as TrashCan } from './trash-can.svg?react';
+export { default as VerticalDots } from './vertical-dots.svg?react';

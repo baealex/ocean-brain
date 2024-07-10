@@ -1,0 +1,64 @@
+@import '~/styles/var';
+
+.SiteLayout {
+    height: 100%;
+    display: flex;
+    flex-direction: row;
+    background-color: #91cdff;
+
+    :global(html.dark) & {
+        background-color: #000;
+    }
+
+    .side {
+        height: 100%;
+        flex: 0 0 300px;
+        overflow-y: auto;
+        background-color: #91cdff;
+
+        :global(html.dark) & {
+            background-color: #000;
+        }
+
+        @media (max-width: $BREAKPOINT_TABLET) {
+            z-index: 1002;
+            position: fixed;
+            width: 100%;
+            transition: transform 0.3s ease-in-out;
+            transform: translate(-100%, 0);
+
+            &.open {
+                transform: translate(0, 0);
+            }
+        }
+    }
+
+    .center {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    .header {
+        @media (max-width: $BREAKPOINT_TABLET) {
+            z-index: 1003;
+        }
+    }
+
+    .content {
+        flex: 1;
+        padding: 16px;
+        overflow-y: auto;
+        background-color: #fff;
+        border-radius: 16px 0 0 0;
+
+        :global(html.dark) & {
+            background-color: #181818;
+        }
+
+        @media (max-width: $BREAKPOINT_TABLET) {
+            border-radius: 16px 16px 0 0;
+        }
+    }
+}

@@ -1,0 +1,96 @@
+@import '@baejino/style/scss/reset.scss';
+@import '@baejino/ui/css/main.css';
+@import '@baejino/style/scss/var.scss';
+@import '@baejino/style/scss/mixin.scss';
+
+@font-face {
+    font-family: 'Spoqa Han Sans Neo';
+    font-weight: 700;
+    src: local('Spoqa Han Sans Bold'),
+        url('/fonts/SpoqaHanSansNeo-Bold.woff2') format('woff2'),
+        url('/fonts/SpoqaHanSansNeo-Bold.woff') format('woff'),
+        url('/fonts/SpoqaHanSansNeo-Bold.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: 'Spoqa Han Sans Neo';
+    font-weight: 400;
+    src: local('Spoqa Han Sans Regular'),
+        url('/fonts/SpoqaHanSansNeo-Regular.woff2') format('woff2'),
+        url('/fonts/SpoqaHanSansNeo-Regular.woff') format('woff'),
+        url('/fonts/SpoqaHanSansNeo-Regular.ttf') format('truetype');
+}
+
+html,
+body,
+#root {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    overflow: hidden;
+}
+
+body {
+    font-family: 'Spoqa Han Sans Neo', -apple-system, BlinkMacSystemFont, sans-serif;
+    word-wrap: break-word;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+}
+
+.card {
+    &.main {
+        @include CARD_SHADOW_MAIN;
+    }
+
+    &.sub {
+        @include CARD_SHADOW_SUB;
+    }
+}
+
+div:focus {
+    outline: none !important;
+}
+
+.ProseMirror {
+    a {
+        color: #0070f3;
+        cursor: pointer;
+
+        html.dark & {
+            color: #2489fc;
+        }
+    }
+}
+
+.bn-editor {
+    background: transparent !important;
+    padding-inline: 54px 0 !important;
+    overflow-wrap: anywhere !important;
+}
+
+.dark {
+    background: #181818;
+    color: #eee;
+}
+
+.highlight {
+    position: relative;
+    z-index: 1;
+    animation: highlight 0.5s forwards;
+}
+
+@keyframes highlight {
+    from {
+        box-shadow: inset -1000px -10px rgba(245, 255, 102, 0);
+    }
+
+    to {
+        box-shadow: inset 0 -10px rgba(245, 255, 102, 0.5);
+    }
+}
+
+.window-modal__container {
+    z-index: 1002;
+}

@@ -2,6 +2,11 @@
 
 Ocean Brain is a note-taking app designed to help you capture and organize your thoughts seamlessly. Just like the vast ocean holds countless treasures, Ocean Brain allows you to record your daily experiences, insights, and learnings, ensuring nothing gets lost. Host it on your own server to maintain complete control over your data while enjoying a fluid and intuitive user experience. Dive into Ocean Brain and let your thoughts flow freely and securely.
 
+![](https://github.com/baealex/ocean-brain/assets/35596687/a948b5c0-5358-42e9-b974-3fb72e0afdfb)
+
+![](https://github.com/baealex/ocean-brain/assets/35596687/af69132b-0ea7-4fb0-9ced-ee5e30852c44)
+
+
 <br>
 
 ## Features

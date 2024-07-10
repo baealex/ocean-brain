@@ -48,7 +48,7 @@ export default function Home() {
             </Helmet>
             <div className="flex justify-end">
                 <Button onClick={onCreate}>
-                    <Icon.Plus/> New
+                    <Icon.Plus className="w-5 h-5" /> New
                 </Button>
             </div>
             <div className="grid gap-6 mt-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>

@@ -8,6 +8,9 @@ dependencies:
   '@baejino/handy':
     specifier: ^0.0.3
     version: 0.0.3
+  '@baejino/icon':
+    specifier: ^0.0.4
+    version: 0.0.4(react@18.3.1)
   '@baejino/style':
     specifier: ^0.0.5
     version: 0.0.5
@@ -1435,6 +1438,14 @@ packages:
 
   /@baejino/handy@0.0.3:
     resolution: {integrity: sha512-eCbIJzQTSdUsIrnrllncunp6xDjilSBst0JEhdMCMRuWO4qCmLtm/fj32PvjANEGO/vAPVop9ZsvFESorwLy0g==}
+    dev: false
+
+  /@baejino/icon@0.0.4(react@18.3.1):
+    resolution: {integrity: sha512-wTL/Qddh/dgH3/CqzsQBxPpo9T9XQUAiDmAt0odvcaWvipoWOtGKImGDC7UNYv0Sb/6Ms+hpikgdHNXPV7zJUg==}
+    peerDependencies:
+      react: ^18.3.1
+    dependencies:
+      react: 18.3.1
     dev: false
 
   /@baejino/style@0.0.5:

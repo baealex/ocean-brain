@@ -101,7 +101,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
             fetchTags({
                 query,
                 limit: 5
-            }).then(setTags);
+            }).then(({ tags }) => setTags(tags));
         });
     }, [query]);
 

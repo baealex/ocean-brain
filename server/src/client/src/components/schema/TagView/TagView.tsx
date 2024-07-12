@@ -16,7 +16,7 @@ const TagView = ({ onClick }: TagViewProps) => {
         <SuggestionMenuController
             triggerCharacter="@"
             getItems={async (query) => {
-                const tags = await fetchTags({
+                const { tags } = await fetchTags({
                     query,
                     limit: 5
                 });

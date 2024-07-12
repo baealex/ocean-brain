@@ -1,33 +1,40 @@
 import axios from 'axios';
 import { graphQuery } from '~/modules/graph-query';
 
+import type { Image } from '~/models/Image';
+
 export function fetchImages({
-    limit = 999,
+    limit = 50,
     offset = 0
 } = {}) {
     return graphQuery<{
         allImages: {
-            id: string;
-            url: string;
-            referenceCount: number;
-        }[];
+            totalCount: number;
+            images: Image[];
+        };
     }>(
-        `query {
-            allImages(limit: ${limit}, offset: ${offset}) {
-                id
-                url
-                referenceCount
+        `query def($pagination: PaginationInput) {
+            allImages(pagination: $pagination) {
+                totalCount
+                images {
+                    id
+                    url
+                    referenceCount
+                }
             }
         }`,
+        {
+            pagination: {
+                limit,
+                offset
+            }
+        }
     ).then(data => data.allImages);
 }
 
 export function fetchImage(id: string) {
     return graphQuery<{
-        image: {
-            id: string;
-            url: string;
-        };
+        image: Pick<Image, 'id' | 'url'>;
     }>(
         `query {
             image(id: ${id}) {

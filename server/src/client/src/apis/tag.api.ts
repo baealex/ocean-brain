@@ -3,19 +3,38 @@ import { graphQuery } from '~/modules/graph-query';
 
 export function fetchTags({
     query = '',
-    limit = 999,
+    limit = 50,
     offset = 0
 } = {}) {
     return graphQuery<{
-        allTags: Pick<Tag, 'id' | 'name' | 'referenceCount'>[];
+        allTags: {
+            totalCount: number;
+            tags: Pick<Tag, 'id' | 'name' | 'referenceCount'>[];
+        };
     }>(
-        `query {
-            allTags(query: "${query}", limit: ${limit}, offset: ${offset}) {
-                id
-                name
-                referenceCount
+        `query def(
+            $searchFilter: SearchFilterInput,
+            $pagination: PaginationInput
+        ) {
+            allTags(
+                searchFilter: $searchFilter,
+                pagination: $pagination
+            ) {
+                totalCount
+                tags {
+                    id
+                    name
+                    referenceCount
+                }
             }
-        }`
+        }`,
+        {
+            searchFilter: { query },
+            pagination: {
+                limit,
+                offset
+            }
+        }
     ).then(data => data.allTags);
 }
 

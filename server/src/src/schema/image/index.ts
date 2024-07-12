@@ -4,18 +4,29 @@ import path from 'path';
 
 import models, { type Image } from '~/models';
 import { gql } from '~/modules/graphql';
+import type { Pagination } from '~/types';
 
 export const imageType = gql`
+    input PaginationInput {
+        limit: Int!
+        offset: Int!
+    }
+
     type Image {
         id: ID!
         url: String!
         referenceCount: Int!
     }
+
+    type Images {
+        totalCount: Int!
+        images: [Image!]!
+    }
 `;
 
 export const imageQuery = gql`
     type Query {
-        allImages(offset: Int=0, limit: Int=20): [Image!]!
+        allImages(pagination: PaginationInput): Images!
         image(id: ID!): Image!
     }
 `;
@@ -34,12 +45,18 @@ export const imageTypeDefs = `
 
 export const imageResolvers: IResolvers = {
     Query: {
-        allImages: async (_, { offset = 0, limit = 20 }) => {
-            return models.image.findMany({
-                skip: offset,
-                take: limit,
+        allImages: async (_, { pagination }: {
+            pagination: Pagination;
+        }) => {
+            const $images = models.image.findMany({
+                skip: pagination.offset,
+                take: pagination.limit,
                 orderBy: { createdAt: 'desc' }
             });
+            return {
+                totalCount: models.image.count(),
+                images: $images
+            };
         },
         image: async (_, { id }) => {
             return models.image.findFirst({ where: { id: Number(id) } });

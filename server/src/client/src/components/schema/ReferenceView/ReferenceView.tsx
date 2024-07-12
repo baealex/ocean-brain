@@ -17,7 +17,7 @@ const ReferenceView = ({ onClick }: ReferenceViewProps) => {
         <SuggestionMenuController
             triggerCharacter="["
             getItems={async (query) => {
-                const notes = await fetchNotes({
+                const { notes } = await fetchNotes({
                     query,
                     limit: 5
                 });

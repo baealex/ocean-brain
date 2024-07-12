@@ -6,10 +6,7 @@ import { Button, Pagination } from '~/components/shared';
 import { NoteListCard } from '~/components/note';
 import * as Icon from '~/components/icon';
 
-import {
-    fetchNotes,
-    fetchTotalNotes
-} from '~/apis/note.api';
+import { fetchNotes } from '~/apis/note.api';
 import useNoteMutate from '~/hooks/useNoteMutate';
 
 export default function Home() {
@@ -18,20 +15,10 @@ export default function Home() {
     const limit = 25;
     const page = Number(searchParams.get('page')) || 1;
 
-    const { data: totalNotes } = useQuery('totalNotes', () => {
-        return fetchTotalNotes();
-    });
-
-    const { data: notes, isLoading } = useQuery(['notes', page], () => {
+    const { data, isLoading } = useQuery(['notes', page], () => {
         return fetchNotes({
             offset: (page - 1) * limit,
-            limit,
-            extend: `
-                tags {
-                    id
-                    name
-                }
-            `
+            limit
         });
     });
 
@@ -52,7 +39,7 @@ export default function Home() {
                 </Button>
             </div>
             <div className="grid gap-6 mt-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
-                {!isLoading && notes && notes.map(note => (
+                {!isLoading && data?.notes && data.notes.map(note => (
                     <NoteListCard
                         key={note.id}
                         {...note}
@@ -61,11 +48,11 @@ export default function Home() {
                     />
                 ))}
             </div>
-            {totalNotes && limit < totalNotes && (
+            {data?.totalCount && limit < data.totalCount && (
                 <Pagination
                     limit={limit}
                     currentPage={page}
-                    totalEntries={totalNotes}
+                    totalEntries={data.totalCount}
                 />
             )}
         </>

@@ -1,10 +1,21 @@
 import type { IResolvers } from '@graphql-tools/utils';
 
-import type { Note, Tag } from '~/models';
 import models from '~/models';
 import { gql } from '~/modules/graphql';
 
+import type { Note, Tag } from '~/models';
+import type { Pagination, SearchFilter } from '~/types';
+
 export const noteType = gql`
+    input PaginationInput {
+        limit: Int!
+        offset: Int!
+    }
+
+    input SearchFilterInput {
+        query: String!
+    }
+
     type Tag {
         id: ID!
         name: String!
@@ -21,18 +32,21 @@ export const noteType = gql`
         pinned: Boolean!
         tags: [Tag!]!
     }
+
+    type Notes {
+        totalCount: Int!
+        notes: [Note!]!
+    }
 `;
 
 export const noteQuery = gql`
     type Query {
-        allNotes(query: String = "", limit: Int = 10, offset: Int = 0): [Note!]!
+        allNotes(searchFilter: SearchFilterInput, pagination: PaginationInput): Notes!
+        tagNotes(searchFilter: SearchFilterInput, pagination: PaginationInput): Notes!
         pinnedNotes: [Note!]!
-        tagNotes(id: ID!): [Note!]!
         imageNotes(src: String!): [Note!]!
         backReferences(id: ID!): [Note]!
         note(id: ID!): Note!
-        totalNotes: Int!
-        totalTagNotes(id: ID!): Int!
     }
 `;
 
@@ -53,10 +67,16 @@ export const noteTypeDefs = `
 
 export const noteResolvers: IResolvers = {
     Query: {
-        allNotes: async (_, { query = '', limit = 10, offset = 0 }) => {
-            const keywords = query.split(' ').map(word => `%${word}%`);
+        allNotes: async (_, {
+            searchFilter,
+            pagination
+        }: {
+            searchFilter: SearchFilter;
+            pagination: Pagination;
+        }) => {
+            const keywords = searchFilter.query.split(' ').map(word => `%${word}%`);
 
-            return models.note.findMany({
+            const $notes = models.note.findMany({
                 orderBy: [
                     { pinned: 'desc' },
                     { updatedAt: 'desc' }
@@ -69,17 +89,44 @@ export const noteResolvers: IResolvers = {
                         ]
                     }))
                 },
-                take: Number(limit),
-                skip: Number(offset)
+                take: Number(pagination.limit),
+                skip: Number(pagination.offset)
             });
+            return {
+                totalCount: models.note.count({
+                    where: {
+                        AND: keywords.map(keyword => ({
+                            OR: [
+                                { title: { contains: keyword } },
+                                { content: { contains: keyword } }
+                            ]
+                        }))
+                    }
+                }),
+                notes: $notes
+            };
+        },
+        tagNotes: async (_, {
+            searchFilter,
+            pagination
+        }: {
+            searchFilter: SearchFilter;
+            pagination: Pagination;
+        }) => {
+            const $notes = models.note.findMany({
+                orderBy: { updatedAt: 'desc' },
+                where: { tags: { some: { id: Number(searchFilter.query) } } },
+                take: Number(pagination.limit),
+                skip: Number(pagination.offset)
+            });
+            return {
+                totalCount: models.note.count({ where: { tags: { some: { id: Number(searchFilter.query) } } } }),
+                notes: $notes
+            };
         },
         pinnedNotes: async () => models.note.findMany({
-            orderBy: { updatedAt: 'desc' },
+            orderBy: { pinned: 'desc' },
             where: { pinned: true }
-        }),
-        tagNotes: async (_, { id }) => models.note.findMany({
-            orderBy: { updatedAt: 'desc' },
-            where: { tags: { some: { id: Number(id) } } }
         }),
         imageNotes: async (_, { src }) => models.note.findMany({
             orderBy: { updatedAt: 'desc' },
@@ -94,9 +141,7 @@ export const noteResolvers: IResolvers = {
                 where: { content: { contains: `reference","props":{"id":"${id}"` } }
             });
         },
-        note: (_, { id }: Note) => models.note.findUnique({ where: { id: Number(id) } }),
-        totalNotes: async () => models.note.count(),
-        totalTagNotes: async (_, { id }) => models.note.count({ where: { tags: { some: { id: Number(id) } } } })
+        note: (_, { id }: Note) => models.note.findUnique({ where: { id: Number(id) } })
     },
     Mutation: {
         createNote: async (_, { title, content }: Note) => {

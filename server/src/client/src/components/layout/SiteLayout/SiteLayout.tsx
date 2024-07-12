@@ -97,7 +97,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
             fetchNotes({
                 query,
                 limit: 5
-            }).then(setNotes);
+            }).then(({ notes }) => setNotes(notes));
             fetchTags({
                 query,
                 limit: 5

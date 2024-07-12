@@ -20,11 +20,10 @@ export default function Pagination({
     };
 
     const lastPage = Math.ceil((totalEntries || 0) / limit);
-    const pages = Array.from(Array(lastPage).keys()).map(i => i + 1);
 
     return (
-        <div className="flex justify-center mt-5 mb-2">
-            <div className="flex items-center gap-4">
+        <div className="flex justify-center mt-10 mb-2">
+            <div className="flex items-center gap-6">
                 <div className="flex justify-center">
                     <button
                         disabled={currentPage === 1}
@@ -33,20 +32,13 @@ export default function Pagination({
                         <ChevronLeft className="h-5 w-5" />
                     </button>
                 </div>
-                <div className="flex justify-center gap-4">
-                    {pages.map(page => (
-                        <button
-                            key={page}
-                            className={`${currentPage === page ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-600'} p-2`}
-                            onClick={() => handlePageChange(page)}>
-                            {page}
-                        </button>
-                    ))}
+                <div className="flex justify-center items-center gap-2">
+                    {currentPage} <span className="text-gray-400 dark:text-gray-600 text-xs">/</span> {lastPage}
                 </div>
                 <div className="flex justify-center">
                     <button
                         disabled={currentPage === lastPage}
-                        className={currentPage === pages.length ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-600'}
+                        className={currentPage === lastPage ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-600'}
                         onClick={() => handlePageChange(currentPage + 1)}>
                         <ChevronRight className="h-5 w-5" />
                     </button>

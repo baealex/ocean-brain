@@ -2,54 +2,88 @@ import type { Note } from '~/models/Note';
 import { graphQuery } from '~/modules/graph-query';
 
 export function fetchNotes({
-    limit = 999,
+    limit = 25,
     offset = 0,
-    query = '',
-    extend = ''
+    query = ''
 } = {}) {
     return graphQuery<{
-        allNotes: Note[];
+        allNotes: {
+            totalCount: number;
+            notes: Note[];
+        };
     }>(
-        `query {
-            allNotes(query: "${query}", limit: ${limit}, offset: ${offset}) {
-                id
-                title
-                pinned
-                createdAt
-                updatedAt
-                ${extend}
+        `query def(
+            $searchFilter: SearchFilterInput,
+            $pagination: PaginationInput
+        ) {
+            allNotes(
+                searchFilter: $searchFilter,
+                pagination: $pagination
+            ) {
+                totalCount
+                notes {
+                    id
+                    title
+                    pinned
+                    createdAt
+                    updatedAt
+                    tags {
+                        id
+                        name
+                    }
+                }
             }
-        }`
+        }`,
+        {
+            searchFilter: { query },
+            pagination: {
+                limit,
+                offset
+            }
+        }
     ).then(data => data.allNotes);
 }
 
-export function fetchTotalNotes() {
+export function fetchTagNotes({
+    query = '',
+    limit = 25,
+    offset = 0
+}) {
     return graphQuery<{
-        totalNotes: number;
+        tagNotes: {
+            totalCount: number;
+            notes: Note[];
+        };
     }>(
-        `query {
-            totalNotes
-        }`
-    ).then(data => data.totalNotes);
-}
-
-export function fetchTagNotes(id: string) {
-    return graphQuery<{
-        tagNotes: Note[];
-    }>(
-        `query {
-            tagNotes(id: ${id}) {
-                id
-                title
-                pinned
-                tags {
+        `query def(
+            $searchFilter: SearchFilterInput,
+            $pagination: PaginationInput
+        ) {
+            tagNotes(
+                searchFilter: $searchFilter,
+                pagination: $pagination
+            ) {
+                totalCount
+                notes {
                     id
-                    name
+                    title
+                    pinned
+                    tags {
+                        id
+                        name
+                    }
+                    createdAt
+                    updatedAt
                 }
-                createdAt
-                updatedAt
             }
         }`,
+        {
+            searchFilter: { query },
+            pagination: {
+                limit,
+                offset
+            }
+        }
     ).then(data => data.tagNotes);
 }
 

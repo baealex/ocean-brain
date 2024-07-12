@@ -2,8 +2,18 @@ import type { IResolvers } from '@graphql-tools/utils';
 
 import models, { type Tag } from '~/models';
 import { gql } from '~/modules/graphql';
+import type { Pagination, SearchFilter } from '~/types';
 
 export const tagType = gql`
+    input PaginationInput {
+        limit: Int!
+        offset: Int!
+    }
+
+    input SearchFilterInput {
+        query: String!
+    }
+
     type Tag {
         id: ID!
         name: String!
@@ -11,11 +21,16 @@ export const tagType = gql`
         updatedAt: String!
         referenceCount: Int!
     }
+
+    type Tags {
+        totalCount: Int!
+        tags: [Tag!]!
+    }
 `;
 
 export const tagQuery = gql`
     type Query {
-        allTags(query: String = "", offset: Int = 0, limit: Int = 20): [Tag!]!
+        allTags(searchFilter: SearchFilterInput, pagination: PaginationInput): Tags!
     }
 `;
 
@@ -33,16 +48,27 @@ export const tagTypeDefs = `
 
 export const tagResolvers: IResolvers = {
     Query: {
-        allTags: async (_, { query = '', offset = 0, limit = 20 }) => {
-            return models.tag.findMany({
-                skip: offset,
-                take: limit,
+        allTags: async (_, {
+            searchFilter,
+            pagination
+        }: {
+            searchFilter: SearchFilter;
+            pagination: Pagination;
+        }) => {
+            const $tags = models.tag.findMany({
+                skip: pagination.offset,
+                take: pagination.limit,
                 where: {
-                    name: { contains: query },
+                    name: { contains: searchFilter.query },
                     notes: { some: { createdAt: { gt: new Date(0) } } }
                 },
                 orderBy: { notes: { _count: 'desc' } }
             });
+
+            return {
+                totalCount: await models.tag.count({ where: { name: { contains: searchFilter.query } } }),
+                tags: await $tags
+            };
         }
     },
     Mutation: {

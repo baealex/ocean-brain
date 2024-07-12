@@ -1,12 +1,11 @@
 import { confirm } from '@baejino/ui';
 import { useQuery, useQueryClient } from 'react-query';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 
-import { Image as ImageComponent } from '~/components/shared';
+import { Image as ImageComponent, Pagination } from '~/components/shared';
 import * as Icon from '~/components/icon';
 
-import type { Image as ImageInterface } from '~/models/Image';
 import { getImageNotesURL } from '~/modules/url';
 
 import { deleteImage, fetchImages } from '~/apis/image.api';
@@ -14,8 +13,16 @@ import { deleteImage, fetchImages } from '~/apis/image.api';
 const Image = () => {
     const queryClient = useQueryClient();
 
-    const { data } = useQuery<ImageInterface[]>(['images'], () => {
-        return fetchImages();
+    const [searchParams] = useSearchParams();
+
+    const limit = 24;
+    const page = Number(searchParams.get('page')) || 1;
+
+    const { data } = useQuery(['images', page], () => {
+        return fetchImages({
+            offset: (page - 1) * limit,
+            limit
+        });
     });
 
     const handleDelete = async (id: string) => {
@@ -31,7 +38,7 @@ const Image = () => {
                 <title>Images | Ocean Brain</title>
             </Helmet>
             <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
-                {data && data.map((image) => (
+                {data?.images && data.images.map((image) => (
                     <div key={image.id} className="relative bg-black">
                         <Link to={getImageNotesURL(image.id)}>
                             <ImageComponent className="h-64 w-full object-cover" src={image.url} alt={image.id} />
@@ -45,6 +52,13 @@ const Image = () => {
                     </div>
                 ))}
             </div>
+            {data?.totalCount && limit < data.totalCount && (
+                <Pagination
+                    limit={limit}
+                    currentPage={page}
+                    totalEntries={data.totalCount}
+                />
+            )}
         </>
     );
 };

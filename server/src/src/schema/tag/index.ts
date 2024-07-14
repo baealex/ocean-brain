@@ -55,18 +55,19 @@ export const tagResolvers: IResolvers = {
             searchFilter: SearchFilter;
             pagination: Pagination;
         }) => {
+            const where: Parameters<typeof models.tag.findMany>[0]['where'] = {
+                name: { contains: searchFilter.query },
+                notes: { some: { createdAt: { gt: new Date(0) } } }
+            };
             const $tags = models.tag.findMany({
                 skip: pagination.offset,
                 take: pagination.limit,
-                where: {
-                    name: { contains: searchFilter.query },
-                    notes: { some: { createdAt: { gt: new Date(0) } } }
-                },
+                where,
                 orderBy: { notes: { _count: 'desc' } }
             });
 
             return {
-                totalCount: await models.tag.count({ where: { name: { contains: searchFilter.query } } }),
+                totalCount: await models.tag.count({ where }),
                 tags: await $tags
             };
         }

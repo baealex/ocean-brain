@@ -74,35 +74,45 @@ export const noteResolvers: IResolvers = {
             searchFilter: SearchFilter;
             pagination: Pagination;
         }) => {
-            const keywords = searchFilter.query.split(' ').map(word => `%${word}%`);
+            const queryItems = searchFilter.query.split(' ');
+            const included = queryItems
+                .filter(item => !item.startsWith('-'))
+                .map(word => `%${word}%`);
+            const excluded = queryItems
+                .filter(item => item.startsWith('-'))
+                .map(item => item.slice(1))
+                .map(word => `%${word}%`);
+
+            const where: Parameters<typeof models.note.findMany>[0]['where']  = {
+                AND: [
+                    ...included.map(keyword => ({
+                        OR: [
+                            { title: { contains: keyword } },
+                            { content: { contains: keyword } }
+                        ]
+                    })),
+                    ...excluded.map(keyword => ({
+                        NOT: {
+                            OR: [
+                                { title: { contains: keyword } },
+                                { content: { contains: keyword } }
+                            ]
+                        }
+                    }))
+                ]
+            };
 
             const $notes = models.note.findMany({
                 orderBy: [
                     { pinned: 'desc' },
                     { updatedAt: 'desc' }
                 ],
-                where: {
-                    AND: keywords.map(keyword => ({
-                        OR: [
-                            { title: { contains: keyword } },
-                            { content: { contains: keyword } }
-                        ]
-                    }))
-                },
+                where,
                 take: Number(pagination.limit),
                 skip: Number(pagination.offset)
             });
             return {
-                totalCount: models.note.count({
-                    where: {
-                        AND: keywords.map(keyword => ({
-                            OR: [
-                                { title: { contains: keyword } },
-                                { content: { contains: keyword } }
-                            ]
-                        }))
-                    }
-                }),
+                totalCount: models.note.count({ where }),
                 notes: $notes
             };
         },
@@ -113,14 +123,17 @@ export const noteResolvers: IResolvers = {
             searchFilter: SearchFilter;
             pagination: Pagination;
         }) => {
+            const where: Parameters<typeof models.note.findMany>[0]['where'] =
+                { tags: { some: { id: Number(searchFilter.query) } } };
+
             const $notes = models.note.findMany({
                 orderBy: { updatedAt: 'desc' },
-                where: { tags: { some: { id: Number(searchFilter.query) } } },
+                where,
                 take: Number(pagination.limit),
                 skip: Number(pagination.offset)
             });
             return {
-                totalCount: models.note.count({ where: { tags: { some: { id: Number(searchFilter.query) } } } }),
+                totalCount: models.note.count({ where }),
                 notes: $notes
             };
         },

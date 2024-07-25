@@ -14,7 +14,7 @@ import * as Icon from '~/components/icon';
 import type { Note } from '~/models/Note';
 
 import useDebounce from '~/hooks/useDebounce';
-import useNoteMutate from '~/hooks/useNoteMutate';
+import useNoteMutate from '~/hooks/resource/useNoteMutate';
 
 import { fileToBase64 } from '~/modules/file';
 import { graphQuery } from '~/modules/graph-query';

@@ -4,7 +4,7 @@ const cx = classNames.bind(styles);
 
 import React, { useEffect, useState } from 'react';
 import { useQuery } from 'react-query';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import Badge from '~/components/shared/Badge';
 
@@ -20,6 +20,7 @@ import { useTheme } from '~/store/theme';
 import { fetchNotes } from '~/apis/note.api';
 import { fetchTags } from '~/apis/tag.api';
 import { Menu, Moon, Search, Sun } from '~/components/icon';
+import { Button } from '@headlessui/react';
 
 interface SiteLayoutProps {
     children?: React.ReactNode;
@@ -56,6 +57,7 @@ const NavigationItem = ({
 
 const SiteLayout = ({ children }: SiteLayoutProps) => {
     const location = useLocation();
+    const navigate = useNavigate();
 
     const { theme, toggleTheme } = useTheme(state => state);
 
@@ -85,6 +87,14 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
         `);
         return pinnedNotes;
     });
+
+    const handleSubmit = (e?: React.FormEvent<HTMLFormElement>) => {
+        e?.preventDefault();
+        setQuery('');
+        setNotes([]);
+        setTags([]);
+        navigate(`/search?query=${encodeURIComponent(query)}`);
+    };
 
     useEffect(() => {
         if (query.length <= 0) {
@@ -149,9 +159,9 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                             </button>
                         </div>
                         <div className={cx('flex', 'gap-3', 'items-center')}>
-                            <div className="relative">
-                                <form className="flex gap-1 bg-white dark:bg-zinc-800 rounded-lg">
-                                    <button type="button" className="h-10 w-10 flex items-center justify-center rounded-lg border-2 border-white dark:border-black">
+                            <form className="relative" onSubmit={handleSubmit}>
+                                <div className="flex gap-1 bg-white dark:bg-zinc-800 rounded-lg">
+                                    <button type="submit" className="h-10 w-10 flex items-center justify-center rounded-lg border-2 border-white dark:border-black">
                                         <Search className="h-6 w-6 dark:text-gray-300" />
                                     </button>
                                     <input
@@ -161,7 +171,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                                         onChange={(e) => setQuery(e.target.value)}
                                         className="w-48 h-10 bg-transparent text-gray-900 dark:text-gray-300 py-4 outline-none"
                                     />
-                                </form>
+                                </div>
                                 {(notes.length > 0 || tags.length > 0) && (
                                     <div style={{ zIndex: 1002 }} className="fixed top-16 w-60 bg-white card sub dark:bg-zinc-900 rounded-lg shadow-lg text-gray-900 dark:text-gray-300">
                                         {notes.length > 0 && (
@@ -188,14 +198,19 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                                                 ))}
                                             </ul>
                                         )}
+                                        <div className="p-2">
+                                            <Button type="submit" className="text-sm text-blue-500">
+                                                View detail
+                                            </Button>
+                                        </div>
                                     </div>
                                 )}
-                            </div>
+                            </form>
                             <button onClick={toggleTheme}>
                                 {theme === 'dark' ? (
                                     <Moon className="h-6 w-6 text-yellow-500" />
                                 ) : (
-                                    <Sun className="h-6 w-6 text-baclk" />
+                                    <Sun className="h-6 w-6 text-black" />
                                 )}
                             </button>
                         </div>

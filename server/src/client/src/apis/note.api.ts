@@ -1,11 +1,19 @@
 import type { Note } from '~/models/Note';
 import { graphQuery } from '~/modules/graph-query';
 
+export interface FetchNotesParams {
+    limit?: number;
+    offset?: number;
+    query?: string;
+    fields?: Partial<keyof Note>[];
+}
+
 export function fetchNotes({
     limit = 25,
     offset = 0,
-    query = ''
-} = {}) {
+    query = '',
+    fields
+}: FetchNotesParams = {}) {
     return graphQuery<{
         allNotes: {
             totalCount: number;
@@ -22,6 +30,7 @@ export function fetchNotes({
             ) {
                 totalCount
                 notes {
+                    ${fields ? fields.join('\n') : ''}
                     id
                     title
                     pinned

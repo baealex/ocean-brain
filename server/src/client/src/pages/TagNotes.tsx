@@ -6,7 +6,7 @@ import { Button, Pagination } from '~/components/shared';
 import { NoteListCard } from '~/components/note';
 import * as Icon from '~/components/icon';
 
-import useNoteMutate from '~/hooks/useNoteMutate';
+import useNoteMutate from '~/hooks/resource/useNoteMutate';
 
 import { fetchTagNotes } from '~/apis/note.api';
 

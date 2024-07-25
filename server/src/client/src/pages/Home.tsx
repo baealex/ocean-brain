@@ -1,4 +1,3 @@
-import { useQuery } from 'react-query';
 import { useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 
@@ -6,8 +5,8 @@ import { Button, Pagination } from '~/components/shared';
 import { NoteListCard } from '~/components/note';
 import * as Icon from '~/components/icon';
 
-import { fetchNotes } from '~/apis/note.api';
-import useNoteMutate from '~/hooks/useNoteMutate';
+import useNoteMutate from '~/hooks/resource/useNoteMutate';
+import useNotes from '~/hooks/resource/useNotes';
 
 export default function Home() {
     const [searchParams] = useSearchParams();
@@ -15,11 +14,9 @@ export default function Home() {
     const limit = 25;
     const page = Number(searchParams.get('page')) || 1;
 
-    const { data, isLoading } = useQuery(['notes', page], () => {
-        return fetchNotes({
-            offset: (page - 1) * limit,
-            limit
-        });
+    const { data, isLoading } = useNotes({
+        offset: (page - 1) * limit,
+        limit
     });
 
     const {

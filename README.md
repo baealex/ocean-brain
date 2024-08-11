@@ -20,6 +20,12 @@ Ocean Brain is a note-taking app designed to help you capture and organize your 
 
 <br>
 
+## Demo site
+
+[demo-ocean-brain.baejino.com](https://demo-ocean-brain.baejino.com/)
+
+<br>
+
 ## Setup
 
 ### use Docker

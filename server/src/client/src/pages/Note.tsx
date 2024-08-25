@@ -1,6 +1,5 @@
 import dayjs from 'dayjs';
-import { useEffect, useRef, useState } from 'react';
-import { insertOrUpdateBlock } from '@blocknote/core';
+import { useRef, useState } from 'react';
 import { useCreateBlockNote } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/mantine';
 import { Link, useParams } from 'react-router-dom';
@@ -119,70 +118,6 @@ export default function Note() {
         onDelete,
         onPinned
     } = useNoteMutate();
-
-    useEffect(() => {
-        const handlePaste = async (e: ClipboardEvent) => {
-            const item = e.clipboardData?.items[0];
-
-            if (item && item.type.indexOf('text/html') !== -1) {
-                const data = e.clipboardData?.getData('text/html');
-                if (data.includes('<img')) {
-                    const src = data.match(/src="(.*?)"/g)?.pop()?.replace(/src="(.*?)"/g, '$1') ?? '';
-                    if (src && !src.startsWith(location.origin)) {
-                        e.preventDefault();
-                        const url = await uploadImage({ externalSrc: src });
-                        insertOrUpdateBlock(editor!, {
-                            type: 'image',
-                            props: { url }
-                        });
-                    }
-                }
-            }
-
-            if (item && item.type.indexOf('image') !== -1) {
-                const imageFile = item.getAsFile();
-                if (imageFile) {
-                    const url = await uploadImage({ base64: await fileToBase64(imageFile) });
-                    insertOrUpdateBlock(editor!, {
-                        type: 'image',
-                        props: { url }
-                    });
-                }
-            }
-        };
-
-        window.addEventListener('paste', handlePaste, true);
-
-        return () => window.removeEventListener('paste', handlePaste, true);
-    }, [editor]);
-
-    useEffect(() => {
-        const handleDrop = async (e: DragEvent) => {
-            e.preventDefault();
-            const items = e.dataTransfer?.items;
-            if (items) {
-                e.preventDefault();
-                for (const item of items) {
-                    if (item.kind === 'file' && item.type.startsWith('image/')) {
-                        const file = item.getAsFile();
-                        if (file) {
-                            const url = await uploadImage({ base64: await fileToBase64(file) });
-                            insertOrUpdateBlock(editor!, {
-                                type: 'image',
-                                props: { url }
-                            });
-                        }
-                    }
-                }
-            }
-        };
-
-        window.addEventListener('drop', handleDrop);
-
-        return () => {
-            window.removeEventListener('drop', handleDrop);
-        };
-    }, [editor]);
 
     return (
         <Container>

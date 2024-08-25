@@ -67,7 +67,9 @@ export const imageResolvers: IResolvers = {
             try {
                 const $image = await models.image.findFirst({ where: { id: Number(id) } });
 
-                fs.unlinkSync(path.resolve('./public', $image.url.slice(1)));
+                if (fs.existsSync(path.resolve('./public', $image.url.slice(1)))) {
+                    fs.unlinkSync(path.resolve('./public', $image.url.slice(1)));
+                }
 
                 await models.image.delete({ where: { id: Number(id) } });
 

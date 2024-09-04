@@ -5,8 +5,10 @@ const cx = classNames.bind(styles);
 import React, { useEffect, useState } from 'react';
 import { useQuery } from 'react-query';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Button } from '@headlessui/react';
 
-import Badge from '~/components/shared/Badge';
+import { Menu, Moon, Search, Sun } from '~/components/icon';
+import { Badge, RestoreParentScroll } from '~/components/shared';
 
 import useDebounce from '~/hooks/useDebounce';
 
@@ -19,8 +21,6 @@ import { useTheme } from '~/store/theme';
 
 import { fetchNotes } from '~/apis/note.api';
 import { fetchTags } from '~/apis/tag.api';
-import { Menu, Moon, Search, Sun } from '~/components/icon';
-import { Button } from '@headlessui/react';
 
 interface SiteLayoutProps {
     children?: React.ReactNode;
@@ -218,6 +218,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                 </div>
                 <div className={cx('content')}>
                     {children}
+                    <RestoreParentScroll/>
                 </div>
             </div>
         </div >

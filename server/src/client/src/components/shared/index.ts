@@ -5,3 +5,4 @@ export { default as Dropdown } from './Dropdown';
 export { default as Highlight } from './Highlight';
 export { default as Image } from './Image';
 export { default as Pagination } from './Pagination';
+export { default as RestoreParentScroll } from './RestoreParentScroll';

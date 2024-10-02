@@ -13,8 +13,8 @@ const useNoteMutate = () => {
 
     const navigate = useNavigate();
 
-    const onCreate = async () => {
-        const { id } = await createNote();
+    const onCreate = async (content?: string) => {
+        const { id } = await createNote({ content });
         navigate(`/${id}`);
     };
 

@@ -158,12 +158,31 @@ export const noteResolvers: IResolvers = {
     },
     Mutation: {
         createNote: async (_, { title, content }: Note) => {
-            return models.note.create({
+            const $note = await models.note.create({
                 data: {
                     title,
-                    content
+                    content: decodeURIComponent(content)
                 }
             });
+            if (content) {
+                const tagNames = decodeURIComponent(content).match(/"tag":"@([a-zA-Z0-9_가-힣]+")/g);
+
+                const tags: Tag[] = [];
+
+                for (const tagName of new Set(tagNames || [])) {
+                    const [name] = tagName.match(/@([a-zA-Z0-9_가-힣]+)/);
+                    if (!name) continue;
+                    const $tag = await models.tag.findFirst({ where: { name } });
+                    tags.push($tag);
+                }
+
+                return await models.note.update({
+                    where: { id: $note.id },
+                    data: { tags: { set: tags } }
+                });
+            }
+
+            return $note;
         },
         updateNote: async (_, { id, title, content }: Note) => {
             const tagNames = decodeURIComponent(content).match(/"tag":"@([a-zA-Z0-9_가-힣]+")/g);

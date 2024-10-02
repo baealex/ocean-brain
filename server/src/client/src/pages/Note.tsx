@@ -115,6 +115,7 @@ export default function Note() {
         });
     };
     const {
+        onCreate,
         onDelete,
         onPinned
     } = useNoteMutate();
@@ -152,6 +153,10 @@ export default function Note() {
                                 onClick: () => onPinned(id!, isPinned, () => {
                                     setIsPinned(prev => !prev);
                                 })
+                            },
+                            {
+                                name: 'Clone this note',
+                                onClick: () => onCreate(encodeURIComponent(JSON.stringify(editor?.document)))
                             },
                             {
                                 name: 'Delete',

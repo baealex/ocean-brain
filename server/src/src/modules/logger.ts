@@ -7,7 +7,7 @@ export const loggerOptions: LoggerOptions = {
     ],
     format: winston.format.combine(
         winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-        winston.format.printf(info => `${info.timestamp} ${info.level}: ${info.message}`),
+        winston.format.printf(info => `${[info.timestamp]}: ${info.message} ${JSON.stringify(info.meta)}`),
     ),
     colorize: true,
     expressFormat: true

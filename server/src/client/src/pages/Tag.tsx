@@ -27,7 +27,7 @@ export default function Tag() {
             <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
                 {data?.tags && data.tags.map((tag) => (
                     <Link to={`/tag/${tag.id}`} className="text-zinc-700 dark:text-zinc-300">
-                        <div key={tag.id} className={`${getRandomBackground(tag.name)} p-4 border shadow-md border-solid border-black dark:border-zinc-500`}>
+                        <div key={tag.id} className={`${getRandomBackground(tag.name)} p-4 relative rounded-2xl`}>
                             {tag.name} ({tag.referenceCount})
                         </div>
                     </Link>

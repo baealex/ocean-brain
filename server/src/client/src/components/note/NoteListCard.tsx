@@ -28,7 +28,7 @@ export default function NoteListCard({
     const updatedTimeSince = timeSince(Number(updatedAt));
 
     return (
-        <div key={id} className={`${getRandomBackground(title)} p-4 relative shadow-md border border-solid border-black dark:border-zinc-500`}>
+        <div key={id} className={`${getRandomBackground(title)} p-4 relative rounded-2xl`}>
             {pinned && (
                 <div className="absolute" style={{ translate: '-24px -24px' }}>
                     <Icon.Pin className="text-red-500 fill-red-500" width={16} height={16} />

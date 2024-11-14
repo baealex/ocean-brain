@@ -23,8 +23,7 @@ const Button = ({ children, isLoading, onClick }: ButtonProps) => {
                 'justify-center',
                 'gap-1',
                 isLoading ? 'cursor-not-allowed' : 'cursor-pointer',
-                isLoading ? 'bg-zinc-600' : 'bg-zinc-800',
-                isLoading ? 'dark:bg-zinc-800' : 'dark:bg-zinc-700',
+                isLoading ? 'bg-zinc-950 bg-opacity-50' : 'bg-zinc-950',
                 'text-white',
                 'font-bold',
                 'rounded-full'

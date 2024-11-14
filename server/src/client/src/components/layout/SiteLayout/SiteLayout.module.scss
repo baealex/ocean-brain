@@ -4,30 +4,46 @@
     height: 100%;
     display: flex;
     flex-direction: row;
-    background-color: #91cdff;
 
-    :global(html.dark) & {
-        background-color: #000;
+    .menu {
+        z-index: 1003;
+        position: fixed;
+        bottom: 16px;
+        left: 16px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 48px;
+        width: 48px;
+        background: #efebf9;
+        box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.15);
+
+        :global(html.dark) & {
+            background-color: rgb(30, 31, 34);
+        }
     }
 
     .side {
         height: 100%;
         flex: 0 0 300px;
         overflow-y: auto;
-        background-color: #91cdff;
+        background-color: #efebf9;
 
         :global(html.dark) & {
-            background-color: #000;
+            background-color: rgb(30, 31, 34);
         }
 
         @media (max-width: $BREAKPOINT_TABLET) {
             z-index: 1002;
             position: fixed;
             width: 100%;
-            transition: transform 0.3s ease-in-out;
+            transition: all 0.2s ease-in-out;
+            pointer-events: none;
             transform: translate(-100%, 0);
 
             &.open {
+                pointer-events: all;
                 transform: translate(0, 0);
             }
         }
@@ -40,25 +56,15 @@
         height: 100%;
     }
 
-    .header {
-        @media (max-width: $BREAKPOINT_TABLET) {
-            z-index: 1003;
-        }
-    }
-
     .content {
         flex: 1;
         padding: 16px;
         overflow-y: auto;
+        padding-bottom: 68px;
         background-color: #fff;
-        border-radius: 16px 0 0 0;
 
         :global(html.dark) & {
-            background-color: #181818;
-        }
-
-        @media (max-width: $BREAKPOINT_TABLET) {
-            border-radius: 16px 16px 0 0;
+            background-color: rgb(35, 36, 40);
         }
     }
 }

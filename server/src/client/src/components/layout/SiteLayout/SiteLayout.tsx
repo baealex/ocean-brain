@@ -5,9 +5,12 @@ const cx = classNames.bind(styles);
 import React, { useEffect, useState } from 'react';
 import { useQuery } from 'react-query';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Button } from '@headlessui/react';
-
-import { Menu, Moon, Search, Sun } from '~/components/icon';
+import {
+    Menu,
+    Moon,
+    Search,
+    Sun
+} from '~/components/icon';
 import { Badge, RestoreParentScroll } from '~/components/shared';
 
 import useDebounce from '~/hooks/useDebounce';
@@ -68,12 +71,6 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
 
     const [, setEvent] = useDebounce(100);
 
-    const reset = () => {
-        setNotes([]);
-        setTags([]);
-        setQuery('');
-    };
-
     const { data: pinnedNode } = useQuery('pinned-notes', async () => {
         const { pinnedNotes } = await graphQuery<{
             pinnedNotes: Note[];
@@ -90,9 +87,6 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
 
     const handleSubmit = (e?: React.FormEvent<HTMLFormElement>) => {
         e?.preventDefault();
-        setQuery('');
-        setNotes([]);
-        setTags([]);
         navigate(`/search?query=${encodeURIComponent(query)}`);
     };
 
@@ -121,8 +115,74 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
 
     return (
         <div className={cx('SiteLayout', 'dark:bg-zinc-950')}>
+            <div className="md:hidden">
+                <button
+                    type="button"
+                    className={cx('menu')}
+                    onClick={() => setIsMenuOpen(prev => !prev)}>
+                    <Menu className="h-6 w-6" />
+                </button>
+            </div>
             <div className={cx('side', { 'open': isMenuOpen }, 'dark:bg-zinc-950')}>
-                <div className={cx('flex', 'flex-col', 'gap-2', 'mt-16', 'p-4')}>
+                <div className={cx('flex', 'justify-between', 'gap-3', 'p-3')}>
+                    <form className="w-full" onSubmit={handleSubmit}>
+                        <div className="flex gap-3">
+                            <div className="flex w-full gap-1 bg-white dark:bg-zinc-800 rounded-lg">
+                                <button type="submit" className="h-10 w-10 flex items-center justify-center rounded-lg border-2 border-white dark:border-black">
+                                    <Search className="h-6 w-6 dark:text-gray-300" />
+                                </button>
+                                <input
+                                    type="text"
+                                    placeholder="Search"
+                                    value={query}
+                                    onChange={(e) => setQuery(e.target.value)}
+                                    className="w-full h-10 bg-transparent text-gray-900 dark:text-gray-300 py-4 outline-none"
+                                />
+                            </div>
+                            <button type="button" onClick={toggleTheme}>
+                                {theme === 'dark' ? (
+                                    <Moon className="h-6 w-6 text-yellow-500" />
+                                ) : (
+                                    <Sun className="h-6 w-6 text-black" />
+                                )}
+                            </button>
+                        </div>
+                        {(notes.length > 0 || tags.length > 0) && (
+                            <div className="mt-3 p-3 bg-white dark:bg-zinc-900 rounded-2xl shadow-md">
+                                {notes.length > 0 && (
+                                    <ul className="flex flex-col">
+                                        {notes.map(({ id, title }) => (
+                                            <li key={id} className="flex py-3 items-center">
+                                                <div className="flex items-center gap-2">
+                                                    <Link to={`/${id}`}>
+                                                        <p className="text-sm">{title || 'Untitled'}</p>
+                                                    </Link>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                                {tags.length > 0 && (
+                                    <ul className="flex flex-wrap gap-2 p-2">
+                                        {tags.map(({ id, name }) => (
+                                            <li key={id} className="flex items-center gap-2">
+                                                <Link to={`/tag/${id}`}>
+                                                    <Badge name={name} />
+                                                </Link>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                                <div className="p-2">
+                                    <button type="submit" className="text-sm text-blue-500">
+                                        view detailed results
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </form>
+                </div>
+                <div className={cx('flex', 'flex-col', 'gap-2', 'p-4')}>
                     <div className={cx('font-bold', 'text-lg')}>
                         MENU
                     </div>
@@ -148,74 +208,6 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                 </div>
             </div>
             <div className={cx('center')}>
-                <div className={cx('header', 'relative')}>
-                    <div className={cx('flex', 'justify-between', 'gap-3', 'p-3')}>
-                        <div className={cx('flex', 'gap-3', 'items-center')}>
-                            <button
-                                type="button"
-                                className="flex items-center justify-center gap-2 md:hidden"
-                                onClick={() => setIsMenuOpen(prev => !prev)}>
-                                <Menu className="h-6 w-6" />
-                            </button>
-                        </div>
-                        <div className={cx('flex', 'gap-3', 'items-center')}>
-                            <form className="relative" onSubmit={handleSubmit}>
-                                <div className="flex gap-1 bg-white dark:bg-zinc-800 rounded-lg">
-                                    <button type="submit" className="h-10 w-10 flex items-center justify-center rounded-lg border-2 border-white dark:border-black">
-                                        <Search className="h-6 w-6 dark:text-gray-300" />
-                                    </button>
-                                    <input
-                                        type="text"
-                                        placeholder="Search"
-                                        value={query}
-                                        onChange={(e) => setQuery(e.target.value)}
-                                        className="w-48 h-10 bg-transparent text-gray-900 dark:text-gray-300 py-4 outline-none"
-                                    />
-                                </div>
-                                {(notes.length > 0 || tags.length > 0) && (
-                                    <div style={{ zIndex: 1002 }} className="fixed top-16 w-60 bg-white card sub dark:bg-zinc-900 rounded-lg shadow-lg text-gray-900 dark:text-gray-300">
-                                        {notes.length > 0 && (
-                                            <ul className="flex flex-col">
-                                                {notes.map(({ id, title }) => (
-                                                    <li key={id} className="flex p-3 items-center border-b border-zinc-100 dark:border-zinc-800 border-solid">
-                                                        <div className="flex items-center gap-2">
-                                                            <Link to={`/${id}`} onClick={reset}>
-                                                                <p className="text-sm">{title || 'Untitled'}</p>
-                                                            </Link>
-                                                        </div>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        )}
-                                        {tags.length > 0 && (
-                                            <ul className="flex flex-wrap gap-2 p-2">
-                                                {tags.map(({ id, name }) => (
-                                                    <li key={id} className="flex items-center gap-2">
-                                                        <Link to={`/tag/${id}`} onClick={reset}>
-                                                            <Badge name={name} />
-                                                        </Link>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        )}
-                                        <div className="p-2">
-                                            <Button type="submit" className="text-sm text-blue-500">
-                                                View detail
-                                            </Button>
-                                        </div>
-                                    </div>
-                                )}
-                            </form>
-                            <button onClick={toggleTheme}>
-                                {theme === 'dark' ? (
-                                    <Moon className="h-6 w-6 text-yellow-500" />
-                                ) : (
-                                    <Sun className="h-6 w-6 text-black" />
-                                )}
-                            </button>
-                        </div>
-                    </div>
-                </div>
                 <div className={cx('content')}>
                     {children}
                     <RestoreParentScroll/>

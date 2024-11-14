@@ -35,6 +35,10 @@ const NAVIGATION_ITEMS = [
         path: '/'
     },
     {
+        name: 'Calendar',
+        path: '/calendar'
+    },
+    {
         name: 'Tags',
         path: '/tag'
     },

@@ -16,6 +16,11 @@ export const noteType = gql`
         query: String!
     }
 
+    input DateRangeInput {
+        start: String!
+        end: String!
+    }
+
     type Tag {
         id: ID!
         name: String!
@@ -43,6 +48,7 @@ export const noteQuery = gql`
     type Query {
         allNotes(searchFilter: SearchFilterInput, pagination: PaginationInput): Notes!
         tagNotes(searchFilter: SearchFilterInput, pagination: PaginationInput): Notes!
+        notesInDateRange(dateRange: DateRangeInput): [Note!]!
         pinnedNotes: [Note!]!
         imageNotes(src: String!): [Note!]!
         backReferences(id: ID!): [Note]!
@@ -115,6 +121,36 @@ export const noteResolvers: IResolvers = {
                 totalCount: models.note.count({ where }),
                 notes: $notes
             };
+        },
+        notesInDateRange: async (_, { dateRange }: {
+            dateRange: {
+                start: string;
+                end: string;
+            };
+        }) => {
+            const where: Parameters<typeof models.note.findMany>[0]['where'] = {
+                OR: [
+                    {
+                        updatedAt: {
+                            gte: new Date(dateRange.start),
+                            lte: new Date(dateRange.end)
+                        }
+                    },
+                    {
+                        createdAt: {
+                            gte: new Date(dateRange.start),
+                            lte: new Date(dateRange.end)
+                        }
+                    }
+                ]
+            };
+
+            const $notes = await models.note.findMany({
+                orderBy: { updatedAt: 'desc' },
+                where
+            });
+
+            return $notes;
         },
         tagNotes: async (_, {
             searchFilter,

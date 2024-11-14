@@ -4,11 +4,12 @@ import { SiteLayout } from './components/layout';
 
 import Home from '~/pages/Home';
 import Image from '~/pages/Image';
-import ImageDetail from './pages/ImageDetail';
+import ImageDetail from '~/pages/ImageDetail';
 import Note from '~/pages/Note';
-import Search from './pages/Search';
+import Search from '~/pages/Search';
 import TagNotes from '~/pages/TagNotes';
 import Tag from '~/pages/Tag';
+import Calendar from '~/pages/Calendar';
 
 const router = createBrowserRouter([
     {
@@ -22,6 +23,10 @@ const router = createBrowserRouter([
             {
                 path: '/',
                 element: <Home />
+            },
+            {
+                path: '/calendar',
+                element: <Calendar />
             },
             {
                 path: '/search',

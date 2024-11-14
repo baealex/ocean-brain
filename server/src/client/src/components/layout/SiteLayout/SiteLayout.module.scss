@@ -5,30 +5,11 @@
     display: flex;
     flex-direction: row;
 
-    .menu {
-        z-index: 1003;
-        position: fixed;
-        bottom: 16px;
-        left: 16px;
-        border-radius: 16px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 48px;
-        width: 48px;
-        background: #efebf9;
-        box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.15);
-
-        :global(html.dark) & {
-            background-color: rgb(30, 31, 34);
-        }
-    }
-
     .side {
         height: 100%;
         flex: 0 0 300px;
         overflow-y: auto;
-        background-color: #efebf9;
+        background-color: #d3c7ec;
 
         :global(html.dark) & {
             background-color: rgb(30, 31, 34);
@@ -46,6 +27,25 @@
                 pointer-events: all;
                 transform: translate(0, 0);
             }
+        }
+    }
+
+    .menu {
+        z-index: 1003;
+        position: fixed;
+        bottom: 16px;
+        left: 16px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 48px;
+        width: 48px;
+        background: #d3c7ec;
+        box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.15);
+
+        :global(html.dark) & {
+            background-color: rgb(30, 31, 34);
         }
     }
 

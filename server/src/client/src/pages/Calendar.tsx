@@ -6,12 +6,16 @@ import type { Note } from '~/models/Note';
 import { getRandomBackground } from '~/modules/color';
 import { graphQuery } from '~/modules/graph-query';
 import { getNoteURL } from '~/modules/url';
+import { useTheme } from '~/store/theme';
 
 export default function Calendar() {
     const [searchParams, setSearchParams] = useSearchParams();
 
+    const { theme } = useTheme(state => state);
+
     const year = Number(searchParams.get('year')) || dayjs().year();
     const month = Number(searchParams.get('month')) || dayjs().month() + 1;
+    const type = searchParams.get('type') || 'create';
 
     const daysOfWeek = ['SUN', 'MON', 'TUE', 'WEB', 'THU', 'FRI', 'SAT'];
 
@@ -92,16 +96,11 @@ export default function Calendar() {
         return notesInDateRange;
     });
 
+    const border = theme === 'light' ? '1px solid #ccc' : '1px solid #555';
+
     return (
         <div>
-            <div
-                style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '16px',
-                    margin: '16px'
-                }}>
+            <div className="flex justify-center items-center gap-3 font-semibold m-5">
                 <button onClick={handlePrevMonth}>
                     <Icon.ChevronLeft width={24} />
                 </button>
@@ -110,20 +109,32 @@ export default function Calendar() {
                     <Icon.ChevronRight width={24} />
                 </button>
             </div>
+            <div className="flex justify-center items-center gap-2 mb-6">
+                <span>
+                    Display notes by:
+                </span>
+                <button
+                    className="text-blue-600 dark:text-blue-500"
+                    onClick={() => {
+                        setSearchParams((searchParams) => {
+                            if (searchParams.get('type') !== 'update') {
+                                searchParams.set('type', 'update');
+                            } else {
+                                searchParams.delete('type');
+                            }
+                            return searchParams;
+                        });
+                    }}>
+                    {type}
+                </button>
+            </div>
             <div
                 style={{
                     display: 'grid',
                     gridTemplateColumns: 'repeat(7, 1fr)'
                 }}>
                 {daysOfWeek.map((day) => (
-                    <div
-                        key={day}
-                        style={{
-                            fontWeight: 'bold',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                        }}>
+                    <div key={day} className="flex justify-center font-bold mb-2">
                         {day}
                     </div>
                 ))}
@@ -132,21 +143,23 @@ export default function Calendar() {
                         key={index}
                         style={{
                             minHeight: '120px',
-                            borderTop: '1px solid #ccc',
-                            borderLeft: '1px solid #ccc',
-                            borderRight: (index + 1) % 7 === 0 ? '1px solid #ccc' : undefined,
-                            borderBottom: index + 7 >= calendarDays.length ? '1px solid #ccc' : undefined,
+                            borderTop: border,
+                            borderLeft: border,
+                            borderRight: (index + 1) % 7 === 0 ? border : undefined,
+                            borderBottom: index + 7 >= calendarDays.length ? border : undefined,
                             padding: '12px'
                         }}>
                         <div className="flex justify-end">
                             {day !== null ? day : ''}
                         </div>
                         {data?.filter(note => {
-                            const date = dayjs(Number(note.createdAt));
+                            const date = type === 'create'
+                                ? dayjs(Number(note.createdAt))
+                                : dayjs(Number(note.updatedAt));
                             return date.date() === day && date.year() === year && date.month() + 1 === month;
                         })?.map(note => (
                             <Link to={getNoteURL(note.id)}>
-                                <div className={`${getRandomBackground(note.title)} text-sm line-clamp-1 rounded-lg px-2 my-2`}>
+                                <div className={`${getRandomBackground(note.title)} text-sm rounded-lg p-2 my-2`}>
                                     {note.title}
                                 </div>
                             </Link>

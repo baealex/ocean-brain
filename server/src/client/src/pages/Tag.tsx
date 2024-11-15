@@ -7,7 +7,7 @@ import { Pagination } from '~/components/shared';
 import { getRandomBackground } from '~/modules/color';
 
 export default function Tag() {
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
 
     const limit = 60;
     const page = Number(searchParams.get('page')) || 1;
@@ -35,9 +35,14 @@ export default function Tag() {
             </div>
             {data?.totalCount && limit < data.totalCount && (
                 <Pagination
-                    limit={limit}
-                    currentPage={page}
-                    totalEntries={data.totalCount}
+                    page={page}
+                    last={Math.ceil(data.totalCount / limit)}
+                    onChange={(page) => {
+                        setSearchParams(searchParams => {
+                            searchParams.set('page', page.toString());
+                            return searchParams;
+                        });
+                    }}
                 />
             )}
         </>

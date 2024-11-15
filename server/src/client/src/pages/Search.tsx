@@ -7,7 +7,7 @@ import useNotes from '~/hooks/resource/useNotes';
 import { getNoteURL } from '~/modules/url';
 
 export default function Search() {
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
 
     const limit = 10;
     const page = Number(searchParams.get('page')) || 1;
@@ -46,9 +46,14 @@ export default function Search() {
                 ))}
                 {data?.totalCount && limit < data.totalCount && (
                     <Pagination
-                        limit={limit}
-                        currentPage={page}
-                        totalEntries={data.totalCount}
+                        page={page}
+                        last={Math.ceil(data.totalCount / limit)}
+                        onChange={(page) => {
+                            setSearchParams(searchParams => {
+                                searchParams.set('page', page.toString());
+                                return searchParams;
+                            });
+                        }}
                     />
                 )}
             </Container>

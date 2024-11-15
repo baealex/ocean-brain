@@ -9,7 +9,7 @@ import useNoteMutate from '~/hooks/resource/useNoteMutate';
 import useNotes from '~/hooks/resource/useNotes';
 
 export default function Home() {
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
 
     const limit = 25;
     const page = Number(searchParams.get('page')) || 1;
@@ -49,9 +49,14 @@ export default function Home() {
             </div>
             {data?.totalCount && limit < data.totalCount && (
                 <Pagination
-                    limit={limit}
-                    currentPage={page}
-                    totalEntries={data.totalCount}
+                    page={page}
+                    last={Math.ceil(data.totalCount / limit)}
+                    onChange={(page) => {
+                        setSearchParams(searchParams => {
+                            searchParams.set('page', page.toString());
+                            return searchParams;
+                        });
+                    }}
                 />
             )}
         </>

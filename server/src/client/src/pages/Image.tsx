@@ -13,7 +13,7 @@ import { deleteImage, fetchImages } from '~/apis/image.api';
 const Image = () => {
     const queryClient = useQueryClient();
 
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
 
     const limit = 24;
     const page = Number(searchParams.get('page')) || 1;
@@ -54,9 +54,14 @@ const Image = () => {
             </div>
             {data?.totalCount && limit < data.totalCount && (
                 <Pagination
-                    limit={limit}
-                    currentPage={page}
-                    totalEntries={data.totalCount}
+                    page={page}
+                    last={Math.ceil(data.totalCount / limit)}
+                    onChange={(page) => {
+                        setSearchParams(searchParams => {
+                            searchParams.set('page', page.toString());
+                            return searchParams;
+                        });
+                    }}
                 />
             )}
         </>

@@ -1,12 +1,9 @@
 import dayjs from 'dayjs';
 import { useRef, useState } from 'react';
-import { useCreateBlockNote } from '@blocknote/react';
-import { BlockNoteView } from '@blocknote/mantine';
 import { Link, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { useQuery } from 'react-query';
 
-import schema, { CommandView, ReferenceView, TagView } from '~/components/schema';
 import { Button, Container, Dropdown } from '~/components/shared';
 import * as Icon from '~/components/icon';
 
@@ -15,20 +12,18 @@ import type { Note } from '~/models/Note';
 import useDebounce from '~/hooks/useDebounce';
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
 
-import { fileToBase64 } from '~/modules/file';
 import { graphQuery } from '~/modules/graph-query';
 
-import { useTheme } from '~/store/theme';
-
-import { uploadImage } from '~/apis/image.api';
 import { getNoteURL } from '~/modules/url';
 import { toast } from '@baejino/ui';
+
+import type { EditorRef } from '~/components/shared/Editor';
+import Editor from '~/components/shared/Editor';
 
 export default function Note() {
     const { id } = useParams();
 
-    const { theme } = useTheme(state => state);
-
+    const editorRef = useRef<EditorRef>(null);
     const titleRef = useRef<HTMLInputElement>(null);
 
     const [lastSavedAtMap, setLastSavedAtMap] = useState<Record<string, string>>({});
@@ -36,12 +31,7 @@ export default function Note() {
     const [isPinned, setIsPinned] = useState(false);
     const [isMountedEvent, mountEvent] = useDebounce(1000);
 
-    const editor = useCreateBlockNote({
-        schema,
-        uploadFile: async (file) => uploadImage({ base64: await fileToBase64(file) })
-    }, []);
-
-    const { isLoading } = useQuery(['note', id], async () => {
+    const { data: note, isLoading } = useQuery(['note', id], async () => {
         const { note } = await graphQuery<{
             note: Pick<Note, 'title' | 'content' | 'pinned'>;
         }>(`
@@ -56,17 +46,7 @@ export default function Note() {
         return note;
     }, {
         enabled: !!id,
-        cacheTime: 0,
-        onSuccess(note) {
-            if (titleRef.current) {
-                titleRef.current.value = note.title;
-            }
-            if (note.content) {
-                const content = JSON.parse(note.content);
-                editor.replaceBlocks(editor.document, content);
-            }
-            setIsPinned(note.pinned);
-        }
+        cacheTime: 0
     });
 
     const { data: backReferences } = useQuery(['backReferences', id], async () => {
@@ -111,7 +91,7 @@ export default function Note() {
     const handleChange = () => {
         save({
             title: titleRef.current?.value,
-            content: JSON.stringify(editor?.document)
+            content: editorRef?.current?.getContent()
         });
     };
     const {
@@ -125,71 +105,72 @@ export default function Note() {
             <Helmet>
                 <title>{titleRef.current?.value}</title>
             </Helmet>
-            <div
-                style={{ zIndex: '1001' }}
-                className="sticky top-0 mb-8 flex items-center justify-between gap-3 p-3 px-5 shadow-md border border-solid border-black dark:border-zinc-500 bg-white bg-opacity-75 dark:bg-zinc-900 dark:bg-opacity-75">
-                <div className="flex flex-col flex-1 gap-2">
-                    <input
-                        ref={titleRef}
-                        placeholder="Title"
-                        className="text-md font-extrabold outline-none bg-transparent w-full"
-                        type="text"
+            {isLoading && (
+                <div className="w-full h-screen flex justify-center items-center">
+                    <Icon.Spinner className="w-8 animate-spin" />
+                </div>
+            )}
+            {note && (
+                <>
+                    <div
+                        style={{ zIndex: '1001' }}
+                        className="sticky top-0 mb-8 flex items-center justify-between gap-3 p-3 px-5 shadow-md border border-solid border-black dark:border-zinc-500 bg-white bg-opacity-75 dark:bg-zinc-900 dark:bg-opacity-75">
+                        <div className="flex flex-col flex-1 gap-2">
+                            <input
+                                ref={titleRef}
+                                placeholder="Title"
+                                className="text-md font-extrabold outline-none bg-transparent w-full"
+                                type="text"
+                                defaultValue={note.title}
+                                onChange={handleChange}
+                            />
+                            {id && lastSavedAtMap[id] && (
+                                <div className="text-zinc-500 text-sm">
+                                    Last saved at {lastSavedAtMap[id]}
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex gap-3 items-center">
+                            <Dropdown
+                                button={(
+                                    <Icon.VerticalDots className="w-5 h-5" />
+                                )}
+                                items={[
+                                    {
+                                        name: isPinned ? 'Unpin' : 'Pin',
+                                        onClick: () => onPinned(id!, isPinned, () => {
+                                            setIsPinned(prev => !prev);
+                                        })
+                                    },
+                                    {
+                                        name: 'Clone this note',
+                                        onClick: () => onCreate(
+                                            '[Clone] ' + (titleRef.current?.value || 'untitled'),
+                                            encodeURIComponent(editorRef?.current?.getContent() || '')
+                                        )
+                                    },
+                                    {
+                                        name: 'Delete',
+                                        onClick: () => onDelete(id!, () => {
+                                            toast('The note has been deleted.');
+                                        })
+                                    }
+                                ]}
+                            />
+                            <Button
+                                isLoading={isMountedEvent}
+                                onClick={handleChange}>
+                                Save
+                            </Button>
+                        </div>
+                    </div>
+                    <Editor
+                        ref={editorRef}
+                        content={note.content}
                         onChange={handleChange}
                     />
-                    {id && lastSavedAtMap[id] && (
-                        <div className="text-zinc-500 text-sm">
-                            Last saved at {lastSavedAtMap[id]}
-                        </div>
-                    )}
-                </div>
-                <div className="flex gap-3 items-center">
-                    <Dropdown
-                        button={(
-                            <Icon.VerticalDots className="w-5 h-5" />
-                        )}
-                        items={[
-                            {
-                                name: isPinned ? 'Unpin' : 'Pin',
-                                onClick: () => onPinned(id!, isPinned, () => {
-                                    setIsPinned(prev => !prev);
-                                })
-                            },
-                            {
-                                name: 'Clone this note',
-                                onClick: () => onCreate(encodeURIComponent(JSON.stringify(editor?.document)))
-                            },
-                            {
-                                name: 'Delete',
-                                onClick: () => onDelete(id!, () => {
-                                    toast('The note has been deleted.');
-                                })
-                            }
-                        ]}
-                    />
-                    <Button
-                        isLoading={isMountedEvent}
-                        onClick={handleChange}>
-                        Save
-                    </Button>
-                </div>
-            </div>
-            <BlockNoteView
-                slashMenu={false}
-                theme={theme}
-                editor={editor}
-                onChange={handleChange}>
-                <CommandView editor={editor} />
-                <ReferenceView
-                    onClick={(content) => {
-                        editor.insertInlineContent([content, ' ']);
-                    }}
-                />
-                <TagView
-                    onClick={(content) => {
-                        editor.insertInlineContent([content, ' ']);
-                    }}
-                />
-            </BlockNoteView>
+                </>
+            )}
             {backReferences && backReferences.length > 0 && (
                 <div className=" shadow-xl p-5 rounded-2xl">
                     <p className="text-lg font-bold">

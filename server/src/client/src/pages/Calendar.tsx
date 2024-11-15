@@ -130,6 +130,8 @@ export default function Calendar() {
             </div>
             <div
                 style={{
+                    width: '100%',
+                    overflowX: 'auto',
                     display: 'grid',
                     gridTemplateColumns: 'repeat(7, 1fr)'
                 }}>
@@ -143,6 +145,7 @@ export default function Calendar() {
                         key={index}
                         style={{
                             minHeight: '120px',
+                            minWidth: '150px',
                             borderTop: border,
                             borderLeft: border,
                             borderRight: (index + 1) % 7 === 0 ? border : undefined,

@@ -9,6 +9,7 @@ import * as Icon from '~/components/icon';
 import { Badge, RestoreParentScroll } from '~/components/shared';
 
 import useDebounce from '~/hooks/useDebounce';
+import useNoteMutate from '~/hooks/resource/useNoteMutate';
 
 import type { Note } from '~/models/Note';
 import type { Tag } from '~/models/Tag';
@@ -59,6 +60,8 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
     const [tags, setTags] = useState<Tag[]>([]);
 
     const [, setEvent] = useDebounce(100);
+
+    const { onCreate } = useNoteMutate();
 
     const { data: pinnedNode } = useQuery('pinned-notes', async () => {
         const { pinnedNotes } = await graphQuery<{
@@ -171,18 +174,22 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                         )}
                     </form>
                 </div>
-                <div className={cx('flex', 'flex-col', 'gap-2', 'p-4')}>
+                <div className={cx('flex', 'flex-col', 'gap-2', 'p-3')}>
+                    <button
+                        className="font-bold flex gap-2 items-center bg-black shadow-lg text-white p-2 rounded-lg"
+                        onClick={() => onCreate()}>
+                        <Icon.Pencil className="w-4" /> Capture
+                    </button>
                     {NAVIGATION_ITEMS.map((item) => (
                         <Link to={item.path}>
-                            <div
-                                className={cx('font-bold', 'p-2', 'flex items-center gap-2', 'rounded-lg', { 'bg-zinc-50 dark:bg-zinc-900': location.pathname === item.path })}>
+                            <div className={cx('font-bold', 'p-2', 'flex items-center gap-2', 'rounded-lg', { 'bg-zinc-50 dark:bg-zinc-900 shadow-lg': location.pathname === item.path })}>
                                 <item.icon className="w-4" />
                                 {item.name}
                             </div>
                         </Link>
                     ))}
                 </div>
-                <div className={cx('p-4')}>
+                <div className={cx('p-3')}>
                     <div className={cx('font-bold', 'text-xs', 'flex', 'items-center', 'gap-2', 'p-2')}>
                         <Icon.Pin className="w-4" />
                         PINNED

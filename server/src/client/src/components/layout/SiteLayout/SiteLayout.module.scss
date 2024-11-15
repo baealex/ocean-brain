@@ -1,5 +1,8 @@
 @import '~/styles/var';
 
+$SIDEBAR_BACKGROUND: #FCEBAF;
+$SIDEBAR_BACKGROUND_DARK: rgb(30, 31, 34);
+
 .SiteLayout {
     height: 100%;
     display: flex;
@@ -9,17 +12,19 @@
         height: 100%;
         flex: 0 0 300px;
         overflow-y: auto;
-        background-color: #d3c7ec;
+        border-radius: 0 32px 32px 0;
+        background-color: $SIDEBAR_BACKGROUND;
 
         :global(html.dark) & {
-            background-color: rgb(30, 31, 34);
+            background-color: $SIDEBAR_BACKGROUND_DARK;
         }
 
         @media (max-width: $BREAKPOINT_TABLET) {
+            padding-bottom: 80px;
             z-index: 1002;
             position: fixed;
             width: 100%;
-            transition: all 0.2s ease-in-out;
+            transition: transform 0.25s ease-in-out;
             pointer-events: none;
             transform: translate(-100%, 0);
 
@@ -41,11 +46,11 @@
         justify-content: center;
         height: 48px;
         width: 48px;
-        background: #d3c7ec;
+        background: $SIDEBAR_BACKGROUND;
         box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.15);
 
         :global(html.dark) & {
-            background-color: rgb(30, 31, 34);
+            background-color: $SIDEBAR_BACKGROUND_DARK;
         }
     }
 
@@ -60,11 +65,9 @@
         flex: 1;
         padding: 16px;
         overflow-y: auto;
-        padding-bottom: 68px;
-        background-color: #fff;
 
-        :global(html.dark) & {
-            background-color: rgb(35, 36, 40);
+        @media (max-width: $BREAKPOINT_TABLET) {
+            padding-bottom: 80px;
         }
     }
 }

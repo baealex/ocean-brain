@@ -5,12 +5,7 @@ const cx = classNames.bind(styles);
 import React, { useEffect, useState } from 'react';
 import { useQuery } from 'react-query';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import {
-    Menu,
-    Moon,
-    Search,
-    Sun
-} from '~/components/icon';
+import * as Icon from '~/components/icon';
 import { Badge, RestoreParentScroll } from '~/components/shared';
 
 import useDebounce from '~/hooks/useDebounce';
@@ -32,35 +27,25 @@ interface SiteLayoutProps {
 const NAVIGATION_ITEMS = [
     {
         name: 'Notes',
-        path: '/'
+        path: '/',
+        icon: Icon.FloppyDisk
     },
     {
         name: 'Calendar',
-        path: '/calendar'
+        path: '/calendar',
+        icon: Icon.FloppyDisk
     },
     {
         name: 'Tags',
-        path: '/tag'
+        path: '/tag',
+        icon: Icon.FloppyDisk
     },
     {
         name: 'Images',
-        path: '/manage-image'
+        path: '/manage-image',
+        icon: Icon.FloppyDisk
     }
 ];
-
-const NavigationItem = ({
-    isActive,
-    name,
-    path
-}: {
-    isActive: boolean;
-    name: string;
-    path: string;
-}) => (
-    <div className={cx('text-gray-800 dark:text-gray-300')}>
-        <Link className={cx({ 'highlight': isActive })} to={path}>{name}</Link>
-    </div>
-);
 
 const SiteLayout = ({ children }: SiteLayoutProps) => {
     const location = useLocation();
@@ -118,22 +103,22 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
     }, [location.pathname]);
 
     return (
-        <div className={cx('SiteLayout', 'dark:bg-zinc-950')}>
+        <div className={cx('SiteLayout')}>
             <div className="md:hidden">
                 <button
                     type="button"
                     className={cx('menu')}
                     onClick={() => setIsMenuOpen(prev => !prev)}>
-                    <Menu className="h-6 w-6" />
+                    <Icon.Menu className="h-6 w-6" />
                 </button>
             </div>
-            <div className={cx('side', { 'open': isMenuOpen }, 'dark:bg-zinc-950')}>
+            <div className={cx('side', { 'open': isMenuOpen })}>
                 <div className={cx('flex', 'justify-between', 'gap-3', 'p-3')}>
                     <form className="w-full" onSubmit={handleSubmit}>
                         <div className="flex gap-3">
-                            <div className="flex w-full gap-1 bg-white dark:bg-zinc-800 rounded-lg">
-                                <button type="submit" className="h-10 w-10 flex items-center justify-center rounded-lg border-2 border-white dark:border-black">
-                                    <Search className="h-6 w-6 dark:text-gray-300" />
+                            <div className="flex w-full gap-1 bg-white dark:bg-zinc-800 rounded-lg shadow-md">
+                                <button type="submit" className="h-10 w-10 flex items-center justify-center">
+                                    <Icon.Search className="h-6 w-6 dark:text-gray-300" />
                                 </button>
                                 <input
                                     type="text"
@@ -145,9 +130,9 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                             </div>
                             <button type="button" onClick={toggleTheme}>
                                 {theme === 'dark' ? (
-                                    <Moon className="h-6 w-6 text-yellow-500" />
+                                    <Icon.Moon className="h-6 w-6 text-yellow-500" />
                                 ) : (
-                                    <Sun className="h-6 w-6 text-black" />
+                                    <Icon.Sun className="h-6 w-6 text-black" />
                                 )}
                             </button>
                         </div>
@@ -187,28 +172,28 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                     </form>
                 </div>
                 <div className={cx('flex', 'flex-col', 'gap-2', 'p-4')}>
-                    <div className={cx('font-bold', 'text-lg')}>
-                        MENU
-                    </div>
                     {NAVIGATION_ITEMS.map((item) => (
-                        <NavigationItem
-                            isActive={location.pathname === item.path}
-                            name={item.name}
-                            path={item.path}
-                        />
+                        <Link to={item.path}>
+                            <div
+                                className={cx('font-bold', 'p-2', 'flex items-center gap-2', 'rounded-lg', { 'bg-zinc-50 dark:bg-zinc-900': location.pathname === item.path })}>
+                                <item.icon className="w-4" />
+                                {item.name}
+                            </div>
+                        </Link>
                     ))}
                 </div>
-                <div className={cx('flex', 'flex-col', 'gap-2', 'mt-4', 'p-4')}>
-                    <div className={cx('font-bold', 'text-lg')}>
+                <div className={cx('p-4')}>
+                    <div className={cx('font-bold', 'text-xs', 'flex', 'items-center', 'gap-2', 'p-2')}>
+                        <Icon.Pin className="w-4" />
                         PINNED
                     </div>
-                    {pinnedNode?.map((note) => (
-                        <NavigationItem
-                            isActive={location.pathname === `/${note.id}`}
-                            name={note.title}
-                            path={`/${note.id}`}
-                        />
-                    ))}
+                    <div className="flex flex-col gap-2 mt-1 pl-8">
+                        {pinnedNode?.map((note) => (
+                            <Link className={cx({ 'opacity-30': location.pathname === `/${note.id}` })} to={`/${note.id}`}>
+                                {note.title}
+                            </Link>
+                        ))}
+                    </div>
                 </div>
             </div>
             <div className={cx('center')}>

@@ -16,6 +16,25 @@
         gap: 10px;
     }
 
+    .left-skip,
+    .right-skip {
+        position: relative;
+
+        svg {
+            position: absolute;
+        }
+    }
+
+    .left-skip svg:first-child,
+    .right-skip svg:first-child {
+        transform: translateX(-3px)
+    }
+
+    .left-skip svg:last-child,
+    .right-skip svg:last-child {
+        transform: translateX(3px)
+    }
+
     @media (max-width: 768px) {
         display: grid;
         grid-template-areas:
@@ -67,7 +86,7 @@
         color: #000;
         border-radius: 5px;
 
-        :global(body.dark) & {
+        :global(html.dark) & {
             color: #eee;
         }
 
@@ -82,7 +101,7 @@
         color: #fff;
         background: #000;
 
-        :global(body.dark) & {
+        :global(html.dark) & {
             color: #555;
             background: #eee;
         }
@@ -93,7 +112,7 @@
         color: #ccc;
         background: transparent;
 
-        :global(body.dark) & {
+        :global(html.dark) & {
             color: #555;
         }
     }

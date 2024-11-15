@@ -45,20 +45,12 @@ function Pagination(props: Props) {
                             <div className={cx('item')}>
                                 <button className={cx('link')} onClick={() => props.onChange(page - 1)}>
                                     <Icon.ChevronLeft width={20}/>
-                                    <i role="button" aria-label="prev-page" className="fas fa-arrow-left" />
                                 </button>
                             </div>
                             <div className={cx('item')}>
-                                <button style={{ position: 'relative' }} className={cx('link')} onClick={() => props.onChange(1)}>
-                                    <Icon.ChevronLeft width={18}/>
-                                    <Icon.ChevronLeft
-                                        style={{
-                                            position: 'absolute',
-                                            left: '13px'
-                                        }}
-                                        width={18}
-                                    />
-                                    <i role="button" aria-label="first-page" className="fa fa-angle-double-left" />
+                                <button className={cx('link', 'left-skip')} onClick={() => props.onChange(1)}>
+                                    <Icon.ChevronLeft width={16}/>
+                                    <Icon.ChevronLeft width={16}/>
                                 </button>
                             </div>
                         </>
@@ -67,20 +59,12 @@ function Pagination(props: Props) {
                             <div className={cx('item', 'disabled')}>
                                 <button className={cx('link')}>
                                     <Icon.ChevronLeft width={20}/>
-                                    <i role="button" aria-label="prev-page" className="fas fa-arrow-left" />
                                 </button>
                             </div>
                             <div className={cx('item', 'disabled')}>
-                                <button style={{ position: 'relative' }} className={cx('link')}>
-                                    <Icon.ChevronLeft width={18}/>
-                                    <Icon.ChevronLeft
-                                        style={{
-                                            position: 'absolute',
-                                            left: '13px'
-                                        }}
-                                        width={18}
-                                    />
-                                    <i role="button" aria-label="first-page" className="fa fa-angle-double-left" />
+                                <button className={cx('link', 'left-skip')}>
+                                    <Icon.ChevronLeft width={16}/>
+                                    <Icon.ChevronLeft width={16}/>
                                 </button>
                             </div>
                         </>
@@ -101,44 +85,28 @@ function Pagination(props: Props) {
                     {page != last ? (
                         <>
                             <div className={cx('item')}>
-                                <button style={{ position: 'relative' }} className={cx('link')} onClick={() => props.onChange(last)}>
-                                    <Icon.ChevronRight width={18}/>
-                                    <Icon.ChevronRight
-                                        width={18}
-                                        style={{
-                                            position: 'absolute',
-                                            left: '13px'
-                                        }}
-                                    />
-                                    <i role="button" aria-label="last-page" className="fa fa-angle-double-right" />
+                                <button className={cx('link', 'right-skip')} onClick={() => props.onChange(last)}>
+                                    <Icon.ChevronRight width={16}/>
+                                    <Icon.ChevronRight width={16}/>
                                 </button>
                             </div>
                             <div className={cx('item')}>
                                 <button className={cx('link')} onClick={() => props.onChange(page + 1)}>
                                     <Icon.ChevronRight width={20}/>
-                                    <i role="button" aria-label="next-page" className="fas fa-arrow-right" />
                                 </button>
                             </div>
                         </>
                     ) : (
                         <>
                             <div className={cx('item', 'disabled')}>
-                                <button style={{ position: 'relative' }} className={cx('link')}>
-                                    <Icon.ChevronRight width={18}/>
-                                    <Icon.ChevronRight
-                                        width={18}
-                                        style={{
-                                            position: 'absolute',
-                                            left: '13px'
-                                        }}
-                                    />
-                                    <i role="button" aria-label="last-page" className="fa fa-angle-double-right" />
+                                <button className={cx('link', 'right-skip')}>
+                                    <Icon.ChevronRight width={16}/>
+                                    <Icon.ChevronRight width={16} />
                                 </button>
                             </div>
                             <div className={cx('item', 'disabled')}>
                                 <button className={cx('link')}>
                                     <Icon.ChevronRight width={20}/>
-                                    <i role="button" aria-label="next-page" className="fas fa-arrow-right" />
                                 </button>
                             </div>
                         </>

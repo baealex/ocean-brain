@@ -79,6 +79,10 @@ div:focus {
     overflow-wrap: anywhere !important;
 }
 
+.bn-file-block-content-wrapper {
+    max-width: 100%;
+}
+
 .window-modal__container {
     z-index: 1002;
 }

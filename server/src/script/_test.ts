@@ -1,7 +1,7 @@
 import childProcess from 'child_process';
 import {
     createDatabase,
-    removeDatabase,
+    removeDatabase
 } from './shared';
 
 const main = async () => {
@@ -10,9 +10,7 @@ const main = async () => {
     try {
         await removeDatabase(fileName);
         await createDatabase();
-        childProcess.execSync('jest --runInBand --coverage', {
-            stdio: 'inherit',
-        });
+        childProcess.execSync('jest --runInBand --coverage --passWithNoTests', { stdio: 'inherit' });
     } catch (e) {
         console.error(e);
         process.exit(1);

@@ -59,7 +59,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
     const [notes, setNotes] = useState<Note[]>([]);
     const [tags, setTags] = useState<Tag[]>([]);
 
-    const [, setEvent] = useDebounce(100);
+    const [, setEvent] = useDebounce(500);
 
     const { onCreate } = useNoteMutate();
 
@@ -80,6 +80,10 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
     const handleSubmit = (e?: React.FormEvent<HTMLFormElement>) => {
         e?.preventDefault();
         navigate(`/search?query=${encodeURIComponent(query)}`);
+    };
+
+    const handleReset = () => {
+        setQuery('');
     };
 
     useEffect(() => {
@@ -121,7 +125,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                         <div className="flex gap-3">
                             <div className="flex w-full gap-1 bg-white dark:bg-zinc-800 rounded-lg shadow-md">
                                 <button type="submit" className="h-10 w-10 flex items-center justify-center">
-                                    <Icon.Search className="h-6 w-6 dark:text-gray-300" />
+                                    <Icon.Search className="h-6 w-6" />
                                 </button>
                                 <input
                                     type="text"
@@ -130,6 +134,11 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                                     onChange={(e) => setQuery(e.target.value)}
                                     className="w-full h-10 bg-transparent text-gray-900 dark:text-gray-300 py-4 outline-none"
                                 />
+                                {query && (
+                                    <button type="button" className="h-10 w-10 flex items-center justify-center" onClick={handleReset}>
+                                        <Icon.Close className="h-4 w-4 dark:text-gray-300" />
+                                    </button>
+                                )}
                             </div>
                             <button type="button" onClick={toggleTheme}>
                                 {theme === 'dark' ? (

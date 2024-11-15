@@ -114,7 +114,7 @@ export default function Note() {
                 <>
                     <div
                         style={{ zIndex: '1001' }}
-                        className="sticky top-0 mb-8 flex items-center justify-between gap-3 p-3 px-5 shadow-md border border-solid border-black dark:border-zinc-500 bg-white bg-opacity-75 dark:bg-zinc-900 dark:bg-opacity-75">
+                        className="sticky top-4 mb-8 flex items-center justify-between gap-3 p-3 px-5 shadow-md border border-solid border-black dark:border-zinc-500 bg-white bg-opacity-75 dark:bg-zinc-900 dark:bg-opacity-75">
                         <div className="flex flex-col flex-1 gap-2">
                             <input
                                 ref={titleRef}

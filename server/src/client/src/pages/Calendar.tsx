@@ -136,7 +136,7 @@ export default function Calendar() {
                     gridTemplateColumns: 'repeat(7, 1fr)'
                 }}>
                 {daysOfWeek.map((day) => (
-                    <div key={day} className="flex justify-center font-bold mb-2">
+                    <div key={day} className="flex justify-center font-bold">
                         {day}
                     </div>
                 ))}
@@ -145,28 +145,30 @@ export default function Calendar() {
                         key={index}
                         style={{
                             minHeight: '120px',
-                            minWidth: '150px',
+                            minWidth: '152px',
                             borderTop: border,
                             borderLeft: border,
                             borderRight: (index + 1) % 7 === 0 ? border : undefined,
                             borderBottom: index + 7 >= calendarDays.length ? border : undefined,
-                            padding: '12px'
+                            padding: '8px'
                         }}>
                         <div className="flex justify-end">
                             {day !== null ? day : ''}
                         </div>
-                        {data?.filter(note => {
-                            const date = type === 'create'
-                                ? dayjs(Number(note.createdAt))
-                                : dayjs(Number(note.updatedAt));
-                            return date.date() === day && date.year() === year && date.month() + 1 === month;
-                        })?.map(note => (
-                            <Link to={getNoteURL(note.id)}>
-                                <div className={`${getRandomBackground(note.title)} text-sm rounded-lg p-2 my-2`}>
-                                    {note.title}
-                                </div>
-                            </Link>
-                        ))}
+                        <div className="flex flex-col gap-2">
+                            {data?.filter(note => {
+                                const date = type === 'create'
+                                    ? dayjs(Number(note.createdAt))
+                                    : dayjs(Number(note.updatedAt));
+                                return date.date() === day && date.year() === year && date.month() + 1 === month;
+                            })?.map(note => (
+                                <Link to={getNoteURL(note.id)}>
+                                    <div className={`${getRandomBackground(note.title)} text-sm rounded-lg p-2`}>
+                                        {note.title}
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
                     </div>
                 ))}
             </div>

@@ -24,8 +24,8 @@ const useNoteMutate = () => {
     const onPinned = async (id: string, isPinned: boolean, callback?: () => void) => {
         try {
             await pinNote(id, !isPinned);
-            queryClient.invalidateQueries('notes');
-            queryClient.invalidateQueries('pinned-notes');
+            await queryClient.invalidateQueries('notes');
+            await queryClient.invalidateQueries('pinned-notes');
             callback?.();
         } catch (error) {
             // console.error(error);
@@ -35,8 +35,8 @@ const useNoteMutate = () => {
     const onDelete = async (id: string, callback?: () => void) => {
         if (await confirm('Are you really sure?')) {
             await deleteNote(id);
-            queryClient.invalidateQueries('notes');
-            queryClient.invalidateQueries('pinned-notes');
+            await queryClient.invalidateQueries('notes');
+            await queryClient.invalidateQueries('pinned-notes');
             callback?.();
         }
     };

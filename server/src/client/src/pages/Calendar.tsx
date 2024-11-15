@@ -18,6 +18,20 @@ export default function Calendar() {
     const type = searchParams.get('type') || 'create';
 
     const daysOfWeek = ['SUN', 'MON', 'TUE', 'WEB', 'THU', 'FRI', 'SAT'];
+    const months = [
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December'
+    ];
 
     const firstDay = new Date(year, month - 1, 1);
     const lastDay = new Date(year, month, 0);
@@ -100,21 +114,21 @@ export default function Calendar() {
 
     return (
         <div>
-            <div className="flex justify-center items-center gap-3 font-semibold m-5">
+            <div className="flex justify-center items-center gap-3 font-semibold m-6">
                 <button onClick={handlePrevMonth}>
                     <Icon.ChevronLeft width={24} />
                 </button>
-                <h2 className="text-lg">{`${year}년 ${month}월`}</h2>
+                <h2 className="text-lg">{`${months[month - 1]} ${year}`}</h2>
                 <button onClick={handleNextMonth}>
                     <Icon.ChevronRight width={24} />
                 </button>
             </div>
-            <div className="flex justify-center items-center gap-2 mb-6">
+            <div className="flex items-center gap-1 mb-5">
                 <span>
                     Display notes by:
                 </span>
                 <button
-                    className="text-blue-600 dark:text-blue-500"
+                    className="bg-blue-500 dark:bg-blue-800 text-white rounded-lg px-2"
                     onClick={() => {
                         setSearchParams((searchParams) => {
                             if (searchParams.get('type') !== 'update') {

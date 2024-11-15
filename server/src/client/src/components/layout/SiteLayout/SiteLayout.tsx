@@ -3,7 +3,7 @@ import classNames from 'classnames/bind';
 const cx = classNames.bind(styles);
 
 import React, { useEffect, useState } from 'react';
-import { useQuery } from 'react-query';
+import { useQuery, useQueryClient } from 'react-query';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import * as Icon from '~/components/icon';
 import { Badge, RestoreParentScroll } from '~/components/shared';
@@ -20,6 +20,8 @@ import { useTheme } from '~/store/theme';
 
 import { fetchNotes } from '~/apis/note.api';
 import { fetchTags } from '~/apis/tag.api';
+import { getCustomize, updateCustomize } from '~/apis/customize.api';
+import { confirm } from '@baejino/ui';
 
 interface SiteLayoutProps {
     children?: React.ReactNode;
@@ -51,6 +53,7 @@ const NAVIGATION_ITEMS = [
 const SiteLayout = ({ children }: SiteLayoutProps) => {
     const location = useLocation();
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
 
     const { theme, toggleTheme } = useTheme(state => state);
 
@@ -75,6 +78,10 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
             }
         `);
         return pinnedNotes;
+    });
+
+    const { data: customize } = useQuery('customize', async () => {
+        return getCustomize();
     });
 
     const handleSubmit = (e?: React.FormEvent<HTMLFormElement>) => {
@@ -109,18 +116,48 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
         setIsMenuOpen(false);
     }, [location.pathname]);
 
+    const background = theme === 'light' ? customize?.color || '#FCEBAF' : '#1e1f22';
+
+    const colorArray = [
+        '#FCEBAF',
+        '#B2E0B2',
+        '#FFB3C1',
+        '#FFCCB3',
+        '#A4D8E1',
+        '#E1B7E1',
+        '#A4DBD6',
+        '#E1C6E7'
+    ];
+
     return (
         <div className={cx('SiteLayout')}>
             <div className="md:hidden">
                 <button
                     type="button"
+                    style={{ background }}
                     className={cx('menu')}
                     onClick={() => setIsMenuOpen(prev => !prev)}>
                     <Icon.Menu className="h-6 w-6" />
                 </button>
             </div>
-            <div className={cx('side', { 'open': isMenuOpen })}>
-                <div className={cx('flex', 'justify-between', 'gap-3', 'p-3')}>
+            <div style={{ background }} className={cx('side', { 'open': isMenuOpen })}>
+                {customize?.heroBanner && (
+                    <img
+                        width="100%"
+                        style={{
+                            width: '100%',
+                            filter: theme === 'dark' ? 'brightness(.8) contrast(1.2)' : undefined
+                        }}
+                        onClick={async () => {
+                            if (await confirm('Do you want to remove hero banner?')) {
+                                await updateCustomize({ heroBanner: '' });
+                                await queryClient.invalidateQueries('customize');
+                            }
+                        }}
+                        src={customize.heroBanner}
+                    />
+                )}
+                <div className={cx('flex', 'justify-between', 'gap-3', 'mt-3', 'p-3')}>
                     <form className="w-full" onSubmit={handleSubmit}>
                         <div className="flex gap-3">
                             <div className="flex w-full gap-1 bg-white dark:bg-zinc-800 rounded-lg shadow-md">
@@ -211,6 +248,32 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                         ))}
                     </div>
                 </div>
+                {theme === 'light' && (
+                    <div className="flex flex-wrap p-3 gap-4 justify-center mt-5">
+                        {colorArray.map((colorCode, index) => (
+                            <div
+                                key={index}
+                                onClick={async () => {
+                                    await updateCustomize({ color: colorCode });
+                                    await queryClient.invalidateQueries('customize');
+                                }}
+                                style={{
+                                    backgroundColor: colorCode,
+                                    width: '10px',
+                                    height: '10px',
+                                    borderRadius: '50%',
+                                    border: '1px solid #000',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    transition: 'transform 0.2s'
+                                }}
+                                className="hover:scale-105"
+                            />
+                        ))}
+                    </div>
+                )}
             </div>
             <div className={cx('center')}>
                 <div className={cx('content')}>
@@ -218,7 +281,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                     <RestoreParentScroll/>
                 </div>
             </div>
-        </div >
+        </div>
     );
 };
 

@@ -1,5 +1,5 @@
 import { Helmet } from 'react-helmet';
-import { useQuery } from 'react-query';
+import { useQuery, useQueryClient } from 'react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Image as ImageComponent } from '~/components/shared';
 import { NoteListItem } from '~/components/note';
@@ -7,10 +7,12 @@ import * as Icon from '~/components/icon';
 
 import { deleteImage, fetchImage } from '~/apis/image.api';
 import { fetchImageNotes } from '~/apis/note.api';
+import { updateCustomize } from '~/apis/customize.api';
 
 export default function ImageDetail() {
     const { id } = useParams();
     const navigation = useNavigate();
+    const queryClient = useQueryClient();
 
     const { data: image } = useQuery(['image', id], async () => {
         return await fetchImage(id!);
@@ -48,6 +50,17 @@ export default function ImageDetail() {
                             <div className="flex items-center justify-center gap-1">
                                 <Icon.TrashCan className="h-4 w-4" />
                                 <span>Delete</span>
+                            </div>
+                        </button>
+                        <button
+                            className="w-full h-10 rounded-lg text-sm font-bold"
+                            onClick={async () => {
+                                await updateCustomize({ heroBanner: image.url });
+                                await queryClient.invalidateQueries('customize');
+                            }}>
+                            <div className="flex items-center justify-center gap-1">
+                                <Icon.Heart className="h-4 w-4 fill-red-500" />
+                                <span>Set hero banner</span>
                             </div>
                         </button>
                     </div>

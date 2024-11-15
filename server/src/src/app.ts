@@ -5,8 +5,7 @@ import path from 'path';
 
 import logger from './modules/logger';
 import schema from './schema';
-import { uploadImage, uploadImageFromSrc } from './views/image';
-import useAsync from './modules/use-async';
+import router from './urls';
 
 export default express()
     .use(logger)
@@ -18,8 +17,7 @@ export default express()
         saveUninitialized: false
     }))
     .use(express.json({ limit: '50mb' }))
-    .post('/image', useAsync(uploadImage))
-    .post('/image-from-src', useAsync(uploadImageFromSrc))
+    .use('/api', router)
     .use('/graphql', createHandler({ schema }))
     .get('*', (req, res) => {
         res.sendFile(path.resolve('client/dist/index.html'));

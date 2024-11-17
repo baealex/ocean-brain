@@ -127,7 +127,7 @@ export function createNote({
 }
 
 export function pinNote(id: string, pinned: boolean) {
-    graphQuery<{
+    return graphQuery<{
         updateNotePinned: Pick<Note, 'id' | 'title' | 'pinned' | 'createdAt' | 'updatedAt'>;
     }>(
         `mutation {
@@ -143,7 +143,7 @@ export function pinNote(id: string, pinned: boolean) {
 }
 
 export function deleteNote(id: string) {
-    graphQuery<{
+    return graphQuery<{
         deleteNote: boolean;
     }>(
         `mutation {

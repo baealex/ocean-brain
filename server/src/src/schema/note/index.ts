@@ -161,7 +161,7 @@ export const noteResolvers: IResolvers = {
             };
 
             const $notes = await models.note.findMany({
-                orderBy: { updatedAt: 'desc' },
+                orderBy: { createdAt: 'asc' },
                 where
             });
 

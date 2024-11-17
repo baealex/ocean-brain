@@ -110,25 +110,75 @@ export default function Calendar() {
         return notesInDateRange;
     });
 
-    const border = theme === 'light' ? '1px solid #ccc' : '1px solid #555';
+    const border = theme === 'light' ? '1px solid #d5d5d5' : '1px solid #363636';
 
     return (
         <div>
-            <div className="flex justify-center items-center gap-3 font-semibold m-6">
-                <button onClick={handlePrevMonth}>
-                    <Icon.ChevronLeft width={24} />
-                </button>
-                <h2 className="text-lg">{`${months[month - 1]} ${year}`}</h2>
-                <button onClick={handleNextMonth}>
-                    <Icon.ChevronRight width={24} />
-                </button>
+            <div className="flex justify-center">
+                <div className="flex max-w-full w-56 items-center justify-between font-semibold mt-8 mb-10">
+                    <button onClick={handlePrevMonth}>
+                        <Icon.ChevronLeft width={24} />
+                    </button>
+                    <h2 className="text-lg">{`${months[month - 1]} ${year}`}</h2>
+                    <button onClick={handleNextMonth}>
+                        <Icon.ChevronRight width={24} />
+                    </button>
+                </div>
             </div>
-            <div className="flex items-center gap-1 mb-5">
+            <div
+                style={{
+                    width: '100%',
+                    overflowX: 'auto',
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(7, 1fr)'
+                }}>
+                {daysOfWeek.map((day) => (
+                    <div key={day} className={`flex justify-center font-bold mb-2 ${day === 'SUN' && 'text-rose-600 dark:text-rose-700'}`}>
+                        {day}
+                    </div>
+                ))}
+                {calendarDays.map((day, index) => (
+                    <div
+                        key={index}
+                        style={{
+                            minHeight: '160px',
+                            minWidth: '152px',
+                            borderTop: border,
+                            borderLeft: border,
+                            borderRight: (index + 1) % 7 === 0 ? border : undefined,
+                            borderBottom: index + 7 >= calendarDays.length ? border : undefined
+                        }}>
+                        <div className={`flex justify-end mt-4 mr-4 mb-2 ${index % 7 === 0 && 'text-rose-600 dark:text-rose-700'}`}>
+                            {day !== null ? day : ''}
+                        </div>
+                        <div className="flex flex-col">
+                            {data?.filter(note => {
+                                const date = type === 'create'
+                                    ? dayjs(Number(note.createdAt))
+                                    : dayjs(Number(note.updatedAt));
+                                return date.date() === day && date.year() === year && date.month() + 1 === month;
+                            })?.map(note => (
+                                <Link to={getNoteURL(note.id)}>
+                                    <div className={`${getRandomBackground(note.title)} text-sm rounded-lg mx-2 mb-2 p-2 flex flex-col gap-1`}>
+                                        <div>
+                                            {note.title}
+                                        </div>
+                                        <div className="text-gray-600">
+                                            {dayjs(type === 'create' ? Number(note.createdAt) : Number(note.updatedAt)).format('HH:ss')}
+                                        </div>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    </div>
+                ))}
+            </div>
+            <div className="flex justify-end items-center gap-1 mt-4">
                 <span>
                     Display notes by:
                 </span>
                 <button
-                    className="bg-blue-500 dark:bg-blue-800 text-white rounded-lg px-2"
+                    className="bg-black text-white rounded-lg px-2"
                     onClick={() => {
                         setSearchParams((searchParams) => {
                             if (searchParams.get('type') !== 'update') {
@@ -141,50 +191,6 @@ export default function Calendar() {
                     }}>
                     {type}
                 </button>
-            </div>
-            <div
-                style={{
-                    width: '100%',
-                    overflowX: 'auto',
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(7, 1fr)'
-                }}>
-                {daysOfWeek.map((day) => (
-                    <div key={day} className="flex justify-center font-bold">
-                        {day}
-                    </div>
-                ))}
-                {calendarDays.map((day, index) => (
-                    <div
-                        key={index}
-                        style={{
-                            minHeight: '120px',
-                            minWidth: '152px',
-                            borderTop: border,
-                            borderLeft: border,
-                            borderRight: (index + 1) % 7 === 0 ? border : undefined,
-                            borderBottom: index + 7 >= calendarDays.length ? border : undefined,
-                            padding: '8px'
-                        }}>
-                        <div className="flex justify-end">
-                            {day !== null ? day : ''}
-                        </div>
-                        <div className="flex flex-col gap-2">
-                            {data?.filter(note => {
-                                const date = type === 'create'
-                                    ? dayjs(Number(note.createdAt))
-                                    : dayjs(Number(note.updatedAt));
-                                return date.date() === day && date.year() === year && date.month() + 1 === month;
-                            })?.map(note => (
-                                <Link to={getNoteURL(note.id)}>
-                                    <div className={`${getRandomBackground(note.title)} text-sm rounded-lg p-2`}>
-                                        {note.title}
-                                    </div>
-                                </Link>
-                            ))}
-                        </div>
-                    </div>
-                ))}
             </div>
         </div>
     );

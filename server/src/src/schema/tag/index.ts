@@ -57,7 +57,7 @@ export const tagResolvers: IResolvers = {
         }) => {
             const where: Parameters<typeof models.tag.findMany>[0]['where'] = {
                 name: { contains: searchFilter.query },
-                notes: { some: { createdAt: { gt: new Date(0) } } }
+                NOT: { notes: { none: { } } }
             };
             const $tags = models.tag.findMany({
                 skip: pagination.offset,

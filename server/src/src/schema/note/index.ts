@@ -3,7 +3,7 @@ import type { IResolvers } from '@graphql-tools/utils';
 import models from '~/models';
 import { gql } from '~/modules/graphql';
 
-import type { Note, Tag } from '~/models';
+import type { Note } from '~/models';
 import type { Pagination, SearchFilter } from '~/types';
 
 export const noteType = gql`
@@ -70,6 +70,21 @@ export const noteTypeDefs = `
     ${noteQuery}
     ${noteMutation}
 `;
+
+const parseTags = (content: string) => {
+    const items = JSON.parse(decodeURIComponent(content)) as {
+        content: {
+            type: string;
+            props: {
+                id: string;
+            };
+        }[];
+    }[];
+    const tagItems = items.reduce<typeof items[number]['content']>((acc, cur) => {
+        return acc.concat(cur.content.filter(item => item.type === 'tag'));
+    }, []);
+    return tagItems.map(tagItem => ({ id: Number(tagItem.props.id) }));
+};
 
 export const noteResolvers: IResolvers = {
     Query: {
@@ -201,16 +216,7 @@ export const noteResolvers: IResolvers = {
                 }
             });
             if (content) {
-                const tagNames = decodeURIComponent(content).match(/"tag":"@([a-zA-Z0-9_가-힣]+")/g);
-
-                const tags: Tag[] = [];
-
-                for (const tagName of new Set(tagNames || [])) {
-                    const [name] = tagName.match(/@([a-zA-Z0-9_가-힣]+)/);
-                    if (!name) continue;
-                    const $tag = await models.tag.findFirst({ where: { name } });
-                    tags.push($tag);
-                }
+                const tags = parseTags(content);
 
                 return await models.note.update({
                     where: { id: $note.id },
@@ -221,16 +227,7 @@ export const noteResolvers: IResolvers = {
             return $note;
         },
         updateNote: async (_, { id, title, content }: Note) => {
-            const tagNames = decodeURIComponent(content).match(/"tag":"@([a-zA-Z0-9_가-힣]+")/g);
-
-            const tags: Tag[] = [];
-
-            for (const tagName of new Set(tagNames || [])) {
-                const [name] = tagName.match(/@([a-zA-Z0-9_가-힣]+)/);
-                if (!name) continue;
-                const $tag = await models.tag.findFirst({ where: { name } });
-                tags.push($tag);
-            }
+            const tags = parseTags(content);
 
             const $note = await models.note.update({
                 where: { id: Number(id) },
@@ -242,7 +239,11 @@ export const noteResolvers: IResolvers = {
             });
             return $note;
         },
-        deleteNote: (_, { id }: Note) => models.note.delete({ where: { id: Number(id) } }).then(() => true),
+        deleteNote: async (_, { id }: Note) => {
+            await models.tag.deleteMany({ where: { notes: { none: {} } } });
+            await models.note.delete({ where: { id: Number(id) } });
+            return true;
+        },
         pinNote: (_, { id, pinned }: Note) => models.note.update({
             where: { id: Number(id) },
             data: { pinned: Boolean(pinned) }

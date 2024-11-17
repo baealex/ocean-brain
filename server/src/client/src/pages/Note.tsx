@@ -46,7 +46,10 @@ export default function Note() {
         return note;
     }, {
         enabled: !!id,
-        cacheTime: 0
+        cacheTime: 0,
+        onSuccess(data) {
+            setIsPinned(data.pinned);
+        }
     });
 
     const { data: backReferences } = useQuery(['backReferences', id], async () => {

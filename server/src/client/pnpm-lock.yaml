@@ -9,8 +9,8 @@ dependencies:
     specifier: ^0.0.3
     version: 0.0.3
   '@baejino/icon':
-    specifier: ^0.0.5
-    version: 0.0.5(react@18.3.1)
+    specifier: ^0.0.6
+    version: 0.0.6(react@18.3.1)
   '@baejino/style':
     specifier: ^0.0.5
     version: 0.0.5
@@ -1390,8 +1390,8 @@ packages:
     resolution: {integrity: sha512-eCbIJzQTSdUsIrnrllncunp6xDjilSBst0JEhdMCMRuWO4qCmLtm/fj32PvjANEGO/vAPVop9ZsvFESorwLy0g==}
     dev: false
 
-  /@baejino/icon@0.0.5(react@18.3.1):
-    resolution: {integrity: sha512-5qKRCE8xu2NvvlDHO/WMPWOabmwUQb/r4Hq9NGGzIXTfT3V/aMGhXUylXrAV8ZyO4SzgJuXia+5JxPY+M1awFw==}
+  /@baejino/icon@0.0.6(react@18.3.1):
+    resolution: {integrity: sha512-AbH3N8BWe34mbiBwSVmzqtG7Mkaj+OypN3HsCdkYxc6woTCWg/CfwbZcGzBKGvWzfgw1FzeD/x0piJ348MW2vQ==}
     peerDependencies:
       react: ^18.3.1
     dependencies:

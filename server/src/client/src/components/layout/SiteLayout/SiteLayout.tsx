@@ -31,22 +31,22 @@ const NAVIGATION_ITEMS = [
     {
         name: 'Notes',
         path: '/',
-        icon: Icon.FloppyDisk
+        icon: Icon.Document
     },
     {
         name: 'Calendar',
         path: '/calendar',
-        icon: Icon.FloppyDisk
+        icon: Icon.Calendar
     },
     {
         name: 'Tags',
         path: '/tag',
-        icon: Icon.FloppyDisk
+        icon: Icon.Star
     },
     {
         name: 'Images',
         path: '/manage-image',
-        icon: Icon.FloppyDisk
+        icon: Icon.Gallery
     }
 ];
 

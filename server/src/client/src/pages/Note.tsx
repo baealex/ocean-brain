@@ -27,6 +27,7 @@ export default function Note() {
     const editorRef = useRef<EditorRef>(null);
     const titleRef = useRef<HTMLInputElement>(null);
 
+    const [title, setTitle] = useState('');
     const [lastSavedAtMap, setLastSavedAtMap] = useState<Record<string, string>>({});
 
     const [isPinned, setIsPinned] = useState(false);
@@ -49,6 +50,7 @@ export default function Note() {
         enabled: !!id,
         cacheTime: 0,
         onSuccess(data) {
+            setTitle(data.title);
             setIsPinned(data.pinned);
         }
     });
@@ -73,6 +75,7 @@ export default function Note() {
                     }
                 }
             `);
+            setTitle(title);
             setLastSavedAtMap(prev => Object.assign({}, prev, { [id]: dayjs().format('YYYY-MM-DD HH:mm:ss') }));
         });
     };
@@ -92,7 +95,7 @@ export default function Note() {
     return (
         <Container>
             <Helmet>
-                <title>{titleRef.current?.value}</title>
+                <title>{title}</title>
             </Helmet>
             {isLoading && (
                 <>

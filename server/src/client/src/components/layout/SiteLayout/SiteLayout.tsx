@@ -2,11 +2,11 @@ import styles from './SiteLayout.module.scss';
 import classNames from 'classnames/bind';
 const cx = classNames.bind(styles);
 
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from 'react-query';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import * as Icon from '~/components/icon';
-import { Badge, RestoreParentScroll } from '~/components/shared';
+import { Badge, RestoreParentScroll, Skeleton } from '~/components/shared';
 
 import useDebounce from '~/hooks/useDebounce';
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
@@ -14,14 +14,13 @@ import useNoteMutate from '~/hooks/resource/useNoteMutate';
 import type { Note } from '~/models/Note';
 import type { Tag } from '~/models/Tag';
 
-import { graphQuery } from '~/modules/graph-query';
-
 import { useTheme } from '~/store/theme';
 
 import { fetchNotes } from '~/apis/note.api';
 import { fetchTags } from '~/apis/tag.api';
 import { getCustomize, updateCustomize } from '~/apis/customize.api';
 import { confirm } from '@baejino/ui';
+import { PinnedNotes } from '~/components/entities';
 
 interface SiteLayoutProps {
     children?: React.ReactNode;
@@ -65,20 +64,6 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
     const [, setEvent] = useDebounce(500);
 
     const { onCreate } = useNoteMutate();
-
-    const { data: pinnedNode } = useQuery('pinned-notes', async () => {
-        const { pinnedNotes } = await graphQuery<{
-            pinnedNotes: Note[];
-        }>(`
-            query {
-                pinnedNotes {
-                    id
-                    title
-                }
-            }
-        `);
-        return pinnedNotes;
-    });
 
     const { data: customize } = useQuery('customize', async () => {
         return getCustomize();
@@ -149,7 +134,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                             filter: theme === 'dark' ? 'brightness(.8) contrast(1.2)' : undefined
                         }}
                         onClick={async () => {
-                            if (await confirm('Do you want to remove hero banner?')) {
+                            if (await confirm('Do you want to remove this hero banner?')) {
                                 await updateCustomize({ heroBanner: '' });
                                 await queryClient.invalidateQueries('customize');
                             }
@@ -241,11 +226,21 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                         PINNED
                     </div>
                     <div className="flex flex-col gap-2 mt-1 pl-8">
-                        {pinnedNode?.map((note) => (
-                            <Link className={cx({ 'opacity-30': location.pathname === `/${note.id}` })} to={`/${note.id}`}>
-                                {note.title}
-                            </Link>
-                        ))}
+                        <Suspense
+                            fallback={(
+                                <>
+                                    <Skeleton height="24px" opacity={0.5} />
+                                    <Skeleton height="24px" opacity={0.5} />
+                                </>
+                            )}>
+                            <PinnedNotes
+                                render={(notes) => notes?.map((note) => (
+                                    <Link className={cx({ 'opacity-30': location.pathname === `/${note.id}` })} to={`/${note.id}`}>
+                                        {note.title}
+                                    </Link>
+                                ))}
+                            />
+                        </Suspense>
                     </div>
                 </div>
                 {theme === 'light' && (
@@ -266,10 +261,8 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    cursor: 'pointer',
-                                    transition: 'transform 0.2s'
+                                    cursor: 'pointer'
                                 }}
-                                className="hover:scale-105"
                             />
                         ))}
                     </div>

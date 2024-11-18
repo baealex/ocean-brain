@@ -1,10 +1,10 @@
 import dayjs from 'dayjs';
-import { useRef, useState } from 'react';
+import { Suspense, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { useQuery } from 'react-query';
 
-import { Button, Container, Dropdown } from '~/components/shared';
+import { Button, Container, Dropdown, Skeleton } from '~/components/shared';
 import * as Icon from '~/components/icon';
 
 import type { Note } from '~/models/Note';
@@ -19,6 +19,7 @@ import { toast } from '@baejino/ui';
 
 import type { EditorRef } from '~/components/shared/Editor';
 import Editor from '~/components/shared/Editor';
+import { BackReferences } from '~/components/entities';
 
 export default function Note() {
     const { id } = useParams();
@@ -51,21 +52,6 @@ export default function Note() {
             setIsPinned(data.pinned);
         }
     });
-
-    const { data: backReferences } = useQuery(['backReferences', id], async () => {
-        const { backReferences } = await graphQuery<{
-            backReferences: Pick<Note, 'id' | 'title'>[];
-        }>(`
-            query {
-                backReferences(id: "${id}") {
-                    id
-                    title
-                }
-            }
-        `);
-
-        return backReferences;
-    }, { enabled: !!id });
 
     const save = async ({ title = '', content = '' }) => {
         if (!id || isLoading) {
@@ -109,9 +95,10 @@ export default function Note() {
                 <title>{titleRef.current?.value}</title>
             </Helmet>
             {isLoading && (
-                <div className="w-full h-screen flex justify-center items-center">
-                    <Icon.Spinner className="w-8 animate-spin" />
-                </div>
+                <>
+                    <Skeleton className="mb-8" height="66px" />
+                    <Skeleton className="ml-12 mb-8" height="150px" />
+                </>
             )}
             {note && (
                 <>
@@ -174,22 +161,30 @@ export default function Note() {
                     />
                 </>
             )}
-            {backReferences && backReferences.length > 0 && (
-                <div className=" shadow-xl p-5 rounded-2xl">
-                    <p className="text-lg font-bold">
-                        Back References
-                    </p>
-                    <ul>
-                        {backReferences.map((backLink) => (
-                            <li>
-                                <Link to={getNoteURL(backLink.id)}>
-                                    - {backLink.title}
-                                </Link>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            )}
-        </Container >
+            <Suspense
+                fallback={(
+                    <Skeleton height="100px" />
+                )}>
+                <BackReferences
+                    noteId={id}
+                    render={backReferences => backReferences && backReferences.length > 0 && (
+                        <div className="shadow-xl p-5 rounded-2xl">
+                            <p className="text-lg font-bold">
+                                Back References
+                            </p>
+                            <ul>
+                                {backReferences?.map((backLink) => (
+                                    <li>
+                                        <Link to={getNoteURL(backLink.id)}>
+                                            - {backLink.title}
+                                        </Link>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+                />
+            </Suspense>
+        </Container>
     );
 }

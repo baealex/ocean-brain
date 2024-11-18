@@ -7,6 +7,7 @@ import {
 } from '~/apis/note.api';
 import { confirm } from '@baejino/ui';
 import { useNavigate } from 'react-router-dom';
+import { getPinnedNoteQueryKey } from '~/modules/query-key-factory';
 
 const useNoteMutate = () => {
     const queryClient = useQueryClient();
@@ -25,7 +26,7 @@ const useNoteMutate = () => {
         try {
             await pinNote(id, !isPinned);
             await queryClient.invalidateQueries('notes');
-            await queryClient.invalidateQueries('pinned-notes');
+            await queryClient.invalidateQueries(getPinnedNoteQueryKey());
             callback?.();
         } catch (error) {
             // console.error(error);
@@ -36,7 +37,7 @@ const useNoteMutate = () => {
         if (await confirm('Are you really sure?')) {
             await deleteNote(id);
             await queryClient.invalidateQueries('notes');
-            await queryClient.invalidateQueries('pinned-notes');
+            await queryClient.invalidateQueries(getPinnedNoteQueryKey());
             callback?.();
         }
     };

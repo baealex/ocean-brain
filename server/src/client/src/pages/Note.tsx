@@ -1,6 +1,6 @@
 import dayjs from 'dayjs';
 import { Suspense, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { useQuery } from 'react-query';
 
@@ -23,6 +23,7 @@ import { BackReferences } from '~/components/entities';
 
 export default function Note() {
     const { id } = useParams();
+    const navigation = useNavigate();
 
     const editorRef = useRef<EditorRef>(null);
     const titleRef = useRef<HTMLInputElement>(null);
@@ -33,7 +34,7 @@ export default function Note() {
     const [isPinned, setIsPinned] = useState(false);
     const [isMountedEvent, mountEvent] = useDebounce(1000);
 
-    const { data: note, isLoading } = useQuery(['note', id], async () => {
+    const { data: note, isError, isLoading } = useQuery(['note', id], async () => {
         const response = await graphQuery<{
             note: Pick<Note, 'title' | 'content' | 'pinned'>;
         }>(`
@@ -46,18 +47,15 @@ export default function Note() {
             }
         `);
         if (response.type === 'error') {
+            toast(response.errors[0].message);
             throw response;
         }
+        setTitle(response.note.title);
+        setIsPinned(response.note.pinned);
         return response.note;
     }, {
         enabled: !!id,
-        cacheTime: 0,
-        onSuccess(data) {
-            if (data) {
-                setTitle(data.title);
-                setIsPinned(data.pinned);
-            }
-        }
+        cacheTime: 0
     });
 
     const save = async ({ title = '', content = '' }) => {
@@ -101,6 +99,19 @@ export default function Note() {
         onDelete,
         onPinned
     } = useNoteMutate();
+
+    if (isError) {
+        return (
+            <div className="h-full flex justify-center items-center">
+                <div onClick={() => navigation(-1)} className="flex justify-center items-center gap-2 cursor-pointer animate-bounce">
+                    <Icon.ChevronLeft className="w-6" />
+                    <div className="font-bold text-lg">
+                        take you back
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <Container>

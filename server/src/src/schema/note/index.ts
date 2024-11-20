@@ -224,32 +224,37 @@ export const noteResolvers: IResolvers = {
         },
         note: async (_, { id }: Note) => {
             const $note = await models.note.findUnique({ where: { id: Number(id) } });
-            const blocks = extractBlocksByType<{
-                id: string;
-                title: string;
-            }>('reference', JSON.parse($note.content));
-            if (blocks.length > 0) {
-                const referenceIds = blocks.map(block => Number(block.props.id));
-                const $references = await models.note.findMany({ where: { id: { in: referenceIds } } });
-                const newContent = $references.reduce<string>((acc, $reference) => {
-                    const reference = blocks.find(block => Number(block.props.id) === $reference.id);
-                    if (reference.props.title !== $reference.title) {
-                        return acc.replace(
-                            `reference","props":{"id":"${reference.props.id}","title":"${reference.props.title}"`,
-                            `reference","props":{"id":"${$reference.id}","title":"${$reference.title}"`,
-                        );
-                    }
-                    return acc;
-                }, $note.content);
-                if (newContent !== $note.content) {
-                    try {
-                        JSON.parse(newContent);
-                        return await models.note.update({
-                            where: { id: $note.id },
-                            data: { content: newContent }
-                        });
-                    } catch (e) {
-                        console.error(e);
+            if (!$note) {
+                throw 'NOT FOUND';
+            }
+            if ($note.content) {
+                const blocks = extractBlocksByType<{
+                    id: string;
+                    title: string;
+                }>('reference', JSON.parse($note.content));
+                if (blocks.length > 0) {
+                    const referenceIds = blocks.map(block => Number(block.props.id));
+                    const $references = await models.note.findMany({ where: { id: { in: referenceIds } } });
+                    const newContent = $references.reduce<string>((acc, $reference) => {
+                        const reference = blocks.find(block => Number(block.props.id) === $reference.id);
+                        if (reference.props.title !== $reference.title) {
+                            return acc.replace(
+                                `reference","props":{"id":"${reference.props.id}","title":"${reference.props.title}"`,
+                                `reference","props":{"id":"${$reference.id}","title":"${$reference.title}"`,
+                            );
+                        }
+                        return acc;
+                    }, $note.content);
+                    if (newContent !== $note.content) {
+                        try {
+                            JSON.parse(newContent);
+                            return await models.note.update({
+                                where: { id: $note.id },
+                                data: { content: newContent }
+                            });
+                        } catch (e) {
+                            console.error(e);
+                        }
                     }
                 }
             }

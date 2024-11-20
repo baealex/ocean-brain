@@ -71,17 +71,23 @@ export const noteTypeDefs = `
     ${noteMutation}
 `;
 
+interface BlockNote<T = unknown> {
+    id: string;
+    type: string;
+    props: T;
+    content?: BlockNote<T>[];
+}
+
 const parseTags = (content: string) => {
-    const items = JSON.parse(decodeURIComponent(content)) as {
-        content: {
-            type: string;
-            props: {
-                id: string;
-            };
-        }[];
-    }[];
-    const tagItems = items.reduce<typeof items[number]['content']>((acc, cur) => {
-        return acc.concat(cur.content.filter(item => item.type === 'tag'));
+    const items: BlockNote<{
+        id: string;
+        type: string;
+    }>[] = JSON.parse(decodeURIComponent(content));
+    const tagItems = items.reduce<typeof items>((acc, cur) => {
+        if (cur.content) {
+            return acc.concat(cur.content.filter(item => item.type === 'tag'));
+        }
+        return acc;
     }, []);
     return tagItems.map(tagItem => ({ id: Number(tagItem.props.id) }));
 };

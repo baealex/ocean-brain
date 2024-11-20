@@ -78,18 +78,14 @@ interface BlockNote<T = unknown> {
     content?: BlockNote<T>[];
 }
 
-const parseTags = (content: string) => {
-    const items: BlockNote<{
-        id: string;
-        type: string;
-    }>[] = JSON.parse(decodeURIComponent(content));
-    const tagItems = items.reduce<typeof items>((acc, cur) => {
+const extractBlocks = <T>(type: string, content: string) => {
+    const items: BlockNote<T>[] = JSON.parse(decodeURIComponent(content));
+    return items.reduce<typeof items>((acc, cur) => {
         if (cur.content) {
-            return acc.concat(cur.content.filter(item => item.type === 'tag'));
+            return acc.concat(cur.content.filter(item => item.type === type));
         }
         return acc;
     }, []);
-    return tagItems.map(tagItem => ({ id: Number(tagItem.props.id) }));
 };
 
 export const noteResolvers: IResolvers = {
@@ -211,7 +207,34 @@ export const noteResolvers: IResolvers = {
                 where: { content: { contains: `reference","props":{"id":"${id}"` } }
             });
         },
-        note: (_, { id }: Note) => models.note.findUnique({ where: { id: Number(id) } })
+        note: async (_, { id }: Note) => {
+            const $note = await models.note.findUnique({ where: { id: Number(id) } });
+            const blocks = extractBlocks<{
+                id: string;
+                title: string;
+            }>('reference', $note.content);
+            if (blocks.length > 0) {
+                const referenceIds = blocks.map(block => Number(block.props.id));
+                const $references = await models.note.findMany({ where: { id: { in: referenceIds } } });
+                const content = $references.reduce<string>((acc, $reference) => {
+                    const reference = blocks.find(block => Number(block.props.id) === $reference.id);
+                    if (reference.props.title !== $reference.title) {
+                        return acc.replace(
+                            `reference","props":{"id":"${reference.props.id}","title":"${reference.props.title}"`,
+                            `reference","props":{"id":"${$reference.id}","title":"${$reference.title}"`,
+                        );
+                    }
+                    return acc;
+                }, $note.content);
+                if (content !== $note.content) {
+                    return await models.note.update({
+                        where: { id: $note.id },
+                        data: { content }
+                    });
+                }
+            }
+            return $note;
+        }
     },
     Mutation: {
         createNote: async (_, { title, content }: Note) => {
@@ -222,25 +245,25 @@ export const noteResolvers: IResolvers = {
                 }
             });
             if (content) {
-                const tags = parseTags(content);
+                const blocks = extractBlocks<{ id: string }>('tag', content);
 
                 return await models.note.update({
                     where: { id: $note.id },
-                    data: { tags: { set: tags } }
+                    data: { tags: { set: blocks.map(block => ({ id: Number(block.props.id) })) } }
                 });
             }
 
             return $note;
         },
         updateNote: async (_, { id, title, content }: Note) => {
-            const tags = parseTags(content);
+            const blocks = extractBlocks<{ id: string }>('tag', content);
 
             const $note = await models.note.update({
                 where: { id: Number(id) },
                 data: {
                     title,
                     content: decodeURIComponent(content),
-                    tags: { set: tags }
+                    tags: { set: blocks.map(block => ({ id: Number(block.props.id) })) }
                 }
             });
             return $note;

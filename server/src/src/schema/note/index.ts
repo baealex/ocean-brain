@@ -76,16 +76,31 @@ interface BlockNote<T = unknown> {
     type: string;
     props: T;
     content?: BlockNote<T>[];
+    children?: BlockNote<T>[];
 }
 
-const extractBlocks = <T>(type: string, content: string) => {
-    const items: BlockNote<T>[] = JSON.parse(decodeURIComponent(content));
-    return items.reduce<typeof items>((acc, cur) => {
-        if (cur.content) {
-            return acc.concat(cur.content.filter(item => item.type === type));
+const extractBlocksByType = <T>(type: string, dataArray: BlockNote[]): BlockNote<T>[] => {
+    let result: BlockNote[] = [];
+
+    for (const data of dataArray) {
+        if (data.type === type) {
+            result.push(data);
         }
-        return acc;
-    }, []);
+
+        if (data.children && data.children.length > 0) {
+            result = result.concat(extractBlocksByType(type, data.children));
+        }
+
+        if (data.content && data.content.length > 0) {
+            for (const contentItem of data.content) {
+                if (contentItem.type === type) {
+                    result.push(contentItem);
+                }
+            }
+        }
+    }
+
+    return result as unknown as BlockNote<T>[];
 };
 
 export const noteResolvers: IResolvers = {
@@ -209,14 +224,14 @@ export const noteResolvers: IResolvers = {
         },
         note: async (_, { id }: Note) => {
             const $note = await models.note.findUnique({ where: { id: Number(id) } });
-            const blocks = extractBlocks<{
+            const blocks = extractBlocksByType<{
                 id: string;
                 title: string;
-            }>('reference', $note.content);
+            }>('reference', JSON.parse($note.content));
             if (blocks.length > 0) {
                 const referenceIds = blocks.map(block => Number(block.props.id));
                 const $references = await models.note.findMany({ where: { id: { in: referenceIds } } });
-                const content = $references.reduce<string>((acc, $reference) => {
+                const newContent = $references.reduce<string>((acc, $reference) => {
                     const reference = blocks.find(block => Number(block.props.id) === $reference.id);
                     if (reference.props.title !== $reference.title) {
                         return acc.replace(
@@ -226,11 +241,16 @@ export const noteResolvers: IResolvers = {
                     }
                     return acc;
                 }, $note.content);
-                if (content !== $note.content) {
-                    return await models.note.update({
-                        where: { id: $note.id },
-                        data: { content }
-                    });
+                if (newContent !== $note.content) {
+                    try {
+                        JSON.parse(newContent);
+                        return await models.note.update({
+                            where: { id: $note.id },
+                            data: { content: newContent }
+                        });
+                    } catch (e) {
+                        console.error(e);
+                    }
                 }
             }
             return $note;
@@ -245,7 +265,10 @@ export const noteResolvers: IResolvers = {
                 }
             });
             if (content) {
-                const blocks = extractBlocks<{ id: string }>('tag', content);
+                const blocks = extractBlocksByType<{ id: string }>(
+                    'tag',
+                    JSON.parse(decodeURIComponent(content))
+                );
 
                 return await models.note.update({
                     where: { id: $note.id },
@@ -256,7 +279,10 @@ export const noteResolvers: IResolvers = {
             return $note;
         },
         updateNote: async (_, { id, title, content }: Note) => {
-            const blocks = extractBlocks<{ id: string }>('tag', content);
+            const blocks = extractBlocksByType<{ id: string }>(
+                'tag',
+                JSON.parse(decodeURIComponent(content))
+            );
 
             const $note = await models.note.update({
                 where: { id: Number(id) },

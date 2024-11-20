@@ -1,7 +1,6 @@
-@import '@baejino/style/scss/reset.scss';
-@import '@baejino/ui/css/main.css';
-@import '@baejino/style/scss/var.scss';
-@import '@baejino/style/scss/mixin.scss';
+@use '@baejino/style/scss/reset';
+@use '@baejino/ui/css/main';
+@use '@baejino/style/scss/mixin';
 
 @font-face {
     font-family: 'Spoqa Han Sans Neo';
@@ -50,11 +49,11 @@ body {
 
 .card {
     &.main {
-        @include CARD_SHADOW_MAIN;
+        @include mixin.CARD_SHADOW_MAIN;
     }
 
     &.sub {
-        @include CARD_SHADOW_SUB;
+        @include mixin.CARD_SHADOW_SUB;
     }
 }
 

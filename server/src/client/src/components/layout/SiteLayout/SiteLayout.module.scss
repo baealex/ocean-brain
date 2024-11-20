@@ -1,4 +1,4 @@
-@import '~/styles/var';
+@use '~/styles/var';
 
 .SiteLayout {
     height: 100%;
@@ -13,7 +13,7 @@
         border-radius: 0 32px 32px 0;
         transition: background 0.2s linear;
 
-        @media (max-width: $BREAKPOINT_TABLET) {
+        @media (max-width: var.$BREAKPOINT_TABLET) {
             padding-bottom: 80px;
             z-index: 1002;
             position: fixed;
@@ -56,7 +56,7 @@
         flex: 1;
         padding: 16px;
 
-        @media (max-width: $BREAKPOINT_TABLET) {
+        @media (max-width: var.$BREAKPOINT_TABLET) {
             padding-bottom: 80px;
         }
     }

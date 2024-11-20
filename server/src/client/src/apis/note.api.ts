@@ -50,7 +50,7 @@ export function fetchNotes({
                 offset
             }
         }
-    ).then(data => data.allNotes);
+    );
 }
 
 export function fetchTagNotes({
@@ -93,7 +93,7 @@ export function fetchTagNotes({
                 offset
             }
         }
-    ).then(data => data.tagNotes);
+    );
 }
 
 export function fetchImageNotes(src: string) {
@@ -108,7 +108,7 @@ export function fetchImageNotes(src: string) {
                 updatedAt
             }
         }`,
-    ).then(data => data.imageNotes);
+    );
 }
 
 export function createNote({
@@ -123,7 +123,7 @@ export function createNote({
                 id
             }
         }`,
-    ).then(data => data.createNote);
+    );
 }
 
 export function pinNote(id: string, pinned: boolean) {
@@ -139,7 +139,7 @@ export function pinNote(id: string, pinned: boolean) {
                 updatedAt
             }
         }`,
-    ).then(data => data.updateNotePinned);
+    );
 }
 
 export function deleteNote(id: string) {
@@ -149,5 +149,5 @@ export function deleteNote(id: string) {
         `mutation {
             deleteNote(id: "${id}")
         }`,
-    ).then(data => data.deleteNote);
+    );
 }

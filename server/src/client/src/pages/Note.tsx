@@ -34,7 +34,7 @@ export default function Note() {
     const [isMountedEvent, mountEvent] = useDebounce(1000);
 
     const { data: note, isLoading } = useQuery(['note', id], async () => {
-        const { note } = await graphQuery<{
+        const response = await graphQuery<{
             note: Pick<Note, 'title' | 'content' | 'pinned'>;
         }>(`
             query {
@@ -45,13 +45,18 @@ export default function Note() {
                 }
             }
         `);
-        return note;
+        if (response.type === 'error') {
+            throw response;
+        }
+        return response.note;
     }, {
         enabled: !!id,
         cacheTime: 0,
         onSuccess(data) {
-            setTitle(data.title);
-            setIsPinned(data.pinned);
+            if (data) {
+                setTitle(data.title);
+                setIsPinned(data.pinned);
+            }
         }
     });
 
@@ -60,7 +65,7 @@ export default function Note() {
             return;
         }
         mountEvent(async () => {
-            await graphQuery<{
+            const response = await graphQuery<{
                 updateNote: {
                     id: string;
                     title: string;
@@ -75,6 +80,11 @@ export default function Note() {
                     }
                 }
             `);
+
+            if (response.type === 'error') {
+                toast(response.errors[0].message);
+                return;
+            }
             setTitle(title);
             setLastSavedAtMap(prev => Object.assign({}, prev, { [id]: dayjs().format('YYYY-MM-DD HH:mm:ss') }));
         });

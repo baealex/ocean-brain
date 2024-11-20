@@ -15,12 +15,17 @@ const createQueryKey = (searchQuery: UseNotesProps) => {
 };
 
 const useNotes = (searchQuery: UseNotesProps) => {
-    const { data, isLoading } = useQuery(createQueryKey(searchQuery), () => {
-        return fetchNotes(searchQuery);
+    const { data, isError, isLoading } = useQuery(createQueryKey(searchQuery), async () => {
+        const response = await fetchNotes(searchQuery);
+        if (response.type === 'error') {
+            throw response;
+        }
+        return response.allNotes;
     });
 
     return {
         data,
+        isError,
         isLoading
     };
 };

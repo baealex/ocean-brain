@@ -15,11 +15,14 @@ const useNoteMutate = () => {
     const navigate = useNavigate();
 
     const onCreate = async (title?: string, content?: string) => {
-        const { id } = await createNote({
+        const response = await createNote({
             title,
             content
         });
-        navigate(`/${id}`);
+        if (response.type === 'error') {
+            return;
+        }
+        navigate(`/${response.createNote.id}`);
     };
 
     const onPinned = async (id: string, isPinned: boolean, callback?: () => void) => {

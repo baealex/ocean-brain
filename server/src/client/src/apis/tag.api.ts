@@ -35,7 +35,7 @@ export function fetchTags({
                 offset
             }
         }
-    ).then(data => data.allTags);
+    );
 }
 
 export function createTag({ name = '' }) {
@@ -48,5 +48,5 @@ export function createTag({ name = '' }) {
                 name
             }
         }`
-    ).then(data => data.createTag);
+    );
 }

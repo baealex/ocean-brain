@@ -88,7 +88,7 @@ export default function Calendar() {
     };
 
     const { data } = useQuery(['notesInDateRange', year, month], async () => {
-        const { notesInDateRange } = await graphQuery<{
+        const response = await graphQuery<{
             notesInDateRange: Note[];
         }>(
             `query def(
@@ -108,7 +108,10 @@ export default function Calendar() {
                 }
             }
         );
-        return notesInDateRange;
+        if (response.type === 'error') {
+            throw response;
+        }
+        return response.notesInDateRange;
     });
 
     const border = theme === 'light' ? '1px solid #d5d5d5' : '1px solid #363636';

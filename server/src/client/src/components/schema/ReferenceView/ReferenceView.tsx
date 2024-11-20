@@ -17,10 +17,14 @@ const ReferenceView = ({ onClick }: ReferenceViewProps) => {
         <SuggestionMenuController
             triggerCharacter="["
             getItems={async (query) => {
-                const { notes } = await fetchNotes({
+                const response = await fetchNotes({
                     query,
                     limit: 5
                 });
+                if (response.type === 'error') {
+                    return [];
+                }
+                const { notes } = response.allNotes;
                 return notes.map(note => ({
                     title: note.title,
                     onItemClick: () => onClick({

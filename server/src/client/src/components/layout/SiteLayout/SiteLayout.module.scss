@@ -11,6 +11,7 @@
         flex: 0 0 300px;
         overflow-y: auto;
         border-radius: 0 32px 32px 0;
+        transition: background 0.2s linear;
 
         @media (max-width: $BREAKPOINT_TABLET) {
             padding-bottom: 80px;

@@ -17,12 +17,16 @@ export default function TagNotes() {
     const limit = 25;
     const page = Number(searchParams.get('page')) || 1;
 
-    const { data, isLoading } = useQuery(['notes', 'tags', id, page], () => {
-        return fetchTagNotes({
+    const { data, isLoading } = useQuery(['notes', 'tags', id, page], async () => {
+        const response = await fetchTagNotes({
             query: id,
             offset: (page - 1) * limit,
             limit
         });
+        if (response.type === 'error') {
+            throw response;
+        }
+        return response.tagNotes;
     }, { enabled: !!id });
 
     const {

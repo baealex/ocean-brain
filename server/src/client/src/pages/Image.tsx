@@ -18,11 +18,15 @@ const Image = () => {
     const limit = 24;
     const page = Number(searchParams.get('page')) || 1;
 
-    const { data } = useQuery(['images', page], () => {
-        return fetchImages({
+    const { data } = useQuery(['images', page], async () => {
+        const response = await fetchImages({
             offset: (page - 1) * limit,
             limit
         });
+        if (response.type === 'error') {
+            throw response;
+        }
+        return response.allImages;
     });
 
     const handleDelete = async (id: string) => {

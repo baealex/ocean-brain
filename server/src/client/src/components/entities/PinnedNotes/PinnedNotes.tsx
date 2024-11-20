@@ -9,7 +9,7 @@ interface PinnedNotesProps {
 
 const PinnedNotes = (props: PinnedNotesProps) => {
     const { data: pinnedNotes } = useQuery(getPinnedNoteQueryKey(), async () => {
-        const { pinnedNotes } = await graphQuery<{
+        const response = await graphQuery<{
             pinnedNotes: Pick<Note, 'id' | 'title'>[];
         }>(`
             query {
@@ -19,7 +19,10 @@ const PinnedNotes = (props: PinnedNotesProps) => {
                 }
             }
         `);
-        return pinnedNotes;
+        if (response.type === 'error') {
+            throw response;
+        }
+        return response.pinnedNotes;
     }, { suspense: true });
 
     return props.render(pinnedNotes);

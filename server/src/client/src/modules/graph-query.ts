@@ -1,7 +1,18 @@
 import axios from 'axios';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const graphQuery = async <T = any>(query: string, variables?: any): Promise<T> => {
+interface GraphQueryErrorResponse {
+    type: 'error';
+    errors: {
+        message: string;
+        locations: {
+            line: number;
+            column: number;
+        }[];
+        path: string[];
+    }[];
+}
+
+export const graphQuery = async <T extends object, K = object>(query: string, variables?: K): Promise<T & { type: 'success' } | GraphQueryErrorResponse> => {
     const { data } = await axios('/graphql', {
         method: 'post',
         data: {
@@ -9,5 +20,14 @@ export const graphQuery = async <T = any>(query: string, variables?: any): Promi
             variables
         }
     });
-    return data.data;
+    if (data.errors) {
+        return {
+            type: 'error',
+            ...data
+        };
+    }
+    return {
+        type: 'success',
+        ...data.data
+    };
 };

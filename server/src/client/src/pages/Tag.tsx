@@ -12,11 +12,15 @@ export default function Tag() {
     const limit = 60;
     const page = Number(searchParams.get('page')) || 1;
 
-    const { data } = useQuery(['tags', page], () => {
-        return fetchTags({
+    const { data } = useQuery(['tags', page], async () => {
+        const response = await fetchTags({
             offset: (page - 1) * limit,
             limit
         });
+        if (response.type === 'error') {
+            throw response;
+        }
+        return response.allTags;
     });
 
     return (

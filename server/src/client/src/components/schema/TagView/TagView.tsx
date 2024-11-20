@@ -16,22 +16,32 @@ const TagView = ({ onClick }: TagViewProps) => {
         <SuggestionMenuController
             triggerCharacter="@"
             getItems={async (query) => {
-                const { tags } = await fetchTags({
+                const response = await fetchTags({
                     query,
                     limit: 5
                 });
+
+                if (response.type === 'error') {
+                    return [];
+                }
+
+                const { tags } = response.allTags;
 
                 const noMatchedTag = tags.some(tag => tag.name !== `@${query}`);
 
                 const itemAddNewTag = [{
                     title: 'Add a new tag',
                     onItemClick: async () => {
-                        const tag = await createTag({ name: '@' + query });
+                        const response = await createTag({ name: '@' + query });
+                        if (response.type === 'error') {
+                            return;
+                        }
+                        const { id, name: tag } = response.createTag;
                         onClick({
                             type: 'tag',
                             props: {
-                                id: tag.id,
-                                tag: tag.name
+                                id,
+                                tag
                             }
                         });
                     }

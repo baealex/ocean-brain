@@ -89,11 +89,19 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
             fetchNotes({
                 query,
                 limit: 5
-            }).then(({ notes }) => setNotes(notes));
+            }).then((response) => {
+                if (response.type === 'success') {
+                    setNotes(response.allNotes.notes);
+                }
+            });
             fetchTags({
                 query,
                 limit: 5
-            }).then(({ tags }) => setTags(tags));
+            }).then((response) => {
+                if (response.type === 'success') {
+                    setTags(response.allTags.tags);
+                }
+            });
         });
     }, [query]);
 

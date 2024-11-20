@@ -10,7 +10,7 @@ interface BackReferencesProps {
 
 const BackReferences = (props: BackReferencesProps) => {
     const { data } = useQuery(getBackReferencesQueryKey(props.noteId!), async () => {
-        const { backReferences } = await graphQuery<{
+        const response = await graphQuery<{
             backReferences: Pick<Note, 'id' | 'title'>[];
         }>(`
             query {
@@ -20,7 +20,10 @@ const BackReferences = (props: BackReferencesProps) => {
                 }
             }
         `);
-        return backReferences;
+        if (response.type === 'error') {
+            throw response;
+        }
+        return response.backReferences;
     }, {
         enabled: !!props.noteId,
         suspense: true

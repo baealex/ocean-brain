@@ -15,11 +15,19 @@ export default function ImageDetail() {
     const queryClient = useQueryClient();
 
     const { data: image } = useQuery(['image', id], async () => {
-        return await fetchImage(id!);
+        const response = await fetchImage(id!);
+        if (response.type === 'error') {
+            throw response;
+        }
+        return response.image;
     }, { enabled: !!id });
 
     const { data: imageNotes } = useQuery(['image', id, 'notes'], async () => {
-        return await fetchImageNotes(image!.url);
+        const response = await fetchImageNotes(image!.url);
+        if (response.type === 'error') {
+            throw response;
+        }
+        return response.imageNotes;
     }, { enabled: !!image });
 
     const disabledDelete = !imageNotes || (imageNotes?.length || 0) > 0;

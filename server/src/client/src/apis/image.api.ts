@@ -29,7 +29,7 @@ export function fetchImages({
                 offset
             }
         }
-    ).then(data => data.allImages);
+    );
 }
 
 export function fetchImage(id: string) {
@@ -42,7 +42,7 @@ export function fetchImage(id: string) {
                 url
             }
         }`,
-    ).then(data => data.image);
+    );
 }
 
 export function deleteImage(id: string) {
@@ -50,7 +50,7 @@ export function deleteImage(id: string) {
         `mutation {
             deleteImage(id: ${id})
         }`,
-    ).then(data => data.deleteImage);
+    );
 }
 
 export async function uploadImage({ base64, externalSrc }: { base64?: string; externalSrc?: string }): Promise<string> {

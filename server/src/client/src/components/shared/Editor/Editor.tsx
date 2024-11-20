@@ -7,15 +7,16 @@ import { fileToBase64 } from '~/modules/file';
 import { useTheme } from '~/store/theme';
 
 interface EditorProps {
-    content: string;
-    onChange: () => void;
+    content?: string;
+    editable?: boolean;
+    onChange?: () => void;
 }
 
 export interface EditorRef {
     getContent: () => string;
 }
 
-const Editor = forwardRef<EditorRef, EditorProps>(({ content, onChange }, ref) => {
+const Editor = forwardRef<EditorRef, EditorProps>(({ content, editable, onChange }, ref) => {
     const { theme } = useTheme(state => state);
 
     const editor = useCreateBlockNote({
@@ -37,6 +38,7 @@ const Editor = forwardRef<EditorRef, EditorProps>(({ content, onChange }, ref) =
             slashMenu={false}
             theme={theme}
             editor={editor}
+            editable={editable}
             onChange={onChange}>
             <CommandView editor={editor} />
             <ReferenceView

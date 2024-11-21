@@ -11,6 +11,28 @@ export default defineConfig({
     ],
     css: { preprocessorOptions: { scss: { api: 'modern' } } },
     resolve: { alias: { '~': path.resolve(__dirname, './src') } },
+    build: {
+        sourcemap: false,
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    vendor: [
+                        'react',
+                        'react-dom',
+                        'react-router-dom',
+                        'react-router',
+                        'react-query',
+                        'react-query/devtools'
+                    ],
+                    core: [
+                        '@blocknote/core',
+                        '@blocknote/mantine',
+                        '@blocknote/react'
+                    ]
+                }
+            }
+        }
+    },
     server: {
         host: '0.0.0.0',
         proxy: {

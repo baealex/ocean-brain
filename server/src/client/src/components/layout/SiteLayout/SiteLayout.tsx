@@ -279,8 +279,8 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
             <div className={cx('center')}>
                 <div className={cx('content')}>
                     {children}
-                    <RestoreParentScroll/>
                 </div>
+                <RestoreParentScroll/>
             </div>
         </div>
     );

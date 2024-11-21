@@ -220,7 +220,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                         <Icon.Pencil className="w-4" /> Capture
                     </button>
                     {NAVIGATION_ITEMS.map((item) => (
-                        <Link to={item.path}>
+                        <Link key={item.path} to={item.path}>
                             <div className={cx('font-bold', 'p-2', 'flex items-center gap-2', 'rounded-lg', { 'bg-zinc-50 dark:bg-zinc-900 shadow-lg': location.pathname === item.path })}>
                                 <item.icon className="w-4" />
                                 {item.name}
@@ -243,7 +243,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                             )}>
                             <PinnedNotes
                                 render={(notes) => notes?.map((note) => (
-                                    <Link className={cx({ 'opacity-30': location.pathname === `/${note.id}` })} to={`/${note.id}`}>
+                                    <Link key={note.id} className={cx({ 'opacity-30': location.pathname === `/${note.id}` })} to={`/${note.id}`}>
                                         {note.title}
                                     </Link>
                                 ))}

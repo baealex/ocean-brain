@@ -19,9 +19,9 @@ const Dropdown = ({ button, items }: DropdownProps) => {
             <Menu>
                 <MenuButton>
                     {({ active }) => (
-                        <button className={cx('flex', 'items-center', 'justify-center', active)}>
+                        <div className={cx('flex', 'items-center', 'justify-center', active)}>
                             {button}
-                        </button>
+                        </div>
                     )}
                 </MenuButton>
                 <MenuItems className="origin-top-right absolute right-0 top-4 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-zinc-900 overflow-hidden">

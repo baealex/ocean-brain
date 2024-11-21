@@ -19,8 +19,8 @@ export default defineConfig({
                     vendor: [
                         'react',
                         'react-dom',
-                        'react-router-dom',
                         'react-router',
+                        'react-router-dom',
                         'react-query',
                         'react-query/devtools'
                     ],

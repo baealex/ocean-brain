@@ -150,11 +150,11 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                         src={customize.heroBanner}
                     />
                 )}
-                <div className={cx('flex', 'justify-between', 'gap-3', 'mt-3', 'p-3')}>
-                    <form className="w-full" onSubmit={handleSubmit}>
+                <div className="mt-3 p-3">
+                    <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
                         <div className="flex gap-3">
-                            <div className="flex w-full gap-1 bg-white dark:bg-zinc-800 rounded-lg shadow-md">
-                                <button type="submit" className="h-10 w-10 flex items-center justify-center">
+                            <div style={{ gridTemplateColumns: '40px 1fr 32px' }} className="grid flex-1 bg-white dark:bg-zinc-800 rounded-lg shadow-md">
+                                <button type="submit" className="flex items-center justify-center">
                                     <Icon.Search className="h-6 w-6" />
                                 </button>
                                 <input
@@ -162,10 +162,10 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                                     placeholder="Search"
                                     value={query}
                                     onChange={(e) => setQuery(e.target.value)}
-                                    className="w-full h-10 bg-transparent text-gray-900 dark:text-gray-300 py-4 outline-none"
+                                    className="h-10 w-full bg-transparent text-gray-900 dark:text-gray-300 py-4 outline-none"
                                 />
                                 {query && (
-                                    <button type="button" className="h-10 w-10 flex items-center justify-center" onClick={handleReset}>
+                                    <button type="button" className="flex items-center justify-center" onClick={handleReset}>
                                         <Icon.Close className="h-4 w-4 dark:text-gray-300" />
                                     </button>
                                 )}
@@ -179,7 +179,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                             </button>
                         </div>
                         {(notes.length > 0 || tags.length > 0) && (
-                            <div className="mt-3 p-3 bg-white dark:bg-zinc-900 rounded-2xl shadow-md">
+                            <div className="p-3 bg-white dark:bg-zinc-900 rounded-2xl shadow-md">
                                 {notes.length > 0 && (
                                     <ul className="flex flex-col">
                                         {notes.map(({ id, title }) => (
@@ -280,7 +280,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                 <div className={cx('content')}>
                     {children}
                 </div>
-                <RestoreParentScroll/>
+                <RestoreParentScroll />
             </div>
         </div>
     );

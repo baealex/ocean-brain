@@ -3,9 +3,9 @@ import classNames from 'classnames/bind';
 const cx = classNames.bind(styles);
 
 import { createReactInlineContentSpec } from '@blocknote/react';
+import { Link } from 'react-router-dom';
 
 import { getTagURL } from '~/modules/url';
-import { useNavigate } from 'react-router';
 
 export const Tag = createReactInlineContentSpec(
     {
@@ -17,17 +17,15 @@ export const Tag = createReactInlineContentSpec(
         content: 'none'
     },
     {
-        render: (props) => {
-            const navigate = useNavigate();
-
-            return (
-                <button onClick={() => navigate(getTagURL(props.inlineContent.props.id))}>
-                    <span className={cx('Tag', 'bg-zinc-200 text-black dark:bg-zinc-700 dark:text-zinc-200 text-xs rounded-full px-2 py-1')}>
+        render: (props) => (
+            <span className={cx('Tag', 'bg-zinc-200 dark:bg-zinc-700 text-xs rounded-full px-2 py-1')}>
+                <Link to={getTagURL(props.inlineContent.props.id)}>
+                    <span className="text-black dark:text-zinc-200">
                         {props.inlineContent.props.tag}
                     </span>
-                </button>
-            )
-        }
+                </Link>
+            </span>
+        )
     }
 );
 

@@ -3,7 +3,7 @@ import classNames from 'classnames/bind';
 const cx = classNames.bind(styles);
 
 import { createReactInlineContentSpec } from '@blocknote/react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 import { getNoteURL } from '~/modules/url';
 
@@ -17,17 +17,15 @@ const Reference = createReactInlineContentSpec(
         content: 'none'
     },
     {
-        render: (props) => {
-            const navigate = useNavigate();
-
-            return (
-                <button onClick={() => navigate(getNoteURL(props.inlineContent.props.id))}>
-                    <span className={cx('Reference', 'bg-zinc-200 text-black dark:bg-zinc-700 dark:text-zinc-200 text-xs px-2 py-1')}>
+        render: (props) => (
+            <span className={cx('Reference', 'bg-zinc-200 dark:bg-zinc-700 text-xs px-2 py-1')}>
+                <Link to={getNoteURL(props.inlineContent.props.id)}>
+                    <span className="text-black dark:text-zinc-200">
                         [{props.inlineContent.props.title}]
                     </span>
-                </button>
-            )
-        }
+                </Link>
+            </span>
+        )
     }
 );
 

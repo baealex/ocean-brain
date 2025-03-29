@@ -6,7 +6,7 @@
         "node": true
     },
     "extends": [
-        "./node_modules/@baejino/eslint"
+        "@baejino/eslint-config"
     ],
     "overrides": [
         {

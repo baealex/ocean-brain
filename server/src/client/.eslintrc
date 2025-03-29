@@ -7,8 +7,8 @@
         "node": true
     },
     "extends": [
-        "./node_modules/@baejino/eslint",
-        "./node_modules/@baejino/eslint-react"
+        "@baejino/eslint-config",
+        "@baejino/eslint-config-react"
     ],
     "overrides": [
         {

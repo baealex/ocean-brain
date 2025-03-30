@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from 'react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 
-import { Image as ImageComponent, Pagination } from '~/components/shared';
+import { Image as ImageComponent, FallbackRender, Pagination } from '~/components/shared';
 import * as Icon from '~/components/icon';
 
 import { getImageNotesURL } from '~/modules/url';
@@ -56,18 +56,20 @@ const Image = () => {
                     </div>
                 ))}
             </div>
-            {data?.totalCount && limit < data.totalCount && (
-                <Pagination
-                    page={page}
-                    last={Math.ceil(data.totalCount / limit)}
-                    onChange={(page) => {
-                        setSearchParams(searchParams => {
-                            searchParams.set('page', page.toString());
-                            return searchParams;
-                        });
-                    }}
-                />
-            )}
+            <FallbackRender fallback={null}>
+                {data?.totalCount && limit < data.totalCount && (
+                    <Pagination
+                        page={page}
+                        last={Math.ceil(data.totalCount / limit)}
+                        onChange={(page) => {
+                            setSearchParams(searchParams => {
+                                searchParams.set('page', page.toString());
+                                return searchParams;
+                            });
+                        }}
+                    />
+                )}
+            </FallbackRender>
         </>
     );
 };

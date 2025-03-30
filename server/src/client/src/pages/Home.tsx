@@ -1,7 +1,7 @@
 import { useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 
-import { Pagination } from '~/components/shared';
+import { FallbackRender, Pagination } from '~/components/shared';
 import { NoteListCard } from '~/components/note';
 
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
@@ -38,18 +38,20 @@ export default function Home() {
                     />
                 ))}
             </div>
-            {data?.totalCount && limit < data.totalCount && (
-                <Pagination
-                    page={page}
-                    last={Math.ceil(data.totalCount / limit)}
-                    onChange={(page) => {
-                        setSearchParams(searchParams => {
-                            searchParams.set('page', page.toString());
-                            return searchParams;
-                        });
-                    }}
-                />
-            )}
+            <FallbackRender fallback={null}>
+                {data?.totalCount && limit < data.totalCount && (
+                    <Pagination
+                        page={page}
+                        last={Math.ceil(data.totalCount / limit)}
+                        onChange={(page) => {
+                            setSearchParams(searchParams => {
+                                searchParams.set('page', page.toString());
+                                return searchParams;
+                            });
+                        }}
+                    />
+                )}
+            </FallbackRender>
         </>
     );
 }

@@ -3,7 +3,7 @@ import { useQuery } from 'react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import { fetchTags } from '~/apis/tag.api';
-import { Pagination } from '~/components/shared';
+import { FallbackRender, Pagination } from '~/components/shared';
 import { getRandomBackground } from '~/modules/color';
 
 export default function Tag() {
@@ -37,18 +37,20 @@ export default function Tag() {
                     </Link>
                 ))}
             </div>
-            {data?.totalCount && limit < data.totalCount && (
-                <Pagination
-                    page={page}
-                    last={Math.ceil(data.totalCount / limit)}
-                    onChange={(page) => {
-                        setSearchParams(searchParams => {
-                            searchParams.set('page', page.toString());
-                            return searchParams;
-                        });
-                    }}
-                />
-            )}
+            <FallbackRender fallback={null}>
+                {data?.totalCount && limit < data.totalCount && (
+                    <Pagination
+                        page={page}
+                        last={Math.ceil(data.totalCount / limit)}
+                        onChange={(page) => {
+                            setSearchParams(searchParams => {
+                                searchParams.set('page', page.toString());
+                                return searchParams;
+                            });
+                        }}
+                    />
+                )}
+            </FallbackRender>
         </>
     );
 }

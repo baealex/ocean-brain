@@ -1,5 +1,5 @@
 import { confirm } from '@baejino/ui';
-import { useQuery, useQueryClient } from 'react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 
@@ -18,21 +18,24 @@ const Image = () => {
     const limit = 24;
     const page = Number(searchParams.get('page')) || 1;
 
-    const { data } = useQuery(['images', page], async () => {
-        const response = await fetchImages({
-            offset: (page - 1) * limit,
-            limit
-        });
-        if (response.type === 'error') {
-            throw response;
+    const { data } = useQuery({
+        queryKey: ['images', page],
+        async queryFn() {
+            const response = await fetchImages({
+                offset: (page - 1) * limit,
+                limit
+            });
+            if (response.type === 'error') {
+                throw response;
+            }
+            return response.allImages;
         }
-        return response.allImages;
     });
 
     const handleDelete = async (id: string) => {
         if (await confirm('Are you really sure?')) {
             await deleteImage(id);
-            queryClient.invalidateQueries('images');
+            await queryClient.invalidateQueries({ queryKey: ['images', page] });
         }
     };
 

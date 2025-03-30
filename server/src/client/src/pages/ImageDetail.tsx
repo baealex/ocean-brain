@@ -1,5 +1,5 @@
 import { Helmet } from 'react-helmet';
-import { useQuery, useQueryClient } from 'react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Image as ImageComponent } from '~/components/shared';
 import { NoteListItem } from '~/components/note';
@@ -14,21 +14,29 @@ export default function ImageDetail() {
     const navigation = useNavigate();
     const queryClient = useQueryClient();
 
-    const { data: image } = useQuery(['image', id], async () => {
-        const response = await fetchImage(id!);
-        if (response.type === 'error') {
-            throw response;
-        }
-        return response.image;
-    }, { enabled: !!id });
+    const { data: image } = useQuery({
+        queryKey: ['image', id],
+        async queryFn() {
+            const response = await fetchImage(id!);
+            if (response.type === 'error') {
+                throw response;
+            }
+            return response.image;
+        },
+        enabled: !!id
+    });
 
-    const { data: imageNotes } = useQuery(['image', id, 'notes'], async () => {
-        const response = await fetchImageNotes(image!.url);
-        if (response.type === 'error') {
-            throw response;
-        }
-        return response.imageNotes;
-    }, { enabled: !!image });
+    const { data: imageNotes } = useQuery({
+        queryKey: ['image', id, 'notes'],
+        async queryFn() {
+            const response = await fetchImageNotes(image!.url);
+            if (response.type === 'error') {
+                throw response;
+            }
+            return response.imageNotes;
+        },
+        enabled: !!image
+    });
 
     const disabledDelete = !imageNotes || (imageNotes?.length || 0) > 0;
 
@@ -64,7 +72,7 @@ export default function ImageDetail() {
                             className="w-full h-10 rounded-lg text-sm font-bold"
                             onClick={async () => {
                                 await updateCustomize({ heroBanner: image.url });
-                                await queryClient.invalidateQueries('customize');
+                                await queryClient.invalidateQueries({ queryKey: ['customize'] });
                             }}>
                             <div className="flex items-center justify-center gap-1">
                                 <Icon.Heart className="h-4 w-4 fill-red-500" />

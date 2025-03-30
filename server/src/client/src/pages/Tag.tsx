@@ -1,5 +1,5 @@
 import { Helmet } from 'react-helmet';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import { fetchTags } from '~/apis/tag.api';
@@ -12,15 +12,18 @@ export default function Tag() {
     const limit = 60;
     const page = Number(searchParams.get('page')) || 1;
 
-    const { data } = useQuery(['tags', page], async () => {
-        const response = await fetchTags({
-            offset: (page - 1) * limit,
-            limit
-        });
-        if (response.type === 'error') {
-            throw response;
+    const { data } = useQuery({
+        queryKey: ['tags', page],
+        async queryFn() {
+            const response = await fetchTags({
+                offset: (page - 1) * limit,
+                limit
+            });
+            if (response.type === 'error') {
+                throw response;
+            }
+            return response.allTags;
         }
-        return response.allTags;
     });
 
     return (

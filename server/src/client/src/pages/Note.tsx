@@ -2,7 +2,7 @@ import dayjs from 'dayjs';
 import { Suspense, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 
 import { Button, Container, Dropdown, Skeleton } from '~/components/shared';
 import * as Icon from '~/components/icon';
@@ -34,28 +34,31 @@ export default function Note() {
     const [isPinned, setIsPinned] = useState(false);
     const [isMountedEvent, mountEvent] = useDebounce(1000);
 
-    const { data: note, isError, isLoading } = useQuery(['note', id], async () => {
-        const response = await graphQuery<{
-            note: Pick<Note, 'title' | 'content' | 'pinned'>;
-        }>(`
-            query {
-                note(id: "${id}") {
-                    title
-                    pinned
-                    content
+    const { data: note, isError, isLoading } = useQuery({
+        queryKey: ['note', id],
+        async queryFn() {
+            const response = await graphQuery<{
+                note: Pick<Note, 'title' | 'content' | 'pinned'>;
+            }>(`
+                query {
+                    note(id: "${id}") {
+                        title
+                        pinned
+                        content
+                    }
                 }
+            `);
+            if (response.type === 'error') {
+                toast(response.errors[0].message);
+                throw response;
             }
-        `);
-        if (response.type === 'error') {
-            toast(response.errors[0].message);
-            throw response;
-        }
-        setTitle(response.note.title);
-        setIsPinned(response.note.pinned);
-        return response.note;
-    }, {
+            setTitle(response.note.title);
+            setIsPinned(response.note.pinned);
+            return response.note;
+
+        },
         enabled: !!id,
-        cacheTime: 0
+        gcTime: 0
     });
 
     const save = async ({ title = '', content = '' }) => {

@@ -1,4 +1,4 @@
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 
@@ -17,17 +17,21 @@ export default function TagNotes() {
     const limit = 25;
     const page = Number(searchParams.get('page')) || 1;
 
-    const { data, isLoading } = useQuery(['notes', 'tags', id, page], async () => {
-        const response = await fetchTagNotes({
-            query: id,
-            offset: (page - 1) * limit,
-            limit
-        });
-        if (response.type === 'error') {
-            throw response;
-        }
-        return response.tagNotes;
-    }, { enabled: !!id });
+    const { data, isLoading } = useQuery({
+        queryKey: ['notes', 'tags', id, page],
+        async queryFn() {
+            const response = await fetchTagNotes({
+                query: id,
+                offset: (page - 1) * limit,
+                limit
+            });
+            if (response.type === 'error') {
+                throw response;
+            }
+            return response.tagNotes;
+        },
+        enabled: !!id
+    });
 
     const {
         onDelete,

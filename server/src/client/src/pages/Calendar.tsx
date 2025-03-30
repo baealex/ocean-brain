@@ -1,6 +1,6 @@
 import dayjs from 'dayjs';
 import { Helmet } from 'react-helmet';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import * as Icon from '~/components/icon';
 import type { Note } from '~/models/Note';
@@ -87,31 +87,34 @@ export default function Calendar() {
         }
     };
 
-    const { data } = useQuery(['notesInDateRange', year, month], async () => {
-        const response = await graphQuery<{
-            notesInDateRange: Note[];
-        }>(
-            `query def(
-                $dateRange: DateRangeInput,
-            ) {
-                notesInDateRange(dateRange: $dateRange) {
-                    id
-                    title
-                    createdAt
-                    updatedAt
+    const { data } = useQuery({
+        queryKey: ['notesInDateRange', year, month],
+        async queryFn() {
+            const response = await graphQuery<{
+                notesInDateRange: Note[];
+            }>(
+                `query def(
+                    $dateRange: DateRangeInput,
+                ) {
+                    notesInDateRange(dateRange: $dateRange) {
+                        id
+                        title
+                        createdAt
+                        updatedAt
+                    }
+                }`,
+                {
+                    dateRange: {
+                        start: `${year}-${month}-01`,
+                        end: `${year}-${month}-${totalDays}`
+                    }
                 }
-            }`,
-            {
-                dateRange: {
-                    start: `${year}-${month}-01`,
-                    end: `${year}-${month}-${totalDays}`
-                }
+            );
+            if (response.type === 'error') {
+                throw response;
             }
-        );
-        if (response.type === 'error') {
-            throw response;
+            return response.notesInDateRange;
         }
-        return response.notesInDateRange;
     });
 
     const border = theme === 'light' ? '1px solid #d5d5d5' : '1px solid #363636';

@@ -1,4 +1,4 @@
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 
 import type { FetchNotesParams } from '~/apis/note.api';
 import { fetchNotes } from '~/apis/note.api';
@@ -15,12 +15,15 @@ const createQueryKey = (searchQuery: UseNotesProps) => {
 };
 
 const useNotes = (searchQuery: UseNotesProps) => {
-    const { data, isError, isLoading } = useQuery(createQueryKey(searchQuery), async () => {
-        const response = await fetchNotes(searchQuery);
-        if (response.type === 'error') {
-            throw response;
+    const { data, isError, isLoading } = useQuery({
+        queryKey: createQueryKey(searchQuery),
+        async queryFn() {
+            const response = await fetchNotes(searchQuery);
+            if (response.type === 'error') {
+                throw response;
+            }
+            return response.allNotes;
         }
-        return response.allNotes;
     });
 
     return {

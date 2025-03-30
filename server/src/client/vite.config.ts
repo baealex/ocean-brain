@@ -21,8 +21,7 @@ export default defineConfig({
                         'react-dom',
                         'react-router',
                         'react-router-dom',
-                        'react-query',
-                        'react-query/devtools'
+                        '@tanstack/react-query'
                     ],
                     core: [
                         '@blocknote/core',

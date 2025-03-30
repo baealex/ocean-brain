@@ -1,4 +1,4 @@
-import { useQuery } from 'react-query';
+import { useSuspenseQuery } from '@tanstack/react-query';
 import type { Note } from '~/models/Note';
 import { graphQuery } from '~/modules/graph-query';
 import { getPinnedNoteQueryKey } from '~/modules/query-key-factory';
@@ -8,22 +8,25 @@ interface PinnedNotesProps {
 }
 
 const PinnedNotes = (props: PinnedNotesProps) => {
-    const { data: pinnedNotes } = useQuery(getPinnedNoteQueryKey(), async () => {
-        const response = await graphQuery<{
-            pinnedNotes: Pick<Note, 'id' | 'title'>[];
-        }>(`
-            query {
-                pinnedNotes {
-                    id
-                    title
+    const { data: pinnedNotes } = useSuspenseQuery({
+        queryKey: [getPinnedNoteQueryKey()],
+        async queryFn() {
+            const response = await graphQuery<{
+                pinnedNotes: Pick<Note, 'id' | 'title'>[];
+            }>(`
+                query {
+                    pinnedNotes {
+                        id
+                        title
+                    }
                 }
+            `);
+            if (response.type === 'error') {
+                throw response;
             }
-        `);
-        if (response.type === 'error') {
-            throw response;
+            return response.pinnedNotes;
         }
-        return response.pinnedNotes;
-    }, { suspense: true });
+    });
 
     return props.render(pinnedNotes);
 };

@@ -3,7 +3,7 @@ import classNames from 'classnames/bind';
 const cx = classNames.bind(styles);
 
 import React, { Suspense, useEffect, useState } from 'react';
-import { useQuery, useQueryClient } from 'react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import * as Icon from '~/components/icon';
 import { Badge, RestoreParentScroll, Skeleton } from '~/components/shared';
@@ -65,8 +65,11 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
 
     const { onCreate } = useNoteMutate();
 
-    const { data: customize } = useQuery('customize', async () => {
-        return getCustomize();
+    const { data: customize } = useQuery({
+        queryKey: ['customize'],
+        async queryFn() {
+            return getCustomize();
+        }
     });
 
     const handleSubmit = (e?: React.FormEvent<HTMLFormElement>) => {
@@ -144,7 +147,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                         onClick={async () => {
                             if (await confirm('Do you want to remove this hero banner?')) {
                                 await updateCustomize({ heroBanner: '' });
-                                await queryClient.invalidateQueries('customize');
+                                await queryClient.invalidateQueries({ queryKey: ['customize'] });
                             }
                         }}
                         src={customize.heroBanner}
@@ -258,7 +261,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                                 key={index}
                                 onClick={async () => {
                                     await updateCustomize({ color: colorCode });
-                                    await queryClient.invalidateQueries('customize');
+                                    await queryClient.invalidateQueries({ queryKey: ['customize'] });
                                 }}
                                 style={{
                                     backgroundColor: colorCode,

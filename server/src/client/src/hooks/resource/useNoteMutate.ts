@@ -1,4 +1,4 @@
-import { useQueryClient } from 'react-query';
+import { useQueryClient } from '@tanstack/react-query';
 
 import {
     createNote,
@@ -28,8 +28,8 @@ const useNoteMutate = () => {
     const onPinned = async (id: string, isPinned: boolean, callback?: () => void) => {
         try {
             await pinNote(id, !isPinned);
-            await queryClient.invalidateQueries('notes');
-            await queryClient.invalidateQueries(getPinnedNoteQueryKey());
+            await queryClient.invalidateQueries({ queryKey: ['notes'] });
+            await queryClient.invalidateQueries({ queryKey: [getPinnedNoteQueryKey()] });
             callback?.();
         } catch (error) {
             // console.error(error);
@@ -39,8 +39,8 @@ const useNoteMutate = () => {
     const onDelete = async (id: string, callback?: () => void) => {
         if (await confirm('Are you really sure?')) {
             await deleteNote(id);
-            await queryClient.invalidateQueries('notes');
-            await queryClient.invalidateQueries(getPinnedNoteQueryKey());
+            await queryClient.invalidateQueries({ queryKey: ['notes'] });
+            await queryClient.invalidateQueries({ queryKey: [getPinnedNoteQueryKey()] });
             callback?.();
         }
     };

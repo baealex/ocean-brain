@@ -1,5 +1,5 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
-import type { Note } from '~/models/Note';
+import type { Note } from '~/models/note.model';
 import { graphQuery } from '~/modules/graph-query';
 import { getBackReferencesQueryKey } from '~/modules/query-key-factory';
 

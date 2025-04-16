@@ -11,8 +11,8 @@ import { Badge, RestoreParentScroll, Skeleton } from '~/components/shared';
 import useDebounce from '~/hooks/useDebounce';
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
 
-import type { Note } from '~/models/Note';
-import type { Tag } from '~/models/Tag';
+import type { Note } from '~/models/note.model';
+import type { Tag } from '~/models/tag.model';
 
 import { useTheme } from '~/store/theme';
 
@@ -46,6 +46,11 @@ const NAVIGATION_ITEMS = [
         name: 'Images',
         path: '/manage-image',
         icon: Icon.Gallery
+    },
+    {
+        name: 'Placeholders',
+        path: '/placeholder',
+        icon: Icon.Copy
     }
 ];
 

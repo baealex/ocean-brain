@@ -3,7 +3,7 @@ import { Helmet } from 'react-helmet';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import * as Icon from '~/components/icon';
-import type { Note } from '~/models/Note';
+import type { Note } from '~/models/note.model';
 import { getRandomBackground } from '~/modules/color';
 import { graphQuery } from '~/modules/graph-query';
 import { getNoteURL } from '~/modules/url';

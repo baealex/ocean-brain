@@ -8,7 +8,7 @@ import { toast } from '@baejino/ui';
 import { Button, Container, Dropdown, Skeleton } from '~/components/shared';
 import * as Icon from '~/components/icon';
 
-import type { Note } from '~/models/Note';
+import type { Note } from '~/models/note.model';
 
 import useDebounce from '~/hooks/useDebounce';
 import useNoteMutate from '~/hooks/resource/useNoteMutate';

@@ -111,20 +111,43 @@ export function fetchImageNotes(src: string) {
     );
 }
 
-export function createNote({
-    title = '',
-    content = ''
-} = {}) {
+interface CreateNoteRequestData {
+    title: string;
+    content: string;
+}
+
+export function createNote(note: CreateNoteRequestData) {
     return graphQuery<{
         createNote: Pick<Note, 'id'>;
     }>(
-        `mutation {
-            createNote(title: "${title}", content: "${content}") {
+        `mutation def($note: NoteInput!) {
+            createNote(note: $note) {
                 id
             }
         }`,
+        { note }
     );
 }
+
+interface UpdateNoteRequestData {
+    id: string;
+    title: string;
+    content: string;
+}
+
+export const updateNote = ({ id, ...note }: UpdateNoteRequestData) => {
+    return graphQuery<{
+        updateNote: Pick<Note, 'id' | 'title'>;
+    }>(
+        `mutation def($note: NoteInput!) {
+            updateNote(id: "${id}", note: $note) {
+                id
+                title
+            }
+        }`,
+        { note }
+    );
+};
 
 export function pinNote(id: string, pinned: boolean) {
     return graphQuery<{

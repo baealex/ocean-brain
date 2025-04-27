@@ -6,3 +6,8 @@ export interface Pagination {
 export interface SearchFilter {
     query: string;
 }
+
+export interface NoteInput {
+    title: string;
+    content: string;
+}

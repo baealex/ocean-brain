@@ -10,8 +10,12 @@
         height: 100%;
         flex: 0 0 300px;
         overflow-y: auto;
-        border-radius: 0 32px 32px 0;
         transition: background 0.2s linear;
+        background: #eef3fa;
+
+        :global(html.dark) & {
+            background: #1e1f22;
+        }
 
         @media (max-width: var.$BREAKPOINT_TABLET) {
             padding-bottom: 80px;
@@ -41,6 +45,30 @@
         width: 48px;
         height: 48px;
         box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.15);
+        background: #eef3fa;
+
+        :global(html.dark) & {
+            background: #1e1f22;
+        }
+    }
+
+    .top {
+        position: sticky;
+        top: 0;
+        z-index: 1001;
+        background: #eef3fa;
+
+        :global(html.dark) & {
+            background: #1e1f22;
+        }
+    }
+
+    .top-content {
+        display: flex;
+        align-items: center;
+        height: 56px;
+        white-space: nowrap;
+        overflow-x: auto;
     }
 
     .center {
@@ -55,6 +83,12 @@
     .content {
         flex: 1;
         padding: 16px;
+        background: #fff;
+        border-radius: 24px 0 0 0;
+
+        :global(html.dark) & {
+            background: #232428;
+        }
 
         @media (max-width: var.$BREAKPOINT_TABLET) {
             padding-bottom: 80px;

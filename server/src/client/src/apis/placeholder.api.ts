@@ -15,7 +15,10 @@ export const fetchPlaceholders = async ({
     fields
 }: FetchPlaceholdersParams = {}) => {
     return graphQuery<{
-        allPlaceholders: Placeholder[];
+        allPlaceholders: {
+            totalCount: number;
+            placeholders: Placeholder[];
+        };
     }>(
         `query def(
             $searchFilter: SearchFilterInput,
@@ -47,7 +50,7 @@ export const fetchPlaceholders = async ({
     );
 };
 
-export const createPlaceholder = (placeholder: Placeholder) => {
+export const createPlaceholder = (placeholder: Pick<Placeholder, 'name' | 'template' | 'replacement'>) => {
     return graphQuery<{ createPlaceholder: Placeholder }>(
         `mutation {
             createPlaceholder(name: "${placeholder.name}", template: "${placeholder.template}", replacement: "${placeholder.replacement}") {
@@ -82,9 +85,8 @@ export const updatePlaceholder = (params: UpdatePlaceholderParams) => {
 
 export const deletePlaceholder = (id: string) => {
     return graphQuery<{ deletePlaceholder: boolean }>(
-        `mutation def($id: ID!) {
-            deletePlaceholder(id: $id)
-        }`,
-        { id }
+        `mutation {
+            deletePlaceholder(id: "${id}")
+        }`
     );
 };

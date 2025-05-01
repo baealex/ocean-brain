@@ -7,6 +7,7 @@
     background-color: rgba(0, 0, 0, 0.5);
     z-index: 1005;
     padding: 16px;
+    z-index: 1001;
 
     &--open {
         display: block;
@@ -22,7 +23,6 @@
         border-radius: 24px;
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
         background-color: #fff;
-        z-index: 1002;
 
         :global(html.dark) & {
             background-color: #1e1f22;

@@ -268,10 +268,36 @@ export const noteResolvers: IResolvers = {
     },
     Mutation: {
         createNote: async (_, { note }: { note: NoteInput }) => {
+            const PLACEHOLDER_PREFIX = '{%';
+            const PLACEHOLDER_SUFFIX = '%}';
+
+            const replacePlaceholder = async (content: string) => {
+                const placeholders = content.matchAll(new RegExp(`${PLACEHOLDER_PREFIX}([^}]+)${PLACEHOLDER_SUFFIX}`, 'g'));
+                const $placeholders = await models.placeholder.findMany({
+                    select: {
+                        template: true,
+                        replacement: true
+                    },
+                    where: {
+                        template: {
+                            in: Array.from(new Set(Array.from(placeholders, p => p[1])))
+                        }
+                    }
+                });
+
+                for (const $placeholder of $placeholders) {
+                    content = content.replace(new RegExp(`${PLACEHOLDER_PREFIX}${$placeholder.template}${PLACEHOLDER_SUFFIX}`, 'g'), $placeholder.replacement);
+                }
+                return content;
+            };
+
+            const replacedTitle = await replacePlaceholder(note.title);
+            const replacedContent = await replacePlaceholder(note.content);
+
             const $note = await models.note.create({
                 data: {
-                    title: note.title,
-                    content: note.content
+                    title: replacedTitle,
+                    content: replacedContent
                 }
             });
             if (note.content) {

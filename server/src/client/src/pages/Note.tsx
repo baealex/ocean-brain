@@ -153,8 +153,8 @@ export default function Note() {
                                     {
                                         name: 'Clone this note',
                                         onClick: () => onCreate(
-                                            '[Clone] ' + (titleRef.current?.value || 'untitled'),
-                                            encodeURIComponent(editorRef?.current?.getContent() || '')
+                                            titleRef.current?.value || 'untitled',
+                                            editorRef?.current?.getContent() || ''
                                         )
                                     },
                                     {

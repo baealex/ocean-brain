@@ -82,6 +82,11 @@ div:focus {
     max-width: 100%;
 }
 
+.bn-block-outer:not([data-prev-type])>.bn-block>.bn-block-content[data-content-type="numberedListItem"]::before {
+    content: var(--index) ".";
+    white-space: nowrap;
+}
+
 .window-modal__container {
     z-index: 1002;
 }

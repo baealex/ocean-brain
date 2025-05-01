@@ -99,14 +99,14 @@ export const placeholderResolvers: IResolvers = {
         },
         deletePlaceholder: async (_, { id }: { id: number }) => {
             const placeholder = await models.placeholder.findFirst({
-                where: { id }
+                where: { id: Number(id) }
             });
             if (!placeholder) {
                 return false;
             }
 
             await models.placeholder.delete({
-                where: { id }
+                where: { id: Number(id) }
             });
             return true;
         }

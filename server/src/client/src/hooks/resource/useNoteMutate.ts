@@ -8,6 +8,7 @@ import {
 import { confirm } from '@baejino/ui';
 import { useNavigate } from 'react-router-dom';
 import { getPinnedNoteQueryKey } from '~/modules/query-key-factory';
+import { replaceFixedPlaceholder } from '~/modules/fixed-placeholder';
 
 const useNoteMutate = () => {
     const queryClient = useQueryClient();
@@ -15,9 +16,11 @@ const useNoteMutate = () => {
     const navigate = useNavigate();
 
     const onCreate = async (title = '', content = '') => {
+        const replacedTitle = replaceFixedPlaceholder(title);
+        const replacedContent = replaceFixedPlaceholder(content);
         const response = await createNote({
-            title,
-            content
+            title: replacedTitle,
+            content: replacedContent
         });
         if (response.type === 'error') {
             return;

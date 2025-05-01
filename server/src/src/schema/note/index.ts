@@ -278,11 +278,7 @@ export const noteResolvers: IResolvers = {
                         template: true,
                         replacement: true
                     },
-                    where: {
-                        template: {
-                            in: Array.from(new Set(Array.from(placeholders, p => p[1])))
-                        }
-                    }
+                    where: { template: { in: Array.from(new Set(Array.from(placeholders, p => p[1]))) } }
                 });
 
                 for (const $placeholder of $placeholders) {

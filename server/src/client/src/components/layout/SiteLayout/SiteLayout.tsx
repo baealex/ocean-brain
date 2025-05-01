@@ -30,7 +30,7 @@ const NAVIGATION_ITEMS = [
     {
         name: 'Notes',
         path: '/',
-        icon: Icon.Document
+        icon: Icon.Grid
     },
     {
         name: 'Calendar',
@@ -40,17 +40,12 @@ const NAVIGATION_ITEMS = [
     {
         name: 'Tags',
         path: '/tag',
-        icon: Icon.Star
+        icon: Icon.Bookmark
     },
     {
-        name: 'Images',
-        path: '/manage-image',
-        icon: Icon.Gallery
-    },
-    {
-        name: 'Placeholders',
-        path: '/placeholder',
-        icon: Icon.Copy
+        name: 'Setting',
+        path: '/setting',
+        icon: Icon.Gear
     }
 ];
 
@@ -59,7 +54,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
 
-    const { theme, toggleTheme } = useTheme(state => state);
+    const { theme } = useTheme(state => state);
 
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [query, setQuery] = useState('');
@@ -166,13 +161,6 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                                     </button>
                                 )}
                             </div>
-                            <button type="button" onClick={toggleTheme}>
-                                {theme === 'dark' ? (
-                                    <Icon.Moon className="h-6 w-6 text-yellow-500" />
-                                ) : (
-                                    <Icon.Sun className="h-6 w-6 text-black" />
-                                )}
-                            </button>
                         </div>
                         {(notes.length > 0 || tags.length > 0) && (
                             <div className="p-3 bg-white dark:bg-zinc-900 rounded-2xl shadow-md">

@@ -9,7 +9,7 @@ import { deleteImage, fetchImage } from '~/apis/image.api';
 import { fetchImageNotes } from '~/apis/note.api';
 import { setServerCache } from '~/apis/server-cache.api';
 
-export default function ImageDetail() {
+const ManageImageDetail =  () => {
     const { id } = useParams();
     const navigation = useNavigate();
     const queryClient = useQueryClient();
@@ -96,4 +96,6 @@ export default function ImageDetail() {
             </div>
         </>
     );
-}
+};
+
+export default ManageImageDetail;

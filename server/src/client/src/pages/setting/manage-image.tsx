@@ -10,7 +10,7 @@ import { getImageNotesURL } from '~/modules/url';
 
 import { deleteImage, fetchImages } from '~/apis/image.api';
 
-const Image = () => {
+const ManageImage = () => {
     const queryClient = useQueryClient();
 
     const [searchParams, setSearchParams] = useSearchParams();
@@ -77,4 +77,4 @@ const Image = () => {
     );
 };
 
-export default Image;
+export default ManageImage;

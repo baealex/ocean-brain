@@ -3,7 +3,7 @@ import { useRef, useState } from 'react';
 const useDebounce = (delay: number) => {
     const [isMounted, setIsMounted] = useState(false);
 
-    const ref = useRef<ReturnType<typeof setTimeout>>();
+    const ref = useRef<ReturnType<typeof setTimeout>>(null);
 
     return [
         isMounted,

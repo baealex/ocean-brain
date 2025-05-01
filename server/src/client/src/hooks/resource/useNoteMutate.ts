@@ -14,7 +14,7 @@ const useNoteMutate = () => {
 
     const navigate = useNavigate();
 
-    const onCreate = async (title?: string, content?: string) => {
+    const onCreate = async (title = '', content = '') => {
         const response = await createNote({
             title,
             content

@@ -4,7 +4,7 @@ import models from '~/models';
 import { gql } from '~/modules/graphql';
 
 import type { Note } from '~/models';
-import type { Pagination, SearchFilter } from '~/types';
+import type { Pagination, SearchFilter, NoteInput } from '~/types';
 
 export const noteType = gql`
     input PaginationInput {
@@ -19,6 +19,11 @@ export const noteType = gql`
     input DateRangeInput {
         start: String!
         end: String!
+    }
+
+    input NoteInput {
+        title: String
+        content: String
     }
 
     type Tag {
@@ -58,8 +63,8 @@ export const noteQuery = gql`
 
 export const noteMutation = gql`
     type Mutation {
-        createNote(title: String = "", content: String = ""): Note!
-        updateNote(id: ID!, title: String!, content: String!): Note!
+        createNote(note: NoteInput!): Note!
+        updateNote(id: ID!, note: NoteInput!): Note!
         deleteNote(id: ID!): Boolean!
         pinNote(id: ID!, pinned: Boolean!): Note!
     }
@@ -121,7 +126,7 @@ export const noteResolvers: IResolvers = {
                 .map(item => item.slice(1))
                 .map(word => `%${word}%`);
 
-            const where: Parameters<typeof models.note.findMany>[0]['where']  = {
+            const where: Parameters<typeof models.note.findMany>[0]['where'] = {
                 AND: [
                     ...included.map(keyword => ({
                         OR: [
@@ -262,17 +267,17 @@ export const noteResolvers: IResolvers = {
         }
     },
     Mutation: {
-        createNote: async (_, { title, content }: Note) => {
+        createNote: async (_, { note }: { note: NoteInput }) => {
             const $note = await models.note.create({
                 data: {
-                    title,
-                    content: decodeURIComponent(content)
+                    title: note.title,
+                    content: note.content
                 }
             });
-            if (content) {
+            if (note.content) {
                 const blocks = extractBlocksByType<{ id: string }>(
                     'tag',
-                    JSON.parse(decodeURIComponent(content))
+                    JSON.parse(note.content)
                 );
 
                 return await models.note.update({
@@ -283,17 +288,16 @@ export const noteResolvers: IResolvers = {
 
             return $note;
         },
-        updateNote: async (_, { id, title, content }: Note) => {
+        updateNote: async (_, { id, note }: { id: number; note: NoteInput }) => {
             const blocks = extractBlocksByType<{ id: string }>(
                 'tag',
-                JSON.parse(decodeURIComponent(content))
+                JSON.parse(note.content)
             );
 
             const $note = await models.note.update({
                 where: { id: Number(id) },
                 data: {
-                    title,
-                    content: decodeURIComponent(content),
+                    ...note,
                     tags: { set: blocks.map(block => ({ id: Number(block.props.id) })) }
                 }
             });

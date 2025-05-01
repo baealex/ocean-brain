@@ -3,6 +3,7 @@ import { Suspense, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { useQuery } from '@tanstack/react-query';
+import { toast } from '@baejino/ui';
 
 import { Button, Container, Dropdown, Skeleton } from '~/components/shared';
 import * as Icon from '~/components/icon';
@@ -13,13 +14,13 @@ import useDebounce from '~/hooks/useDebounce';
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
 
 import { graphQuery } from '~/modules/graph-query';
-
 import { getNoteURL } from '~/modules/url';
-import { toast } from '@baejino/ui';
 
 import type { EditorRef } from '~/components/shared/Editor';
 import Editor from '~/components/shared/Editor';
 import { BackReferences } from '~/components/entities';
+
+import { updateNote } from '~/apis/note.api';
 
 export default function Note() {
     const { id } = useParams();
@@ -66,21 +67,11 @@ export default function Note() {
             return;
         }
         mountEvent(async () => {
-            const response = await graphQuery<{
-                updateNote: {
-                    id: string;
-                    title: string;
-                    content: string;
-                };
-            }>(`
-                mutation {
-                    updateNote(id: "${id}", title: "${title}", content: "${encodeURIComponent(content)}") {
-                        id
-                        title
-                        content
-                    }
-                }
-            `);
+            const response = await updateNote({
+                id,
+                title,
+                content
+            });
 
             if (response.type === 'error') {
                 toast(response.errors[0].message);

@@ -117,36 +117,24 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
         setIsMenuOpen(false);
     }, [location.pathname]);
 
-    const background = theme === 'light' ? customize?.color || '#FCEBAF' : '#1e1f22';
-
-    const colorArray = [
-        '#FCEBAF',
-        '#B2E0B2',
-        '#FFB3C1',
-        '#FFCCB3',
-        '#A4D8E1',
-        '#E1B7E1',
-        '#A4DBD6',
-        '#E1C6E7'
-    ];
-
     return (
         <div className={cx('SiteLayout')}>
             <div className="md:hidden">
                 <button
                     type="button"
-                    style={{ background }}
                     className={cx('menu')}
                     onClick={() => setIsMenuOpen(prev => !prev)}>
                     <Icon.Menu className="h-6 w-6" />
                 </button>
             </div>
-            <div style={{ background }} className={cx('side', { 'open': isMenuOpen })}>
+            <div className={cx('side', { 'open': isMenuOpen })}>
                 {customize?.heroBanner && (
                     <img
                         width="100%"
                         style={{
                             width: '100%',
+                            padding: '8px',
+                            borderRadius: '24px',
                             filter: theme === 'dark' ? 'brightness(.8) contrast(1.2)' : undefined
                         }}
                         onClick={async () => {
@@ -158,7 +146,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                         src={customize.heroBanner}
                     />
                 )}
-                <div className="mt-3 p-3">
+                <div className="p-3">
                     <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
                         <div className="flex gap-3">
                             <div style={{ gridTemplateColumns: '40px 1fr 32px' }} className="grid flex-1 bg-white dark:bg-zinc-800 rounded-lg shadow-md">
@@ -221,27 +209,18 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                         )}
                     </form>
                 </div>
-                <div className={cx('flex', 'flex-col', 'gap-2', 'p-3')}>
+
+                <div className={cx('p-3', 'flex', 'flex-col', 'gap-2')}>
                     <button
-                        className="font-bold flex gap-2 items-center bg-black shadow-lg text-white p-2 rounded-lg"
+                        className="font-bold flex gap-2 items-center p-2 rounded-lg bg-black text-white w-full"
                         onClick={() => onCreate()}>
                         <Icon.Pencil className="w-4" /> Capture
                     </button>
-                    {NAVIGATION_ITEMS.map((item) => (
-                        <Link key={item.path} to={item.path}>
-                            <div className={cx('font-bold', 'p-2', 'flex items-center gap-2', 'rounded-lg', { 'bg-zinc-50 dark:bg-zinc-900 shadow-lg': location.pathname === item.path })}>
-                                <item.icon className="w-4" />
-                                {item.name}
-                            </div>
-                        </Link>
-                    ))}
-                </div>
-                <div className={cx('p-3')}>
-                    <div className={cx('font-bold', 'text-xs', 'flex', 'items-center', 'gap-2', 'p-2')}>
+                    <div className={cx('font-bold', 'flex', 'items-center', 'gap-2', 'p-2')}>
                         <Icon.Pin className="w-4" />
-                        PINNED
+                        Pinned
                     </div>
-                    <div className="flex flex-col gap-2 mt-1 pl-8">
+                    <div className="flex flex-col gap-2 pl-12">
                         <Suspense
                             fallback={(
                                 <>
@@ -251,7 +230,13 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                             )}>
                             <PinnedNotes
                                 render={(notes) => notes?.map((note) => (
-                                    <Link key={note.id} className={cx({ 'opacity-30': location.pathname === `/${note.id}` })} to={`/${note.id}`}>
+                                    <Link
+                                        key={note.id}
+                                        className={cx('list-item', {
+                                            'opacity-100': location.pathname === `/${note.id}`,
+                                            'opacity-50': location.pathname !== `/${note.id}`
+                                        })}
+                                        to={`/${note.id}`}>
                                         {note.title}
                                     </Link>
                                 ))}
@@ -259,32 +244,22 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                         </Suspense>
                     </div>
                 </div>
-                {theme === 'light' && (
-                    <div className="flex flex-wrap p-3 gap-4 justify-center mt-5">
-                        {colorArray.map((colorCode, index) => (
-                            <div
-                                key={index}
-                                onClick={async () => {
-                                    await updateCustomize({ color: colorCode });
-                                    await queryClient.invalidateQueries({ queryKey: ['customize'] });
-                                }}
-                                style={{
-                                    backgroundColor: colorCode,
-                                    width: '10px',
-                                    height: '10px',
-                                    borderRadius: '50%',
-                                    border: '1px solid #000',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    cursor: 'pointer'
-                                }}
-                            />
-                        ))}
-                    </div>
-                )}
             </div>
             <div className={cx('center')}>
+                <div className={cx('top')}>
+                    <div className={cx('top-content')}>
+                        <div className={cx('flex', 'gap-5', 'p-3')}>
+                            {NAVIGATION_ITEMS.map((item) => (
+                                <Link key={item.path} to={item.path}>
+                                    <div className={cx('flex items-center gap-2 text-sm', { 'opacity-50': location.pathname !== item.path }, { 'opacity-100': location.pathname === item.path })}>
+                                        <item.icon className="size-4" />
+                                        {item.name}
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    </div>
+                </div>
                 <div className={cx('content')}>
                     {children}
                 </div>

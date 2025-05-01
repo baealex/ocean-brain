@@ -32,24 +32,12 @@ export const __NAME__TypeDefs = `
 export const __NAME__Resolvers: IResolvers = {
     Query: {
         all__NAME__UPPER__s: models.__NAME__.findMany,
-        __NAME__: (_, { id }: __NAME__UPPER__) => models.__NAME__.findUnique({
-            where: {
-                id: Number(id),
-            },
-        }),
+        __NAME__: (_, { id }: __NAME__UPPER__) => models.__NAME__.findUnique({ where: { id: Number(id) } })
     },
     Mutation: {
         create__NAME__UPPER__: async (_, { }: __NAME__UPPER__) => {
-            return models.__NAME__.create({
-                data: {
-
-                },
-            });
+            return models.__NAME__.create({ data: {} });
         },
-        delete__NAME__UPPER__: (_, { id }: __NAME__UPPER__) => models.__NAME__.delete({
-            where: {
-                id: Number(id),
-            },
-        }).then(() => true)
-    },
+        delete__NAME__UPPER__: (_, { id }: __NAME__UPPER__) => models.__NAME__.delete({ where: { id: Number(id) } }).then(() => true)
+    }
 };

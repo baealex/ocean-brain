@@ -53,6 +53,6 @@
         "supertest": "^7.1.0",
         "ts-jest": "^29.3.0",
         "tsconfig-paths": "^4.2.0",
-        "typescript": "^5.8.2"
+        "typescript": "^5.7.3"
     }
 }

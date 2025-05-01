@@ -3,23 +3,24 @@ import { Suspense, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { useQuery } from '@tanstack/react-query';
+import { toast } from '@baejino/ui';
 
 import { Button, Container, Dropdown, Skeleton } from '~/components/shared';
 import * as Icon from '~/components/icon';
 
-import type { Note } from '~/models/Note';
+import type { Note } from '~/models/note.model';
 
 import useDebounce from '~/hooks/useDebounce';
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
 
 import { graphQuery } from '~/modules/graph-query';
-
 import { getNoteURL } from '~/modules/url';
-import { toast } from '@baejino/ui';
 
 import type { EditorRef } from '~/components/shared/Editor';
 import Editor from '~/components/shared/Editor';
 import { BackReferences } from '~/components/entities';
+
+import { updateNote } from '~/apis/note.api';
 
 export default function Note() {
     const { id } = useParams();
@@ -38,13 +39,14 @@ export default function Note() {
         queryKey: ['note', id],
         async queryFn() {
             const response = await graphQuery<{
-                note: Pick<Note, 'title' | 'content' | 'pinned'>;
+                note: Pick<Note, 'title' | 'content' | 'pinned' | 'updatedAt'>;
             }>(`
                 query {
                     note(id: "${id}") {
                         title
                         pinned
                         content
+                        updatedAt
                     }
                 }
             `);
@@ -54,6 +56,7 @@ export default function Note() {
             }
             setTitle(response.note.title);
             setIsPinned(response.note.pinned);
+            setLastSavedAtMap(prev => Object.assign({}, prev, { [id!]: dayjs(Number(response.note.updatedAt)).format('YYYY-MM-DD HH:mm:ss') }));
             return response.note;
 
         },
@@ -66,21 +69,11 @@ export default function Note() {
             return;
         }
         mountEvent(async () => {
-            const response = await graphQuery<{
-                updateNote: {
-                    id: string;
-                    title: string;
-                    content: string;
-                };
-            }>(`
-                mutation {
-                    updateNote(id: "${id}", title: "${title}", content: "${encodeURIComponent(content)}") {
-                        id
-                        title
-                        content
-                    }
-                }
-            `);
+            const response = await updateNote({
+                id,
+                title,
+                content
+            });
 
             if (response.type === 'error') {
                 toast(response.errors[0].message);
@@ -131,7 +124,7 @@ export default function Note() {
                 <>
                     <div
                         style={{ zIndex: '1001' }}
-                        className="sticky top-4 mb-8 flex items-center justify-between gap-3 p-3 px-5 shadow-md border border-solid border-black dark:border-zinc-500 bg-white bg-opacity-75 dark:bg-zinc-900 dark:bg-opacity-75">
+                        className="sticky top-20 mb-8 flex items-center justify-between gap-3 p-3 px-5 shadow-md border border-solid border-black dark:border-zinc-500 bg-white bg-opacity-75 dark:bg-zinc-900 dark:bg-opacity-75">
                         <div className="flex flex-col flex-1 gap-2">
                             <input
                                 ref={titleRef}
@@ -162,8 +155,8 @@ export default function Note() {
                                     {
                                         name: 'Clone this note',
                                         onClick: () => onCreate(
-                                            '[Clone] ' + (titleRef.current?.value || 'untitled'),
-                                            encodeURIComponent(editorRef?.current?.getContent() || '')
+                                            titleRef.current?.value || 'untitled',
+                                            editorRef?.current?.getContent() || ''
                                         )
                                     },
                                     {

@@ -18,6 +18,8 @@ import { createPlaceholder, deletePlaceholder, fetchPlaceholders } from '~/apis/
 
 import type { Placeholder } from '~/models/placeholder.model';
 
+const cardClassName = 'bg-gray-100 dark:bg-zinc-900 flex gap-2 items-center justify-between p-4 rounded-md';
+
 const Placeholder = () => {
     const queryClient = useQueryClient();
 
@@ -73,7 +75,7 @@ const Placeholder = () => {
 
     return (
         <div>
-            <Callout>
+            <Callout className="mb-4">
                 <div className="flex gap-2 items-center justify-between">
                     <span>Placeholders will be replaced with new note data during cloning.</span>
                     <Button onClick={() => setIsModalOpen(true)}>Add Placeholder</Button>
@@ -83,21 +85,21 @@ const Placeholder = () => {
                 <button
                     type="button"
                     onClick={() => setIsFixedListOpen(!isFixedListOpen)}
-                    className="w-full p-2 flex items-center justify-between rounded-md bg-gray-100 dark:bg-zinc-800">
+                    className={cardClassName}>
                     <div>System Placeholders</div>
                     <div className="w-6 h-6">
                         {isFixedListOpen ? <Icon.TriangleUp /> : <Icon.TriangleDown />}
                     </div>
                 </button>
                 {isFixedListOpen && fixedPlaceholders.map(placeholder => (
-                    <div key={placeholder.name} className="flex gap-2 items-center justify-between p-2 rounded-md bg-gray-100 dark:bg-zinc-800">
+                    <div key={placeholder.name} className={cardClassName}>
                         <div className="flex gap-2 items-center">
                             {placeholder.name} <span className="text-gray-500 text-xs">{PLACEHOLDER_PREFIX}{placeholder.template}{PLACEHOLDER_SUFFIX} will be '{placeholder.replacement}'</span>
                         </div>
                     </div>
                 ))}
                 {!isLoading && placeholders?.placeholders && placeholders.placeholders.map(placeholder => (
-                    <div key={placeholder.id} className="flex gap-2 items-center justify-between p-2 rounded-md bg-gray-100 dark:bg-zinc-800">
+                    <div key={placeholder.id} className={cardClassName}>
                         <div className="flex gap-2 items-center">
                             {placeholder.name} <span className="text-gray-500 text-xs">{PLACEHOLDER_PREFIX}{placeholder.template}{PLACEHOLDER_SUFFIX} will be '{placeholder.replacement}'</span>
                         </div>

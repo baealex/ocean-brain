@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { graphQuery } from '~/modules/graph-query';
 
-import type { Image } from '~/models/Image';
+import type { Image } from '~/models/image.model';
 
 export function fetchImages({
     limit = 50,

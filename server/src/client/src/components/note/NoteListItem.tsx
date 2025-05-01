@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Badge } from '~/components/shared';
 import * as Icon from '~/components/icon';
 
-import type { Note } from '~/models/Note';
+import type { Note } from '~/models/note.model';
 
 import { timeSince } from '~/modules/time';
 import { getNoteURL, getTagURL } from '~/modules/url';

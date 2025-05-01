@@ -1,42 +1,51 @@
 generator client {
-    provider = "prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-    provider = "sqlite"
-    url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
-model Customization {
-    id         Int      @id @default(1)
-    color      String
-    heroBanner String
-    createdAt  DateTime @default(now())
-    updatedAt  DateTime @updatedAt
+model Cache {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Note {
-    id        Int      @id @default(autoincrement())
-    title     String
-    content   String
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-    pinned    Boolean  @default(false)
-    tags      Tag[]
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  pinned    Boolean  @default(false)
+  tags      Tag[]    @relation("NoteToTag")
 }
 
 model Image {
-    id        Int      @id @default(autoincrement())
-    url       String
-    hash      String
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+  id        Int      @id @default(autoincrement())
+  url       String
+  hash      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Tag {
-    id        Int      @id @default(autoincrement())
-    name      String
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-    notes     Note[]
+  id        Int      @id @default(autoincrement())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  notes     Note[]   @relation("NoteToTag")
+}
+
+model Placeholder {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  template    String
+  replacement String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

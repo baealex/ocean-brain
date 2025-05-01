@@ -7,7 +7,7 @@ import * as Icon from '~/components/icon';
 
 import { deleteImage, fetchImage } from '~/apis/image.api';
 import { fetchImageNotes } from '~/apis/note.api';
-import { updateCustomize } from '~/apis/customize.api';
+import { setServerCache } from '~/apis/server-cache.api';
 
 export default function ImageDetail() {
     const { id } = useParams();
@@ -71,8 +71,8 @@ export default function ImageDetail() {
                         <button
                             className="w-full h-10 rounded-lg text-sm font-bold"
                             onClick={async () => {
-                                await updateCustomize({ heroBanner: image.url });
-                                await queryClient.invalidateQueries({ queryKey: ['customize'] });
+                                await setServerCache('heroBanner', image.url);
+                                await queryClient.invalidateQueries({ queryKey: ['heroBanner'] });
                             }}>
                             <div className="flex items-center justify-center gap-1">
                                 <Icon.Heart className="h-4 w-4 fill-red-500" />

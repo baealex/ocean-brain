@@ -32,10 +32,10 @@ body,
 }
 
 html {
-    background-color: #fff;
+    background: #eef3fa;
 
     &.dark {
-        background-color: rgb(35, 36, 40);
+        background-color: #1e1f22;
         color: #eee;
     }
 }
@@ -80,6 +80,11 @@ div:focus {
 
 .bn-file-block-content-wrapper {
     max-width: 100%;
+}
+
+.bn-block-outer:not([data-prev-type])>.bn-block>.bn-block-content[data-content-type="numberedListItem"]::before {
+    content: var(--index) ".";
+    white-space: nowrap;
 }
 
 .window-modal__container {

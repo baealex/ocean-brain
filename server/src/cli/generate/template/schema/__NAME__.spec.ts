@@ -4,11 +4,7 @@ import app from '~/app';
 import models from '~/models';
 
 beforeEach(async () => {
-    await models.__NAME__.create({
-        data: {
-
-        },
-    });
+    await models.__NAME__.create({ data: {} });
 });
 
 afterEach(async () => {
@@ -24,7 +20,7 @@ describe('__NAME__UPPER__ Schema', () => {
                         id
                     }
                 }
-            `,
+            `
         });
 
         return res.body.data.all__NAME__UPPER__s;
@@ -38,7 +34,7 @@ describe('__NAME__UPPER__ Schema', () => {
                         id
                     }
                 }
-            `,
+            `
         });
 
         expect(res.body.data.all__NAME__UPPER__s).toHaveLength(1);
@@ -53,7 +49,7 @@ describe('__NAME__UPPER__ Schema', () => {
                         id
                     }
                 }
-            `,
+            `
         });
 
         expect(res.body.data.__NAME__.name).toBe('Test __NAME__UPPER__ 1');
@@ -67,7 +63,7 @@ describe('__NAME__UPPER__ Schema', () => {
                         id
                     }
                 }
-            `,
+            `
         });
 
         expect(res.body.data.create__NAME__UPPER__.name).toBe('Test __NAME__UPPER__ 3');
@@ -80,7 +76,7 @@ describe('__NAME__UPPER__ Schema', () => {
                 mutation {
                     delete__NAME__UPPER__(id: ${id})
                 }
-            `,
+            `
         });
 
         expect(res.body.data.delete__NAME__UPPER__).toBe(true);

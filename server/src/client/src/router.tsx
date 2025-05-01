@@ -10,6 +10,7 @@ import Search from '~/pages/Search';
 import TagNotes from '~/pages/TagNotes';
 import Tag from '~/pages/Tag';
 import Calendar from '~/pages/Calendar';
+import Placeholder from '~/pages/Placeholder';
 
 const router = createBrowserRouter([
     {
@@ -51,6 +52,10 @@ const router = createBrowserRouter([
             {
                 path: '/manage-image/:id',
                 element: <ImageDetail />
+            },
+            {
+                path: '/placeholder',
+                element: <Placeholder />
             }
         ]
     }

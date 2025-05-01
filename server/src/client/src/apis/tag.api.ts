@@ -1,4 +1,4 @@
-import type { Tag } from '~/models/Tag';
+import type { Tag } from '~/models/tag.model';
 import { graphQuery } from '~/modules/graph-query';
 
 export function fetchTags({

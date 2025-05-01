@@ -18,7 +18,7 @@ import { useTheme } from '~/store/theme';
 
 import { fetchNotes } from '~/apis/note.api';
 import { fetchTags } from '~/apis/tag.api';
-import { getCustomize, updateCustomize } from '~/apis/customize.api';
+import { getServerCache, setServerCache } from '~/apis/server-cache.api';
 import { confirm } from '@baejino/ui';
 import { PinnedNotes } from '~/components/entities';
 
@@ -70,10 +70,10 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
 
     const { onCreate } = useNoteMutate();
 
-    const { data: customize } = useQuery({
-        queryKey: ['customize'],
+    const { data: heroBanner } = useQuery({
+        queryKey: ['heroBanner'],
         async queryFn() {
-            return getCustomize();
+            return getServerCache('heroBanner');
         }
     });
 
@@ -128,7 +128,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                 </button>
             </div>
             <div className={cx('side', { 'open': isMenuOpen })}>
-                {customize?.heroBanner && (
+                {heroBanner && (
                     <img
                         width="100%"
                         style={{
@@ -139,11 +139,11 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                         }}
                         onClick={async () => {
                             if (await confirm('Do you want to remove this hero banner?')) {
-                                await updateCustomize({ heroBanner: '' });
-                                await queryClient.invalidateQueries({ queryKey: ['customize'] });
+                                await setServerCache('heroBanner', '');
+                                await queryClient.invalidateQueries({ queryKey: ['heroBanner'] });
                             }
                         }}
-                        src={customize.heroBanner}
+                        src={heroBanner}
                     />
                 )}
                 <div className="p-3">

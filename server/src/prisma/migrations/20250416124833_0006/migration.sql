@@ -1,3 +1,8 @@
+-- DropTable
+PRAGMA foreign_keys=off;
+DROP TABLE "Customization";
+PRAGMA foreign_keys=on;
+
 -- CreateTable
 CREATE TABLE "Cache" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
@@ -6,6 +11,9 @@ CREATE TABLE "Cache" (
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL
 );
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Cache_key_key" ON "Cache"("key");
 
 -- CreateTable
 CREATE TABLE "Placeholder" (

@@ -1,6 +1,6 @@
 # Image for client build
 
-FROM node:21-alpine as client
+FROM node:22-alpine as client
 
 WORKDIR /app
 
@@ -15,7 +15,7 @@ RUN npm run build
 
 # Image for server build
 
-FROM node:21-alpine as server
+FROM node:22-alpine as server
 
 WORKDIR /app
 
@@ -29,7 +29,7 @@ RUN rm -rf client
 
 # Image for end user
 
-FROM node:21-alpine
+FROM node:22-alpine
 
 WORKDIR /app
 

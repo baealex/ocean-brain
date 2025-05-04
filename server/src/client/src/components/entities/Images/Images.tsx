@@ -17,7 +17,6 @@ const Images = (props: ImagesProps) => {
     const { data } = useSuspenseQuery({
         queryKey: ['images', props.searchParams.offset, props.searchParams.limit],
         async queryFn() {
-            await new Promise(resolve => setTimeout(resolve, 1000));
             const response = await fetchImages({
                 offset: props.searchParams.offset,
                 limit: props.searchParams.limit

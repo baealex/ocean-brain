@@ -17,7 +17,6 @@ const Tags = (props: TagsProps) => {
     const { data } = useSuspenseQuery({
         queryKey: ['tags', props.searchParams.offset, props.searchParams.limit],
         async queryFn() {
-            await new Promise(resolve => setTimeout(resolve, 1000));
             const response = await fetchTags({
                 offset: props.searchParams.offset,
                 limit: props.searchParams.limit

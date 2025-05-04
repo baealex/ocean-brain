@@ -21,7 +21,6 @@ const Notes = (props: NotesProps) => {
     const { data } = useSuspenseQuery({
         queryKey: createQueryKey(props.searchParams),
         async queryFn() {
-            await new Promise(resolve => setTimeout(resolve, 1000));
             const response = await fetchNotes(props.searchParams);
             if (response.type === 'error') {
                 throw response;

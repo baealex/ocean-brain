@@ -1,6 +1,6 @@
 # Image for client build
 
-FROM node:21-alpine as client
+FROM node:22-alpine as client
 
 WORKDIR /app
 

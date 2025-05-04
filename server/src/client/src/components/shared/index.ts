@@ -3,6 +3,7 @@ export { default as Button } from './Button';
 export { default as Callout } from './Callout';
 export { default as Container } from './Container';
 export { default as Dropdown } from './Dropdown';
+export { default as Empty } from './Empty';
 export { default as FallbackRender } from './FallbackRender';
 export { default as Highlight } from './Highlight';
 export { default as Image } from './Image';

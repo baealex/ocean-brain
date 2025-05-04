@@ -1,9 +1,10 @@
+import { Suspense } from 'react';
 import { Helmet } from 'react-helmet';
-import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 
-import { fetchTags } from '~/apis/tag.api';
-import { FallbackRender, Pagination } from '~/components/shared';
+import { Empty, FallbackRender, Pagination, Skeleton } from '~/components/shared';
+import { Tags } from '~/components/entities';
+
 import { getRandomBackground } from '~/modules/color';
 
 export default function Tag() {
@@ -12,48 +13,60 @@ export default function Tag() {
     const limit = 60;
     const page = Number(searchParams.get('page')) || 1;
 
-    const { data } = useQuery({
-        queryKey: ['tags', page],
-        async queryFn() {
-            const response = await fetchTags({
-                offset: (page - 1) * limit,
-                limit
-            });
-            if (response.type === 'error') {
-                throw response;
-            }
-            return response.allTags;
-        }
-    });
-
     return (
         <>
             <Helmet>
                 <title>Tags | Ocean Brain</title>
             </Helmet>
-            <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
-                {data?.tags && data.tags.map((tag) => (
-                    <Link to={`/tag/${tag.id}`} className="text-zinc-700 dark:text-zinc-300">
-                        <div key={tag.id} className={`${getRandomBackground(tag.name)} p-4 relative rounded-2xl`}>
-                            {tag.name} ({tag.referenceCount})
-                        </div>
-                    </Link>
-                ))}
-            </div>
-            <FallbackRender fallback={null}>
-                {data?.totalCount && limit < data.totalCount && (
-                    <Pagination
-                        page={page}
-                        last={Math.ceil(data.totalCount / limit)}
-                        onChange={(page) => {
-                            setSearchParams(searchParams => {
-                                searchParams.set('page', page.toString());
-                                return searchParams;
-                            });
-                        }}
-                    />
-                )}
-            </FallbackRender>
+            <Suspense
+                fallback={(
+                    <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
+                        <Skeleton height="56px" />
+                        <Skeleton height="56px" />
+                        <Skeleton height="56px" />
+                    </div>
+                )}>
+                <Tags
+                    searchParams={{
+                        offset: (page - 1) * limit,
+                        limit
+                    }}
+                    render={({ tags, totalCount }) => (
+                        <>
+                            <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
+                                {tags.map((tag) => (
+                                    <Link key={tag.id} to={`/tag/${tag.id}`} className="text-zinc-700 dark:text-zinc-300">
+                                        <div className={`${getRandomBackground(tag.name)} p-4 relative rounded-2xl`}>
+                                            {tag.name} ({tag.referenceCount})
+                                        </div>
+                                    </Link>
+                                ))}
+                            </div>
+                            <FallbackRender
+                                fallback={(
+                                    <Empty
+                                        icon="🤔"
+                                        title="There are no tags"
+                                        description="Try to tag some notes using <@> key."
+                                    />
+                                )}>
+                                {totalCount && limit < totalCount && (
+                                    <Pagination
+                                        page={page}
+                                        last={Math.ceil(totalCount / limit)}
+                                        onChange={(page) => {
+                                            setSearchParams(searchParams => {
+                                                searchParams.set('page', page.toString());
+                                                return searchParams;
+                                            });
+                                        }}
+                                    />
+                                )}
+                            </FallbackRender>
+                        </>
+                    )}
+                />
+            </Suspense>
         </>
     );
 }

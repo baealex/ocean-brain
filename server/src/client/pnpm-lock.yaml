@@ -12,8 +12,8 @@ importers:
         specifier: ^0.0.3
         version: 0.0.3
       '@baejino/icon':
-        specifier: ^0.0.7
-        version: 0.0.7(react@18.3.1)
+        specifier: ^0.0.8
+        version: 0.0.8(react@18.3.1)
       '@baejino/style':
         specifier: ^0.0.6
         version: 0.0.6
@@ -744,8 +744,8 @@ packages:
   '@baejino/handy@0.0.3':
     resolution: {integrity: sha512-eCbIJzQTSdUsIrnrllncunp6xDjilSBst0JEhdMCMRuWO4qCmLtm/fj32PvjANEGO/vAPVop9ZsvFESorwLy0g==}
 
-  '@baejino/icon@0.0.7':
-    resolution: {integrity: sha512-/BVA/4UOG1fHzJmVVtsEyRyNWzTbhbtSPaeb+tQtluEPHRsz2gaUjSqC0K6oaNR0Wu62RgqfWILQikMMCrP2Zw==}
+  '@baejino/icon@0.0.8':
+    resolution: {integrity: sha512-18QA1+UC/d6NqMGuP9mVSZQDU0y02IV2k6ujvx0ACWtdv7RfPujKkI/OoDpmeNovSiHOtKTRLedNa7DGkZzrLw==}
     peerDependencies:
       react: '>=18'
 
@@ -5338,7 +5338,7 @@ snapshots:
 
   '@baejino/handy@0.0.3': {}
 
-  '@baejino/icon@0.0.7(react@18.3.1)':
+  '@baejino/icon@0.0.8(react@18.3.1)':
     dependencies:
       react: 18.3.1
 

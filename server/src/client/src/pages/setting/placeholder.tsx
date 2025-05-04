@@ -78,7 +78,9 @@ const Placeholder = () => {
             <Callout className="mb-4">
                 <div className="flex gap-2 items-center justify-between">
                     <span>Placeholders will be replaced with new note data during cloning.</span>
-                    <Button onClick={() => setIsModalOpen(true)}>Add Placeholder</Button>
+                    <Button onClick={() => setIsModalOpen(true)}>
+                        <Icon.Plus width={20} height={20} />
+                    </Button>
                 </div>
             </Callout>
             <div className="flex flex-col gap-3 mt-3">

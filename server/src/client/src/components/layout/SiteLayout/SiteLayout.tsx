@@ -40,7 +40,7 @@ const NAVIGATION_ITEMS = [
     {
         name: 'Tags',
         path: '/tag',
-        icon: Icon.Bookmark
+        icon: Icon.Tag
     },
     {
         name: 'Setting',

@@ -4,7 +4,7 @@ interface FallbackRenderProps {
 }
 
 const FallbackRender = ({ children, fallback }: FallbackRenderProps) => {
-    if (!children || children === 0) {
+    if (!children) {
         return fallback;
     }
     return children;

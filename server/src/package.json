@@ -12,8 +12,7 @@
         "build:with": "concurrently \"npm run build\" \"npm run build:client\"",
         "lint": "eslint src",
         "test": "DATABASE_URL=file:./test.sqlite3 ts-node script/_test.ts",
-        "create-schema": "ts-node cli/create-schema.ts",
-        "create-component": "ts-node cli/create-component.ts"
+        "generate": "ts-node cli/generate/index.ts"
     },
     "repository": {
         "type": "git",

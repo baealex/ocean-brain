@@ -12,7 +12,7 @@
     },
     "dependencies": {
         "@baejino/handy": "^0.0.3",
-        "@baejino/icon": "^0.0.7",
+        "@baejino/icon": "^0.0.8",
         "@baejino/style": "^0.0.6",
         "@baejino/ui": "^0.0.9",
         "@blocknote/core": "^0.29.1",

@@ -1,12 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 
-const mockPrisma = new PrismaClient({
-    datasources: {
-        db: {
-            url: 'file:test.sqlite3',
-        },
-    },
-});
+const mockPrisma = new PrismaClient({ datasources: { db: { url: 'file:test.sqlite3' } } });
 
 jest.mock('~/models', () => mockPrisma);
 

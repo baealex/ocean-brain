@@ -53,11 +53,17 @@ export function fetchNotes({
     );
 }
 
+export interface FetchTagNotesParams {
+    query?: string;
+    limit?: number;
+    offset?: number;
+}
+
 export function fetchTagNotes({
     query = '',
     limit = 25,
     offset = 0
-}) {
+}: FetchTagNotesParams = {}) {
     return graphQuery<{
         tagNotes: {
             totalCount: number;

@@ -26,13 +26,11 @@ export default function Home() {
             </Helmet>
             <Suspense
                 fallback={(
-                    <>
-                        <div className="grid gap-6 mt-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
-                            <Skeleton height="112px" />
-                            <Skeleton height="112px" />
-                            <Skeleton height="112px" />
-                        </div>
-                    </>
+                    <div className="grid gap-6 mt-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
+                        <Skeleton height="112px" />
+                        <Skeleton height="112px" />
+                        <Skeleton height="112px" />
+                    </div>
                 )}>
                 <Notes
                     searchParams={{

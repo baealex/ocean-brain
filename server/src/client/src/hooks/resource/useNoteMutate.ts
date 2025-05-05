@@ -32,6 +32,7 @@ const useNoteMutate = () => {
         try {
             await pinNote(id, !isPinned);
             await queryClient.invalidateQueries({ queryKey: ['notes'] });
+            await queryClient.invalidateQueries({ queryKey: ['tag-notes'] });
             await queryClient.invalidateQueries({ queryKey: [getPinnedNoteQueryKey()] });
             callback?.();
         } catch (error) {
@@ -43,6 +44,7 @@ const useNoteMutate = () => {
         if (await confirm('Are you really sure?')) {
             await deleteNote(id);
             await queryClient.invalidateQueries({ queryKey: ['notes'] });
+            await queryClient.invalidateQueries({ queryKey: ['tag-notes'] });
             await queryClient.invalidateQueries({ queryKey: [getPinnedNoteQueryKey()] });
             callback?.();
         }

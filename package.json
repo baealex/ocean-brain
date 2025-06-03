@@ -1,0 +1,19 @@
+{
+  "name": "ocean-brain",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "install:client": "pnpm install --prefix server/src/client",
+    "install:server": "pnpm install --prefix server/src",
+    "install": "npm run install:client && npm run install:server",
+    "dev:client": "npm run dev --prefix server/src/client",
+    "dev:server": "npm run dev --prefix server/src",
+    "dev": "npm run dev:with --prefix server/src",
+    "build:client": "npm run build --prefix server/src/client",
+    "start:server": "npm run start --prefix server/src",
+    "start": "npm run build:client && npm run start:server"
+  },
+  "dependencies": {
+    "pnpm": "^10.10.0"
+  }
+}

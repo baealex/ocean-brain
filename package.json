@@ -1,0 +1,30 @@
+{
+    "name": "ocean-brain",
+    "private": true,
+    "version": "1.0.0",
+    "scripts": {
+        "outdated:client": "pnpm outdated --prefix server/src/client",
+        "outdated:server": "pnpm outdated --prefix server/src",
+        "update": "npm run update:client && npm run update:server",
+        "update:client": "pnpm update --save --prefix server/src/client",
+        "update:server": "pnpm update --save --prefix server/src",
+        "upgrade": "npm run upgrade:client && npm run upgrade:server",
+        "upgrade:client": "pnpm upgrade --save --prefix server/src/client",
+        "upgrade:server": "pnpm upgrade --save --prefix server/src",
+        "install:client": "pnpm install --prefix server/src/client",
+        "install:server": "pnpm install --prefix server/src",
+        "install": "npm run install:client && npm run install:server",
+        "dev:client": "npm run dev --prefix server/src/client",
+        "dev:server": "npm run dev --prefix server/src",
+        "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
+        "build:client": "npm run build --prefix server/src/client",
+        "start:server": "npm run start --prefix server/src",
+        "start": "npm run build:client && npm run start:server"
+    },
+    "dependencies": {
+        "pnpm": "^10.10.0"
+    },
+    "devDependencies": {
+        "concurrently": "^9.1.2"
+    }
+}

@@ -4,6 +4,7 @@ import { imageResolvers, imageTypeDefs } from './image';
 import { tagResolvers, tagTypeDefs } from './tag';
 import { placeholderResolvers, placeholderTypeDefs } from './placeholder';
 import { cacheResolvers, cacheTypeDefs } from './cache';
+import { reminderResolvers, reminderTypeDefs } from './reminder';
 
 const schema = makeExecutableSchema({
     typeDefs: [
@@ -11,14 +12,16 @@ const schema = makeExecutableSchema({
         noteTypeDefs,
         imageTypeDefs,
         tagTypeDefs,
-        placeholderTypeDefs
+        placeholderTypeDefs,
+        reminderTypeDefs
     ],
     resolvers: [
         cacheResolvers,
         noteResolvers,
         imageResolvers,
         tagResolvers,
-        placeholderResolvers
+        placeholderResolvers,
+        reminderResolvers
     ]
 });
 

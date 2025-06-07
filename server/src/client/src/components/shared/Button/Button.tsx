@@ -6,12 +6,16 @@ import React from 'react';
 import { Spinner } from '~/components/icon';
 
 interface ButtonProps {
+    variant?: 'primary' | 'secondary';
     children: React.ReactNode;
+    className?: string;
     isLoading?: boolean;
     onClick?: () => void;
 }
 
-const Button = ({ children, isLoading, onClick }: ButtonProps) => {
+const Button = ({
+    children, isLoading, onClick, variant = 'primary', className
+}: ButtonProps) => {
     return (
         <button
             className={cx(
@@ -23,10 +27,11 @@ const Button = ({ children, isLoading, onClick }: ButtonProps) => {
                 'justify-center',
                 'gap-1',
                 isLoading ? 'cursor-not-allowed' : 'cursor-pointer',
-                isLoading ? 'bg-zinc-950 bg-opacity-50' : 'bg-zinc-950',
+                isLoading ? 'bg-zinc-950 bg-opacity-50' : variant === 'primary' ? 'bg-zinc-950' : 'bg-zinc-950 bg-opacity-50',
                 'text-white',
                 'font-bold',
-                'rounded-full'
+                'rounded-full',
+                className
             )}
             onClick={isLoading ? undefined : onClick}>
             {isLoading ? <Spinner className="animate-spin h-5 w-5 text-zinc-200" /> : children}

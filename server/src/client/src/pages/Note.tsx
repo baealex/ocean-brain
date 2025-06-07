@@ -19,6 +19,7 @@ import { getNoteURL } from '~/modules/url';
 import type { EditorRef } from '~/components/shared/Editor';
 import Editor from '~/components/shared/Editor';
 import { BackReferences } from '~/components/entities';
+import { ReminderPanel } from '~/components/reminder';
 
 import { updateNote } from '~/apis/note.api';
 
@@ -180,6 +181,11 @@ export default function Note() {
                         onChange={handleChange}
                     />
                 </>
+            )}
+            {id && (
+                <Suspense fallback={<Skeleton height="100px" />}>
+                    <ReminderPanel noteId={id} />
+                </Suspense>
             )}
             <Suspense
                 fallback={(

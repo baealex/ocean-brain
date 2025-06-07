@@ -38,6 +38,11 @@ const NAVIGATION_ITEMS = [
         icon: Icon.Calendar
     },
     {
+        name: 'Reminders',
+        path: '/reminders',
+        icon: Icon.Bell
+    },
+    {
         name: 'Tags',
         path: '/tag',
         icon: Icon.Tag

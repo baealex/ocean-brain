@@ -3,14 +3,17 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@baejino/ui';
 
 import { createReminder, updateReminder, deleteReminder } from '~/apis/reminder.api';
+import type { ReminderPriority } from '~/models/reminder.model';
 
 export default function useReminderMutate() {
     const queryClient = useQueryClient();
 
-    const onCreate = useCallback(async (noteId: string, reminderDate: Date, onSuccess?: () => void) => {
+    const onCreate = useCallback(async (noteId: string, reminderDate: Date, priority: ReminderPriority = 'medium', onSuccess?: () => void, content?: string) => {
         const response = await createReminder({
             noteId,
-            reminderDate
+            reminderDate,
+            priority,
+            content
         });
 
         if (response.type === 'error') {
@@ -29,6 +32,8 @@ export default function useReminderMutate() {
     const onUpdate = useCallback(async (id: string, noteId: string, params: {
         reminderDate?: Date;
         completed?: boolean;
+        priority?: ReminderPriority;
+        content?: string;
     }, onSuccess?: () => void) => {
         const response = await updateReminder({
             id,

@@ -26,6 +26,7 @@ export default function Reminders({ noteId, searchParams, render }: RemindersPro
                                 id
                                 noteId
                                 reminderDate
+                                priority
                                 completed
                                 createdAt
                                 updatedAt

@@ -8,6 +8,7 @@ import Search from '~/pages/Search';
 import TagNotes from '~/pages/TagNotes';
 import Tag from '~/pages/Tag';
 import Calendar from '~/pages/Calendar';
+import Reminders from '~/pages/Reminders';
 
 import Setting from '~/pages/setting';
 import ManageImage from '~/pages/setting/manage-image';
@@ -30,6 +31,10 @@ const router = createBrowserRouter([
             {
                 path: '/calendar',
                 element: <Calendar />
+            },
+            {
+                path: '/reminders',
+                element: <Reminders />
             },
             {
                 path: '/search',

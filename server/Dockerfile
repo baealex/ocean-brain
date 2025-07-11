@@ -39,6 +39,7 @@ COPY --from=server /app/.env ./
 COPY --from=server /app/package.json ./
 COPY --from=server /app/pnpm-lock.yaml ./
 COPY --from=server /app/prisma ./prisma
+COPY --from=server /app/public ./public
 COPY --from=server /app/dist ./dist
 COPY --from=client /app/dist ./client/dist
 

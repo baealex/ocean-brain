@@ -1,4 +1,4 @@
-import { createThemeListener } from '@baejino/handy';
+import { handyMediaQuery } from '@baejino/handy';
 import { useEffect } from 'react';
 import { RouterProvider } from 'react-router-dom';
 
@@ -16,7 +16,7 @@ function App() {
         if (theme) {
             setTheme(theme);
         }
-        return createThemeListener(
+        return handyMediaQuery.listenThemeChange(
             isDark => setTheme(isDark ? 'dark' : 'light'),
             !theme
         );

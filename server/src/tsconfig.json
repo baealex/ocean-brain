@@ -4,16 +4,16 @@
         "esModuleInterop": true,
         "moduleResolution": "Node",
         "baseUrl": "src",
-        "target": "ES6",
+        "target": "es6",
+        "module": "CommonJS",
         "paths": {
             "~/*": [
                 "./*"
             ]
-        },
+        }
     },
     "include": [
-        "src/**/*",
-        "script/**/*"
+        "src/**/*"
     ],
     "ts-node": {
         "require": [

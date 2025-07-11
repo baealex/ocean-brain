@@ -3,55 +3,34 @@
     "version": "1.0.0",
     "description": "",
     "scripts": {
-        "dev": "ts-node script/_dev.ts",
-        "dev:client": "npm run dev --prefix client",
-        "dev:with": "concurrently \"npm run dev\" \"npm run dev:client\"",
-        "start": "ts-node script/_start.ts",
-        "build": "tsc",
-        "build:client": "npm run build --prefix client",
-        "build:with": "concurrently \"npm run build\" \"npm run build:client\"",
-        "lint": "eslint src",
-        "test": "DATABASE_URL=file:./test.sqlite3 ts-node script/_test.ts",
-        "generate": "ts-node cli/generate/index.ts"
-    },
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/baealex/my-express-template.git"
+        "dev": "npx prisma generate && nodemon --watch src --delay 1 --exec ts-node src/main.ts",
+        "build": "npx prisma generate && tsc",
+        "start": "npx prisma migrate dev && node dist/main.js",
+        "lint": "eslint src"
     },
     "author": "",
     "license": "ISC",
-    "bugs": {
-        "url": "https://github.com/baealex/my-express-template/issues"
-    },
-    "homepage": "https://github.com/baealex/my-express-template#readme",
     "dependencies": {
         "@graphql-tools/schema": "^10.0.23",
         "@graphql-tools/utils": "^10.8.6",
-        "@prisma/client": "^6.7.0",
-        "bcrypt": "^5.1.1",
+        "@prisma/client": "^6.11.1",
         "express": "^4.21.2",
         "express-session": "^1.18.1",
         "express-winston": "^4.2.0",
         "graphql-http": "^1.22.4",
-        "prisma": "^6.7.0",
+        "module-alias": "^2.2.3",
         "sqlite3": "^5.1.7",
-        "ts-node": "^10.9.2",
         "winston": "^3.17.0"
     },
     "devDependencies": {
         "@baejino/eslint-config": "^0.0.1",
-        "@types/express": "^4.17.21",
-        "@types/express-session": "^1.18.1",
-        "@types/jest": "^29.5.14",
-        "@types/supertest": "^6.0.3",
-        "concurrently": "^8.2.2",
+        "@types/express": "^4.17.23",
+        "@types/express-session": "^1.18.2",
         "eslint": "^8.57.1",
-        "eslint-plugin-jest": "^28.11.0",
-        "jest": "^29.7.0",
-        "nodemon": "^3.1.9",
-        "supertest": "^7.1.0",
-        "ts-jest": "^29.3.0",
+        "nodemon": "^3.1.10",
+        "prisma": "^6.11.1",
+        "ts-node": "^10.9.2",
         "tsconfig-paths": "^4.2.0",
-        "typescript": "^5.7.3"
+        "typescript": "^5.8.3"
     }
 }

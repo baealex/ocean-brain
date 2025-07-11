@@ -16,17 +16,8 @@ export default defineConfig({
         rollupOptions: {
             output: {
                 manualChunks: {
-                    vendor: [
-                        'react',
-                        'react-dom',
-                        'react-router',
-                        'react-router-dom',
-                        '@tanstack/react-query'
-                    ],
-                    core: [
-                        '@blocknote/core',
-                        '@blocknote/mantine',
-                        '@blocknote/react'
+                    jino: [
+                        '@baejino/icon'
                     ]
                 }
             }

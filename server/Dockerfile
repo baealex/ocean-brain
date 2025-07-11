@@ -45,6 +45,7 @@ COPY --from=client /app/dist ./client/dist
 RUN npx pnpm i --production
 
 RUN ln -s /app/prisma/data /data
+RUN ln -s /app/public/assets /assets
 
 ENTRYPOINT ["npm", "run"]
 CMD ["start"]

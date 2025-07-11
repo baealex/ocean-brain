@@ -3,29 +3,10 @@
     "env": {
         "browser": true,
         "es6": true,
-        "jest": true,
         "node": true
     },
     "extends": [
         "@baejino/eslint-config",
         "@baejino/eslint-config-react"
-    ],
-    "overrides": [
-        {
-            "env": {
-                "jest/globals": true
-            },
-            "extends": [
-                "plugin:jest/recommended"
-            ],
-            "files": [
-                "**/__tests__/**/*.[jt]s?(x)",
-                "**/?(*.)+(spec|test).[tj]s?(x)",
-                "./jest.setup.ts"
-            ],
-            "plugins": [
-                "jest"
-            ]
-        }
     ]
 }

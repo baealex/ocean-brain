@@ -1,9 +1,13 @@
-import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 
 export const createPasswordHash = async (password: string) => {
-    return await bcrypt.hash(password, 10);
+    const salt = crypto.randomBytes(16).toString('hex');
+    const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
+    return `${salt}:${hash}`;
 };
 
-export const comparePassword = async (password: string, hash: string) => {
-    return await bcrypt.compare(password, hash);
+export const comparePassword = async (password: string, storedHash: string) => {
+    const [salt, hash] = storedHash.split(':');
+    const newHash = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
+    return hash === newHash;
 };

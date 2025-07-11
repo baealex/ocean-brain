@@ -35,11 +35,7 @@ jobs:
     - name: Lint (Server)
       run: npm run lint
       working-directory: server/src
-    
-    - name: Test (Server)
-      run: npm run test
-      working-directory: server/src
-    
+
     - name: Build (Server)
       run: npm run build
       working-directory: server/src

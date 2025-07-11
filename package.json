@@ -17,9 +17,11 @@
         "dev:client": "npm run dev --prefix server/src/client",
         "dev:server": "npm run dev --prefix server/src",
         "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
+        "build:server": "npm run build --prefix server/src",
         "build:client": "npm run build --prefix server/src/client",
+        "build": "npm run build:server && npm run build:client",
         "start:server": "npm run start --prefix server/src",
-        "start": "npm run build:client && npm run start:server"
+        "start": "npm run start:server"
     },
     "dependencies": {
         "pnpm": "^10.10.0"

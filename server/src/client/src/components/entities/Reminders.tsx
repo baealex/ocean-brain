@@ -27,6 +27,7 @@ export default function Reminders({ noteId, searchParams, render }: RemindersPro
                                 noteId
                                 reminderDate
                                 priority
+                                content
                                 completed
                                 createdAt
                                 updatedAt
@@ -43,6 +44,8 @@ export default function Reminders({ noteId, searchParams, render }: RemindersPro
                                 id
                                 noteId
                                 reminderDate
+                                priority
+                                content
                                 completed
                                 createdAt
                                 updatedAt

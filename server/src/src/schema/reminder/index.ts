@@ -86,10 +86,7 @@ export const reminderResolvers: IResolvers = {
         }: {
             pagination: Pagination;
         }) => {
-            const where = {
-                completed: false,
-                reminderDate: { gte: new Date() }
-            };
+            const where = { completed: false };
 
             const $reminders = models.reminder.findMany({
                 where,
@@ -153,7 +150,7 @@ export const reminderResolvers: IResolvers = {
             if (priority) {
                 data.priority = priority;
             }
-            
+
             if (content !== undefined) {
                 data.content = content;
             }

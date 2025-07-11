@@ -3,21 +3,16 @@ import { Link } from 'react-router-dom';
 import type { Reminder } from '~/models/reminder.model';
 import { getNoteURL } from '~/modules/url';
 import styles from './ReminderCard.module.scss';
+import dayjs from 'dayjs';
 
 interface ReminderCardProps {
     reminder: Reminder;
-    urgency: 'low' | 'medium' | 'high';
-    timeRemaining: string;
-    formatReminderDate: (date: string) => string;
     onUpdate: (id: string, noteId: string, data: { completed?: boolean }) => void;
     onDelete: (id: string, noteId: string) => void;
 }
 
 export default function ReminderCard({
     reminder,
-    urgency,
-    timeRemaining,
-    formatReminderDate,
     onUpdate,
     onDelete
 }: ReminderCardProps) {
@@ -27,20 +22,36 @@ export default function ReminderCard({
         high: 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20'
     };
 
-    const urgencyIcons: Record<string, string> = {
-        low: '🟢',
-        medium: '🟠',
-        high: '🔴'
+    const formatReminderDate = (dateString: string) => {
+        const date = dayjs(Number(dateString));
+        const now = dayjs();
+
+        if (date.isSame(now, 'day')) {
+            return `Today at ${date.format('HH:mm')}`;
+        } else if (date.isSame(now.add(1, 'day'), 'day')) {
+            return `Tomorrow at ${date.format('HH:mm')}`;
+        } else {
+            return date.format('YYYY-MM-DD HH:mm');
+        }
     };
 
-    const isUrgent = urgency === 'high';
-    const isOverdue = timeRemaining === 'Overdue';
+    const getTimeRemaining = (dateString: string) => {
+        const date = dayjs(Number(dateString));
+        const now = dayjs();
+        const diffHours = date.diff(now, 'hour');
+        const diffMinutes = date.diff(now, 'minute') % 60;
+
+        if (diffHours < 0 || diffMinutes < 0) return 'Overdue';
+        if (diffHours === 0) return `${diffMinutes}m remaining`;
+        return `${diffHours}h ${diffMinutes}m remaining`;
+    };
+
+    const isOverdue = getTimeRemaining(reminder.reminderDate) === 'Overdue';
 
     return (
-        <div className={`flex justify-between items-center p-4 border-l-4 border rounded-lg ${urgencyColors[urgency]} ${urgency === 'high' ? styles.priorityHigh : urgency === 'medium' ? styles.priorityMedium : ''}`}>
+        <div className={`flex justify-between items-center p-4 border-l-4 border rounded-lg ${urgencyColors[reminder.priority || 'low']} ${reminder.priority === 'high' ? styles.priorityHigh : reminder.priority === 'medium' ? styles.priorityMedium : ''}`}>
             <div className="flex flex-col">
                 <Link to={getNoteURL(reminder.note?.id || '')} className="font-semibold hover:underline flex items-center gap-2">
-                    <span className="inline-block w-5">{urgencyIcons[urgency]}</span>
                     {reminder.note?.title || 'Untitled Note'}
                 </Link>
                 {reminder.content && (
@@ -56,11 +67,9 @@ export default function ReminderCard({
                         className={`text-xs font-medium ${
                             isOverdue
                                 ? `text-red-600 dark:text-red-400 ${styles.urgentPulsing}`
-                                : isUrgent
-                                    ? `text-red-500 dark:text-red-400 ${styles.pulsing}`
-                                    : 'text-gray-500 dark:text-zinc-400'
+                                : 'text-gray-500 dark:text-zinc-400'
                         }`}>
-                        {timeRemaining}
+                        {getTimeRemaining(reminder.reminderDate)}
                     </span>
                 </div>
             </div>

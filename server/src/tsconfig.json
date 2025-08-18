@@ -2,10 +2,18 @@
     "compilerOptions": {
         "outDir": "dist",
         "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true,
         "moduleResolution": "Node",
         "baseUrl": "src",
-        "target": "es6",
-        "module": "CommonJS",
+        "target": "ES2022",
+        "module": "ESNext",
+        "lib": ["ES2022"],
+        "strict": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "resolveJsonModule": true,
+        "allowImportingTsExtensions": true,
+        "noEmit": true,
         "paths": {
             "~/*": [
                 "./*"
@@ -14,10 +22,5 @@
     },
     "include": [
         "src/**/*"
-    ],
-    "ts-node": {
-        "require": [
-            "tsconfig-paths/register"
-        ]
-    }
+    ]
 }

@@ -36,6 +36,10 @@ jobs:
       run: npm run lint
       working-directory: server/src
 
+    - name: Prisma Generate
+      run: npx prisma generate
+      working-directory: server/src
+
     - name: Type Check (Server)
       run: npm run type-check
       working-directory: server/src

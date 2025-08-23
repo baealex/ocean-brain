@@ -7,8 +7,8 @@
         "dev": "npx prisma generate && tsx watch src/main.ts",
         "build": "npx prisma generate && tsup && tsc-alias",
         "start": "npx prisma migrate dev && node dist/main.js",
-        "type-check": "tsc --noEmit",
-        "lint": "eslint src"
+        "lint": "eslint src",
+        "type-check": "tsc --noEmit"
     },
     "author": "",
     "license": "ISC",
@@ -24,10 +24,10 @@
         "winston": "^3.17.0"
     },
     "devDependencies": {
-        "@baejino/eslint-config": "^0.0.1",
+        "@baejino/eslint-config": "^0.1.0",
         "@types/express": "^4.17.23",
         "@types/express-session": "^1.18.2",
-        "eslint": "^8.57.1",
+        "eslint": "^9.16.0",
         "prisma": "^6.14.0",
         "glob": "^11.0.0",
         "tsc-alias": "^1.8.10",

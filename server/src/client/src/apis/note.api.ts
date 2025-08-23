@@ -113,7 +113,7 @@ export function fetchImageNotes(src: string) {
                 createdAt
                 updatedAt
             }
-        }`,
+        }`
     );
 }
 
@@ -167,7 +167,7 @@ export function pinNote(id: string, pinned: boolean) {
                 createdAt
                 updatedAt
             }
-        }`,
+        }`
     );
 }
 
@@ -177,6 +177,6 @@ export function deleteNote(id: string) {
     }>(
         `mutation {
             deleteNote(id: "${id}")
-        }`,
+        }`
     );
 }

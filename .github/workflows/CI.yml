@@ -31,11 +31,11 @@ jobs:
     - name: Install (Server)
       run: npx pnpm i
       working-directory: server/src
-    
+
     - name: Lint (Server)
       run: npm run lint
       working-directory: server/src
-    
+
     - name: Type Check (Server)
       run: npm run type-check
       working-directory: server/src
@@ -50,6 +50,10 @@ jobs:
 
     - name: Lint (Client)
       run: npm run lint
+      working-directory: server/src/client
+
+    - name: Type Check (Client)
+      run: npm run type-check
       working-directory: server/src/client
 
     - name: Build (Client)

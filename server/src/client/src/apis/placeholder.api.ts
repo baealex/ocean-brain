@@ -61,7 +61,7 @@ export const createPlaceholder = (placeholder: Pick<Placeholder, 'name' | 'templ
                 createdAt
                 updatedAt
             }
-        }`,
+        }`
     );
 };
 
@@ -79,7 +79,7 @@ export const updatePlaceholder = (params: UpdatePlaceholderParams) => {
                 id
                 name
             }
-        }`,
+        }`
     );
 };
 

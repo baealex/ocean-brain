@@ -244,7 +244,7 @@ export const noteResolvers: IResolvers = {
                         if (reference && reference.props.title !== $reference.title) {
                             return acc.replace(
                                 `reference","props":{"id":"${reference.props.id}","title":"${reference.props.title}"`,
-                                `reference","props":{"id":"${$reference.id}","title":"${$reference.title}"`,
+                                `reference","props":{"id":"${$reference.id}","title":"${$reference.title}"`
                             );
                         }
                         return acc;

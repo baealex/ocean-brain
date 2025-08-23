@@ -111,7 +111,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                 }
             });
         });
-    }, [query]);
+    }, [query, setEvent]);
 
     useEffect(() => {
         setIsMenuOpen(false);

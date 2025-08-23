@@ -15,11 +15,11 @@
         "@baejino/icon": "^0.2.0",
         "@baejino/style": "^0.2.2",
         "@baejino/ui": "^0.2.1",
-        "@blocknote/core": "^0.33.0",
-        "@blocknote/mantine": "^0.33.0",
-        "@blocknote/react": "^0.33.0",
+        "@blocknote/core": "^0.35.0",
+        "@blocknote/mantine": "^0.35.0",
+        "@blocknote/react": "^0.35.0",
         "@headlessui/react": "^2.2.7",
-        "@tanstack/react-query": "^5.85.3",
+        "@tanstack/react-query": "^5.85.5",
         "axios": "^1.11.0",
         "classnames": "^2.5.1",
         "dayjs": "^1.11.13",
@@ -31,7 +31,7 @@
         "react-router-dom": "^6.30.1",
         "sass": "^1.90.0",
         "vite-plugin-svgr": "^4.3.0",
-        "zustand": "^5.0.7"
+        "zustand": "^5.0.8"
     },
     "devDependencies": {
         "@babel/preset-env": "^7.28.3",

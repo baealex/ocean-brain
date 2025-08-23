@@ -3,7 +3,7 @@ import type {
     Response,
     NextFunction
 } from 'express';
-import type { Controller } from '~/types';
+import type { Controller } from '~/types/index.js';
 
 export default function useAsync(callback: Controller) {
     return function (req: Request, res: Response, next: NextFunction) {

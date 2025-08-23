@@ -2,8 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import crpyto from 'crypto';
 
-import type { Controller } from '~/types';
-import models from '~/models';
+import type { Controller } from '~/types/index.js';
+import models from '~/models.js';
 
 const imageDir = path.resolve('./public/assets/images');
 

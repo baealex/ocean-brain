@@ -3,17 +3,16 @@
         "outDir": "dist",
         "esModuleInterop": true,
         "allowSyntheticDefaultImports": true,
-        "moduleResolution": "Node",
+        "moduleResolution": "Node16",
         "baseUrl": "src",
         "target": "ES2022",
-        "module": "ESNext",
-        "lib": ["ES2022"],
+        "module": "Node16",
         "strict": true,
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
-        "resolveJsonModule": true,
-        "allowImportingTsExtensions": true,
-        "noEmit": true,
+        "declaration": true,
+        "declarationMap": true,
+        "sourceMap": true,
         "paths": {
             "~/*": [
                 "./*"
@@ -22,5 +21,8 @@
     },
     "include": [
         "src/**/*"
-    ]
+    ],
+    "tsx": {
+        "tsconfig": "./tsconfig.json"
+    }
 }

@@ -41,7 +41,7 @@ export function fetchImage(id: string) {
                 id
                 url
             }
-        }`,
+        }`
     );
 }
 
@@ -49,7 +49,7 @@ export function deleteImage(id: string) {
     return graphQuery(
         `mutation {
             deleteImage(id: ${id})
-        }`,
+        }`
     );
 }
 

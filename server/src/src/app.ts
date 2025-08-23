@@ -3,9 +3,9 @@ import session from 'express-session';
 import { createHandler } from 'graphql-http/lib/use/express';
 import path from 'path';
 
-import logger from './modules/logger';
-import schema from './schema';
-import router from './urls';
+import logger from './modules/logger.js';
+import schema from './schema/index.js';
+import router from './urls.js';
 
 export default express()
     .use(logger)

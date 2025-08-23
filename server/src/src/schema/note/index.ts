@@ -1,10 +1,10 @@
 import type { IResolvers } from '@graphql-tools/utils';
 
-import models from '~/models';
-import { gql } from '~/modules/graphql';
+import models from '~/models.js';
+import { gql } from '~/modules/graphql.js';
 
-import type { Note } from '~/models';
-import type { Pagination, SearchFilter, NoteInput } from '~/types';
+import type { Note, Prisma } from '~/models.js';
+import type { Pagination, SearchFilter, NoteInput } from '~/types/index.js';
 
 export const noteType = gql`
     input PaginationInput {
@@ -119,22 +119,22 @@ export const noteResolvers: IResolvers = {
         }) => {
             const queryItems = searchFilter.query.split(' ');
             const included = queryItems
-                .filter(item => !item.startsWith('-'))
-                .map(word => `%${word}%`);
+                .filter((item: string) => !item.startsWith('-'))
+                .map((word: string) => `%${word}%`);
             const excluded = queryItems
-                .filter(item => item.startsWith('-'))
-                .map(item => item.slice(1))
-                .map(word => `%${word}%`);
+                .filter((item: string) => item.startsWith('-'))
+                .map((item: string) => item.slice(1))
+                .map((word: string) => `%${word}%`);
 
-            const where: Parameters<typeof models.note.findMany>[0]['where'] = {
+            const where: Prisma.NoteWhereInput = {
                 AND: [
-                    ...included.map(keyword => ({
+                    ...included.map((keyword: string) => ({
                         OR: [
                             { title: { contains: keyword } },
                             { content: { contains: keyword } }
                         ]
                     })),
-                    ...excluded.map(keyword => ({
+                    ...excluded.map((keyword: string) => ({
                         NOT: {
                             OR: [
                                 { title: { contains: keyword } },
@@ -165,7 +165,7 @@ export const noteResolvers: IResolvers = {
                 end: string;
             };
         }) => {
-            const where: Parameters<typeof models.note.findMany>[0]['where'] = {
+            const where: Prisma.NoteWhereInput = {
                 OR: [
                     {
                         updatedAt: {
@@ -196,8 +196,7 @@ export const noteResolvers: IResolvers = {
             searchFilter: SearchFilter;
             pagination: Pagination;
         }) => {
-            const where: Parameters<typeof models.note.findMany>[0]['where'] =
-                { tags: { some: { id: Number(searchFilter.query) } } };
+            const where: Prisma.NoteWhereInput = { tags: { some: { id: Number(searchFilter.query) } } };
 
             const $notes = models.note.findMany({
                 orderBy: { updatedAt: 'desc' },
@@ -240,12 +239,12 @@ export const noteResolvers: IResolvers = {
                 if (blocks.length > 0) {
                     const referenceIds = blocks.map(block => Number(block.props.id));
                     const $references = await models.note.findMany({ where: { id: { in: referenceIds } } });
-                    const newContent = $references.reduce<string>((acc, $reference) => {
+                    const newContent = $references.reduce<string>((acc: string, $reference: Note) => {
                         const reference = blocks.find(block => Number(block.props.id) === $reference.id);
-                        if (reference.props.title !== $reference.title) {
+                        if (reference && reference.props.title !== $reference.title) {
                             return acc.replace(
                                 `reference","props":{"id":"${reference.props.id}","title":"${reference.props.title}"`,
-                                `reference","props":{"id":"${$reference.id}","title":"${$reference.title}"`,
+                                `reference","props":{"id":"${$reference.id}","title":"${$reference.title}"`
                             );
                         }
                         return acc;

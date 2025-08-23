@@ -1,10 +1,10 @@
 import { makeExecutableSchema } from '@graphql-tools/schema';
-import { noteResolvers, noteTypeDefs } from './note';
-import { imageResolvers, imageTypeDefs } from './image';
-import { tagResolvers, tagTypeDefs } from './tag';
-import { placeholderResolvers, placeholderTypeDefs } from './placeholder';
-import { cacheResolvers, cacheTypeDefs } from './cache';
-import { reminderResolvers, reminderTypeDefs } from './reminder';
+import { noteResolvers, noteTypeDefs } from './note/index.js';
+import { imageResolvers, imageTypeDefs } from './image/index.js';
+import { tagResolvers, tagTypeDefs } from './tag/index.js';
+import { placeholderResolvers, placeholderTypeDefs } from './placeholder/index.js';
+import { cacheResolvers, cacheTypeDefs } from './cache/index.js';
+import { reminderResolvers, reminderTypeDefs } from './reminder/index.js';
 
 const schema = makeExecutableSchema({
     typeDefs: [

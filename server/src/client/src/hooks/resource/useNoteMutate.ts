@@ -35,7 +35,7 @@ const useNoteMutate = () => {
             await queryClient.invalidateQueries({ queryKey: ['tag-notes'] });
             await queryClient.invalidateQueries({ queryKey: [getPinnedNoteQueryKey()] });
             callback?.();
-        } catch (error) {
+        } catch {
             // console.error(error);
         }
     };

@@ -1,7 +1,7 @@
 import type { IResolvers } from '@graphql-tools/utils';
 
-import models, { type Cache } from '~/models';
-import { gql } from '~/modules/graphql';
+import models, { type Cache } from '~/models.js';
+import { gql } from '~/modules/graphql.js';
 
 export const cacheType = gql`
     type Cache {

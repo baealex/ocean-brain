@@ -35,6 +35,10 @@ jobs:
     - name: Lint (Server)
       run: npm run lint
       working-directory: server/src
+    
+    - name: Type Check (Server)
+      run: npm run type-check
+      working-directory: server/src
 
     - name: Build (Server)
       run: npm run build

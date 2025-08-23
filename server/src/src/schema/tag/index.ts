@@ -1,8 +1,8 @@
 import type { IResolvers } from '@graphql-tools/utils';
 
-import models, { type Tag } from '~/models';
-import { gql } from '~/modules/graphql';
-import type { Pagination, SearchFilter } from '~/types';
+import models, { type Tag, type Prisma } from '~/models.js';
+import { gql } from '~/modules/graphql.js';
+import type { Pagination, SearchFilter } from '~/types/index.js';
 
 export const tagType = gql`
     input PaginationInput {
@@ -55,7 +55,7 @@ export const tagResolvers: IResolvers = {
             searchFilter: SearchFilter;
             pagination: Pagination;
         }) => {
-            const where: Parameters<typeof models.tag.findMany>[0]['where'] = {
+            const where: Prisma.TagWhereInput = {
                 name: { contains: searchFilter.query },
                 NOT: { notes: { none: { } } }
             };

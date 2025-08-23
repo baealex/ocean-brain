@@ -14,4 +14,4 @@ declare module 'express-session' {
 
 export type Controller = (req: Request, res: Response, next?: NextFunction) => Promise<void>;
 
-export * from './input';
+export * from './input.js';

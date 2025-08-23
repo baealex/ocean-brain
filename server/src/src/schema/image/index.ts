@@ -2,9 +2,9 @@ import type { IResolvers } from '@graphql-tools/utils';
 import fs from 'fs';
 import path from 'path';
 
-import models, { type Image } from '~/models';
-import { gql } from '~/modules/graphql';
-import type { Pagination } from '~/types';
+import models, { type Image } from '~/models.js';
+import { gql } from '~/modules/graphql.js';
+import type { Pagination } from '~/types/index.js';
 
 export const imageType = gql`
     input PaginationInput {
@@ -66,6 +66,10 @@ export const imageResolvers: IResolvers = {
         deleteImage: async (_, { id }) => {
             try {
                 const $image = await models.image.findFirst({ where: { id: Number(id) } });
+
+                if (!$image) {
+                    return false;
+                }
 
                 if (fs.existsSync(path.resolve('./public', $image.url.slice(1)))) {
                     fs.unlinkSync(path.resolve('./public', $image.url.slice(1)));

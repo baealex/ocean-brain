@@ -1,19 +1,18 @@
 import { defineConfig } from 'tsup';
+import { glob } from 'glob';
 
 export default defineConfig({
-    entry: ['src/main.ts'],
+    entry: glob.sync('src/**/*.ts'),
     format: ['esm'],
-    target: 'node18',
+    target: 'es2022',
     outDir: 'dist',
     clean: true,
     sourcemap: true,
-    minify: false,
     splitting: false,
-    treeshake: true,
-    dts: false,
-    external: ['@prisma/client', 'graphql-http'],
-    esbuildOptions(options) {
-        options.banner = { js: 'import { createRequire } from \'module\';const require = createRequire(import.meta.url);' };
-        options.alias = { '~': './src' };
-    }
+    treeshake: false,
+    minify: false,
+    bundle: false,
+    external: [
+        /^[^./]|^\.[^./]|^\.\.[^/]/
+    ]
 });

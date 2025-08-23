@@ -1,10 +1,10 @@
 import type { IResolvers } from '@graphql-tools/utils';
 
-import type { Reminder } from '~/models';
-import models from '~/models';
-import { gql } from '~/modules/graphql';
+import type { Reminder } from '~/models.js';
+import models from '~/models.js';
+import { gql } from '~/modules/graphql.js';
 
-import type { Pagination } from '~/types';
+import type { Pagination } from '~/types/index.js';
 
 export const reminderType = gql`
     enum ReminderPriority {

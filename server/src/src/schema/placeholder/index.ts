@@ -1,8 +1,8 @@
 import type { IResolvers } from '@graphql-tools/utils';
 
-import models, { type Placeholder } from '~/models';
-import { gql } from '~/modules/graphql';
-import type { Pagination, SearchFilter } from '~/types';
+import models, { type Placeholder } from '~/models.js';
+import { gql } from '~/modules/graphql.js';
+import type { Pagination, SearchFilter } from '~/types/index.js';
 
 export const placeholderType = gql`
     input PaginationInput {

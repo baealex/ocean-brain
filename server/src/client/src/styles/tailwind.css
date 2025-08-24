@@ -1,3 +1,14 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@custom-variant dark (&:where(html.dark *));
+
+@theme {
+    --color-pastel-yellow-200: #FCEBAF;
+    --color-pastel-green-200: #B2E0B2;
+    --color-pastel-pink-200: #FFB3C1;
+    --color-pastel-orange-200: #FFCCB3;
+    --color-pastel-blue-200: #A4D8E1;
+    --color-pastel-purple-200: #E1B7E1;
+    --color-pastel-teal-200: #A4DBD6;
+    --color-pastel-lavender-200: #E1C6E7;
+}

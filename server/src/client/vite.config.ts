@@ -17,17 +17,15 @@ export default defineConfig({
         rollupOptions: {
             output: {
                 manualChunks: {
-                    bae: [
+                    icon: [
                         '@baejino/icon'
                     ],
-                    core: [
-                        '@blocknote/core',
+                    note_core: [
+                        '@blocknote/core'
+                    ],
+                    note_vendor: [
                         '@blocknote/react',
                         '@blocknote/mantine'
-                    ],
-                    vendor: [
-                        'react',
-                        'react-dom'
                     ]
                 }
             }

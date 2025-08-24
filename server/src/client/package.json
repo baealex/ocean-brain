@@ -37,14 +37,13 @@
         "@babel/preset-env": "^7.28.3",
         "@baejino/eslint-config": "^0.1.0",
         "@baejino/eslint-config-react": "^0.1.0",
+        "@tailwindcss/vite": "^4.1.12",
         "@types/react": "^18.3.23",
         "@types/react-dom": "^18.3.7",
         "@types/react-helmet": "^6.1.11",
         "@vitejs/plugin-react": "^4.7.0",
-        "autoprefixer": "^10.4.21",
         "eslint": "^9.16.0",
-        "postcss": "^8.5.6",
-        "tailwindcss": "^3.4.17",
+        "tailwindcss": "^4.1.12",
         "typescript": "^5.9.2",
         "vite": "^7.1.2"
     }

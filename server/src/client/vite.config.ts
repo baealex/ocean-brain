@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import svgr from 'vite-plugin-svgr';
 import path from 'path';
@@ -7,17 +8,24 @@ import path from 'path';
 export default defineConfig({
     plugins: [
         react(),
-        svgr()
+        svgr(),
+        tailwindcss()
     ],
-    css: { preprocessorOptions: { scss: { api: 'modern' } } },
     resolve: { alias: { '~': path.resolve(__dirname, './src') } },
     build: {
         sourcemap: false,
         rollupOptions: {
             output: {
                 manualChunks: {
-                    jino: [
+                    icon: [
                         '@baejino/icon'
+                    ],
+                    'note-core': [
+                        '@blocknote/core'
+                    ],
+                    'note-vendor': [
+                        '@blocknote/react',
+                        '@blocknote/mantine'
                     ]
                 }
             }

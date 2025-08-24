@@ -20,10 +20,10 @@ export default defineConfig({
                     icon: [
                         '@baejino/icon'
                     ],
-                    note_core: [
+                    'note-core': [
                         '@blocknote/core'
                     ],
-                    note_vendor: [
+                    'note-vendor': [
                         '@blocknote/react',
                         '@blocknote/mantine'
                     ]

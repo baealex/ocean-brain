@@ -19,6 +19,6 @@ export default express()
     .use(express.json({ limit: '50mb' }))
     .use('/api', router)
     .use('/graphql', createHandler({ schema }))
-    .get('*', (req, res) => {
+    .get(/.*/, (req, res) => {
         res.sendFile(path.resolve('client/dist/index.html'));
     });

@@ -5,6 +5,7 @@ import * as Icon from '~/components/icon';
 
 import { Reminders } from '~/components/entities';
 import useReminderMutate from '~/hooks/resource/useReminderMutate';
+import ReminderModal from './ReminderModal';
 
 import type { Reminder } from '~/models/reminder.model';
 
@@ -15,16 +16,38 @@ interface ReminderPanelProps {
 }
 
 export default function ReminderPanel({ noteId }: ReminderPanelProps) {
-    const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-    const [reminderPriority, setReminderPriority] = useState<'low' | 'medium' | 'high'>('medium');
-    const [reminderContent, setReminderContent] = useState<string>('');
+    const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
+    const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+    const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
+    const [editingReminder, setEditingReminder] = useState<Reminder | undefined>(undefined);
     const { onCreate, onUpdate, onDelete } = useReminderMutate();
 
-    const handleAddReminder = () => {
-        onCreate(noteId, selectedDate, reminderPriority, () => {
-            setSelectedDate(new Date());
-            setReminderContent('');
-        }, reminderContent || undefined);
+    const handleOpenCreateModal = () => {
+        setModalMode('create');
+        setEditingReminder(undefined);
+        setIsModalOpen(true);
+    };
+
+    const handleOpenEditModal = (reminder: Reminder) => {
+        setModalMode('edit');
+        setEditingReminder(reminder);
+        setIsModalOpen(true);
+    };
+
+    const handleSaveReminder = (date: Date, priority: 'low' | 'medium' | 'high', content?: string) => {
+        if (modalMode === 'create') {
+            onCreate(noteId, date, priority, () => {
+                setIsModalOpen(false);
+            }, content);
+        } else if (modalMode === 'edit' && editingReminder) {
+            onUpdate(editingReminder.id, noteId, {
+                reminderDate: date,
+                priority,
+                content
+            }, () => {
+                setIsModalOpen(false);
+            });
+        }
     };
 
     const handleToggleComplete = (reminder: Reminder) => {
@@ -66,65 +89,30 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
     };
 
     return (
-        <div className="shadow-xl p-5 rounded-2xl mb-5">
+        <div className="shadow-xl p-3 sm:p-5 rounded-2xl mb-5">
             <div className="flex justify-between items-center mb-3">
-                <div className="flex items-center gap-2">
-                    <p className="text-lg font-bold">Reminders</p>
-                </div>
-                <Button
-                    onClick={handleAddReminder}
-                    className="flex items-center gap-1">
-                    <Icon.Plus className="w-4 h-4" />
-                    <span>Add Reminder</span>
-                </Button>
+                <button
+                    onClick={() => setIsCollapsed(!isCollapsed)}
+                    className="flex items-center gap-2 hover:opacity-70 transition-opacity">
+                    {isCollapsed ? (
+                        <Icon.TriangleRight className="w-3 h-3" />
+                    ) : (
+                        <Icon.TriangleDown className="w-3 h-3" />
+                    )}
+                    <p className="text-base sm:text-lg font-bold">Reminders</p>
+                </button>
+                {!isCollapsed && (
+                    <Button
+                        onClick={handleOpenCreateModal}
+                        className="flex items-center gap-1 text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-2">
+                        <Icon.Plus className="w-3 h-3 sm:w-4 sm:h-4" />
+                        <span className="hidden sm:inline">Add Reminder</span>
+                        <span className="sm:hidden">Add</span>
+                    </Button>
+                )}
             </div>
 
-            <div className="mb-4 p-3 border border-solid border-gray-200 dark:border-zinc-700 rounded-lg">
-                <div className="flex flex-col gap-3">
-                    <input
-                        type="datetime-local"
-                        className="p-2 border border-gray-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800"
-                        value={dayjs(selectedDate).format('YYYY-MM-DDTHH:mm')}
-                        onChange={(e) => setSelectedDate(new Date(e.target.value))}
-                    />
-                    <div className="flex flex-col gap-2">
-                        <p className="text-sm text-gray-600 dark:text-zinc-400">Content:</p>
-                        <textarea
-                            className="p-2 border border-gray-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 min-h-[80px] resize-none"
-                            placeholder="Enter reminder content"
-                            value={reminderContent}
-                            onChange={(e) => setReminderContent(e.target.value)}
-                        />
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                        <p className="text-sm text-gray-600 dark:text-zinc-400">Priority:</p>
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => setReminderPriority('low')}
-                                className={`flex-1 py-1 px-3 rounded-md text-sm ${reminderPriority === 'low'
-                                    ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
-                                    : 'bg-gray-100 dark:bg-zinc-700 text-gray-800 dark:text-zinc-300'}`}>
-                                Low
-                            </button>
-                            <button
-                                onClick={() => setReminderPriority('medium')}
-                                className={`flex-1 py-1 px-3 rounded-md text-sm ${reminderPriority === 'medium'
-                                    ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'
-                                    : 'bg-gray-100 dark:bg-zinc-700 text-gray-800 dark:text-zinc-300'}`}>
-                                Medium
-                            </button>
-                            <button
-                                onClick={() => setReminderPriority('high')}
-                                className={`flex-1 py-1 px-3 rounded-md text-sm ${reminderPriority === 'high'
-                                    ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
-                                    : 'bg-gray-100 dark:bg-zinc-700 text-gray-800 dark:text-zinc-300'}`}>
-                                High
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            {!isCollapsed && (
 
             <Reminders
                 noteId={noteId}
@@ -154,25 +142,35 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                                         return (
                                             <div
                                                 key={reminder.id}
-                                                className={`flex flex-col p-3 border rounded-lg transition-all ${reminder.completed
+                                                className={`flex flex-col p-2 sm:p-3 border rounded-lg transition-all ${reminder.completed
                                                     ? 'border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 text-gray-400 dark:text-zinc-500'
                                                     : urgencyColors[urgency]}`}>
-                                                <div className="flex justify-between items-center">
-                                                    <div className="flex items-center gap-2">
+                                                <div className="flex justify-between items-start gap-2">
+                                                    <div className="flex items-start gap-2 flex-1 min-w-0">
                                                         <input
                                                             type="checkbox"
                                                             checked={reminder.completed}
                                                             onChange={() => handleToggleComplete(reminder)}
-                                                            className="w-4 h-4 cursor-pointer"
+                                                            className="w-4 h-4 cursor-pointer mt-0.5 flex-shrink-0"
                                                         />
-                                                        <div className={`font-medium flex items-center gap-1 ${reminder.completed ? 'line-through' : ''}`}>
-                                                            <span>{formatReminderDate(reminder.reminderDate)}</span>
-                                                            <span>{reminder.content}</span>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className={`font-medium text-sm sm:text-base ${reminder.completed ? 'line-through' : ''}`}>
+                                                                {formatReminderDate(reminder.reminderDate)}
+                                                            </div>
+                                                            {reminder.content && (
+                                                                <div className={`mt-1 text-xs sm:text-sm text-gray-700 dark:text-zinc-300 ${reminder.completed ? 'line-through' : ''} break-words`}>
+                                                                    {reminder.content}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                     <Dropdown
-                                                        button={<Icon.VerticalDots className="w-4 h-4" />}
+                                                        button={<Icon.VerticalDots className="w-4 h-4 flex-shrink-0" />}
                                                         items={[
+                                                            {
+                                                                name: 'Edit',
+                                                                onClick: () => handleOpenEditModal(reminder)
+                                                            },
                                                             {
                                                                 name: 'Delete',
                                                                 onClick: () => onDelete(reminder.id, noteId)
@@ -196,6 +194,15 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                         </div>
                     );
                 }}
+            />
+            )}
+
+            <ReminderModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSave={handleSaveReminder}
+                reminder={editingReminder}
+                mode={modalMode}
             />
         </div>
     );

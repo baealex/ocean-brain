@@ -102,9 +102,7 @@ export const reminderResolvers: IResolvers = {
                 reminders: $reminders
             };
         },
-        remindersInDateRange: async (_, {
-            dateRange
-        }: {
+        remindersInDateRange: async (_, { dateRange }: {
             dateRange: {
                 start: string;
                 end: string;

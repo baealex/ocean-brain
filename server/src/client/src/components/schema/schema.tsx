@@ -2,6 +2,7 @@ import { BlockNoteSchema, defaultBlockSpecs, defaultInlineContentSpecs } from '@
 
 import Reference from './Reference';
 import Tag from './Tag';
+import TableOfContents from './TableOfContents';
 
 const schema = BlockNoteSchema.create({
     inlineContentSpecs: {
@@ -9,7 +10,10 @@ const schema = BlockNoteSchema.create({
         tag: Tag,
         reference: Reference
     },
-    blockSpecs: { ...defaultBlockSpecs }
+    blockSpecs: {
+        ...defaultBlockSpecs,
+        tableOfContents: TableOfContents
+    }
 });
 
 export default schema;

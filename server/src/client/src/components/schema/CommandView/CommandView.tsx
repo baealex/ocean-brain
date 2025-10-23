@@ -1,6 +1,6 @@
 import { filterSuggestionItems } from '@blocknote/core';
 import { SuggestionMenuController, getDefaultReactSlashMenuItems } from '@blocknote/react';
-import { RiListOrdered } from 'react-icons/ri';
+import * as Icon from '~/components/icon';
 
 import type schema from '../schema';
 
@@ -32,7 +32,7 @@ const CommandView = ({ editor }: CommandViewProps) => {
                             },
                             aliases: ['toc', 'table of contents', 'contents', 'outline', 'index'],
                             group: 'Other',
-                            icon: <RiListOrdered />
+                            icon: <Icon.List />
                         }
                     ],
                     query

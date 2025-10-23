@@ -2,7 +2,7 @@ import { createReactBlockSpec } from '@blocknote/react';
 import { useBlockNoteEditor } from '@blocknote/react';
 import type { Block } from '@blocknote/core';
 import { useEffect, useState } from 'react';
-import { RiListOrdered } from 'react-icons/ri';
+import * as Icon from '~/components/icon';
 
 interface HeadingItem {
     id: string;
@@ -87,7 +87,7 @@ const TableOfContentsComponent = () => {
         return (
             <div className="w-full border-l-4 border-zinc-300 dark:border-zinc-600 bg-zinc-50 dark:bg-zinc-800/50 rounded-r-lg p-6">
                 <div className="flex items-center gap-3 text-zinc-500 dark:text-zinc-400">
-                    <RiListOrdered className="text-2xl flex-shrink-0" />
+                    <Icon.List className="text-2xl flex-shrink-0" />
                     <div>
                         <div className="font-medium text-base mb-1">Table of Contents</div>
                         <div className="text-sm opacity-75">
@@ -102,7 +102,7 @@ const TableOfContentsComponent = () => {
     return (
         <div className="w-full border-l-4 border-blue-500 dark:border-blue-400 bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-950/30 dark:to-transparent rounded-r-lg p-6">
             <div className="flex items-center gap-2 mb-4">
-                <RiListOrdered className="text-xl text-blue-600 dark:text-blue-400" />
+                <Icon.List className="text-xl text-blue-600 dark:text-blue-400" />
                 <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
                     Table of Contents
                 </h3>

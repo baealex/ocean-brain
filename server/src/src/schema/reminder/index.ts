@@ -35,6 +35,7 @@ export const reminderQuery = gql`
     extend type Query {
         noteReminders(noteId: ID!, pagination: PaginationInput): Reminders!
         upcomingReminders(pagination: PaginationInput): Reminders!
+        remindersInDateRange(dateRange: DateRangeInput): [Reminder!]!
     }
 `;
 
@@ -100,6 +101,29 @@ export const reminderResolvers: IResolvers = {
                 totalCount: models.reminder.count({ where }),
                 reminders: $reminders
             };
+        },
+        remindersInDateRange: async (_, {
+            dateRange
+        }: {
+            dateRange: {
+                start: string;
+                end: string;
+            };
+        }) => {
+            const where = {
+                reminderDate: {
+                    gte: new Date(dateRange.start),
+                    lt: new Date(dateRange.end)
+                }
+            };
+
+            const $reminders = await models.reminder.findMany({
+                where,
+                orderBy: { reminderDate: 'asc' },
+                include: { note: true }
+            });
+
+            return $reminders;
         }
     },
     Mutation: {

@@ -26,6 +26,11 @@ export const noteType = gql`
         content: String
     }
 
+    input NoteOrderInput {
+        id: ID!
+        order: Int!
+    }
+
     type Tag {
         id: ID!
         name: String!
@@ -40,6 +45,7 @@ export const noteType = gql`
         createdAt: String!
         updatedAt: String!
         pinned: Boolean!
+        order: Int!
         tags: [Tag!]!
     }
 
@@ -67,6 +73,7 @@ export const noteMutation = gql`
         updateNote(id: ID!, note: NoteInput!): Note!
         deleteNote(id: ID!): Boolean!
         pinNote(id: ID!, pinned: Boolean!): Note!
+        reorderNotes(notes: [NoteOrderInput!]!): [Note!]!
     }
 `;
 
@@ -210,7 +217,10 @@ export const noteResolvers: IResolvers = {
             };
         },
         pinnedNotes: async () => models.note.findMany({
-            orderBy: { pinned: 'desc' },
+            orderBy: [
+                { order: 'asc' },
+                { updatedAt: 'desc' }
+            ],
             where: { pinned: true }
         }),
         imageNotes: async (_, { src }) => models.note.findMany({
@@ -332,7 +342,16 @@ export const noteResolvers: IResolvers = {
         pinNote: (_, { id, pinned }: Note) => models.note.update({
             where: { id: Number(id) },
             data: { pinned: Boolean(pinned) }
-        })
+        }),
+        reorderNotes: async (_, { notes }: { notes: Array<{ id: string; order: number }> }) => {
+            const updatePromises = notes.map(({ id, order }) =>
+                models.note.update({
+                    where: { id: Number(id) },
+                    data: { order }
+                })
+            );
+            return await Promise.all(updatePromises);
+        }
     },
     Note: { tags: async (note: Note) => await models.tag.findMany({ where: { notes: { some: { id: note.id } } } }) }
 };

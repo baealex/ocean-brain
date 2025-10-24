@@ -180,3 +180,22 @@ export function deleteNote(id: string) {
         }`
     );
 }
+
+export interface NoteOrderInput {
+    id: string;
+    order: number;
+}
+
+export function reorderNotes(notes: NoteOrderInput[]) {
+    return graphQuery<{
+        reorderNotes: Pick<Note, 'id' | 'order'>[];
+    }>(
+        `mutation def($notes: [NoteOrderInput!]!) {
+            reorderNotes(notes: $notes) {
+                id
+                order
+            }
+        }`,
+        { notes }
+    );
+}

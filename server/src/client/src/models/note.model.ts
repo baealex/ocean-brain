@@ -3,6 +3,7 @@ export interface Note {
     title: string;
     content: string;
     pinned: boolean;
+    order: number;
     tags: {
         id: string;
         name: string;

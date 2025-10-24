@@ -22,6 +22,7 @@ model Note {
     createdAt DateTime   @default(now())
     updatedAt DateTime   @updatedAt
     pinned    Boolean    @default(false)
+    order     Int        @default(0)
     tags      Tag[]      @relation("NoteToTag")
     reminders Reminder[] @relation("NoteToReminder")
 }

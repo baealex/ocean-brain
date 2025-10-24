@@ -4,7 +4,7 @@ import { graphQuery } from '~/modules/graph-query';
 import { getPinnedNoteQueryKey } from '~/modules/query-key-factory';
 
 interface PinnedNotesProps {
-    render: (notes?: Pick<Note, 'id' | 'title'>[]) => React.ReactNode;
+    render: (notes: Pick<Note, 'id' | 'title' | 'order'>[]) => React.ReactNode;
 }
 
 const PinnedNotes = (props: PinnedNotesProps) => {
@@ -12,12 +12,13 @@ const PinnedNotes = (props: PinnedNotesProps) => {
         queryKey: [getPinnedNoteQueryKey()],
         async queryFn() {
             const response = await graphQuery<{
-                pinnedNotes: Pick<Note, 'id' | 'title'>[];
+                pinnedNotes: Pick<Note, 'id' | 'title' | 'order'>[];
             }>(`
                 query {
                     pinnedNotes {
                         id
                         title
+                        order
                     }
                 }
             `);
@@ -28,7 +29,7 @@ const PinnedNotes = (props: PinnedNotesProps) => {
         }
     });
 
-    return props.render(pinnedNotes);
+    return <>{props.render(pinnedNotes)}</>;
 };
 
 export default PinnedNotes;

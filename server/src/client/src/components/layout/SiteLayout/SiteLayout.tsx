@@ -69,7 +69,7 @@ function SortableItem({ id, children }: SortableItemProps) {
     };
 
     return (
-        <div ref={setNodeRef} style={style} {...attributes} className="flex items-center gap-1 pl-2">
+        <div ref={setNodeRef} style={style} {...attributes} className="flex items-center gap-2 pl-2">
             <button
                 ref={setActivatorNodeRef}
                 {...listeners}

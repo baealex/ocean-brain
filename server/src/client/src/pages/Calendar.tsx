@@ -99,7 +99,7 @@ function NoteCard({ note, type }: NoteCardProps) {
     return (
         <Link to={getNoteURL(note.id)}>
             <div className={`${getRandomBackground(note.title)} text-xs rounded p-2 hover:opacity-90 transition-opacity cursor-pointer`}>
-                <div className="font-medium line-clamp-1 text-xs">{note.title}</div>
+                <div className="font-medium text-xs">{note.title}</div>
                 <div className="text-zinc-600 dark:text-zinc-400 text-[11px] sm:text-[10px] mt-1">
                     {dayjs(type === 'create' ? Number(note.createdAt) : Number(note.updatedAt)).format('HH:mm')}
                 </div>
@@ -165,7 +165,7 @@ className={`flex items-center justify-center w-8 h-8 sm:w-7 sm:h-7 text-base sm:
                 </span>
             </div>
 
-            <div className="px-2 pb-2 space-y-2 overflow-y-auto max-h-[106px] sm:max-h-[90px]">
+            <div className="px-2 pb-2 space-y-2 overflow-y-auto flex flex-col gap-1">
                 {notes.map(note => (
                     <NoteCard key={`note-${note.id}`} note={note} type={type} />
                 ))}

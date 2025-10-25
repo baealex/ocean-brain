@@ -1,19 +1,19 @@
 import { Outlet, createBrowserRouter } from 'react-router-dom';
 
-import SiteLayout from '@/widgets/site-layout/ui/SiteLayout';
+import SiteLayout from '@/widgets/site-layout';
 
-import Home from '@/pages/home/ui/Home';
-import Note from '@/pages/note/ui/Note';
-import Search from '@/pages/search/ui/Search';
-import TagNotes from '@/pages/tag-notes/ui/TagNotes';
-import Tag from '@/pages/tag/ui/Tag';
-import Calendar from '@/pages/calendar/ui/Calendar';
-import Reminders from '@/pages/reminders/ui/Reminders';
+import Home from '@/pages/home';
+import Note from '@/pages/note';
+import Search from '@/pages/search';
+import TagNotes from '@/pages/tag-notes';
+import Tag from '@/pages/tag';
+import Calendar from '@/pages/calendar';
+import Reminders from '@/pages/reminders';
 
-import Setting from '@/pages/settings/ui/setting/index';
-import ManageImage from '@/pages/settings/ui/setting/manage-image';
-import ManageImageDetail from '@/pages/settings/ui/setting/manage-image-detail';
-import Placeholder from '@/pages/settings/ui/setting/placeholder';
+import Setting from '@/pages/settings';
+import ManageImage from '@/pages/settings/manage-image';
+import ManageImageDetail from '@/pages/settings/manage-image-detail';
+import Placeholder from '@/pages/settings/placeholder';
 
 const router = createBrowserRouter([
     {

@@ -5,6 +5,8 @@ export interface Pagination {
 
 export interface SearchFilter {
     query: string;
+    sortBy?: string;
+    sortOrder?: string;
 }
 
 export interface NoteInput {

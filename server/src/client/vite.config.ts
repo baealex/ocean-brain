@@ -11,7 +11,12 @@ export default defineConfig({
         svgr(),
         tailwindcss()
     ],
-    resolve: { alias: { '~': path.resolve(__dirname, './src') } },
+    resolve: {
+        alias: {
+            '~': path.resolve(__dirname, './src'),
+            '@': path.resolve(__dirname, './src')
+        }
+    },
     build: {
         sourcemap: false,
         rollupOptions: {

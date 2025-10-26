@@ -11,16 +11,28 @@ interface LayoutModalProps {
 }
 
 const LAYOUT_OPTIONS = [
-    { value: 'narrow' as const, label: 'Narrow', description: 'Optimized for reading long-form content' },
-    { value: 'wide' as const, label: 'Wide', description: 'Balanced width suitable for most content' },
-    { value: 'full' as const, label: 'Full Width', description: 'Maximize screen space utilization' }
+    {
+        value: 'narrow' as const,
+        label: 'Narrow',
+        description: 'Optimized for reading long-form content'
+    },
+    {
+        value: 'wide' as const,
+        label: 'Wide',
+        description: 'Balanced width suitable for most content'
+    },
+    {
+        value: 'full' as const,
+        label: 'Full Width',
+        description: 'Maximize screen space utilization'
+    }
 ];
 
 export default function LayoutModal({
- isOpen,
- onClose,
- onSave,
- currentLayout = 'wide'
+    isOpen,
+    onClose,
+    onSave,
+    currentLayout = 'wide'
 }: LayoutModalProps) {
     const [selectedLayout, setSelectedLayout] = useState<NoteLayout>(currentLayout);
 
@@ -52,11 +64,10 @@ export default function LayoutModal({
                                 <button
                                     key={option.value}
                                     onClick={() => setSelectedLayout(option.value)}
-                                    className={`p-3 sm:p-4 rounded-lg text-left transition-all ${
-                                        selectedLayout === option.value
+                                    className={`p-3 sm:p-4 rounded-lg text-left transition-all ${selectedLayout === option.value
                                             ? 'bg-blue-50 dark:bg-blue-900/30 border-2 border-blue-500'
                                             : 'bg-gray-50 dark:bg-zinc-800 border-2 border-transparent hover:border-gray-300 dark:hover:border-zinc-600'
-                                    }`}>
+                                        }`}>
                                     <div className="font-medium text-sm sm:text-base text-gray-900 dark:text-zinc-100">
                                         {option.label}
                                     </div>

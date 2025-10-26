@@ -5,10 +5,10 @@ import { Helmet } from 'react-helmet';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from '@baejino/ui';
 
-import { Button, Container, Dropdown, Skeleton } from '~/components/shared';
+import { Button, Dropdown, Skeleton } from '~/components/shared';
 import * as Icon from '~/components/icon';
 
-import type { Note } from '~/models/note.model';
+import type { Note, NoteLayout } from '~/models/note.model';
 
 import useDebounce from '~/hooks/useDebounce';
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
@@ -20,6 +20,7 @@ import type { EditorRef } from '~/components/shared/Editor';
 import Editor from '~/components/shared/Editor';
 import { BackReferences } from '~/components/entities';
 import { ReminderPanel } from '~/components/reminder';
+import { LayoutModal } from '~/components/note';
 
 import { updateNote } from '~/apis/note.api';
 
@@ -34,18 +35,21 @@ export default function Note() {
     const [lastSavedAtMap, setLastSavedAtMap] = useState<Record<string, string>>({});
 
     const [isPinned, setIsPinned] = useState(false);
+    const [layout, setLayout] = useState<NoteLayout>('wide');
+    const [isLayoutModalOpen, setIsLayoutModalOpen] = useState(false);
     const [isMountedEvent, mountEvent] = useDebounce(1000);
 
     const { data: note, isError, isLoading } = useQuery({
         queryKey: ['note', id],
         async queryFn() {
             const response = await graphQuery<{
-                note: Pick<Note, 'title' | 'content' | 'pinned' | 'updatedAt'>;
+                note: Pick<Note, 'title' | 'content' | 'pinned' | 'layout' | 'updatedAt'>;
             }>(`
                 query {
                     note(id: "${id}") {
                         title
                         pinned
+                        layout
                         content
                         updatedAt
                     }
@@ -57,6 +61,7 @@ export default function Note() {
             }
             setTitle(response.note.title);
             setIsPinned(response.note.pinned);
+            setLayout(response.note.layout || 'wide');
             setLastSavedAtMap(prev => Object.assign({}, prev, { [id!]: dayjs(Number(response.note.updatedAt)).format('YYYY-MM-DD HH:mm:ss') }));
             return response.note;
 
@@ -91,6 +96,24 @@ export default function Note() {
             content: editorRef?.current?.getContent()
         });
     };
+
+    const handleLayoutSave = async (newLayout: NoteLayout) => {
+        if (!id || isLoading) {
+            return;
+        }
+        const response = await updateNote({
+            id,
+            layout: newLayout
+        });
+
+        if (response.type === 'error') {
+            toast(response.errors[0].message);
+            return;
+        }
+        setLayout(newLayout);
+        toast('Layout has been updated.');
+    };
+
     const {
         onCreate,
         onDelete,
@@ -110,8 +133,21 @@ export default function Note() {
         );
     }
 
+    const getMaxWidth = () => {
+        switch (layout) {
+            case 'narrow':
+                return 'max-w-[640px]';
+            case 'wide':
+                return 'max-w-[896px]';
+            case 'full':
+                return 'max-w-full px-4';
+            default:
+                return 'max-w-[896px]';
+        }
+    };
+
     return (
-        <Container>
+        <main className={`mx-auto ${getMaxWidth()}`}>
             <Helmet>
                 <title>{title}</title>
             </Helmet>
@@ -157,7 +193,8 @@ export default function Note() {
                                         name: 'Clone this note',
                                         onClick: () => onCreate(
                                             titleRef.current?.value || 'untitled',
-                                            editorRef?.current?.getContent() || ''
+                                            editorRef?.current?.getContent() || '',
+                                            layout
                                         )
                                     },
                                     {
@@ -165,6 +202,10 @@ export default function Note() {
                                         onClick: () => onDelete(id!, () => {
                                             toast('The note has been deleted.');
                                         })
+                                    },
+                                    {
+                                        name: 'Change layout',
+                                        onClick: () => setIsLayoutModalOpen(true)
                                     }
                                 ]}
                             />
@@ -211,6 +252,12 @@ export default function Note() {
                     )}
                 />
             </Suspense>
-        </Container>
+            <LayoutModal
+                isOpen={isLayoutModalOpen}
+                onClose={() => setIsLayoutModalOpen(false)}
+                onSave={handleLayoutSave}
+                currentLayout={layout}
+            />
+        </main>
     );
 }

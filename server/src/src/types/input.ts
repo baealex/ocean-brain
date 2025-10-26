@@ -10,4 +10,5 @@ export interface SearchFilter {
 export interface NoteInput {
     title: string;
     content: string;
+    layout?: string;
 }

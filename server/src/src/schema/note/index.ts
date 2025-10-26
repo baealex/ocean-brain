@@ -14,6 +14,9 @@ export const noteType = gql`
 
     input SearchFilterInput {
         query: String!
+        sortBy: String
+        sortOrder: String
+        pinnedFirst: Boolean
     }
 
     input DateRangeInput {
@@ -160,11 +163,24 @@ export const noteResolvers: IResolvers = {
                 ]
             };
 
+            const sortBy = searchFilter.sortBy || 'updatedAt';
+            const sortOrder = searchFilter.sortOrder || 'desc';
+            const pinnedFirst = searchFilter.pinnedFirst || false;
+
+            const orderBy: Prisma.NoteOrderByWithRelationInput[] = [];
+
+            if (pinnedFirst) {
+                orderBy.push({ pinned: 'desc' });
+            }
+
+            if (sortBy === 'createdAt') {
+                orderBy.push({ createdAt: sortOrder as 'asc' | 'desc' });
+            } else {
+                orderBy.push({ updatedAt: sortOrder as 'asc' | 'desc' });
+            }
+
             const $notes = models.note.findMany({
-                orderBy: [
-                    { pinned: 'desc' },
-                    { updatedAt: 'desc' }
-                ],
+                orderBy,
                 where,
                 take: Number(pagination.limit),
                 skip: Number(pagination.offset)

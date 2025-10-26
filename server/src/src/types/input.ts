@@ -7,6 +7,9 @@ export interface Pagination {
 
 export interface SearchFilter {
     query: string;
+    sortBy?: string;
+    sortOrder?: string;
+    pinnedFirst?: boolean;
 }
 
 export interface NoteInput {

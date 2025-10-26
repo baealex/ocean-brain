@@ -21,9 +21,16 @@ export const noteType = gql`
         end: String!
     }
 
+    enum NoteLayout {
+        narrow
+        wide
+        full
+    }
+
     input NoteInput {
         title: String
         content: String
+        layout: NoteLayout
     }
 
     input NoteOrderInput {
@@ -46,6 +53,7 @@ export const noteType = gql`
         updatedAt: String!
         pinned: Boolean!
         order: Int!
+        layout: NoteLayout!
         tags: [Tag!]!
     }
 
@@ -302,7 +310,8 @@ export const noteResolvers: IResolvers = {
             const $note = await models.note.create({
                 data: {
                     title: replacedTitle,
-                    content: replacedContent
+                    content: replacedContent,
+                    ...(note.layout && { layout: note.layout })
                 }
             });
             if (note.content) {
@@ -320,16 +329,20 @@ export const noteResolvers: IResolvers = {
             return $note;
         },
         updateNote: async (_, { id, note }: { id: number; note: NoteInput }) => {
-            const blocks = extractBlocksByType<{ id: string }>(
-                'tag',
-                JSON.parse(note.content)
-            );
+            let blocks: BlockNote<{ id: string }>[] = [];
+
+            if (note.content) {
+                blocks = extractBlocksByType<{ id: string }>(
+                    'tag',
+                    JSON.parse(note.content)
+                );
+            }
 
             const $note = await models.note.update({
                 where: { id: Number(id) },
                 data: {
                     ...note,
-                    tags: { set: blocks.map(block => ({ id: Number(block.props.id) })) }
+                    ...(note.content ? { tags: { set: blocks.map(block => ({ id: Number(block.props.id) })) } } : {})
                 }
             });
             return $note;

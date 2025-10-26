@@ -120,6 +120,7 @@ export function fetchImageNotes(src: string) {
 interface CreateNoteRequestData {
     title: string;
     content: string;
+    layout?: string;
 }
 
 export function createNote(note: CreateNoteRequestData) {
@@ -137,8 +138,9 @@ export function createNote(note: CreateNoteRequestData) {
 
 interface UpdateNoteRequestData {
     id: string;
-    title: string;
-    content: string;
+    title?: string;
+    content?: string;
+    layout?: string;
 }
 
 export const updateNote = ({ id, ...note }: UpdateNoteRequestData) => {

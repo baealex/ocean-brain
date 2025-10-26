@@ -21,10 +21,16 @@ export const noteType = gql`
         end: String!
     }
 
+    enum NoteLayout {
+        narrow
+        wide
+        full
+    }
+
     input NoteInput {
         title: String
         content: String
-        layout: String
+        layout: NoteLayout
     }
 
     input NoteOrderInput {
@@ -47,7 +53,7 @@ export const noteType = gql`
         updatedAt: String!
         pinned: Boolean!
         order: Int!
-        layout: String!
+        layout: NoteLayout!
         tags: [Tag!]!
     }
 

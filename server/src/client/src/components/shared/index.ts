@@ -8,6 +8,7 @@ export { default as FallbackRender } from './FallbackRender';
 export { default as Highlight } from './Highlight';
 export { default as Image } from './Image';
 export { default as Modal } from './Modal';
+export { default as NoteFilters } from './NoteFilters';
 export { default as Pagination } from './Pagination';
 export { default as Progress } from './Progress';
 export { default as Skeleton } from './Skeleton';

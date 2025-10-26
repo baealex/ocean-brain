@@ -5,6 +5,9 @@ export interface FetchNotesParams {
     limit?: number;
     offset?: number;
     query?: string;
+    sortBy?: 'updatedAt' | 'createdAt';
+    sortOrder?: 'asc' | 'desc';
+    pinnedFirst?: boolean;
     fields?: Partial<keyof Note>[];
 }
 
@@ -12,6 +15,9 @@ export function fetchNotes({
     limit = 25,
     offset = 0,
     query = '',
+    sortBy,
+    sortOrder,
+    pinnedFirst,
     fields
 }: FetchNotesParams = {}) {
     return graphQuery<{
@@ -44,7 +50,12 @@ export function fetchNotes({
             }
         }`,
         {
-            searchFilter: { query },
+            searchFilter: {
+                query,
+                sortBy,
+                sortOrder,
+                pinnedFirst
+            },
             pagination: {
                 limit,
                 offset

@@ -1,5 +1,5 @@
-import type { Note } from '~/models/note.model';
-import { graphQuery } from '~/modules/graph-query';
+import type { Note } from '@/entities/note/model/note.model';
+import { graphQuery } from '@/shared/lib/graph-query';
 
 export interface FetchNotesParams {
     limit?: number;

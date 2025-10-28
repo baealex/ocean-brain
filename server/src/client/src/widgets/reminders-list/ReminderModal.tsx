@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import dayjs from 'dayjs';
-import { Button, Modal } from '~/components/shared';
+import { Button, Modal } from '@/shared/ui';
 
-import type { Reminder } from '~/models/reminder.model';
+import type { Reminder } from '@/entities/reminder/model/reminder.model';
 
 interface ReminderModalProps {
     isOpen: boolean;

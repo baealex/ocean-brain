@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import dayjs from 'dayjs';
-import { Button, Dropdown } from '~/components/shared';
-import * as Icon from '~/components/icon';
+import { Button, Dropdown } from '@/shared/ui';
+import * as Icon from '@/shared/ui/icon';
 
-import { Reminders } from '~/components/entities';
-import useReminderMutate from '~/hooks/resource/useReminderMutate';
+import { useReminders } from '@/entities/reminder';
+import useReminderMutate from '@/shared/hooks/resource/useReminderMutate';
 import ReminderModal from './ReminderModal';
 
-import type { Reminder } from '~/models/reminder.model';
+import type { Reminder } from '@/entities/reminder/model/reminder.model';
 
 import styles from './ReminderPanel.module.scss';
 
@@ -21,6 +21,16 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const [editingReminder, setEditingReminder] = useState<Reminder | undefined>(undefined);
     const { onCreate, onUpdate, onDelete } = useReminderMutate();
+
+    const { data } = useReminders({
+        noteId,
+        searchParams: {
+            offset: 0,
+            limit: 9999
+        }
+    });
+
+    const { reminders = [], totalCount = 0 } = data || {};
 
     const handleOpenCreateModal = () => {
         setModalMode('create');
@@ -113,23 +123,14 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
             </div>
 
             {!isCollapsed && (
-
-            <Reminders
-                noteId={noteId}
-                searchParams={{
-                    offset: 0,
-                    limit: 9999
-                }}
-                render={({ reminders, totalCount }) => {
-                    return (
-                        <div className="flex flex-col gap-3">
-                            {reminders.length === 0 ? (
-                                <p className="text-gray-500 dark:text-zinc-400 text-sm">
-                                    {totalCount === 0 ? 'No reminders set for this note.' : 'No incomplete reminders.'}
-                                </p>
-                            ) : (
-                                <div className="flex flex-col gap-2">
-                                    {reminders.map((reminder) => {
+                <div className="flex flex-col gap-3">
+                    {reminders.length === 0 ? (
+                        <p className="text-gray-500 dark:text-zinc-400 text-sm">
+                            {totalCount === 0 ? 'No reminders set for this note.' : 'No incomplete reminders.'}
+                        </p>
+                    ) : (
+                        <div className="flex flex-col gap-2">
+                            {reminders.map((reminder) => {
                                         const urgency = reminder.priority || calculateUrgency(reminder.reminderDate);
                                         const timeRemaining = getTimeRemaining(reminder.reminderDate);
 
@@ -188,13 +189,10 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                                                 )}
                                             </div>
                                         );
-                                    })}
-                                </div>
-                            )}
+                            })}
                         </div>
-                    );
-                }}
-            />
+                    )}
+                </div>
             )}
 
             <ReminderModal

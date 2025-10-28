@@ -2,7 +2,7 @@ import classNames from 'classnames/bind';
 import styles from './Pagination.module.scss';
 const cx = classNames.bind(styles);
 
-import * as Icon from '~/components/icon';
+import * as Icon from '@/shared/ui/icon';
 
 export interface Props {
     page: number;

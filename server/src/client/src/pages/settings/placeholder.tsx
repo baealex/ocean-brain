@@ -9,14 +9,14 @@ import {
     FallbackRender,
     Modal,
     Pagination
-} from '~/components/shared';
-import * as Icon from '~/components/icon';
+} from '@/shared/ui';
+import * as Icon from '@/shared/ui/icon';
 
-import { getFixedPlaceholders, PLACEHOLDER_PREFIX, PLACEHOLDER_SUFFIX } from '~/modules/fixed-placeholder';
+import { getFixedPlaceholders, PLACEHOLDER_PREFIX, PLACEHOLDER_SUFFIX } from '@/shared/lib/fixed-placeholder';
 
-import { createPlaceholder, deletePlaceholder, fetchPlaceholders } from '~/apis/placeholder.api';
+import { createPlaceholder, deletePlaceholder, fetchPlaceholders } from '@/entities/placeholder';
 
-import type { Placeholder } from '~/models/placeholder.model';
+import type { Placeholder } from '@/entities/placeholder.model';
 
 const cardClassName = 'bg-gray-100 dark:bg-zinc-900 flex gap-2 items-center justify-between p-4 rounded-md';
 

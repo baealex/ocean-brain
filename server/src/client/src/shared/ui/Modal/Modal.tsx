@@ -3,7 +3,7 @@ import classNames from 'classnames/bind';
 const cx = classNames.bind(styles);
 
 import React, { useEffect } from 'react';
-import * as Icon from '~/components/icon';
+import * as Icon from '@/shared/ui/icon';
 
 interface ModalProps {
     isOpen: boolean;

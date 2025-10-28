@@ -2,12 +2,12 @@ import dayjs from 'dayjs';
 import { Helmet } from 'react-helmet';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
-import * as Icon from '~/components/icon';
-import type { Note } from '~/models/note.model';
-import type { Reminder } from '~/models/reminder.model';
-import { getRandomBackground } from '~/modules/color';
-import { graphQuery } from '~/modules/graph-query';
-import { getNoteURL } from '~/modules/url';
+import * as Icon from '@/shared/ui/icon';
+import type { Note } from '@/entities/note.model';
+import type { Reminder } from '@/entities/reminder.model';
+import { getRandomBackground } from '@/shared/lib/color';
+import { graphQuery } from '@/shared/lib/graph-query';
+import { getNoteURL } from '@/shared/lib/url';
 
 interface CalendarHeaderProps {
     month: number;

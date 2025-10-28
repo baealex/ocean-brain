@@ -4,11 +4,11 @@ import {
     createNote,
     deleteNote,
     pinNote
-} from '~/apis/note.api';
+} from '@/entities/note/api/note.api';
 import { confirm } from '@baejino/ui';
 import { useNavigate } from 'react-router-dom';
-import { getPinnedNoteQueryKey } from '~/modules/query-key-factory';
-import { replaceFixedPlaceholder } from '~/modules/fixed-placeholder';
+import { getPinnedNoteQueryKey } from '@/shared/lib/query-key-factory';
+import { replaceFixedPlaceholder } from '@/shared/lib/fixed-placeholder';
 
 const useNoteMutate = () => {
     const queryClient = useQueryClient();

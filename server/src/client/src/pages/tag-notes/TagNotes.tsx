@@ -2,11 +2,11 @@ import { Suspense } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 
-import { Empty, FallbackRender, Pagination, Skeleton } from '~/components/shared';
-import { NoteListCard } from '~/components/note';
-import { TagNotes as TagNotesEntity } from '~/components/entities';
+import { Empty, FallbackRender, Pagination, Skeleton } from '@/shared/ui';
+import { NoteListCard } from '@/entities/note/ui';
+// TODO: import TagNotes entity hook
 
-import useNoteMutate from '~/hooks/resource/useNoteMutate';
+import useNoteMutate from '@/shared/hooks/resource/useNoteMutate';
 
 export default function TagNotes() {
     const { id } = useParams();
@@ -34,52 +34,11 @@ export default function TagNotes() {
                         <Skeleton height="112px" />
                     </div>
                 )}>
-                <TagNotesEntity
-                    searchParams={{
-                        query: id,
-                        offset: (page - 1) * limit,
-                        limit
-                    }}
-                    render={({ notes, totalCount }) => (
-                        <FallbackRender
-                            fallback={(
-                                <Empty
-                                    icon="🧠"
-                                    title="Ocean is calm"
-                                    description="Capture anything and make waves in the ocean!"
-                                />
-                            )}>
-                            {notes.length > 0 && (
-                                <>
-                                    <div className="grid gap-6 mt-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
-                                        {notes.map(note => (
-                                            <NoteListCard
-                                                key={note.id}
-                                                {...note}
-                                                onPinned={() => onPinned(note.id, note.pinned)}
-                                                onDelete={() => onDelete(note.id)}
-                                            />
-                                        ))}
-                                    </div>
-                                    <FallbackRender
-                                        fallback={null}>
-                                        {totalCount && limit < totalCount && (
-                                            <Pagination
-                                                page={page}
-                                                last={Math.ceil(totalCount / limit)}
-                                                onChange={(page) => {
-                                                    setSearchParams(searchParams => {
-                                                        searchParams.set('page', page.toString());
-                                                        return searchParams;
-                                                    });
-                                                }}
-                                            />
-                                        )}
-                                    </FallbackRender>
-                                </>
-                            )}
-                        </FallbackRender>
-                    )}
+                {/* TODO: Implement TagNotes with hooks pattern */}
+                <Empty
+                    icon="🚧"
+                    title="Under Construction"
+                    description="TagNotes page will be reimplemented with hooks pattern"
                 />
             </Suspense>
         </>

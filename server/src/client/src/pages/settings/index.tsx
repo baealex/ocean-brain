@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 
 import * as Icon from '@/shared/ui/icon';
 
-import { useTheme } from '~/store/theme';
+import { useTheme } from '@/shared/store/theme';
 
 const cardClassName = 'flex items-center justify-between bg-gray-100 dark:bg-zinc-900 p-4 rounded';
 

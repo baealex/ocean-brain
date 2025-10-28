@@ -1,5 +1,5 @@
 import type { Tag } from '~/models/tag.model';
-import { graphQuery } from '~/modules/graph-query';
+import { graphQuery } from '@/shared/lib/graph-query';
 
 export function fetchTags({
     query = '',

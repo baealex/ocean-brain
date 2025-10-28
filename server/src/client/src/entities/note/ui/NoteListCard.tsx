@@ -1,13 +1,13 @@
 import { Link } from 'react-router-dom';
 
-import { Badge, Dropdown } from '~/components/shared';
-import * as Icon from '~/components/icon';
+import { Badge, Dropdown } from '@/shared/ui';
+import * as Icon from '@/shared/ui/icon';
 
-import type { Note } from '~/models/note.model';
+import type { Note } from '@/entities/note/model/note.model';
 
-import { timeSince } from '~/modules/time';
-import { getNoteURL } from '~/modules/url';
-import { getRandomBackground } from '~/modules/color';
+import { timeSince } from '@/shared/lib/time';
+import { getNoteURL } from '@/shared/lib/url';
+import { getRandomBackground } from '@/shared/lib/color';
 
 interface Props extends Note {
     onPinned?: () => void;

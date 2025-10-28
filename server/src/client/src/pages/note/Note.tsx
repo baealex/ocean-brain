@@ -5,23 +5,23 @@ import { Helmet } from 'react-helmet';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from '@baejino/ui';
 
-import { Button, Container, Dropdown, Skeleton } from '~/components/shared';
-import * as Icon from '~/components/icon';
+import { Button, Container, Dropdown, Skeleton } from '@/shared/ui';
+import * as Icon from '@/shared/ui/icon';
 
-import type { Note } from '~/models/note.model';
+import type { Note } from '@/entities/note.model';
 
-import useDebounce from '~/hooks/useDebounce';
-import useNoteMutate from '~/hooks/resource/useNoteMutate';
+import useDebounce from '@/shared/hooks/useDebounce';
+import useNoteMutate from '@/shared/hooks/resource/useNoteMutate';
 
-import { graphQuery } from '~/modules/graph-query';
-import { getNoteURL } from '~/modules/url';
+import { graphQuery } from '@/shared/lib/graph-query';
+import { getNoteURL } from '@/shared/lib/url';
 
-import type { EditorRef } from '~/components/shared/Editor';
-import Editor from '~/components/shared/Editor';
-import { BackReferences } from '~/components/entities';
-import { ReminderPanel } from '~/components/reminder';
+import type { EditorRef } from '@/shared/ui/Editor';
+import Editor from '@/shared/ui/Editor';
+// import { BackReferences } from '@/entities/...' - TODO: implement hook
+import { ReminderPanel } from '@/widgets/reminders-list';
 
-import { updateNote } from '~/apis/note.api';
+import { updateNote } from '@/entities/note';
 
 export default function Note() {
     const { id } = useParams();
@@ -191,25 +191,7 @@ export default function Note() {
                 fallback={(
                     <Skeleton height="100px" />
                 )}>
-                <BackReferences
-                    noteId={id}
-                    render={backReferences => backReferences && backReferences.length > 0 && (
-                        <div className="shadow-xl p-5 rounded-2xl">
-                            <p className="text-lg font-bold">
-                                Back References
-                            </p>
-                            <ul>
-                                {backReferences?.map((backLink) => (
-                                    <li>
-                                        <Link to={getNoteURL(backLink.id)}>
-                                            - {backLink.title}
-                                        </Link>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
-                />
+                {/* TODO: BackReferences component */}
             </Suspense>
         </Container>
     );

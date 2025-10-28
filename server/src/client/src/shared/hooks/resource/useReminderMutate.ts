@@ -2,8 +2,8 @@ import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@baejino/ui';
 
-import { createReminder, updateReminder, deleteReminder } from '~/apis/reminder.api';
-import type { ReminderPriority } from '~/models/reminder.model';
+import { createReminder, updateReminder, deleteReminder } from '@/entities/reminder/api/reminder.api';
+import type { ReminderPriority } from '@/entities/reminder/model/reminder.model';
 
 export default function useReminderMutate() {
     const queryClient = useQueryClient();

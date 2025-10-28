@@ -9,14 +9,13 @@ import {
     Pagination,
     Skeleton,
     Empty
-} from '~/components/shared';
-import * as Icon from '~/components/icon';
+} from '@/shared/ui';
+import * as Icon from '@/shared/ui/icon';
 
-import { getImageNotesURL } from '~/modules/url';
+import { getImageNotesURL } from '@/shared/lib/url';
 
-import { deleteImage } from '~/apis/image.api';
+import { deleteImage, useImages } from '@/entities/image';
 import { Suspense } from 'react';
-import { Images } from '~/components/entities';
 
 const ManageImage = () => {
     const queryClient = useQueryClient();
@@ -25,6 +24,13 @@ const ManageImage = () => {
 
     const limit = 24;
     const page = Number(searchParams.get('page')) || 1;
+
+    const { data } = useImages({
+        offset: (page - 1) * limit,
+        limit
+    });
+
+    const { images = [], totalCount = 0 } = data || {};
 
     const deleteImageMutation = useMutation({
         mutationFn: deleteImage,
@@ -55,21 +61,15 @@ const ManageImage = () => {
                         <Skeleton height="256px"/>
                     </div>
                 )}>
-                <Images
-                    searchParams={{
-                        offset: (page - 1) * limit,
-                        limit
-                    }}
-                    render={({ images, totalCount }) => (
-                        <FallbackRender
-                            fallback={(
-                                <Empty
-                                    icon="🖼️"
-                                    title="There are no images"
-                                    description="Try drag and drop an image on the note editor."
-                                />
-                            )}>
-                            {images.length > 0 && (
+                <FallbackRender
+                    fallback={(
+                        <Empty
+                            icon="🖼️"
+                            title="There are no images"
+                            description="Try drag and drop an image on the note editor."
+                        />
+                    )}>
+                    {images.length > 0 && (
                                 <>
                                     <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
                                         {images.map((image) => (
@@ -103,8 +103,6 @@ const ManageImage = () => {
                                 </>
                             )}
                         </FallbackRender>
-                    )}
-                />
             </Suspense>
         </>
     );

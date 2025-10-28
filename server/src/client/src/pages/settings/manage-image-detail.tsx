@@ -1,13 +1,13 @@
 import { Helmet } from 'react-helmet';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Image as ImageComponent } from '~/components/shared';
-import { NoteListItem } from '~/components/note';
-import * as Icon from '~/components/icon';
+import { Image as ImageComponent } from '@/shared/ui';
+import { NoteListItem } from '@/entities/note/ui';
+import * as Icon from '@/shared/ui/icon';
 
-import { deleteImage, fetchImage } from '~/apis/image.api';
-import { fetchImageNotes } from '~/apis/note.api';
-import { setServerCache } from '~/apis/server-cache.api';
+import { deleteImage, fetchImage } from '@/entities/image';
+import { fetchImageNotes } from '@/entities/note';
+import { setServerCache } from '@/shared/api';
 
 const ManageImageDetail =  () => {
     const { id } = useParams();

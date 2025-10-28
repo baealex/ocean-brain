@@ -1,6 +1,6 @@
-import { graphQuery } from '~/modules/graph-query';
+import { graphQuery } from '@/shared/lib/graph-query';
 
-import type { Reminder, ReminderPriority } from '~/models/reminder.model';
+import type { Reminder, ReminderPriority } from '@/entities/reminder/model/reminder.model';
 
 export const createReminder = async (params: {
     noteId: string;

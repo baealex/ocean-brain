@@ -5,8 +5,8 @@ const cx = classNames.bind(styles);
 import React, { Suspense, useEffect, useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import * as Icon from '~/components/icon';
-import { Badge, RestoreParentScroll, Skeleton } from '~/components/shared';
+import * as Icon from '@/shared/ui/icon';
+import { Badge, RestoreParentScroll, Skeleton } from '@/shared/ui';
 
 import type { DragEndEvent } from '@dnd-kit/core';
 import {
@@ -27,20 +27,20 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 
-import useDebounce from '~/hooks/useDebounce';
-import useNoteMutate from '~/hooks/resource/useNoteMutate';
+import useDebounce from '@/shared/hooks/useDebounce';
+import useNoteMutate from '@/shared/hooks/resource/useNoteMutate';
 
-import type { Note } from '~/models/note.model';
-import type { Tag } from '~/models/tag.model';
+import type { Note } from '@/entities/note/model/note.model';
+import type { Tag } from '@/entities/tag/model/tag.model';
 
-import { useTheme } from '~/store/theme';
+import { useTheme } from '@/shared/store/theme';
 
-import { fetchNotes, reorderNotes } from '~/apis/note.api';
-import { fetchTags } from '~/apis/tag.api';
-import { getServerCache, setServerCache } from '~/apis/server-cache.api';
+import { fetchNotes, reorderNotes } from '@/entities/note/api/note.api';
+import { fetchTags } from '@/entities/tag/api/tag.api';
+import { getServerCache, setServerCache } from '@/shared/api/server-cache.api';
 import { confirm } from '@baejino/ui';
-import { PinnedNotes } from '~/components/entities';
-import { getPinnedNoteQueryKey } from '~/modules/query-key-factory';
+// TODO: Convert PinnedNotes from render props to hook pattern
+import { getPinnedNoteQueryKey } from '@/shared/lib/query-key-factory';
 
 interface SiteLayoutProps {
     children?: React.ReactNode;
@@ -125,6 +125,38 @@ function PinnedNotesList({
                 ))}
             </SortableContext>
         </DndContext>
+    );
+}
+
+interface PinnedNotesLoaderProps {
+    sensors: ReturnType<typeof useSensors>;
+    handleDragEnd: (event: DragEndEvent) => void;
+    location: ReturnType<typeof useLocation>;
+    pinnedItems: Pick<Note, 'id' | 'title' | 'order'>[];
+    setPinnedItems: React.Dispatch<React.SetStateAction<Pick<Note, 'id' | 'title' | 'order'>[]>>;
+}
+
+function PinnedNotesLoader({ sensors, handleDragEnd, location, pinnedItems, setPinnedItems }: PinnedNotesLoaderProps) {
+    const { data } = useQuery({
+        queryKey: [getPinnedNoteQueryKey()],
+        async queryFn() {
+            const response = await fetchNotes({ pinned: true });
+            if (response.type === 'error') throw response;
+            return response.allNotes.notes;
+        }
+    });
+
+    const notes = data || [];
+
+    return (
+        <PinnedNotesList
+            notes={notes}
+            sensors={sensors}
+            handleDragEnd={handleDragEnd}
+            location={location}
+            pinnedItems={pinnedItems}
+            setPinnedItems={setPinnedItems}
+        />
     );
 }
 
@@ -357,17 +389,12 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                                     <Skeleton height="24px" opacity={0.5} />
                                 </>
                             )}>
-                            <PinnedNotes
-                                render={(notes) => (
-                                    <PinnedNotesList
-                                        notes={notes}
-                                        sensors={sensors}
-                                        handleDragEnd={handleDragEnd}
-                                        location={location}
-                                        pinnedItems={pinnedItems}
-                                        setPinnedItems={setPinnedItems}
-                                    />
-                                )}
+                            <PinnedNotesLoader
+                                sensors={sensors}
+                                handleDragEnd={handleDragEnd}
+                                location={location}
+                                pinnedItems={pinnedItems}
+                                setPinnedItems={setPinnedItems}
                             />
                         </Suspense>
                     </div>

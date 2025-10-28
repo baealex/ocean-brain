@@ -1,10 +1,10 @@
 import { BlockNoteView } from '@blocknote/mantine';
 import { useCreateBlockNote } from '@blocknote/react';
 import { forwardRef, useImperativeHandle } from 'react';
-import { uploadImage } from '~/apis/image.api';
-import schema, { CommandView, ReferenceView, TagView } from '~/components/schema';
-import { fileToBase64 } from '~/modules/file';
-import { useTheme } from '~/store/theme';
+import { uploadImage } from '@/entities/image/api/image.api';
+import schema, { CommandView, ReferenceView, TagView } from '@/shared/ui/schema';
+import { fileToBase64 } from '@/shared/lib/file';
+import { useTheme } from '@/shared/store/theme';
 
 interface EditorProps {
     content?: string;

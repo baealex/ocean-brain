@@ -1,12 +1,12 @@
 import { Link } from 'react-router-dom';
 
-import { Badge } from '~/components/shared';
-import * as Icon from '~/components/icon';
+import { Badge } from '@/shared/ui';
+import * as Icon from '@/shared/ui/icon';
 
-import type { Note } from '~/models/note.model';
+import type { Note } from '@/entities/note/model/note.model';
 
-import { timeSince } from '~/modules/time';
-import { getNoteURL, getTagURL } from '~/modules/url';
+import { timeSince } from '@/shared/lib/time';
+import { getNoteURL, getTagURL } from '@/shared/lib/url';
 
 interface Props {
     id: string;

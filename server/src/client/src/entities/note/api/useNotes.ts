@@ -1,4 +1,4 @@
-import { useSuspenseQuery } from '@tantml:invoke>@tanstack/react-query';
+import { useSuspenseQuery } from '@tanstack/react-query';
 import { fetchNotes, type FetchNotesParams } from './note.api';
 
 const createQueryKey = (searchParams: FetchNotesParams) => {

@@ -350,7 +350,7 @@ reminders: dayReminders
                 />
 
                 <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-lg overflow-x-auto border border-zinc-200 dark:border-zinc-700">
-                    <div className="min-w-[640px]">
+                    <div className="min-w-[1200px]">
                         <div className="grid grid-cols-7 bg-zinc-50 dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700">
                             {DAYS_OF_WEEK.map((day, index) => (
                                 <div

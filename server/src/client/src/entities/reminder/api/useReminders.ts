@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { graphQuery } from '@/shared/lib/graph-query';
+import { graphQuery } from '~/shared/lib/graph-query';
 import type { Reminders } from '../model/reminder.model';
 import type { Pagination } from '~/types';
 

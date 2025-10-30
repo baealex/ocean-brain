@@ -5,7 +5,7 @@ const cx = classNames.bind(styles);
 import { createReactInlineContentSpec } from '@blocknote/react';
 import { Link } from 'react-router-dom';
 
-import { getNoteURL } from '@/shared/lib/url';
+import { getNoteURL } from '~/shared/lib/url';
 
 const Reference = createReactInlineContentSpec(
     {

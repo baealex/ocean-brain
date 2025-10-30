@@ -1,6 +1,6 @@
 import { SuggestionMenuController } from '@blocknote/react';
 
-import { fetchNotes } from '@/entities/note/api/note.api';
+import { fetchNotes } from '~/entities/note/api/note.api';
 
 interface ReferenceViewProps {
     onClick: (content: {

@@ -2,11 +2,11 @@ import { Suspense } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 
-import { Empty, FallbackRender, Pagination, Skeleton } from '@/shared/ui';
-import { NoteListCard } from '@/entities/note/ui';
+import { Empty, FallbackRender, Pagination, Skeleton } from '~/shared/ui';
+import { NoteListCard } from '~/entities/note/ui';
 // TODO: import TagNotes entity hook
 
-import useNoteMutate from '@/shared/hooks/resource/useNoteMutate';
+import useNoteMutate from '~/shared/hooks/resource/useNoteMutate';
 
 export default function TagNotes() {
     const { id } = useParams();

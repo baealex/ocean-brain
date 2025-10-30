@@ -1,4 +1,4 @@
-import { graphQuery } from '@/shared/lib/graph-query';
+import { graphQuery } from '~/shared/lib/graph-query';
 import type { Placeholder } from '~/models/placeholder.model';
 
 export interface FetchPlaceholdersParams {

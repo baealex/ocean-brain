@@ -2,10 +2,10 @@ import { Suspense } from 'react';
 import { Helmet } from 'react-helmet';
 import { Link, useSearchParams } from 'react-router-dom';
 
-import { Empty, FallbackRender, Pagination, Skeleton } from '@/shared/ui';
-import { useTags } from '@/entities/tag';
+import { Empty, FallbackRender, Pagination, Skeleton } from '~/shared/ui';
+import { useTags } from '~/entities/tag';
 
-import { getRandomBackground } from '@/shared/lib/color';
+import { getRandomBackground } from '~/shared/lib/color';
 
 export default function Tag() {
     const [searchParams, setSearchParams] = useSearchParams();

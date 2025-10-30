@@ -1,7 +1,7 @@
 
 import { Link } from 'react-router-dom';
-import type { Reminder } from '@/entities/reminder/model/reminder.model';
-import { getNoteURL } from '@/shared/lib/url';
+import type { Reminder } from '~/entities/reminder/model/reminder.model';
+import { getNoteURL } from '~/shared/lib/url';
 import styles from './ReminderCard.module.scss';
 import dayjs from 'dayjs';
 

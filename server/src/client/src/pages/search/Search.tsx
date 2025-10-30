@@ -7,10 +7,10 @@ import {
     FallbackRender,
     Highlight,
     Pagination
-} from '@/shared/ui';
-import { useNotes } from '@/entities/note';
+} from '~/shared/ui';
+import { useNotes } from '~/entities/note';
 
-import { getNoteURL } from '@/shared/lib/url';
+import { getNoteURL } from '~/shared/lib/url';
 import { Suspense } from 'react';
 
 export default function Search() {

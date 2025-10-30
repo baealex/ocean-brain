@@ -1,5 +1,5 @@
 import { SuggestionMenuController } from '@blocknote/react';
-import { createTag, fetchTags } from '@/entities/tag/api/tag.api';
+import { createTag, fetchTags } from '~/entities/tag/api/tag.api';
 
 interface TagViewProps {
     onClick: (content: {

@@ -4,23 +4,26 @@ import {
     createNote,
     deleteNote,
     pinNote
-} from '@/entities/note/api/note.api';
+} from '~/entities/note/api/note.api';
 import { confirm } from '@baejino/ui';
 import { useNavigate } from 'react-router-dom';
-import { getPinnedNoteQueryKey } from '@/shared/lib/query-key-factory';
-import { replaceFixedPlaceholder } from '@/shared/lib/fixed-placeholder';
+import { getPinnedNoteQueryKey } from '~/shared/lib/query-key-factory';
+import { replaceFixedPlaceholder } from '~/shared/lib/fixed-placeholder';
+
+import type { NoteLayout } from '~/models/note.model';
 
 const useNoteMutate = () => {
     const queryClient = useQueryClient();
 
     const navigate = useNavigate();
 
-    const onCreate = async (title = '', content = '') => {
+    const onCreate = async (title = '', content = '', layout?: NoteLayout) => {
         const replacedTitle = replaceFixedPlaceholder(title);
         const replacedContent = replaceFixedPlaceholder(content);
         const response = await createNote({
             title: replacedTitle,
-            content: replacedContent
+            content: replacedContent,
+            ...(layout && { layout })
         });
         if (response.type === 'error') {
             return;

@@ -3,7 +3,7 @@ import classNames from 'classnames/bind';
 const cx = classNames.bind(styles);
 
 import React from 'react';
-import { Spinner } from '@/shared/ui/icon';
+import { Spinner } from '~/shared/ui/icon';
 
 interface ButtonProps {
     variant?: 'primary' | 'secondary';

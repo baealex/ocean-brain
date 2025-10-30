@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import dayjs from 'dayjs';
-import { Button, Dropdown } from '@/shared/ui';
-import * as Icon from '@/shared/ui/icon';
+import { Button, Dropdown } from '~/shared/ui';
+import * as Icon from '~/shared/ui/icon';
 
-import { useReminders } from '@/entities/reminder';
-import useReminderMutate from '@/shared/hooks/resource/useReminderMutate';
+import { useReminders } from '~/entities/reminder';
+import useReminderMutate from '~/shared/hooks/resource/useReminderMutate';
 import ReminderModal from './ReminderModal';
 
-import type { Reminder } from '@/entities/reminder/model/reminder.model';
+import type { Reminder } from '~/entities/reminder/model/reminder.model';
 
 import styles from './ReminderPanel.module.scss';
 

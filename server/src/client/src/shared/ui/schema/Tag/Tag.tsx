@@ -5,7 +5,7 @@ const cx = classNames.bind(styles);
 import { createReactInlineContentSpec } from '@blocknote/react';
 import { Link } from 'react-router-dom';
 
-import { getTagURL } from '@/shared/lib/url';
+import { getTagURL } from '~/shared/lib/url';
 
 export const Tag = createReactInlineContentSpec(
     {

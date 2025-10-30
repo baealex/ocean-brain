@@ -1,4 +1,4 @@
-import { graphQuery } from '@/shared/lib/graph-query';
+import { graphQuery } from '~/shared/lib/graph-query';
 
 type CacheName = 'heroBanner';
 

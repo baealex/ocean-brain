@@ -1,10 +1,13 @@
-import type { Note } from '@/entities/note/model/note.model';
-import { graphQuery } from '@/shared/lib/graph-query';
+import type { Note } from '~/entities/note/model/note.model';
+import { graphQuery } from '~/shared/lib/graph-query';
 
 export interface FetchNotesParams {
     limit?: number;
     offset?: number;
     query?: string;
+    sortBy?: 'updatedAt' | 'createdAt';
+    sortOrder?: 'asc' | 'desc';
+    pinnedFirst?: boolean;
     fields?: Partial<keyof Note>[];
 }
 
@@ -12,6 +15,9 @@ export function fetchNotes({
     limit = 25,
     offset = 0,
     query = '',
+    sortBy,
+    sortOrder,
+    pinnedFirst,
     fields
 }: FetchNotesParams = {}) {
     return graphQuery<{
@@ -44,7 +50,12 @@ export function fetchNotes({
             }
         }`,
         {
-            searchFilter: { query },
+            searchFilter: {
+                query,
+                sortBy,
+                sortOrder,
+                pinnedFirst
+            },
             pagination: {
                 limit,
                 offset
@@ -120,6 +131,7 @@ export function fetchImageNotes(src: string) {
 interface CreateNoteRequestData {
     title: string;
     content: string;
+    layout?: string;
 }
 
 export function createNote(note: CreateNoteRequestData) {
@@ -137,8 +149,9 @@ export function createNote(note: CreateNoteRequestData) {
 
 interface UpdateNoteRequestData {
     id: string;
-    title: string;
-    content: string;
+    title?: string;
+    content?: string;
+    layout?: string;
 }
 
 export const updateNote = ({ id, ...note }: UpdateNoteRequestData) => {

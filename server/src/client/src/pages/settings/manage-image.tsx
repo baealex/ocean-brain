@@ -9,12 +9,12 @@ import {
     Pagination,
     Skeleton,
     Empty
-} from '@/shared/ui';
-import * as Icon from '@/shared/ui/icon';
+} from '~/shared/ui';
+import * as Icon from '~/shared/ui/icon';
 
-import { getImageNotesURL } from '@/shared/lib/url';
+import { getImageNotesURL } from '~/shared/lib/url';
 
-import { deleteImage, useImages } from '@/entities/image';
+import { deleteImage, useImages } from '~/entities/image';
 import { Suspense } from 'react';
 
 const ManageImage = () => {

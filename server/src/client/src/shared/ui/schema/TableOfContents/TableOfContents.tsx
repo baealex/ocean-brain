@@ -2,7 +2,7 @@ import { createReactBlockSpec } from '@blocknote/react';
 import { useBlockNoteEditor } from '@blocknote/react';
 import type { Block } from '@blocknote/core';
 import { useEffect, useState } from 'react';
-import * as Icon from '@/shared/ui/icon';
+import * as Icon from '~/shared/ui/icon';
 
 interface HeadingItem {
     id: string;

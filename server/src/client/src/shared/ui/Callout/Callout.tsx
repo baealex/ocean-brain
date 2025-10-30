@@ -1,4 +1,4 @@
-import * as Icon from '@/shared/ui/icon';
+import * as Icon from '~/shared/ui/icon';
 
 interface CalloutProps {
     children: React.ReactNode;

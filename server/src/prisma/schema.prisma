@@ -23,6 +23,7 @@ model Note {
     updatedAt DateTime   @updatedAt
     pinned    Boolean    @default(false)
     order     Int        @default(0)
+    layout    NoteLayout @default(wide)
     tags      Tag[]      @relation("NoteToTag")
     reminders Reminder[] @relation("NoteToReminder")
 }
@@ -47,6 +48,12 @@ enum ReminderPriority {
     low
     medium
     high
+}
+
+enum NoteLayout {
+    narrow
+    wide
+    full
 }
 
 model Reminder {

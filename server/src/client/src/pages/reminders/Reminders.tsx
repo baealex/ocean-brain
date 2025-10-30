@@ -1,10 +1,10 @@
 import { Suspense } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
-import { Empty, FallbackRender, Pagination, Skeleton } from '@/shared/ui';
-import { useReminders } from '@/entities/reminder';
-import useReminderMutate from '@/shared/hooks/resource/useReminderMutate';
-import ReminderCard from '@/widgets/reminders-list/ReminderCard';
+import { Empty, FallbackRender, Pagination, Skeleton } from '~/shared/ui';
+import { useReminders } from '~/entities/reminder';
+import useReminderMutate from '~/shared/hooks/resource/useReminderMutate';
+import ReminderCard from '~/widgets/reminders-list/ReminderCard';
 
 export default function Reminders() {
     const [searchParams, setSearchParams] = useSearchParams();

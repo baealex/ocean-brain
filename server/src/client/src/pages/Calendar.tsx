@@ -61,11 +61,11 @@ const DAYS_OF_WEEK = [
 ];
 
 function CalendarHeader({
- month,
- year,
- onPrevMonth,
- onNextMonth,
- onToday
+    month,
+    year,
+    onPrevMonth,
+    onNextMonth,
+    onToday
 }: CalendarHeaderProps) {
     return (
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 sm:mb-8">
@@ -144,7 +144,7 @@ function ReminderCard({ reminder }: ReminderCardProps) {
 }
 
 function CalendarDay({
- day, isSunday, isToday, notes, reminders, type
+    day, isSunday, isToday, notes, reminders, type
 }: CalendarDayProps) {
     if (!day) {
         return <div className="min-h-[140px] sm:min-h-[120px] bg-zinc-50/50 dark:bg-zinc-800/50 border-r border-b border-zinc-200 dark:border-zinc-700" />;
@@ -154,12 +154,12 @@ function CalendarDay({
         <div className="min-h-[140px] sm:min-h-[120px] bg-white dark:bg-zinc-900 border-r border-b border-zinc-200 dark:border-zinc-700">
             <div className="p-2 flex justify-end">
                 <span
-className={`flex items-center justify-center w-8 h-8 sm:w-7 sm:h-7 text-base sm:text-sm font-medium rounded-full ${
+                    className={`flex items-center justify-center w-8 h-8 sm:w-7 sm:h-7 text-base sm:text-sm font-medium rounded-full ${
                     isToday
                         ? 'bg-blue-500 text-white'
                         : isSunday
-                        ? 'text-rose-600 dark:text-rose-400'
-                        : 'text-zinc-700 dark:text-zinc-300'
+                            ? 'text-rose-600 dark:text-rose-400'
+                            : 'text-zinc-700 dark:text-zinc-300'
                 }`}>
                     {day}
                 </span>
@@ -266,11 +266,11 @@ export default function Calendar() {
                     }
                 }`,
                 {
- dateRange: {
- start: startDate,
-end: endDate
-}
-}
+                    dateRange: {
+                        start: startDate,
+                        end: endDate
+                    }
+                }
             );
             if (response.type === 'error') throw response;
             return response.notesInDateRange;
@@ -296,11 +296,11 @@ end: endDate
                     }
                 }`,
                 {
- dateRange: {
- start: startDate,
-end: endDate
-}
-}
+                    dateRange: {
+                        start: startDate,
+                        end: endDate
+                    }
+                }
             );
             if (response.type === 'error') throw response;
             return response.remindersInDateRange;
@@ -315,9 +315,9 @@ end: endDate
 
     const getItemsForDay = (day: number | null) => {
         if (!day) return {
- notes: [],
-reminders: []
-};
+            notes: [],
+            reminders: []
+        };
 
         const dayNotes = notes.filter(note => {
             const date = type === 'create' ? dayjs(Number(note.createdAt)) : dayjs(Number(note.updatedAt));
@@ -330,9 +330,9 @@ reminders: []
         });
 
         return {
- notes: dayNotes,
-reminders: dayReminders
-};
+            notes: dayNotes,
+            reminders: dayReminders
+        };
     };
 
     return (

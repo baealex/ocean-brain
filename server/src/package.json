@@ -24,7 +24,7 @@
         "winston": "^3.17.0"
     },
     "devDependencies": {
-        "@baejino/eslint-config": "^0.1.0",
+        "@baejino/eslint-config": "^0.1.1",
         "@types/express": "^5.0.3",
         "@types/express-session": "^1.18.2",
         "eslint": "^9.16.0",

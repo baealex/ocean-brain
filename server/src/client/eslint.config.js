@@ -1,19 +1,18 @@
-import baejino from '@baejino/eslint-config';
-import baejinoReact from '@baejino/eslint-config-react';
+import baseConfig from '@baejino/eslint-config';
+import reactConfig from '@baejino/eslint-config-react';
 
 export default [
-    { ignores: ['dist/**', '*.cjs'] },
-    ...baejino,
-    ...baejinoReact,
+    { ignores: ['dist/**'] },
+    ...baseConfig,
+    ...reactConfig,
     {
-        files: ['**/*.{js,jsx,ts,tsx}'],
         languageOptions: {
             globals: {
-                browser: true,
-                es6: true,
-                node: true
+                document: 'readonly',
+                window: 'readonly',
+                navigator: 'readonly',
+                MutationObserver: 'readonly'
             }
-        },
-        rules: { indent: 'off' }
+        }
     }
 ];

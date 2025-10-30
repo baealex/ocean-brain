@@ -13,11 +13,11 @@ interface ReminderModalProps {
 }
 
 export default function ReminderModal({
- isOpen,
- onClose,
- onSave,
- reminder,
- mode
+    isOpen,
+    onClose,
+    onSave,
+    reminder,
+    mode
 }: ReminderModalProps) {
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [reminderPriority, setReminderPriority] = useState<'low' | 'medium' | 'high'>('medium');

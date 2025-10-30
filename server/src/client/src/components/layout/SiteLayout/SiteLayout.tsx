@@ -10,19 +10,19 @@ import { Badge, RestoreParentScroll, Skeleton } from '~/components/shared';
 
 import type { DragEndEvent } from '@dnd-kit/core';
 import {
- DndContext,
- closestCenter,
- KeyboardSensor,
- PointerSensor,
- useSensor,
- useSensors
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors
 } from '@dnd-kit/core';
 import {
- arrayMove,
- SortableContext,
- sortableKeyboardCoordinates,
- useSortable,
- verticalListSortingStrategy
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+    verticalListSortingStrategy
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
@@ -94,7 +94,7 @@ interface PinnedNotesListProps {
 }
 
 function PinnedNotesList({
- notes, sensors, handleDragEnd, location, pinnedItems, setPinnedItems
+    notes, sensors, handleDragEnd, location, pinnedItems, setPinnedItems
 }: PinnedNotesListProps) {
     React.useEffect(() => {
         if (notes && notes.length > 0) {

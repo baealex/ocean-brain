@@ -134,16 +134,12 @@ export default function Note() {
     }
 
     const getMaxWidth = () => {
-        switch (layout) {
-            case 'narrow':
-                return 'max-w-[640px]';
-            case 'wide':
-                return 'max-w-[896px]';
-            case 'full':
-                return 'max-w-full px-4';
-            default:
-                return 'max-w-[896px]';
-        }
+        const layoutMap = {
+            'narrow': 'max-w-[640px]',
+            'wide': 'max-w-[896px]',
+            'full': 'max-w-full px-4'
+        };
+        return layoutMap[layout];
     };
 
     return (

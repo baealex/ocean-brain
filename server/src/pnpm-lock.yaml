@@ -29,6 +29,9 @@ importers:
       graphql-http:
         specifier: ^1.22.4
         version: 1.22.4(graphql@16.9.0)
+      prisma:
+        specifier: ^6.19.0
+        version: 6.19.0(typescript@5.9.3)
       sqlite3:
         specifier: ^5.1.7
         version: 5.1.7
@@ -51,9 +54,6 @@ importers:
       glob:
         specifier: ^11.1.0
         version: 11.1.0
-      prisma:
-        specifier: ^6.19.0
-        version: 6.19.0(typescript@5.9.3)
       tsc-alias:
         specifier: ^1.8.16
         version: 1.8.16

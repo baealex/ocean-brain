@@ -9,12 +9,12 @@ importers:
   .:
     dependencies:
       pnpm:
-        specifier: ^10.10.0
-        version: 10.14.0
+        specifier: ^10.25.0
+        version: 10.25.0
     devDependencies:
       concurrently:
-        specifier: ^9.1.2
-        version: 9.2.0
+        specifier: ^9.2.1
+        version: 9.2.1
 
 packages:
 
@@ -41,8 +41,8 @@ packages:
   color-name@1.1.4:
     resolution: {integrity: sha512-dOy+3AuW3a2wNbZHIuMZpTcgjGuLU/uBL/ubcZF9OXbDo8ff4O8yVp5Bf0efS8uEoYo5q4Fx7dY9OgQGXgAsQA==}
 
-  concurrently@9.2.0:
-    resolution: {integrity: sha512-IsB/fiXTupmagMW4MNp2lx2cdSN2FfZq78vF90LBB+zZHArbIQZjQtzXCiXnvTxCZSvXanTqFLWBjw2UkLx1SQ==}
+  concurrently@9.2.1:
+    resolution: {integrity: sha512-fsfrO0MxV64Znoy8/l1vVIjjHa29SZyyqPgQBwhiDcaW8wJc2W3XWVOGx4M3oJBnv/zdUZIIp1gDeS98GzP8Ng==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -65,11 +65,8 @@ packages:
     resolution: {integrity: sha512-zymm5+u+sCsSWyD9qNaejV3DFvhCKclKdizYaJUuHA83RLjb7nSuGnddCHGv0hk+KY7BMAlsWeK4Ueg6EV6XQg==}
     engines: {node: '>=8'}
 
-  lodash@4.17.21:
-    resolution: {integrity: sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==}
-
-  pnpm@10.14.0:
-    resolution: {integrity: sha512-rSenlkG0nD5IGhaoBbqnGBegS74Go40X5g4urug/ahRsamiBJfV5LkjdW6MOfaUqXNpMOZK5zPMz+c4iOvhHSA==}
+  pnpm@10.25.0:
+    resolution: {integrity: sha512-XoJjkCevN8+DIGG8xtY5whljRIjg8rrr54UCink957Ul/80/f/V09emGBlTgmP6FK6isXdXO/hdn0joCCpL1AQ==}
     engines: {node: '>=18.12'}
     hasBin: true
 
@@ -148,10 +145,9 @@ snapshots:
 
   color-name@1.1.4: {}
 
-  concurrently@9.2.0:
+  concurrently@9.2.1:
     dependencies:
       chalk: 4.1.2
-      lodash: 4.17.21
       rxjs: 7.8.2
       shell-quote: 1.8.3
       supports-color: 8.1.1
@@ -168,9 +164,7 @@ snapshots:
 
   is-fullwidth-code-point@3.0.0: {}
 
-  lodash@4.17.21: {}
-
-  pnpm@10.14.0: {}
+  pnpm@10.25.0: {}
 
   require-directory@2.1.1: {}
 

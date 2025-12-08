@@ -43,7 +43,9 @@ you can connect to `http://localhost:3000`
 ### use Node
 
 ```
-./start.sh
+npm i
+npm run build
+npm run start
 ```
 
 you can connect to `http://localhost:3000`

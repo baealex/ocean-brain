@@ -28,38 +28,41 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
 
+    - name: Install pnpm
+      run: npm install -g pnpm@10.15.0
+
     - name: Install (Server)
-      run: npx pnpm i
+      run: pnpm i
       working-directory: server/src
 
     - name: Lint (Server)
-      run: npm run lint
+      run: pnpm run lint
       working-directory: server/src
 
     - name: Prisma Generate
-      run: npx prisma generate
+      run: pnpm prisma generate
       working-directory: server/src
 
     - name: Type Check (Server)
-      run: npm run type-check
+      run: pnpm run type-check
       working-directory: server/src
 
     - name: Build (Server)
-      run: npm run build
+      run: pnpm run build
       working-directory: server/src
 
     - name: Install (Client)
-      run: npx pnpm i
+      run: pnpm i
       working-directory: server/src/client
 
     - name: Lint (Client)
-      run: npm run lint
+      run: pnpm run lint
       working-directory: server/src/client
 
     - name: Type Check (Client)
-      run: npm run type-check
+      run: pnpm run type-check
       working-directory: server/src/client
 
     - name: Build (Client)
-      run: npm run build
+      run: pnpm run build
       working-directory: server/src/client

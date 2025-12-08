@@ -7,11 +7,12 @@ WORKDIR /app
 COPY ./src/client/package.json ./
 COPY ./src/client/pnpm-lock.yaml ./
 
-RUN npx pnpm i
+RUN npm install -g pnpm@10.15.0
+RUN pnpm i
 
 COPY ./src/client/ ./
 
-RUN npm run build
+RUN pnpm run build
 
 # Image for server build
 
@@ -22,12 +23,13 @@ WORKDIR /app
 COPY ./src/package.json ./
 COPY ./src/pnpm-lock.yaml ./
 
-RUN npx pnpm i
+RUN npm install -g pnpm@10.15.0
+RUN pnpm i
 
 COPY ./src/ ./
 
 RUN rm -rf client
-RUN npm run build
+RUN pnpm run build
 
 # Image for end user
 
@@ -42,10 +44,11 @@ COPY --from=server /app/prisma ./prisma
 COPY --from=server /app/dist ./dist
 COPY --from=client /app/dist ./client/dist
 
-RUN npx pnpm i --production
+RUN npm install -g pnpm@10.15.0
+RUN pnpm i --production
 
 RUN ln -s /app/prisma/data /data
 RUN ln -s /app/public/assets /assets
 
-ENTRYPOINT ["npm", "run"]
+ENTRYPOINT ["pnpm", "run"]
 CMD ["start"]

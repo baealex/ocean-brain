@@ -4,9 +4,9 @@
     "description": "",
     "type": "module",
     "scripts": {
-        "dev": "npx prisma generate && tsx watch src/main.ts",
-        "build": "npx prisma generate && tsup && tsc-alias",
-        "start": "npx prisma migrate dev && node dist/main.js",
+        "dev": "pnpm prisma generate && tsx watch src/main.ts",
+        "build": "pnpm prisma generate && tsup && tsc-alias",
+        "start": "pnpm prisma migrate dev && node dist/main.js",
         "lint": "eslint src",
         "type-check": "tsc --noEmit"
     },

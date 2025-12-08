@@ -37,7 +37,7 @@ jobs:
       working-directory: server/src
 
     - name: Prisma Generate
-      run: pnpm prisma generate
+      run: npm run prisma:generate
       working-directory: server/src
 
     - name: Type Check (Server)

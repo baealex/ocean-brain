@@ -4,11 +4,9 @@
     "description": "",
     "type": "module",
     "scripts": {
-        "prisma:generate": "pnpm prisma generate",
-        "prisma:migrate": "pnpm prisma migrate dev",
-        "dev": "pnpm run prisma:generate && tsx watch src/main.ts",
-        "build": "pnpm run prisma:generate && tsup && tsc-alias",
-        "start": "pnpm run prisma:migrate && node dist/main.js",
+        "dev": "pnpm prisma generate && tsx watch src/main.ts",
+        "build": "pnpm prisma generate && tsup && tsc-alias",
+        "start": "pnpm prisma migrate dev && node dist/main.js",
         "lint": "eslint src",
         "type-check": "tsc --noEmit"
     },

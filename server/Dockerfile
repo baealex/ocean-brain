@@ -7,7 +7,7 @@ WORKDIR /app
 COPY ./src/client/package.json ./
 COPY ./src/client/pnpm-lock.yaml ./
 
-RUN npm install -g pnpm@10.15.0
+RUN npm install -g pnpm@10.25.0
 RUN pnpm i
 
 COPY ./src/client/ ./
@@ -23,7 +23,7 @@ WORKDIR /app
 COPY ./src/package.json ./
 COPY ./src/pnpm-lock.yaml ./
 
-RUN npm install -g pnpm@10.15.0
+RUN npm install -g pnpm@10.25.0
 RUN pnpm i
 
 COPY ./src/ ./
@@ -44,7 +44,7 @@ COPY --from=server /app/prisma ./prisma
 COPY --from=server /app/dist ./dist
 COPY --from=client /app/dist ./client/dist
 
-RUN npm install -g pnpm@10.15.0
+RUN npm install -g pnpm@10.25.0
 RUN pnpm i --production
 
 RUN ln -s /app/prisma/data /data

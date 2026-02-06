@@ -1,8 +1,13 @@
+@import url('https://fonts.googleapis.com/css2?family=Gaegu:wght@300;400;700&display=swap');
 @import "tailwindcss";
 
 @custom-variant dark (&:where(html.dark *));
 
 @theme {
+    /* Typography - Hand-drawn */
+    --font-sans: 'Gaegu', cursive;
+
+    /* Colors - Pastel (Light mode) */
     --color-pastel-yellow-200: #FCEBAF;
     --color-pastel-green-200: #B2E0B2;
     --color-pastel-pink-200: #FFB3C1;
@@ -11,4 +16,141 @@
     --color-pastel-purple-200: #E1B7E1;
     --color-pastel-teal-200: #A4DBD6;
     --color-pastel-lavender-200: #E1C6E7;
+
+    /* Colors - Background (Warm paper tone) */
+    --color-background: #fdf8f3;
+    --color-background-dark: #1a1714;
+    --color-surface: #fffcf7;
+    --color-surface-dark: #252220;
+
+    /* Spacing */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+    --spacing-2xl: 48px;
+
+    /* Border Radius */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+    --radius-full: 9999px;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+
+    /* Animations */
+    --animate-fade-in: fade-in 0.2s ease-out;
+    --animate-fade-out: fade-out 0.2s ease-out;
+    --animate-zoom-in: zoom-in 0.2s ease-out;
+    --animate-zoom-out: zoom-out 0.2s ease-out;
+    --animate-slide-in-from-top: slide-in-from-top 0.2s ease-out;
+    --animate-slide-in-from-bottom: slide-in-from-bottom 0.2s ease-out;
+    --animate-slide-in-from-left: slide-in-from-left 0.2s ease-out;
+    --animate-slide-in-from-right: slide-in-from-right 0.2s ease-out;
+    --animate-shimmer: shimmer 1.5s infinite;
 }
+
+@keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes fade-out {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+@keyframes zoom-in {
+    from { transform: scale(0.95); }
+    to { transform: scale(1); }
+}
+
+@keyframes zoom-out {
+    from { transform: scale(1); }
+    to { transform: scale(0.95); }
+}
+
+@keyframes slide-in-from-top {
+    from { transform: translateY(-8px); }
+    to { transform: translateY(0); }
+}
+
+@keyframes slide-in-from-bottom {
+    from { transform: translateY(8px); }
+    to { transform: translateY(0); }
+}
+
+@keyframes slide-in-from-left {
+    from { transform: translateX(-8px); }
+    to { transform: translateX(0); }
+}
+
+@keyframes slide-in-from-right {
+    from { transform: translateX(8px); }
+    to { transform: translateX(0); }
+}
+
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Paper texture background */
+body {
+    background-color: var(--color-background);
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.08'/%3E%3C/svg%3E");
+    background-blend-mode: multiply;
+    background-size: 400px 400px;
+}
+
+html.dark body {
+    background-color: var(--color-background-dark);
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.05'/%3E%3C/svg%3E");
+    background-blend-mode: soft-light;
+    background-size: 400px 400px;
+}
+
+/* Sketchy border utilities */
+.sketchy {
+    border: 2px solid #3d3d3d;
+    border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+}
+
+.sketchy-sm {
+    border: 1.5px solid #3d3d3d;
+    border-radius: 125px 10px 115px 10px / 10px 115px 10px 125px;
+}
+
+.sketchy-hover:hover {
+    border-radius: 15px 225px 15px 255px / 225px 15px 255px 15px;
+}
+
+/* Hand-drawn box shadow */
+.shadow-sketchy {
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.15);
+}
+
+.shadow-sketchy-lg {
+    box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.12);
+}
+
+/* Dark mode sketchy */
+html.dark .sketchy,
+html.dark .sketchy-sm {
+    border-color: #404040;
+}
+
+html.dark .shadow-sketchy {
+    box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.3);
+}
+
+html.dark .shadow-sketchy-lg {
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.25);
+}
+

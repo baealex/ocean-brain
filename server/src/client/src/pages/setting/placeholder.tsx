@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from '@baejino/ui';
 import { useSearchParams } from 'react-router-dom';
 import { useState } from 'react';
 
@@ -10,6 +9,7 @@ import {
     Modal,
     Pagination
 } from '~/components/shared';
+import { Input, Label, useToast } from '~/components/ui';
 import * as Icon from '~/components/icon';
 
 import { getFixedPlaceholders, PLACEHOLDER_PREFIX, PLACEHOLDER_SUFFIX } from '~/modules/fixed-placeholder';
@@ -18,9 +18,10 @@ import { createPlaceholder, deletePlaceholder, fetchPlaceholders } from '~/apis/
 
 import type { Placeholder } from '~/models/placeholder.model';
 
-const cardClassName = 'bg-gray-100 dark:bg-zinc-900 flex gap-2 items-center justify-between p-4 rounded-md';
+const cardClassName = 'bg-pastel-lavender-200/20 dark:bg-zinc-800 flex gap-2 items-center justify-between p-4 rounded-[10px_3px_11px_3px/3px_8px_3px_10px] border-2 border-zinc-600 dark:border-zinc-600 font-bold';
 
 const Placeholder = () => {
+    const toast = useToast();
     const queryClient = useQueryClient();
 
     const [searchParams, setSearchParams] = useSearchParams();
@@ -96,18 +97,18 @@ const Placeholder = () => {
                 {isFixedListOpen && fixedPlaceholders.map(placeholder => (
                     <div key={placeholder.name} className={cardClassName}>
                         <div className="flex gap-2 items-center">
-                            {placeholder.name} <span className="text-gray-500 text-xs">{PLACEHOLDER_PREFIX}{placeholder.template}{PLACEHOLDER_SUFFIX} will be '{placeholder.replacement}'</span>
+                            {placeholder.name} <span className="text-zinc-500 dark:text-zinc-400 text-xs font-medium">{PLACEHOLDER_PREFIX}{placeholder.template}{PLACEHOLDER_SUFFIX} will be '{placeholder.replacement}'</span>
                         </div>
                     </div>
                 ))}
                 {!isLoading && placeholders?.placeholders && placeholders.placeholders.map(placeholder => (
                     <div key={placeholder.id} className={cardClassName}>
                         <div className="flex gap-2 items-center">
-                            {placeholder.name} <span className="text-gray-500 text-xs">{PLACEHOLDER_PREFIX}{placeholder.template}{PLACEHOLDER_SUFFIX} will be '{placeholder.replacement}'</span>
+                            {placeholder.name} <span className="text-zinc-500 dark:text-zinc-400 text-xs font-medium">{PLACEHOLDER_PREFIX}{placeholder.template}{PLACEHOLDER_SUFFIX} will be '{placeholder.replacement}'</span>
                         </div>
                         <button
                             type="button"
-                            className="w-6 h-6"
+                            className="w-6 h-6 hover:text-red-500 transition-colors"
                             onClick={() => removePlaceholder.mutate(placeholder.id.toString())}>
                             <Icon.Close />
                         </button>
@@ -118,44 +119,44 @@ const Placeholder = () => {
                 <Modal.Header title="Add Placeholder" onClose={() => setIsModalOpen(false)} />
                 <Modal.Body>
                     <div className="flex flex-col gap-3">
-                        <label htmlFor="name">Name:</label>
-                        <input
+                        <Label htmlFor="name">Name:</Label>
+                        <Input
+                            id="name"
                             type="text"
                             value={form.name}
                             onChange={(e) => setForm({
                                 ...form,
                                 name: e.target.value
                             })}
-                            className="w-full p-2 rounded-md bg-gray-100 dark:bg-zinc-800"
                             placeholder="Description of this placeholder"
                         />
-                        <label htmlFor="template">Placeholder:</label>
-                        <input
+                        <Label htmlFor="template">Placeholder:</Label>
+                        <Input
+                            id="template"
                             type="text"
                             value={form.template}
                             onChange={(e) => setForm({
                                 ...form,
                                 template: e.target.value
                             })}
-                            className="w-full p-2 rounded-md bg-gray-100 dark:bg-zinc-800"
                             placeholder="note_app"
                         />
-                        <label htmlFor="replacement">Replacement:</label>
-                        <input
+                        <Label htmlFor="replacement">Replacement:</Label>
+                        <Input
+                            id="replacement"
                             type="text"
                             value={form.replacement}
                             onChange={(e) => setForm({
                                 ...form,
                                 replacement: e.target.value
                             })}
-                            className="w-full p-2 rounded-md bg-gray-100 dark:bg-zinc-800"
                             placeholder="Ocean Brain"
                         />
                     </div>
                 </Modal.Body>
                 <Modal.Footer>
                     <div className="flex gap-2">
-                        <Button onClick={() => setIsModalOpen(false)}>Cancel</Button>
+                        <Button variant="secondary" onClick={() => setIsModalOpen(false)}>Cancel</Button>
                         <Button
                             isLoading={addPlaceholder.isPending}
                             onClick={() => {

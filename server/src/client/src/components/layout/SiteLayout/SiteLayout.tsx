@@ -7,6 +7,7 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import * as Icon from '~/components/icon';
 import { Badge, RestoreParentScroll, Skeleton } from '~/components/shared';
+import { Button, Tooltip, useConfirm } from '~/components/ui';
 
 import type { DragEndEvent } from '@dnd-kit/core';
 import {
@@ -38,7 +39,6 @@ import { useTheme } from '~/store/theme';
 import { fetchNotes, reorderNotes } from '~/apis/note.api';
 import { fetchTags } from '~/apis/tag.api';
 import { getServerCache, setServerCache } from '~/apis/server-cache.api';
-import { confirm } from '@baejino/ui';
 import { PinnedNotes } from '~/components/entities';
 import { getPinnedNoteQueryKey } from '~/modules/query-key-factory';
 
@@ -49,9 +49,10 @@ interface SiteLayoutProps {
 interface SortableItemProps {
     id: string;
     children: React.ReactNode;
+    tooltip?: string;
 }
 
-function SortableItem({ id, children }: SortableItemProps) {
+function SortableItem({ id, children, tooltip }: SortableItemProps) {
     const {
         attributes,
         listeners,
@@ -68,18 +69,26 @@ function SortableItem({ id, children }: SortableItemProps) {
         opacity: isDragging ? 0.5 : 1
     };
 
+    const textContent = (
+        <div className="flex-1 min-w-0 font-bold text-sm truncate">
+            {children}
+        </div>
+    );
+
     return (
-        <div ref={setNodeRef} style={style} {...attributes} className="flex items-center gap-2 pl-2">
+        <div ref={setNodeRef} style={style} {...attributes} className="flex items-center gap-2 p-2 rounded-md hover:bg-pastel-lavender-200/30 dark:hover:bg-zinc-800/50 transition-colors">
             <button
                 ref={setActivatorNodeRef}
                 {...listeners}
                 className="cursor-grab active:cursor-grabbing touch-none flex items-center justify-center"
                 style={{ cursor: isDragging ? 'grabbing' : 'grab' }}>
-                <Icon.Menu className="size-4 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300" />
+                <Icon.Menu className="size-4 text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300" />
             </button>
-            <div className="flex-1 min-w-0">
-                {children}
-            </div>
+            {tooltip ? (
+                <Tooltip content={tooltip} side="right">
+                    {textContent}
+                </Tooltip>
+            ) : textContent}
         </div>
     );
 }
@@ -112,14 +121,15 @@ function PinnedNotesList({
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} modifiers={[restrictToVerticalAxis]}>
             <SortableContext items={items.map(item => item.id)} strategy={verticalListSortingStrategy}>
                 {items.map((note) => (
-                    <SortableItem key={note.id} id={note.id}>
+                    <SortableItem key={note.id} id={note.id} tooltip={note.title || 'Untitled'}>
                         <Link
-                            className={cx({
-                                'opacity-100': location.pathname === `/${note.id}`,
-                                'opacity-50': location.pathname !== `/${note.id}`
-                            })}
+                            className={`transition-colors ${
+                                location.pathname === `/${note.id}`
+                                    ? 'text-pastel-pink-200 dark:text-pastel-purple-200'
+                                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'
+                            }`}
                             to={`/${note.id}`}>
-                            {note.title}
+                            {note.title || 'Untitled'}
                         </Link>
                     </SortableItem>
                 ))}
@@ -157,6 +167,7 @@ const NAVIGATION_ITEMS = [
 ];
 
 const SiteLayout = ({ children }: SiteLayoutProps) => {
+    const confirm = useConfirm();
     const location = useLocation();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
@@ -285,35 +296,33 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                 <div className="p-3">
                     <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
                         <div className="flex gap-3">
-                            <div style={{ gridTemplateColumns: '40px 1fr 32px' }} className="grid flex-1 bg-white dark:bg-zinc-800 rounded-lg shadow-md">
-                                <button type="submit" className="flex items-center justify-center">
-                                    <Icon.Search className="h-6 w-6" />
+                            <div style={{ gridTemplateColumns: '40px 1fr 32px' }} className="grid flex-1 bg-surface dark:bg-surface-dark border-2 border-zinc-800 dark:border-zinc-700 rounded-[12px_4px_13px_3px/4px_10px_4px_12px] shadow-sketchy">
+                                <button type="submit" className="flex items-center justify-center hover:text-pastel-pink-200 transition-colors">
+                                    <Icon.Search className="h-5 w-5" weight="bold" />
                                 </button>
                                 <input
                                     type="text"
-                                    placeholder="Search"
+                                    placeholder="Search..."
                                     value={query}
                                     onChange={(e) => setQuery(e.target.value)}
-                                    className="h-10 w-full bg-transparent text-gray-900 dark:text-gray-300 py-4 outline-none"
+                                    className="h-10 w-full bg-transparent text-zinc-800 dark:text-zinc-200 py-4 outline-none font-bold"
                                 />
                                 {query && (
-                                    <button type="button" className="flex items-center justify-center" onClick={handleReset}>
-                                        <Icon.Close className="h-4 w-4 dark:text-gray-300" />
+                                    <button type="button" className="flex items-center justify-center hover:text-pastel-pink-200 transition-colors" onClick={handleReset}>
+                                        <Icon.Close className="h-4 w-4" weight="bold" />
                                     </button>
                                 )}
                             </div>
                         </div>
                         {(notes.length > 0 || tags.length > 0) && (
-                            <div className="p-3 bg-white dark:bg-zinc-900 rounded-2xl shadow-md">
+                            <div className="p-3 bg-surface dark:bg-surface-dark border-2 border-zinc-800 dark:border-zinc-700 rounded-[16px_5px_17px_4px/5px_13px_5px_15px] shadow-sketchy">
                                 {notes.length > 0 && (
                                     <ul className="flex flex-col">
                                         {notes.map(({ id, title }) => (
-                                            <li key={id} className="flex py-3 items-center">
-                                                <div className="flex items-center gap-2">
-                                                    <Link to={`/${id}`}>
-                                                        <p className="text-sm">{title || 'Untitled'}</p>
-                                                    </Link>
-                                                </div>
+                                            <li key={id} className="flex py-2 items-center border-b border-dashed border-zinc-300 dark:border-zinc-600 last:border-b-0">
+                                                <Link to={`/${id}`} className="text-sm font-bold hover:text-pastel-pink-200 transition-colors">
+                                                    {title || 'Untitled'}
+                                                </Link>
                                             </li>
                                         ))}
                                     </ul>
@@ -329,9 +338,9 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                                         ))}
                                     </ul>
                                 )}
-                                <div className="p-2">
-                                    <button type="submit" className="text-sm text-blue-500">
-                                        view detailed results
+                                <div className="p-2 border-t border-dashed border-zinc-300 dark:border-zinc-600">
+                                    <button type="submit" className="text-sm font-bold text-pastel-blue-200 hover:text-pastel-teal-200 transition-colors">
+                                        view detailed results →
                                     </button>
                                 </div>
                             </div>
@@ -340,13 +349,15 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                 </div>
 
                 <div className={cx('p-3', 'flex', 'flex-col', 'gap-2')}>
-                    <button
-                        className="font-bold flex gap-2 items-center p-2 rounded-lg bg-black text-white w-full"
+                    <Button
+                        variant="danger"
+                        size="lg"
+                        className="w-full shadow-sketchy"
                         onClick={() => onCreate()}>
-                        <Icon.Pencil className="w-4" /> Capture
-                    </button>
-                    <div className={cx('font-bold', 'flex', 'items-center', 'gap-2', 'p-2')}>
-                        <Icon.Pin className="w-4" />
+                        <Icon.Pencil className="w-5 h-5" weight="bold" /> Capture
+                    </Button>
+                    <div className={cx('font-bold', 'flex', 'items-center', 'gap-2', 'p-2', 'pt-6', 'mt-5', 'border-t-2', 'border-dashed', 'border-zinc-300', 'dark:border-zinc-600')}>
+                        <Icon.Pin className="w-5 h-5" weight="fill" />
                         Pinned
                     </div>
                     <div className="flex flex-col gap-2">
@@ -376,15 +387,23 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
             <div className={cx('center')}>
                 <div className={cx('top')}>
                     <div className={cx('top-content')}>
-                        <div className={cx('flex', 'gap-5', 'p-3')}>
-                            {NAVIGATION_ITEMS.map((item) => (
-                                <Link key={item.path} to={item.path}>
-                                    <div className={cx('flex items-center gap-2 text-sm', { 'opacity-50': location.pathname !== item.path }, { 'opacity-100': location.pathname === item.path })}>
-                                        <item.icon className="size-4" />
-                                        {item.name}
-                                    </div>
-                                </Link>
-                            ))}
+                        <div className={cx('flex', 'gap-2', 'p-3')}>
+                            {NAVIGATION_ITEMS.map((item) => {
+                                const isActive = location.pathname === item.path;
+                                return (
+                                    <Link key={item.path} to={item.path}>
+                                        <div
+                                            className={`flex items-center gap-2 text-sm font-bold px-3 py-2 border-2 transition-all rounded-[10px_3px_11px_3px/3px_8px_3px_10px] ${
+                                            isActive
+                                                ? 'bg-pastel-yellow-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 border-zinc-800 dark:border-zinc-600 shadow-sketchy'
+                                                : 'border-transparent hover:border-zinc-800 dark:hover:border-zinc-600 hover:bg-pastel-lavender-200/50 dark:hover:bg-zinc-700/50'
+                                        }`}>
+                                            <item.icon className="size-5" weight={isActive ? 'fill' : 'regular'} />
+                                            {item.name}
+                                        </div>
+                                    </Link>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>

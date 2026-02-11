@@ -144,6 +144,6 @@ const TableOfContents = createReactBlockSpec({
     type: 'tableOfContents',
     propSchema: {},
     content: 'none'
-}, { render: () => <TableOfContentsComponent /> });
+}, { render: () => <TableOfContentsComponent /> })();
 
 export default TableOfContents;

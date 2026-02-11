@@ -24,7 +24,7 @@
         "start": "npm run start:server"
     },
     "dependencies": {
-        "pnpm": "^10.25.0"
+        "pnpm": "^10.29.3"
     },
     "devDependencies": {
         "concurrently": "^9.2.1"

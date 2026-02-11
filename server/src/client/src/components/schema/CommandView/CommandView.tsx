@@ -1,4 +1,4 @@
-import { filterSuggestionItems } from '@blocknote/core';
+import { filterSuggestionItems } from '@blocknote/core/extensions';
 import { SuggestionMenuController, getDefaultReactSlashMenuItems } from '@blocknote/react';
 import * as Icon from '~/components/icon';
 

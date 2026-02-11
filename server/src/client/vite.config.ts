@@ -17,9 +17,6 @@ export default defineConfig({
         rollupOptions: {
             output: {
                 manualChunks: {
-                    icon: [
-                        '@baejino/icon'
-                    ],
                     'note-core': [
                         '@blocknote/core'
                     ],

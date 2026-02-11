@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Image as ImageComponent } from '~/components/shared';
 import { NoteListItem } from '~/components/note';
+import { Button, useConfirm } from '~/components/ui';
 import * as Icon from '~/components/icon';
 
 import { deleteImage, fetchImage } from '~/apis/image.api';
@@ -10,6 +11,7 @@ import { fetchImageNotes } from '~/apis/note.api';
 import { setServerCache } from '~/apis/server-cache.api';
 
 const ManageImageDetail =  () => {
+    const confirm = useConfirm();
     const { id } = useParams();
     const navigation = useNavigate();
     const queryClient = useQueryClient();
@@ -55,39 +57,46 @@ const ManageImageDetail =  () => {
             <Helmet>
                 <title>Image | Ocean Brain</title>
             </Helmet>
-            <div className="flex gap-10 flex-col items-start justify-center lg:flex-row">
+            <div className="flex gap-8 flex-col items-start justify-center lg:flex-row">
                 {image && (
-                    <div className="flex flex-col gap-3">
-                        <ImageComponent
-                            className="w-full max-w-96 h-auto object-contain rounded-lg"
-                            src={image.url}
-                        />
-                        <button disabled={disabledDelete} className="w-full h-10 bg-red-600 rounded-lg text-white text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed" onClick={handleDelete}>
-                            <div className="flex items-center justify-center gap-1">
-                                <Icon.TrashCan className="h-4 w-4" />
+                    <div className="flex flex-col gap-3 w-full max-w-96">
+                        <div className="border-2 border-zinc-800 dark:border-zinc-700 rounded-[16px_5px_17px_4px/5px_13px_5px_15px] overflow-hidden shadow-sketchy">
+                            <ImageComponent
+                                className="w-full h-auto object-contain"
+                                src={image.url}
+                            />
+                        </div>
+                        <div className="flex gap-2">
+                            <Button
+                                variant="danger"
+                                size="sm"
+                                className="flex-1"
+                                disabled={disabledDelete}
+                                onClick={handleDelete}>
+                                <Icon.TrashCan size={16} />
                                 <span>Delete</span>
-                            </div>
-                        </button>
-                        <button
-                            className="w-full h-10 rounded-lg text-sm font-bold"
-                            onClick={async () => {
-                                await setServerCache('heroBanner', image.url);
-                                await queryClient.invalidateQueries({ queryKey: ['heroBanner'] });
-                            }}>
-                            <div className="flex items-center justify-center gap-1">
-                                <Icon.Heart className="h-4 w-4 fill-red-500" />
+                            </Button>
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                className="flex-1"
+                                onClick={async () => {
+                                    await setServerCache('heroBanner', image.url);
+                                    await queryClient.invalidateQueries({ queryKey: ['heroBanner'] });
+                                }}>
+                                <Icon.Heart size={16} className="fill-red-500 text-red-500" />
                                 <span>Set hero banner</span>
-                            </div>
-                        </button>
+                            </Button>
+                        </div>
                     </div>
                 )}
                 <div className="flex-1 w-full">
-                    <p className="text-sm font-bold">
-                        Referenced by {imageNotes?.length} {imageNotes?.length === 1 ? 'note' : 'notes'}
+                    <p className="text-sm font-bold mb-3">
+                        Referenced by {imageNotes?.length || 0} {imageNotes?.length === 1 ? 'note' : 'notes'}
                     </p>
-                    <ul className="flex flex-col gap-5">
+                    <ul className="flex flex-col">
                         {imageNotes?.map((note) => (
-                            <li key={note.id} className="flex flex-col gap-2">
+                            <li key={note.id}>
                                 <NoteListItem {...note} />
                             </li>
                         ))}

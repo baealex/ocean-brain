@@ -3,9 +3,8 @@ import { Suspense, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { useQuery } from '@tanstack/react-query';
-import { toast } from '@baejino/ui';
-
 import { Button, Dropdown, Skeleton } from '~/components/shared';
+import { useToast } from '~/components/ui';
 import * as Icon from '~/components/icon';
 
 import type { Note, NoteLayout } from '~/models/note.model';
@@ -27,6 +26,7 @@ import { updateNote } from '~/apis/note.api';
 export default function Note() {
     const { id } = useParams();
     const navigation = useNavigate();
+    const toast = useToast();
 
     const editorRef = useRef<EditorRef>(null);
     const titleRef = useRef<HTMLInputElement>(null);
@@ -157,23 +157,23 @@ export default function Note() {
                 <>
                     <div
                         style={{ zIndex: '1001' }}
-                        className="sticky top-20 mb-8 flex items-center justify-between gap-3 p-3 px-5 shadow-md border border-solid border-black dark:border-zinc-500 bg-white bg-opacity-75 dark:bg-zinc-900 dark:bg-opacity-75">
-                        <div className="flex flex-col flex-1 gap-2">
+                        className="sticky top-20 mb-8 flex items-center justify-between gap-3 p-3 px-4 border-2 border-zinc-800 dark:border-zinc-700 rounded-[12px_4px_13px_3px/4px_10px_4px_12px] bg-surface/90 dark:bg-surface-dark/90 backdrop-blur-sm shadow-sketchy">
+                        <div className="flex flex-col flex-1 gap-1">
                             <input
                                 ref={titleRef}
                                 placeholder="Title"
-                                className="text-md font-extrabold outline-none bg-transparent w-full"
+                                className="text-md font-bold outline-none bg-transparent w-full"
                                 type="text"
                                 defaultValue={note.title}
                                 onChange={handleChange}
                             />
                             {id && lastSavedAtMap[id] && (
-                                <div className="text-zinc-500 text-sm">
+                                <div className="text-zinc-400 dark:text-zinc-500 text-xs">
                                     Last saved at {lastSavedAtMap[id]}
                                 </div>
                             )}
                         </div>
-                        <div className="flex gap-3 items-center">
+                        <div className="flex gap-2 items-center">
                             <Dropdown
                                 button={(
                                     <Icon.VerticalDots className="w-5 h-5" />
@@ -206,6 +206,7 @@ export default function Note() {
                                 ]}
                             />
                             <Button
+                                size="sm"
                                 isLoading={isMountedEvent}
                                 onClick={handleChange}>
                                 Save
@@ -220,25 +221,25 @@ export default function Note() {
                 </>
             )}
             {id && (
-                <Suspense fallback={<Skeleton height="100px" />}>
+                <Suspense fallback={<Skeleton height="80px" />}>
                     <ReminderPanel noteId={id} />
                 </Suspense>
             )}
             <Suspense
                 fallback={(
-                    <Skeleton height="100px" />
+                    <Skeleton height="80px" />
                 )}>
                 <BackReferences
                     noteId={id}
                     render={backReferences => backReferences && backReferences.length > 0 && (
-                        <div className="shadow-xl p-5 rounded-2xl">
-                            <p className="text-lg font-bold">
+                        <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-800/30">
+                            <p className="text-sm font-bold mb-2">
                                 Back References
                             </p>
-                            <ul>
+                            <ul className="text-sm">
                                 {backReferences?.map((backLink) => (
-                                    <li>
-                                        <Link to={getNoteURL(backLink.id)}>
+                                    <li key={backLink.id}>
+                                        <Link to={getNoteURL(backLink.id)} className="text-zinc-600 dark:text-zinc-400 hover:underline">
                                             - {backLink.title}
                                         </Link>
                                     </li>

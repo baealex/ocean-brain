@@ -1,4 +1,3 @@
-import { confirm } from '@baejino/ui';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
@@ -10,6 +9,7 @@ import {
     Skeleton,
     Empty
 } from '~/components/shared';
+import { Button, useConfirm } from '~/components/ui';
 import * as Icon from '~/components/icon';
 
 import { getImageNotesURL } from '~/modules/url';
@@ -19,6 +19,7 @@ import { Suspense } from 'react';
 import { Images } from '~/components/entities';
 
 const ManageImage = () => {
+    const confirm = useConfirm();
     const queryClient = useQueryClient();
 
     const [searchParams, setSearchParams] = useSearchParams();
@@ -49,10 +50,10 @@ const ManageImage = () => {
             </Helmet>
             <Suspense
                 fallback={(
-                    <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
-                        <Skeleton height="256px"/>
-                        <Skeleton height="256px"/>
-                        <Skeleton height="256px"/>
+                    <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
+                        <Skeleton height="200px"/>
+                        <Skeleton height="200px"/>
+                        <Skeleton height="200px"/>
                     </div>
                 )}>
                 <Images
@@ -71,17 +72,23 @@ const ManageImage = () => {
                             )}>
                             {images.length > 0 && (
                                 <>
-                                    <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
+                                    <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
                                         {images.map((image) => (
-                                            <div key={image.id} className="relative bg-black">
+                                            <div key={image.id} className="relative rounded-[12px_4px_13px_3px/4px_10px_4px_12px] overflow-hidden border-2 border-zinc-700 dark:border-zinc-700 shadow-sketchy">
                                                 <Link to={getImageNotesURL(image.id)}>
-                                                    <ImageComponent className="h-64 w-full object-cover" src={image.url} alt={image.id} />
+                                                    <ImageComponent className="h-48 w-full object-cover" src={image.url} alt={image.id} />
                                                 </Link>
-                                                <div className="absolute flex w-full p-2 justify-between bottom-0 left-0">
-                                                    <p className="text-sm text-gray-100 bg-black rounded-full px-4 py-1">{image.referenceCount}</p>
-                                                    <button disabled={image.referenceCount > 0} className="bg-red-500 text-gray-100 px-2 rounded-md flex justify-center items-center disabled:opacity-50 disabled:cursor-not-allowed" onClick={() => handleDelete(image.id)}>
+                                                <div className="absolute flex w-full p-2 justify-between bottom-0 left-0 bg-gradient-to-t from-black/70 to-transparent">
+                                                    <span className="text-xs font-bold text-white bg-zinc-800/80 rounded-full px-3 py-1">
+                                                        {image.referenceCount} refs
+                                                    </span>
+                                                    <Button
+                                                        variant="danger"
+                                                        size="icon-sm"
+                                                        disabled={image.referenceCount > 0}
+                                                        onClick={() => handleDelete(image.id)}>
                                                         <Icon.TrashCan className="h-4 w-4" />
-                                                    </button>
+                                                    </Button>
                                                 </div>
                                             </div>
                                         ))}

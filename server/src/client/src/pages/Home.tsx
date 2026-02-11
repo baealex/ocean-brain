@@ -1,22 +1,33 @@
-import { Suspense } from 'react';
+import { Suspense, useLayoutEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 
 import {
     Empty, FallbackRender, NoteFilters, Pagination, Skeleton
 } from '~/components/shared';
-import { NoteListCard, NoteListTable } from '~/components/note';
+import { NoteListCard } from '~/components/note';
 import { Notes } from '~/components/entities';
 
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
 
-import type { ViewMode, SortBy, SortOrder } from '~/components/shared/NoteFilters';
+import type { SortBy, SortOrder } from '~/components/shared/NoteFilters';
+
+const CARD_MIN_WIDTH = 240;
+const CARD_GAP = 24;
+const GRID_ROWS = 6;
+
+function calculateAutoLimit(containerWidth: number): number {
+    const cardsPerRow = Math.floor((containerWidth + CARD_GAP) / (CARD_MIN_WIDTH + CARD_GAP));
+    return Math.max(cardsPerRow * GRID_ROWS, 8);
+}
 
 export default function Home() {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [autoLimit, setAutoLimit] = useState<number | null>(null);
     const [searchParams, setSearchParams] = useSearchParams();
 
-    const viewMode = (searchParams.get('view') as ViewMode) || 'grid';
-    const limit = Number(searchParams.get('limit')) || 25;
+    const urlLimit = searchParams.get('limit');
+    const limit = urlLimit ? Number(urlLimit) : (autoLimit ?? 12);
     const page = Number(searchParams.get('page')) || 1;
     const sortBy = (searchParams.get('sortBy') as SortBy) || 'updatedAt';
     const sortOrder = (searchParams.get('sortOrder') as SortOrder) || 'desc';
@@ -36,22 +47,27 @@ export default function Home() {
         });
     };
 
+    useLayoutEffect(() => {
+        if (urlLimit) return;
+        if (!containerRef.current) return;
+
+        const containerWidth = containerRef.current.offsetWidth;
+        const calculatedLimit = calculateAutoLimit(containerWidth);
+        setAutoLimit(calculatedLimit);
+    }, [urlLimit]);
+
     return (
-        <>
+        <div ref={containerRef}>
             <Helmet>
                 <title>Ocean Brain</title>
             </Helmet>
             <NoteFilters
-                viewMode={viewMode}
-                onViewModeChange={(mode) => updateSearchParams({
-                    view: mode,
-                    page: '1'
-                })}
                 itemsPerPage={limit}
                 onItemsPerPageChange={(count) => updateSearchParams({
                     limit: count.toString(),
                     page: '1'
                 })}
+                isAutoLimit={!urlLimit}
                 sortBy={sortBy}
                 onSortByChange={(sort) => updateSearchParams({
                     sortBy: sort,
@@ -95,24 +111,16 @@ export default function Home() {
                             )}>
                             {notes.length > 0 && (
                                 <>
-                                    {viewMode === 'grid' ? (
-                                        <div className="grid gap-6 mt-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
-                                            {notes.map(note => (
-                                                <NoteListCard
-                                                    key={note.id}
-                                                    {...note}
-                                                    onPinned={() => onPinned(note.id, note.pinned)}
-                                                    onDelete={() => onDelete(note.id)}
-                                                />
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <NoteListTable
-                                            notes={notes}
-                                            onPinned={onPinned}
-                                            onDelete={onDelete}
-                                        />
-                                    )}
+                                    <div className="grid gap-6 mt-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
+                                        {notes.map(note => (
+                                            <NoteListCard
+                                                key={note.id}
+                                                {...note}
+                                                onPinned={() => onPinned(note.id, note.pinned)}
+                                                onDelete={() => onDelete(note.id)}
+                                            />
+                                        ))}
+                                    </div>
                                     <FallbackRender fallback={null}>
                                         {totalCount && limit < totalCount && (
                                             <Pagination
@@ -130,6 +138,6 @@ export default function Home() {
                     )}
                 />
             </Suspense>
-        </>
+        </div>
     );
 }

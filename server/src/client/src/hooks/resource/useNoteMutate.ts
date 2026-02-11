@@ -5,14 +5,15 @@ import {
     deleteNote,
     pinNote
 } from '~/apis/note.api';
-import { confirm } from '@baejino/ui';
 import { useNavigate } from 'react-router-dom';
+import { useConfirm } from '~/components/ui';
 import { getPinnedNoteQueryKey } from '~/modules/query-key-factory';
 import { replaceFixedPlaceholder } from '~/modules/fixed-placeholder';
 
 import type { NoteLayout } from '~/models/note.model';
 
 const useNoteMutate = () => {
+    const confirm = useConfirm();
     const queryClient = useQueryClient();
 
     const navigate = useNavigate();

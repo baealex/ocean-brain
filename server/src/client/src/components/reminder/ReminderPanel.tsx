@@ -2,8 +2,10 @@ import { useState } from 'react';
 import dayjs from 'dayjs';
 import { Button, Dropdown } from '~/components/shared';
 import * as Icon from '~/components/icon';
+import { Checkbox } from '~/components/ui';
 
 import { Reminders } from '~/components/entities';
+import { priorityColorsSubtle } from '~/modules/color';
 import useReminderMutate from '~/hooks/resource/useReminderMutate';
 import ReminderModal from './ReminderModal';
 
@@ -89,83 +91,74 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
     };
 
     return (
-        <div className="shadow-xl p-3 sm:p-5 rounded-2xl mb-5">
+        <div className="p-4 rounded-[12px_4px_13px_3px/4px_10px_4px_12px] mb-5 border-2 border-zinc-800 dark:border-zinc-700 bg-surface/50 dark:bg-surface-dark/50">
             <div className="flex justify-between items-center mb-3">
                 <button
                     onClick={() => setIsCollapsed(!isCollapsed)}
                     className="flex items-center gap-2 hover:opacity-70 transition-opacity">
                     {isCollapsed ? (
-                        <Icon.TriangleRight className="w-3 h-3" />
+                        <Icon.TriangleRight size={14} />
                     ) : (
-                        <Icon.TriangleDown className="w-3 h-3" />
+                        <Icon.TriangleDown size={14} />
                     )}
-                    <p className="text-base sm:text-lg font-bold">Reminders</p>
+                    <p className="text-sm font-bold">Reminders</p>
                 </button>
                 {!isCollapsed && (
-                    <Button
-                        onClick={handleOpenCreateModal}
-                        className="flex items-center gap-1 text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-2">
-                        <Icon.Plus className="w-3 h-3 sm:w-4 sm:h-4" />
-                        <span className="hidden sm:inline">Add Reminder</span>
-                        <span className="sm:hidden">Add</span>
+                    <Button size="sm" variant="ghost" onClick={handleOpenCreateModal}>
+                        <Icon.Plus className="w-3 h-3" />
+                        <span className="hidden sm:inline text-xs">Add</span>
                     </Button>
                 )}
             </div>
 
             {!isCollapsed && (
+                <Reminders
+                    noteId={noteId}
+                    searchParams={{
+                        offset: 0,
+                        limit: 9999
+                    }}
+                    render={({ reminders, totalCount }) => {
+                        return (
+                            <div className="flex flex-col gap-2">
+                                {reminders.length === 0 ? (
+                                    <p className="text-zinc-400 dark:text-zinc-500 text-xs">
+                                        {totalCount === 0 ? 'No reminders.' : 'No incomplete reminders.'}
+                                    </p>
+                                ) : (
+                                    <div className="flex flex-col gap-1.5">
+                                        {reminders.map((reminder) => {
+                                            const urgency = reminder.priority || calculateUrgency(reminder.reminderDate);
+                                            const timeRemaining = getTimeRemaining(reminder.reminderDate);
 
-            <Reminders
-                noteId={noteId}
-                searchParams={{
-                    offset: 0,
-                    limit: 9999
-                }}
-                render={({ reminders, totalCount }) => {
-                    return (
-                        <div className="flex flex-col gap-3">
-                            {reminders.length === 0 ? (
-                                <p className="text-gray-500 dark:text-zinc-400 text-sm">
-                                    {totalCount === 0 ? 'No reminders set for this note.' : 'No incomplete reminders.'}
-                                </p>
-                            ) : (
-                                <div className="flex flex-col gap-2">
-                                    {reminders.map((reminder) => {
-                                        const urgency = reminder.priority || calculateUrgency(reminder.reminderDate);
-                                        const timeRemaining = getTimeRemaining(reminder.reminderDate);
-
-                                        const urgencyColors: Record<string, string> = {
-                                            low: 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20',
-                                            medium: 'border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20',
-                                            high: 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20'
-                                        };
-
-                                        return (
-                                            <div
-                                                key={reminder.id}
-                                                className={`flex flex-col p-2 sm:p-3 border rounded-lg transition-all ${reminder.completed
-                                                    ? 'border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 text-gray-400 dark:text-zinc-500'
-                                                    : urgencyColors[urgency]}`}>
-                                                <div className="flex justify-between items-start gap-2">
-                                                    <div className="flex items-start gap-2 flex-1 min-w-0">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={reminder.completed}
-                                                            onChange={() => handleToggleComplete(reminder)}
-                                                            className="w-4 h-4 cursor-pointer mt-0.5 flex-shrink-0"
-                                                        />
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className={`font-medium text-sm sm:text-base ${reminder.completed ? 'line-through' : ''}`}>
-                                                                {formatReminderDate(reminder.reminderDate)}
-                                                            </div>
-                                                            {reminder.content && (
-                                                                <div className={`mt-1 text-xs sm:text-sm text-gray-700 dark:text-zinc-300 ${reminder.completed ? 'line-through' : ''} break-words`}>
-                                                                    {reminder.content}
-                                                                </div>
-                                                            )}
+                                            return (
+                                                <div
+                                                    key={reminder.id}
+                                                    className={`flex items-start gap-2 p-2 rounded-[10px_3px_11px_3px/3px_8px_3px_10px] transition-colors ${reminder.completed
+                                                        ? 'bg-zinc-100 dark:bg-zinc-800'
+                                                        : priorityColorsSubtle[urgency]}`}>
+                                                    <Checkbox
+                                                        checked={reminder.completed}
+                                                        onChange={() => handleToggleComplete(reminder)}
+                                                        size="sm"
+                                                    />
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className={`font-bold text-xs text-zinc-700 dark:text-zinc-300 ${reminder.completed ? 'line-through opacity-50' : ''}`}>
+                                                            {formatReminderDate(reminder.reminderDate)}
                                                         </div>
+                                                        {reminder.content && (
+                                                            <div className={`text-xs text-zinc-500 dark:text-zinc-400 ${reminder.completed ? 'line-through opacity-50' : ''} truncate`}>
+                                                                {reminder.content}
+                                                            </div>
+                                                        )}
+                                                        {!reminder.completed && (
+                                                            <span className={`text-[10px] font-medium ${styles.pulsingText} ${urgency === 'high' ? styles.urgent : 'text-zinc-400'}`}>
+                                                                {timeRemaining}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                     <Dropdown
-                                                        button={<Icon.VerticalDots className="w-4 h-4 flex-shrink-0" />}
+                                                        button={<Icon.VerticalDots size={14} className="text-zinc-400" />}
                                                         items={[
                                                             {
                                                                 name: 'Edit',
@@ -178,23 +171,14 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                                                         ]}
                                                     />
                                                 </div>
-
-                                                {!reminder.completed && (
-                                                    <div className="mt-2 ml-6 text-xs">
-                                                        <span className={`${styles.pulsingText} ${urgency === 'high' ? styles.urgent : ''}`}>
-                                                            {timeRemaining}
-                                                        </span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                    );
-                }}
-            />
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    }}
+                />
             )}
 
             <ReminderModal

@@ -1,9 +1,11 @@
-
 import { Link } from 'react-router-dom';
+import dayjs from 'dayjs';
+
+import { Button } from '~/components/ui';
 import type { Reminder } from '~/models/reminder.model';
+import { priorityColors } from '~/modules/color';
 import { getNoteURL } from '~/modules/url';
 import styles from './ReminderCard.module.scss';
-import dayjs from 'dayjs';
 
 interface ReminderCardProps {
     reminder: Reminder;
@@ -16,11 +18,6 @@ export default function ReminderCard({
     onUpdate,
     onDelete
 }: ReminderCardProps) {
-    const urgencyColors: Record<string, string> = {
-        low: 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20',
-        medium: 'border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20',
-        high: 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20'
-    };
 
     const formatReminderDate = (dateString: string) => {
         const date = dayjs(Number(dateString));
@@ -47,39 +44,52 @@ export default function ReminderCard({
     };
 
     const isOverdue = getTimeRemaining(reminder.reminderDate) === 'Overdue';
+    const priorityClass = reminder.priority === 'high'
+        ? styles.priorityHigh
+        : reminder.priority === 'medium'
+            ? styles.priorityMedium
+            : '';
 
     return (
-        <div className={`flex justify-between items-center p-4 border-l-4 border rounded-lg ${urgencyColors[reminder.priority || 'low']} ${reminder.priority === 'high' ? styles.priorityHigh : reminder.priority === 'medium' ? styles.priorityMedium : ''}`}>
+        <div className={`flex justify-between items-center p-4 border-2 rounded-[12px_4px_13px_3px/4px_10px_4px_12px] shadow-sketchy ${priorityColors[reminder.priority || 'low']} border-zinc-700 ${priorityClass}`}>
             <div className="flex flex-col">
-                <Link to={getNoteURL(reminder.note?.id || '')} className="font-semibold hover:underline flex items-center gap-2">
+                <Link
+                    to={getNoteURL(reminder.note?.id || '')}
+                    className="font-bold hover:underline flex items-center gap-2 text-zinc-800 dark:text-zinc-200">
                     {reminder.note?.title || 'Untitled Note'}
                 </Link>
                 {reminder.content && (
-                    <p className="text-sm text-gray-700 dark:text-zinc-300 mt-1 mb-1">
+                    <p className="text-sm text-zinc-700 dark:text-zinc-300 mt-1 mb-1 font-medium">
                         {reminder.content}
                     </p>
                 )}
                 <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-500 dark:text-zinc-400">
+                    <span className="text-sm text-zinc-600 dark:text-zinc-400 font-medium">
                         {formatReminderDate(reminder.reminderDate)}
                     </span>
                     <span
-                        className={`text-xs font-medium ${
+                        className={`text-xs font-bold ${
                             isOverdue
-                                ? `text-red-600 dark:text-red-400 ${styles.urgentPulsing}`
-                                : 'text-gray-500 dark:text-zinc-400'
+                                ? `text-red-700 dark:text-red-400 ${styles.urgentPulsing}`
+                                : 'text-zinc-500 dark:text-zinc-400'
                         }`}>
                         {getTimeRemaining(reminder.reminderDate)}
                     </span>
                 </div>
             </div>
             <div className="flex gap-2">
-                <button onClick={() => onUpdate(reminder.id, reminder.noteId.toString(), { completed: true })} className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded-md text-sm hover:bg-green-200 dark:hover:bg-green-800/40">
+                <Button
+                    variant="soft-success"
+                    size="sm"
+                    onClick={() => onUpdate(reminder.id, reminder.noteId.toString(), { completed: true })}>
                     Complete
-                </button>
-                <button onClick={() => onDelete(reminder.id, reminder.noteId.toString())} className="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 rounded-md text-sm hover:bg-red-200 dark:hover:bg-red-800/40">
+                </Button>
+                <Button
+                    variant="soft-danger"
+                    size="sm"
+                    onClick={() => onDelete(reminder.id, reminder.noteId.toString())}>
                     Delete
-                </button>
+                </Button>
             </div>
         </div>
     );

@@ -1,11 +1,12 @@
 import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { toast } from '@baejino/ui';
+import { useToast } from '~/components/ui';
 
 import { createReminder, updateReminder, deleteReminder } from '~/apis/reminder.api';
 import type { ReminderPriority } from '~/models/reminder.model';
 
 export default function useReminderMutate() {
+    const toast = useToast();
     const queryClient = useQueryClient();
 
     const onCreate = useCallback(async (noteId: string, reminderDate: Date, priority: ReminderPriority = 'medium', onSuccess?: () => void, content?: string) => {

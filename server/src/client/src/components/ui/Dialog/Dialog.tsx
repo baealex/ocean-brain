@@ -53,10 +53,8 @@ const DialogContent = forwardRef<
                 'w-full',
                 'max-w-[640px]',
                 'bg-surface',
-                'dark:bg-surface-dark',
                 'border-2',
-                'border-zinc-800',
-                'dark:border-zinc-700',
+                'border-border',
                 'shadow-sketchy-lg',
                 'data-[state=open]:animate-in',
                 'data-[state=closed]:animate-out',
@@ -103,7 +101,7 @@ const DialogHeader = ({ title, onClose, className }: DialogHeaderProps) => (
             <DialogClose asChild>
                 <button
                     type="button"
-                    className="w-11 h-11 flex items-center justify-center cursor-pointer hover:bg-pastel-pink-200/50 rounded-[10px_3px_11px_3px/3px_8px_3px_10px] transition-colors"
+                    className="w-11 h-11 flex items-center justify-center cursor-pointer hover:bg-hover rounded-[10px_3px_11px_3px/3px_8px_3px_10px] transition-colors"
                     onClick={onClose}>
                     <Icon.Close className="w-5 h-5" />
                 </button>

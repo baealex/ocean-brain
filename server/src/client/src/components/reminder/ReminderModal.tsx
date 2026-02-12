@@ -23,16 +23,16 @@ interface ReminderModalProps {
 
 const priorityStyles: Record<Priority, { active: string; inactive: string }> = {
     low: {
-        active: 'bg-pastel-green-200 text-zinc-800 border-2 border-zinc-800 shadow-sketchy',
-        inactive: 'bg-pastel-lavender-200/30 text-zinc-700 dark:text-zinc-300 border-2 border-transparent'
+        active: 'bg-accent-success text-fg-default border-2 border-border shadow-sketchy',
+        inactive: 'bg-subtle text-fg-muted border-2 border-transparent'
     },
     medium: {
-        active: 'bg-pastel-yellow-200 text-zinc-800 border-2 border-zinc-800 shadow-sketchy',
-        inactive: 'bg-pastel-lavender-200/30 text-zinc-700 dark:text-zinc-300 border-2 border-transparent'
+        active: 'bg-accent-primary text-fg-default border-2 border-border shadow-sketchy',
+        inactive: 'bg-subtle text-fg-muted border-2 border-transparent'
     },
     high: {
-        active: 'bg-pastel-pink-200 text-zinc-800 border-2 border-zinc-800 shadow-sketchy',
-        inactive: 'bg-pastel-lavender-200/30 text-zinc-700 dark:text-zinc-300 border-2 border-transparent'
+        active: 'bg-accent-danger text-fg-default border-2 border-border shadow-sketchy',
+        inactive: 'bg-subtle text-fg-muted border-2 border-transparent'
     }
 };
 

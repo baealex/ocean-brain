@@ -16,8 +16,7 @@ const Skeleton = forwardRef<HTMLDivElement, SkeletonProps>(
                 className={[
                     'rounded-[10px_3px_11px_3px/3px_8px_3px_10px]',
                     'border-2',
-                    'border-zinc-300',
-                    'dark:border-zinc-600',
+                    'border-divider',
                     'bg-[length:200%_100%]',
                     'bg-gradient-to-r',
                     'from-pastel-lavender-200/30',

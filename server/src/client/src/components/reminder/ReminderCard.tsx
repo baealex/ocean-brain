@@ -51,27 +51,27 @@ export default function ReminderCard({
             : '';
 
     return (
-        <div className={`flex justify-between items-center p-4 border-2 rounded-[12px_4px_13px_3px/4px_10px_4px_12px] shadow-sketchy ${priorityColors[reminder.priority || 'low']} border-zinc-700 ${priorityClass}`}>
+        <div className={`flex justify-between items-center p-4 border-2 rounded-[12px_4px_13px_3px/4px_10px_4px_12px] shadow-sketchy ${priorityColors[reminder.priority || 'low']} border-border-secondary ${priorityClass}`}>
             <div className="flex flex-col">
                 <Link
                     to={getNoteURL(reminder.note?.id || '')}
-                    className="font-bold hover:underline flex items-center gap-2 text-zinc-800 dark:text-zinc-200">
+                    className="font-bold hover:underline flex items-center gap-2 text-fg-default">
                     {reminder.note?.title || 'Untitled Note'}
                 </Link>
                 {reminder.content && (
-                    <p className="text-sm text-zinc-700 dark:text-zinc-300 mt-1 mb-1 font-medium">
+                    <p className="text-sm text-fg-muted mt-1 mb-1 font-medium">
                         {reminder.content}
                     </p>
                 )}
                 <div className="flex items-center gap-2">
-                    <span className="text-sm text-zinc-600 dark:text-zinc-400 font-medium">
+                    <span className="text-sm text-fg-secondary font-medium">
                         {formatReminderDate(reminder.reminderDate)}
                     </span>
                     <span
                         className={`text-xs font-bold ${
                             isOverdue
-                                ? `text-red-700 dark:text-red-400 ${styles.urgentPulsing}`
-                                : 'text-zinc-500 dark:text-zinc-400'
+                                ? `text-fg-error ${styles.urgentPulsing}`
+                                : 'text-fg-tertiary'
                         }`}>
                         {getTimeRemaining(reminder.reminderDate)}
                     </span>

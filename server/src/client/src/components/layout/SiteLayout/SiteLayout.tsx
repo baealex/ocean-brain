@@ -76,13 +76,13 @@ function SortableItem({ id, children, tooltip }: SortableItemProps) {
     );
 
     return (
-        <div ref={setNodeRef} style={style} {...attributes} className="flex items-center gap-2 p-2 rounded-md hover:bg-pastel-lavender-200/30 dark:hover:bg-zinc-800/50 transition-colors">
+        <div ref={setNodeRef} style={style} {...attributes} className="flex items-center gap-2 p-2 rounded-md hover:bg-hover-subtle transition-colors">
             <button
                 ref={setActivatorNodeRef}
                 {...listeners}
                 className="cursor-grab active:cursor-grabbing touch-none flex items-center justify-center"
                 style={{ cursor: isDragging ? 'grabbing' : 'grab' }}>
-                <Icon.Menu className="size-4 text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300" />
+                <Icon.Menu className="size-4 text-fg-placeholder hover:text-fg-secondary" />
             </button>
             {tooltip ? (
                 <Tooltip content={tooltip} side="right">
@@ -126,7 +126,7 @@ function PinnedNotesList({
                             className={`transition-colors ${
                                 location.pathname === `/${note.id}`
                                     ? 'text-pastel-pink-200 dark:text-pastel-purple-200'
-                                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'
+                                    : 'text-fg-secondary hover:text-fg-default'
                             }`}
                             to={`/${note.id}`}>
                             {note.title || 'Untitled'}
@@ -296,7 +296,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                 <div className="p-3">
                     <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
                         <div className="flex gap-3">
-                            <div style={{ gridTemplateColumns: '40px 1fr 32px' }} className="grid flex-1 bg-surface dark:bg-surface-dark border-2 border-zinc-800 dark:border-zinc-700 rounded-[12px_4px_13px_3px/4px_10px_4px_12px] shadow-sketchy">
+                            <div style={{ gridTemplateColumns: '40px 1fr 32px' }} className="grid flex-1 bg-surface border-2 border-border rounded-[12px_4px_13px_3px/4px_10px_4px_12px] shadow-sketchy">
                                 <button type="submit" className="flex items-center justify-center hover:text-pastel-pink-200 transition-colors">
                                     <Icon.Search className="h-5 w-5" weight="bold" />
                                 </button>
@@ -305,7 +305,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                                     placeholder="Search..."
                                     value={query}
                                     onChange={(e) => setQuery(e.target.value)}
-                                    className="h-10 w-full bg-transparent text-zinc-800 dark:text-zinc-200 py-4 outline-none font-bold"
+                                    className="h-10 w-full bg-transparent text-fg-default py-4 outline-none font-bold"
                                 />
                                 {query && (
                                     <button type="button" className="flex items-center justify-center hover:text-pastel-pink-200 transition-colors" onClick={handleReset}>
@@ -315,11 +315,11 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                             </div>
                         </div>
                         {(notes.length > 0 || tags.length > 0) && (
-                            <div className="p-3 bg-surface dark:bg-surface-dark border-2 border-zinc-800 dark:border-zinc-700 rounded-[16px_5px_17px_4px/5px_13px_5px_15px] shadow-sketchy">
+                            <div className="p-3 bg-surface border-2 border-border rounded-[16px_5px_17px_4px/5px_13px_5px_15px] shadow-sketchy">
                                 {notes.length > 0 && (
                                     <ul className="flex flex-col">
                                         {notes.map(({ id, title }) => (
-                                            <li key={id} className="flex py-2 items-center border-b border-dashed border-zinc-300 dark:border-zinc-600 last:border-b-0">
+                                            <li key={id} className="flex py-2 items-center border-b border-dashed border-border-subtle last:border-b-0">
                                                 <Link to={`/${id}`} className="text-sm font-bold hover:text-pastel-pink-200 transition-colors">
                                                     {title || 'Untitled'}
                                                 </Link>
@@ -338,7 +338,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                                         ))}
                                     </ul>
                                 )}
-                                <div className="p-2 border-t border-dashed border-zinc-300 dark:border-zinc-600">
+                                <div className="p-2 border-t border-dashed border-border-subtle">
                                     <button type="submit" className="text-sm font-bold text-pastel-blue-200 hover:text-pastel-teal-200 transition-colors">
                                         view detailed results →
                                     </button>
@@ -356,7 +356,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                         onClick={() => onCreate()}>
                         <Icon.Pencil className="w-5 h-5" weight="bold" /> Capture
                     </Button>
-                    <div className={cx('font-bold', 'flex', 'items-center', 'gap-2', 'p-2', 'pt-6', 'mt-5', 'border-t-2', 'border-dashed', 'border-zinc-300', 'dark:border-zinc-600')}>
+                    <div className={cx('font-bold', 'flex', 'items-center', 'gap-2', 'p-2', 'pt-6', 'mt-5', 'border-t-2', 'border-dashed', 'border-border-subtle')}>
                         <Icon.Pin className="w-5 h-5" weight="fill" />
                         Pinned
                     </div>
@@ -395,8 +395,8 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                                         <div
                                             className={`flex items-center gap-2 text-sm font-bold px-3 py-2 border-2 transition-all rounded-[10px_3px_11px_3px/3px_8px_3px_10px] ${
                                             isActive
-                                                ? 'bg-pastel-yellow-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 border-zinc-800 dark:border-zinc-600 shadow-sketchy'
-                                                : 'border-transparent hover:border-zinc-800 dark:hover:border-zinc-600 hover:bg-pastel-lavender-200/50 dark:hover:bg-zinc-700/50'
+                                                ? 'bg-elevated text-fg-default border-border-secondary shadow-sketchy'
+                                                : 'border-transparent hover:border-border-secondary hover:bg-hover'
                                         }`}>
                                             <item.icon className="size-5" weight={isActive ? 'fill' : 'regular'} />
                                             {item.name}

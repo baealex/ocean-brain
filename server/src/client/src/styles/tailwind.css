@@ -3,11 +3,122 @@
 
 @custom-variant dark (&:where(html.dark *));
 
+/* ==============================================
+   Semantic Color Tokens
+   ============================================== */
+
+:root {
+    /* Surface */
+    --surface: #fffcf7;
+    --muted: #f4f4f5;
+    --subtle: rgba(225, 198, 231, 0.3);
+    --elevated: #FCEBAF;
+    --emphasis: #FFCCB3;
+
+    /* Interaction */
+    --hover: rgba(225, 198, 231, 0.5);
+    --hover-subtle: rgba(225, 198, 231, 0.3);
+    --active: rgba(225, 198, 231, 0.7);
+    --ghost: #E1C6E7;
+
+    /* Text */
+    --fg: #18181b;
+    --fg-default: #27272a;
+    --fg-muted: #3f3f46;
+    --fg-secondary: #52525b;
+    --fg-tertiary: #71717a;
+    --fg-disabled: #d4d4d8;
+    --fg-placeholder: #a1a1aa;
+    --fg-error: #b91c1c;
+
+    /* Border */
+    --border: #27272a;
+    --border-secondary: #3f3f46;
+    --border-subtle: #d4d4d8;
+    --border-focus: #27272a;
+    --border-error: #f87171;
+
+    /* Accent */
+    --accent-primary: #FCEBAF;
+    --accent-primary-hover: #FFCCB3;
+    --accent-secondary: #A4D8E1;
+    --accent-secondary-hover: #A4DBD6;
+    --accent-danger: #FFB3C1;
+    --accent-danger-hover: #fecaca;
+    --accent-success: #B2E0B2;
+    --accent-success-hover: #bbf7d0;
+    --accent-soft-primary: rgba(252, 235, 175, 0.5);
+    --accent-soft-primary-hover: #FCEBAF;
+    --accent-soft-danger: rgba(255, 179, 193, 0.5);
+    --accent-soft-danger-hover: #FFB3C1;
+    --accent-soft-success: rgba(178, 224, 178, 0.5);
+    --accent-soft-success-hover: #B2E0B2;
+
+    /* Special */
+    --overlay: rgba(0, 0, 0, 0.5);
+    --highlight: #FCEBAF;
+    --highlight-fg: #27272a;
+    --divider: #e4e4e7;
+
+    /* Page */
+    --page-bg: #fdf8f3;
+}
+
+html.dark {
+    --surface: #252220;
+    --muted: #27272a;
+    --subtle: rgba(63, 63, 70, 0.4);
+    --elevated: #3f3f46;
+    --emphasis: #52525b;
+
+    --hover: rgba(63, 63, 70, 0.5);
+    --hover-subtle: rgba(63, 63, 70, 0.3);
+    --active: rgba(63, 63, 70, 0.7);
+    --ghost: #27272a;
+
+    --fg: #f4f4f5;
+    --fg-default: #e4e4e7;
+    --fg-muted: #d4d4d8;
+    --fg-secondary: #a1a1aa;
+    --fg-tertiary: #a1a1aa;
+    --fg-disabled: #52525b;
+    --fg-placeholder: #71717a;
+    --fg-error: #f87171;
+
+    --border: #3f3f46;
+    --border-secondary: #52525b;
+    --border-subtle: #3f3f46;
+    --border-focus: #a1a1aa;
+    --border-error: #f87171;
+
+    --accent-primary: #3f3f46;
+    --accent-primary-hover: #52525b;
+    --accent-secondary: #3f3f46;
+    --accent-secondary-hover: #52525b;
+    --accent-danger: #3f3f46;
+    --accent-danger-hover: #52525b;
+    --accent-success: #3f3f46;
+    --accent-success-hover: #52525b;
+    --accent-soft-primary: #27272a;
+    --accent-soft-primary-hover: #3f3f46;
+    --accent-soft-danger: #27272a;
+    --accent-soft-danger-hover: #3f3f46;
+    --accent-soft-success: #27272a;
+    --accent-soft-success-hover: #3f3f46;
+
+    --overlay: rgba(0, 0, 0, 0.5);
+    --highlight: #E1B7E1;
+    --highlight-fg: #27272a;
+    --divider: #3f3f46;
+
+    --page-bg: #1a1714;
+}
+
 @theme {
     /* Typography - Hand-drawn */
     --font-sans: 'Gaegu', cursive;
 
-    /* Colors - Pastel (Light mode) */
+    /* Colors - Pastel (decorative, used for light-mode accents) */
     --color-pastel-yellow-200: #FCEBAF;
     --color-pastel-green-200: #B2E0B2;
     --color-pastel-pink-200: #FFB3C1;
@@ -17,11 +128,57 @@
     --color-pastel-teal-200: #A4DBD6;
     --color-pastel-lavender-200: #E1C6E7;
 
-    /* Colors - Background (Warm paper tone) */
-    --color-background: #fdf8f3;
-    --color-background-dark: #1a1714;
-    --color-surface: #fffcf7;
-    --color-surface-dark: #252220;
+    /* Semantic: Surface */
+    --color-surface: var(--surface);
+    --color-muted: var(--muted);
+    --color-subtle: var(--subtle);
+    --color-elevated: var(--elevated);
+    --color-emphasis: var(--emphasis);
+
+    /* Semantic: Interaction */
+    --color-hover: var(--hover);
+    --color-hover-subtle: var(--hover-subtle);
+    --color-active: var(--active);
+    --color-ghost: var(--ghost);
+
+    /* Semantic: Text */
+    --color-fg: var(--fg);
+    --color-fg-default: var(--fg-default);
+    --color-fg-muted: var(--fg-muted);
+    --color-fg-secondary: var(--fg-secondary);
+    --color-fg-tertiary: var(--fg-tertiary);
+    --color-fg-disabled: var(--fg-disabled);
+    --color-fg-placeholder: var(--fg-placeholder);
+    --color-fg-error: var(--fg-error);
+
+    /* Semantic: Border */
+    --color-border: var(--border);
+    --color-border-secondary: var(--border-secondary);
+    --color-border-subtle: var(--border-subtle);
+    --color-border-focus: var(--border-focus);
+    --color-border-error: var(--border-error);
+
+    /* Semantic: Accent */
+    --color-accent-primary: var(--accent-primary);
+    --color-accent-primary-hover: var(--accent-primary-hover);
+    --color-accent-secondary: var(--accent-secondary);
+    --color-accent-secondary-hover: var(--accent-secondary-hover);
+    --color-accent-danger: var(--accent-danger);
+    --color-accent-danger-hover: var(--accent-danger-hover);
+    --color-accent-success: var(--accent-success);
+    --color-accent-success-hover: var(--accent-success-hover);
+    --color-accent-soft-primary: var(--accent-soft-primary);
+    --color-accent-soft-primary-hover: var(--accent-soft-primary-hover);
+    --color-accent-soft-danger: var(--accent-soft-danger);
+    --color-accent-soft-danger-hover: var(--accent-soft-danger-hover);
+    --color-accent-soft-success: var(--accent-soft-success);
+    --color-accent-soft-success-hover: var(--accent-soft-success-hover);
+
+    /* Semantic: Special */
+    --color-overlay: var(--overlay);
+    --color-highlight: var(--highlight);
+    --color-highlight-fg: var(--highlight-fg);
+    --color-divider: var(--divider);
 
     /* Spacing */
     --spacing-xs: 4px;
@@ -103,18 +260,25 @@
 
 /* Paper texture background */
 body {
-    background-color: var(--color-background);
+    background-color: var(--page-bg);
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.08'/%3E%3C/svg%3E");
     background-blend-mode: multiply;
     background-size: 400px 400px;
 }
 
 html.dark body {
-    background-color: var(--color-background-dark);
+    background-color: var(--page-bg);
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.05'/%3E%3C/svg%3E");
     background-blend-mode: soft-light;
     background-size: 400px 400px;
 }
+
+/* Sketchy border-radius sizes */
+.rounded-sketchy-xs  { border-radius: 4px 2px 5px 2px / 2px 4px 2px 4px; }
+.rounded-sketchy-sm  { border-radius: 6px 2px 7px 2px / 2px 5px 2px 6px; }
+.rounded-sketchy-md  { border-radius: 10px 3px 11px 3px / 3px 8px 3px 10px; }
+.rounded-sketchy-lg  { border-radius: 12px 4px 13px 3px / 4px 10px 4px 12px; }
+.rounded-sketchy-xl  { border-radius: 24px 8px 25px 7px / 8px 20px 8px 22px; }
 
 /* Sketchy border utilities */
 .sketchy {
@@ -153,4 +317,3 @@ html.dark .shadow-sketchy {
 html.dark .shadow-sketchy-lg {
     box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.25);
 }
-

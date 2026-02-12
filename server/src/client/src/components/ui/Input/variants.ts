@@ -4,14 +4,10 @@ export const inputVariants = cva(
     [
         'w-full',
         'border-2',
-        'border-zinc-800',
-        'dark:border-zinc-700',
+        'border-border',
         'bg-surface',
-        'dark:bg-surface-dark',
-        'text-zinc-900',
-        'dark:text-zinc-100',
-        'placeholder:text-zinc-400',
-        'dark:placeholder:text-zinc-500',
+        'text-fg',
+        'placeholder:text-fg-placeholder',
         'transition-all',
         'focus:outline-none',
         'focus:shadow-sketchy',
@@ -24,12 +20,11 @@ export const inputVariants = cva(
                 default: [],
                 ghost: [
                     'border-transparent',
-                    'bg-pastel-lavender-200/30',
-                    'focus:border-zinc-800',
-                    'dark:focus:border-zinc-400'
+                    'bg-subtle',
+                    'focus:border-border-focus',
                 ],
                 error: [
-                    'border-red-400',
+                    'border-border-error',
                     'bg-pastel-pink-200/20',
                     'focus:border-red-500'
                 ]

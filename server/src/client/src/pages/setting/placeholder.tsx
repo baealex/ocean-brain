@@ -18,7 +18,7 @@ import { createPlaceholder, deletePlaceholder, fetchPlaceholders } from '~/apis/
 
 import type { Placeholder } from '~/models/placeholder.model';
 
-const cardClassName = 'bg-pastel-lavender-200/20 dark:bg-zinc-800 flex gap-2 items-center justify-between p-4 rounded-[10px_3px_11px_3px/3px_8px_3px_10px] border-2 border-zinc-600 dark:border-zinc-600 font-bold';
+const cardClassName = 'bg-subtle flex gap-2 items-center justify-between p-4 rounded-[10px_3px_11px_3px/3px_8px_3px_10px] border-2 border-border-secondary font-bold';
 
 const Placeholder = () => {
     const toast = useToast();
@@ -97,14 +97,14 @@ const Placeholder = () => {
                 {isFixedListOpen && fixedPlaceholders.map(placeholder => (
                     <div key={placeholder.name} className={cardClassName}>
                         <div className="flex gap-2 items-center">
-                            {placeholder.name} <span className="text-zinc-500 dark:text-zinc-400 text-xs font-medium">{PLACEHOLDER_PREFIX}{placeholder.template}{PLACEHOLDER_SUFFIX} will be '{placeholder.replacement}'</span>
+                            {placeholder.name} <span className="text-fg-tertiary text-xs font-medium">{PLACEHOLDER_PREFIX}{placeholder.template}{PLACEHOLDER_SUFFIX} will be '{placeholder.replacement}'</span>
                         </div>
                     </div>
                 ))}
                 {!isLoading && placeholders?.placeholders && placeholders.placeholders.map(placeholder => (
                     <div key={placeholder.id} className={cardClassName}>
                         <div className="flex gap-2 items-center">
-                            {placeholder.name} <span className="text-zinc-500 dark:text-zinc-400 text-xs font-medium">{PLACEHOLDER_PREFIX}{placeholder.template}{PLACEHOLDER_SUFFIX} will be '{placeholder.replacement}'</span>
+                            {placeholder.name} <span className="text-fg-tertiary text-xs font-medium">{PLACEHOLDER_PREFIX}{placeholder.template}{PLACEHOLDER_SUFFIX} will be '{placeholder.replacement}'</span>
                         </div>
                         <button
                             type="button"

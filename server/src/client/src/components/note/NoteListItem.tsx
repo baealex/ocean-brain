@@ -27,14 +27,14 @@ export default function NoteListItem({
     const updatedTimeSince = timeSince(Number(updatedAt));
 
     return (
-        <div className="border-b-2 border-dashed border-zinc-300 dark:border-zinc-700 last:border-b-0">
+        <div className="border-b-2 border-dashed border-border-subtle last:border-b-0">
             <div className="py-4 flex flex-col gap-2">
                 <div className="flex items-center gap-2">
-                    <span className="text-zinc-500 dark:text-zinc-400 text-xs font-medium">{updatedTimeSince}</span>
-                    <span className="text-zinc-400 dark:text-zinc-500 text-xs">({createdAtText.toDateString()})</span>
+                    <span className="text-fg-tertiary text-xs font-medium">{updatedTimeSince}</span>
+                    <span className="text-fg-placeholder text-xs">({createdAtText.toDateString()})</span>
                 </div>
                 <Link
-                    className="font-bold text-zinc-800 dark:text-zinc-200 hover:text-pastel-pink-200 dark:hover:text-pastel-purple-200 transition-colors"
+                    className="font-bold text-fg-default hover:text-pastel-pink-200 dark:hover:text-pastel-purple-200 transition-colors"
                     to={getNoteURL(id)}>
                     {title || 'Untitled'}
                 </Link>

@@ -10,8 +10,7 @@ export const buttonVariants = cva(
         'transition-all',
         'duration-200',
         'border-2',
-        'border-zinc-800',
-        'dark:border-zinc-700',
+        'border-border',
         'disabled:pointer-events-none',
         'disabled:opacity-50',
         'hover:shadow-sketchy',
@@ -23,68 +22,47 @@ export const buttonVariants = cva(
         variants: {
             variant: {
                 primary: [
-                    'bg-pastel-yellow-200',
-                    'dark:bg-zinc-700',
-                    'text-zinc-800',
-                    'dark:text-zinc-200',
-                    'hover:bg-pastel-orange-200',
-                    'dark:hover:bg-zinc-600'
+                    'bg-accent-primary',
+                    'text-fg-default',
+                    'hover:bg-accent-primary-hover',
                 ],
                 secondary: [
-                    'bg-pastel-blue-200',
-                    'dark:bg-zinc-700',
-                    'text-zinc-800',
-                    'dark:text-zinc-200',
-                    'hover:bg-pastel-teal-200',
-                    'dark:hover:bg-zinc-600'
+                    'bg-accent-secondary',
+                    'text-fg-default',
+                    'hover:bg-accent-secondary-hover',
                 ],
                 ghost: [
                     'border-transparent',
-                    'hover:border-zinc-800',
-                    'dark:hover:border-zinc-600',
-                    'hover:bg-pastel-lavender-200',
-                    'dark:hover:bg-zinc-800'
+                    'hover:border-border',
+                    'hover:bg-ghost',
                 ],
                 danger: [
-                    'bg-pastel-pink-200',
-                    'dark:bg-zinc-700',
-                    'text-zinc-800',
-                    'dark:text-zinc-200',
-                    'hover:bg-red-200',
-                    'dark:hover:bg-zinc-600'
+                    'bg-accent-danger',
+                    'text-fg-default',
+                    'hover:bg-accent-danger-hover',
                 ],
                 success: [
-                    'bg-pastel-green-200',
-                    'dark:bg-zinc-700',
-                    'text-zinc-800',
-                    'dark:text-zinc-200',
-                    'hover:bg-green-200',
-                    'dark:hover:bg-zinc-600'
+                    'bg-accent-success',
+                    'text-fg-default',
+                    'hover:bg-accent-success-hover',
                 ],
                 'soft-success': [
-                    'bg-pastel-green-200/50',
-                    'dark:bg-zinc-800',
-                    'text-zinc-800',
-                    'dark:text-zinc-200',
-                    'hover:bg-pastel-green-200',
-                    'dark:hover:bg-zinc-700'
+                    'bg-accent-soft-success',
+                    'text-fg-default',
+                    'hover:bg-accent-soft-success-hover',
                 ],
                 'soft-danger': [
-                    'bg-pastel-pink-200/50',
-                    'dark:bg-zinc-800',
-                    'text-zinc-800',
-                    'dark:text-zinc-200',
-                    'hover:bg-pastel-pink-200',
-                    'dark:hover:bg-zinc-700'
+                    'bg-accent-soft-danger',
+                    'text-fg-default',
+                    'hover:bg-accent-soft-danger-hover',
                 ],
                 gradient: [
                     'bg-gradient-to-r',
                     'from-pastel-pink-200',
                     'to-pastel-orange-200',
-                    'text-zinc-800',
+                    'text-fg-default',
                     'dark:from-zinc-700',
                     'dark:to-zinc-600',
-                    'dark:text-zinc-200',
                     'hover:from-pastel-orange-200',
                     'hover:to-pastel-yellow-200'
                 ]

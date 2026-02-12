@@ -18,13 +18,9 @@ export default function Reminders() {
             <Helmet>
                 <title>Reminders - Ocean Brain</title>
             </Helmet>
-            <div className="mb-6">
-                <div className="flex justify-between items-center">
-                    <div>
-                        <h1 className="text-2xl font-bold">Upcoming Reminders</h1>
-                        <p className="text-gray-500 dark:text-zinc-400">Manage all your note reminders in one place</p>
-                    </div>
-                </div>
+            <div className="mb-6 p-4 sketchy-sm shadow-sketchy bg-surface/80">
+                <h1 className="text-2xl font-bold">Upcoming Reminders</h1>
+                <p className="text-fg-tertiary text-sm">Manage all your note reminders in one place</p>
             </div>
             <Suspense
                 fallback={(

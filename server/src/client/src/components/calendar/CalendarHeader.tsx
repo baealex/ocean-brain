@@ -28,7 +28,7 @@ export const CalendarHeader = ({
                 <h1 className="text-2xl sm:text-3xl font-bold">
                     {MONTHS[month - 1]}
                 </h1>
-                <span className="text-xl sm:text-2xl text-zinc-400 dark:text-zinc-500">
+                <span className="text-xl sm:text-2xl text-fg-placeholder">
                     {year}
                 </span>
             </div>

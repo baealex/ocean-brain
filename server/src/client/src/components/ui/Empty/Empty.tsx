@@ -16,11 +16,9 @@ const Empty = forwardRef<HTMLDivElement, EmptyProps>(
                 className={[
                     'flex flex-col items-center justify-center text-center',
                     'h-[400px]',
-                    'bg-pastel-lavender-200/10',
-                    'dark:bg-zinc-800/30',
+                    'bg-muted/30',
                     'border-2 border-dashed',
-                    'border-zinc-400',
-                    'dark:border-zinc-600',
+                    'border-border-secondary',
                     'rounded-[24px_8px_25px_7px/8px_20px_8px_22px]',
                     'p-8',
                     className
@@ -30,12 +28,12 @@ const Empty = forwardRef<HTMLDivElement, EmptyProps>(
                     <div className="mb-4 text-6xl opacity-80">{icon}</div>
                 )}
                 {title && (
-                    <h3 className="text-xl font-bold mb-2 text-zinc-700 dark:text-zinc-200">
+                    <h3 className="text-xl font-bold mb-2 text-fg-muted">
                         {title}
                     </h3>
                 )}
                 {description && (
-                    <p className="text-zinc-500 dark:text-zinc-400 max-w-[400px] font-medium">
+                    <p className="text-fg-tertiary max-w-[400px] font-medium">
                         {description}
                     </p>
                 )}

@@ -4,8 +4,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 const labelVariants = cva(
     [
         'font-bold',
-        'text-zinc-700',
-        'dark:text-zinc-300',
+        'text-fg-muted',
         'whitespace-nowrap'
     ],
     {

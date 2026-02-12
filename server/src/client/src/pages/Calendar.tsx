@@ -174,18 +174,17 @@ export default function Calendar() {
             </Helmet>
 
             <div className="w-full px-4 sm:px-6 py-6 sm:py-10 max-w-screen-2xl mx-auto">
-                <CalendarHeader
-                    month={month}
-                    year={year}
-                    onPrevMonth={handlePrevMonth}
-                    onNextMonth={handleNextMonth}
-                    onToday={handleToday}
-                />
-
                 {isError ? (
                     <Callout>Failed to load calendar data. Please try again later.</Callout>
                 ) : (
-                    <div className="bg-surface dark:bg-surface-dark rounded-[16px_5px_17px_5px/5px_13px_5px_15px] p-3 sm:p-4 border-2 border-zinc-800 dark:border-zinc-700 shadow-sketchy overflow-x-auto">
+                    <div className="bg-surface rounded-[16px_5px_17px_5px/5px_13px_5px_15px] p-3 sm:p-4 border-2 border-border shadow-sketchy overflow-x-auto">
+                        <CalendarHeader
+                            month={month}
+                            year={year}
+                            onPrevMonth={handlePrevMonth}
+                            onNextMonth={handleNextMonth}
+                            onToday={handleToday}
+                        />
                         <div className="min-w-[900px]">
                             {/* Week header */}
                             <div className="grid grid-cols-7 gap-1 mb-2">
@@ -194,7 +193,7 @@ export default function Calendar() {
                                         key={day}
                                         className={`
                                             py-2 text-center text-xs font-bold tracking-wider
-                                            ${index === 0 ? 'text-rose-500' : 'text-zinc-500 dark:text-zinc-400'}
+                                            ${index === 0 ? 'text-rose-500' : 'text-fg-secondary'}
                                         `}>
                                         {day}
                                     </div>
@@ -233,7 +232,7 @@ export default function Calendar() {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mt-6">
                     <PriorityLegend />
                     <div className="flex items-center gap-3">
-                        <span className="text-sm text-zinc-500 dark:text-zinc-400 font-bold">
+                        <span className="text-sm text-fg-tertiary font-bold">
                             Display by:
                         </span>
                         <ToggleGroup

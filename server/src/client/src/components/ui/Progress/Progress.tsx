@@ -20,8 +20,8 @@ const Progress = forwardRef<HTMLDivElement, ProgressProps>(
                 ref={ref}
                 className={[
                     'w-full h-3',
-                    'bg-surface dark:bg-surface-dark',
-                    'border-2 border-zinc-800 dark:border-zinc-700',
+                    'bg-surface',
+                    'border-2 border-border',
                     'rounded-[6px_2px_7px_2px/2px_5px_2px_6px]',
                     'overflow-hidden',
                     className

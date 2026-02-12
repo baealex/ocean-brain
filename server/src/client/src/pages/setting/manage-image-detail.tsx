@@ -60,7 +60,7 @@ const ManageImageDetail =  () => {
             <div className="flex gap-8 flex-col items-start justify-center lg:flex-row">
                 {image && (
                     <div className="flex flex-col gap-3 w-full max-w-96">
-                        <div className="border-2 border-zinc-800 dark:border-zinc-700 rounded-[16px_5px_17px_4px/5px_13px_5px_15px] overflow-hidden shadow-sketchy">
+                        <div className="border-2 border-border rounded-[16px_5px_17px_4px/5px_13px_5px_15px] overflow-hidden shadow-sketchy">
                             <ImageComponent
                                 className="w-full h-auto object-contain"
                                 src={image.url}

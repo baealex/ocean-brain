@@ -19,7 +19,7 @@ export const ReminderCard = ({ reminder, isPast }: Props) => {
         <Link to={getNoteURL(reminder.note?.id || '')} className="block min-h-[44px]">
             <div
                 className={`
-                    rounded-[6px_2px_7px_2px/2px_5px_2px_6px]
+                    rounded-sketchy-sm
                     px-2 py-1.5
                     hover:brightness-95 dark:hover:brightness-110
                     transition-all
@@ -28,15 +28,15 @@ export const ReminderCard = ({ reminder, isPast }: Props) => {
                     ${reminder.completed ? 'opacity-40' : ''}
                 `}>
                 <div className="flex items-center gap-1 mb-0.5">
-                    <Icon.Bell size={12} className="text-zinc-700 dark:text-zinc-300" />
+                    <Icon.Bell size={12} className="text-fg-muted" />
                     {isOverdue && (
-                        <span className="text-[9px] font-bold text-red-700 dark:text-red-400">!</span>
+                        <span className="text-[9px] font-bold text-fg-error">!</span>
                     )}
                 </div>
-                <div className={`font-bold line-clamp-1 text-xs text-zinc-800 dark:text-zinc-200 ${reminder.completed ? 'line-through' : ''}`}>
+                <div className={`font-bold line-clamp-1 text-xs text-fg-default ${reminder.completed ? 'line-through' : ''}`}>
                     {reminder.content || reminder.note?.title || 'No title'}
                 </div>
-                <div className="text-zinc-600 dark:text-zinc-400 text-[10px] font-medium">
+                <div className="text-fg-secondary text-[10px] font-medium">
                     {dayjs(Number(reminder.reminderDate)).format('HH:mm')}
                 </div>
             </div>

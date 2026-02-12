@@ -18,9 +18,9 @@ const Reference = createReactInlineContentSpec(
     },
     {
         render: (props) => (
-            <span className={cx('Reference', 'bg-zinc-200 dark:bg-zinc-700 text-xs px-2 py-1')}>
+            <span className={cx('Reference', 'bg-pastel-lavender-200 dark:bg-elevated text-xs px-2 py-1 rounded-sketchy-sm border border-border-secondary font-bold')}>
                 <Link to={getNoteURL(props.inlineContent.props.id)}>
-                    <span className="text-black dark:text-zinc-200">
+                    <span className="text-fg-default">
                         [{props.inlineContent.props.title}]
                     </span>
                 </Link>

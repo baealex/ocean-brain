@@ -39,8 +39,8 @@ export default function NoteListCard({
                 <div className="flex flex-col w-full gap-4">
                     <div className="flex justify-between">
                         <div className="flex flex-col gap-2">
-                            <div className="text-gray-800 dark:text-gray-300 text-xs">{updatedTimeSince}</div>
-                            <div className="text-gray-700 dark:text-gray-400 text-xs">({createdAtText.toDateString()})</div>
+                            <div className="text-fg-default text-xs">{updatedTimeSince}</div>
+                            <div className="text-fg-muted text-xs">({createdAtText.toDateString()})</div>
                         </div>
                         <div className="flex items-center gap-2">
                             <Dropdown

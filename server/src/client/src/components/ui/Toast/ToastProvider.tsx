@@ -1,5 +1,10 @@
 import {
-    createContext, useCallback, useContext, useEffect, useRef, useState
+    createContext,
+    useCallback,
+    useContext,
+    useEffect,
+    useRef,
+    useState
 } from 'react';
 
 interface Toast {
@@ -49,7 +54,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                     {toasts.map((t) => (
                         <div
                             key={t.id}
-                            className="px-5 py-3 bg-surface dark:bg-surface-dark border-2 border-zinc-800 dark:border-zinc-700 rounded-[12px_4px_13px_3px/4px_10px_4px_12px] shadow-sketchy text-sm font-bold text-zinc-800 dark:text-zinc-200 animate-slide-in-from-bottom whitespace-nowrap">
+                            className="px-5 py-3 bg-surface border-2 border-border rounded-[12px_4px_13px_3px/4px_10px_4px_12px] shadow-sketchy text-sm font-bold text-fg-default animate-slide-in-from-bottom whitespace-nowrap">
                             {t.message}
                         </div>
                     ))}

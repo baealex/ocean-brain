@@ -112,10 +112,10 @@ const PaginationItem = forwardRef<HTMLButtonElement, PaginationItemProps>(
         `;
 
         const stateStyles = active
-            ? 'cursor-default bg-pastel-yellow-200 border-zinc-800 dark:border-zinc-700 text-zinc-800 shadow-sketchy'
+            ? 'cursor-default bg-elevated border-border text-fg-default shadow-sketchy'
             : disabled
-                ? 'cursor-default text-zinc-300 dark:text-zinc-600 border-transparent'
-                : 'cursor-pointer text-zinc-800 dark:text-zinc-200 hover:bg-pastel-lavender-200/50 hover:border-zinc-800 dark:hover:border-zinc-600';
+                ? 'cursor-default text-fg-disabled border-transparent'
+                : 'cursor-pointer text-fg-default hover:bg-hover hover:border-border-secondary';
 
         const skipStyles = isSkip ? 'relative [&>svg]:absolute [&>svg:first-child]:-translate-x-[3px] [&>svg:last-child]:translate-x-[3px]' : '';
 

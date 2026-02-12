@@ -44,8 +44,8 @@ export default function Tag() {
                                 <>
                                     <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
                                         {tags.map((tag) => (
-                                            <Link key={tag.id} to={`/tag/${tag.id}`} className="text-zinc-800 dark:text-zinc-200">
-                                                <div className={`${getRandomBackground(tag.name)} p-4 relative rounded-[12px_4px_13px_3px/4px_10px_4px_12px] border-2 border-zinc-700 shadow-sketchy hover:shadow-sketchy-lg hover:-translate-y-0.5 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all duration-200 font-bold`}>
+                                            <Link key={tag.id} to={`/tag/${tag.id}`} className="text-fg-default">
+                                                <div className={`${getRandomBackground(tag.name)} p-4 relative rounded-[12px_4px_13px_3px/4px_10px_4px_12px] border-2 border-border shadow-sketchy hover:shadow-sketchy-lg hover:-translate-y-0.5 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all duration-200 font-bold`}>
                                                     {tag.name} ({tag.referenceCount})
                                                 </div>
                                             </Link>

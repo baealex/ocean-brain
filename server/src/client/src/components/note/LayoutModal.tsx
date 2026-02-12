@@ -57,7 +57,7 @@ export default function LayoutModal({
             <Modal.Body>
                 <div className="flex flex-col gap-3 sm:gap-4">
                     <div className="flex flex-col gap-2">
-                        <label className="text-xs sm:text-sm font-bold text-zinc-700 dark:text-zinc-300">
+                        <label className="text-xs sm:text-sm font-bold text-fg-muted">
                             Note Layout
                         </label>
                         <div className="flex flex-col gap-2">
@@ -68,10 +68,10 @@ export default function LayoutModal({
                                     className={`!justify-start !text-left !h-auto p-3 sm:p-4 ${selectedLayout === option.value ? 'shadow-sketchy' : ''}`}
                                     onClick={() => setSelectedLayout(option.value)}>
                                     <div>
-                                        <div className="font-bold text-sm sm:text-base text-zinc-800 dark:text-zinc-100">
+                                        <div className="font-bold text-sm sm:text-base text-fg-default">
                                             {option.label}
                                         </div>
-                                        <div className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-1 font-medium">
+                                        <div className="text-xs sm:text-sm text-fg-tertiary mt-1 font-medium">
                                             {option.description}
                                         </div>
                                     </div>

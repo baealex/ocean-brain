@@ -157,7 +157,7 @@ export default function Note() {
                 <>
                     <div
                         style={{ zIndex: '1001' }}
-                        className="sticky top-20 mb-8 flex items-center justify-between gap-3 p-3 px-4 border-2 border-zinc-800 dark:border-zinc-700 rounded-[12px_4px_13px_3px/4px_10px_4px_12px] bg-surface/90 dark:bg-surface-dark/90 backdrop-blur-sm shadow-sketchy">
+                        className="sticky top-20 mb-8 flex items-center justify-between gap-3 p-3 px-4 border-2 border-border rounded-sketchy-lg bg-surface/90 backdrop-blur-sm shadow-sketchy">
                         <div className="flex flex-col flex-1 gap-1">
                             <input
                                 ref={titleRef}
@@ -168,7 +168,7 @@ export default function Note() {
                                 onChange={handleChange}
                             />
                             {id && lastSavedAtMap[id] && (
-                                <div className="text-zinc-400 dark:text-zinc-500 text-xs">
+                                <div className="text-fg-placeholder text-xs">
                                     Last saved at {lastSavedAtMap[id]}
                                 </div>
                             )}
@@ -232,14 +232,14 @@ export default function Note() {
                 <BackReferences
                     noteId={id}
                     render={backReferences => backReferences && backReferences.length > 0 && (
-                        <div className="p-4 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-800/30">
+                        <div className="p-4 rounded-sketchy-lg border-2 border-border bg-surface/50">
                             <p className="text-sm font-bold mb-2">
                                 Back References
                             </p>
-                            <ul className="text-sm">
+                            <ul className="text-sm flex flex-col gap-1">
                                 {backReferences?.map((backLink) => (
                                     <li key={backLink.id}>
-                                        <Link to={getNoteURL(backLink.id)} className="text-zinc-600 dark:text-zinc-400 hover:underline">
+                                        <Link to={getNoteURL(backLink.id)} className="block px-2 py-1 rounded-sketchy-sm text-fg-secondary hover:bg-hover transition-colors">
                                             - {backLink.title}
                                         </Link>
                                     </li>

@@ -2,7 +2,8 @@ import { GridFourIcon, SortAscendingIcon } from '@phosphor-icons/react';
 import {
     Checkbox,
     Label,
-    Select
+    Select,
+    SelectItem
 } from '~/components/ui';
 
 export type SortBy = 'updatedAt' | 'createdAt';
@@ -33,48 +34,47 @@ export default function NoteFilters({
 }: Props) {
     return (
         <div className="flex justify-end mb-4">
-            <div className="inline-flex flex-wrap gap-3 items-center px-4 py-2.5 bg-surface dark:bg-surface-dark border-2 border-zinc-800 dark:border-zinc-700 rounded-[12px_4px_13px_3px/4px_10px_4px_12px] shadow-sketchy">
+            <div className="inline-flex flex-wrap gap-3 items-center px-4 py-2.5 bg-surface border-2 border-border rounded-sketchy-lg shadow-sketchy">
                 <div className="flex gap-1.5 items-center">
-                    <GridFourIcon fontSize={24} className="min-w-8 text-zinc-500 dark:text-zinc-400" />
+                    <GridFourIcon fontSize={24} className="min-w-8 text-fg-tertiary" />
                     <Select
-                        value={isAutoLimit ? 'auto' : itemsPerPage}
-                        onChange={(e) => {
-                            const value = e.target.value;
+                        value={isAutoLimit ? 'auto' : String(itemsPerPage)}
+                        onValueChange={(value) => {
                             if (value === 'auto') return;
                             onItemsPerPageChange(Number(value));
                         }}
-                        size="sm"
-                        className="w-auto">
-                        {isAutoLimit && <option value="auto">Auto ({itemsPerPage})</option>}
-                        <option value={25}>25</option>
-                        <option value={50}>50</option>
-                        <option value={100}>100</option>
+                        variant="ghost"
+                        size="sm">
+                        {isAutoLimit && <SelectItem value="auto">Auto ({itemsPerPage})</SelectItem>}
+                        <SelectItem value="25">25</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
                     </Select>
                 </div>
 
-                <div className="w-px h-5 bg-zinc-300 dark:bg-zinc-600" />
+                <div className="w-px h-5 bg-divider" />
 
                 <div className="flex gap-1.5 items-center">
-                    <SortAscendingIcon fontSize={24} className="min-w-8 text-zinc-500 dark:text-zinc-400" />
+                    <SortAscendingIcon fontSize={24} className="min-w-8 text-fg-tertiary" />
                     <Select
                         value={sortBy}
-                        onChange={(e) => onSortByChange(e.target.value as SortBy)}
-                        size="sm"
-                        className="w-auto">
-                        <option value="updatedAt">Updated</option>
-                        <option value="createdAt">Created</option>
+                        onValueChange={(value) => onSortByChange(value as SortBy)}
+                        variant="ghost"
+                        size="sm">
+                        <SelectItem value="updatedAt">Updated</SelectItem>
+                        <SelectItem value="createdAt">Created</SelectItem>
                     </Select>
                     <Select
                         value={sortOrder}
-                        onChange={(e) => onSortOrderChange(e.target.value as SortOrder)}
-                        size="sm"
-                        className="w-auto">
-                        <option value="desc">Newest</option>
-                        <option value="asc">Oldest</option>
+                        onValueChange={(value) => onSortOrderChange(value as SortOrder)}
+                        variant="ghost"
+                        size="sm">
+                        <SelectItem value="desc">Newest</SelectItem>
+                        <SelectItem value="asc">Oldest</SelectItem>
                     </Select>
                 </div>
 
-                <div className="w-px h-5 bg-zinc-300 dark:bg-zinc-600" />
+                <div className="w-px h-5 bg-divider" />
 
                 <Label htmlFor="pinnedFirst" size="sm" className="flex items-center gap-1.5 cursor-pointer">
                     <Checkbox
@@ -83,7 +83,7 @@ export default function NoteFilters({
                         checked={pinnedFirst}
                         onChange={(e) => onPinnedFirstChange(e.target.checked)}
                     />
-                    <span className="text-zinc-600 dark:text-zinc-400">Pinned First</span>
+                    <span className="text-fg-secondary">Pinned First</span>
                 </Label>
             </div>
         </div>

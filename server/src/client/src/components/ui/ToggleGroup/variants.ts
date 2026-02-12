@@ -11,27 +11,22 @@ export const toggleGroupVariants = cva(
             variant: {
                 default: [
                     'border-2',
-                    'border-zinc-800',
-                    'dark:border-zinc-700',
+                    'border-border',
                     'rounded-[12px_4px_13px_3px/4px_10px_4px_12px]',
-                    'bg-surface',
-                    'dark:bg-surface-dark'
+                    'bg-surface'
                 ],
                 outline: [
                     'border-2',
-                    'border-zinc-800',
-                    'dark:border-zinc-700',
+                    'border-border',
                     'rounded-[12px_4px_13px_3px/4px_10px_4px_12px]',
                     'bg-transparent'
                 ],
                 pills: [
-                    'bg-pastel-lavender-200/30',
-                    'dark:bg-zinc-800',
+                    'bg-subtle',
                     'rounded-[14px_4px_15px_4px/4px_12px_4px_14px]',
                     'p-1',
                     'border-2',
-                    'border-zinc-800',
-                    'dark:border-zinc-700'
+                    'border-border'
                 ]
             }
         },
@@ -54,36 +49,26 @@ export const toggleGroupItemVariants = cva(
         variants: {
             variant: {
                 default: [
-                    'text-zinc-700',
-                    'dark:text-zinc-300',
-                    'hover:bg-pastel-lavender-200/50',
-                    'dark:hover:bg-zinc-700',
-                    'data-[state=on]:bg-pastel-yellow-200',
-                    'data-[state=on]:dark:bg-zinc-700',
-                    'data-[state=on]:text-zinc-800',
-                    'data-[state=on]:dark:text-zinc-200',
+                    'text-fg-muted',
+                    'hover:bg-hover',
+                    'data-[state=on]:bg-elevated',
+                    'data-[state=on]:text-fg-default',
                     'data-[state=on]:shadow-sketchy'
                 ],
                 outline: [
-                    'text-zinc-700',
-                    'dark:text-zinc-300',
-                    'hover:bg-pastel-lavender-200/30',
-                    'dark:hover:bg-zinc-800',
-                    'data-[state=on]:bg-pastel-blue-200',
-                    'data-[state=on]:text-zinc-800'
+                    'text-fg-muted',
+                    'hover:bg-hover-subtle',
+                    'data-[state=on]:bg-accent-secondary',
+                    'data-[state=on]:text-fg-default'
                 ],
                 pills: [
-                    'text-zinc-600',
-                    'dark:text-zinc-400',
+                    'text-fg-secondary',
                     'rounded-[10px_3px_11px_3px/3px_8px_3px_10px]',
-                    'data-[state=on]:bg-pastel-yellow-200',
-                    'data-[state=on]:dark:bg-zinc-700',
-                    'data-[state=on]:text-zinc-800',
-                    'data-[state=on]:dark:text-zinc-200',
+                    'data-[state=on]:bg-elevated',
+                    'data-[state=on]:text-fg-default',
                     'data-[state=on]:shadow-sketchy',
                     'data-[state=on]:border-2',
-                    'data-[state=on]:border-zinc-800',
-                    'data-[state=on]:dark:border-zinc-600'
+                    'data-[state=on]:border-border-secondary'
                 ]
             },
             size: {

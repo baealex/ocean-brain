@@ -85,8 +85,8 @@ const TableOfContentsComponent = () => {
 
     if (headings.length === 0) {
         return (
-            <div className="w-full border-l-4 border-zinc-300 dark:border-zinc-600 bg-zinc-50 dark:bg-zinc-800/50 rounded-r-lg p-6">
-                <div className="flex items-center gap-3 text-zinc-500 dark:text-zinc-400">
+            <div className="w-full rounded-sketchy-lg border-2 border-border bg-subtle p-6">
+                <div className="flex items-center gap-3 text-fg-tertiary">
                     <Icon.List className="text-2xl flex-shrink-0" />
                     <div>
                         <div className="font-medium text-base mb-1">Table of Contents</div>
@@ -100,10 +100,10 @@ const TableOfContentsComponent = () => {
     }
 
     return (
-        <div className="w-full border-l-4 border-blue-500 dark:border-blue-400 bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-950/30 dark:to-transparent rounded-r-lg p-6">
+        <div className="w-full rounded-sketchy-lg border-2 border-border bg-subtle p-6">
             <div className="flex items-center gap-2 mb-4">
-                <Icon.List className="text-xl text-blue-600 dark:text-blue-400" />
-                <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+                <Icon.List className="text-xl text-fg-muted" />
+                <h3 className="text-base font-bold text-fg">
                     Table of Contents
                 </h3>
             </div>
@@ -117,18 +117,18 @@ const TableOfContentsComponent = () => {
                             key={heading.id}
                             onClick={() => scrollToHeading(heading.id)}
                             className={`
-                                block w-full text-left rounded-md px-3 py-2 transition-all duration-150
-                                hover:bg-blue-100 dark:hover:bg-blue-900/30
+                                block w-full text-left rounded-sketchy-sm px-3 py-2 transition-all duration-150
+                                hover:bg-hover
                                 hover:translate-x-1
                                 ${isTopLevel
-                                    ? 'text-sm font-semibold text-zinc-900 dark:text-zinc-100'
-                                    : 'text-sm text-zinc-700 dark:text-zinc-300'
+                                    ? 'text-sm font-semibold text-fg'
+                                    : 'text-sm text-fg-muted'
                                 }
                             `}
                             style={{ paddingLeft: `${12 + indent}px` }}>
                             <span className="flex items-center gap-2">
                                 {isTopLevel && (
-                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 dark:bg-blue-400 flex-shrink-0" />
+                                    <span className="w-2 h-2 rounded-sketchy-xs bg-fg-default flex-shrink-0" />
                                 )}
                                 <span className="line-clamp-2">{heading.text}</span>
                             </span>

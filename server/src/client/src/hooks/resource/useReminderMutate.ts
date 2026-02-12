@@ -28,7 +28,7 @@ export default function useReminderMutate() {
         if (onSuccess) {
             onSuccess();
         }
-    }, [queryClient]);
+    }, [queryClient, toast]);
 
     const onUpdate = useCallback(async (id: string, noteId: string, params: {
         reminderDate?: Date;
@@ -52,7 +52,7 @@ export default function useReminderMutate() {
         if (onSuccess) {
             onSuccess();
         }
-    }, [queryClient]);
+    }, [queryClient, toast]);
 
     const onDelete = useCallback(async (id: string, noteId: string, onSuccess?: () => void) => {
         const response = await deleteReminder(id);
@@ -68,7 +68,7 @@ export default function useReminderMutate() {
         if (onSuccess) {
             onSuccess();
         }
-    }, [queryClient]);
+    }, [queryClient, toast]);
 
     return {
         onCreate,

@@ -91,11 +91,11 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
     };
 
     return (
-        <div className="p-4 rounded-[12px_4px_13px_3px/4px_10px_4px_12px] mb-5 border-2 border-zinc-800 dark:border-zinc-700 bg-surface/50 dark:bg-surface-dark/50">
+        <div className="p-4 rounded-sketchy-lg mb-5 border-2 border-border bg-surface/50">
             <div className="flex justify-between items-center mb-3">
                 <button
                     onClick={() => setIsCollapsed(!isCollapsed)}
-                    className="flex items-center gap-2 hover:opacity-70 transition-opacity">
+                    className="flex items-center gap-2 px-2 py-1 rounded-sketchy-sm hover:bg-hover-subtle transition-colors">
                     {isCollapsed ? (
                         <Icon.TriangleRight size={14} />
                     ) : (
@@ -122,7 +122,7 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                         return (
                             <div className="flex flex-col gap-2">
                                 {reminders.length === 0 ? (
-                                    <p className="text-zinc-400 dark:text-zinc-500 text-xs">
+                                    <p className="text-fg-placeholder text-xs">
                                         {totalCount === 0 ? 'No reminders.' : 'No incomplete reminders.'}
                                     </p>
                                 ) : (
@@ -134,8 +134,8 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                                             return (
                                                 <div
                                                     key={reminder.id}
-                                                    className={`flex items-start gap-2 p-2 rounded-[10px_3px_11px_3px/3px_8px_3px_10px] transition-colors ${reminder.completed
-                                                        ? 'bg-zinc-100 dark:bg-zinc-800'
+                                                    className={`flex items-start gap-2 p-2 rounded-sketchy-md transition-colors ${reminder.completed
+                                                        ? 'bg-muted'
                                                         : priorityColorsSubtle[urgency]}`}>
                                                     <Checkbox
                                                         checked={reminder.completed}
@@ -143,22 +143,22 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                                                         size="sm"
                                                     />
                                                     <div className="flex-1 min-w-0">
-                                                        <div className={`font-bold text-xs text-zinc-700 dark:text-zinc-300 ${reminder.completed ? 'line-through opacity-50' : ''}`}>
+                                                        <div className={`font-bold text-xs text-fg-muted ${reminder.completed ? 'line-through opacity-50' : ''}`}>
                                                             {formatReminderDate(reminder.reminderDate)}
                                                         </div>
                                                         {reminder.content && (
-                                                            <div className={`text-xs text-zinc-500 dark:text-zinc-400 ${reminder.completed ? 'line-through opacity-50' : ''} truncate`}>
+                                                            <div className={`text-xs text-fg-tertiary ${reminder.completed ? 'line-through opacity-50' : ''} truncate`}>
                                                                 {reminder.content}
                                                             </div>
                                                         )}
                                                         {!reminder.completed && (
-                                                            <span className={`text-[10px] font-medium ${styles.pulsingText} ${urgency === 'high' ? styles.urgent : 'text-zinc-400'}`}>
+                                                            <span className={`text-[10px] font-medium ${styles.pulsingText} ${urgency === 'high' ? styles.urgent : 'text-fg-placeholder'}`}>
                                                                 {timeRemaining}
                                                             </span>
                                                         )}
                                                     </div>
                                                     <Dropdown
-                                                        button={<Icon.VerticalDots size={14} className="text-zinc-400" />}
+                                                        button={<Icon.VerticalDots size={14} className="text-fg-placeholder" />}
                                                         items={[
                                                             {
                                                                 name: 'Edit',

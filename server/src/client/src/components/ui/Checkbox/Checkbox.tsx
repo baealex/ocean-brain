@@ -50,19 +50,18 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
                     className={[
                         sizeClasses[size],
                         'flex items-center justify-center',
-                        'border-2 border-zinc-800 dark:border-zinc-700',
+                        'border-2 border-border',
                         'rounded-[4px_2px_5px_2px/2px_4px_2px_4px]',
-                        'bg-surface dark:bg-surface-dark',
+                        'bg-surface',
                         'transition-all duration-200',
-                        'peer-checked:bg-pastel-green-200',
-                        'peer-checked:dark:bg-zinc-700',
+                        'peer-checked:bg-accent-success',
                         'peer-focus:shadow-sketchy'
                     ].join(' ')}>
                     {checked && (
                         <Icon.Check
                             width={iconSizes[size]}
                             height={iconSizes[size]}
-                            className="text-zinc-800"
+                            className="text-fg-default"
                             weight="bold"
                         />
                     )}

@@ -71,36 +71,36 @@ const CalendarDayComponent = ({
 
     const getCellStyle = () => {
         if (!isCurrentMonth) {
-            return 'bg-zinc-100/30 dark:bg-zinc-900/20 border-zinc-300 dark:border-zinc-700';
+            return 'bg-muted/30 border-border-subtle';
         }
         if (isToday) {
-            return 'bg-pastel-blue-200/30 dark:bg-blue-950/20 border-zinc-800 dark:border-zinc-600';
+            return 'border-border outline outline-1 outline-border';
         }
-        return 'bg-surface dark:bg-surface-dark border-zinc-300 dark:border-zinc-700';
+        return 'bg-surface border-border-subtle';
     };
 
     const getDayNumberStyle = () => {
         if (isToday) {
-            return 'bg-pastel-pink-200 text-zinc-800 border-2 border-zinc-800 font-bold';
+            return 'bg-accent-danger text-fg-default border-2 border-border font-bold';
         }
         if (!isCurrentMonth) {
-            return 'text-zinc-300 dark:text-zinc-600';
+            return 'text-fg-disabled';
         }
         if (isSunday) {
             return 'text-rose-500 dark:text-rose-400 font-bold';
         }
-        return 'text-zinc-600 dark:text-zinc-400 font-bold';
+        return 'text-fg-secondary font-bold';
     };
 
     return (
         <>
-            <div className={`min-h-[140px] rounded-[8px_3px_9px_2px/3px_6px_3px_7px] border p-2 ${getCellStyle()}`}>
+            <div className={`min-h-[140px] rounded-sketchy-sm border p-2 ${getCellStyle()}`}>
                 <div className="flex justify-end mb-2">
                     <span
                         className={`
                             flex items-center justify-center
                             w-7 h-7 text-sm
-                            rounded-full
+                            rounded-sketchy-xs
                             ${getDayNumberStyle()}
                         `}>
                         {day}
@@ -114,7 +114,7 @@ const CalendarDayComponent = ({
                             <button
                                 type="button"
                                 onClick={handleOpenModal}
-                                className="text-center text-[10px] font-bold text-zinc-500 dark:text-zinc-400 py-1 cursor-pointer hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-pastel-lavender-200/30 dark:hover:bg-zinc-700/50 rounded-[4px_2px_5px_2px/2px_4px_2px_4px] transition-colors">
+                                className="text-center text-[10px] font-bold text-fg-tertiary py-1 cursor-pointer hover:text-fg-muted hover:bg-hover-subtle rounded-sketchy-xs transition-colors">
                                 +{sortedItems.length - MAX_VISIBLE_ITEMS} more
                             </button>
                         )}

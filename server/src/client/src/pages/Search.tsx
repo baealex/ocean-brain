@@ -53,7 +53,7 @@ export default function Search() {
                                                     </Highlight>
                                                 </Link>
                                             </div>
-                                            <div className="bg-zinc-100 dark:bg-zinc-800 p-3 rounded-lg">
+                                            <div className="bg-muted p-3 rounded-lg">
                                                 {(JSON.parse(note.content) as object[]).filter(item => JSON.stringify(item).includes(query)).map((item) => (
                                                     <Highlight match={query}>
                                                         {JSON.stringify(item)}

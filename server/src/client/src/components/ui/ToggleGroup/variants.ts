@@ -13,7 +13,7 @@ export const toggleGroupVariants = cva(
                     'border-2',
                     'border-border',
                     'rounded-[12px_4px_13px_3px/4px_10px_4px_12px]',
-                    'bg-surface',
+                    'bg-surface'
                 ],
                 outline: [
                     'border-2',
@@ -26,7 +26,7 @@ export const toggleGroupVariants = cva(
                     'rounded-[14px_4px_15px_4px/4px_12px_4px_14px]',
                     'p-1',
                     'border-2',
-                    'border-border',
+                    'border-border'
                 ]
             }
         },
@@ -68,7 +68,7 @@ export const toggleGroupItemVariants = cva(
                     'data-[state=on]:text-fg-default',
                     'data-[state=on]:shadow-sketchy',
                     'data-[state=on]:border-2',
-                    'data-[state=on]:border-border-secondary',
+                    'data-[state=on]:border-border-secondary'
                 ]
             },
             size: {

@@ -24,37 +24,37 @@ export const buttonVariants = cva(
                 primary: [
                     'bg-accent-primary',
                     'text-fg-default',
-                    'hover:bg-accent-primary-hover',
+                    'hover:bg-accent-primary-hover'
                 ],
                 secondary: [
                     'bg-accent-secondary',
                     'text-fg-default',
-                    'hover:bg-accent-secondary-hover',
+                    'hover:bg-accent-secondary-hover'
                 ],
                 ghost: [
                     'border-transparent',
                     'hover:border-border',
-                    'hover:bg-ghost',
+                    'hover:bg-ghost'
                 ],
                 danger: [
                     'bg-accent-danger',
                     'text-fg-default',
-                    'hover:bg-accent-danger-hover',
+                    'hover:bg-accent-danger-hover'
                 ],
                 success: [
                     'bg-accent-success',
                     'text-fg-default',
-                    'hover:bg-accent-success-hover',
+                    'hover:bg-accent-success-hover'
                 ],
                 'soft-success': [
                     'bg-accent-soft-success',
                     'text-fg-default',
-                    'hover:bg-accent-soft-success-hover',
+                    'hover:bg-accent-soft-success-hover'
                 ],
                 'soft-danger': [
                     'bg-accent-soft-danger',
                     'text-fg-default',
-                    'hover:bg-accent-soft-danger-hover',
+                    'hover:bg-accent-soft-danger-hover'
                 ],
                 gradient: [
                     'bg-gradient-to-r',

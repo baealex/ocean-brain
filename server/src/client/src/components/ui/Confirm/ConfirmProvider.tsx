@@ -1,5 +1,9 @@
 import {
-    createContext, useCallback, useContext, useRef, useState
+    createContext,
+    useCallback,
+    useContext,
+    useRef,
+    useState
 } from 'react';
 
 import { Button } from '../Button';

@@ -24,7 +24,7 @@ const textareaVariants = cva(
                 ghost: [
                     'border-transparent',
                     'bg-subtle',
-                    'focus:border-border-focus',
+                    'focus:border-border-focus'
                 ],
                 error: [
                     'border-border-error',

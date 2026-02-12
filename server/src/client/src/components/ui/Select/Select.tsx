@@ -26,12 +26,12 @@ const selectTriggerVariants = cva(
         variants: {
             variant: {
                 default: [
-                    'border-border',
+                    'border-border'
                 ],
                 ghost: [
                     'border-transparent',
                     'bg-subtle',
-                    'focus:border-border-focus',
+                    'focus:border-border-focus'
                 ]
             },
             size: {
@@ -75,7 +75,11 @@ const Select = ({
             onValueChange={onValueChange}
             disabled={disabled}>
             <SelectPrimitive.Trigger
-                className={selectTriggerVariants({ variant, size, className })}>
+                className={selectTriggerVariants({
+                    variant,
+                    size,
+                    className
+                })}>
                 <SelectPrimitive.Value placeholder={placeholder} />
                 <SelectPrimitive.Icon>
                     <Icon.ChevronDown className="w-3.5 h-3.5 opacity-60" />

@@ -1,7 +1,13 @@
 import { Suspense } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
-import { Empty, FallbackRender, PageLayout, Pagination, Skeleton } from '~/components/shared';
+import {
+    Empty,
+    FallbackRender,
+    PageLayout,
+    Pagination,
+    Skeleton
+} from '~/components/shared';
 import { Tags } from '~/components/entities';
 
 import { getRandomBackground } from '~/modules/color';

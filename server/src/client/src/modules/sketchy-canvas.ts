@@ -60,10 +60,22 @@ export function drawSketchyRect(
     seed: number
 ) {
     const wobble = 1;
-    const tl = { x: x + (seededRandom(seed) * 2 - 1) * wobble, y: y + (seededRandom(seed + 1) * 2 - 1) * wobble };
-    const tr = { x: x + w + (seededRandom(seed + 2) * 2 - 1) * wobble, y: y + (seededRandom(seed + 3) * 2 - 1) * wobble };
-    const br = { x: x + w + (seededRandom(seed + 4) * 2 - 1) * wobble, y: y + h + (seededRandom(seed + 5) * 2 - 1) * wobble };
-    const bl = { x: x + (seededRandom(seed + 6) * 2 - 1) * wobble, y: y + h + (seededRandom(seed + 7) * 2 - 1) * wobble };
+    const tl = {
+        x: x + (seededRandom(seed) * 2 - 1) * wobble,
+        y: y + (seededRandom(seed + 1) * 2 - 1) * wobble
+    };
+    const tr = {
+        x: x + w + (seededRandom(seed + 2) * 2 - 1) * wobble,
+        y: y + (seededRandom(seed + 3) * 2 - 1) * wobble
+    };
+    const br = {
+        x: x + w + (seededRandom(seed + 4) * 2 - 1) * wobble,
+        y: y + h + (seededRandom(seed + 5) * 2 - 1) * wobble
+    };
+    const bl = {
+        x: x + (seededRandom(seed + 6) * 2 - 1) * wobble,
+        y: y + h + (seededRandom(seed + 7) * 2 - 1) * wobble
+    };
 
     ctx.beginPath();
     ctx.moveTo(tl.x, tl.y);

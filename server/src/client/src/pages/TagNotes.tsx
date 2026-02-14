@@ -1,6 +1,12 @@
 import { Suspense } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { Empty, FallbackRender, PageLayout, Pagination, Skeleton } from '~/components/shared';
+import {
+    Empty,
+    FallbackRender,
+    PageLayout,
+    Pagination,
+    Skeleton
+} from '~/components/shared';
 import { NoteListCard } from '~/components/note';
 import { TagNotes as TagNotesEntity } from '~/components/entities';
 

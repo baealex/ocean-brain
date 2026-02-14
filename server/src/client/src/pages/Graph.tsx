@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
+} from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import ForceGraph2D from 'react-force-graph-2d';
@@ -20,12 +26,12 @@ interface ForceGraphInstance {
 
 const PASTEL_COLORS_LIGHT = [
     '#FCEBAF', '#B2E0B2', '#FFB3C1', '#FFCCB3',
-    '#A4D8E1', '#E1B7E1', '#A4DBD6', '#E1C6E7',
+    '#A4D8E1', '#E1B7E1', '#A4DBD6', '#E1C6E7'
 ];
 
 const PASTEL_COLORS_DARK = [
     '#5c5540', '#3d5c3d', '#5c3d44', '#5c4d40',
-    '#3d4f5c', '#5c3d5c', '#3d5c56', '#4f3d5c',
+    '#3d4f5c', '#5c3d5c', '#3d5c56', '#4f3d5c'
 ];
 
 const PASTEL_COLORS_LIGHT_DIM = PASTEL_COLORS_LIGHT.map(c => hexToRgba(c, 0.15));
@@ -49,7 +55,10 @@ export default function Graph() {
     const navigate = useNavigate();
     const containerRef = useRef<HTMLDivElement>(null);
     const graphRef = useRef<ForceGraphInstance | null>(null);
-    const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
+    const [dimensions, setDimensions] = useState({
+        width: 800,
+        height: 600
+    });
 
     const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 

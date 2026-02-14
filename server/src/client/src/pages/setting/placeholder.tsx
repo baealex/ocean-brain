@@ -7,6 +7,7 @@ import {
     Callout,
     FallbackRender,
     Modal,
+    PageLayout,
     Pagination
 } from '~/components/shared';
 import { Input, Label, useToast } from '~/components/ui';
@@ -75,7 +76,7 @@ const Placeholder = () => {
     });
 
     return (
-        <div>
+        <PageLayout title="Placeholders" variant="subtle">
             <Callout className="mb-4">
                 <div className="flex gap-2 items-center justify-between">
                     <span>Placeholders will be replaced with new note data during cloning.</span>
@@ -187,7 +188,7 @@ const Placeholder = () => {
                     />
                 )}
             </FallbackRender>
-        </div>
+        </PageLayout>
     );
 };
 

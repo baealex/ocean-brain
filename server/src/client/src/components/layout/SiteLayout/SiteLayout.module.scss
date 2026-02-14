@@ -10,11 +10,10 @@
         height: 100%;
         flex: 0 0 300px;
         overflow-y: auto;
-        background: var(--color-background);
+        background: var(--page-bg);
         border-right: 2px solid #3d3d3d;
 
         :global(html.dark) & {
-            background: var(--color-background-dark);
             border-right-color: #404040;
         }
 
@@ -73,11 +72,10 @@
         position: sticky;
         top: 0;
         z-index: 1001;
-        background: var(--color-background);
+        background: var(--page-bg);
         border-bottom: 2px solid #3d3d3d;
 
         :global(html.dark) & {
-            background: var(--color-background-dark);
             border-bottom-color: #404040;
         }
     }

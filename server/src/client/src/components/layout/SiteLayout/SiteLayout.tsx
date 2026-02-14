@@ -145,6 +145,11 @@ const NAVIGATION_ITEMS = [
         icon: Icon.Grid
     },
     {
+        name: 'Graph',
+        path: '/graph',
+        icon: Icon.Graph
+    },
+    {
         name: 'Calendar',
         path: '/calendar',
         icon: Icon.Calendar

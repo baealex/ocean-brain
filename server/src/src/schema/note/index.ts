@@ -67,6 +67,22 @@ export const noteType = gql`
 `;
 
 export const noteQuery = gql`
+    type GraphNode {
+        id: ID!
+        title: String!
+        connections: Int!
+    }
+
+    type GraphLink {
+        source: ID!
+        target: ID!
+    }
+
+    type NoteGraph {
+        nodes: [GraphNode!]!
+        links: [GraphLink!]!
+    }
+
     type Query {
         allNotes(searchFilter: SearchFilterInput, pagination: PaginationInput): Notes!
         tagNotes(searchFilter: SearchFilterInput, pagination: PaginationInput): Notes!
@@ -75,6 +91,7 @@ export const noteQuery = gql`
         imageNotes(src: String!): [Note!]!
         backReferences(id: ID!): [Note]!
         note(id: ID!): Note!
+        noteGraph: NoteGraph!
     }
 `;
 
@@ -297,6 +314,63 @@ export const noteResolvers: IResolvers = {
                 }
             }
             return $note;
+        },
+        noteGraph: async () => {
+            const $notes = await models.note.findMany({
+                select: {
+                    id: true,
+                    title: true,
+                    content: true
+                }
+            });
+
+            const nodes: Array<{ id: string; title: string; connections: number }> = [];
+            const links: Array<{ source: string; target: string }> = [];
+            const connectionCount: Record<string, number> = {};
+            const linkSet = new Set<string>();
+
+            // Extract all references from each note
+            for (const $note of $notes) {
+                if ($note.content) {
+                    try {
+                        const blocks = extractBlocksByType<{ id: string }>('reference', JSON.parse($note.content));
+                        for (const block of blocks) {
+                            const targetId = block.props.id;
+                            // Avoid self-references and duplicate links
+                            if (targetId && String($note.id) !== targetId) {
+                                const linkKey = `${$note.id}-${targetId}`;
+                                const reverseLinkKey = `${targetId}-${$note.id}`;
+                                if (!linkSet.has(linkKey) && !linkSet.has(reverseLinkKey)) {
+                                    linkSet.add(linkKey);
+                                    links.push({
+                                        source: String($note.id),
+                                        target: targetId
+                                    });
+                                    // Count connections for both nodes
+                                    connectionCount[String($note.id)] = (connectionCount[String($note.id)] || 0) + 1;
+                                    connectionCount[targetId] = (connectionCount[targetId] || 0) + 1;
+                                }
+                            }
+                        }
+                    } catch {
+                        // Skip notes with invalid JSON content
+                    }
+                }
+            }
+
+            // Build nodes array with connection counts
+            for (const $note of $notes) {
+                nodes.push({
+                    id: String($note.id),
+                    title: $note.title || 'Untitled',
+                    connections: connectionCount[String($note.id)] || 0
+                });
+            }
+
+            return {
+                nodes,
+                links
+            };
         }
     },
     Mutation: {

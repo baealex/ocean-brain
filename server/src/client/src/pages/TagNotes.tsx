@@ -1,8 +1,6 @@
 import { Suspense } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { Helmet } from 'react-helmet';
-
-import { Empty, FallbackRender, Pagination, Skeleton } from '~/components/shared';
+import { Empty, FallbackRender, PageLayout, Pagination, Skeleton } from '~/components/shared';
 import { NoteListCard } from '~/components/note';
 import { TagNotes as TagNotesEntity } from '~/components/entities';
 
@@ -22,10 +20,7 @@ export default function TagNotes() {
     } = useNoteMutate();
 
     return (
-        <>
-            <Helmet>
-                <title>Tag | Ocean Brain</title>
-            </Helmet>
+        <PageLayout title="Tag" variant="subtle">
             <Suspense
                 fallback={(
                     <div className="grid gap-6 mt-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
@@ -82,6 +77,6 @@ export default function TagNotes() {
                     )}
                 />
             </Suspense>
-        </>
+        </PageLayout>
     );
 }

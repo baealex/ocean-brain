@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 
+import { PageLayout } from '~/components/shared';
 import * as Icon from '~/components/icon';
 
 import { useTheme } from '~/store/theme';
@@ -10,26 +11,28 @@ const Setting = () => {
     const { theme, toggleTheme } = useTheme(state => state);
 
     return (
-        <div className="flex flex-col gap-3">
-            <button type="button" className={cardClassName} onClick={toggleTheme}>
-                Theme
-                <span>
-                    {theme === 'dark' ? (
-                        <Icon.Moon className="h-6 w-6 text-pastel-yellow-200" weight="fill" />
-                    ) : (
-                        <Icon.Sun className="h-6 w-6 text-pastel-orange-200" weight="fill" />
-                    )}
-                </span>
-            </button>
-            <Link to="manage-image" className={cardClassName}>
-                <span>Manage Image</span>
-                <Icon.ChevronRight className="size-4" />
-            </Link>
-            <Link to="placeholder" className={cardClassName}>
-                <span>Placeholder</span>
-                <Icon.ChevronRight className="size-4" />
-            </Link>
-        </div>
+        <PageLayout title="Settings">
+            <div className="flex flex-col gap-3">
+                <button type="button" className={cardClassName} onClick={toggleTheme}>
+                    Theme
+                    <span>
+                        {theme === 'dark' ? (
+                            <Icon.Moon className="h-6 w-6 text-pastel-yellow-200" weight="fill" />
+                        ) : (
+                            <Icon.Sun className="h-6 w-6 text-pastel-orange-200" weight="fill" />
+                        )}
+                    </span>
+                </button>
+                <Link to="manage-image" className={cardClassName}>
+                    <span>Manage Image</span>
+                    <Icon.ChevronRight className="size-4" />
+                </Link>
+                <Link to="placeholder" className={cardClassName}>
+                    <span>Placeholder</span>
+                    <Icon.ChevronRight className="size-4" />
+                </Link>
+            </div>
+        </PageLayout>
     );
 };
 

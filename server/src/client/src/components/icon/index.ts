@@ -97,3 +97,4 @@ export {
     SpeakerLow as VolumeDown,
     SpeakerX as VolumeMute
 } from '@phosphor-icons/react';
+export { Graph } from './Graph';

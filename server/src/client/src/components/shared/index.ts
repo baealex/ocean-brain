@@ -1,13 +1,13 @@
 export { default as Badge } from './Badge';
 export { Button } from '~/components/ui';
 export { default as Callout } from './Callout';
-export { default as Container } from './Container';
 export { Dropdown } from '~/components/ui';
 export { Empty } from '~/components/ui';
 export { default as FallbackRender } from './FallbackRender';
 export { default as Highlight } from './Highlight';
 export { default as Image } from './Image';
 export { Modal } from '~/components/ui';
+export { default as PageLayout } from './PageLayout';
 export { default as NoteFilters } from './NoteFilters';
 export { Pagination } from '~/components/ui';
 export { Progress } from '~/components/ui';

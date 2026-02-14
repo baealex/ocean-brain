@@ -1,8 +1,13 @@
 import { Suspense } from 'react';
-import { Helmet } from 'react-helmet';
 import { Link, useSearchParams } from 'react-router-dom';
 
-import { Empty, FallbackRender, Pagination, Skeleton } from '~/components/shared';
+import {
+    Empty,
+    FallbackRender,
+    PageLayout,
+    Pagination,
+    Skeleton
+} from '~/components/shared';
 import { Tags } from '~/components/entities';
 
 import { getRandomBackground } from '~/modules/color';
@@ -14,10 +19,7 @@ export default function Tag() {
     const page = Number(searchParams.get('page')) || 1;
 
     return (
-        <>
-            <Helmet>
-                <title>Tags | Ocean Brain</title>
-            </Helmet>
+        <PageLayout title="Tags">
             <Suspense
                 fallback={(
                     <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
@@ -72,6 +74,6 @@ export default function Tag() {
                     )}
                 />
             </Suspense>
-        </>
+        </PageLayout>
     );
 }

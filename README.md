@@ -57,6 +57,7 @@ npm run start
 |---------|-------------|
 | Block editor | Notion-like editing with `/` commands |
 | Bi-directional links | Link notes with `[` and track backlinks |
+| Knowledge graph | Explore connections between notes visually |
 | Tags | Organize with `@` mentions |
 | Search | Full-text search across all notes |
 | Pin notes | Keep important notes at the top |

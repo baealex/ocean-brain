@@ -1,7 +1,6 @@
-import { Helmet } from 'react-helmet';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Image as ImageComponent } from '~/components/shared';
+import { Image as ImageComponent, PageLayout } from '~/components/shared';
 import { NoteListItem } from '~/components/note';
 import { Button, useConfirm } from '~/components/ui';
 import * as Icon from '~/components/icon';
@@ -53,10 +52,7 @@ const ManageImageDetail =  () => {
     };
 
     return (
-        <>
-            <Helmet>
-                <title>Image | Ocean Brain</title>
-            </Helmet>
+        <PageLayout title="Image Detail" variant="none">
             <div className="flex gap-8 flex-col items-start justify-center lg:flex-row">
                 {image && (
                     <div className="flex flex-col gap-3 w-full max-w-96">
@@ -103,7 +99,7 @@ const ManageImageDetail =  () => {
                     </ul>
                 </div>
             </div>
-        </>
+        </PageLayout>
     );
 };
 

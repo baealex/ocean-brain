@@ -1,7 +1,12 @@
 import { Suspense } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Helmet } from 'react-helmet';
-import { Empty, FallbackRender, Pagination, Skeleton } from '~/components/shared';
+import {
+    Empty,
+    FallbackRender,
+    PageLayout,
+    Pagination,
+    Skeleton
+} from '~/components/shared';
 import { Reminders as RemindersEntity } from '~/components/entities';
 import useReminderMutate from '~/hooks/resource/useReminderMutate';
 import ReminderCard from '~/components/reminder/ReminderCard';
@@ -14,14 +19,9 @@ export default function Reminders() {
     const page = Number(searchParams.get('page')) || 1;
 
     return (
-        <>
-            <Helmet>
-                <title>Reminders - Ocean Brain</title>
-            </Helmet>
-            <div className="mb-6 p-4 sketchy-sm shadow-sketchy bg-surface/80">
-                <h1 className="text-2xl font-bold">Upcoming Reminders</h1>
-                <p className="text-fg-tertiary text-sm">Manage all your note reminders in one place</p>
-            </div>
+        <PageLayout
+            title="Reminders"
+            description="Manage all your note reminders in one place">
             <Suspense
                 fallback={(
                     <div className="flex flex-col gap-4">
@@ -76,6 +76,6 @@ export default function Reminders() {
                     }}
                 />
             </Suspense>
-        </>
+        </PageLayout>
     );
 }

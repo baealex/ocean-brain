@@ -2,7 +2,6 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 
 import {
-    Container,
     Empty,
     FallbackRender,
     Highlight,
@@ -25,7 +24,7 @@ export default function Search() {
             <Helmet>
                 <title>Search "{query}" | Ocean Brain</title>
             </Helmet>
-            <Container>
+            <main className="mx-auto max-w-[896px]">
                 <Suspense fallback={null}>
                     <Notes
                         searchParams={{
@@ -81,7 +80,7 @@ export default function Search() {
                         )}
                     />
                 </Suspense>
-            </Container>
+            </main>
         </>
     );
 }

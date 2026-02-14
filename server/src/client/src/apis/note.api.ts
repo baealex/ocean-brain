@@ -212,3 +212,39 @@ export function reorderNotes(notes: NoteOrderInput[]) {
         { notes }
     );
 }
+
+export interface GraphNode {
+    id: string;
+    title: string;
+    connections: number;
+}
+
+export interface GraphLink {
+    source: string;
+    target: string;
+}
+
+export interface NoteGraph {
+    nodes: GraphNode[];
+    links: GraphLink[];
+}
+
+export function fetchNoteGraph() {
+    return graphQuery<{
+        noteGraph: NoteGraph;
+    }>(
+        `query {
+            noteGraph {
+                nodes {
+                    id
+                    title
+                    connections
+                }
+                links {
+                    source
+                    target
+                }
+            }
+        }`
+    );
+}

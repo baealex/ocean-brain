@@ -1,10 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Helmet } from 'react-helmet';
 
 import {
     Image as ImageComponent,
     FallbackRender,
+    PageLayout,
     Pagination,
     Skeleton,
     Empty
@@ -44,10 +44,7 @@ const ManageImage = () => {
     };
 
     return (
-        <>
-            <Helmet>
-                <title>Images | Ocean Brain</title>
-            </Helmet>
+        <PageLayout title="Images" variant="subtle">
             <Suspense
                 fallback={(
                     <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
@@ -113,7 +110,7 @@ const ManageImage = () => {
                     )}
                 />
             </Suspense>
-        </>
+        </PageLayout>
     );
 };
 

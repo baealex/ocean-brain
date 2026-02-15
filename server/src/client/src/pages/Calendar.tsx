@@ -1,6 +1,5 @@
 import dayjs from 'dayjs';
 import { useMemo } from 'react';
-import { Helmet } from 'react-helmet';
 import { useSearchParams } from 'react-router-dom';
 
 import {
@@ -10,7 +9,7 @@ import {
     useCalendarData
 } from '~/components/calendar';
 import type { CalendarDisplayType } from '~/components/calendar';
-import { Callout } from '~/components/shared';
+import { Callout, PageLayout } from '~/components/shared';
 import { Skeleton, ToggleGroup, ToggleGroupItem } from '~/components/ui';
 import type { Note } from '~/models/note.model';
 import type { Reminder } from '~/models/reminder.model';
@@ -168,11 +167,7 @@ export default function Calendar() {
     };
 
     return (
-        <>
-            <Helmet>
-                <title>Calendar | Ocean Brain</title>
-            </Helmet>
-
+        <PageLayout title="Calendar" variant="none">
             <div className="w-full px-4 sm:px-6 py-6 sm:py-10 max-w-screen-2xl mx-auto">
                 {isError ? (
                     <Callout>Failed to load calendar data. Please try again later.</Callout>
@@ -251,6 +246,6 @@ export default function Calendar() {
                     </div>
                 </div>
             </div>
-        </>
+        </PageLayout>
     );
 }

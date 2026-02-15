@@ -145,8 +145,8 @@ const SelectItem = forwardRef<
             'outline-none',
             'transition-colors',
             'rounded-sketchy-sm',
-            'data-[highlighted]:bg-highlight',
-            'data-[highlighted]:text-highlight-fg',
+            'data-[highlighted]:bg-hover',
+            'data-[highlighted]:text-fg-default',
             'data-[disabled]:pointer-events-none',
             'data-[disabled]:opacity-50',
             className

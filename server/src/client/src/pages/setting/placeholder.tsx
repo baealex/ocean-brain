@@ -19,7 +19,7 @@ import { createPlaceholder, deletePlaceholder, fetchPlaceholders } from '~/apis/
 
 import type { Placeholder } from '~/models/placeholder.model';
 
-const cardClassName = 'bg-subtle flex gap-2 items-center justify-between p-4 rounded-[10px_3px_11px_3px/3px_8px_3px_10px] border-2 border-border-secondary font-bold';
+const cardClassName = 'bg-subtle flex flex-col gap-1 p-4 rounded-[10px_3px_11px_3px/3px_8px_3px_10px] border-2 border-border-secondary font-bold';
 
 const Placeholder = () => {
     const toast = useToast();
@@ -76,7 +76,7 @@ const Placeholder = () => {
     });
 
     return (
-        <PageLayout title="Placeholders" variant="subtle">
+        <PageLayout title="Placeholders" variant="subtle" description="Manage template variables for note cloning">
             <Callout className="mb-4">
                 <div className="flex gap-2 items-center justify-between">
                     <span>Placeholders will be replaced with new note data during cloning.</span>
@@ -89,32 +89,44 @@ const Placeholder = () => {
                 <button
                     type="button"
                     onClick={() => setIsFixedListOpen(!isFixedListOpen)}
-                    className={cardClassName}>
+                    className="bg-subtle flex gap-2 items-center justify-between p-4 rounded-[10px_3px_11px_3px/3px_8px_3px_10px] border-2 border-border-secondary font-bold">
                     <div>System Placeholders</div>
                     <div className="w-6 h-6">
                         {isFixedListOpen ? <Icon.TriangleUp /> : <Icon.TriangleDown />}
                     </div>
                 </button>
-                {isFixedListOpen && fixedPlaceholders.map(placeholder => (
-                    <div key={placeholder.name} className={cardClassName}>
-                        <div className="flex gap-2 items-center">
-                            {placeholder.name} <span className="text-fg-tertiary text-xs font-medium">{PLACEHOLDER_PREFIX}{placeholder.template}{PLACEHOLDER_SUFFIX} will be '{placeholder.replacement}'</span>
-                        </div>
+                {isFixedListOpen && (
+                    <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                        {fixedPlaceholders.map(placeholder => (
+                            <div key={placeholder.name} className={cardClassName}>
+                                <div className="text-sm">{placeholder.name}</div>
+                                <div className="text-fg-tertiary text-xs font-medium">
+                                    {PLACEHOLDER_PREFIX}{placeholder.template}{PLACEHOLDER_SUFFIX} → '{placeholder.replacement}'
+                                </div>
+                            </div>
+                        ))}
                     </div>
-                ))}
-                {!isLoading && placeholders?.placeholders && placeholders.placeholders.map(placeholder => (
-                    <div key={placeholder.id} className={cardClassName}>
-                        <div className="flex gap-2 items-center">
-                            {placeholder.name} <span className="text-fg-tertiary text-xs font-medium">{PLACEHOLDER_PREFIX}{placeholder.template}{PLACEHOLDER_SUFFIX} will be '{placeholder.replacement}'</span>
-                        </div>
-                        <button
-                            type="button"
-                            className="w-6 h-6 hover:text-red-500 transition-colors"
-                            onClick={() => removePlaceholder.mutate(placeholder.id.toString())}>
-                            <Icon.Close />
-                        </button>
+                )}
+                {!isLoading && placeholders?.placeholders && placeholders.placeholders.length > 0 && (
+                    <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                        {placeholders.placeholders.map(placeholder => (
+                            <div key={placeholder.id} className={`${cardClassName} relative`}>
+                                <div className="flex items-center justify-between">
+                                    <div className="text-sm">{placeholder.name}</div>
+                                    <button
+                                        type="button"
+                                        className="w-5 h-5 hover:text-red-500 transition-colors"
+                                        onClick={() => removePlaceholder.mutate(placeholder.id.toString())}>
+                                        <Icon.Close />
+                                    </button>
+                                </div>
+                                <div className="text-fg-tertiary text-xs font-medium">
+                                    {PLACEHOLDER_PREFIX}{placeholder.template}{PLACEHOLDER_SUFFIX} → '{placeholder.replacement}'
+                                </div>
+                            </div>
+                        ))}
                     </div>
-                ))}
+                )}
             </div>
             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
                 <Modal.Header title="Add Placeholder" onClose={() => setIsModalOpen(false)} />
@@ -157,7 +169,7 @@ const Placeholder = () => {
                 </Modal.Body>
                 <Modal.Footer>
                     <div className="flex gap-2">
-                        <Button variant="secondary" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+                        <Button variant="ghost" onClick={() => setIsModalOpen(false)}>Cancel</Button>
                         <Button
                             isLoading={addPlaceholder.isPending}
                             onClick={() => {

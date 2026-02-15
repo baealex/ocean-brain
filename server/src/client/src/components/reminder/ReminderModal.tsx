@@ -27,7 +27,7 @@ const priorityStyles: Record<Priority, { active: string; inactive: string }> = {
         inactive: 'bg-subtle text-fg-muted border-2 border-transparent'
     },
     medium: {
-        active: 'bg-accent-primary text-fg-default border-2 border-border shadow-sketchy',
+        active: 'bg-pastel-yellow-200 dark:bg-elevated text-fg-default border-2 border-border shadow-sketchy',
         inactive: 'bg-subtle text-fg-muted border-2 border-transparent'
     },
     high: {
@@ -126,7 +126,7 @@ export default function ReminderModal({
             </Modal.Body>
             <Modal.Footer>
                 <div className="flex justify-end gap-2">
-                    <Button variant="secondary" size="sm" onClick={onClose}>
+                    <Button variant="ghost" size="sm" onClick={onClose}>
                         Cancel
                     </Button>
                     <Button size="sm" onClick={handleSave}>

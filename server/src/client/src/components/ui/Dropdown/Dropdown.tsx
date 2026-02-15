@@ -31,8 +31,8 @@ const DropdownMenuSubTrigger = forwardRef<
             'py-1.5',
             'text-sm',
             'outline-none',
-            'focus:bg-muted',
-            'data-[state=open]:bg-muted',
+            'focus:bg-hover',
+            'data-[state=open]:bg-hover',
             inset && 'pl-8',
             className
         ]
@@ -127,8 +127,8 @@ const DropdownMenuItem = forwardRef<
             'outline-none',
             'transition-colors',
             'rounded-[6px_2px_7px_2px/2px_5px_2px_6px]',
-            'focus:bg-highlight',
-            'focus:text-highlight-fg',
+            'focus:bg-hover',
+            'focus:text-fg-default',
             'data-[disabled]:pointer-events-none',
             'data-[disabled]:opacity-50',
             inset && 'pl-8',
@@ -160,7 +160,7 @@ const DropdownMenuCheckboxItem = forwardRef<
             'text-sm',
             'outline-none',
             'transition-colors',
-            'focus:bg-muted',
+            'focus:bg-hover',
             'data-[disabled]:pointer-events-none',
             'data-[disabled]:opacity-50',
             className
@@ -198,7 +198,7 @@ const DropdownMenuRadioItem = forwardRef<
             'text-sm',
             'outline-none',
             'transition-colors',
-            'focus:bg-muted',
+            'focus:bg-hover',
             'data-[disabled]:pointer-events-none',
             'data-[disabled]:opacity-50',
             className

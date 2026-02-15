@@ -112,7 +112,7 @@ const PaginationItem = forwardRef<HTMLButtonElement, PaginationItemProps>(
         `;
 
         const stateStyles = active
-            ? 'cursor-default bg-elevated border-border text-fg-default shadow-sketchy'
+            ? 'cursor-default bg-accent-primary border-border text-white shadow-sketchy sketchy-sm'
             : disabled
                 ? 'cursor-default text-fg-disabled border-transparent'
                 : 'cursor-pointer text-fg-default hover:bg-hover hover:border-border-secondary';

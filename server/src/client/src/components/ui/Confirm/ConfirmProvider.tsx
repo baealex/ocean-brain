@@ -50,7 +50,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                 </Modal.Body>
                 <Modal.Footer>
                     <div className="flex justify-end gap-2">
-                        <Button variant="secondary" size="sm" onClick={handleCancel}>
+                        <Button variant="ghost" size="sm" onClick={handleCancel}>
                             Cancel
                         </Button>
                         <Button variant="primary" size="sm" onClick={handleConfirm}>

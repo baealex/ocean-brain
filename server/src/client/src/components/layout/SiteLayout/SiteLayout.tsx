@@ -125,7 +125,7 @@ function PinnedNotesList({
                         <Link
                             className={`transition-colors ${
                                 location.pathname === `/${note.id}`
-                                    ? 'text-pastel-pink-200 dark:text-pastel-purple-200'
+                                    ? 'text-accent-primary'
                                     : 'text-fg-secondary hover:text-fg-default'
                             }`}
                             to={`/${note.id}`}>
@@ -281,28 +281,33 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
             </div>
             <div className={cx('side', { 'open': isMenuOpen })}>
                 {heroBanner && (
-                    <img
-                        width="100%"
-                        style={{
-                            width: '100%',
-                            padding: '8px',
-                            borderRadius: '24px',
-                            filter: theme === 'dark' ? 'brightness(.8) contrast(1.2)' : undefined
-                        }}
-                        onClick={async () => {
-                            if (await confirm('Do you want to remove this hero banner?')) {
-                                await setServerCache('heroBanner', '');
-                                await queryClient.invalidateQueries({ queryKey: ['heroBanner'] });
-                            }
-                        }}
-                        src={heroBanner}
-                    />
+                    <div className="p-3 pb-0">
+                        <div
+                            className="relative rounded-[16px_5px_17px_4px/5px_13px_5px_15px] border-2 border-border shadow-sketchy overflow-hidden cursor-pointer group"
+                            onClick={async () => {
+                                if (await confirm('Do you want to remove this hero banner?')) {
+                                    await setServerCache('heroBanner', '');
+                                    await queryClient.invalidateQueries({ queryKey: ['heroBanner'] });
+                                }
+                            }}>
+                            <img
+                                className="w-full transition-transform duration-300 group-hover:scale-105"
+                                style={{ filter: theme === 'dark' ? 'brightness(.8) contrast(1.2)' : undefined }}
+                                src={heroBanner}
+                            />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center">
+                                <span className="text-white text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/50 px-3 py-1.5 rounded-[8px_3px_9px_2px/3px_6px_3px_7px]">
+                                    Click to remove
+                                </span>
+                            </div>
+                        </div>
+                    </div>
                 )}
                 <div className="p-3">
                     <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
                         <div className="flex gap-3">
                             <div style={{ gridTemplateColumns: '40px 1fr 32px' }} className="grid flex-1 bg-surface border-2 border-border rounded-[12px_4px_13px_3px/4px_10px_4px_12px] shadow-sketchy">
-                                <button type="submit" className="flex items-center justify-center hover:text-pastel-pink-200 transition-colors">
+                                <button type="submit" className="flex items-center justify-center hover:text-accent-primary transition-colors">
                                     <Icon.Search className="h-5 w-5" weight="bold" />
                                 </button>
                                 <input
@@ -313,7 +318,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                                     className="h-10 w-full bg-transparent text-fg-default py-4 outline-none font-bold"
                                 />
                                 {query && (
-                                    <button type="button" className="flex items-center justify-center hover:text-pastel-pink-200 transition-colors" onClick={handleReset}>
+                                    <button type="button" className="flex items-center justify-center hover:text-accent-primary transition-colors" onClick={handleReset}>
                                         <Icon.Close className="h-4 w-4" weight="bold" />
                                     </button>
                                 )}
@@ -325,7 +330,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                                     <ul className="flex flex-col">
                                         {notes.map(({ id, title }) => (
                                             <li key={id} className="flex py-2 items-center border-b border-dashed border-border-subtle last:border-b-0">
-                                                <Link to={`/${id}`} className="text-sm font-bold hover:text-pastel-pink-200 transition-colors">
+                                                <Link to={`/${id}`} className="text-sm font-bold hover:text-accent-primary transition-colors">
                                                     {title || 'Untitled'}
                                                 </Link>
                                             </li>
@@ -355,7 +360,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
 
                 <div className={cx('p-3', 'flex', 'flex-col', 'gap-2')}>
                     <Button
-                        variant="danger"
+                        variant="primary"
                         size="lg"
                         className="w-full shadow-sketchy"
                         onClick={() => onCreate()}>
@@ -400,7 +405,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                                         <div
                                             className={`flex items-center gap-2 text-sm font-bold px-3 py-2 border-2 transition-all rounded-[10px_3px_11px_3px/3px_8px_3px_10px] ${
                                             isActive
-                                                ? 'bg-elevated text-fg-default border-border-secondary shadow-sketchy'
+                                                ? 'bg-accent-primary text-white border-border-secondary shadow-sketchy'
                                                 : 'border-transparent hover:border-border-secondary hover:bg-hover'
                                         }`}>
                                             <item.icon className="size-5" weight={isActive ? 'fill' : 'regular'} />

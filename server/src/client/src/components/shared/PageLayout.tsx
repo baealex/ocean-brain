@@ -19,7 +19,7 @@ export default function PageLayout({
     return (
         <>
             <Helmet>
-                <title>{title} | Ocean Brain</title>
+                <title>{title ? `${title} | Ocean Brain` : 'Ocean Brain'}</title>
             </Helmet>
             {variant === 'default' && (
                 <div className="mb-4 pb-3 border-b-2 border-border">

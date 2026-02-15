@@ -1,10 +1,10 @@
 import { Link, useSearchParams } from 'react-router-dom';
-import { Helmet } from 'react-helmet';
 
 import {
     Empty,
     FallbackRender,
     Highlight,
+    PageLayout,
     Pagination
 } from '~/components/shared';
 import { Notes } from '~/components/entities';
@@ -20,10 +20,7 @@ export default function Search() {
     const query = searchParams.get('query') || '';
 
     return (
-        <>
-            <Helmet>
-                <title>Search "{query}" | Ocean Brain</title>
-            </Helmet>
+        <PageLayout title={`Search "${query}"`} variant="none">
             <main className="mx-auto max-w-[896px]">
                 <Suspense fallback={null}>
                     <Notes
@@ -81,6 +78,6 @@ export default function Search() {
                     />
                 </Suspense>
             </main>
-        </>
+        </PageLayout>
     );
 }

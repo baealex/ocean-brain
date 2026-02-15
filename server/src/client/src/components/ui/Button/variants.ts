@@ -22,14 +22,9 @@ export const buttonVariants = cva(
         variants: {
             variant: {
                 primary: [
-                    'bg-accent-primary',
+                    'bg-cta',
                     'text-fg-default',
-                    'hover:bg-accent-primary-hover'
-                ],
-                secondary: [
-                    'bg-accent-secondary',
-                    'text-fg-default',
-                    'hover:bg-accent-secondary-hover'
+                    'hover:bg-cta-hover'
                 ],
                 ghost: [
                     'border-transparent',
@@ -41,11 +36,6 @@ export const buttonVariants = cva(
                     'text-fg-default',
                     'hover:bg-accent-danger-hover'
                 ],
-                success: [
-                    'bg-accent-success',
-                    'text-fg-default',
-                    'hover:bg-accent-success-hover'
-                ],
                 'soft-success': [
                     'bg-accent-soft-success',
                     'text-fg-default',
@@ -55,16 +45,6 @@ export const buttonVariants = cva(
                     'bg-accent-soft-danger',
                     'text-fg-default',
                     'hover:bg-accent-soft-danger-hover'
-                ],
-                gradient: [
-                    'bg-gradient-to-r',
-                    'from-pastel-pink-200',
-                    'to-pastel-orange-200',
-                    'text-fg-default',
-                    'dark:from-zinc-700',
-                    'dark:to-zinc-600',
-                    'hover:from-pastel-orange-200',
-                    'hover:to-pastel-yellow-200'
                 ]
             },
             size: {

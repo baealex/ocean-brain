@@ -54,7 +54,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
                         'rounded-[4px_2px_5px_2px/2px_4px_2px_4px]',
                         'bg-surface',
                         'transition-all duration-200',
-                        'peer-checked:bg-accent-success',
+                        'peer-checked:bg-accent-primary',
                         'peer-focus:shadow-sketchy'
                     ].join(' ')}>
                     {checked && (

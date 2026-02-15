@@ -14,10 +14,13 @@ Own your notes. Connect your thoughts. No cloud required, no subscription needed
 - **Zero subscription**: Self-host once, use forever
 - **Quick setup**: One Docker command, ready in 30 seconds
 
-![](https://github.com/user-attachments/assets/d3a88905-2e53-4dd0-a799-332900cb30e0)
-![](https://github.com/user-attachments/assets/ba9f5caf-c847-4e79-89ef-e7084dbe1e50)
-![](https://github.com/user-attachments/assets/bde28e6b-77d6-4e8b-96ac-92a799a27afc)
+<img width="3210" height="2030" alt="image" src="https://github.com/user-attachments/assets/051abb07-9eb9-4eff-ac2c-6676cae086bd" />
 
+<img width="3210" height="2030" alt="image" src="https://github.com/user-attachments/assets/8c308c3e-90fa-4a9d-a992-b5720636f8fd" />
+
+<img width="3210" height="2030" alt="image" src="https://github.com/user-attachments/assets/73665dbe-5811-4905-99da-205435f936d3" />
+
+<img width="3210" height="2030" alt="image" src="https://github.com/user-attachments/assets/aae508e2-d160-46ec-b7c8-d5327eb571b6" />
 
 <br>
 

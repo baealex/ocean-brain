@@ -34,7 +34,7 @@ export default function NoteListItem({
                     <span className="text-fg-placeholder text-xs">({createdAtText.toDateString()})</span>
                 </div>
                 <Link
-                    className="font-bold text-fg-default hover:text-pastel-pink-200 dark:hover:text-pastel-purple-200 transition-colors"
+                    className="font-bold text-fg-default hover:text-accent-primary transition-colors"
                     to={getNoteURL(id)}>
                     {title || 'Untitled'}
                 </Link>

@@ -2,13 +2,13 @@ import { getHash } from './hash';
 
 export const priorityColors: Record<string, string> = {
     high: 'bg-accent-danger',
-    medium: 'bg-accent-primary',
+    medium: 'bg-pastel-yellow-200 dark:bg-elevated',
     low: 'bg-accent-success'
 };
 
 export const priorityColorsSubtle: Record<string, string> = {
     high: 'bg-accent-soft-danger',
-    medium: 'bg-accent-soft-primary',
+    medium: 'bg-pastel-yellow-200/50 dark:bg-elevated/50',
     low: 'bg-accent-soft-success'
 };
 

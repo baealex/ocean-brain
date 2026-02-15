@@ -11,15 +11,15 @@
     /* Surface */
     --surface: #fffcf7;
     --muted: #f4f4f5;
-    --subtle: rgba(225, 198, 231, 0.3);
+    --subtle: rgba(255, 255, 255, 0.5);
     --elevated: #FCEBAF;
     --emphasis: #FFCCB3;
 
     /* Interaction */
-    --hover: rgba(225, 198, 231, 0.5);
-    --hover-subtle: rgba(225, 198, 231, 0.3);
-    --active: rgba(225, 198, 231, 0.7);
-    --ghost: #E1C6E7;
+    --hover: rgba(252, 235, 175, 0.5);
+    --hover-subtle: rgba(252, 235, 175, 0.3);
+    --active: rgba(252, 235, 175, 0.7);
+    --ghost: #FCEBAF;
 
     /* Text */
     --fg: #18181b;
@@ -39,24 +39,28 @@
     --border-error: #f87171;
 
     /* Accent */
-    --accent-primary: #FCEBAF;
-    --accent-primary-hover: #FFCCB3;
-    --accent-secondary: #A4D8E1;
-    --accent-secondary-hover: #A4DBD6;
+    --accent-primary: #5DADE2;
+    --accent-primary-hover: #4A9AC8;
+    --accent-secondary: #5DADE2;
+    --accent-secondary-hover: #4A9AC8;
     --accent-danger: #FFB3C1;
     --accent-danger-hover: #fecaca;
     --accent-success: #B2E0B2;
     --accent-success-hover: #bbf7d0;
-    --accent-soft-primary: rgba(252, 235, 175, 0.5);
-    --accent-soft-primary-hover: #FCEBAF;
+    --accent-soft-primary: rgba(93, 173, 226, 0.3);
+    --accent-soft-primary-hover: rgba(93, 173, 226, 0.5);
     --accent-soft-danger: rgba(255, 179, 193, 0.5);
     --accent-soft-danger-hover: #FFB3C1;
     --accent-soft-success: rgba(178, 224, 178, 0.5);
     --accent-soft-success-hover: #B2E0B2;
 
+    /* CTA (Action buttons) */
+    --cta: #FCEBAF;
+    --cta-hover: #FFCCB3;
+
     /* Special */
     --overlay: rgba(0, 0, 0, 0.5);
-    --highlight: #FCEBAF;
+    --highlight: #D4EDFF;
     --highlight-fg: #27272a;
     --divider: #e4e4e7;
 
@@ -74,7 +78,7 @@ html.dark {
     --hover: rgba(63, 63, 70, 0.5);
     --hover-subtle: rgba(63, 63, 70, 0.3);
     --active: rgba(63, 63, 70, 0.7);
-    --ghost: #27272a;
+    --ghost: #3f3f46;
 
     --fg: #f4f4f5;
     --fg-default: #e4e4e7;
@@ -91,23 +95,26 @@ html.dark {
     --border-focus: #a1a1aa;
     --border-error: #f87171;
 
-    --accent-primary: #3f3f46;
-    --accent-primary-hover: #52525b;
-    --accent-secondary: #3f3f46;
-    --accent-secondary-hover: #52525b;
-    --accent-danger: #3f3f46;
-    --accent-danger-hover: #52525b;
-    --accent-success: #3f3f46;
-    --accent-success-hover: #52525b;
-    --accent-soft-primary: #27272a;
-    --accent-soft-primary-hover: #3f3f46;
-    --accent-soft-danger: #27272a;
-    --accent-soft-danger-hover: #3f3f46;
-    --accent-soft-success: #27272a;
-    --accent-soft-success-hover: #3f3f46;
+    --accent-primary: #2A5A7A;
+    --accent-primary-hover: #376E90;
+    --accent-secondary: #2A5A7A;
+    --accent-secondary-hover: #376E90;
+    --accent-danger: #6B3040;
+    --accent-danger-hover: #7D3A4C;
+    --accent-success: #2D5A3A;
+    --accent-success-hover: #3A6E4A;
+    --accent-soft-primary: rgba(42, 90, 122, 0.3);
+    --accent-soft-primary-hover: rgba(42, 90, 122, 0.5);
+    --accent-soft-danger: rgba(107, 48, 64, 0.35);
+    --accent-soft-danger-hover: rgba(107, 48, 64, 0.55);
+    --accent-soft-success: rgba(45, 90, 58, 0.35);
+    --accent-soft-success-hover: rgba(45, 90, 58, 0.55);
+
+    --cta: #5C4A2E;
+    --cta-hover: #6E5C38;
 
     --overlay: rgba(0, 0, 0, 0.5);
-    --highlight: #E1B7E1;
+    --highlight: #2A5A7A;
     --highlight-fg: #27272a;
     --divider: #3f3f46;
 
@@ -174,6 +181,10 @@ html.dark {
     --color-accent-soft-success: var(--accent-soft-success);
     --color-accent-soft-success-hover: var(--accent-soft-success-hover);
 
+    /* Semantic: CTA */
+    --color-cta: var(--cta);
+    --color-cta-hover: var(--cta-hover);
+
     /* Semantic: Special */
     --color-overlay: var(--overlay);
     --color-highlight: var(--highlight);
@@ -214,48 +225,93 @@ html.dark {
 }
 
 @keyframes fade-in {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 @keyframes fade-out {
-    from { opacity: 1; }
-    to { opacity: 0; }
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+    }
 }
 
 @keyframes zoom-in {
-    from { transform: scale(0.95); }
-    to { transform: scale(1); }
+    from {
+        transform: scale(0.95);
+    }
+
+    to {
+        transform: scale(1);
+    }
 }
 
 @keyframes zoom-out {
-    from { transform: scale(1); }
-    to { transform: scale(0.95); }
+    from {
+        transform: scale(1);
+    }
+
+    to {
+        transform: scale(0.95);
+    }
 }
 
 @keyframes slide-in-from-top {
-    from { transform: translateY(-8px); }
-    to { transform: translateY(0); }
+    from {
+        transform: translateY(-8px);
+    }
+
+    to {
+        transform: translateY(0);
+    }
 }
 
 @keyframes slide-in-from-bottom {
-    from { transform: translateY(8px); }
-    to { transform: translateY(0); }
+    from {
+        transform: translateY(8px);
+    }
+
+    to {
+        transform: translateY(0);
+    }
 }
 
 @keyframes slide-in-from-left {
-    from { transform: translateX(-8px); }
-    to { transform: translateX(0); }
+    from {
+        transform: translateX(-8px);
+    }
+
+    to {
+        transform: translateX(0);
+    }
 }
 
 @keyframes slide-in-from-right {
-    from { transform: translateX(8px); }
-    to { transform: translateX(0); }
+    from {
+        transform: translateX(8px);
+    }
+
+    to {
+        transform: translateX(0);
+    }
 }
 
 @keyframes shimmer {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
 }
 
 /* Paper texture background */
@@ -274,11 +330,25 @@ html.dark body {
 }
 
 /* Sketchy border-radius sizes */
-.rounded-sketchy-xs  { border-radius: 4px 2px 5px 2px / 2px 4px 2px 4px; }
-.rounded-sketchy-sm  { border-radius: 6px 2px 7px 2px / 2px 5px 2px 6px; }
-.rounded-sketchy-md  { border-radius: 10px 3px 11px 3px / 3px 8px 3px 10px; }
-.rounded-sketchy-lg  { border-radius: 12px 4px 13px 3px / 4px 10px 4px 12px; }
-.rounded-sketchy-xl  { border-radius: 24px 8px 25px 7px / 8px 20px 8px 22px; }
+.rounded-sketchy-xs {
+    border-radius: 4px 2px 5px 2px / 2px 4px 2px 4px;
+}
+
+.rounded-sketchy-sm {
+    border-radius: 6px 2px 7px 2px / 2px 5px 2px 6px;
+}
+
+.rounded-sketchy-md {
+    border-radius: 10px 3px 11px 3px / 3px 8px 3px 10px;
+}
+
+.rounded-sketchy-lg {
+    border-radius: 12px 4px 13px 3px / 4px 10px 4px 12px;
+}
+
+.rounded-sketchy-xl {
+    border-radius: 24px 8px 25px 7px / 8px 20px 8px 22px;
+}
 
 /* Sketchy border utilities */
 .sketchy {

@@ -1,9 +1,8 @@
 import dayjs from 'dayjs';
 import { Suspense, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Helmet } from 'react-helmet';
 import { useQuery } from '@tanstack/react-query';
-import { Button, Dropdown, Skeleton } from '~/components/shared';
+import { Button, Dropdown, PageLayout, Skeleton } from '~/components/shared';
 import { useToast } from '~/components/ui';
 import * as Icon from '~/components/icon';
 
@@ -143,17 +142,15 @@ export default function Note() {
     };
 
     return (
-        <main className={`mx-auto ${getMaxWidth()}`}>
-            <Helmet>
-                <title>{title}</title>
-            </Helmet>
-            {isLoading && (
+        <PageLayout title={title} variant="none">
+            <main className={`mx-auto ${getMaxWidth()}`}>
+                {isLoading && (
                 <>
                     <Skeleton className="mb-8" height="66px" />
                     <Skeleton className="ml-12 mb-8" height="150px" />
                 </>
-            )}
-            {note && (
+                )}
+                {note && (
                 <>
                     <div
                         style={{ zIndex: '1001' }}
@@ -219,19 +216,19 @@ export default function Note() {
                         onChange={handleChange}
                     />
                 </>
-            )}
-            {id && (
+                )}
+                {id && (
                 <Suspense fallback={<Skeleton height="80px" />}>
                     <ReminderPanel noteId={id} />
                 </Suspense>
-            )}
-            <Suspense
-                fallback={(
-                    <Skeleton height="80px" />
-                )}>
-                <BackReferences
-                    noteId={id}
-                    render={backReferences => backReferences && backReferences.length > 0 && (
+                )}
+                <Suspense
+                    fallback={(
+                        <Skeleton height="80px" />
+                    )}>
+                    <BackReferences
+                        noteId={id}
+                        render={backReferences => backReferences && backReferences.length > 0 && (
                         <div className="p-4 rounded-sketchy-lg border-2 border-border bg-surface/50">
                             <p className="text-sm font-bold mb-2">
                                 Back References
@@ -246,15 +243,16 @@ export default function Note() {
                                 ))}
                             </ul>
                         </div>
-                    )}
+                        )}
+                    />
+                </Suspense>
+                <LayoutModal
+                    isOpen={isLayoutModalOpen}
+                    onClose={() => setIsLayoutModalOpen(false)}
+                    onSave={handleLayoutSave}
+                    currentLayout={layout}
                 />
-            </Suspense>
-            <LayoutModal
-                isOpen={isLayoutModalOpen}
-                onClose={() => setIsLayoutModalOpen(false)}
-                onSave={handleLayoutSave}
-                currentLayout={layout}
-            />
-        </main>
+            </main>
+        </PageLayout>
     );
 }

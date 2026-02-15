@@ -18,7 +18,7 @@ export const Tag = createReactInlineContentSpec(
     },
     {
         render: (props) => (
-            <span className={cx('Tag', 'bg-accent-secondary text-xs rounded-sketchy-sm px-2 py-1 border border-border-secondary font-bold')}>
+            <span className={cx('Tag')}>
                 <Link to={getTagURL(props.inlineContent.props.id)}>
                     <span className="text-fg-default">
                         {props.inlineContent.props.tag}

@@ -8,6 +8,7 @@ import {
     Skeleton
 } from '~/components/shared';
 import { Reminders as RemindersEntity } from '~/components/entities';
+import { PriorityLegend } from '~/components/calendar/PriorityLegend';
 import useReminderMutate from '~/hooks/resource/useReminderMutate';
 import ReminderCard from '~/components/reminder/ReminderCard';
 
@@ -21,10 +22,12 @@ export default function Reminders() {
     return (
         <PageLayout
             title="Reminders"
-            description="Manage all your note reminders in one place">
+            description="Manage all your note reminders in one place"
+            headerRight={<PriorityLegend />}>
             <Suspense
                 fallback={(
-                    <div className="flex flex-col gap-4">
+                    <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+                        <Skeleton height="60px" />
                         <Skeleton height="60px" />
                         <Skeleton height="60px" />
                         <Skeleton height="60px" />
@@ -46,7 +49,7 @@ export default function Reminders() {
                                     />
                                 )}>
                                 {reminders.length > 0 && (
-                                    <div className="flex flex-col gap-4">
+                                    <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
                                         {reminders.map((reminder) => (
                                             <ReminderCard
                                                 key={reminder.id}

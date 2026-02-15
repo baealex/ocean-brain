@@ -83,7 +83,7 @@ export default function LayoutModal({
             </Modal.Body>
             <Modal.Footer>
                 <div className="flex justify-end gap-2">
-                    <Button variant="secondary" size="sm" onClick={onClose}>
+                    <Button variant="ghost" size="sm" onClick={onClose}>
                         Cancel
                     </Button>
                     <Button size="sm" onClick={handleSave}>

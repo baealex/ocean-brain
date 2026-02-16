@@ -14,39 +14,30 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  ci:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: 22
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
-    - name: Install pnpm
-      run: npm install -g pnpm@10.25.0
+      - name: Install pnpm
+        run: npm install -g pnpm@10.25.0
 
-    - name: Install dependencies
-      run: pnpm install
+      - name: Install dependencies
+        run: pnpm install
 
-    - name: Lint (Server)
-      run: pnpm --filter @ocean-brain/server lint
+      - name: Prisma Generate
+        run: pnpm --filter @ocean-brain/server exec prisma generate
 
-    - name: Prisma Generate
-      run: pnpm --filter @ocean-brain/server exec prisma generate
+      - name: Lint
+        run: pnpm --parallel -r lint --if-present
 
-    - name: Type Check (Server)
-      run: pnpm --filter @ocean-brain/server type-check
+      - name: Type Check
+        run: pnpm --parallel -r type-check --if-present
 
-    - name: Build (Server)
-      run: pnpm --filter @ocean-brain/server build
-
-    - name: Lint (Client)
-      run: pnpm --filter @ocean-brain/client lint
-
-    - name: Type Check (Client)
-      run: pnpm --filter @ocean-brain/client type-check
-
-    - name: Build (Client)
-      run: pnpm --filter @ocean-brain/client build
+      - name: Build
+        run: pnpm build

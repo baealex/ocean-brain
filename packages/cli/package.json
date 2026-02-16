@@ -14,7 +14,8 @@
     ],
     "scripts": {
         "dev": "tsx src/index.ts",
-        "build": "tsup"
+        "build": "tsup",
+        "type-check": "tsc --noEmit"
     },
     "dependencies": {
         "@graphql-tools/schema": "^10.0.31",

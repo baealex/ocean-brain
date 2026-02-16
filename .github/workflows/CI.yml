@@ -5,64 +5,48 @@ on:
     branches:
       - main
     paths:
-      - 'server/src/**'
+      - 'packages/**'
   pull_request:
     branches:
       - main
     paths:
-      - 'server/src/**'
+      - 'packages/**'
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [22.x]
-
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v3
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
       with:
-        node-version: ${{ matrix.node-version }}
+        node-version: 22
 
     - name: Install pnpm
       run: npm install -g pnpm@10.25.0
 
-    - name: Install (Server)
-      run: pnpm i
-      working-directory: server/src
+    - name: Install dependencies
+      run: pnpm install
 
     - name: Lint (Server)
-      run: pnpm run lint
-      working-directory: server/src
+      run: pnpm --filter @ocean-brain/server lint
 
     - name: Prisma Generate
-      run: pnpm prisma generate
-      working-directory: server/src
+      run: pnpm --filter @ocean-brain/server exec prisma generate
 
     - name: Type Check (Server)
-      run: pnpm run type-check
-      working-directory: server/src
+      run: pnpm --filter @ocean-brain/server type-check
 
     - name: Build (Server)
-      run: pnpm run build
-      working-directory: server/src
-
-    - name: Install (Client)
-      run: pnpm i
-      working-directory: server/src/client
+      run: pnpm --filter @ocean-brain/server build
 
     - name: Lint (Client)
-      run: pnpm run lint
-      working-directory: server/src/client
+      run: pnpm --filter @ocean-brain/client lint
 
     - name: Type Check (Client)
-      run: pnpm run type-check
-      working-directory: server/src/client
+      run: pnpm --filter @ocean-brain/client type-check
 
     - name: Build (Client)
-      run: pnpm run build
-      working-directory: server/src/client
+      run: pnpm --filter @ocean-brain/client build

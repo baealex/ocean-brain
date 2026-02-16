@@ -41,6 +41,10 @@ program
         process.env.HOST = process.env.HOST || opts.host;
 
         const schemaPath = path.resolve(serverRoot, 'prisma/schema.prisma');
+        execSync(`npx prisma generate --schema="${schemaPath}"`, {
+            stdio: 'inherit',
+            env: { ...process.env }
+        });
         execSync(`npx prisma migrate deploy --schema="${schemaPath}"`, {
             stdio: 'inherit',
             env: { ...process.env }

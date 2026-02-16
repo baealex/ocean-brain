@@ -4,6 +4,7 @@ import path from 'path';
 
 import models, { type Image } from '~/models.js';
 import { gql } from '~/modules/graphql.js';
+import { paths } from '~/paths.js';
 import type { Pagination } from '~/types/index.js';
 
 export const imageType = gql`
@@ -71,8 +72,9 @@ export const imageResolvers: IResolvers = {
                     return false;
                 }
 
-                if (fs.existsSync(path.resolve('./public', $image.url.slice(1)))) {
-                    fs.unlinkSync(path.resolve('./public', $image.url.slice(1)));
+                const imagePath = path.resolve(paths.imageDir, $image.url.replace('/assets/images/', ''));
+                if (fs.existsSync(imagePath)) {
+                    fs.unlinkSync(imagePath);
                 }
 
                 await models.image.delete({ where: { id: Number(id) } });

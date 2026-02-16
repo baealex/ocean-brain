@@ -4,16 +4,13 @@ import crpyto from 'crypto';
 
 import type { Controller } from '~/types/index.js';
 import models from '~/models.js';
+import { paths } from '~/paths.js';
 
-const imageDir = path.resolve('./public/assets/images');
+const imageDir = paths.imageDir;
 
-function makePath(dirs: string[]) {
-    let currentPath = '';
-    for (const dir of dirs) {
-        currentPath = path.resolve(currentPath, dir);
-        if (!fs.existsSync(currentPath)) {
-            fs.mkdirSync(currentPath);
-        }
+function ensureDirExists(dirPath: string) {
+    if (!fs.existsSync(dirPath)) {
+        fs.mkdirSync(dirPath, { recursive: true });
     }
 }
 
@@ -46,12 +43,13 @@ export const uploadImage: Controller = async (req, res) => {
         (new Date().getMonth() + 1).toString(),
         (new Date().getDate()).toString()
     ];
-    makePath(['./public', 'assets', 'images', ...currentPath]);
+    const targetDir = path.resolve(imageDir, ...currentPath);
+    ensureDirExists(targetDir);
 
     const ext = info.split(';')[0].split('/')[1];
     const fileName = `${Date.now()}.${ext}`;
 
-    fs.writeFile(path.resolve(imageDir, ...currentPath, fileName), buffer, async (err) => {
+    fs.writeFile(path.resolve(targetDir, fileName), buffer, async (err) => {
         if (err) {
             res.status(500).json({ error: err }).end();
             return;
@@ -97,12 +95,13 @@ export const uploadImageFromSrc: Controller = async (req, res) => {
         (new Date().getMonth() + 1).toString(),
         (new Date().getDate()).toString()
     ];
-    makePath(['./public', 'assets', 'images', ...currentPath]);
+    const targetDir = path.resolve(imageDir, ...currentPath);
+    ensureDirExists(targetDir);
 
     const ext = 'png';
     const fileName = `${Date.now()}.${ext}`;
 
-    fs.writeFile(path.resolve(imageDir, ...currentPath, fileName), buffer, async (err) => {
+    fs.writeFile(path.resolve(targetDir, fileName), buffer, async (err) => {
         if (err) {
             res.status(500).json({ error: err }).end();
             return;

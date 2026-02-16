@@ -1,21 +1,21 @@
 @use '@baejino/style/scss/mixin';
 
 @font-face {
-    font-family: 'Spoqa Han Sans Neo';
+    font-family: 'Pretendard';
     font-weight: 700;
-    src: local('Spoqa Han Sans Bold'),
-        url('/fonts/SpoqaHanSansNeo-Bold.woff2') format('woff2'),
-        url('/fonts/SpoqaHanSansNeo-Bold.woff') format('woff'),
-        url('/fonts/SpoqaHanSansNeo-Bold.ttf') format('truetype');
+    font-display: swap;
+    src: local('Pretendard Bold'),
+        url('/fonts/Pretendard-Bold.woff2') format('woff2'),
+        url('/fonts/Pretendard-Bold.woff') format('woff');
 }
 
 @font-face {
-    font-family: 'Spoqa Han Sans Neo';
+    font-family: 'Pretendard';
     font-weight: 400;
-    src: local('Spoqa Han Sans Regular'),
-        url('/fonts/SpoqaHanSansNeo-Regular.woff2') format('woff2'),
-        url('/fonts/SpoqaHanSansNeo-Regular.woff') format('woff'),
-        url('/fonts/SpoqaHanSansNeo-Regular.ttf') format('truetype');
+    font-display: swap;
+    src: local('Pretendard Regular'),
+        url('/fonts/Pretendard-Regular.woff2') format('woff2'),
+        url('/fonts/Pretendard-Regular.woff') format('woff');
 }
 
 html,
@@ -39,7 +39,7 @@ html {
 }
 
 body {
-    font-family: 'Spoqa Han Sans Neo', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
     word-wrap: break-word;
     word-break: keep-all;
     overflow-wrap: anywhere;

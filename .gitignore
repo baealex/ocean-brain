@@ -1,6 +1,12 @@
 .DS_Store
-/node_modules
+node_modules
 /data
 /assets
 .conor
 CLAUDE.md
+packages/server/dist
+packages/client/dist
+packages/cli/dist
+packages/cli/server
+packages/server/prisma/data
+packages/server/public/assets/images

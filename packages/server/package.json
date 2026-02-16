@@ -1,17 +1,16 @@
 {
-    "name": "ocean-brain-server",
+    "name": "@ocean-brain/server",
     "version": "1.0.0",
-    "description": "",
+    "private": true,
     "type": "module",
+    "main": "dist/main.js",
     "scripts": {
-        "dev": "pnpm prisma generate && tsx watch src/main.ts",
-        "build": "pnpm prisma generate && tsup && tsc-alias",
-        "start": "pnpm prisma migrate dev && node dist/main.js",
+        "dev": "prisma generate && tsx watch src/main.ts",
+        "build": "prisma generate && tsup && tsc-alias",
+        "start": "prisma migrate deploy && node dist/main.js",
         "lint": "eslint src",
         "type-check": "tsc --noEmit"
     },
-    "author": "",
-    "license": "ISC",
     "dependencies": {
         "@graphql-tools/schema": "^10.0.31",
         "@graphql-tools/utils": "^11.0.0",

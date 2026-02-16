@@ -34,10 +34,10 @@ jobs:
         run: pnpm --filter @ocean-brain/server exec prisma generate
 
       - name: Lint
-        run: pnpm --parallel -r lint --if-present
+        run: pnpm --parallel -r run --if-present lint
 
       - name: Type Check
-        run: pnpm --parallel -r type-check --if-present
+        run: pnpm --parallel -r run --if-present type-check
 
       - name: Build
         run: pnpm build

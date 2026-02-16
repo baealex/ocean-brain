@@ -1,32 +1,19 @@
 {
-    "name": "ocean-brain",
+    "name": "ocean-brain-workspace",
     "private": true,
-    "version": "1.0.0",
     "scripts": {
-        "outdated:client": "pnpm outdated --prefix server/src/client",
-        "outdated:server": "pnpm outdated --prefix server/src",
-        "update": "npm run update:client && npm run update:server",
-        "update:client": "pnpm update --save --prefix server/src/client",
-        "update:server": "pnpm update --save --prefix server/src",
-        "upgrade": "npm run upgrade:client && npm run upgrade:server",
-        "upgrade:client": "pnpm upgrade --save --prefix server/src/client",
-        "upgrade:server": "pnpm upgrade --save --prefix server/src",
-        "install:client": "pnpm install --prefix server/src/client",
-        "install:server": "pnpm install --prefix server/src",
-        "install": "npm run install:client && npm run install:server",
-        "dev:client": "npm run dev --prefix server/src/client",
-        "dev:server": "npm run dev --prefix server/src",
-        "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
-        "build:server": "npm run build --prefix server/src",
-        "build:client": "npm run build --prefix server/src/client",
-        "build": "npm run build:server && npm run build:client",
-        "start:server": "npm run start --prefix server/src",
-        "start": "npm run start:server"
+        "dev": "pnpm --parallel --filter @ocean-brain/client --filter @ocean-brain/server dev",
+        "dev:client": "pnpm --filter @ocean-brain/client dev",
+        "dev:server": "pnpm --filter @ocean-brain/server dev",
+        "build": "pnpm --filter @ocean-brain/client build && pnpm --filter @ocean-brain/server build",
+        "build:client": "pnpm --filter @ocean-brain/client build",
+        "build:server": "pnpm --filter @ocean-brain/server build",
+        "start": "pnpm --filter @ocean-brain/server start",
+        "lint": "pnpm --filter @ocean-brain/client lint && pnpm --filter @ocean-brain/server lint",
+        "type-check": "pnpm --filter @ocean-brain/client type-check && pnpm --filter @ocean-brain/server type-check",
+        "cli": "bash scripts/prepublish.sh && node packages/cli/dist/index.js",
+        "test:cli-publish": "bash scripts/test-cli-publish.sh",
+        "prepublish": "bash scripts/prepublish.sh"
     },
-    "dependencies": {
-        "pnpm": "^10.29.3"
-    },
-    "devDependencies": {
-        "concurrently": "^9.2.1"
-    }
+    "devDependencies": {}
 }

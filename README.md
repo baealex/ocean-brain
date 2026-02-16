@@ -12,7 +12,7 @@ Own your notes. Connect your thoughts. No cloud required, no subscription needed
 - **Notion-like editor**: Block-based editing powered by [BlockNote](https://www.blocknotejs.org/)
 - **Bi-directional links**: Connect notes with `[` and see backlinks instantly
 - **Zero subscription**: Self-host once, use forever
-- **Quick setup**: One Docker command, ready in 30 seconds
+- **Quick setup**: One npx or docker command, ready in 30 seconds
 
 <img width="3210" height="2030" alt="image" src="https://github.com/user-attachments/assets/051abb07-9eb9-4eff-ac2c-6676cae086bd" />
 
@@ -32,24 +32,30 @@ Own your notes. Connect your thoughts. No cloud required, no subscription needed
 
 ## Quick Start
 
-### Docker (Recommended)
+### npx (Easiest)
+
+```bash
+npx ocean-brain
+```
+
+That's it! Open `http://localhost:6683` and start writing.
+
+### Docker
 
 ```bash
 docker run -d \
     -v ./assets:/assets \
     -v ./data:/data \
-    -p 3000:3000 \
+    -p 6683:6683 \
     baealex/ocean-brain
 ```
-
-That's it! Open `http://localhost:3000` and start writing.
 
 ### From Source
 
 ```bash
-npm i
-npm run build
-npm run start
+pnpm install
+pnpm build
+pnpm start
 ```
 
 <br>

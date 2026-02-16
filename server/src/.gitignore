@@ -1,7 +1,0 @@
-/node_modules
-/dist
-/coverage
-/public/assets/images
-
-db.sqlite3*
-test.sqlite3*

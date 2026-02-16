@@ -1,0 +1,90 @@
+@use '@baejino/style/scss/mixin';
+
+@font-face {
+    font-family: 'Pretendard';
+    font-weight: 700;
+    font-display: swap;
+    src: local('Pretendard Bold'),
+        url('/fonts/Pretendard-Bold.woff2') format('woff2'),
+        url('/fonts/Pretendard-Bold.woff') format('woff');
+}
+
+@font-face {
+    font-family: 'Pretendard';
+    font-weight: 400;
+    font-display: swap;
+    src: local('Pretendard Regular'),
+        url('/fonts/Pretendard-Regular.woff2') format('woff2'),
+        url('/fonts/Pretendard-Regular.woff') format('woff');
+}
+
+html,
+body,
+#root {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    overflow: hidden;
+}
+
+html {
+    background: #eef3fa;
+
+    &.dark {
+        background-color: #1e1f22;
+        color: #eee;
+    }
+}
+
+body {
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+    word-wrap: break-word;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+}
+
+.card {
+    &.main {
+        @include mixin.CARD_SHADOW_MAIN;
+    }
+
+    &.sub {
+        @include mixin.CARD_SHADOW_SUB;
+    }
+}
+
+div:focus {
+    outline: none !important;
+}
+
+.ProseMirror {
+    a {
+        color: #0070f3;
+        cursor: pointer;
+
+        html.dark & {
+            color: #2489fc;
+        }
+    }
+}
+
+.bn-editor {
+    background: transparent !important;
+    padding-inline: 54px 0 !important;
+    overflow-wrap: anywhere !important;
+}
+
+.bn-file-block-content-wrapper {
+    max-width: 100%;
+}
+
+.bn-block-outer:not([data-prev-type])>.bn-block>.bn-block-content[data-content-type="numberedListItem"]::before {
+    content: var(--index) ".";
+    white-space: nowrap;
+}
+
+.window-modal__container {
+    z-index: 1002;
+}

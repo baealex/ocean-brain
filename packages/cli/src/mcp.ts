@@ -109,10 +109,10 @@ export async function startMcpServer(serverUrl: string) {
 
     server.tool(
         'search_notes',
-        'Search notes by keyword. Returns matching notes with title, tags, and content preview.',
+        'Search notes by keyword. Returns a list of matching notes with title and tags. Use read_note to get full content of a specific note.',
         {
             query: z.string().describe('Search keyword'),
-            limit: z.number().optional().default(20).describe('Max results (default: 20)'),
+            limit: z.number().optional().default(10).describe('Max results (default: 10)'),
         },
         async ({ query, limit }) => {
             const data = await graphql(serverUrl, `
@@ -148,7 +148,7 @@ export async function startMcpServer(serverUrl: string) {
                 let preview = '';
                 try {
                     const blocks = JSON.parse(note.content);
-                    preview = blockNoteToPlainText(blocks).slice(0, 200);
+                    preview = blockNoteToPlainText(blocks).slice(0, 100);
                 } catch {
                     preview = '';
                 }
@@ -173,11 +173,12 @@ export async function startMcpServer(serverUrl: string) {
 
     server.tool(
         'read_note',
-        'Read full content of a note by ID. Returns the complete note with metadata.',
+        'Read content of a note by ID. Returns truncated by default (1000 chars). Set maxLength to 0 for full content only when necessary.',
         {
             id: z.string().describe('Note ID'),
+            maxLength: z.number().optional().default(1000).describe('Max content length in characters. 0 for full content. (default: 1000)'),
         },
-        async ({ id }) => {
+        async ({ id, maxLength }) => {
             const data = await graphql(serverUrl, `
                 query ($id: ID!) {
                     note(id: $id) {
@@ -208,14 +209,23 @@ export async function startMcpServer(serverUrl: string) {
                 plainText = note.content;
             }
 
+            const totalLength = plainText.length;
+            let truncated = false;
+            if (maxLength > 0 && plainText.length > maxLength) {
+                plainText = plainText.slice(0, maxLength);
+                truncated = true;
+            }
+
             const output = [
                 `# ${note.title}`,
                 '',
                 `Tags: ${note.tags.map((t) => t.name).join(', ') || '(none)'}`,
                 `Created: ${note.createdAt}`,
                 `Updated: ${note.updatedAt}`,
+                ...(truncated ? [`Content: ${totalLength} chars (showing first ${maxLength})`] : []),
                 '',
                 plainText,
+                ...(truncated ? ['\n... (truncated, use maxLength: 0 to read full content)'] : []),
             ].join('\n');
 
             return {
@@ -264,9 +274,9 @@ export async function startMcpServer(serverUrl: string) {
 
     server.tool(
         'list_recent_notes',
-        'List recently updated notes.',
+        'List recently updated notes. Returns titles and tags only. Use read_note to get content of a specific note.',
         {
-            limit: z.number().optional().default(20).describe('Max results (default: 20)'),
+            limit: z.number().optional().default(10).describe('Max results (default: 10)'),
         },
         async ({ limit }) => {
             const data = await graphql(serverUrl, `

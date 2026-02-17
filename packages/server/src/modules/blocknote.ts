@@ -15,17 +15,25 @@ function preprocessCustomInlineContent(blocks: BlockNote[]): BlockNote[] {
         ...block,
         content: block.content?.map((inline) => {
             if (inline.type === 'reference') {
-                return { type: 'text', text: `[[${inline.props?.title || inline.props?.id || ''}]]`, styles: {} };
+                return {
+                    type: 'text',
+                    text: `[[${inline.props?.title || inline.props?.id || ''}]]`,
+                    styles: {}
+                };
             }
             if (inline.type === 'tag') {
                 const tag = (inline.props?.tag as string)?.replace(/^@/, '') || '';
-                return { type: 'text', text: `#${tag}`, styles: {} };
+                return {
+                    type: 'text',
+                    text: `#${tag}`,
+                    styles: {}
+                };
             }
             return inline;
         }),
         children: block.children?.length
             ? preprocessCustomInlineContent(block.children)
-            : [],
+            : []
     }));
 }
 

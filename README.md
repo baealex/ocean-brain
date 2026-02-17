@@ -72,3 +72,36 @@ pnpm start
 | Pin notes | Keep important notes at the top |
 | Reminders | Set reminders with priorities |
 | Calendar view | See your notes by date |
+| MCP server | Integrate with AI tools like Claude Code |
+
+<br>
+
+## MCP Server (AI Integration)
+
+Ocean Brain includes a built-in [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server, allowing AI tools like Claude Code to search and read your notes.
+
+### Setup
+
+Add to your Claude Code MCP config (`.mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "ocean-brain": {
+      "command": "npx",
+      "args": ["-y", "ocean-brain", "mcp", "--server", "http://localhost:6683"]
+    }
+  }
+}
+```
+
+> Replace `http://localhost:6683` with your Ocean Brain server address if running remotely.
+
+### Available Tools
+
+| Tool | Description |
+|------|-------------|
+| `search_notes` | Search notes by keyword |
+| `read_note` | Read full content of a note by ID |
+| `list_tags` | List all tags with note counts |
+| `list_recent_notes` | List recently updated notes |

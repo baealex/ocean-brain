@@ -52,6 +52,7 @@ export const noteType = gql`
         id: ID!
         title: String!
         content: String!
+        contentAsMarkdown: String!
         createdAt: String!
         updatedAt: String!
         pinned: Boolean!
@@ -456,5 +457,11 @@ export const noteResolvers: IResolvers = {
             return await Promise.all(updatePromises);
         }
     },
-    Note: { tags: async (note: Note) => await models.tag.findMany({ where: { notes: { some: { id: note.id } } } }) }
+    Note: {
+        tags: async (note: Note) => await models.tag.findMany({ where: { notes: { some: { id: note.id } } } }),
+        contentAsMarkdown: async (note: Note) => {
+            const { blocksToMarkdown } = await import('~/modules/blocknote.js');
+            return blocksToMarkdown(note.content);
+        }
+    }
 };

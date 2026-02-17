@@ -12,6 +12,7 @@
         "type-check": "tsc --noEmit"
     },
     "dependencies": {
+        "@blocknote/server-util": "^0.46.2",
         "@graphql-tools/schema": "^10.0.31",
         "@graphql-tools/utils": "^11.0.0",
         "@prisma/client": "^6.19.2",

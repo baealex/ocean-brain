@@ -10,77 +10,6 @@ const pkg = JSON.parse(
     fs.readFileSync(path.resolve(__dirname, '..', 'package.json'), 'utf-8')
 );
 
-interface BlockNote {
-    id?: string;
-    type: string;
-    props?: Record<string, unknown>;
-    content?: BlockNote[];
-    children?: BlockNote[];
-    text?: string;
-}
-
-function blockNoteToPlainText(blocks: BlockNote[]): string {
-    const lines: string[] = [];
-    let numberedIndex = 0;
-
-    for (const block of blocks) {
-        const inlineText = extractInlineText(block.content);
-
-        switch (block.type) {
-            case 'heading': {
-                const level = (block.props?.level as number) || 1;
-                lines.push('#'.repeat(level) + ' ' + inlineText);
-                numberedIndex = 0;
-                break;
-            }
-            case 'bulletListItem':
-                lines.push('- ' + inlineText);
-                numberedIndex = 0;
-                break;
-            case 'numberedListItem':
-                numberedIndex++;
-                lines.push(`${numberedIndex}. ` + inlineText);
-                break;
-            case 'paragraph':
-                lines.push(inlineText);
-                numberedIndex = 0;
-                break;
-            default:
-                if (inlineText) {
-                    lines.push(inlineText);
-                }
-                numberedIndex = 0;
-                break;
-        }
-
-        if (block.children?.length) {
-            const childText = blockNoteToPlainText(block.children);
-            if (childText) {
-                lines.push(childText);
-            }
-        }
-    }
-
-    return lines.join('\n');
-}
-
-function extractInlineText(content?: BlockNote[]): string {
-    if (!content) return '';
-
-    return content.map((inline) => {
-        switch (inline.type) {
-            case 'text':
-                return inline.text || '';
-            case 'reference':
-                return `[[${inline.props?.title || inline.props?.id || ''}]]`;
-            case 'tag':
-                return `#${(inline.props?.tag as string)?.replace(/^@/, '') || inline.props?.name || ''}`;
-            default:
-                return inline.text || '';
-        }
-    }).join('');
-}
-
 async function graphql(serverUrl: string, query: string, variables?: Record<string, unknown>) {
     const response = await fetch(`${serverUrl}/graphql`, {
         method: 'POST',
@@ -124,7 +53,7 @@ export async function startMcpServer(serverUrl: string) {
                             title
                             updatedAt
                             tags { id name }
-                            content
+                            contentAsMarkdown
                         }
                     }
                 }
@@ -140,27 +69,17 @@ export async function startMcpServer(serverUrl: string) {
                     title: string;
                     updatedAt: string;
                     tags: Array<{ id: string; name: string }>;
-                    content: string;
+                    contentAsMarkdown: string;
                 }>;
             };
 
-            const notes = result.notes.map((note) => {
-                let preview = '';
-                try {
-                    const blocks = JSON.parse(note.content);
-                    preview = blockNoteToPlainText(blocks).slice(0, 100);
-                } catch {
-                    preview = '';
-                }
-
-                return {
-                    id: note.id,
-                    title: note.title,
-                    updatedAt: note.updatedAt,
-                    tags: note.tags.map((t) => t.name),
-                    preview,
-                };
-            });
+            const notes = result.notes.map((note) => ({
+                id: note.id,
+                title: note.title,
+                updatedAt: note.updatedAt,
+                tags: note.tags.map((t) => t.name),
+                preview: note.contentAsMarkdown.slice(0, 100),
+            }));
 
             return {
                 content: [{
@@ -184,7 +103,7 @@ export async function startMcpServer(serverUrl: string) {
                     note(id: $id) {
                         id
                         title
-                        content
+                        contentAsMarkdown
                         createdAt
                         updatedAt
                         tags { id name }
@@ -195,24 +114,17 @@ export async function startMcpServer(serverUrl: string) {
             const note = data?.note as {
                 id: string;
                 title: string;
-                content: string;
+                contentAsMarkdown: string;
                 createdAt: string;
                 updatedAt: string;
                 tags: Array<{ id: string; name: string }>;
             };
 
-            let plainText = '';
-            try {
-                const blocks = JSON.parse(note.content);
-                plainText = blockNoteToPlainText(blocks);
-            } catch {
-                plainText = note.content;
-            }
-
-            const totalLength = plainText.length;
+            let markdown = note.contentAsMarkdown;
+            const totalLength = markdown.length;
             let truncated = false;
-            if (maxLength > 0 && plainText.length > maxLength) {
-                plainText = plainText.slice(0, maxLength);
+            if (maxLength > 0 && markdown.length > maxLength) {
+                markdown = markdown.slice(0, maxLength);
                 truncated = true;
             }
 
@@ -224,7 +136,7 @@ export async function startMcpServer(serverUrl: string) {
                 `Updated: ${note.updatedAt}`,
                 ...(truncated ? [`Content: ${totalLength} chars (showing first ${maxLength})`] : []),
                 '',
-                plainText,
+                markdown,
                 ...(truncated ? ['\n... (truncated, use maxLength: 0 to read full content)'] : []),
             ].join('\n');
 

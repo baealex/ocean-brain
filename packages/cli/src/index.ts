@@ -8,6 +8,18 @@ import { Command } from 'commander';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const serverRoot = path.resolve(__dirname, '..', 'server');
 
+function findBin(name: string, fromDir: string): string {
+    let dir = path.resolve(fromDir, '..');
+    while (true) {
+        const bin = path.resolve(dir, 'node_modules', '.bin', name);
+        if (fs.existsSync(bin)) return bin;
+        const parent = path.dirname(dir);
+        if (parent === dir) break;
+        dir = parent;
+    }
+    throw new Error(`Could not find "${name}" binary. Make sure it is installed.`);
+}
+
 const pkg = JSON.parse(
     fs.readFileSync(path.resolve(__dirname, '..', 'package.json'), 'utf-8')
 );
@@ -41,7 +53,7 @@ program
         process.env.HOST = process.env.HOST || opts.host;
 
         const schemaPath = path.resolve(serverRoot, 'prisma/schema.prisma');
-        const prisma = path.resolve(__dirname, '..', 'node_modules', '.bin', 'prisma');
+        const prisma = findBin('prisma', __dirname);
         execSync(`"${prisma}" generate --schema="${schemaPath}"`, {
             stdio: 'inherit',
             env: { ...process.env }
@@ -52,6 +64,15 @@ program
         });
 
         await import(path.resolve(serverRoot, 'dist/main.js'));
+    });
+
+program
+    .command('mcp')
+    .description('Start MCP server for AI integration')
+    .option('-s, --server <url>', 'Ocean Brain server URL', 'http://localhost:6683')
+    .action(async (opts) => {
+        const { startMcpServer } = await import('./mcp.js');
+        await startMcpServer(opts.server);
     });
 
 program.parse();

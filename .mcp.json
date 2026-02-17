@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "ocean-brain": {
+      "command": "node",
+      "args": ["/Users/baealex/GitHub/ocean-brain/packages/cli/dist/index.js", "mcp", "--server", "http://localhost:6683"]
+    }
+  }
+}

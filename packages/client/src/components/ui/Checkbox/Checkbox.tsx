@@ -61,7 +61,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
                         <Icon.Check
                             width={iconSizes[size]}
                             height={iconSizes[size]}
-                            className="text-fg-default"
+                            className="text-fg-on-accent"
                             weight="bold"
                         />
                     )}

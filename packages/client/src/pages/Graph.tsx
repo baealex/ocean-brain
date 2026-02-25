@@ -30,8 +30,8 @@ const PASTEL_COLORS_LIGHT = [
 ];
 
 const PASTEL_COLORS_DARK = [
-    '#5c5540', '#3d5c3d', '#5c3d44', '#5c4d40',
-    '#3d4f5c', '#5c3d5c', '#3d5c56', '#4f3d5c'
+    '#3f3f46', '#404047', '#42424a', '#38383f',
+    '#3b3b42', '#3d3d44', '#393940', '#414148'
 ];
 
 const PASTEL_COLORS_LIGHT_DIM = PASTEL_COLORS_LIGHT.map(c => hexToRgba(c, 0.15));
@@ -183,7 +183,7 @@ export default function Graph() {
 
         if (isDimmed) {
             if (node.connections > 3) {
-                ctx.fillStyle = isDark ? 'rgba(92,61,68,0.15)' : 'rgba(255,179,193,0.15)';
+                ctx.fillStyle = isDark ? 'rgba(63,63,70,0.15)' : 'rgba(255,179,193,0.15)';
             } else {
                 const colors = isDark ? PASTEL_COLORS_DARK_DIM : PASTEL_COLORS_LIGHT_DIM;
                 ctx.fillStyle = colors[getHash(node.id) % colors.length];
@@ -193,25 +193,25 @@ export default function Graph() {
         }
 
         if (isSelected) {
-            ctx.fillStyle = '#FFCCB3';
+            ctx.fillStyle = isDark ? '#a1a1aa' : '#FFCCB3';
         } else if (isConnected) {
-            ctx.fillStyle = isDark ? '#E1C6E7' : '#E1B7E1';
+            ctx.fillStyle = isDark ? '#71717a' : '#E1B7E1';
         } else if (node.connections > 3) {
-            ctx.fillStyle = isDark ? '#5c3d44' : '#FFB3C1';
+            ctx.fillStyle = isDark ? '#52525b' : '#FFB3C1';
         } else {
             const colors = isDark ? PASTEL_COLORS_DARK : PASTEL_COLORS_LIGHT;
             ctx.fillStyle = colors[getHash(node.id) % colors.length];
         }
         ctx.fill();
 
-        ctx.strokeStyle = isDark ? '#404040' : '#3d3d3d';
+        ctx.strokeStyle = isDark ? '#3f3f46' : '#3d3d3d';
         ctx.lineWidth = (isSelected ? 2 : 1) / globalScale;
         ctx.stroke();
 
         if (isSelected) {
             ctx.beginPath();
             ctx.arc(nx, ny, nodeSize + 2 / globalScale, 0, Math.PI * 2);
-            ctx.strokeStyle = isDark ? '#e4e4e7' : '#27272a';
+            ctx.strokeStyle = isDark ? '#d4d4d8' : '#27272a';
             ctx.lineWidth = 1.5 / globalScale;
             ctx.stroke();
         }
@@ -227,10 +227,10 @@ export default function Graph() {
             const padding = 2 / globalScale;
             const labelY = ny + nodeSize + 3 / globalScale;
 
-            ctx.fillStyle = isDark ? 'rgba(42,37,32,0.85)' : 'rgba(255,252,247,0.9)';
+            ctx.fillStyle = isDark ? 'rgba(24,24,27,0.85)' : 'rgba(255,252,247,0.9)';
             ctx.fillRect(nx - textWidth / 2 - padding, labelY, textWidth + padding * 2, fontSize + padding * 2);
 
-            ctx.fillStyle = isDark ? '#e4e4e7' : '#27272a';
+            ctx.fillStyle = isDark ? '#f4f4f5' : '#27272a';
             ctx.fillText(label, nx, labelY + padding);
         }
     }, [selectedNodeId]);
@@ -252,13 +252,13 @@ export default function Graph() {
         ctx.lineTo(target.x || 0, target.y || 0);
 
         if (isDimmed) {
-            ctx.strokeStyle = isDark ? 'rgba(82,82,91,0.06)' : 'rgba(212,212,216,0.06)';
+            ctx.strokeStyle = isDark ? 'rgba(63,63,70,0.06)' : 'rgba(212,212,216,0.06)';
             ctx.lineWidth = 0.5 / globalScale;
         } else if (isConnected) {
-            ctx.strokeStyle = isDark ? '#E1C6E7' : '#E1B7E1';
+            ctx.strokeStyle = isDark ? '#71717a' : '#E1B7E1';
             ctx.lineWidth = 2 / globalScale;
         } else {
-            ctx.strokeStyle = isDark ? 'rgba(82,82,91,0.5)' : 'rgba(212,212,216,0.7)';
+            ctx.strokeStyle = isDark ? 'rgba(63,63,70,0.5)' : 'rgba(212,212,216,0.7)';
             ctx.lineWidth = 0.5 / globalScale;
         }
         ctx.stroke();
@@ -305,7 +305,7 @@ export default function Graph() {
             <div
                 ref={containerRef}
                 className="relative overflow-hidden border-2 border-border rounded-sketchy-lg shadow-sketchy"
-                style={{ background: isDark ? '#2a2520' : '#fffcf7' }}>
+                style={{ background: isDark ? '#1f1f23' : '#fffcf7' }}>
                 {selectedNodeId && (() => {
                     const node = graphData.nodes.find(n => n.id === selectedNodeId);
                     if (!node) return null;
@@ -356,11 +356,11 @@ export default function Graph() {
             </div>
             <div className="mt-4 flex flex-wrap gap-4 text-sm">
                 <div className="flex items-center gap-2">
-                    <span className="w-4 h-4 rounded-sketchy-xs border-2 border-border" style={{ background: isDark ? '#5c3d44' : '#FFB3C1' }} />
+                    <span className="w-4 h-4 rounded-sketchy-xs border-2 border-border" style={{ background: isDark ? '#52525b' : '#FFB3C1' }} />
                     <span className="text-fg-tertiary font-medium">Hub notes (4+ connections)</span>
                 </div>
                 <div className="flex items-center gap-2">
-                    <span className="w-4 h-4 rounded-sketchy-xs border-2 border-border" style={{ background: isDark ? '#3d5c3d' : '#B2E0B2' }} />
+                    <span className="w-4 h-4 rounded-sketchy-xs border-2 border-border" style={{ background: isDark ? '#3f3f46' : '#B2E0B2' }} />
                     <span className="text-fg-tertiary font-medium">Connected notes</span>
                 </div>
             </div>

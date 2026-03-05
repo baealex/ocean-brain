@@ -81,3 +81,6 @@ Release-impact PRs must include:
 
 ## 4. PR Template Path
 - Use `.github/PULL_REQUEST_TEMPLATE.md` as the official PR template.
+
+## 5. Deployment and Release Reference
+- For deployment/release policy and runbook details, refer to `docs/process/DEPLOYMENT_RELEASE_STRATEGY.md`.

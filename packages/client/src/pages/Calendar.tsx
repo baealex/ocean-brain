@@ -188,7 +188,7 @@ export default function Calendar() {
                                         key={day}
                                         className={`
                                             py-2 text-center text-xs font-bold tracking-wider
-                                            ${index === 0 ? 'text-rose-500' : 'text-fg-secondary'}
+                                            ${index === 0 ? 'text-fg-weekend' : 'text-fg-secondary'}
                                         `}>
                                         {day}
                                     </div>

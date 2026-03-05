@@ -23,7 +23,7 @@ export const buttonVariants = cva(
             variant: {
                 primary: [
                     'bg-cta',
-                    'text-fg-default',
+                    'text-fg-on-filled',
                     'hover:bg-cta-hover'
                 ],
                 ghost: [
@@ -33,7 +33,7 @@ export const buttonVariants = cva(
                 ],
                 danger: [
                     'bg-accent-danger',
-                    'text-fg-default',
+                    'text-fg-on-filled',
                     'hover:bg-accent-danger-hover'
                 ],
                 'soft-success': [

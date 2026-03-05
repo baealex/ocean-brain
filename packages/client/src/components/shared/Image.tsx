@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
 
+import { useTheme } from '~/store/theme';
+
 interface ImageProps {
     src: string;
     alt?: string;
@@ -14,6 +16,10 @@ export default function Image({
     className
 }: ImageProps) {
     const ref = useRef<HTMLImageElement>(null);
+    const { theme } = useTheme(state => state);
+    const isDark = theme === 'dark';
+
+    const darkFilter = isDark ? 'brightness(0.85) saturate(0.9)' : undefined;
 
     useEffect(() => {
         if (!ref.current || loading !== 'lazy' || !src) {
@@ -38,7 +44,7 @@ export default function Image({
     return (
         <>
             {loading !== 'lazy' ? (
-                <img src={src} alt={alt} className={className} />
+                <img src={src} alt={alt} className={className} style={{ filter: darkFilter }} />
             ) : (
                 <img
                     ref={ref}
@@ -46,6 +52,7 @@ export default function Image({
                     alt={alt}
                     data-src={src}
                     className={className}
+                    style={{ filter: darkFilter }}
                 />
             )}
         </>

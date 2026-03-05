@@ -276,7 +276,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                     type="button"
                     className={cx('menu')}
                     onClick={() => setIsMenuOpen(prev => !prev)}>
-                    <Icon.Menu className="h-6 w-6" />
+                    <Icon.Menu className="h-6 w-6 text-fg-on-accent" />
                 </button>
             </div>
             <div className={cx('side', { 'open': isMenuOpen })}>
@@ -292,7 +292,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                             }}>
                             <img
                                 className="w-full transition-transform duration-300 group-hover:scale-105"
-                                style={{ filter: theme === 'dark' ? 'brightness(.8) contrast(1.2)' : undefined }}
+                                style={{ filter: theme === 'dark' ? 'brightness(0.85) saturate(0.9)' : undefined }}
                                 src={heroBanner}
                             />
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center">
@@ -405,7 +405,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                                         <div
                                             className={`flex items-center gap-2 text-sm font-bold px-3 py-2 border-2 transition-all rounded-[10px_3px_11px_3px/3px_8px_3px_10px] ${
                                             isActive
-                                                ? 'bg-accent-primary text-white border-border-secondary shadow-sketchy'
+                                                ? 'bg-accent-primary text-fg-on-accent border-border-secondary shadow-sketchy'
                                                 : 'border-transparent hover:border-border-secondary hover:bg-hover'
                                         }`}>
                                             <item.icon className="size-5" weight={isActive ? 'fill' : 'regular'} />

@@ -52,20 +52,20 @@ export const toggleGroupItemVariants = cva(
                     'text-fg-muted',
                     'hover:bg-hover',
                     'data-[state=on]:bg-accent-primary',
-                    'data-[state=on]:text-white',
+                    'data-[state=on]:text-fg-on-accent',
                     'data-[state=on]:shadow-sketchy'
                 ],
                 outline: [
                     'text-fg-muted',
                     'hover:bg-hover-subtle',
                     'data-[state=on]:bg-accent-primary',
-                    'data-[state=on]:text-white'
+                    'data-[state=on]:text-fg-on-accent'
                 ],
                 pills: [
                     'text-fg-secondary',
                     'rounded-[10px_3px_11px_3px/3px_8px_3px_10px]',
                     'data-[state=on]:bg-accent-primary',
-                    'data-[state=on]:text-white',
+                    'data-[state=on]:text-fg-on-accent',
                     'data-[state=on]:shadow-sketchy',
                     'data-[state=on]:border-2',
                     'data-[state=on]:border-border-secondary'

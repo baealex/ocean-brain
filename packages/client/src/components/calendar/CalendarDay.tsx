@@ -81,13 +81,13 @@ const CalendarDayComponent = ({
 
     const getDayNumberStyle = () => {
         if (isToday) {
-            return 'bg-accent-danger text-fg-default border-2 border-border font-bold';
+            return 'bg-accent-primary text-fg-on-accent border-2 border-border font-bold';
         }
         if (!isCurrentMonth) {
             return 'text-fg-disabled';
         }
         if (isSunday) {
-            return 'text-rose-500 dark:text-rose-400 font-bold';
+            return 'text-fg-weekend font-bold';
         }
         return 'text-fg-secondary font-bold';
     };

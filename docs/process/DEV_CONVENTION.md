@@ -24,7 +24,7 @@ Updated: 2026-03-06
 2. Push only when CI is expected to pass.
 3. Document script/env/doc changes in PR body.
 4. Validate PR metadata against template before sharing PR link:
-   - Title: `<emoji_shortcode> <subject>`
+   - Title: `<emoji_or_shortcode> <subject>`
    - Body sections: `:dart: Goal`, `:hammer_and_wrench: Core Changes`, `:brain: Key Decisions`, `:test_tube: Verification Guide`, `:white_check_mark: Checklist`
 
 ## 5. Server and Release Linked Rules

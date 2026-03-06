@@ -9,12 +9,13 @@ Updated: 2026-03-06
 ## 2. Commit Convention
 
 ### 2-1. Base Format
-`<emoji_shortcode> <subject>`
+`<emoji_or_shortcode> <subject>`
 
 - `subject` must start with an English verb.
 - Capitalized first letter is recommended.
 - Do not end with a period.
 - One commit should contain one logical change.
+- `emoji_or_shortcode` allows either a Unicode emoji (`✨`) or GitHub shortcode (`:sparkles:`).
 
 ### 2-2. Emoji Map
 - `:sparkles:`: feature addition
@@ -34,6 +35,7 @@ Updated: 2026-03-06
 
 ### 2-4. Disallowed Examples
 - `update stuff`
+- `✨update stuff`
 - `:sparkles:update stuff`
 - `WIP`
 - Multi-topic commit messages
@@ -43,7 +45,7 @@ Updated: 2026-03-06
 ### 3-1. Base Rules
 - Default target branch: `main`
 - Required CI checks: `lint`, `type-check`, `build`
-- PR title format: `<emoji_shortcode> <subject>`
+- PR title format: `<emoji_or_shortcode> <subject>`
 - PR body must follow `.github/PULL_REQUEST_TEMPLATE.md` headings exactly.
 
 ### 3-2. Recommended Branch Naming
@@ -84,7 +86,7 @@ Release-impact PRs must include:
 
 ### 3-7. PR Submission Guardrail (Required)
 Before sharing a PR URL, confirm all of the following:
-1. Title follows `<emoji_shortcode> <subject>` and subject starts with an English verb.
+1. Title follows `<emoji_or_shortcode> <subject>` and subject starts with an English verb.
 2. Body section headings exactly match the template headings.
 3. `Verification Guide` contains concrete commands and expected results.
 4. The `Checklist` state is intentionally set (not left ambiguous).

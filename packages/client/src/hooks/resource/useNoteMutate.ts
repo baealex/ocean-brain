@@ -6,7 +6,7 @@ import {
     pinNote
 } from '~/apis/note.api';
 import { useNavigate } from 'react-router-dom';
-import { useConfirm } from '~/components/ui';
+import { useConfirm, useToast } from '~/components/ui';
 import { getPinnedNoteQueryKey } from '~/modules/query-key-factory';
 import { replaceFixedPlaceholder } from '~/modules/fixed-placeholder';
 
@@ -14,6 +14,7 @@ import type { NoteLayout } from '~/models/note.model';
 
 const useNoteMutate = () => {
     const confirm = useConfirm();
+    const toast = useToast();
     const queryClient = useQueryClient();
 
     const navigate = useNavigate();
@@ -34,19 +35,27 @@ const useNoteMutate = () => {
 
     const onPinned = async (id: string, isPinned: boolean, callback?: () => void) => {
         try {
-            await pinNote(id, !isPinned);
+            const response = await pinNote(id, !isPinned);
+            if (response.type === 'error') {
+                toast(response.errors[0].message);
+                return;
+            }
             await queryClient.invalidateQueries({ queryKey: ['notes'] });
             await queryClient.invalidateQueries({ queryKey: ['tag-notes'] });
             await queryClient.invalidateQueries({ queryKey: [getPinnedNoteQueryKey()] });
             callback?.();
         } catch {
-            // console.error(error);
+            toast('Failed to update note pin status');
         }
     };
 
     const onDelete = async (id: string, callback?: () => void) => {
         if (await confirm('Are you really sure?')) {
-            await deleteNote(id);
+            const response = await deleteNote(id);
+            if (response.type === 'error') {
+                toast(response.errors[0].message);
+                return;
+            }
             await queryClient.invalidateQueries({ queryKey: ['notes'] });
             await queryClient.invalidateQueries({ queryKey: ['tag-notes'] });
             await queryClient.invalidateQueries({ queryKey: [getPinnedNoteQueryKey()] });

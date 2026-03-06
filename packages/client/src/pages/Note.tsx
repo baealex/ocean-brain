@@ -6,12 +6,11 @@ import { Button, Dropdown, PageLayout, Skeleton } from '~/components/shared';
 import { useToast } from '~/components/ui';
 import * as Icon from '~/components/icon';
 
-import type { Note, NoteLayout } from '~/models/note.model';
+import type { NoteLayout } from '~/models/note.model';
 
 import useDebounce from '~/hooks/useDebounce';
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
 
-import { graphQuery } from '~/modules/graph-query';
 import { getNoteURL } from '~/modules/url';
 
 import type { EditorRef } from '~/components/shared/Editor';
@@ -20,7 +19,7 @@ import { BackReferences } from '~/components/entities';
 import { ReminderPanel } from '~/components/reminder';
 import { LayoutModal } from '~/components/note';
 
-import { updateNote } from '~/apis/note.api';
+import { fetchNote, updateNote } from '~/apis/note.api';
 
 export default function Note() {
     const { id } = useParams();
@@ -41,19 +40,7 @@ export default function Note() {
     const { data: note, isError, isLoading } = useQuery({
         queryKey: ['note', id],
         async queryFn() {
-            const response = await graphQuery<{
-                note: Pick<Note, 'title' | 'content' | 'pinned' | 'layout' | 'updatedAt'>;
-            }>(`
-                query {
-                    note(id: "${id}") {
-                        title
-                        pinned
-                        layout
-                        content
-                        updatedAt
-                    }
-                }
-            `);
+            const response = await fetchNote(id!);
             if (response.type === 'error') {
                 toast(response.errors[0].message);
                 throw response;
@@ -143,7 +130,7 @@ export default function Note() {
 
     return (
         <PageLayout title={title} variant="none">
-            <main className={`mx-auto ${getMaxWidth()}`}>
+            <main className={'mx-auto ' + getMaxWidth()}>
                 {isLoading && (
                 <>
                     <Skeleton className="mb-8" height="66px" />

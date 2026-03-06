@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Image as ImageComponent, PageLayout } from '~/components/shared';
 import { NoteListItem } from '~/components/note';
-import { Button, Tooltip, useConfirm } from '~/components/ui';
+import { Button, Tooltip, useConfirm, useToast } from '~/components/ui';
 import * as Icon from '~/components/icon';
 
 import { deleteImage, fetchImage } from '~/apis/image.api';
@@ -11,6 +11,7 @@ import { setServerCache } from '~/apis/server-cache.api';
 
 const ManageImageDetail = () => {
     const confirm = useConfirm();
+    const toast = useToast();
     const { id } = useParams();
     const navigation = useNavigate();
     const queryClient = useQueryClient();
@@ -46,7 +47,15 @@ const ManageImageDetail = () => {
             return;
         }
         if (await confirm('Are you really sure?')) {
-            await deleteImage(id!);
+            const response = await deleteImage(id!);
+            if (response.type === 'error') {
+                toast(response.errors[0].message);
+                return;
+            }
+            if (!response.deleteImage) {
+                toast('Failed to delete image');
+                return;
+            }
             navigation('/setting/manage-image');
         }
     };

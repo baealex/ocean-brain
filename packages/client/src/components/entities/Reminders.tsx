@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { graphQuery } from '~/modules/graph-query';
+import { fetchNoteReminders, fetchUpcomingReminders } from '~/apis/reminder.api';
 
 import type { Reminders as RemindersType } from '~/models/reminder.model';
 import type { Pagination } from '~/types';
@@ -14,61 +14,19 @@ export default function Reminders({ noteId, searchParams, render }: RemindersPro
     const { data } = useQuery({
         queryKey: noteId ? ['noteReminders', noteId, searchParams] : ['upcomingReminders', searchParams],
         queryFn: async () => {
-            const pagination = searchParams ? `pagination: { limit: ${searchParams.limit}, offset: ${searchParams.offset} }` : '';
-
-            let query;
             if (noteId) {
-                query = `
-                    query {
-                        noteReminders(noteId: "${noteId}", ${pagination}) {
-                            totalCount
-                            reminders {
-                                id
-                                noteId
-                                reminderDate
-                                priority
-                                content
-                                completed
-                                createdAt
-                                updatedAt
-                            }
-                        }
-                    }
-                `;
-            } else {
-                query = `
-                    query {
-                        upcomingReminders(${pagination}) {
-                            totalCount
-                            reminders {
-                                id
-                                noteId
-                                reminderDate
-                                priority
-                                content
-                                completed
-                                createdAt
-                                updatedAt
-                                note {
-                                    id
-                                    title
-                                }
-                            }
-                        }
-                    }
-                `;
+                const noteRemindersResponse = await fetchNoteReminders(noteId, searchParams);
+                if (noteRemindersResponse.type === 'error') {
+                    throw noteRemindersResponse;
+                }
+                return noteRemindersResponse.noteReminders;
             }
 
-            const response = await graphQuery<{
-                noteReminders?: RemindersType;
-                upcomingReminders?: RemindersType;
-            }>(query);
-
-            if (response.type === 'error') {
-                throw response;
+            const upcomingRemindersResponse = await fetchUpcomingReminders(searchParams);
+            if (upcomingRemindersResponse.type === 'error') {
+                throw upcomingRemindersResponse;
             }
-
-            return noteId ? response.noteReminders : response.upcomingReminders;
+            return upcomingRemindersResponse.upcomingReminders;
         }
     });
 

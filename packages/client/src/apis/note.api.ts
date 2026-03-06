@@ -1,6 +1,58 @@
 import type { Note } from '~/models/note.model';
 import { graphQuery } from '~/modules/graph-query';
 
+type NoteAdditionalField = 'content' | 'order' | 'layout';
+
+const NOTE_ADDITIONAL_FIELDS = new Set<NoteAdditionalField>([
+    'content',
+    'order',
+    'layout'
+]);
+
+const FETCH_NOTES_QUERY = `query FetchNotes(
+            $searchFilter: SearchFilterInput,
+            $pagination: PaginationInput
+        ) {
+            allNotes(
+                searchFilter: $searchFilter,
+                pagination: $pagination
+            ) {
+                totalCount
+                notes {
+__NOTE_ADDITIONAL_FIELDS__                    id
+                    title
+                    pinned
+                    createdAt
+                    updatedAt
+                    tags {
+                        id
+                        name
+                    }
+                }
+            }
+        }`;
+
+const buildAdditionalNoteSelection = (fields?: (keyof Note)[]) => {
+    if (!fields || fields.length === 0) {
+        return '';
+    }
+
+    const selectedFields = Array.from(
+        new Set(
+            fields.filter((field): field is NoteAdditionalField => NOTE_ADDITIONAL_FIELDS.has(field as NoteAdditionalField))
+        )
+    );
+
+    if (selectedFields.length === 0) {
+        return '';
+    }
+
+    return selectedFields
+        .map((field) => '                    ' + field)
+        .join('\n')
+        + '\n';
+};
+
 export interface FetchNotesParams {
     limit?: number;
     offset?: number;
@@ -8,7 +60,7 @@ export interface FetchNotesParams {
     sortBy?: 'updatedAt' | 'createdAt';
     sortOrder?: 'asc' | 'desc';
     pinnedFirst?: boolean;
-    fields?: Partial<keyof Note>[];
+    fields?: (keyof Note)[];
 }
 
 export function fetchNotes({
@@ -20,35 +72,16 @@ export function fetchNotes({
     pinnedFirst,
     fields
 }: FetchNotesParams = {}) {
+    const additionalFieldsSelection = buildAdditionalNoteSelection(fields);
+    const graphqlQuery = FETCH_NOTES_QUERY.replace('__NOTE_ADDITIONAL_FIELDS__', additionalFieldsSelection);
+
     return graphQuery<{
         allNotes: {
             totalCount: number;
             notes: Note[];
         };
     }>(
-        `query def(
-            $searchFilter: SearchFilterInput,
-            $pagination: PaginationInput
-        ) {
-            allNotes(
-                searchFilter: $searchFilter,
-                pagination: $pagination
-            ) {
-                totalCount
-                notes {
-                    ${fields ? fields.join('\n') : ''}
-                    id
-                    title
-                    pinned
-                    createdAt
-                    updatedAt
-                    tags {
-                        id
-                        name
-                    }
-                }
-            }
-        }`,
+        graphqlQuery,
         {
             searchFilter: {
                 query,
@@ -81,7 +114,7 @@ export function fetchTagNotes({
             notes: Note[];
         };
     }>(
-        `query def(
+        `query FetchTagNotes(
             $searchFilter: SearchFilterInput,
             $pagination: PaginationInput
         ) {
@@ -113,22 +146,54 @@ export function fetchTagNotes({
     );
 }
 
+export function fetchNote(id: string) {
+    return graphQuery<{
+        note: Pick<Note, 'title' | 'content' | 'pinned' | 'layout' | 'updatedAt'>;
+    }, { id: string }>(
+        `query FetchNote($id: ID!) {
+            note(id: $id) {
+                title
+                pinned
+                layout
+                content
+                updatedAt
+            }
+        }`,
+        { id }
+    );
+}
+
+export function fetchBackReferences(id: string) {
+    return graphQuery<{
+        backReferences: Pick<Note, 'id' | 'title'>[];
+    }, { id: string }>(
+        `query FetchBackReferences($id: ID!) {
+            backReferences(id: $id) {
+                id
+                title
+            }
+        }`,
+        { id }
+    );
+}
+
 export function fetchImageNotes(src: string) {
     return graphQuery<{
         imageNotes: Pick<Note, 'id' | 'title' | 'createdAt' | 'updatedAt'>[];
-    }>(
-        `query {
-            imageNotes(src: "${src}") {
+    }, { src: string }>(
+        `query FetchImageNotes($src: String!) {
+            imageNotes(src: $src) {
                 id
                 title
                 createdAt
                 updatedAt
             }
-        }`
+        }`,
+        { src }
     );
 }
 
-interface CreateNoteRequestData {
+export interface CreateNoteRequestData {
     title: string;
     content: string;
     layout?: string;
@@ -137,8 +202,8 @@ interface CreateNoteRequestData {
 export function createNote(note: CreateNoteRequestData) {
     return graphQuery<{
         createNote: Pick<Note, 'id'>;
-    }>(
-        `mutation def($note: NoteInput!) {
+    }, { note: CreateNoteRequestData }>(
+        `mutation CreateNote($note: NoteInput!) {
             createNote(note: $note) {
                 id
             }
@@ -147,7 +212,7 @@ export function createNote(note: CreateNoteRequestData) {
     );
 }
 
-interface UpdateNoteRequestData {
+export interface UpdateNoteRequestData {
     id: string;
     title?: string;
     content?: string;
@@ -157,40 +222,48 @@ interface UpdateNoteRequestData {
 export const updateNote = ({ id, ...note }: UpdateNoteRequestData) => {
     return graphQuery<{
         updateNote: Pick<Note, 'id' | 'title'>;
-    }>(
-        `mutation def($note: NoteInput!) {
-            updateNote(id: "${id}", note: $note) {
+    }, { id: string; note: Omit<UpdateNoteRequestData, 'id'> }>(
+        `mutation UpdateNote($id: ID!, $note: NoteInput!) {
+            updateNote(id: $id, note: $note) {
                 id
                 title
             }
         }`,
-        { note }
+        {
+            id,
+            note
+        }
     );
 };
 
 export function pinNote(id: string, pinned: boolean) {
     return graphQuery<{
-        updateNotePinned: Pick<Note, 'id' | 'title' | 'pinned' | 'createdAt' | 'updatedAt'>;
-    }>(
-        `mutation {
-            pinNote(id: "${id}", pinned: ${pinned}) {
+        pinNote: Pick<Note, 'id' | 'title' | 'pinned' | 'createdAt' | 'updatedAt'>;
+    }, { id: string; pinned: boolean }>(
+        `mutation PinNote($id: ID!, $pinned: Boolean!) {
+            pinNote(id: $id, pinned: $pinned) {
                 id
                 title
                 pinned
                 createdAt
                 updatedAt
             }
-        }`
+        }`,
+        {
+            id,
+            pinned
+        }
     );
 }
 
 export function deleteNote(id: string) {
     return graphQuery<{
         deleteNote: boolean;
-    }>(
-        `mutation {
-            deleteNote(id: "${id}")
-        }`
+    }, { id: string }>(
+        `mutation DeleteNote($id: ID!) {
+            deleteNote(id: $id)
+        }`,
+        { id }
     );
 }
 
@@ -202,8 +275,8 @@ export interface NoteOrderInput {
 export function reorderNotes(notes: NoteOrderInput[]) {
     return graphQuery<{
         reorderNotes: Pick<Note, 'id' | 'order'>[];
-    }>(
-        `mutation def($notes: [NoteOrderInput!]!) {
+    }, { notes: NoteOrderInput[] }>(
+        `mutation ReorderNotes($notes: [NoteOrderInput!]!) {
             reorderNotes(notes: $notes) {
                 id
                 order
@@ -233,7 +306,7 @@ export function fetchNoteGraph() {
     return graphQuery<{
         noteGraph: NoteGraph;
     }>(
-        `query {
+        `query FetchNoteGraph {
             noteGraph {
                 nodes {
                     id

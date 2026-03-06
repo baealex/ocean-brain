@@ -1,16 +1,83 @@
 import { graphQuery } from '~/modules/graph-query';
 
-import type { Reminder, ReminderPriority } from '~/models/reminder.model';
+import type { Reminder, ReminderPriority, Reminders as ReminderCollection } from '~/models/reminder.model';
+import type { Pagination } from '~/types';
 
-export const createReminder = async (params: {
+export interface ReminderPaginationParams {
+    limit?: number;
+    offset?: number;
+}
+
+const toPaginationInput = (params: ReminderPaginationParams = {}): Pagination => {
+    return {
+        limit: params.limit ?? 10,
+        offset: params.offset ?? 0
+    };
+};
+
+export const fetchNoteReminders = async (noteId: string, pagination?: ReminderPaginationParams) => {
+    return graphQuery<{ noteReminders: ReminderCollection }, { noteId: string; pagination: Pagination }>(`
+        query FetchNoteReminders($noteId: ID!, $pagination: PaginationInput) {
+            noteReminders(noteId: $noteId, pagination: $pagination) {
+                totalCount
+                reminders {
+                    id
+                    noteId
+                    reminderDate
+                    priority
+                    content
+                    completed
+                    createdAt
+                    updatedAt
+                }
+            }
+        }
+    `, {
+        noteId,
+        pagination: toPaginationInput(pagination)
+    });
+};
+
+export const fetchUpcomingReminders = async (pagination?: ReminderPaginationParams) => {
+    return graphQuery<{ upcomingReminders: ReminderCollection }, { pagination: Pagination }>(`
+        query FetchUpcomingReminders($pagination: PaginationInput) {
+            upcomingReminders(pagination: $pagination) {
+                totalCount
+                reminders {
+                    id
+                    noteId
+                    reminderDate
+                    priority
+                    content
+                    completed
+                    createdAt
+                    updatedAt
+                    note {
+                        id
+                        title
+                    }
+                }
+            }
+        }
+    `, { pagination: toPaginationInput(pagination) });
+};
+
+export interface CreateReminderParams {
     noteId: string;
     reminderDate: Date;
     priority?: ReminderPriority;
     content?: string;
-}) => {
+}
+
+export const createReminder = async (params: CreateReminderParams) => {
     const { noteId, reminderDate, priority = 'medium', content } = params;
 
-    return graphQuery<{ createReminder: Reminder }>(`
+    return graphQuery<{ createReminder: Reminder }, {
+        noteId: string;
+        reminderDate: string;
+        priority: ReminderPriority;
+        content?: string;
+    }>(`
         mutation CreateReminder($noteId: ID!, $reminderDate: String!, $priority: ReminderPriority, $content: String) {
             createReminder(
                 noteId: $noteId,
@@ -29,11 +96,27 @@ export const createReminder = async (params: {
         }
     `, {
         noteId,
-        reminderDate,
+        reminderDate: reminderDate.toISOString(),
         priority,
         content
     });
 };
+
+export interface UpdateReminderParams {
+    id: string;
+    reminderDate?: Date;
+    completed?: boolean;
+    priority?: ReminderPriority;
+    content?: string;
+}
+
+interface UpdateReminderVariables {
+    id: string;
+    reminderDate?: string;
+    completed?: boolean;
+    priority?: ReminderPriority;
+    content?: string;
+}
 
 export const updateReminder = async ({
     id,
@@ -41,20 +124,14 @@ export const updateReminder = async ({
     completed,
     priority,
     content
-}: {
-    id: string;
-    reminderDate?: Date;
-    completed?: boolean;
-    priority?: ReminderPriority;
-    content?: string;
-}) => {
-    const variables: Record<string, string | boolean | number> = { id };
+}: UpdateReminderParams) => {
+    const variables: UpdateReminderVariables = { id };
     if (reminderDate) variables.reminderDate = reminderDate.toISOString();
     if (completed !== undefined) variables.completed = completed;
     if (priority) variables.priority = priority;
     if (content !== undefined) variables.content = content;
 
-    return graphQuery<{ updateReminder: Reminder }>(`
+    return graphQuery<{ updateReminder: Reminder }, UpdateReminderVariables>(`
         mutation UpdateReminder(
             $id: ID!, 
             $reminderDate: String, 
@@ -82,8 +159,7 @@ export const updateReminder = async ({
 };
 
 export const deleteReminder = async (id: string) => {
-    // Using GraphQL variables to properly handle the ID
-    return graphQuery<{ deleteReminder: boolean }>(`
+    return graphQuery<{ deleteReminder: boolean }, { id: string }>(`
         mutation DeleteReminder($id: ID!) {
             deleteReminder(id: $id)
         }

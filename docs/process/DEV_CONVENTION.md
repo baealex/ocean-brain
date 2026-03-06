@@ -24,8 +24,8 @@ Updated: 2026-03-06
 2. Push only when CI is expected to pass.
 3. Document script/env/doc changes in PR body.
 4. Validate PR metadata against template before sharing PR link:
-   - Title: `<emoji> <subject>`
-   - Body sections: `🎯 Goal`, `🛠 Core Changes`, `🧠 Key Decisions`, `🧪 Verification Guide`, `✅ Checklist`
+   - Title: `<emoji_shortcode> <subject>`
+   - Body sections: `:dart: Goal`, `:hammer_and_wrench: Core Changes`, `:brain: Key Decisions`, `:test_tube: Verification Guide`, `:white_check_mark: Checklist`
 
 ## 5. Server and Release Linked Rules
 - Server start script includes `prisma migrate deploy`.

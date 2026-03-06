@@ -9,34 +9,34 @@ Updated: 2026-03-06
 ## 2. Commit Convention
 
 ### 2-1. Base Format
-`<emoji_or_shortcode> <subject>`
+`<emoji> <subject>`
 
 - `subject` must start with an English verb.
 - Capitalized first letter is recommended.
 - Do not end with a period.
 - One commit should contain one logical change.
-- `emoji_or_shortcode` allows either a Unicode emoji (`✨`) or GitHub shortcode (`:sparkles:`).
+- Commit emoji must be a Unicode emoji character (for example `✨`), not shortcode.
 
 ### 2-2. Emoji Map
-- `:sparkles:`: feature addition
-- `:bug:`: bug fix
-- `:recycle:`: refactor
-- `:zap:`: performance improvement
-- `:memo:`: documentation change
-- `:white_check_mark:`: tests added/updated
-- `:hammer_and_wrench:`: CI/build/config/maintenance
-- `:bookmark:`: release/version/package updates
-- `:ambulance:`: urgent hotfix
+- `✨`: feature addition
+- `🐛`: bug fix
+- `♻️`: refactor
+- `⚡`: performance improvement
+- `📝`: documentation change
+- `✅`: tests added/updated
+- `🛠`: CI/build/config/maintenance
+- `🔖`: release/version/package updates
+- `🚑`: urgent hotfix
 
 ### 2-3. Release Commit
 - Release commit format:
-- `:bookmark: Bump version to <version>`
-- Example: `:bookmark: Bump version to 0.2.1`
+- `🔖 Bump version to <version>`
+- Example: `🔖 Bump version to 0.2.1`
 
 ### 2-4. Disallowed Examples
 - `update stuff`
 - `✨update stuff`
-- `:sparkles:update stuff`
+- `:sparkles: Add feature`
 - `WIP`
 - Multi-topic commit messages
 
@@ -45,7 +45,8 @@ Updated: 2026-03-06
 ### 3-1. Base Rules
 - Default target branch: `main`
 - Required CI checks: `lint`, `type-check`, `build`
-- PR title format: `<emoji_or_shortcode> <subject>`
+- PR title format: `<emoji_shortcode> <subject>`
+- PR title emoji must use shortcode form (for example `:sparkles:`), not Unicode emoji.
 - PR body must follow `.github/PULL_REQUEST_TEMPLATE.md` headings exactly.
 
 ### 3-2. Recommended Branch Naming
@@ -86,7 +87,7 @@ Release-impact PRs must include:
 
 ### 3-7. PR Submission Guardrail (Required)
 Before sharing a PR URL, confirm all of the following:
-1. Title follows `<emoji_or_shortcode> <subject>` and subject starts with an English verb.
+1. Title follows `<emoji_shortcode> <subject>` and subject starts with an English verb.
 2. Body section headings exactly match the template headings.
 3. `Verification Guide` contains concrete commands and expected results.
 4. The `Checklist` state is intentionally set (not left ambiguous).

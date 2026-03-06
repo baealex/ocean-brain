@@ -11,7 +11,7 @@ Updated: 2026-03-06
 ### 2-1. Base Format
 `<emoji> <subject>`
 
-- `subject` should start with an English verb.
+- `subject` must start with an English verb.
 - Capitalized first letter is recommended.
 - Do not end with a period.
 - One commit should contain one logical change.
@@ -23,18 +23,18 @@ Updated: 2026-03-06
 - `⚡`: performance improvement
 - `📝`: documentation change
 - `✅`: tests added/updated
-- `🔧`: CI/build/config/maintenance
-- `📦`: release/version/package updates
+- `🛠`: CI/build/config/maintenance
+- `🔖`: release/version/package updates
 - `🚑`: urgent hotfix
 
 ### 2-3. Release Commit
 - Release commit format:
-- `📦 Bump version to <version>`
-- Example: `📦 Bump version to 0.2.1`
+- `🔖 Bump version to <version>`
+- Example: `🔖 Bump version to 0.2.1`
 
 ### 2-4. Disallowed Examples
 - `update stuff`
-- `✨ update stuff`
+- `✨update stuff`
 - `WIP`
 - Multi-topic commit messages
 
@@ -44,6 +44,7 @@ Updated: 2026-03-06
 - Default target branch: `main`
 - Required CI checks: `lint`, `type-check`, `build`
 - PR title format: `<emoji> <subject>`
+- PR body must follow `.github/PULL_REQUEST_TEMPLATE.md` headings exactly.
 
 ### 3-2. Recommended Branch Naming
 - `feat/<short-topic>`
@@ -52,10 +53,12 @@ Updated: 2026-03-06
 - `docs/<short-topic>`
 
 ### 3-3. Required PR Body Sections
-- `Summary`: what changed and why
-- `Changes`: key modifications
-- `Verification`: commands/results used for validation
-- `Risks`: regression risks, impact scope, rollback method
+Use the template headings exactly:
+- `🎯 Goal`
+- `🛠 Core Changes`
+- `🧠 Key Decisions`
+- `🧪 Verification Guide`
+- `✅ Checklist`
 
 ### 3-4. Pre-Merge Checklist
 1. CI checks (`lint`, `type-check`, `build`) pass
@@ -78,6 +81,13 @@ Release-impact PRs must include:
 ### 3-6. Merge Policy
 - Default: merge commit
 - Squash merge is allowed for single-commit-style changes
+
+### 3-7. PR Submission Guardrail (Required)
+Before sharing a PR URL, confirm all of the following:
+1. Title follows `<emoji> <subject>` and subject starts with an English verb.
+2. Body section headings exactly match the template headings.
+3. `Verification Guide` contains concrete commands and expected results.
+4. The `Checklist` state is intentionally set (not left ambiguous).
 
 ## 4. PR Template Path
 - Use `.github/PULL_REQUEST_TEMPLATE.md` as the official PR template.

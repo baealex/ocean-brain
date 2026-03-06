@@ -10,3 +10,4 @@ packages/cli/dist
 packages/cli/server
 packages/server/prisma/data
 packages/server/public/assets/images
+docs/private/

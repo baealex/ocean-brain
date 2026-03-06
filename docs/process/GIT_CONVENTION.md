@@ -45,8 +45,8 @@ Updated: 2026-03-06
 ### 3-1. Base Rules
 - Default target branch: `main`
 - Required CI checks: `lint`, `type-check`, `build`
-- PR title format: `<emoji_shortcode> <subject>`
-- PR title emoji must use shortcode form (for example `:sparkles:`), not Unicode emoji.
+- PR title format: `<emoji> <subject>`
+- PR title emoji must be a Unicode emoji character (for example `✨`), not shortcode.
 - PR body must follow `.github/PULL_REQUEST_TEMPLATE.md` headings exactly.
 
 ### 3-2. Recommended Branch Naming
@@ -87,10 +87,11 @@ Release-impact PRs must include:
 
 ### 3-7. PR Submission Guardrail (Required)
 Before sharing a PR URL, confirm all of the following:
-1. Title follows `<emoji_shortcode> <subject>` and subject starts with an English verb.
+1. Title follows `<emoji> <subject>` and subject starts with an English verb.
 2. Body section headings exactly match the template headings.
-3. `Verification Guide` contains concrete commands and expected results.
-4. The `Checklist` state is intentionally set (not left ambiguous).
+3. PR body heading emojis must use shortcode form (`:dart:`, `:hammer_and_wrench:`, etc.).
+4. `Verification Guide` contains concrete commands and expected results.
+5. The `Checklist` state is intentionally set (not left ambiguous).
 
 ## 4. PR Template Path
 - Use `.github/PULL_REQUEST_TEMPLATE.md` as the official PR template.

@@ -29,7 +29,7 @@
         "@types/express": "^5.0.6",
         "@types/express-session": "^1.18.2",
         "eslint": "^9.39.2",
-        "glob": "^13.0.2",
+        "glob": "^13.0.6",
         "tsc-alias": "^1.8.16",
         "tsup": "^8.5.1",
         "tsx": "^4.21.0",

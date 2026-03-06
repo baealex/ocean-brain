@@ -14,6 +14,7 @@ import { Input, Label, useToast } from '~/components/ui';
 import * as Icon from '~/components/icon';
 
 import { getFixedPlaceholders, PLACEHOLDER_PREFIX, PLACEHOLDER_SUFFIX } from '~/modules/fixed-placeholder';
+import { queryKeys } from '~/modules/query-key-factory';
 
 import { createPlaceholder, deletePlaceholder, fetchPlaceholders } from '~/apis/placeholder.api';
 
@@ -37,10 +38,14 @@ const Placeholder = () => {
 
     const limit = 25;
     const page = Number(searchParams.get('page')) || 1;
+    const placeholderListKey = queryKeys.placeholders.list({
+        limit,
+        offset: (page - 1) * limit
+    });
 
     const [fixedPlaceholders] = useState(getFixedPlaceholders);
     const { data: placeholders, isLoading } = useQuery({
-        queryKey: ['placeholders', page],
+        queryKey: placeholderListKey,
         queryFn: async () => {
             const response = await fetchPlaceholders({
                 offset: (page - 1) * limit,
@@ -63,7 +68,7 @@ const Placeholder = () => {
                 template: '',
                 replacement: ''
             });
-            await queryClient.invalidateQueries({ queryKey: ['placeholders', page] });
+            await queryClient.invalidateQueries({ queryKey: queryKeys.placeholders.listAll(), exact: false });
         }
     });
 
@@ -71,7 +76,7 @@ const Placeholder = () => {
         mutationFn: deletePlaceholder,
         onSuccess: async () => {
             toast('Placeholder deleted successfully');
-            await queryClient.invalidateQueries({ queryKey: ['placeholders', page] });
+            await queryClient.invalidateQueries({ queryKey: queryKeys.placeholders.listAll(), exact: false });
         }
     });
 

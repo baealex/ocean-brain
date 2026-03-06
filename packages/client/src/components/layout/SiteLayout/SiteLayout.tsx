@@ -40,7 +40,7 @@ import { fetchNotes, reorderNotes } from '~/apis/note.api';
 import { fetchTags } from '~/apis/tag.api';
 import { getServerCache, setServerCache } from '~/apis/server-cache.api';
 import { PinnedNotes } from '~/components/entities';
-import { getPinnedNoteQueryKey } from '~/modules/query-key-factory';
+import { queryKeys } from '~/modules/query-key-factory';
 
 interface SiteLayoutProps {
     children?: React.ReactNode;
@@ -192,7 +192,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
     const reorderMutation = useMutation({
         mutationFn: reorderNotes,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: [getPinnedNoteQueryKey()] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.notes.pinned(), exact: true });
         }
     });
 
@@ -223,7 +223,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
     };
 
     const { data: heroBanner } = useQuery({
-        queryKey: ['heroBanner'],
+        queryKey: queryKeys.ui.heroBanner(),
         async queryFn() {
             return getServerCache('heroBanner');
         }
@@ -287,7 +287,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                             onClick={async () => {
                                 if (await confirm('Do you want to remove this hero banner?')) {
                                     await setServerCache('heroBanner', '');
-                                    await queryClient.invalidateQueries({ queryKey: ['heroBanner'] });
+                                    await queryClient.invalidateQueries({ queryKey: queryKeys.ui.heroBanner(), exact: true });
                                 }
                             }}>
                             <img

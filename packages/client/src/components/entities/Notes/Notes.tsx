@@ -1,6 +1,7 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { fetchNotes, type FetchNotesParams } from '~/apis/note.api';
 import type { Note } from '~/models/note.model';
+import { queryKeys } from '~/modules/query-key-factory';
 
 interface NotesProps {
     searchParams: FetchNotesParams;
@@ -10,16 +11,9 @@ interface NotesProps {
     }) => React.ReactNode;
 }
 
-const createQueryKey = (searchQuery: FetchNotesParams) => {
-    return [
-        'notes',
-        ...Object.values(searchQuery)
-    ];
-};
-
 const Notes = (props: NotesProps) => {
     const { data } = useSuspenseQuery({
-        queryKey: createQueryKey(props.searchParams),
+        queryKey: queryKeys.notes.list(props.searchParams),
         async queryFn() {
             const response = await fetchNotes(props.searchParams);
             if (response.type === 'error') {

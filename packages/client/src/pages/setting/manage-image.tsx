@@ -18,6 +18,7 @@ import { useGridLimit } from '~/hooks/useGridLimit';
 import { deleteImage } from '~/apis/image.api';
 import { Suspense } from 'react';
 import { Images } from '~/components/entities';
+import { queryKeys } from '~/modules/query-key-factory';
 
 const IMAGE_MIN_WIDTH = 240;
 const IMAGE_GAP = 20;
@@ -42,7 +43,7 @@ const ManageImage = () => {
             if (response.type === 'error') {
                 throw response;
             }
-            queryClient.invalidateQueries({ queryKey: ['images'] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.images.listAll(), exact: false });
         }
     });
 

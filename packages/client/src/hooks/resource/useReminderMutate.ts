@@ -4,6 +4,7 @@ import { useToast } from '~/components/ui';
 
 import { createReminder, updateReminder, deleteReminder } from '~/apis/reminder.api';
 import type { ReminderPriority } from '~/models/reminder.model';
+import { queryKeys } from '~/modules/query-key-factory';
 
 export default function useReminderMutate() {
     const toast = useToast();
@@ -22,8 +23,11 @@ export default function useReminderMutate() {
             return;
         }
 
-        queryClient.invalidateQueries({ queryKey: ['noteReminders', noteId] });
-        queryClient.invalidateQueries({ queryKey: ['upcomingReminders'] });
+        await Promise.all([
+            queryClient.invalidateQueries({ queryKey: queryKeys.reminders.noteAllPages(noteId), exact: false }),
+            queryClient.invalidateQueries({ queryKey: queryKeys.reminders.upcomingAllPages(), exact: false }),
+            queryClient.invalidateQueries({ queryKey: queryKeys.reminders.inDateRangeAll(), exact: false })
+        ]);
 
         if (onSuccess) {
             onSuccess();
@@ -46,8 +50,11 @@ export default function useReminderMutate() {
             return;
         }
 
-        queryClient.invalidateQueries({ queryKey: ['noteReminders', noteId] });
-        queryClient.invalidateQueries({ queryKey: ['upcomingReminders'] });
+        await Promise.all([
+            queryClient.invalidateQueries({ queryKey: queryKeys.reminders.noteAllPages(noteId), exact: false }),
+            queryClient.invalidateQueries({ queryKey: queryKeys.reminders.upcomingAllPages(), exact: false }),
+            queryClient.invalidateQueries({ queryKey: queryKeys.reminders.inDateRangeAll(), exact: false })
+        ]);
 
         if (onSuccess) {
             onSuccess();
@@ -62,8 +69,11 @@ export default function useReminderMutate() {
             return;
         }
 
-        queryClient.invalidateQueries({ queryKey: ['noteReminders', noteId] });
-        queryClient.invalidateQueries({ queryKey: ['upcomingReminders'] });
+        await Promise.all([
+            queryClient.invalidateQueries({ queryKey: queryKeys.reminders.noteAllPages(noteId), exact: false }),
+            queryClient.invalidateQueries({ queryKey: queryKeys.reminders.upcomingAllPages(), exact: false }),
+            queryClient.invalidateQueries({ queryKey: queryKeys.reminders.inDateRangeAll(), exact: false })
+        ]);
 
         if (onSuccess) {
             onSuccess();

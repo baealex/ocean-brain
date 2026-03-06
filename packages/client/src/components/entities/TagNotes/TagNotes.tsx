@@ -1,6 +1,7 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { fetchTagNotes, type FetchTagNotesParams } from '~/apis/note.api';
 import type { Note } from '~/models/note.model';
+import { queryKeys } from '~/modules/query-key-factory';
 
 interface TagNotesProps {
     searchParams: FetchTagNotesParams;
@@ -10,16 +11,9 @@ interface TagNotesProps {
     }) => React.ReactNode;
 }
 
-const createQueryKey = (searchQuery: FetchTagNotesParams) => {
-    return [
-        'tag-notes',
-        ...Object.values(searchQuery)
-    ];
-};
-
 const TagNotes = (props: TagNotesProps) => {
     const { data } = useSuspenseQuery({
-        queryKey: createQueryKey(props.searchParams),
+        queryKey: queryKeys.notes.tagList(props.searchParams),
         async queryFn() {
             const response = await fetchTagNotes({
                 query: props.searchParams.query,

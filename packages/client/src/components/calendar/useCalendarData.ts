@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { Note } from '~/models/note.model';
 import type { Reminder } from '~/models/reminder.model';
 import { graphQuery } from '~/modules/graph-query';
+import { queryKeys } from '~/modules/query-key-factory';
 
 const NOTES_QUERY = `
     query NotesInDateRange($dateRange: DateRangeInput) {
@@ -76,12 +77,12 @@ export const useCalendarData = ({ year, month }: UseCalendarDataParams) => {
     };
 
     const notesQuery = useQuery({
-        queryKey: ['notesInDateRange', year, month],
+        queryKey: queryKeys.calendar.notesInDateRange(year, month),
         queryFn: () => fetchNotesInRange(dateRange)
     });
 
     const remindersQuery = useQuery({
-        queryKey: ['remindersInDateRange', year, month],
+        queryKey: queryKeys.reminders.inDateRange(year, month),
         queryFn: () => fetchRemindersInRange(dateRange)
     });
 

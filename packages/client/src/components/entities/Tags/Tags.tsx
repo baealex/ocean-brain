@@ -1,6 +1,7 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { fetchTags } from '~/apis/tag.api';
 import type { Tag } from '~/models/tag.model';
+import { queryKeys } from '~/modules/query-key-factory';
 
 interface TagsProps {
     searchParams: {
@@ -15,7 +16,7 @@ interface TagsProps {
 
 const Tags = (props: TagsProps) => {
     const { data } = useSuspenseQuery({
-        queryKey: ['tags', props.searchParams.offset, props.searchParams.limit],
+        queryKey: queryKeys.tags.list(props.searchParams),
         async queryFn() {
             const response = await fetchTags({
                 offset: props.searchParams.offset,

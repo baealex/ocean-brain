@@ -21,10 +21,6 @@ jobs:
           - windows-latest
           - macos-latest
 
-    defaults:
-      run:
-        shell: bash
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -41,14 +37,11 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build publish artifacts
-        run: bash scripts/prepublish.sh
+        run: node scripts/prepublish.mjs
 
       - name: Pack CLI
         id: pack
-        run: |
-          mkdir -p .tmp
-          tarball="$(npm pack --pack-destination .tmp --prefix packages/cli | tail -n 1)"
-          echo "path=.tmp/${tarball}" >> "$GITHUB_OUTPUT"
+        run: node scripts/ci/pack-cli-tarball.mjs
 
       - name: Smoke test `npx ocean-brain`
         run: node scripts/ci/smoke-cli-npx.mjs "${{ steps.pack.outputs.path }}"

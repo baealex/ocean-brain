@@ -16,13 +16,16 @@ const tarballPath = path.resolve(tarballArg);
 const host = '127.0.0.1';
 const port = Number(process.env.CLI_SMOKE_PORT ?? '6683');
 const rootUrl = `http://${host}:${port}`;
+const isWindows = process.platform === 'win32';
+const readyTimeoutMs = Number(
+    process.env.CLI_SMOKE_READY_TIMEOUT_MS ?? (isWindows ? '300000' : '120000')
+);
 
 const tempRoot = mkdtempSync(path.join(os.tmpdir(), 'ocean-brain-smoke-'));
 const dataDir = path.join(tempRoot, 'data');
 const imageDir = path.join(dataDir, 'assets', 'images');
 mkdirSync(imageDir, { recursive: true });
 
-const isWindows = process.platform === 'win32';
 const npxArgs = [
     '--yes',
     '--package',
@@ -61,7 +64,7 @@ child.stderr.on('data', chunk => {
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-async function waitForReady(timeoutMs = 120000) {
+async function waitForReady(timeoutMs) {
     const deadline = Date.now() + timeoutMs;
 
     while (Date.now() < deadline) {
@@ -140,7 +143,7 @@ async function stopProcess() {
 
 async function main() {
     try {
-        await waitForReady();
+        await waitForReady(readyTimeoutMs);
         await assertGraphql();
         console.log('CLI smoke test passed.');
     } catch (error) {

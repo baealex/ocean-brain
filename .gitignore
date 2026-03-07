@@ -8,6 +8,8 @@ packages/server/dist
 packages/client/dist
 packages/cli/dist
 packages/cli/server
-packages/server/prisma/data
+packages/server/prisma/data/*
+!packages/server/prisma/data/.gitkeep
 packages/server/public/assets/images
 docs/private/
+.npm-cache

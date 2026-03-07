@@ -2,8 +2,16 @@
     "name": "ocean-brain",
     "version": "0.2.1",
     "type": "module",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/baealex/ocean-brain"
+    },
+    "homepage": "https://github.com/baealex/ocean-brain",
+    "bugs": {
+        "url": "https://github.com/baealex/ocean-brain/issues"
+    },
     "bin": {
-        "ocean-brain": "./dist/index.js"
+        "ocean-brain": "dist/index.js"
     },
     "files": [
         "dist",

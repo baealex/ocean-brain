@@ -1,0 +1,21 @@
+name: AUTO TAG RELEASE
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  tag-on-bump-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create tag from release bump commit
+        run: node scripts/ci/auto-tag-release.mjs

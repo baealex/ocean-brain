@@ -37,6 +37,7 @@ const child = spawn(
         host
     ],
     {
+        detached: process.platform !== 'win32',
         env: {
             ...process.env,
             OCEAN_BRAIN_DATA_DIR: dataDir,
@@ -60,12 +61,14 @@ async function waitForReady(timeoutMs = 120000) {
     const deadline = Date.now() + timeoutMs;
 
     while (Date.now() < deadline) {
-        if (child.exitCode !== null) {
-            throw new Error(`CLI process exited early with code ${child.exitCode}`);
+        if (child.exitCode !== null || child.signalCode !== null) {
+            throw new Error(`CLI process exited early (code=${child.exitCode}, signal=${child.signalCode})`);
         }
 
         try {
-            const response = await fetch(`${rootUrl}/`);
+            const response = await fetch(`${rootUrl}/`, {
+                signal: AbortSignal.timeout(3000)
+            });
             if (response.status === 200) return;
         } catch {
             // Server not ready yet.
@@ -80,6 +83,7 @@ async function waitForReady(timeoutMs = 120000) {
 async function assertGraphql() {
     const response = await fetch(`${rootUrl}/graphql`, {
         method: 'POST',
+        signal: AbortSignal.timeout(5000),
         headers: {
             'Content-Type': 'application/json'
         },
@@ -99,16 +103,34 @@ async function assertGraphql() {
 }
 
 async function stopProcess() {
-    if (child.exitCode !== null) return;
+    if (child.exitCode !== null || child.signalCode !== null) return;
 
-    child.kill('SIGTERM');
+    if (process.platform === 'win32') {
+        child.kill('SIGTERM');
+    } else {
+        try {
+            // Kill the full process group started by npx so child server does not hang the job.
+            process.kill(-child.pid, 'SIGTERM');
+        } catch {
+            child.kill('SIGTERM');
+        }
+    }
+
     await Promise.race([
         new Promise(resolve => child.once('exit', resolve)),
         sleep(10000)
     ]);
 
-    if (child.exitCode === null) {
-        child.kill('SIGKILL');
+    if (child.exitCode === null && child.signalCode === null) {
+        if (process.platform === 'win32') {
+            child.kill('SIGKILL');
+        } else {
+            try {
+                process.kill(-child.pid, 'SIGKILL');
+            } catch {
+                child.kill('SIGKILL');
+            }
+        }
     }
 }
 

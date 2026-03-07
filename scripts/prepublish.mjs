@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { execFileSync } from 'child_process';
+import { execSync } from 'child_process';
 import { cpSync, mkdirSync, rmSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -10,8 +10,8 @@ const rootDir = path.resolve(__dirname, '..');
 const cliDir = path.join(rootDir, 'packages', 'cli');
 
 function runPnpm(args) {
-    const bin = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
-    execFileSync(bin, args, {
+    const cmd = ['pnpm', ...args].join(' ');
+    execSync(cmd, {
         cwd: rootDir,
         stdio: 'inherit',
         env: process.env

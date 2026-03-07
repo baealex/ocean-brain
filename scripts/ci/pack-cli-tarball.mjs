@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { execFileSync } from 'child_process';
+import { execSync } from 'child_process';
 import { appendFileSync, mkdirSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -12,10 +12,8 @@ const tempDir = path.join(rootDir, '.tmp');
 
 mkdirSync(tempDir, { recursive: true });
 
-const npmBin = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-const output = execFileSync(
-    npmBin,
-    ['pack', '--pack-destination', tempDir],
+const output = execSync(
+    `npm pack --pack-destination "${tempDir}"`,
     {
         cwd: cliDir,
         encoding: 'utf8',

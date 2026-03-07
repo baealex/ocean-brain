@@ -41,9 +41,18 @@ const useNoteMutate = () => {
                 return;
             }
             await Promise.all([
-                queryClient.invalidateQueries({ queryKey: queryKeys.notes.listAll(), exact: false }),
-                queryClient.invalidateQueries({ queryKey: queryKeys.notes.tagListAll(), exact: false }),
-                queryClient.invalidateQueries({ queryKey: queryKeys.notes.pinned(), exact: true })
+                queryClient.invalidateQueries({
+                    queryKey: queryKeys.notes.listAll(),
+                    exact: false
+                }),
+                queryClient.invalidateQueries({
+                    queryKey: queryKeys.notes.tagListAll(),
+                    exact: false
+                }),
+                queryClient.invalidateQueries({
+                    queryKey: queryKeys.notes.pinned(),
+                    exact: true
+                })
             ]);
             callback?.();
         } catch {
@@ -59,9 +68,18 @@ const useNoteMutate = () => {
                 return;
             }
             await Promise.all([
-                queryClient.invalidateQueries({ queryKey: queryKeys.notes.listAll(), exact: false }),
-                queryClient.invalidateQueries({ queryKey: queryKeys.notes.tagListAll(), exact: false }),
-                queryClient.invalidateQueries({ queryKey: queryKeys.notes.pinned(), exact: true })
+                queryClient.invalidateQueries({
+                    queryKey: queryKeys.notes.listAll(),
+                    exact: false
+                }),
+                queryClient.invalidateQueries({
+                    queryKey: queryKeys.notes.tagListAll(),
+                    exact: false
+                }),
+                queryClient.invalidateQueries({
+                    queryKey: queryKeys.notes.pinned(),
+                    exact: true
+                })
             ]);
             callback?.();
         }

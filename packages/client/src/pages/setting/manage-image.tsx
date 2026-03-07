@@ -43,7 +43,10 @@ const ManageImage = () => {
             if (response.type === 'error') {
                 throw response;
             }
-            queryClient.invalidateQueries({ queryKey: queryKeys.images.listAll(), exact: false });
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.images.listAll(),
+                exact: false
+            });
         }
     });
 

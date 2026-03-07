@@ -24,9 +24,18 @@ export default function useReminderMutate() {
         }
 
         await Promise.all([
-            queryClient.invalidateQueries({ queryKey: queryKeys.reminders.noteAllPages(noteId), exact: false }),
-            queryClient.invalidateQueries({ queryKey: queryKeys.reminders.upcomingAllPages(), exact: false }),
-            queryClient.invalidateQueries({ queryKey: queryKeys.reminders.inDateRangeAll(), exact: false })
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.reminders.noteAllPages(noteId),
+                exact: false
+            }),
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.reminders.upcomingAllPages(),
+                exact: false
+            }),
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.reminders.inDateRangeAll(),
+                exact: false
+            })
         ]);
 
         if (onSuccess) {
@@ -51,9 +60,18 @@ export default function useReminderMutate() {
         }
 
         await Promise.all([
-            queryClient.invalidateQueries({ queryKey: queryKeys.reminders.noteAllPages(noteId), exact: false }),
-            queryClient.invalidateQueries({ queryKey: queryKeys.reminders.upcomingAllPages(), exact: false }),
-            queryClient.invalidateQueries({ queryKey: queryKeys.reminders.inDateRangeAll(), exact: false })
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.reminders.noteAllPages(noteId),
+                exact: false
+            }),
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.reminders.upcomingAllPages(),
+                exact: false
+            }),
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.reminders.inDateRangeAll(),
+                exact: false
+            })
         ]);
 
         if (onSuccess) {
@@ -70,9 +88,18 @@ export default function useReminderMutate() {
         }
 
         await Promise.all([
-            queryClient.invalidateQueries({ queryKey: queryKeys.reminders.noteAllPages(noteId), exact: false }),
-            queryClient.invalidateQueries({ queryKey: queryKeys.reminders.upcomingAllPages(), exact: false }),
-            queryClient.invalidateQueries({ queryKey: queryKeys.reminders.inDateRangeAll(), exact: false })
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.reminders.noteAllPages(noteId),
+                exact: false
+            }),
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.reminders.upcomingAllPages(),
+                exact: false
+            }),
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.reminders.inDateRangeAll(),
+                exact: false
+            })
         ]);
 
         if (onSuccess) {

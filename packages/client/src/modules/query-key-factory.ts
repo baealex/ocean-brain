@@ -100,7 +100,10 @@ export const queryKeys = {
         ] as const,
         upcomingAllPages: () => ['reminders', 'upcoming'] as const,
         inDateRangeAll: () => ['reminders', 'in-date-range'] as const,
-        inDateRange: (year: number, month: number) => ['reminders', 'in-date-range', { year, month }] as const
+        inDateRange: (year: number, month: number) => ['reminders', 'in-date-range', {
+            year,
+            month
+        }] as const
     },
     placeholders: {
         all: () => ['placeholders'] as const,
@@ -117,11 +120,12 @@ export const queryKeys = {
         ] as const
     },
     calendar: {
-        notesInDateRange: (year: number, month: number) => ['calendar', 'notes-in-date-range', { year, month }] as const
+        notesInDateRange: (year: number, month: number) => ['calendar', 'notes-in-date-range', {
+            year,
+            month
+        }] as const
     },
-    ui: {
-        heroBanner: () => ['ui', 'hero-banner'] as const
-    }
+    ui: { heroBanner: () => ['ui', 'hero-banner'] as const }
 } as const;
 
 export const getPinnedNoteQueryKey = () => queryKeys.notes.pinned();

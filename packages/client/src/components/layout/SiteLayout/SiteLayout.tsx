@@ -192,7 +192,10 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
     const reorderMutation = useMutation({
         mutationFn: reorderNotes,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.notes.pinned(), exact: true });
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.notes.pinned(),
+                exact: true
+            });
         }
     });
 
@@ -287,7 +290,10 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                             onClick={async () => {
                                 if (await confirm('Do you want to remove this hero banner?')) {
                                     await setServerCache('heroBanner', '');
-                                    await queryClient.invalidateQueries({ queryKey: queryKeys.ui.heroBanner(), exact: true });
+                                    await queryClient.invalidateQueries({
+                                        queryKey: queryKeys.ui.heroBanner(),
+                                        exact: true
+                                    });
                                 }
                             }}>
                             <img

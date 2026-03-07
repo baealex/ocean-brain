@@ -68,7 +68,10 @@ const Placeholder = () => {
                 template: '',
                 replacement: ''
             });
-            await queryClient.invalidateQueries({ queryKey: queryKeys.placeholders.listAll(), exact: false });
+            await queryClient.invalidateQueries({
+                queryKey: queryKeys.placeholders.listAll(),
+                exact: false
+            });
         }
     });
 
@@ -76,7 +79,10 @@ const Placeholder = () => {
         mutationFn: deletePlaceholder,
         onSuccess: async () => {
             toast('Placeholder deleted successfully');
-            await queryClient.invalidateQueries({ queryKey: queryKeys.placeholders.listAll(), exact: false });
+            await queryClient.invalidateQueries({
+                queryKey: queryKeys.placeholders.listAll(),
+                exact: false
+            });
         }
     });
 

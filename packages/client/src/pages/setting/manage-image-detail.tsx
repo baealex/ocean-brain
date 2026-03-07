@@ -109,7 +109,10 @@ const ManageImageDetail = () => {
                                         className="flex-1"
                                         onClick={async () => {
                                             await setServerCache('heroBanner', image.url);
-                                            await queryClient.invalidateQueries({ queryKey: queryKeys.ui.heroBanner(), exact: true });
+                                            await queryClient.invalidateQueries({
+                                                queryKey: queryKeys.ui.heroBanner(),
+                                                exact: true
+                                            });
                                         }}>
                                         <Icon.Heart size={16} className="fill-red-500 text-red-500" />
                                         <span>Set hero banner</span>

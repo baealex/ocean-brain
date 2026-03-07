@@ -40,8 +40,8 @@ Updated: 2026-03-06
 1. `publish-npm`
 - Installs Node 22 and pnpm
 - Runs `node scripts/release/prepublish.mjs`
-- Publishes with `pnpm --filter ocean-brain publish --no-git-checks --access public`
-- Requires `NPM_TOKEN`
+- Publishes with `npm publish --provenance --access public` from `packages/cli`
+- Uses npm trusted publishing (OIDC) via GitHub Actions
 - Creates a GitHub Release with auto-generated notes (`generate_release_notes: true`)
 
 2. `publish-docker`
@@ -193,6 +193,5 @@ Checked at document update time (`2026-03-06`) using:
 - `#49` `Merge pull request #49 from baealex/fix/native-arm64-runner`
 
 ## 10. Required Secrets
-- `NPM_TOKEN`
 - `DOCKERHUB_USERNAME`
 - `DOCKERHUB_TOKEN`

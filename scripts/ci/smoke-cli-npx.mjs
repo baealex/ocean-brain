@@ -22,22 +22,26 @@ const dataDir = path.join(tempRoot, 'data');
 const imageDir = path.join(dataDir, 'assets', 'images');
 mkdirSync(imageDir, { recursive: true });
 
-const npxBin = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+const isWindows = process.platform === 'win32';
+const npxArgs = [
+    '--yes',
+    '--package',
+    tarballPath,
+    'ocean-brain',
+    'serve',
+    '--port',
+    String(port),
+    '--host',
+    host
+];
+
 const child = spawn(
-    npxBin,
-    [
-        '--yes',
-        '--package',
-        tarballPath,
-        'ocean-brain',
-        'serve',
-        '--port',
-        String(port),
-        '--host',
-        host
-    ],
+    isWindows ? 'cmd.exe' : 'npx',
+    isWindows
+        ? ['/d', '/s', '/c', 'npx', ...npxArgs]
+        : npxArgs,
     {
-        detached: process.platform !== 'win32',
+        detached: !isWindows,
         env: {
             ...process.env,
             OCEAN_BRAIN_DATA_DIR: dataDir,

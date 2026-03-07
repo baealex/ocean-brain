@@ -30,8 +30,8 @@ Updated: 2026-03-06
 
 ## 5. Server and Release Linked Rules
 - Server start script includes `prisma migrate deploy`.
-- Use `bash scripts/prepublish.sh` for release artifact preparation.
-- `bash scripts/test-cli-publish.sh` is recommended before release.
+- Use `node scripts/release/prepublish.mjs` for release artifact preparation.
+- CLI publish validation is covered by `CLI_SMOKE` CI.
 
 ## 6. Related Documents
 - Git rules: `docs/process/GIT_CONVENTION.md`

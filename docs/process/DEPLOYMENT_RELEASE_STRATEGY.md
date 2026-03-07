@@ -39,7 +39,7 @@ Updated: 2026-03-06
 ## 4. Release Pipeline Details
 1. `publish-npm`
 - Installs Node 22 and pnpm
-- Runs `bash scripts/prepublish.sh`
+- Runs `node scripts/release/prepublish.mjs`
 - Publishes with `pnpm --filter ocean-brain publish --no-git-checks --access public`
 - Requires `NPM_TOKEN`
 - Creates a GitHub Release with auto-generated notes (`generate_release_notes: true`)
@@ -55,7 +55,7 @@ Updated: 2026-03-06
 - Pushes final tags: `<version>`, `latest`
 
 ## 5. Prepublish Build Strategy
-- `scripts/prepublish.sh` standardizes release artifacts.
+- `scripts/release/prepublish.mjs` standardizes release artifacts.
 1. Builds `@ocean-brain/client`
 2. Builds `@ocean-brain/server`
 3. Builds `ocean-brain` (CLI)
@@ -64,7 +64,7 @@ Updated: 2026-03-06
 
 ## 6. Manual Release Runbook
 1. Verify release package
-- `bash scripts/test-cli-publish.sh`
+- Required: latest `CLI_SMOKE` workflow is green for the release target commit/PR.
 
 2. Collect unreleased changes before version bump
 - Commit list:
@@ -73,7 +73,7 @@ Updated: 2026-03-06
   `git log v<previous-version>..HEAD --merges --pretty=format:"%s"`
 
 3. Bump version
-- `bash scripts/bump-version.sh <version>`
+- `node scripts/release/bump-version.mjs <version>`
 - This updates only `packages/cli/package.json`.
 
 4. Create dedicated release branch
@@ -147,7 +147,7 @@ Use this template when editing a release like `v0.2.0`.
 
 ## Verification Guide
 ### How to verify
-  - `bash scripts/test-cli-publish.sh`
+  - `CLI_SMOKE` workflow passed
   - `pnpm build`
 
 ### Expected result

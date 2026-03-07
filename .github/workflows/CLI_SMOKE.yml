@@ -37,7 +37,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build publish artifacts
-        run: node scripts/prepublish.mjs
+        run: node scripts/release/prepublish.mjs
 
       - name: Pack CLI
         id: pack

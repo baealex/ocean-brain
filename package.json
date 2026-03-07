@@ -25,9 +25,9 @@
         "start": "pnpm --filter @ocean-brain/server start",
         "lint": "pnpm --filter @ocean-brain/client lint && pnpm --filter @ocean-brain/server lint",
         "type-check": "pnpm --filter @ocean-brain/client type-check && pnpm --filter @ocean-brain/server type-check",
-        "cli": "node scripts/prepublish.mjs && node packages/cli/dist/index.js",
-        "test:cli-publish": "bash scripts/test-cli-publish.sh",
-        "prepublish": "node scripts/prepublish.mjs"
+        "cli": "node scripts/release/prepublish.mjs && node packages/cli/dist/index.js",
+        "release:bump": "node scripts/release/bump-version.mjs",
+        "prepublish": "node scripts/release/prepublish.mjs"
     },
     "devDependencies": {}
 }

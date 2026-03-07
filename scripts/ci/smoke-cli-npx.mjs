@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { spawn } from 'child_process';
+import { spawn, spawnSync } from 'child_process';
 import { mkdirSync, mkdtempSync, rmSync } from 'fs';
 import os from 'os';
 import path from 'path';
@@ -113,7 +113,10 @@ async function stopProcess() {
     if (child.exitCode !== null || child.signalCode !== null) return;
 
     if (process.platform === 'win32') {
-        child.kill('SIGTERM');
+        // Ensure cmd/npx/server child tree is terminated on Windows.
+        spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], {
+            stdio: 'ignore'
+        });
     } else {
         try {
             // Kill the full process group started by npx so child server does not hang the job.
@@ -130,7 +133,9 @@ async function stopProcess() {
 
     if (child.exitCode === null && child.signalCode === null) {
         if (process.platform === 'win32') {
-            child.kill('SIGKILL');
+            spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], {
+                stdio: 'ignore'
+            });
         } else {
             try {
                 process.kill(-child.pid, 'SIGKILL');
@@ -155,7 +160,22 @@ async function main() {
         throw error;
     } finally {
         await stopProcess();
-        rmSync(tempRoot, { recursive: true, force: true });
+        let cleaned = false;
+        for (let i = 0; i < 6; i++) {
+            try {
+                rmSync(tempRoot, { recursive: true, force: true });
+                cleaned = true;
+                break;
+            } catch (error) {
+                const code = error?.code;
+                if (code !== 'EBUSY' && code !== 'EPERM') throw error;
+                await sleep(500);
+            }
+        }
+
+        if (!cleaned) {
+            console.warn(`Warning: failed to clean temp directory: ${tempRoot}`);
+        }
     }
 }
 

@@ -8,6 +8,7 @@ import * as Icon from '~/components/icon';
 import { deleteImage, fetchImage } from '~/apis/image.api';
 import { fetchImageNotes } from '~/apis/note.api';
 import { setServerCache } from '~/apis/server-cache.api';
+import { queryKeys } from '~/modules/query-key-factory';
 
 const ManageImageDetail = () => {
     const confirm = useConfirm();
@@ -17,7 +18,7 @@ const ManageImageDetail = () => {
     const queryClient = useQueryClient();
 
     const { data: image } = useQuery({
-        queryKey: ['image', id],
+        queryKey: queryKeys.images.detail(id ?? ''),
         async queryFn() {
             const response = await fetchImage(id!);
             if (response.type === 'error') {
@@ -29,7 +30,7 @@ const ManageImageDetail = () => {
     });
 
     const { data: imageNotes } = useQuery({
-        queryKey: ['image', id, 'notes'],
+        queryKey: queryKeys.images.notes(id ?? ''),
         async queryFn() {
             const response = await fetchImageNotes(image!.url);
             if (response.type === 'error') {
@@ -108,7 +109,10 @@ const ManageImageDetail = () => {
                                         className="flex-1"
                                         onClick={async () => {
                                             await setServerCache('heroBanner', image.url);
-                                            await queryClient.invalidateQueries({ queryKey: ['heroBanner'] });
+                                            await queryClient.invalidateQueries({
+                                                queryKey: queryKeys.ui.heroBanner(),
+                                                exact: true
+                                            });
                                         }}>
                                         <Icon.Heart size={16} className="fill-red-500 text-red-500" />
                                         <span>Set hero banner</span>

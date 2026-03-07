@@ -7,7 +7,7 @@ import {
 } from '~/apis/note.api';
 import { useNavigate } from 'react-router-dom';
 import { useConfirm, useToast } from '~/components/ui';
-import { getPinnedNoteQueryKey } from '~/modules/query-key-factory';
+import { queryKeys } from '~/modules/query-key-factory';
 import { replaceFixedPlaceholder } from '~/modules/fixed-placeholder';
 
 import type { NoteLayout } from '~/models/note.model';
@@ -40,9 +40,20 @@ const useNoteMutate = () => {
                 toast(response.errors[0].message);
                 return;
             }
-            await queryClient.invalidateQueries({ queryKey: ['notes'] });
-            await queryClient.invalidateQueries({ queryKey: ['tag-notes'] });
-            await queryClient.invalidateQueries({ queryKey: [getPinnedNoteQueryKey()] });
+            await Promise.all([
+                queryClient.invalidateQueries({
+                    queryKey: queryKeys.notes.listAll(),
+                    exact: false
+                }),
+                queryClient.invalidateQueries({
+                    queryKey: queryKeys.notes.tagListAll(),
+                    exact: false
+                }),
+                queryClient.invalidateQueries({
+                    queryKey: queryKeys.notes.pinned(),
+                    exact: true
+                })
+            ]);
             callback?.();
         } catch {
             toast('Failed to update note pin status');
@@ -56,9 +67,20 @@ const useNoteMutate = () => {
                 toast(response.errors[0].message);
                 return;
             }
-            await queryClient.invalidateQueries({ queryKey: ['notes'] });
-            await queryClient.invalidateQueries({ queryKey: ['tag-notes'] });
-            await queryClient.invalidateQueries({ queryKey: [getPinnedNoteQueryKey()] });
+            await Promise.all([
+                queryClient.invalidateQueries({
+                    queryKey: queryKeys.notes.listAll(),
+                    exact: false
+                }),
+                queryClient.invalidateQueries({
+                    queryKey: queryKeys.notes.tagListAll(),
+                    exact: false
+                }),
+                queryClient.invalidateQueries({
+                    queryKey: queryKeys.notes.pinned(),
+                    exact: true
+                })
+            ]);
             callback?.();
         }
     };

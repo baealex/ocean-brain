@@ -3,6 +3,7 @@ import { fetchNoteReminders, fetchUpcomingReminders } from '~/apis/reminder.api'
 
 import type { Reminders as RemindersType } from '~/models/reminder.model';
 import type { Pagination } from '~/types';
+import { queryKeys } from '~/modules/query-key-factory';
 
 interface RemindersProps {
     noteId?: string;
@@ -12,7 +13,9 @@ interface RemindersProps {
 
 export default function Reminders({ noteId, searchParams, render }: RemindersProps) {
     const { data } = useQuery({
-        queryKey: noteId ? ['noteReminders', noteId, searchParams] : ['upcomingReminders', searchParams],
+        queryKey: noteId
+            ? queryKeys.reminders.note(noteId, searchParams)
+            : queryKeys.reminders.upcoming(searchParams),
         queryFn: async () => {
             if (noteId) {
                 const noteRemindersResponse = await fetchNoteReminders(noteId, searchParams);

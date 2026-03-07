@@ -13,6 +13,7 @@ import { fetchNoteGraph, type GraphNode, type GraphLink } from '~/apis/note.api'
 import { Empty, PageLayout, Skeleton } from '~/components/shared';
 import { useTheme } from '~/store/theme';
 import { getHash } from '~/modules/hash';
+import { queryKeys } from '~/modules/query-key-factory';
 
 interface GraphData {
     nodes: GraphNode[];
@@ -68,7 +69,7 @@ export default function Graph() {
     isDarkRef.current = isDark;
 
     const { data, isLoading, error } = useQuery({
-        queryKey: ['noteGraph'],
+        queryKey: queryKeys.notes.graph(),
         async queryFn() {
             const response = await fetchNoteGraph();
             if (response.type === 'success') {

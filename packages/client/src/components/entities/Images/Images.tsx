@@ -1,6 +1,7 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { fetchImages } from '~/apis/image.api';
 import type { Image } from '~/models/image.model';
+import { queryKeys } from '~/modules/query-key-factory';
 
 interface ImagesProps {
     searchParams: {
@@ -15,7 +16,7 @@ interface ImagesProps {
 
 const Images = (props: ImagesProps) => {
     const { data } = useSuspenseQuery({
-        queryKey: ['images', props.searchParams.offset, props.searchParams.limit],
+        queryKey: queryKeys.images.list(props.searchParams),
         async queryFn() {
             const response = await fetchImages({
                 offset: props.searchParams.offset,

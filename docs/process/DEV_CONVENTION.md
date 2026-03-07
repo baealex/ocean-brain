@@ -35,4 +35,5 @@ Updated: 2026-03-06
 
 ## 6. Related Documents
 - Git rules: `docs/process/GIT_CONVENTION.md`
+- Query key rules: `docs/process/QUERY_KEY_CONVENTION.md`
 - Deployment/release: `docs/process/DEPLOYMENT_RELEASE_STRATEGY.md`

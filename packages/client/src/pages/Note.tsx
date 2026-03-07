@@ -12,6 +12,7 @@ import useDebounce from '~/hooks/useDebounce';
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
 
 import { getNoteURL } from '~/modules/url';
+import { queryKeys } from '~/modules/query-key-factory';
 
 import type { EditorRef } from '~/components/shared/Editor';
 import Editor from '~/components/shared/Editor';
@@ -38,7 +39,7 @@ export default function Note() {
     const [isMountedEvent, mountEvent] = useDebounce(1000);
 
     const { data: note, isError, isLoading } = useQuery({
-        queryKey: ['note', id],
+        queryKey: queryKeys.notes.detail(id ?? ''),
         async queryFn() {
             const response = await fetchNote(id!);
             if (response.type === 'error') {

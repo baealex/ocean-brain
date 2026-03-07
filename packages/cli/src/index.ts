@@ -2,7 +2,7 @@ import { execSync } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { Command } from 'commander';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -63,7 +63,8 @@ program
             env: { ...process.env }
         });
 
-        await import(path.resolve(serverRoot, 'dist/main.js'));
+        const serverEntry = pathToFileURL(path.resolve(serverRoot, 'dist/main.js')).href;
+        await import(serverEntry);
     });
 
 program

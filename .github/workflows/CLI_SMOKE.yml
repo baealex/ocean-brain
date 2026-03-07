@@ -1,0 +1,47 @@
+name: CLI SMOKE
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  smoke-npx-cli:
+    name: npx smoke (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pnpm
+        run: npm install -g pnpm@10.25.0
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build publish artifacts
+        run: node scripts/release/prepublish.mjs
+
+      - name: Pack CLI
+        id: pack
+        run: node scripts/ci/pack-cli-tarball.mjs
+
+      - name: Smoke test `npx ocean-brain`
+        run: node scripts/ci/smoke-cli-npx.mjs "${{ steps.pack.outputs.path }}"

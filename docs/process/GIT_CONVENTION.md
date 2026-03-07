@@ -72,14 +72,14 @@ Use the template headings exactly:
 ### 3-5. Release-Impact PR
 Changes in the files below are treated as release-impacting.
 1. `packages/cli/package.json`
-2. `scripts/prepublish.sh`, `scripts/bump-version.sh`
+2. `scripts/release/prepublish.mjs`, `scripts/release/bump-version.mjs`
 3. `.github/workflows/RELEASE.yml`
 4. `Dockerfile`, `docker-compose.yml`
 
 Release-impact PRs must include:
 1. expected release version
 2. tag plan (`vX.Y.Z`)
-3. verification result (`bash scripts/test-cli-publish.sh` recommended)
+3. verification result (`CLI_SMOKE` pass)
 
 ### 3-6. Merge Policy
 - Default: merge commit

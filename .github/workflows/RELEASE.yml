@@ -11,8 +11,10 @@ env:
 jobs:
   publish-npm:
     runs-on: ubuntu-latest
+    environment: npm-release
     permissions:
       contents: write
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,12 +32,10 @@ jobs:
         run: pnpm install
 
       - name: Build & prepare publish
-        run: bash scripts/prepublish.sh
+        run: node scripts/release/prepublish.mjs
 
       - name: Publish ocean-brain
         run: pnpm --filter ocean-brain publish --no-git-checks --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

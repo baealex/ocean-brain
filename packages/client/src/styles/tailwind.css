@@ -399,3 +399,52 @@ html.dark .shadow-sketchy {
 html.dark .shadow-sketchy-lg {
     box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.25);
 }
+
+/* Tape decoration for pinned cards */
+.sketch-tape {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%) rotate(-2deg);
+    width: 64px;
+    height: 22px;
+    background: rgba(252, 235, 175, 0.85);
+    border: 1px solid rgba(200, 180, 120, 0.4);
+    border-radius: 2px;
+    z-index: 10;
+}
+
+.sketch-tape::before,
+.sketch-tape::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: repeating-linear-gradient(
+        to bottom,
+        transparent,
+        transparent 2px,
+        rgba(200, 180, 120, 0.3) 2px,
+        rgba(200, 180, 120, 0.3) 4px
+    );
+}
+
+.sketch-tape::before { left: 3px; }
+.sketch-tape::after { right: 3px; }
+
+html.dark .sketch-tape {
+    background: rgba(180, 160, 100, 0.45);
+    border-color: rgba(140, 120, 70, 0.35);
+}
+
+html.dark .sketch-tape::before,
+html.dark .sketch-tape::after {
+    background: repeating-linear-gradient(
+        to bottom,
+        transparent,
+        transparent 2px,
+        rgba(140, 120, 70, 0.25) 2px,
+        rgba(140, 120, 70, 0.25) 4px
+    );
+}

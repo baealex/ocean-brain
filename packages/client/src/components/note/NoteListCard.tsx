@@ -8,7 +8,6 @@ import type { Note } from '~/models/note.model';
 import { getRandomBackground } from '~/modules/color';
 import { timeSince } from '~/modules/time';
 import { getNoteURL } from '~/modules/url';
-import { PushPinIcon } from '@phosphor-icons/react';
 
 interface Props extends Note {
     onPinned?: () => void;
@@ -31,9 +30,7 @@ export default function NoteListCard({
     return (
         <div key={id} className={`${getRandomBackground(id)} p-4 relative sketchy shadow-sketchy`}>
             {pinned && (
-                <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 z-10">
-                    <PushPinIcon weight="fill" className="text-red-500 stroke-black stroke-8 drop-shadow-md" size={28} />
-                </div>
+                <div className="sketch-tape" />
             )}
             <div key={id} className="rounded-xl flex justify-between items-center">
                 <div className="flex flex-col w-full gap-4">

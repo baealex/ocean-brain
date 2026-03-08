@@ -3,9 +3,9 @@ import classNames from 'classnames/bind';
 const cx = classNames.bind(styles);
 
 import { createReactInlineContentSpec } from '@blocknote/react';
-import { Link } from 'react-router-dom';
+import { Link } from '@tanstack/react-router';
 
-import { getTagURL } from '~/modules/url';
+import { TAG_NOTES_ROUTE } from '~/modules/url';
 
 export const Tag = createReactInlineContentSpec(
     {
@@ -19,7 +19,10 @@ export const Tag = createReactInlineContentSpec(
     {
         render: (props) => (
             <span className={cx('Tag')}>
-                <Link to={getTagURL(props.inlineContent.props.id)}>
+                <Link
+                    to={TAG_NOTES_ROUTE}
+                    params={{ id: props.inlineContent.props.id }}
+                    search={{ page: 1 }}>
                     <span className="text-fg-default">
                         {props.inlineContent.props.tag}
                     </span>

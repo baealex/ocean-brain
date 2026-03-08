@@ -1,6 +1,6 @@
 import dayjs from 'dayjs';
 import { useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { getRouteApi } from '@tanstack/react-router';
 
 import {
     CalendarDay,
@@ -13,6 +13,7 @@ import { Callout, PageLayout } from '~/components/shared';
 import { Skeleton, ToggleGroup, ToggleGroupItem } from '~/components/ui';
 import type { Note } from '~/models/note.model';
 import type { Reminder } from '~/models/reminder.model';
+import { CALENDAR_ROUTE } from '~/modules/url';
 
 const DAYS_OF_WEEK = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
@@ -30,11 +31,15 @@ interface CalendarDayView {
     reminders: Reminder[];
 }
 
+const Route = getRouteApi(CALENDAR_ROUTE);
+
 export default function Calendar() {
-    const [searchParams, setSearchParams] = useSearchParams();
-    const year = Number(searchParams.get('year')) || dayjs().year();
-    const month = Number(searchParams.get('month')) || dayjs().month() + 1;
-    const type = (searchParams.get('type') || 'create') as CalendarDisplayType;
+    const navigate = Route.useNavigate();
+    const {
+        year,
+        month,
+        type
+    } = Route.useSearch();
 
     const { notes, reminders, isLoading, isError } = useCalendarData({
         year,
@@ -129,40 +134,44 @@ export default function Calendar() {
     const handlePrevMonth = () => {
         const newMonth = month === 1 ? 12 : month - 1;
         const newYear = month === 1 ? year - 1 : year;
-        setSearchParams(params => {
-            params.set('month', newMonth.toString());
-            params.set('year', newYear.toString());
-            return params;
+        navigate({
+            search: prev => ({
+                ...prev,
+                month: newMonth,
+                year: newYear
+            })
         });
     };
 
     const handleNextMonth = () => {
         const newMonth = month === 12 ? 1 : month + 1;
         const newYear = month === 12 ? year + 1 : year;
-        setSearchParams(params => {
-            params.set('month', newMonth.toString());
-            params.set('year', newYear.toString());
-            return params;
+        navigate({
+            search: prev => ({
+                ...prev,
+                month: newMonth,
+                year: newYear
+            })
         });
     };
 
     const handleToday = () => {
-        setSearchParams(params => {
-            params.set('month', (dayjs().month() + 1).toString());
-            params.set('year', dayjs().year().toString());
-            return params;
+        navigate({
+            search: prev => ({
+                ...prev,
+                month: dayjs().month() + 1,
+                year: dayjs().year()
+            })
         });
     };
 
     const handleTypeChange = (value: string) => {
         if (!value) return;
-        setSearchParams(params => {
-            if (value === 'create') {
-                params.delete('type');
-            } else {
-                params.set('type', value);
-            }
-            return params;
+        navigate({
+            search: prev => ({
+                ...prev,
+                type: value as CalendarDisplayType
+            })
         });
     };
 

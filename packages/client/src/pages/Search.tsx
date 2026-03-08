@@ -1,4 +1,4 @@
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, getRouteApi } from '@tanstack/react-router';
 
 import {
     Empty,
@@ -9,15 +9,19 @@ import {
 } from '~/components/shared';
 import { Notes } from '~/components/entities';
 
-import { getNoteURL } from '~/modules/url';
+import { NOTE_ROUTE, SEARCH_ROUTE } from '~/modules/url';
 import { Suspense } from 'react';
 
+const Route = getRouteApi(SEARCH_ROUTE);
+
 export default function Search() {
-    const [searchParams, setSearchParams] = useSearchParams();
+    const navigate = Route.useNavigate();
+    const {
+        page,
+        query
+    } = Route.useSearch();
 
     const limit = 10;
-    const page = Number(searchParams.get('page')) || 1;
-    const query = searchParams.get('query') || '';
 
     return (
         <PageLayout title={`Search "${query}"`} variant="none">
@@ -43,7 +47,9 @@ export default function Search() {
                                     {notes.length > 0 && notes.map((note) => (
                                         <div key={note.id} className="mb-5">
                                             <div className="font-semibold text-lg mb-1">
-                                                <Link to={getNoteURL(note.id)}>
+                                                <Link
+                                                    to={NOTE_ROUTE}
+                                                    params={{ id: note.id }}>
                                                     <Highlight match={query}>
                                                         {note.title}
                                                     </Highlight>
@@ -65,9 +71,11 @@ export default function Search() {
                                             page={page}
                                             last={Math.ceil(totalCount / limit)}
                                             onChange={(page) => {
-                                                setSearchParams(searchParams => {
-                                                    searchParams.set('page', page.toString());
-                                                    return searchParams;
+                                                navigate({
+                                                    search: prev => ({
+                                                        ...prev,
+                                                        page
+                                                    })
                                                 });
                                             }}
                                         />

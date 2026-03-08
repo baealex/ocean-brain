@@ -3,9 +3,9 @@ import classNames from 'classnames/bind';
 const cx = classNames.bind(styles);
 
 import { createReactInlineContentSpec } from '@blocknote/react';
-import { Link } from 'react-router-dom';
+import { Link } from '@tanstack/react-router';
 
-import { getNoteURL } from '~/modules/url';
+import { NOTE_ROUTE } from '~/modules/url';
 
 const Reference = createReactInlineContentSpec(
     {
@@ -19,7 +19,9 @@ const Reference = createReactInlineContentSpec(
     {
         render: (props) => (
             <span className={cx('Reference')}>
-                <Link to={getNoteURL(props.inlineContent.props.id)}>
+                <Link
+                    to={NOTE_ROUTE}
+                    params={{ id: props.inlineContent.props.id }}>
                     <span className="text-fg-default">
                         [{props.inlineContent.props.title}]
                     </span>

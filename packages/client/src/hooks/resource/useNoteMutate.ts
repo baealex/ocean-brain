@@ -1,14 +1,15 @@
 import { useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 
 import {
     createNote,
     deleteNote,
     pinNote
 } from '~/apis/note.api';
-import { useNavigate } from 'react-router-dom';
 import { useConfirm, useToast } from '~/components/ui';
 import { queryKeys } from '~/modules/query-key-factory';
 import { replaceFixedPlaceholder } from '~/modules/fixed-placeholder';
+import { NOTE_ROUTE } from '~/modules/url';
 
 import type { NoteLayout } from '~/models/note.model';
 
@@ -30,7 +31,12 @@ const useNoteMutate = () => {
         if (response.type === 'error') {
             return;
         }
-        navigate(`/${response.createNote.id}`);
+        navigate({
+            to: NOTE_ROUTE,
+            params: {
+                id: response.createNote.id
+            }
+        });
     };
 
     const onPinned = async (id: string, isPinned: boolean, callback?: () => void) => {

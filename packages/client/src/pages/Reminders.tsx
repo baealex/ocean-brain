@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { getRouteApi } from '@tanstack/react-router';
 import {
     Empty,
     FallbackRender,
@@ -11,13 +11,16 @@ import { Reminders as RemindersEntity } from '~/components/entities';
 import { PriorityLegend } from '~/components/calendar/PriorityLegend';
 import useReminderMutate from '~/hooks/resource/useReminderMutate';
 import ReminderCard from '~/components/reminder/ReminderCard';
+import { REMINDERS_ROUTE } from '~/modules/url';
+
+const Route = getRouteApi(REMINDERS_ROUTE);
 
 export default function Reminders() {
-    const [searchParams, setSearchParams] = useSearchParams();
+    const navigate = Route.useNavigate();
+    const { page } = Route.useSearch();
     const { onUpdate, onDelete } = useReminderMutate();
 
     const limit = 25;
-    const page = Number(searchParams.get('page')) || 1;
 
     return (
         <PageLayout
@@ -66,9 +69,11 @@ export default function Reminders() {
                                             page={page}
                                             last={Math.ceil(totalCount / limit)}
                                             onChange={(page) => {
-                                                setSearchParams(searchParams => {
-                                                    searchParams.set('page', page.toString());
-                                                    return searchParams;
+                                                navigate({
+                                                    search: prev => ({
+                                                        ...prev,
+                                                        page
+                                                    })
                                                 });
                                             }}
                                         />

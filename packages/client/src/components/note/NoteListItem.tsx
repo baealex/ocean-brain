@@ -1,11 +1,11 @@
-import { Link } from 'react-router-dom';
+import { Link } from '@tanstack/react-router';
 
 import { Badge } from '~/components/shared';
 
 import type { Note } from '~/models/note.model';
 
 import { timeSince } from '~/modules/time';
-import { getNoteURL } from '~/modules/url';
+import { NOTE_ROUTE, TAG_NOTES_ROUTE } from '~/modules/url';
 
 interface Props {
     id: string;
@@ -35,13 +35,18 @@ export default function NoteListItem({
                 </div>
                 <Link
                     className="font-bold text-fg-default hover:text-accent-primary transition-colors"
-                    to={getNoteURL(id)}>
+                    to={NOTE_ROUTE}
+                    params={{ id }}>
                     {title || 'Untitled'}
                 </Link>
                 {tags && tags.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
                         {tags.map(tag => (
-                            <Link key={tag.id} to={`/tag/${tag.id}`}>
+                            <Link
+                                key={tag.id}
+                                to={TAG_NOTES_ROUTE}
+                                params={{ id: tag.id }}
+                                search={{ page: 1 }}>
                                 <Badge name={tag.name} />
                             </Link>
                         ))}

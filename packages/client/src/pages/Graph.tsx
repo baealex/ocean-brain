@@ -5,7 +5,7 @@ import {
     useRef,
     useState
 } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import ForceGraph2D from 'react-force-graph-2d';
 
@@ -14,6 +14,7 @@ import { Empty, PageLayout, Skeleton } from '~/components/shared';
 import { useTheme } from '~/store/theme';
 import { getHash } from '~/modules/hash';
 import { queryKeys } from '~/modules/query-key-factory';
+import { NOTE_ROUTE } from '~/modules/url';
 
 interface GraphData {
     nodes: GraphNode[];
@@ -110,7 +111,12 @@ export default function Graph() {
 
     const handleNodeClick = useCallback((node: GraphNode) => {
         if (selectedNodeIdRef.current === node.id) {
-            navigate(`/${node.id}`);
+            navigate({
+                to: NOTE_ROUTE,
+                params: {
+                    id: node.id
+                }
+            });
         } else {
             setSelectedNodeId(node.id);
         }

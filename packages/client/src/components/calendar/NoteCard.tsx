@@ -1,9 +1,9 @@
 import dayjs from 'dayjs';
-import { Link } from 'react-router-dom';
+import { Link } from '@tanstack/react-router';
 
 import type { Note } from '~/models/note.model';
 import { getRandomBackground } from '~/modules/color';
-import { getNoteURL } from '~/modules/url';
+import { NOTE_ROUTE } from '~/modules/url';
 import type { CalendarDisplayType } from './types';
 
 interface Props {
@@ -13,7 +13,10 @@ interface Props {
 
 export const NoteCard = ({ note, type }: Props) => {
     return (
-        <Link to={getNoteURL(note.id)} className="block min-h-[44px]">
+        <Link
+            to={NOTE_ROUTE}
+            params={{ id: note.id }}
+            className="block min-h-[44px]">
             <div
                 className={`
                     ${getRandomBackground(note.title)}

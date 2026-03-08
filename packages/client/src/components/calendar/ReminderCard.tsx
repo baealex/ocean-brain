@@ -1,10 +1,10 @@
 import dayjs from 'dayjs';
-import { Link } from 'react-router-dom';
+import { Link } from '@tanstack/react-router';
 
 import * as Icon from '~/components/icon';
 import type { Reminder } from '~/models/reminder.model';
 import { priorityColors, overdueColor } from '~/modules/color';
-import { getNoteURL } from '~/modules/url';
+import { NOTE_ROUTE } from '~/modules/url';
 
 interface Props {
     reminder: Reminder;
@@ -16,7 +16,12 @@ export const ReminderCard = ({ reminder, isPast }: Props) => {
     const priority = reminder.priority || 'medium';
 
     return (
-        <Link to={getNoteURL(reminder.note?.id || '')} className="block min-h-[44px]">
+        <Link
+            to={NOTE_ROUTE}
+            params={{
+                id: String(reminder.note?.id ?? reminder.noteId)
+            }}
+            className="block min-h-[44px]">
             <div
                 className={`
                     rounded-sketchy-sm

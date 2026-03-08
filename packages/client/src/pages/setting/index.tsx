@@ -1,9 +1,13 @@
-import { Link } from 'react-router-dom';
+import { Link } from '@tanstack/react-router';
 
 import { PageLayout } from '~/components/shared';
 import * as Icon from '~/components/icon';
 
 import { useTheme } from '~/store/theme';
+import {
+    SETTINGS_MANAGE_IMAGE_ROUTE,
+    SETTINGS_PLACEHOLDER_ROUTE
+} from '~/modules/url';
 
 const Setting = () => {
     const { theme, toggleTheme } = useTheme(state => state);
@@ -28,7 +32,8 @@ const Setting = () => {
                     </span>
                 </button>
                 <Link
-                    to="manage-image"
+                    to={SETTINGS_MANAGE_IMAGE_ROUTE}
+                    search={{ page: 1 }}
                     className="flex flex-col items-center gap-3 bg-subtle p-6 rounded-[12px_4px_13px_3px/4px_10px_4px_12px] border-2 border-border-secondary font-bold hover:shadow-sketchy hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all">
                     <Icon.Image className="h-8 w-8 text-fg-secondary" />
                     <span>Manage Image</span>
@@ -37,7 +42,8 @@ const Setting = () => {
                     </span>
                 </Link>
                 <Link
-                    to="placeholder"
+                    to={SETTINGS_PLACEHOLDER_ROUTE}
+                    search={{ page: 1 }}
                     className="flex flex-col items-center gap-3 bg-subtle p-6 rounded-[12px_4px_13px_3px/4px_10px_4px_12px] border-2 border-border-secondary font-bold hover:shadow-sketchy hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all">
                     <Icon.Pencil className="h-8 w-8 text-fg-secondary" />
                     <span>Placeholder</span>

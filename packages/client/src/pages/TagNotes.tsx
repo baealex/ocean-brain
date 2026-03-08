@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { getRouteApi } from '@tanstack/react-router';
 import {
     Empty,
     FallbackRender,
@@ -11,14 +11,16 @@ import { NoteListCard } from '~/components/note';
 import { TagNotes as TagNotesEntity } from '~/components/entities';
 
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
+import { TAG_NOTES_ROUTE } from '~/modules/url';
+
+const Route = getRouteApi(TAG_NOTES_ROUTE);
 
 export default function TagNotes() {
-    const { id } = useParams();
-
-    const [searchParams, setSearchParams] = useSearchParams();
+    const navigate = Route.useNavigate();
+    const { id } = Route.useParams();
+    const { page } = Route.useSearch();
 
     const limit = 25;
-    const page = Number(searchParams.get('page')) || 1;
 
     const {
         onDelete,
@@ -69,9 +71,11 @@ export default function TagNotes() {
                                                 page={page}
                                                 last={Math.ceil(totalCount / limit)}
                                                 onChange={(page) => {
-                                                    setSearchParams(searchParams => {
-                                                        searchParams.set('page', page.toString());
-                                                        return searchParams;
+                                                    navigate({
+                                                        search: prev => ({
+                                                            ...prev,
+                                                            page
+                                                        })
                                                     });
                                                 }}
                                             />

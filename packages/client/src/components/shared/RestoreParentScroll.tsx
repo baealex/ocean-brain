@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from '@tanstack/react-router';
 
 const optimizeEvent = (fn: () => void) => {
     let ticking = false;
@@ -18,7 +18,7 @@ const optimizeEvent = (fn: () => void) => {
 const memo = new Map<string, number>();
 
 export default function RestoreParentScroll() {
-    const location = useLocation();
+    const pathname = useLocation({ select: (location) => location.pathname });
 
     const ref = useRef<HTMLDivElement>(null);
 
@@ -28,10 +28,10 @@ export default function RestoreParentScroll() {
 
             const saveOrDelete = (scrollTop: number) => {
                 if (scrollTop !== 0) {
-                    memo.set(location.pathname, scrollTop);
+                    memo.set(pathname, scrollTop);
                     return;
                 }
-                memo.delete(location.pathname);
+                memo.delete(pathname);
             };
 
             const handleScroll = optimizeEvent(() => {
@@ -41,7 +41,7 @@ export default function RestoreParentScroll() {
                 }
             });
 
-            const scrollTop = memo.get(location.pathname);
+            const scrollTop = memo.get(pathname);
             if (scrollTop) {
                 parentElement.scrollTop = scrollTop;
             }
@@ -52,7 +52,7 @@ export default function RestoreParentScroll() {
                 parentElement.removeEventListener('scroll', handleScroll);
             };
         }
-    }, [ref, location]);
+    }, [pathname]);
 
     return <div ref={ref} style={{ display: 'none' }} />;
 }

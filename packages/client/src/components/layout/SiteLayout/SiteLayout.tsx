@@ -4,7 +4,7 @@ const cx = classNames.bind(styles);
 
 import React, { Suspense, useEffect, useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import * as Icon from '~/components/icon';
 import { Badge, RestoreParentScroll, Skeleton } from '~/components/shared';
 import { Button, Tooltip, useConfirm } from '~/components/ui';
@@ -41,6 +41,17 @@ import { fetchTags } from '~/apis/tag.api';
 import { getServerCache, setServerCache } from '~/apis/server-cache.api';
 import { PinnedNotes } from '~/components/entities';
 import { queryKeys } from '~/modules/query-key-factory';
+import {
+    CALENDAR_ROUTE,
+    GRAPH_ROUTE,
+    HOME_ROUTE,
+    NOTE_ROUTE,
+    REMINDERS_ROUTE,
+    SEARCH_ROUTE,
+    SETTINGS_ROUTE,
+    TAG_NOTES_ROUTE,
+    TAG_ROUTE
+} from '~/modules/url';
 
 interface SiteLayoutProps {
     children?: React.ReactNode;
@@ -97,13 +108,13 @@ interface PinnedNotesListProps {
     notes: Pick<Note, 'id' | 'title' | 'order'>[];
     sensors: ReturnType<typeof useSensors>;
     handleDragEnd: (event: DragEndEvent) => void;
-    location: ReturnType<typeof useLocation>;
+    pathname: string;
     pinnedItems: Pick<Note, 'id' | 'title' | 'order'>[];
     setPinnedItems: React.Dispatch<React.SetStateAction<Pick<Note, 'id' | 'title' | 'order'>[]>>;
 }
 
 function PinnedNotesList({
-    notes, sensors, handleDragEnd, location, pinnedItems, setPinnedItems
+    notes, sensors, handleDragEnd, pathname, pinnedItems, setPinnedItems
 }: PinnedNotesListProps) {
     React.useEffect(() => {
         if (notes && notes.length > 0) {
@@ -124,11 +135,12 @@ function PinnedNotesList({
                     <SortableItem key={note.id} id={note.id} tooltip={note.title || 'Untitled'}>
                         <Link
                             className={`transition-colors ${
-                                location.pathname === `/${note.id}`
+                                pathname === `/${note.id}`
                                     ? 'text-accent-primary'
                                     : 'text-fg-secondary hover:text-fg-default'
                             }`}
-                            to={`/${note.id}`}>
+                            to={NOTE_ROUTE}
+                            params={{ id: note.id }}>
                             {note.title || 'Untitled'}
                         </Link>
                     </SortableItem>
@@ -141,39 +153,39 @@ function PinnedNotesList({
 const NAVIGATION_ITEMS = [
     {
         name: 'Notes',
-        path: '/',
+        path: HOME_ROUTE,
         icon: Icon.Grid
     },
     {
         name: 'Graph',
-        path: '/graph',
+        path: GRAPH_ROUTE,
         icon: Icon.Graph
     },
     {
         name: 'Calendar',
-        path: '/calendar',
+        path: CALENDAR_ROUTE,
         icon: Icon.Calendar
     },
     {
         name: 'Reminders',
-        path: '/reminders',
+        path: REMINDERS_ROUTE,
         icon: Icon.Bell
     },
     {
         name: 'Tags',
-        path: '/tag',
+        path: TAG_ROUTE,
         icon: Icon.Tag
     },
     {
         name: 'Setting',
-        path: '/setting',
+        path: SETTINGS_ROUTE,
         icon: Icon.Gear
     }
 ];
 
 const SiteLayout = ({ children }: SiteLayoutProps) => {
     const confirm = useConfirm();
-    const location = useLocation();
+    const pathname = useLocation({ select: (location) => location.pathname });
     const navigate = useNavigate();
     const queryClient = useQueryClient();
 
@@ -234,7 +246,13 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
 
     const handleSubmit = (e?: React.FormEvent<HTMLFormElement>) => {
         e?.preventDefault();
-        navigate(`/search?query=${encodeURIComponent(query)}`);
+        navigate({
+            to: SEARCH_ROUTE,
+            search: {
+                query,
+                page: 1
+            }
+        });
     };
 
     const handleReset = () => {
@@ -270,7 +288,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
 
     useEffect(() => {
         setIsMenuOpen(false);
-    }, [location.pathname]);
+    }, [pathname]);
 
     return (
         <div className={cx('SiteLayout')}>
@@ -336,7 +354,10 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                                     <ul className="flex flex-col">
                                         {notes.map(({ id, title }) => (
                                             <li key={id} className="flex py-2 items-center border-b border-dashed border-border-subtle last:border-b-0">
-                                                <Link to={`/${id}`} className="text-sm font-bold hover:text-accent-primary transition-colors">
+                                                <Link
+                                                    to={NOTE_ROUTE}
+                                                    params={{ id }}
+                                                    className="text-sm font-bold hover:text-accent-primary transition-colors">
                                                     {title || 'Untitled'}
                                                 </Link>
                                             </li>
@@ -347,7 +368,10 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                                     <ul className="flex flex-wrap gap-2 p-2">
                                         {tags.map(({ id, name }) => (
                                             <li key={id} className="flex items-center gap-2">
-                                                <Link to={`/tag/${id}`}>
+                                                <Link
+                                                    to={TAG_NOTES_ROUTE}
+                                                    params={{ id }}
+                                                    search={{ page: 1 }}>
                                                     <Badge name={name} />
                                                 </Link>
                                             </li>
@@ -390,7 +414,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                                         notes={notes}
                                         sensors={sensors}
                                         handleDragEnd={handleDragEnd}
-                                        location={location}
+                                        pathname={pathname}
                                         pinnedItems={pinnedItems}
                                         setPinnedItems={setPinnedItems}
                                     />
@@ -405,7 +429,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                     <div className={cx('top-content')}>
                         <div className={cx('flex', 'gap-2', 'p-3')}>
                             {NAVIGATION_ITEMS.map((item) => {
-                                const isActive = location.pathname === item.path;
+                                const isActive = pathname === item.path;
                                 return (
                                     <Link key={item.path} to={item.path}>
                                         <div

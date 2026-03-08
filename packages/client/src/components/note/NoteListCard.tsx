@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from '@tanstack/react-router';
 
 import { Badge, Dropdown } from '~/components/shared';
 import * as Icon from '~/components/icon';
@@ -7,7 +7,7 @@ import type { Note } from '~/models/note.model';
 
 import { getRandomBackground } from '~/modules/color';
 import { timeSince } from '~/modules/time';
-import { getNoteURL } from '~/modules/url';
+import { NOTE_ROUTE, TAG_NOTES_ROUTE } from '~/modules/url';
 
 interface Props extends Note {
     onPinned?: () => void;
@@ -57,13 +57,20 @@ export default function NoteListCard({
                             />
                         </div>
                     </div>
-                    <Link className="font-bold" to={getNoteURL(id)}>
+                    <Link
+                        className="font-bold"
+                        to={NOTE_ROUTE}
+                        params={{ id }}>
                         {title || 'Untitled'}
                     </Link>
                     {tags.length > 0 && (
                         <div className="flex flex-wrap gap-2">
                             {tags.map(tag => (
-                                <Link key={tag.id} to={`/tag/${tag.id}`}>
+                                <Link
+                                    key={tag.id}
+                                    to={TAG_NOTES_ROUTE}
+                                    params={{ id: tag.id }}
+                                    search={{ page: 1 }}>
                                     <Badge name={tag.name} />
                                 </Link>
                             ))}

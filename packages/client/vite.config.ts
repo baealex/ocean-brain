@@ -17,6 +17,9 @@ export default defineConfig({
         rollupOptions: {
             output: {
                 manualChunks: {
+                    'graph-vendor': [
+                        'react-force-graph-2d'
+                    ],
                     'note-core': [
                         '@blocknote/core'
                     ],

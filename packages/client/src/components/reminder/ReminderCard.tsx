@@ -1,10 +1,10 @@
-import { Link } from 'react-router-dom';
+import { Link } from '@tanstack/react-router';
 import dayjs from 'dayjs';
 
 import { Button } from '~/components/ui';
 import type { Reminder } from '~/models/reminder.model';
 import { priorityColors } from '~/modules/color';
-import { getNoteURL } from '~/modules/url';
+import { NOTE_ROUTE } from '~/modules/url';
 import styles from './ReminderCard.module.scss';
 
 interface ReminderCardProps {
@@ -54,7 +54,8 @@ export default function ReminderCard({
         <div className={`flex justify-between items-center p-4 border-2 rounded-[12px_4px_13px_3px/4px_10px_4px_12px] shadow-sketchy ${priorityColors[reminder.priority || 'low']} border-border-secondary ${priorityClass}`}>
             <div className="flex flex-col">
                 <Link
-                    to={getNoteURL(reminder.note?.id || '')}
+                    to={NOTE_ROUTE}
+                    params={{ id: String(reminder.note?.id ?? reminder.noteId) }}
                     className="font-bold hover:underline flex items-center gap-2 text-fg-default">
                     {reminder.note?.title || 'Untitled Note'}
                 </Link>

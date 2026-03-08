@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, getRouteApi } from '@tanstack/react-router';
 import { Image as ImageComponent, PageLayout } from '~/components/shared';
 import { NoteListItem } from '~/components/note';
 import { Button, Tooltip, useConfirm, useToast } from '~/components/ui';
@@ -9,12 +9,18 @@ import { deleteImage, fetchImage } from '~/apis/image.api';
 import { fetchImageNotes } from '~/apis/note.api';
 import { setServerCache } from '~/apis/server-cache.api';
 import { queryKeys } from '~/modules/query-key-factory';
+import {
+    SETTINGS_MANAGE_IMAGE_DETAIL_ROUTE,
+    SETTINGS_MANAGE_IMAGE_ROUTE
+} from '~/modules/url';
+
+const Route = getRouteApi(SETTINGS_MANAGE_IMAGE_DETAIL_ROUTE);
 
 const ManageImageDetail = () => {
     const confirm = useConfirm();
     const toast = useToast();
-    const { id } = useParams();
-    const navigation = useNavigate();
+    const { id } = Route.useParams();
+    const navigate = Route.useNavigate();
     const queryClient = useQueryClient();
 
     const { data: image } = useQuery({
@@ -57,14 +63,18 @@ const ManageImageDetail = () => {
                 toast('Failed to delete image');
                 return;
             }
-            navigation('/setting/manage-image');
+            navigate({
+                to: SETTINGS_MANAGE_IMAGE_ROUTE,
+                search: { page: 1 }
+            });
         }
     };
 
     return (
         <PageLayout title="Image Detail" variant="none">
             <Link
-                to="/setting/manage-image"
+                to={SETTINGS_MANAGE_IMAGE_ROUTE}
+                search={{ page: 1 }}
                 className="inline-flex items-center gap-1 text-sm font-bold text-fg-tertiary hover:text-accent-primary transition-colors mb-4">
                 <Icon.ChevronLeft size={16} />
                 Back to Images

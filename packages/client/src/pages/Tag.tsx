@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, getRouteApi } from '@tanstack/react-router';
 
 import {
     Empty,
@@ -10,20 +10,21 @@ import {
 } from '~/components/shared';
 import { Tags } from '~/components/entities';
 import { useGridLimit } from '~/hooks/useGridLimit';
+import { TAG_NOTES_ROUTE, TAG_ROUTE } from '~/modules/url';
 
 const TAG_MIN_WIDTH = 100;
 const TAG_GAP = 8;
 const TAG_ROWS = 12;
+const Route = getRouteApi(TAG_ROUTE);
 
 export default function Tag() {
-    const [searchParams, setSearchParams] = useSearchParams();
+    const navigate = Route.useNavigate();
+    const { page } = Route.useSearch();
     const { containerRef, limit } = useGridLimit({
         minItemWidth: TAG_MIN_WIDTH,
         gap: TAG_GAP,
         rows: TAG_ROWS
     });
-
-    const page = Number(searchParams.get('page')) || 1;
 
     return (
         <PageLayout title="Tags" description="Organize and browse notes by tags">
@@ -57,7 +58,11 @@ export default function Tag() {
                                     <>
                                         <div className="flex flex-wrap gap-2">
                                             {tags.map((tag) => (
-                                                <Link key={tag.id} to={`/tag/${tag.id}`}>
+                                                <Link
+                                                    key={tag.id}
+                                                    to={TAG_NOTES_ROUTE}
+                                                    params={{ id: tag.id }}
+                                                    search={{ page: 1 }}>
                                                     <div className="bg-pastel-teal-200 dark:bg-muted px-3 py-1.5 rounded-[8px_3px_9px_2px/3px_6px_3px_7px] border-2 border-border shadow-sketchy hover:shadow-sketchy-lg hover:-translate-y-0.5 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all duration-200 font-bold text-sm text-fg-default whitespace-nowrap">
                                                         {tag.name} <span className="text-fg-tertiary text-xs">({tag.referenceCount})</span>
                                                     </div>
@@ -67,16 +72,18 @@ export default function Tag() {
                                         <FallbackRender
                                             fallback={null}>
                                             {totalCount && limit < totalCount && (
-                                                <Pagination
-                                                    page={page}
-                                                    last={Math.ceil(totalCount / limit)}
-                                                    onChange={(page) => {
-                                                        setSearchParams(searchParams => {
-                                                            searchParams.set('page', page.toString());
-                                                            return searchParams;
-                                                        });
-                                                    }}
-                                                />
+                                            <Pagination
+                                                page={page}
+                                                last={Math.ceil(totalCount / limit)}
+                                                onChange={(page) => {
+                                                    navigate({
+                                                        search: prev => ({
+                                                            ...prev,
+                                                            page
+                                                        })
+                                                    });
+                                                }}
+                                            />
                                             )}
                                         </FallbackRender>
                                     </>

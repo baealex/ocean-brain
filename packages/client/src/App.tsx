@@ -1,12 +1,12 @@
 import { handyMediaQuery } from '@baejino/handy';
 import { useEffect } from 'react';
-import { RouterProvider } from 'react-router-dom';
+import { RouterProvider } from '@tanstack/react-router';
 
 import { Providers } from '~/components/app';
 
 import { useTheme, type Theme } from '~/store/theme';
 
-import router from './router';
+import { router } from './router';
 
 function App() {
     const { setTheme } = useTheme();

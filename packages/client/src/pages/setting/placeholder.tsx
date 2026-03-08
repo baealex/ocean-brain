@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router-dom';
+import { getRouteApi } from '@tanstack/react-router';
 import { useState } from 'react';
 
 import {
@@ -15,18 +15,19 @@ import * as Icon from '~/components/icon';
 
 import { getFixedPlaceholders, PLACEHOLDER_PREFIX, PLACEHOLDER_SUFFIX } from '~/modules/fixed-placeholder';
 import { queryKeys } from '~/modules/query-key-factory';
+import { SETTINGS_PLACEHOLDER_ROUTE } from '~/modules/url';
 
 import { createPlaceholder, deletePlaceholder, fetchPlaceholders } from '~/apis/placeholder.api';
 
-import type { Placeholder } from '~/models/placeholder.model';
-
 const cardClassName = 'bg-subtle flex flex-col gap-1 p-4 rounded-[10px_3px_11px_3px/3px_8px_3px_10px] border-2 border-border-secondary font-bold';
+const Route = getRouteApi(SETTINGS_PLACEHOLDER_ROUTE);
 
 const Placeholder = () => {
     const toast = useToast();
     const queryClient = useQueryClient();
 
-    const [searchParams, setSearchParams] = useSearchParams();
+    const navigate = Route.useNavigate();
+    const { page } = Route.useSearch();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isFixedListOpen, setIsFixedListOpen] = useState(false);
 
@@ -37,7 +38,6 @@ const Placeholder = () => {
     });
 
     const limit = 25;
-    const page = Number(searchParams.get('page')) || 1;
     const placeholderListKey = queryKeys.placeholders.list({
         limit,
         offset: (page - 1) * limit
@@ -203,9 +203,11 @@ const Placeholder = () => {
                         page={page}
                         last={Math.ceil(placeholders.totalCount / limit)}
                         onChange={(page) => {
-                            setSearchParams(searchParams => {
-                                searchParams.set('page', page.toString());
-                                return searchParams;
+                            navigate({
+                                search: prev => ({
+                                    ...prev,
+                                    page
+                                })
                             });
                         }}
                     />

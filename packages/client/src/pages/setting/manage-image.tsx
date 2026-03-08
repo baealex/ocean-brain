@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, getRouteApi } from '@tanstack/react-router';
 
 import {
     Image as ImageComponent,
@@ -12,7 +12,10 @@ import {
 import { Button, useConfirm } from '~/components/ui';
 import * as Icon from '~/components/icon';
 
-import { getImageNotesURL } from '~/modules/url';
+import {
+    SETTINGS_MANAGE_IMAGE_DETAIL_ROUTE,
+    SETTINGS_MANAGE_IMAGE_ROUTE
+} from '~/modules/url';
 import { useGridLimit } from '~/hooks/useGridLimit';
 
 import { deleteImage } from '~/apis/image.api';
@@ -23,19 +26,19 @@ import { queryKeys } from '~/modules/query-key-factory';
 const IMAGE_MIN_WIDTH = 240;
 const IMAGE_GAP = 20;
 const IMAGE_ROWS = 4;
+const Route = getRouteApi(SETTINGS_MANAGE_IMAGE_ROUTE);
 
 const ManageImage = () => {
     const confirm = useConfirm();
     const queryClient = useQueryClient();
 
-    const [searchParams, setSearchParams] = useSearchParams();
+    const navigate = Route.useNavigate();
+    const { page } = Route.useSearch();
     const { containerRef, limit } = useGridLimit({
         minItemWidth: IMAGE_MIN_WIDTH,
         gap: IMAGE_GAP,
         rows: IMAGE_ROWS
     });
-
-    const page = Number(searchParams.get('page')) || 1;
 
     const deleteImageMutation = useMutation({
         mutationFn: deleteImage,
@@ -86,7 +89,9 @@ const ManageImage = () => {
                                         <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
                                             {images.map((image) => (
                                                 <div key={image.id} className="rounded-[12px_4px_13px_3px/4px_10px_4px_12px] overflow-hidden border-2 border-border shadow-sketchy hover:shadow-sketchy-lg hover:-translate-y-0.5 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all duration-200">
-                                                    <Link to={getImageNotesURL(image.id)}>
+                                                    <Link
+                                                        to={SETTINGS_MANAGE_IMAGE_DETAIL_ROUTE}
+                                                        params={{ id: image.id }}>
                                                         <ImageComponent className="h-48 w-full object-cover" src={image.url} alt={image.id} />
                                                     </Link>
                                                     <div className="flex p-2 justify-between items-center border-t-2 border-dashed border-border-subtle bg-subtle">
@@ -110,9 +115,11 @@ const ManageImage = () => {
                                                     page={page}
                                                     last={Math.ceil(totalCount / limit)}
                                                     onChange={(page) => {
-                                                        setSearchParams(searchParams => {
-                                                            searchParams.set('page', page.toString());
-                                                            return searchParams;
+                                                        navigate({
+                                                            search: prev => ({
+                                                                ...prev,
+                                                                page
+                                                            })
                                                         });
                                                     }}
                                                 />

@@ -1,6 +1,6 @@
 import dayjs from 'dayjs';
 import { Suspense, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, getRouteApi, useRouter } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Dropdown, PageLayout, Skeleton } from '~/components/shared';
 import { useToast } from '~/components/ui';
@@ -11,7 +11,7 @@ import type { NoteLayout } from '~/models/note.model';
 import useDebounce from '~/hooks/useDebounce';
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
 
-import { getNoteURL } from '~/modules/url';
+import { NOTE_ROUTE } from '~/modules/url';
 import { queryKeys } from '~/modules/query-key-factory';
 
 import type { EditorRef } from '~/components/shared/Editor';
@@ -22,9 +22,11 @@ import { LayoutModal } from '~/components/note';
 
 import { fetchNote, updateNote } from '~/apis/note.api';
 
+const Route = getRouteApi(NOTE_ROUTE);
+
 export default function Note() {
-    const { id } = useParams();
-    const navigation = useNavigate();
+    const { id } = Route.useParams();
+    const router = useRouter();
     const toast = useToast();
 
     const editorRef = useRef<EditorRef>(null);
@@ -110,7 +112,7 @@ export default function Note() {
     if (isError) {
         return (
             <div className="h-full flex justify-center items-center">
-                <div onClick={() => navigation(-1)} className="flex justify-center items-center gap-2 cursor-pointer animate-bounce">
+                <div onClick={() => router.history.back()} className="flex justify-center items-center gap-2 cursor-pointer animate-bounce">
                     <Icon.ChevronLeft className="w-6" />
                     <div className="font-bold text-lg">
                         take you back
@@ -224,7 +226,10 @@ export default function Note() {
                             <ul className="text-sm flex flex-col gap-1">
                                 {backReferences?.map((backLink) => (
                                     <li key={backLink.id}>
-                                        <Link to={getNoteURL(backLink.id)} className="block px-2 py-1 rounded-sketchy-sm text-fg-secondary hover:bg-hover transition-colors">
+                                        <Link
+                                            to={NOTE_ROUTE}
+                                            params={{ id: backLink.id }}
+                                            className="block px-2 py-1 rounded-sketchy-sm text-fg-secondary hover:bg-hover transition-colors">
                                             - {backLink.title}
                                         </Link>
                                     </li>

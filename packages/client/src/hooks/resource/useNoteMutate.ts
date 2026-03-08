@@ -33,9 +33,7 @@ const useNoteMutate = () => {
         }
         navigate({
             to: NOTE_ROUTE,
-            params: {
-                id: response.createNote.id
-            }
+            params: { id: response.createNote.id }
         });
     };
 

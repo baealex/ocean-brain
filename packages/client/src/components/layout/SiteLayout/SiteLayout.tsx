@@ -185,9 +185,7 @@ const NAVIGATION_ITEMS = [
 
 const SiteLayout = ({ children }: SiteLayoutProps) => {
     const confirm = useConfirm();
-    const pathname = useLocation({
-        select: (location) => location.pathname
-    });
+    const pathname = useLocation({ select: (location) => location.pathname });
     const navigate = useNavigate();
     const queryClient = useQueryClient();
 

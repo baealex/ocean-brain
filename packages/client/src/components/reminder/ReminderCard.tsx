@@ -55,9 +55,7 @@ export default function ReminderCard({
             <div className="flex flex-col">
                 <Link
                     to={NOTE_ROUTE}
-                    params={{
-                        id: String(reminder.note?.id ?? reminder.noteId)
-                    }}
+                    params={{ id: String(reminder.note?.id ?? reminder.noteId) }}
                     className="font-bold hover:underline flex items-center gap-2 text-fg-default">
                     {reminder.note?.title || 'Untitled Note'}
                 </Link>

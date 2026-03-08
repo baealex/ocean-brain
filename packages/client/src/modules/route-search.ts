@@ -105,7 +105,9 @@ export const validateHomeSearch = (search: SearchRecord): HomeRouteSearch => ({
     pinnedFirst: parseBoolean(search.pinnedFirst, false)
 });
 
-export const validatePaginationSearch = (search: SearchRecord): PaginationRouteSearch => ({
+export const validatePaginationSearch = (
+    search: SearchRecord
+): PaginationRouteSearch => ({
     page: parsePositiveInt(search.page, 1)
 });
 

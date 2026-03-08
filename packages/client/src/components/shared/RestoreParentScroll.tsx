@@ -18,9 +18,7 @@ const optimizeEvent = (fn: () => void) => {
 const memo = new Map<string, number>();
 
 export default function RestoreParentScroll() {
-    const pathname = useLocation({
-        select: (location) => location.pathname
-    });
+    const pathname = useLocation({ select: (location) => location.pathname });
 
     const ref = useRef<HTMLDivElement>(null);
 

@@ -18,9 +18,7 @@ export const ReminderCard = ({ reminder, isPast }: Props) => {
     return (
         <Link
             to={NOTE_ROUTE}
-            params={{
-                id: String(reminder.note?.id ?? reminder.noteId)
-            }}
+            params={{ id: String(reminder.note?.id ?? reminder.noteId) }}
             className="block min-h-[44px]">
             <div
                 className={`

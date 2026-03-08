@@ -113,9 +113,7 @@ export default function Graph() {
         if (selectedNodeIdRef.current === node.id) {
             navigate({
                 to: NOTE_ROUTE,
-                params: {
-                    id: node.id
-                }
+                params: { id: node.id }
             });
         } else {
             setSelectedNodeId(node.id);

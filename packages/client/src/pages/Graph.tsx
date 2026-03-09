@@ -306,7 +306,7 @@ function GraphContent() {
         return (
             <PageLayout title="Knowledge Graph">
                 <Empty
-                    icon="*"
+                    icon="🌌"
                     title="No constellations yet"
                     description="Link your notes together and watch your own starry sky unfold."
                 />

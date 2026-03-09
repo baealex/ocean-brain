@@ -16,6 +16,7 @@
         }
     },
     "scripts": {
+        "check:encoding": "node scripts/ci/check-encoding.mjs",
         "dev": "pnpm --parallel --filter @ocean-brain/client --filter @ocean-brain/server dev",
         "dev:client": "pnpm --filter @ocean-brain/client dev",
         "dev:server": "pnpm --filter @ocean-brain/server dev",

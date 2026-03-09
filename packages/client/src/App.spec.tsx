@@ -1,9 +1,25 @@
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import type * as TanStackRouter from '@tanstack/react-router';
+
+vi.mock('@baejino/handy', () => ({ handyMediaQuery: { listenThemeChange: () => () => undefined } }));
+
+vi.mock('@tanstack/react-router', async () => {
+    const actual = await vi.importActual<typeof TanStackRouter>('@tanstack/react-router');
+
+    return {
+        ...actual,
+        RouterProvider: () => <div>Router Provider</div>
+    };
+});
+
+vi.mock('./router', () => ({ router: {} }));
+
 import App from './App';
 
 describe('App', () => {
     it('renders the App component', () => {
-        const { container } = render(<App />);
-        expect(container).toBeInTheDocument();
+        render(<App />);
+
+        expect(screen.getByText('Router Provider')).toBeInTheDocument();
     });
 });

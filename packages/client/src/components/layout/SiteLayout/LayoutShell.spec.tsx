@@ -1,40 +1,32 @@
-import { render, screen } from '@testing-library/react';
-import {
-    Outlet,
-    RouterProvider,
-    createRootRoute,
-    createRoute,
-    createRouter
-} from '@tanstack/react-router';
+import { act, render, screen } from '@testing-library/react';
+import { RouterProvider } from '@tanstack/react-router';
+
+import { createTestRouter } from '~/test/create-test-router';
 
 import LayoutShell from './LayoutShell';
 
 describe('<LayoutShell />', () => {
-    it('renders the shell slots and outlet content', () => {
-        window.history.pushState({}, '', '/');
-
-        const rootRoute = createRootRoute({
-            component: () => (
+    it('renders the shell slots and outlet content', async () => {
+        const router = createTestRouter({
+            initialPath: '/',
+            routePath: '/',
+            rootComponent: () => (
                 <LayoutShell
                     sidebar={<div>Sidebar</div>}
                     topNavigation={<div>Top Navigation</div>}>
-                    <Outlet />
+                    <div>Page Content</div>
                 </LayoutShell>
-            )
+            ),
+            routeComponent: () => null
         });
-
-        const homeRoute = createRoute({
-            getParentRoute: () => rootRoute,
-            path: '/',
-            component: () => <div>Page Content</div>
-        });
-
-        const router = createRouter({ routeTree: rootRoute.addChildren([homeRoute]) });
 
         render(<RouterProvider router={router} />);
+        await act(async () => {
+            await router.load();
+        });
 
-        expect(screen.getByText('Sidebar')).toBeInTheDocument();
-        expect(screen.getByText('Top Navigation')).toBeInTheDocument();
-        expect(screen.getByText('Page Content')).toBeInTheDocument();
+        expect(await screen.findByText('Sidebar')).toBeInTheDocument();
+        expect(await screen.findByText('Top Navigation')).toBeInTheDocument();
+        expect(await screen.findByText('Page Content')).toBeInTheDocument();
     });
 });

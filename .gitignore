@@ -13,3 +13,4 @@ packages/server/prisma/data/*
 packages/server/public/assets/images
 docs/private/
 .npm-cache
+coverage

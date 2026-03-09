@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import svgr from 'vite-plugin-svgr';
@@ -37,6 +37,24 @@ export default defineConfig({
             '/api': { target: 'http://localhost:6683' },
             '/graphql': { target: 'http://localhost:6683' },
             '/assets/images': { target: 'http://localhost:6683' }
+        }
+    },
+    test: {
+        globals: true,
+        pool: 'threads',
+        environment: 'jsdom',
+        setupFiles: './src/test/setup.ts',
+        css: true,
+        coverage: {
+            provider: 'v8',
+            reporter: ['text', 'lcov'],
+            include: ['src/**/*.{ts,tsx}'],
+            exclude: [
+                'src/**/*.d.ts',
+                'src/**/*.spec.ts',
+                'src/**/*.spec.tsx',
+                'src/test/**'
+            ]
         }
     }
 });

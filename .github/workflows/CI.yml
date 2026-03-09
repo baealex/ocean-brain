@@ -31,5 +31,8 @@ jobs:
       - name: Type Check
         run: pnpm --parallel -r run --if-present type-check
 
+      - name: Test
+        run: pnpm test:ci
+
       - name: Build
         run: pnpm build

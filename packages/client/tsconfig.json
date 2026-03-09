@@ -24,6 +24,7 @@
         "noFallthroughCasesInSwitch": true,
         "types": [
             "vite-plugin-svgr/client",
+            "vitest/globals"
         ],
         "baseUrl": "./src",
         "paths": {

@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, getRouteApi } from '@tanstack/react-router';
 
+import { QueryBoundary } from '~/components/app';
 import {
     Image as ImageComponent,
     FallbackRender,
@@ -19,7 +20,6 @@ import {
 import { useGridLimit } from '~/hooks/useGridLimit';
 
 import { deleteImage } from '~/apis/image.api';
-import { Suspense } from 'react';
 import { Images } from '~/components/entities';
 import { queryKeys } from '~/modules/query-key-factory';
 
@@ -62,14 +62,17 @@ const ManageImage = () => {
     return (
         <PageLayout title="Images" variant="subtle" description="Manage images uploaded to your notes">
             <div ref={containerRef}>
-                <Suspense
+                <QueryBoundary
                     fallback={(
                         <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
                             <Skeleton height="200px"/>
                             <Skeleton height="200px"/>
                             <Skeleton height="200px"/>
                         </div>
-                    )}>
+                    )}
+                    errorTitle="Failed to load images"
+                    errorDescription="Retry loading uploaded image metadata."
+                    resetKeys={[page, limit]}>
                     <Images
                         searchParams={{
                             offset: (page - 1) * limit,
@@ -130,7 +133,7 @@ const ManageImage = () => {
                             </FallbackRender>
                         )}
                     />
-                </Suspense>
+                </QueryBoundary>
             </div>
         </PageLayout>
     );

@@ -1,6 +1,6 @@
-import { Suspense } from 'react';
 import { Link, getRouteApi } from '@tanstack/react-router';
 
+import { QueryBoundary } from '~/components/app';
 import {
     Empty,
     FallbackRender,
@@ -29,7 +29,7 @@ export default function Tag() {
     return (
         <PageLayout title="Tags" description="Organize and browse notes by tags">
             <div ref={containerRef}>
-                <Suspense
+                <QueryBoundary
                     fallback={(
                         <div className="flex flex-wrap gap-2">
                             <Skeleton width="90px" height="36px" />
@@ -39,7 +39,10 @@ export default function Tag() {
                             <Skeleton width="110px" height="36px" />
                             <Skeleton width="70px" height="36px" />
                         </div>
-                    )}>
+                    )}
+                    errorTitle="Failed to load tags"
+                    errorDescription="Retry loading the tag catalog."
+                    resetKeys={[page, limit]}>
                     <Tags
                         searchParams={{
                             offset: (page - 1) * limit,
@@ -91,7 +94,7 @@ export default function Tag() {
                             </FallbackRender>
                         )}
                     />
-                </Suspense>
+                </QueryBoundary>
             </div>
         </PageLayout>
     );

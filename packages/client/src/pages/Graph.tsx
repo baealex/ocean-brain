@@ -6,15 +6,16 @@ import {
     useState
 } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { useQuery } from '@tanstack/react-query';
+import { useSuspenseQuery } from '@tanstack/react-query';
 import ForceGraph2D from 'react-force-graph-2d';
 
-import { fetchNoteGraph, type GraphNode, type GraphLink } from '~/apis/note.api';
+import { fetchNoteGraph, type GraphLink, type GraphNode } from '~/apis/note.api';
+import { QueryBoundary, QueryErrorView } from '~/components/app';
 import { Empty, PageLayout, Skeleton } from '~/components/shared';
-import { useTheme } from '~/store/theme';
 import { getHash } from '~/modules/hash';
 import { queryKeys } from '~/modules/query-key-factory';
 import { NOTE_ROUTE } from '~/modules/url';
+import { useTheme } from '~/store/theme';
 
 interface GraphData {
     nodes: GraphNode[];
@@ -53,7 +54,15 @@ function getNodeSize(connections: number) {
     return Math.min(8, 5 + Math.sqrt(connections) * 0.8);
 }
 
-export default function Graph() {
+const graphPageFallback = (
+    <PageLayout title="Knowledge Graph">
+        <div className="flex items-center justify-center" style={{ height: '600px' }}>
+            <Skeleton width="100%" height="100%" />
+        </div>
+    </PageLayout>
+);
+
+function GraphContent() {
     const navigate = useNavigate();
     const containerRef = useRef<HTMLDivElement>(null);
     const graphRef = useRef<ForceGraphInstance | null>(null);
@@ -61,7 +70,6 @@ export default function Graph() {
         width: 800,
         height: 600
     });
-
     const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
     const { theme } = useTheme(state => state);
@@ -69,42 +77,67 @@ export default function Graph() {
     const isDarkRef = useRef(isDark);
     isDarkRef.current = isDark;
 
-    const { data, isLoading, error } = useQuery({
+    const { data } = useSuspenseQuery({
         queryKey: queryKeys.notes.graph(),
-        async queryFn() {
+        queryFn: async () => {
             const response = await fetchNoteGraph();
-            if (response.type === 'success') {
-                return response.noteGraph;
+            if (response.type === 'error') {
+                throw response;
             }
-            throw new Error('Failed to fetch graph data');
+            return response.noteGraph;
         }
     });
 
+    const graphData: GraphData | null = useMemo(() => {
+        if (data.nodes.length === 0) {
+            return null;
+        }
+
+        const connectedNodes = data.nodes.filter(node => node.connections > 0);
+        if (connectedNodes.length === 0) {
+            return null;
+        }
+
+        const connectedIds = new Set(connectedNodes.map(node => node.id));
+        return {
+            nodes: connectedNodes,
+            links: data.links.filter(link => connectedIds.has(link.source) && connectedIds.has(link.target))
+        };
+    }, [data]);
+
     useEffect(() => {
-        if (!data) return;
+        if (!graphData) {
+            return;
+        }
 
         const updateDimensions = () => {
-            if (containerRef.current) {
-                const rect = containerRef.current.getBoundingClientRect();
-                setDimensions({
-                    width: rect.width,
-                    height: Math.max(600, window.innerHeight - 150)
-                });
+            if (!containerRef.current) {
+                return;
             }
+
+            const rect = containerRef.current.getBoundingClientRect();
+            setDimensions({
+                width: rect.width,
+                height: Math.max(600, window.innerHeight - 150)
+            });
         };
 
         updateDimensions();
         window.addEventListener('resize', updateDimensions);
         return () => window.removeEventListener('resize', updateDimensions);
-    }, [data]);
+    }, [graphData]);
 
     useEffect(() => {
-        if (data && graphRef.current) {
-            setTimeout(() => {
-                graphRef.current?.zoomToFit(400, 50);
-            }, 500);
+        if (!graphData || !graphRef.current) {
+            return;
         }
-    }, [data]);
+
+        const timeoutId = window.setTimeout(() => {
+            graphRef.current?.zoomToFit(400, 50);
+        }, 500);
+
+        return () => window.clearTimeout(timeoutId);
+    }, [graphData]);
 
     const selectedNodeIdRef = useRef(selectedNodeId);
     selectedNodeIdRef.current = selectedNodeId;
@@ -115,18 +148,19 @@ export default function Graph() {
                 to: NOTE_ROUTE,
                 params: { id: node.id }
             });
-        } else {
-            setSelectedNodeId(node.id);
+            return;
         }
+
+        setSelectedNodeId(node.id);
     }, [navigate]);
 
     const handleBackgroundClick = useCallback(() => {
         setSelectedNodeId(null);
     }, []);
 
-    const handleNodeHover = useCallback((_node: GraphNode | null) => {
+    const handleNodeHover = useCallback((node: GraphNode | null) => {
         if (containerRef.current) {
-            containerRef.current.style.cursor = _node ? 'pointer' : 'default';
+            containerRef.current.style.cursor = node ? 'pointer' : 'default';
         }
     }, []);
 
@@ -144,17 +178,6 @@ export default function Graph() {
         graphRef.current?.enableZoomInteraction(true);
     }, []);
 
-    const graphData: GraphData | null = useMemo(() => {
-        if (!data || data.nodes.length === 0) return null;
-        const connectedNodes = data.nodes.filter(n => n.connections > 0);
-        if (connectedNodes.length === 0) return null;
-        const connectedIds = new Set(connectedNodes.map(n => n.id));
-        return {
-            nodes: connectedNodes,
-            links: data.links.filter(l => connectedIds.has(l.source) && connectedIds.has(l.target))
-        };
-    }, [data]);
-
     const adjacencyMapRef = useRef(new Map<string, Set<string>>());
     const adjacencyMap = useMemo(() => {
         const map = new Map<string, Set<string>>();
@@ -162,25 +185,28 @@ export default function Graph() {
             for (const link of graphData.links) {
                 if (!map.has(link.source)) map.set(link.source, new Set());
                 if (!map.has(link.target)) map.set(link.target, new Set());
-                map.get(link.source)!.add(link.target);
-                map.get(link.target)!.add(link.source);
+                map.get(link.source)?.add(link.target);
+                map.get(link.target)?.add(link.source);
             }
         }
         return map;
     }, [graphData]);
     adjacencyMapRef.current = adjacencyMap;
 
-    const nodeCanvasObject = useCallback((node: GraphNode & { x?: number; y?: number }, ctx: CanvasRenderingContext2D, globalScale: number) => {
-        const isDark = isDarkRef.current;
+    const nodeCanvasObject = useCallback((
+        node: GraphNode & { x?: number; y?: number },
+        ctx: CanvasRenderingContext2D,
+        globalScale: number
+    ) => {
+        const isDarkTheme = isDarkRef.current;
         const selectedId = selectedNodeId;
-        const adjacencyMap = adjacencyMapRef.current;
-
+        const adjacency = adjacencyMapRef.current;
         const nodeSize = getNodeSize(node.connections);
         const nx = node.x || 0;
         const ny = node.y || 0;
 
         const isSelected = selectedId === node.id;
-        const isConnected = selectedId ? adjacencyMap.get(selectedId)?.has(node.id) ?? false : false;
+        const isConnected = selectedId ? adjacency.get(selectedId)?.has(node.id) ?? false : false;
         const isDimmed = selectedId !== null && !isSelected && !isConnected;
 
         ctx.beginPath();
@@ -188,9 +214,9 @@ export default function Graph() {
 
         if (isDimmed) {
             if (node.connections > 3) {
-                ctx.fillStyle = isDark ? 'rgba(63,63,70,0.15)' : 'rgba(255,179,193,0.15)';
+                ctx.fillStyle = isDarkTheme ? 'rgba(63,63,70,0.15)' : 'rgba(255,179,193,0.15)';
             } else {
-                const colors = isDark ? PASTEL_COLORS_DARK_DIM : PASTEL_COLORS_LIGHT_DIM;
+                const colors = isDarkTheme ? PASTEL_COLORS_DARK_DIM : PASTEL_COLORS_LIGHT_DIM;
                 ctx.fillStyle = colors[getHash(node.id) % colors.length];
             }
             ctx.fill();
@@ -198,25 +224,25 @@ export default function Graph() {
         }
 
         if (isSelected) {
-            ctx.fillStyle = isDark ? '#a1a1aa' : '#FFCCB3';
+            ctx.fillStyle = isDarkTheme ? '#a1a1aa' : '#FFCCB3';
         } else if (isConnected) {
-            ctx.fillStyle = isDark ? '#71717a' : '#E1B7E1';
+            ctx.fillStyle = isDarkTheme ? '#71717a' : '#E1B7E1';
         } else if (node.connections > 3) {
-            ctx.fillStyle = isDark ? '#52525b' : '#FFB3C1';
+            ctx.fillStyle = isDarkTheme ? '#52525b' : '#FFB3C1';
         } else {
-            const colors = isDark ? PASTEL_COLORS_DARK : PASTEL_COLORS_LIGHT;
+            const colors = isDarkTheme ? PASTEL_COLORS_DARK : PASTEL_COLORS_LIGHT;
             ctx.fillStyle = colors[getHash(node.id) % colors.length];
         }
         ctx.fill();
 
-        ctx.strokeStyle = isDark ? '#3f3f46' : '#3d3d3d';
+        ctx.strokeStyle = isDarkTheme ? '#3f3f46' : '#3d3d3d';
         ctx.lineWidth = (isSelected ? 2 : 1) / globalScale;
         ctx.stroke();
 
         if (isSelected) {
             ctx.beginPath();
             ctx.arc(nx, ny, nodeSize + 2 / globalScale, 0, Math.PI * 2);
-            ctx.strokeStyle = isDark ? '#d4d4d8' : '#27272a';
+            ctx.strokeStyle = isDarkTheme ? '#d4d4d8' : '#27272a';
             ctx.lineWidth = 1.5 / globalScale;
             ctx.stroke();
         }
@@ -224,7 +250,7 @@ export default function Graph() {
         if (isSelected || isConnected || globalScale > 2.5) {
             const label = node.title || 'Untitled';
             const fontSize = Math.max(10 / globalScale, 2.5);
-            ctx.font = `${(isSelected || isConnected) ? 'bold ' : ''}${fontSize}px Gaegu, cursive`;
+            ctx.font = `${isSelected || isConnected ? 'bold ' : ''}${fontSize}px Gaegu, cursive`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
 
@@ -232,23 +258,30 @@ export default function Graph() {
             const padding = 2 / globalScale;
             const labelY = ny + nodeSize + 3 / globalScale;
 
-            ctx.fillStyle = isDark ? 'rgba(24,24,27,0.85)' : 'rgba(255,252,247,0.9)';
-            ctx.fillRect(nx - textWidth / 2 - padding, labelY, textWidth + padding * 2, fontSize + padding * 2);
+            ctx.fillStyle = isDarkTheme ? 'rgba(24,24,27,0.85)' : 'rgba(255,252,247,0.9)';
+            ctx.fillRect(
+                nx - textWidth / 2 - padding,
+                labelY,
+                textWidth + padding * 2,
+                fontSize + padding * 2
+            );
 
-            ctx.fillStyle = isDark ? '#f4f4f5' : '#27272a';
+            ctx.fillStyle = isDarkTheme ? '#f4f4f5' : '#27272a';
             ctx.fillText(label, nx, labelY + padding);
         }
     }, [selectedNodeId]);
 
-    const linkCanvasObject = useCallback((link: GraphLink, ctx: CanvasRenderingContext2D, globalScale: number) => {
-        const isDark = isDarkRef.current;
+    const linkCanvasObject = useCallback((
+        link: GraphLink,
+        ctx: CanvasRenderingContext2D,
+        globalScale: number
+    ) => {
+        const isDarkTheme = isDarkRef.current;
         const selectedId = selectedNodeId;
-
         const source = link.source as unknown as { x?: number; y?: number; id: string };
         const target = link.target as unknown as { x?: number; y?: number; id: string };
-
         const isConnected = selectedId
-            ? (source.id === selectedId || target.id === selectedId)
+            ? source.id === selectedId || target.id === selectedId
             : false;
         const isDimmed = selectedId !== null && !isConnected;
 
@@ -257,47 +290,25 @@ export default function Graph() {
         ctx.lineTo(target.x || 0, target.y || 0);
 
         if (isDimmed) {
-            ctx.strokeStyle = isDark ? 'rgba(63,63,70,0.06)' : 'rgba(212,212,216,0.06)';
+            ctx.strokeStyle = isDarkTheme ? 'rgba(63,63,70,0.06)' : 'rgba(212,212,216,0.06)';
             ctx.lineWidth = 0.5 / globalScale;
         } else if (isConnected) {
-            ctx.strokeStyle = isDark ? '#71717a' : '#E1B7E1';
+            ctx.strokeStyle = isDarkTheme ? '#71717a' : '#E1B7E1';
             ctx.lineWidth = 2 / globalScale;
         } else {
-            ctx.strokeStyle = isDark ? 'rgba(63,63,70,0.5)' : 'rgba(212,212,216,0.7)';
+            ctx.strokeStyle = isDarkTheme ? 'rgba(63,63,70,0.5)' : 'rgba(212,212,216,0.7)';
             ctx.lineWidth = 0.5 / globalScale;
         }
         ctx.stroke();
     }, [selectedNodeId]);
 
-    if (isLoading) {
-        return (
-            <PageLayout title="Knowledge Graph">
-                <div className="flex items-center justify-center" style={{ height: '600px' }}>
-                    <Skeleton width="100%" height="100%" />
-                </div>
-            </PageLayout>
-        );
-    }
-
-    if (error) {
-        return (
-            <PageLayout title="Knowledge Graph">
-                <Empty
-                    icon="❌"
-                    title="Failed to load graph"
-                    description="There was an error loading the knowledge graph."
-                />
-            </PageLayout>
-        );
-    }
-
     if (!graphData) {
         return (
             <PageLayout title="Knowledge Graph">
                 <Empty
-                    icon="🌌"
+                    icon="*"
                     title="No constellations yet"
-                    description="Link your notes together and watch your own starry sky unfold"
+                    description="Link your notes together and watch your own starry sky unfold."
                 />
             </PageLayout>
         );
@@ -306,23 +317,26 @@ export default function Graph() {
     return (
         <PageLayout
             title="Knowledge Graph"
-            description={`${graphData.nodes.length} linked notes · ${graphData.links.length} connections`}>
+            description={`${graphData.nodes.length} linked notes, ${graphData.links.length} connections`}>
             <div
                 ref={containerRef}
                 className="relative overflow-hidden border-2 border-border rounded-sketchy-lg shadow-sketchy"
                 style={{ background: isDark ? '#1f1f23' : '#fffcf7' }}>
                 {selectedNodeId && (() => {
-                    const node = graphData.nodes.find(n => n.id === selectedNodeId);
-                    if (!node) return null;
+                    const node = graphData.nodes.find(item => item.id === selectedNodeId);
+                    if (!node) {
+                        return null;
+                    }
+
                     return (
                         <div className="absolute top-3 left-3 z-10 flex items-center gap-2 px-3 py-1.5 rounded-sketchy-md border-2 border-border bg-bg-primary shadow-sketchy text-sm">
                             <span className="font-bold truncate max-w-48">{node.title}</span>
-                            <span className="text-fg-tertiary">· {node.connections} links</span>
+                            <span className="text-fg-tertiary">{node.connections} links</span>
                             <button
                                 onClick={() => setSelectedNodeId(null)}
                                 className="ml-1 text-fg-tertiary hover:text-fg-primary transition-colors cursor-pointer"
                                 aria-label="Deselect node">
-                                ✕
+                                x
                             </button>
                         </div>
                     );
@@ -335,9 +349,19 @@ export default function Graph() {
                     nodeId="id"
                     nodeLabel=""
                     nodeCanvasObject={nodeCanvasObject}
-                    nodePointerAreaPaint={(node: GraphNode & { x?: number; y?: number }, color, ctx) => {
+                    nodePointerAreaPaint={(
+                        node: GraphNode & { x?: number; y?: number },
+                        color,
+                        ctx
+                    ) => {
                         ctx.beginPath();
-                        ctx.arc(node.x || 0, node.y || 0, Math.max(getNodeSize(node.connections) + 4, 10), 0, 2 * Math.PI);
+                        ctx.arc(
+                            node.x || 0,
+                            node.y || 0,
+                            Math.max(getNodeSize(node.connections) + 4, 10),
+                            0,
+                            2 * Math.PI
+                        );
                         ctx.fillStyle = color;
                         ctx.fill();
                     }}
@@ -361,14 +385,41 @@ export default function Graph() {
             </div>
             <div className="mt-4 flex flex-wrap gap-4 text-sm">
                 <div className="flex items-center gap-2">
-                    <span className="w-4 h-4 rounded-sketchy-xs border-2 border-border" style={{ background: isDark ? '#52525b' : '#FFB3C1' }} />
+                    <span
+                        className="w-4 h-4 rounded-sketchy-xs border-2 border-border"
+                        style={{ background: isDark ? '#52525b' : '#FFB3C1' }}
+                    />
                     <span className="text-fg-tertiary font-medium">Hub notes (4+ connections)</span>
                 </div>
                 <div className="flex items-center gap-2">
-                    <span className="w-4 h-4 rounded-sketchy-xs border-2 border-border" style={{ background: isDark ? '#3f3f46' : '#B2E0B2' }} />
+                    <span
+                        className="w-4 h-4 rounded-sketchy-xs border-2 border-border"
+                        style={{ background: isDark ? '#3f3f46' : '#B2E0B2' }}
+                    />
                     <span className="text-fg-tertiary font-medium">Connected notes</span>
                 </div>
             </div>
         </PageLayout>
+    );
+}
+
+export default function Graph() {
+    return (
+        <QueryBoundary
+            fallback={graphPageFallback}
+            errorTitle="Failed to load graph"
+            errorDescription="Retry loading your linked note constellation."
+            renderError={({ error, retry }) => (
+                <PageLayout title="Knowledge Graph">
+                    <QueryErrorView
+                        title="Failed to load graph"
+                        description="Retry loading your linked note constellation."
+                        error={error}
+                        onRetry={retry}
+                    />
+                </PageLayout>
+            )}>
+            <GraphContent />
+        </QueryBoundary>
     );
 }

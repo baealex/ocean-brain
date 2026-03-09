@@ -1,5 +1,5 @@
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
-import { Suspense, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useLocation } from '@tanstack/react-router';
 import type { DragEndEvent } from '@dnd-kit/core';
@@ -22,6 +22,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 import { reorderNotes } from '~/apis/note.api';
+import { QueryBoundary, QueryErrorView } from '~/components/app';
 import { PinnedNotes } from '~/components/entities';
 import * as Icon from '~/components/icon';
 import { Skeleton } from '~/components/shared';
@@ -175,12 +176,24 @@ const PinnedNotesPanel = () => {
 
     return (
         <div className="flex flex-col gap-2">
-            <Suspense
+            <QueryBoundary
                 fallback={(
                     <>
                         <Skeleton height="24px" opacity={0.5} />
                         <Skeleton height="24px" opacity={0.5} />
                     </>
+                )}
+                errorTitle="Failed to load pinned notes"
+                errorDescription="Retry loading the pinned note list."
+                renderError={({ error, retry }) => (
+                    <QueryErrorView
+                        title="Failed to load pinned notes"
+                        description="Retry loading the pinned note list."
+                        error={error}
+                        onRetry={retry}
+                        showBackAction={false}
+                        showHomeAction={false}
+                    />
                 )}>
                 <PinnedNotes
                     render={(notes) => (
@@ -194,7 +207,7 @@ const PinnedNotesPanel = () => {
                         />
                     )}
                 />
-            </Suspense>
+            </QueryBoundary>
         </div>
     );
 };

@@ -1,5 +1,5 @@
-import { Suspense } from 'react';
 import { getRouteApi } from '@tanstack/react-router';
+import { QueryBoundary } from '~/components/app';
 import {
     Empty,
     FallbackRender,
@@ -27,7 +27,7 @@ export default function Reminders() {
             title="Reminders"
             description="Manage all your note reminders in one place"
             headerRight={<PriorityLegend />}>
-            <Suspense
+            <QueryBoundary
                 fallback={(
                     <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
                         <Skeleton height="60px" />
@@ -35,7 +35,10 @@ export default function Reminders() {
                         <Skeleton height="60px" />
                         <Skeleton height="60px" />
                     </div>
-                )}>
+                )}
+                errorTitle="Failed to load reminders"
+                errorDescription="Retry loading the upcoming reminder list."
+                resetKeys={[page, limit]}>
                 <RemindersEntity
                     searchParams={{
                         offset: (page - 1) * limit,
@@ -83,7 +86,7 @@ export default function Reminders() {
                         );
                     }}
                 />
-            </Suspense>
+            </QueryBoundary>
         </PageLayout>
     );
 }

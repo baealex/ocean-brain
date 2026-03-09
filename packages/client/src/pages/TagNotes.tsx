@@ -1,5 +1,5 @@
-import { Suspense } from 'react';
 import { getRouteApi } from '@tanstack/react-router';
+import { QueryBoundary } from '~/components/app';
 import {
     Empty,
     FallbackRender,
@@ -29,14 +29,17 @@ export default function TagNotes() {
 
     return (
         <PageLayout title="Tag" variant="subtle">
-            <Suspense
+            <QueryBoundary
                 fallback={(
                     <div className="grid gap-6 mt-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
                         <Skeleton height="112px" />
                         <Skeleton height="112px" />
                         <Skeleton height="112px" />
                     </div>
-                )}>
+                )}
+                errorTitle="Failed to load tagged notes"
+                errorDescription="Retry loading notes for this tag."
+                resetKeys={[id, page, limit]}>
                 <TagNotesEntity
                     searchParams={{
                         query: id,
@@ -86,7 +89,7 @@ export default function TagNotes() {
                         </FallbackRender>
                     )}
                 />
-            </Suspense>
+            </QueryBoundary>
         </PageLayout>
     );
 }

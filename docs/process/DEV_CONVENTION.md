@@ -15,6 +15,7 @@ Updated: 2026-03-06
 - Server start: `pnpm start`
 
 ## 3. Standard Quality Checks
+- `pnpm check:encoding`
 - `pnpm lint`
 - `pnpm test:ci`
 - `pnpm type-check`
@@ -36,6 +37,7 @@ Updated: 2026-03-06
 
 ## 6. Related Documents
 - Git rules: `docs/process/GIT_CONVENTION.md`
+- Encoding rules: `docs/process/ENCODING_CONVENTION.md`
 - Testing rules: `docs/process/TESTING_CONVENTION.md`
 - Query key rules: `docs/process/QUERY_KEY_CONVENTION.md`
 - Deployment/release: `docs/process/DEPLOYMENT_RELEASE_STRATEGY.md`

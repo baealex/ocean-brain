@@ -1,16 +1,17 @@
 import { Link, getRouteApi } from '@tanstack/react-router';
 
+import { QueryBoundary } from '~/components/app';
 import {
     Empty,
     FallbackRender,
     Highlight,
     PageLayout,
-    Pagination
+    Pagination,
+    Skeleton
 } from '~/components/shared';
 import { Notes } from '~/components/entities';
 
 import { NOTE_ROUTE, SEARCH_ROUTE } from '~/modules/url';
-import { Suspense } from 'react';
 
 const Route = getRouteApi(SEARCH_ROUTE);
 
@@ -26,7 +27,17 @@ export default function Search() {
     return (
         <PageLayout title={`Search "${query}"`} variant="none">
             <main className="mx-auto max-w-[896px]">
-                <Suspense fallback={null}>
+                <QueryBoundary
+                    fallback={(
+                        <div className="flex flex-col gap-4">
+                            <Skeleton height="64px" />
+                            <Skeleton height="120px" />
+                            <Skeleton height="120px" />
+                        </div>
+                    )}
+                    errorTitle="Failed to load search results"
+                    errorDescription={`Retry loading results for "${query}".`}
+                    resetKeys={[query, page]}>
                     <Notes
                         searchParams={{
                             query,
@@ -84,7 +95,7 @@ export default function Search() {
                             </>
                         )}
                     />
-                </Suspense>
+                </QueryBoundary>
             </main>
         </PageLayout>
     );

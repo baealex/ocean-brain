@@ -1,6 +1,6 @@
-import { Suspense } from 'react';
 import { getRouteApi } from '@tanstack/react-router';
 
+import { QueryBoundary } from '~/components/app';
 import {
     Empty, FallbackRender, NoteFilters, PageLayout, Pagination, Skeleton
 } from '~/components/shared';
@@ -77,14 +77,17 @@ export default function Home() {
                         page: 1
                     })}
                 />
-                <Suspense
+                <QueryBoundary
                     fallback={(
                         <div className="grid gap-6 mt-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
                             <Skeleton height="112px" />
                             <Skeleton height="112px" />
                             <Skeleton height="112px" />
                         </div>
-                    )}>
+                    )}
+                    errorTitle="Failed to load notes"
+                    errorDescription="Retry loading the current note list."
+                    resetKeys={[page, limit, sortBy, sortOrder, pinnedFirst]}>
                     <Notes
                         searchParams={{
                             offset: (page - 1) * limit,
@@ -130,7 +133,7 @@ export default function Home() {
                             </FallbackRender>
                         )}
                     />
-                </Suspense>
+                </QueryBoundary>
             </div>
         </PageLayout>
     );

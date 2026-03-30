@@ -94,10 +94,12 @@ program
     .option('--token-file <path>', 'read the MCP bearer token from a file')
     .option('--token-env <name>', 'environment variable name to read the MCP bearer token from', 'OCEAN_BRAIN_MCP_TOKEN')
     .option('--token <token>', 'explicit MCP bearer token fallback')
+    .option('--write-safety-dir <path>', 'directory for pending MCP write confirmations and operation logs')
     .action(async (opts) => {
         const { startMcpServer } = await import('./mcp.js');
         const token = resolveMcpBearerToken(opts, process.env);
-        await startMcpServer(opts.server, token);
+        const writeSafetyDir = opts.writeSafetyDir || process.env.OCEAN_BRAIN_MCP_WRITE_SAFETY_DIR;
+        await startMcpServer(opts.server, token, { writeSafetyDir });
     });
 
 program.parse();

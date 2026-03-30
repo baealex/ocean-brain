@@ -9,6 +9,8 @@
         "build": "prisma generate && tsup && tsc-alias",
         "start": "prisma migrate deploy && node dist/main.js",
         "lint": "eslint src",
+        "test": "tsx --tsconfig tsconfig.json --test test/**/*.test.ts",
+        "test:ci": "tsx --tsconfig tsconfig.json --test test/**/*.test.ts",
         "type-check": "tsc --noEmit"
     },
     "dependencies": {

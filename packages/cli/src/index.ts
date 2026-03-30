@@ -4,6 +4,7 @@ import os from 'os';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { Command } from 'commander';
+import { resolveServeAuthEnvironment } from './auth-options.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const serverRoot = path.resolve(__dirname, '..', 'server');
@@ -36,35 +37,53 @@ program
     .description('Start the Ocean Brain server')
     .option('-p, --port <port>', 'port to listen on', '6683')
     .option('-H, --host <host>', 'host to bind to', '0.0.0.0')
+    .option('--allow-insecure-no-auth', 'explicitly disable auth protection for local or trusted environments')
+    .option('--auth-mode <mode>', 'override auth mode (password|disabled)')
     .action(async (opts) => {
-        const defaultRoot = path.resolve(os.homedir(), '.ocean-brain');
-        const dataDir = process.env.OCEAN_BRAIN_DATA_DIR || path.resolve(defaultRoot, 'data');
-        const imageDir = process.env.OCEAN_BRAIN_IMAGE_DIR || path.resolve(defaultRoot, 'assets/images');
-        const dbPath = path.resolve(dataDir, 'db.sqlite3');
+        try {
+            const defaultRoot = path.resolve(os.homedir(), '.ocean-brain');
+            const dataDir = process.env.OCEAN_BRAIN_DATA_DIR || path.resolve(defaultRoot, 'data');
+            const imageDir = process.env.OCEAN_BRAIN_IMAGE_DIR || path.resolve(defaultRoot, 'assets/images');
+            const dbPath = path.resolve(dataDir, 'db.sqlite3');
 
-        fs.mkdirSync(dataDir, { recursive: true });
-        fs.mkdirSync(imageDir, { recursive: true });
+            fs.mkdirSync(dataDir, { recursive: true });
+            fs.mkdirSync(imageDir, { recursive: true });
 
-        process.env.DATABASE_URL = process.env.DATABASE_URL || `file:${dbPath}`;
-        process.env.OCEAN_BRAIN_PACKAGE_ROOT = serverRoot;
-        process.env.OCEAN_BRAIN_DATA_DIR = dataDir;
-        process.env.OCEAN_BRAIN_IMAGE_DIR = imageDir;
-        process.env.PORT = process.env.PORT || opts.port;
-        process.env.HOST = process.env.HOST || opts.host;
+            process.env.DATABASE_URL = process.env.DATABASE_URL || `file:${dbPath}`;
+            process.env.OCEAN_BRAIN_PACKAGE_ROOT = serverRoot;
+            process.env.OCEAN_BRAIN_DATA_DIR = dataDir;
+            process.env.OCEAN_BRAIN_IMAGE_DIR = imageDir;
+            process.env.PORT = process.env.PORT || opts.port;
+            process.env.HOST = process.env.HOST || opts.host;
 
-        const schemaPath = path.resolve(serverRoot, 'prisma/schema.prisma');
-        const prisma = findBin('prisma', __dirname);
-        execSync(`"${prisma}" generate --schema="${schemaPath}"`, {
-            stdio: 'inherit',
-            env: { ...process.env }
-        });
-        execSync(`"${prisma}" migrate deploy --schema="${schemaPath}"`, {
-            stdio: 'inherit',
-            env: { ...process.env }
-        });
+            const authEnvironment = resolveServeAuthEnvironment(opts, process.env);
 
-        const serverEntry = pathToFileURL(path.resolve(serverRoot, 'dist/main.js')).href;
-        await import(serverEntry);
+            if (authEnvironment.OCEAN_BRAIN_AUTH_MODE) {
+                process.env.OCEAN_BRAIN_AUTH_MODE = authEnvironment.OCEAN_BRAIN_AUTH_MODE;
+            }
+
+            if (authEnvironment.OCEAN_BRAIN_ALLOW_INSECURE_NO_AUTH) {
+                process.env.OCEAN_BRAIN_ALLOW_INSECURE_NO_AUTH = authEnvironment.OCEAN_BRAIN_ALLOW_INSECURE_NO_AUTH;
+            }
+
+            const schemaPath = path.resolve(serverRoot, 'prisma/schema.prisma');
+            const prisma = findBin('prisma', __dirname);
+            execSync(`"${prisma}" generate --schema="${schemaPath}"`, {
+                stdio: 'inherit',
+                env: { ...process.env }
+            });
+            execSync(`"${prisma}" migrate deploy --schema="${schemaPath}"`, {
+                stdio: 'inherit',
+                env: { ...process.env }
+            });
+
+            const serverEntry = pathToFileURL(path.resolve(serverRoot, 'dist/main.js')).href;
+            await import(serverEntry);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Unknown CLI auth configuration error';
+            process.stderr.write(`[auth] Serve startup failed: ${message}\n`);
+            process.exit(1);
+        }
     });
 
 program

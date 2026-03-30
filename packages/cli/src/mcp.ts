@@ -17,6 +17,16 @@ const pkg = JSON.parse(
     fs.readFileSync(path.resolve(__dirname, '..', 'package.json'), 'utf-8')
 );
 
+export const OCEAN_BRAIN_MCP_TOOLS = {
+    searchNotes: 'ocean_brain_search_notes',
+    readNote: 'ocean_brain_read_note',
+    listTags: 'ocean_brain_list_tags',
+    listRecentNotes: 'ocean_brain_list_recent_notes',
+    writeSafetyStatus: 'ocean_brain_write_safety_status',
+    findNoteCleanupCandidates: 'ocean_brain_find_note_cleanup_candidates',
+    deleteNote: 'ocean_brain_delete_note'
+} as const;
+
 async function graphql(
     serverUrl: string,
     token: string | undefined,
@@ -108,8 +118,8 @@ export async function startMcpServer(
     });
 
     server.tool(
-        'search_notes',
-        'Search notes by keyword. Returns a list of matching notes with title and tags. Use read_note to get full content of a specific note.',
+        OCEAN_BRAIN_MCP_TOOLS.searchNotes,
+        'Search Ocean Brain notes by keyword. Returns matching note titles and tags. Use ocean_brain_read_note to get full content for a specific note.',
         {
             query: z.string().describe('Search keyword'),
             limit: z.number().optional().default(10).describe('Max results (default: 10)'),
@@ -162,8 +172,8 @@ export async function startMcpServer(
     );
 
     server.tool(
-        'read_note',
-        'Read content of a note by ID. Returns truncated by default (1000 chars). Set maxLength to 0 for full content only when necessary.',
+        OCEAN_BRAIN_MCP_TOOLS.readNote,
+        'Read an Ocean Brain note by ID. Returns truncated content by default (1000 chars). Set maxLength to 0 only when full content is necessary.',
         {
             id: z.string().describe('Note ID'),
             maxLength: z.number().optional().default(1000).describe('Max content length in characters. 0 for full content. (default: 1000)'),
@@ -221,8 +231,8 @@ export async function startMcpServer(
     );
 
     server.tool(
-        'list_tags',
-        'List all tags with their note counts.',
+        OCEAN_BRAIN_MCP_TOOLS.listTags,
+        'List Ocean Brain tags with their note counts.',
         {},
         async () => {
             const data = await graphql(serverUrl, token, `
@@ -256,8 +266,8 @@ export async function startMcpServer(
     );
 
     server.tool(
-        'list_recent_notes',
-        'List recently updated notes. Returns titles and tags only. Use read_note to get content of a specific note.',
+        OCEAN_BRAIN_MCP_TOOLS.listRecentNotes,
+        'List recently updated Ocean Brain notes. Returns titles and tags only. Use ocean_brain_read_note to get full content for a specific note.',
         {
             limit: z.number().optional().default(10).describe('Max results (default: 10)'),
         },
@@ -306,8 +316,8 @@ export async function startMcpServer(
     );
 
     server.tool(
-        'mcp_write_safety_status',
-        'Inspect the pending destructive write confirmations and local operation log state for enabled MCP write tools.',
+        OCEAN_BRAIN_MCP_TOOLS.writeSafetyStatus,
+        'Inspect pending destructive write confirmations and local operation log state for enabled Ocean Brain MCP write tools.',
         {},
         async () => {
             return {
@@ -315,7 +325,7 @@ export async function startMcpServer(
                     type: 'text' as const,
                     text: JSON.stringify({
                         ...writeSafety.getStatus(),
-                        writeTools: ['delete_note'],
+                        writeTools: [OCEAN_BRAIN_MCP_TOOLS.deleteNote],
                         writeToolsEnabled: true
                     }, null, 2),
                 }],
@@ -324,8 +334,8 @@ export async function startMcpServer(
     );
 
     server.tool(
-        'find_note_cleanup_candidates',
-        'Find candidate notes for temporary or draft cleanup before deletion. Use this before delete_note.',
+        OCEAN_BRAIN_MCP_TOOLS.findNoteCleanupCandidates,
+        'Find Ocean Brain note cleanup candidates for temporary or draft notes before deletion. Use this before ocean_brain_delete_note.',
         {
             keywords: z.string().optional().default('temp tmp draft test wip')
                 .describe('Keywords that mark a note as a cleanup candidate. Comma or space separated.'),
@@ -388,14 +398,14 @@ export async function startMcpServer(
     );
 
     server.tool(
-        'delete_note',
-        'Delete a note safely through a dry-run and confirmation flow. Start with dryRun=true, then call again with dryRun=false, operationId, and confirmToken.',
+        OCEAN_BRAIN_MCP_TOOLS.deleteNote,
+        'Delete an Ocean Brain note safely through a dry-run and confirmation flow. Start with dryRun=true, then call again with dryRun=false, operationId, and confirmToken.',
         {
             id: z.string().describe('Note ID to delete'),
             ...destructiveMcpWriteFields
         },
         async ({ id, dryRun, operationId, confirmToken, force }) => {
-            const writeToken = requireWriteToken(token, 'delete_note');
+            const writeToken = requireWriteToken(token, OCEAN_BRAIN_MCP_TOOLS.deleteNote);
             const data = await graphql(serverUrl, writeToken, `
                 query ($id: ID!) {
                     noteCleanupPreview(id: $id) {
@@ -451,7 +461,7 @@ export async function startMcpServer(
                     force: preview.requiresForce,
                     risk: 'destructive',
                     summary: `Delete note ${preview.id} (${preview.title})`,
-                    toolName: 'delete_note'
+                    toolName: OCEAN_BRAIN_MCP_TOOLS.deleteNote
                 }
             );
 
@@ -469,7 +479,7 @@ export async function startMcpServer(
             }
 
             if (intent.operation.force && !force) {
-                throw new Error(`delete_note requires force=true because ${preview.forceReasons.join(', ')}.`);
+                throw new Error(`${OCEAN_BRAIN_MCP_TOOLS.deleteNote} requires force=true because ${preview.forceReasons.join(', ')}.`);
             }
 
             try {

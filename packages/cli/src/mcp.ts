@@ -20,6 +20,8 @@ const pkg = JSON.parse(
 export const OCEAN_BRAIN_MCP_TOOLS = {
     searchNotes: 'ocean_brain_search_notes',
     readNote: 'ocean_brain_read_note',
+    createNote: 'ocean_brain_create_note',
+    updateNote: 'ocean_brain_update_note',
     listTags: 'ocean_brain_list_tags',
     listNotesByTag: 'ocean_brain_list_notes_by_tag',
     listRecentNotes: 'ocean_brain_list_recent_notes',
@@ -28,6 +30,8 @@ export const OCEAN_BRAIN_MCP_TOOLS = {
     createTag: 'ocean_brain_create_tag',
     deleteNote: 'ocean_brain_delete_note'
 } as const;
+
+const noteLayoutSchema = z.enum(['narrow', 'wide', 'full']);
 
 const normalizeOceanBrainTagName = (name: string) => {
     const trimmedName = name.trim();
@@ -246,6 +250,77 @@ export async function startMcpServer(
     );
 
     server.tool(
+        OCEAN_BRAIN_MCP_TOOLS.createNote,
+        'Create an Ocean Brain note from markdown through the MCP write path. This is the preferred way to author new notes without sending internal BlockNote JSON.',
+        {
+            title: z.string().describe('Note title'),
+            markdown: z.string().optional().default('').describe('Markdown body for the new note. Defaults to an empty note body.'),
+            layout: noteLayoutSchema.optional().describe('Optional note layout: narrow, wide, or full.')
+        },
+        async ({ title, markdown, layout }) => {
+            const writeToken = requireWriteToken(token, OCEAN_BRAIN_MCP_TOOLS.createNote);
+            const result = await jsonRequest<{
+                created: boolean;
+                note: {
+                    id: string;
+                    title: string;
+                    layout: 'narrow' | 'wide' | 'full';
+                    createdAt: string;
+                    updatedAt: string;
+                };
+            }>(serverUrl, writeToken, '/api/mcp/notes/create', {
+                title,
+                markdown,
+                ...(layout ? { layout } : {})
+            });
+
+            return {
+                content: [{
+                    type: 'text' as const,
+                    text: JSON.stringify(result, null, 2)
+                }]
+            };
+        }
+    );
+
+    server.tool(
+        OCEAN_BRAIN_MCP_TOOLS.updateNote,
+        'Update an Ocean Brain note from markdown through the MCP write path. Pass only the fields you want to change.',
+        {
+            id: z.string().describe('Note ID to update'),
+            title: z.string().optional().describe('New note title'),
+            markdown: z.string().optional().describe('Replacement markdown body'),
+            layout: noteLayoutSchema.optional().describe('Optional note layout: narrow, wide, or full.')
+        },
+        async ({ id, title, markdown, layout }) => {
+            const writeToken = requireWriteToken(token, OCEAN_BRAIN_MCP_TOOLS.updateNote);
+            const result = await jsonRequest<{
+                updated?: boolean;
+                code?: string;
+                note?: {
+                    id: string;
+                    title: string;
+                    layout: 'narrow' | 'wide' | 'full';
+                    createdAt: string;
+                    updatedAt: string;
+                };
+            }>(serverUrl, writeToken, '/api/mcp/notes/update', {
+                id,
+                ...(title !== undefined ? { title } : {}),
+                ...(markdown !== undefined ? { markdown } : {}),
+                ...(layout ? { layout } : {})
+            });
+
+            return {
+                content: [{
+                    type: 'text' as const,
+                    text: JSON.stringify(result, null, 2)
+                }]
+            };
+        }
+    );
+
+    server.tool(
         OCEAN_BRAIN_MCP_TOOLS.listTags,
         'List Ocean Brain tags with their note counts.',
         {},
@@ -439,6 +514,8 @@ export async function startMcpServer(
                         ...writeSafety.getStatus(),
                         destructiveWriteTools: [OCEAN_BRAIN_MCP_TOOLS.deleteNote],
                         writeTools: [
+                            OCEAN_BRAIN_MCP_TOOLS.createNote,
+                            OCEAN_BRAIN_MCP_TOOLS.updateNote,
                             OCEAN_BRAIN_MCP_TOOLS.createTag,
                             OCEAN_BRAIN_MCP_TOOLS.deleteNote
                         ],

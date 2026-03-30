@@ -20,7 +20,11 @@ import {
     createLogoutPageHandler
 } from './views/auth.js';
 import useAsync from './modules/use-async.js';
-import { createMcpDeleteNoteHandler } from './views/note.js';
+import {
+    createMcpCreateNoteHandler,
+    createMcpDeleteNoteHandler,
+    createMcpUpdateNoteHandler
+} from './views/note.js';
 import { createMcpCreateTagHandler } from './views/tag.js';
 
 const shouldBlockClientRoute = (authConfig: AuthConfig, requestPath: string, authenticated: boolean) => {
@@ -49,6 +53,16 @@ export const createAppWithMcpAuth = (authConfig: AuthConfig, mcpAuthConfig: McpA
         .use(express.urlencoded({ extended: false }))
         .use(express.json({ limit: '50mb' }))
         .use('/assets/images/', express.static(paths.imageDir))
+        .post(
+            '/api/mcp/notes/create',
+            createMcpAuthMiddleware(authConfig, mcpAuthConfig, { allowAnonymousWhenDisabled: false }),
+            useAsync(createMcpCreateNoteHandler())
+        )
+        .post(
+            '/api/mcp/notes/update',
+            createMcpAuthMiddleware(authConfig, mcpAuthConfig, { allowAnonymousWhenDisabled: false }),
+            useAsync(createMcpUpdateNoteHandler())
+        )
         .post(
             '/api/mcp/tags/create',
             createMcpAuthMiddleware(authConfig, mcpAuthConfig, { allowAnonymousWhenDisabled: false }),

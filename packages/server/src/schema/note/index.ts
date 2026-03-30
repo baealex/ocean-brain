@@ -2,6 +2,11 @@ import type { IResolvers } from '@graphql-tools/utils';
 
 import models from '~/models.js';
 import { gql } from '~/modules/graphql.js';
+import {
+    deleteNoteById,
+    getNoteCleanupPreview,
+    listNoteCleanupCandidates
+} from '~/modules/note-cleanup.js';
 
 import type { Note, Prisma } from '~/models.js';
 import type { Pagination, SearchFilter, NoteInput } from '~/types/index.js';
@@ -65,6 +70,38 @@ export const noteType = gql`
         totalCount: Int!
         notes: [Note!]!
     }
+
+    type NoteCleanupBackReference {
+        id: ID!
+        title: String!
+    }
+
+    type NoteCleanupCandidate {
+        id: ID!
+        title: String!
+        updatedAt: String!
+        pinned: Boolean!
+        tagNames: [String!]!
+        reminderCount: Int!
+        backReferenceCount: Int!
+        matchedTerms: [String!]!
+        reasons: [String!]!
+        requiresForce: Boolean!
+        forceReasons: [String!]!
+    }
+
+    type NoteCleanupPreview {
+        id: ID!
+        title: String!
+        updatedAt: String!
+        pinned: Boolean!
+        tagNames: [String!]!
+        reminderCount: Int!
+        backReferences: [NoteCleanupBackReference!]!
+        orphanedTagNames: [String!]!
+        requiresForce: Boolean!
+        forceReasons: [String!]!
+    }
 `;
 
 export const noteQuery = gql`
@@ -92,6 +129,8 @@ export const noteQuery = gql`
         imageNotes(src: String!): [Note!]!
         backReferences(id: ID!): [Note]!
         note(id: ID!): Note!
+        noteCleanupCandidates(query: String, pagination: PaginationInput): [NoteCleanupCandidate!]!
+        noteCleanupPreview(id: ID!): NoteCleanupPreview
         noteGraph: NoteGraph!
     }
 `;
@@ -308,13 +347,36 @@ export const noteResolvers: IResolvers = {
                                 where: { id: $note.id },
                                 data: { content: newContent }
                             });
-                        } catch (e) {
-                            console.error(e);
+                        } catch {
+                            // Keep the stored content unchanged if the synchronized payload becomes invalid.
                         }
                     }
                 }
             }
             return $note;
+        },
+        noteCleanupCandidates: async (_, {
+            query,
+            pagination = {
+                limit: 20,
+                offset: 0
+            }
+        }: {
+            query?: string;
+            pagination: Pagination;
+        }) => {
+            const result = await listNoteCleanupCandidates({
+                keywords: query
+                    ? query.split(/[,\s]+/).map((keyword) => keyword.trim()).filter(Boolean)
+                    : undefined,
+                limit: Number(pagination.limit),
+                offset: Number(pagination.offset)
+            });
+
+            return result.notes;
+        },
+        noteCleanupPreview: async (_, { id }: { id: string }) => {
+            return getNoteCleanupPreview(Number(id));
         },
         noteGraph: async () => {
             const $notes = await models.note.findMany({
@@ -439,9 +501,7 @@ export const noteResolvers: IResolvers = {
             return $note;
         },
         deleteNote: async (_, { id }: Note) => {
-            await models.tag.deleteMany({ where: { notes: { none: {} } } });
-            await models.note.delete({ where: { id: Number(id) } });
-            return true;
+            return Boolean(await deleteNoteById(Number(id)));
         },
         pinNote: (_, { id, pinned }: Note) => models.note.update({
             where: { id: Number(id) },

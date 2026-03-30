@@ -19,6 +19,8 @@ import {
     createLoginPageSubmitHandler,
     createLogoutPageHandler
 } from './views/auth.js';
+import useAsync from './modules/use-async.js';
+import { createMcpDeleteNoteHandler } from './views/note.js';
 
 const shouldBlockClientRoute = (authConfig: AuthConfig, requestPath: string, authenticated: boolean) => {
     if (authConfig.mode !== 'password' || authenticated) {
@@ -46,6 +48,11 @@ export const createAppWithMcpAuth = (authConfig: AuthConfig, mcpAuthConfig: McpA
         .use(express.urlencoded({ extended: false }))
         .use(express.json({ limit: '50mb' }))
         .use('/assets/images/', express.static(paths.imageDir))
+        .post(
+            '/api/mcp/notes/delete',
+            createMcpAuthMiddleware(authConfig, mcpAuthConfig, { allowAnonymousWhenDisabled: false }),
+            useAsync(createMcpDeleteNoteHandler())
+        )
         .use('/api', createApiRouter(authConfig))
         .get('/auth/login', createLoginPageHandler(authConfig))
         .post('/auth/login', createLoginPageSubmitHandler(authConfig))

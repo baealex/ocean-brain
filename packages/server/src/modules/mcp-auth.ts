@@ -9,6 +9,10 @@ export interface McpAuthConfig {
     tokens: string[];
 }
 
+export interface McpAuthMiddlewareOptions {
+    allowAnonymousWhenDisabled?: boolean;
+}
+
 export interface McpAuthEnvironment {
     [key: string]: string | undefined;
     OCEAN_BRAIN_MCP_TOKEN?: string;
@@ -47,10 +51,11 @@ export const resolveMcpAuthConfig = (env: McpAuthEnvironment): McpAuthConfig => 
 
 export const createMcpAuthMiddleware = (
     authConfig: AuthConfig,
-    mcpAuthConfig: McpAuthConfig
+    mcpAuthConfig: McpAuthConfig,
+    options: McpAuthMiddlewareOptions = {}
 ): RequestHandler => {
     return (req: Request, res: Response, next: NextFunction) => {
-        if (authConfig.mode === 'disabled') {
+        if (authConfig.mode === 'disabled' && (options.allowAnonymousWhenDisabled ?? true)) {
             next();
             return;
         }

@@ -49,6 +49,26 @@ const graphRequest = async (
     };
 };
 
+const deleteNoteRequest = async (
+    baseUrl: string,
+    noteId: string,
+    bearerToken?: string
+) => {
+    const response = await fetch(`${baseUrl}/api/mcp/notes/delete`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...(bearerToken ? { Authorization: `Bearer ${bearerToken}` } : {})
+        },
+        body: JSON.stringify({ id: noteId })
+    });
+
+    return {
+        status: response.status,
+        body: await response.json() as Record<string, unknown>
+    };
+};
+
 test('password mode requires a valid bearer token on the MCP graphql endpoint', async (t) => {
     const { baseUrl } = await startServer(t, {
         mode: 'password',
@@ -95,4 +115,36 @@ test('disabled mode allows read-only MCP graphql access without a token', async 
     const query = await graphRequest(baseUrl, '/graphql/mcp', 'query { __typename }');
     assert.equal(query.status, 200);
     assert.equal((query.body.data as { __typename?: string }).__typename, 'Query');
+});
+
+test('disabled mode still requires a valid bearer token on the MCP note delete endpoint', async (t) => {
+    const { baseUrl } = await startServer(t, {
+        mode: 'disabled',
+        source: 'override'
+    }, { tokens: ['mcp-secret'] });
+
+    const unauthorized = await deleteNoteRequest(baseUrl, '1');
+    assert.equal(unauthorized.status, 401);
+    assert.equal(unauthorized.body.code, 'UNAUTHORIZED');
+
+    const forbidden = await deleteNoteRequest(baseUrl, '1', 'wrong-token');
+    assert.equal(forbidden.status, 403);
+    assert.equal(forbidden.body.code, 'FORBIDDEN');
+
+    const authorized = await deleteNoteRequest(baseUrl, 'abc', 'mcp-secret');
+    assert.equal(authorized.status, 400);
+    assert.equal(authorized.body.code, 'INVALID_NOTE_ID');
+});
+
+test('password mode returns configuration error on the MCP note delete endpoint when no bearer token is configured', async (t) => {
+    const { baseUrl } = await startServer(t, {
+        mode: 'password',
+        password: 'secret',
+        sessionSecret: 'session-secret',
+        source: 'override'
+    }, { tokens: [] });
+
+    const response = await deleteNoteRequest(baseUrl, '1', 'mcp-secret');
+    assert.equal(response.status, 503);
+    assert.equal(response.body.code, 'MCP_AUTH_NOT_CONFIGURED');
 });

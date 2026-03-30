@@ -5,8 +5,12 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 
-import { formatMcpGraphqlError } from './mcp-write-safety.js';
-import { createMcpWriteSafetyCoordinator, defaultMcpWriteSafetyDir } from './mcp-write-safety.js';
+import {
+    createMcpWriteSafetyCoordinator,
+    defaultMcpWriteSafetyDir,
+    destructiveMcpWriteFields,
+    formatMcpGraphqlError
+} from './mcp-write-safety.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
@@ -49,6 +53,46 @@ async function graphql(
 
     return result.data;
 }
+
+async function jsonRequest(
+    serverUrl: string,
+    token: string | undefined,
+    pathName: string,
+    body: Record<string, unknown>
+) {
+    const response = await fetch(`${serverUrl}${pathName}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(body)
+    });
+
+    const result = await response.json() as {
+        code?: string;
+        message?: string;
+        deleted?: boolean;
+        note?: {
+            id: string;
+            title: string;
+        };
+    };
+
+    if (!response.ok) {
+        throw new Error(`Request failed: ${result.code || response.status} ${result.message || response.statusText}`);
+    }
+
+    return result;
+}
+
+const requireWriteToken = (token: string | undefined, toolName: string) => {
+    if (token) {
+        return token;
+    }
+
+    throw new Error(`${toolName} requires an MCP bearer token. Set --token, --token-file, or --token-env.`);
+};
 
 export async function startMcpServer(
     serverUrl: string,
@@ -263,16 +307,195 @@ export async function startMcpServer(
 
     server.tool(
         'mcp_write_safety_status',
-        'Inspect the pending destructive write confirmations and local operation log state before future MCP write tools are enabled.',
+        'Inspect the pending destructive write confirmations and local operation log state for enabled MCP write tools.',
         {},
         async () => {
             return {
                 content: [{
                     type: 'text' as const,
-                    text: JSON.stringify(writeSafety.getStatus(), null, 2),
+                    text: JSON.stringify({
+                        ...writeSafety.getStatus(),
+                        writeTools: ['delete_note'],
+                        writeToolsEnabled: true
+                    }, null, 2),
                 }],
             };
         },
+    );
+
+    server.tool(
+        'find_note_cleanup_candidates',
+        'Find candidate notes for temporary or draft cleanup before deletion. Use this before delete_note.',
+        {
+            keywords: z.string().optional().default('temp tmp draft test wip')
+                .describe('Keywords that mark a note as a cleanup candidate. Comma or space separated.'),
+            limit: z.number().optional().default(20).describe('Max results (default: 20)'),
+            offset: z.number().optional().default(0).describe('Pagination offset (default: 0)')
+        },
+        async ({ keywords, limit, offset }) => {
+            const normalizedKeywords = keywords
+                .split(/[,\s]+/)
+                .map((keyword) => keyword.trim())
+                .filter(Boolean);
+            const data = await graphql(serverUrl, token, `
+                query ($query: String, $pagination: PaginationInput) {
+                    noteCleanupCandidates(query: $query, pagination: $pagination) {
+                        id
+                        title
+                        updatedAt
+                        pinned
+                        tagNames
+                        reminderCount
+                        backReferenceCount
+                        matchedTerms
+                        reasons
+                        requiresForce
+                        forceReasons
+                    }
+                }
+            `, {
+                query: keywords,
+                pagination: { limit, offset }
+            });
+
+            const result = data?.noteCleanupCandidates as Array<{
+                id: string;
+                title: string;
+                updatedAt: string;
+                pinned: boolean;
+                tagNames: string[];
+                reminderCount: number;
+                backReferenceCount: number;
+                matchedTerms: string[];
+                reasons: string[];
+                requiresForce: boolean;
+                forceReasons: string[];
+            }>;
+
+            return {
+                content: [{
+                    type: 'text' as const,
+                    text: JSON.stringify({
+                        keywords: normalizedKeywords,
+                        limit,
+                        offset,
+                        candidateCount: result.length,
+                        notes: result
+                    }, null, 2),
+                }],
+            };
+        }
+    );
+
+    server.tool(
+        'delete_note',
+        'Delete a note safely through a dry-run and confirmation flow. Start with dryRun=true, then call again with dryRun=false, operationId, and confirmToken.',
+        {
+            id: z.string().describe('Note ID to delete'),
+            ...destructiveMcpWriteFields
+        },
+        async ({ id, dryRun, operationId, confirmToken, force }) => {
+            const writeToken = requireWriteToken(token, 'delete_note');
+            const data = await graphql(serverUrl, writeToken, `
+                query ($id: ID!) {
+                    noteCleanupPreview(id: $id) {
+                        id
+                        title
+                        updatedAt
+                        pinned
+                        tagNames
+                        reminderCount
+                        backReferences {
+                            id
+                            title
+                        }
+                        orphanedTagNames
+                        requiresForce
+                        forceReasons
+                    }
+                }
+            `, { id });
+
+            const preview = data?.noteCleanupPreview as {
+                id: string;
+                title: string;
+                updatedAt: string;
+                pinned: boolean;
+                tagNames: string[];
+                reminderCount: number;
+                backReferences: Array<{ id: string; title: string }>;
+                orphanedTagNames: string[];
+                requiresForce: boolean;
+                forceReasons: string[];
+            } | null;
+
+            if (!preview) {
+                return {
+                    content: [{
+                        type: 'text' as const,
+                        text: JSON.stringify({
+                            deleted: false,
+                            reason: 'NOTE_NOT_FOUND',
+                            id
+                        }, null, 2)
+                    }]
+                };
+            }
+
+            const intent = writeSafety.ensureDestructiveWriteRequest(
+                { dryRun, operationId, confirmToken, force },
+                {
+                    actor: 'mcp-bearer',
+                    affectedIds: [preview.id],
+                    estimatedChangeCount: 1,
+                    force: preview.requiresForce,
+                    risk: 'destructive',
+                    summary: `Delete note ${preview.id} (${preview.title})`,
+                    toolName: 'delete_note'
+                }
+            );
+
+            if (intent.kind === 'dry-run') {
+                return {
+                    content: [{
+                        type: 'text' as const,
+                        text: JSON.stringify({
+                            mode: 'dry-run',
+                            preview,
+                            operation: intent.operation
+                        }, null, 2)
+                    }]
+                };
+            }
+
+            if (intent.operation.force && !force) {
+                throw new Error(`delete_note requires force=true because ${preview.forceReasons.join(', ')}.`);
+            }
+
+            try {
+                const result = await jsonRequest(serverUrl, writeToken, '/api/mcp/notes/delete', {
+                    id: preview.id
+                });
+
+                writeSafety.recordWriteResult(intent.operation, true);
+
+                return {
+                    content: [{
+                        type: 'text' as const,
+                        text: JSON.stringify({
+                            mode: 'commit',
+                            preview,
+                            operation: intent.operation,
+                            result
+                        }, null, 2)
+                    }]
+                };
+            } catch (error) {
+                const message = error instanceof Error ? error.message : 'Unknown MCP note delete error';
+                writeSafety.recordWriteResult(intent.operation, false, message);
+                throw error;
+            }
+        }
     );
 
     const transport = new StdioServerTransport();

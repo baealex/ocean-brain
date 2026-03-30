@@ -23,6 +23,8 @@
     "scripts": {
         "dev": "tsx src/index.ts",
         "build": "tsup",
+        "test": "tsx --test test/**/*.test.ts",
+        "test:ci": "tsx --test test/**/*.test.ts",
         "type-check": "tsc --noEmit"
     },
     "dependencies": {

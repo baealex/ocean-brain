@@ -4,12 +4,26 @@ import react from '@vitejs/plugin-react';
 import svgr from 'vite-plugin-svgr';
 import path from 'path';
 
+import { createDevAuthGateMiddleware, isPasswordModeEnabled } from './src/dev-auth-gate';
+
+const backendOrigin = process.env.OCEAN_BRAIN_DEV_SERVER_URL || 'http://localhost:6683';
+const passwordModeEnabled = isPasswordModeEnabled(process.env);
+
 // https://vitejs.dev/config/
 export default defineConfig({
     plugins: [
         react(),
         svgr(),
-        tailwindcss()
+        tailwindcss(),
+        {
+            name: 'ocean-brain-dev-auth-gate',
+            configureServer(server) {
+                server.middlewares.use(createDevAuthGateMiddleware({
+                    backendOrigin,
+                    enabled: passwordModeEnabled
+                }));
+            }
+        }
     ],
     resolve: { alias: { '~': path.resolve(__dirname, './src') } },
     build: {
@@ -35,6 +49,7 @@ export default defineConfig({
         host: '0.0.0.0',
         proxy: {
             '/api': { target: 'http://localhost:6683' },
+            '/auth': { target: 'http://localhost:6683' },
             '/graphql': { target: 'http://localhost:6683' },
             '/assets/images': { target: 'http://localhost:6683' }
         }

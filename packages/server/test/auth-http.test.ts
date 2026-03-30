@@ -83,15 +83,18 @@ test('password mode protects write paths until login and unlocks them after sess
     assert.equal(unauthorizedImageWrite.body.code, 'UNAUTHORIZED');
 
     const unauthorizedMutation = await graphRequest(baseUrl, 'mutation { __typename }');
-    assert.equal(unauthorizedMutation.status, 200);
+    assert.equal(unauthorizedMutation.status, 401);
     assert.equal(
         (unauthorizedMutation.body.errors as Array<{ extensions?: { code?: string } }>)[0]?.extensions?.code,
         'UNAUTHORIZED'
     );
 
     const publicQuery = await graphRequest(baseUrl, 'query { __typename }');
-    assert.equal(publicQuery.status, 200);
-    assert.equal((publicQuery.body.data as { __typename?: string }).__typename, 'Query');
+    assert.equal(publicQuery.status, 401);
+    assert.equal(
+        (publicQuery.body.errors as Array<{ extensions?: { code?: string } }>)[0]?.extensions?.code,
+        'UNAUTHORIZED'
+    );
 
     const wrongPassword = await jsonRequest(baseUrl, '/api/auth/login', 'POST', { password: 'wrong' });
     assert.equal(wrongPassword.status, 401);
@@ -121,6 +124,10 @@ test('password mode protects write paths until login and unlocks them after sess
     const authenticatedMutation = await graphRequest(baseUrl, 'mutation { __typename }', login.cookie);
     assert.equal(authenticatedMutation.status, 200);
     assert.equal((authenticatedMutation.body.data as { __typename?: string }).__typename, 'Mutation');
+
+    const authenticatedQuery = await graphRequest(baseUrl, 'query { __typename }', login.cookie);
+    assert.equal(authenticatedQuery.status, 200);
+    assert.equal((authenticatedQuery.body.data as { __typename?: string }).__typename, 'Query');
 
     const logout = await jsonRequest(baseUrl, '/api/auth/logout', 'POST', {}, login.cookie);
     assert.equal(logout.status, 200);

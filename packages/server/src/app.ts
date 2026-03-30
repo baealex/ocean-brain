@@ -6,7 +6,7 @@ import logger from './modules/logger.js';
 import { paths } from './paths.js';
 import schema from './schema/index.js';
 import { createApiRouter } from './urls.js';
-import { createMutationAuthValidationRule, createSessionMiddleware, isAuthenticatedRequest } from './modules/auth-guard.js';
+import { createSessionMiddleware, isAuthenticatedRequest, requireSessionForGraphql } from './modules/auth-guard.js';
 import type { AuthConfig } from './modules/auth-mode.js';
 import {
     createMcpAuthMiddleware,
@@ -62,21 +62,14 @@ export const createAppWithMcpAuth = (authConfig: AuthConfig, mcpAuthConfig: McpA
                 return [...specifiedRules, createReadOnlyMcpValidationRule()];
             }
         }))
-        .use('/graphql', createHandler({
+        .use('/graphql', requireSessionForGraphql(authConfig), createHandler({
             schema,
             context: (req) => ({
                 authMode: authConfig.mode,
                 isAuthenticated: isAuthenticatedRequest(req.raw),
                 req: req.raw,
                 res: req.context.res
-            }),
-            validationRules: (req, _args, specifiedRules) => {
-                if (authConfig.mode === 'disabled' || isAuthenticatedRequest(req.raw)) {
-                    return specifiedRules;
-                }
-
-                return [...specifiedRules, createMutationAuthValidationRule()];
-            }
+            })
         }))
         .use((req, res, next) => {
             if (shouldBlockClientRoute(authConfig, req.path, isAuthenticatedRequest(req))) {

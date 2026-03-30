@@ -12,6 +12,13 @@ const buildUnauthorizedPayload = () => ({
     message: 'Authentication required'
 });
 
+const buildUnauthorizedGraphqlPayload = () => ({
+    errors: [{
+        message: 'Authentication required',
+        extensions: { code: 'UNAUTHORIZED' }
+    }]
+});
+
 export const isAuthenticatedRequest = (req: Request) => Boolean(req.session?.authenticated);
 
 export const createSessionMiddleware = (authConfig: AuthConfig): RequestHandler => {
@@ -42,6 +49,21 @@ export const requireSessionForWrite = (authConfig: AuthConfig): RequestHandler =
             .status(401)
             .set(JSON_HEADERS)
             .json(buildUnauthorizedPayload())
+            .end();
+    };
+};
+
+export const requireSessionForGraphql = (authConfig: AuthConfig): RequestHandler => {
+    return (req: Request, res: Response, next: NextFunction) => {
+        if (authConfig.mode === 'disabled' || isAuthenticatedRequest(req)) {
+            next();
+            return;
+        }
+
+        res
+            .status(401)
+            .set(JSON_HEADERS)
+            .json(buildUnauthorizedGraphqlPayload())
             .end();
     };
 };

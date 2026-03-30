@@ -1,4 +1,5 @@
 import express from 'express';
+import path from 'path';
 import { createHandler } from 'graphql-http/lib/use/express';
 
 import logger from './modules/logger.js';
@@ -7,17 +8,37 @@ import schema from './schema/index.js';
 import { createApiRouter } from './urls.js';
 import { createMutationAuthValidationRule, createSessionMiddleware, isAuthenticatedRequest } from './modules/auth-guard.js';
 import type { AuthConfig } from './modules/auth-mode.js';
+import {
+    createLoginPageHandler,
+    createLoginPageSubmitHandler,
+    createLogoutPageHandler
+} from './views/auth.js';
+
+const shouldBlockClientRoute = (authConfig: AuthConfig, requestPath: string, authenticated: boolean) => {
+    if (authConfig.mode !== 'password' || authenticated) {
+        return false;
+    }
+
+    if (requestPath.startsWith('/api') || requestPath.startsWith('/graphql') || requestPath.startsWith('/auth')) {
+        return false;
+    }
+
+    return path.extname(requestPath) === '';
+};
 
 export const createApp = (authConfig: AuthConfig) => {
     const app = express();
     app.locals.authConfig = authConfig;
 
     app.use(logger)
-        .use(express.static(paths.clientDist, { extensions: ['html'] }))
-        .use('/assets/images/', express.static(paths.imageDir))
         .use(createSessionMiddleware(authConfig))
+        .use(express.urlencoded({ extended: false }))
         .use(express.json({ limit: '50mb' }))
+        .use('/assets/images/', express.static(paths.imageDir))
         .use('/api', createApiRouter(authConfig))
+        .get('/auth/login', createLoginPageHandler(authConfig))
+        .post('/auth/login', createLoginPageSubmitHandler(authConfig))
+        .post('/auth/logout', createLogoutPageHandler(authConfig))
         .use('/graphql', createHandler({
             schema,
             context: (req) => ({
@@ -34,6 +55,16 @@ export const createApp = (authConfig: AuthConfig) => {
                 return [...specifiedRules, createMutationAuthValidationRule()];
             }
         }))
+        .use((req, res, next) => {
+            if (shouldBlockClientRoute(authConfig, req.path, isAuthenticatedRequest(req))) {
+                const redirectPath = encodeURIComponent(req.originalUrl || '/');
+                res.redirect(303, `/auth/login?next=${redirectPath}`);
+                return;
+            }
+
+            next();
+        })
+        .use(express.static(paths.clientDist, { extensions: ['html'] }))
         .get(/.*/, (_req, res) => {
             res.sendFile(paths.clientIndex);
         });

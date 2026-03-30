@@ -5,6 +5,7 @@ import crpyto from 'crypto';
 import type { Controller } from '~/types/index.js';
 import models from '~/models.js';
 import { paths } from '~/paths.js';
+import { fetchRemoteImage, RemoteImageFetchError } from '~/modules/remote-image.js';
 
 const imageDir = paths.imageDir;
 
@@ -72,51 +73,57 @@ export const uploadImage: Controller = async (req, res) => {
 export const uploadImageFromSrc: Controller = async (req, res) => {
     const { src } = req.body;
 
-    const arrayBuffer = await fetch(src).then(res => res.arrayBuffer());
+    try {
+        const remoteImage = await fetchRemoteImage(String(src ?? ''));
+        const hash = crpyto.createHash('sha512').update(remoteImage.buffer).digest('hex');
 
-    const data = Buffer.from(arrayBuffer).toString('base64');
+        const exists = await models.image.findFirst({ where: { hash } });
 
-    const hash = crpyto.createHash('sha512').update(data).digest('hex');
-
-    const exists = await models.image.findFirst({ where: { hash } });
-
-    if (exists) {
-        res.status(200).json({
-            id: exists.id,
-            url: exists.url
-        }).end();
-        return;
-    }
-
-    const buffer = Buffer.from(data, 'base64');
-
-    const currentPath = [
-        (new Date().getFullYear()).toString(),
-        (new Date().getMonth() + 1).toString(),
-        (new Date().getDate()).toString()
-    ];
-    const targetDir = path.resolve(imageDir, ...currentPath);
-    ensureDirExists(targetDir);
-
-    const ext = 'png';
-    const fileName = `${Date.now()}.${ext}`;
-
-    fs.writeFile(path.resolve(targetDir, fileName), buffer, async (err) => {
-        if (err) {
-            res.status(500).json({ error: err }).end();
+        if (exists) {
+            res.status(200).json({
+                id: exists.id,
+                url: exists.url
+            }).end();
             return;
         }
 
-        const url = '/assets/images/' + currentPath.join('/') + '/' + fileName;
-        const image = await models.image.create({
-            data: {
-                hash,
-                url
+        const currentPath = [
+            (new Date().getFullYear()).toString(),
+            (new Date().getMonth() + 1).toString(),
+            (new Date().getDate()).toString()
+        ];
+        const targetDir = path.resolve(imageDir, ...currentPath);
+        ensureDirExists(targetDir);
+
+        const fileName = `${Date.now()}.${remoteImage.extension}`;
+
+        fs.writeFile(path.resolve(targetDir, fileName), remoteImage.buffer, async (err) => {
+            if (err) {
+                res.status(500).json({ error: err }).end();
+                return;
             }
+
+            const url = '/assets/images/' + currentPath.join('/') + '/' + fileName;
+            const image = await models.image.create({
+                data: {
+                    hash,
+                    url
+                }
+            });
+            res.status(200).json({
+                id: image.id,
+                url: image.url
+            }).end();
         });
-        res.status(200).json({
-            id: image.id,
-            url: image.url
-        }).end();
-    });
+    } catch (error) {
+        if (error instanceof RemoteImageFetchError) {
+            res.status(error.status).json({
+                code: error.code,
+                message: error.message
+            }).end();
+            return;
+        }
+
+        throw error;
+    }
 };

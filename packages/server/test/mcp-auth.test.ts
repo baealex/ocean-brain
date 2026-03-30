@@ -89,6 +89,46 @@ const createTagRequest = async (
     };
 };
 
+const createNoteRequest = async (
+    baseUrl: string,
+    body: Record<string, unknown>,
+    bearerToken?: string
+) => {
+    const response = await fetch(`${baseUrl}/api/mcp/notes/create`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...(bearerToken ? { Authorization: `Bearer ${bearerToken}` } : {})
+        },
+        body: JSON.stringify(body)
+    });
+
+    return {
+        status: response.status,
+        body: await response.json() as Record<string, unknown>
+    };
+};
+
+const updateNoteRequest = async (
+    baseUrl: string,
+    body: Record<string, unknown>,
+    bearerToken?: string
+) => {
+    const response = await fetch(`${baseUrl}/api/mcp/notes/update`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...(bearerToken ? { Authorization: `Bearer ${bearerToken}` } : {})
+        },
+        body: JSON.stringify(body)
+    });
+
+    return {
+        status: response.status,
+        body: await response.json() as Record<string, unknown>
+    };
+};
+
 test('password mode requires a valid bearer token on the MCP graphql endpoint', async (t) => {
     const { baseUrl } = await startServer(t, {
         mode: 'password',
@@ -156,6 +196,44 @@ test('disabled mode still requires a valid bearer token on the MCP note delete e
     assert.equal(authorized.body.code, 'INVALID_NOTE_ID');
 });
 
+test('disabled mode still requires a valid bearer token on the MCP note create endpoint', async (t) => {
+    const { baseUrl } = await startServer(t, {
+        mode: 'disabled',
+        source: 'override'
+    }, { tokens: ['mcp-secret'] });
+
+    const unauthorized = await createNoteRequest(baseUrl, {});
+    assert.equal(unauthorized.status, 401);
+    assert.equal(unauthorized.body.code, 'UNAUTHORIZED');
+
+    const forbidden = await createNoteRequest(baseUrl, {}, 'wrong-token');
+    assert.equal(forbidden.status, 403);
+    assert.equal(forbidden.body.code, 'FORBIDDEN');
+
+    const authorized = await createNoteRequest(baseUrl, {}, 'mcp-secret');
+    assert.equal(authorized.status, 400);
+    assert.equal(authorized.body.code, 'INVALID_NOTE_TITLE');
+});
+
+test('disabled mode still requires a valid bearer token on the MCP note update endpoint', async (t) => {
+    const { baseUrl } = await startServer(t, {
+        mode: 'disabled',
+        source: 'override'
+    }, { tokens: ['mcp-secret'] });
+
+    const unauthorized = await updateNoteRequest(baseUrl, { id: 'abc' });
+    assert.equal(unauthorized.status, 401);
+    assert.equal(unauthorized.body.code, 'UNAUTHORIZED');
+
+    const forbidden = await updateNoteRequest(baseUrl, { id: 'abc' }, 'wrong-token');
+    assert.equal(forbidden.status, 403);
+    assert.equal(forbidden.body.code, 'FORBIDDEN');
+
+    const authorized = await updateNoteRequest(baseUrl, { id: 'abc' }, 'mcp-secret');
+    assert.equal(authorized.status, 400);
+    assert.equal(authorized.body.code, 'INVALID_NOTE_ID');
+});
+
 test('disabled mode still requires a valid bearer token on the MCP tag create endpoint', async (t) => {
     const { baseUrl } = await startServer(t, {
         mode: 'disabled',
@@ -184,6 +262,32 @@ test('password mode returns configuration error on the MCP note delete endpoint 
     }, { tokens: [] });
 
     const response = await deleteNoteRequest(baseUrl, '1', 'mcp-secret');
+    assert.equal(response.status, 503);
+    assert.equal(response.body.code, 'MCP_AUTH_NOT_CONFIGURED');
+});
+
+test('password mode returns configuration error on the MCP note create endpoint when no bearer token is configured', async (t) => {
+    const { baseUrl } = await startServer(t, {
+        mode: 'password',
+        password: 'secret',
+        sessionSecret: 'session-secret',
+        source: 'override'
+    }, { tokens: [] });
+
+    const response = await createNoteRequest(baseUrl, { title: 'Draft' }, 'mcp-secret');
+    assert.equal(response.status, 503);
+    assert.equal(response.body.code, 'MCP_AUTH_NOT_CONFIGURED');
+});
+
+test('password mode returns configuration error on the MCP note update endpoint when no bearer token is configured', async (t) => {
+    const { baseUrl } = await startServer(t, {
+        mode: 'password',
+        password: 'secret',
+        sessionSecret: 'session-secret',
+        source: 'override'
+    }, { tokens: [] });
+
+    const response = await updateNoteRequest(baseUrl, { id: '1', title: 'Draft' }, 'mcp-secret');
     assert.equal(response.status, 503);
     assert.equal(response.body.code, 'MCP_AUTH_NOT_CONFIGURED');
 });

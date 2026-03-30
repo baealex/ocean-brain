@@ -57,3 +57,9 @@ export async function blocksToMarkdown(contentJson: string): Promise<string> {
         return '';
     }
 }
+
+export async function markdownToBlocksJson(markdown: string): Promise<string> {
+    const editor = getEditor();
+    const blocks = await editor.tryParseMarkdownToBlocks(markdown);
+    return JSON.stringify(blocks);
+}

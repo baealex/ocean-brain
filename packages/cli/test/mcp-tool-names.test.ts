@@ -8,9 +8,11 @@ test('Ocean Brain MCP tool names use explicit product-prefixed names', () => {
         searchNotes: 'ocean_brain_search_notes',
         readNote: 'ocean_brain_read_note',
         listTags: 'ocean_brain_list_tags',
+        listNotesByTag: 'ocean_brain_list_notes_by_tag',
         listRecentNotes: 'ocean_brain_list_recent_notes',
         writeSafetyStatus: 'ocean_brain_write_safety_status',
         findNoteCleanupCandidates: 'ocean_brain_find_note_cleanup_candidates',
+        createTag: 'ocean_brain_create_tag',
         deleteNote: 'ocean_brain_delete_note'
     });
 });

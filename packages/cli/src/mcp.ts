@@ -5,6 +5,9 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 
+import { formatMcpGraphqlError } from './mcp-write-safety.js';
+import { createMcpWriteSafetyCoordinator, defaultMcpWriteSafetyDir } from './mcp-write-safety.js';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
     fs.readFileSync(path.resolve(__dirname, '..', 'package.json'), 'utf-8')
@@ -29,19 +32,35 @@ async function graphql(
         throw new Error(`GraphQL request failed: ${response.status} ${response.statusText}`);
     }
 
-    const result = await response.json() as { data?: Record<string, unknown>; errors?: Array<{ message: string }> };
+    const result = await response.json() as {
+        data?: Record<string, unknown>;
+        errors?: Array<{
+            message: string;
+            extensions?: {
+                code?: string;
+                operationId?: string;
+            };
+        }>;
+    };
 
     if (result.errors?.length) {
-        throw new Error(`GraphQL error: ${result.errors[0].message}`);
+        throw new Error(formatMcpGraphqlError(result.errors[0]));
     }
 
     return result.data;
 }
 
-export async function startMcpServer(serverUrl: string, token?: string) {
+export async function startMcpServer(
+    serverUrl: string,
+    token?: string,
+    options: { writeSafetyDir?: string } = {}
+) {
     const server = new McpServer({
         name: 'ocean-brain',
         version: pkg.version,
+    });
+    const writeSafety = createMcpWriteSafetyCoordinator({
+        rootDir: options.writeSafetyDir ?? defaultMcpWriteSafetyDir()
     });
 
     server.tool(
@@ -237,6 +256,20 @@ export async function startMcpServer(serverUrl: string, token?: string) {
                 content: [{
                     type: 'text' as const,
                     text: JSON.stringify({ totalCount: result.totalCount, notes }, null, 2),
+                }],
+            };
+        },
+    );
+
+    server.tool(
+        'mcp_write_safety_status',
+        'Inspect the pending destructive write confirmations and local operation log state before future MCP write tools are enabled.',
+        {},
+        async () => {
+            return {
+                content: [{
+                    type: 'text' as const,
+                    text: JSON.stringify(writeSafety.getStatus(), null, 2),
                 }],
             };
         },

@@ -10,10 +10,18 @@ const pkg = JSON.parse(
     fs.readFileSync(path.resolve(__dirname, '..', 'package.json'), 'utf-8')
 );
 
-async function graphql(serverUrl: string, query: string, variables?: Record<string, unknown>) {
-    const response = await fetch(`${serverUrl}/graphql`, {
+async function graphql(
+    serverUrl: string,
+    token: string | undefined,
+    query: string,
+    variables?: Record<string, unknown>
+) {
+    const response = await fetch(`${serverUrl}/graphql/mcp`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({ query, variables }),
     });
 
@@ -30,7 +38,7 @@ async function graphql(serverUrl: string, query: string, variables?: Record<stri
     return result.data;
 }
 
-export async function startMcpServer(serverUrl: string) {
+export async function startMcpServer(serverUrl: string, token?: string) {
     const server = new McpServer({
         name: 'ocean-brain',
         version: pkg.version,
@@ -44,7 +52,7 @@ export async function startMcpServer(serverUrl: string) {
             limit: z.number().optional().default(10).describe('Max results (default: 10)'),
         },
         async ({ query, limit }) => {
-            const data = await graphql(serverUrl, `
+            const data = await graphql(serverUrl, token, `
                 query ($searchFilter: SearchFilterInput, $pagination: PaginationInput) {
                     allNotes(searchFilter: $searchFilter, pagination: $pagination) {
                         totalCount
@@ -98,7 +106,7 @@ export async function startMcpServer(serverUrl: string) {
             maxLength: z.number().optional().default(1000).describe('Max content length in characters. 0 for full content. (default: 1000)'),
         },
         async ({ id, maxLength }) => {
-            const data = await graphql(serverUrl, `
+            const data = await graphql(serverUrl, token, `
                 query ($id: ID!) {
                     note(id: $id) {
                         id
@@ -154,7 +162,7 @@ export async function startMcpServer(serverUrl: string) {
         'List all tags with their note counts.',
         {},
         async () => {
-            const data = await graphql(serverUrl, `
+            const data = await graphql(serverUrl, token, `
                 query ($searchFilter: SearchFilterInput, $pagination: PaginationInput) {
                     allTags(searchFilter: $searchFilter, pagination: $pagination) {
                         totalCount
@@ -191,7 +199,7 @@ export async function startMcpServer(serverUrl: string) {
             limit: z.number().optional().default(10).describe('Max results (default: 10)'),
         },
         async ({ limit }) => {
-            const data = await graphql(serverUrl, `
+            const data = await graphql(serverUrl, token, `
                 query ($searchFilter: SearchFilterInput, $pagination: PaginationInput) {
                     allNotes(searchFilter: $searchFilter, pagination: $pagination) {
                         totalCount

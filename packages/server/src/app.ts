@@ -9,6 +9,12 @@ import { createApiRouter } from './urls.js';
 import { createMutationAuthValidationRule, createSessionMiddleware, isAuthenticatedRequest } from './modules/auth-guard.js';
 import type { AuthConfig } from './modules/auth-mode.js';
 import {
+    createMcpAuthMiddleware,
+    createReadOnlyMcpValidationRule,
+    resolveMcpAuthConfig,
+    type McpAuthConfig
+} from './modules/mcp-auth.js';
+import {
     createLoginPageHandler,
     createLoginPageSubmitHandler,
     createLogoutPageHandler
@@ -27,6 +33,11 @@ const shouldBlockClientRoute = (authConfig: AuthConfig, requestPath: string, aut
 };
 
 export const createApp = (authConfig: AuthConfig) => {
+    const mcpAuthConfig = resolveMcpAuthConfig(process.env);
+    return createAppWithMcpAuth(authConfig, mcpAuthConfig);
+};
+
+export const createAppWithMcpAuth = (authConfig: AuthConfig, mcpAuthConfig: McpAuthConfig) => {
     const app = express();
     app.locals.authConfig = authConfig;
 
@@ -39,6 +50,18 @@ export const createApp = (authConfig: AuthConfig) => {
         .get('/auth/login', createLoginPageHandler(authConfig))
         .post('/auth/login', createLoginPageSubmitHandler(authConfig))
         .post('/auth/logout', createLogoutPageHandler(authConfig))
+        .use('/graphql/mcp', createMcpAuthMiddleware(authConfig, mcpAuthConfig), createHandler({
+            schema,
+            context: (req) => ({
+                authMode: authConfig.mode,
+                isAuthenticated: isAuthenticatedRequest(req.raw),
+                req: req.raw,
+                res: req.context.res
+            }),
+            validationRules: (_req, _args, specifiedRules) => {
+                return [...specifiedRules, createReadOnlyMcpValidationRule()];
+            }
+        }))
         .use('/graphql', createHandler({
             schema,
             context: (req) => ({

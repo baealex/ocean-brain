@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { Command } from 'commander';
 import { resolveServeAuthEnvironment } from './auth-options.js';
+import { resolveMcpBearerToken } from './mcp-auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const serverRoot = path.resolve(__dirname, '..', 'server');
@@ -90,9 +91,13 @@ program
     .command('mcp')
     .description('Start MCP server for AI integration')
     .option('-s, --server <url>', 'Ocean Brain server URL', 'http://localhost:6683')
+    .option('--token-file <path>', 'read the MCP bearer token from a file')
+    .option('--token-env <name>', 'environment variable name to read the MCP bearer token from', 'OCEAN_BRAIN_MCP_TOKEN')
+    .option('--token <token>', 'explicit MCP bearer token fallback')
     .action(async (opts) => {
         const { startMcpServer } = await import('./mcp.js');
-        await startMcpServer(opts.server);
+        const token = resolveMcpBearerToken(opts, process.env);
+        await startMcpServer(opts.server, token);
     });
 
 program.parse();

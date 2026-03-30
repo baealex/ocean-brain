@@ -69,6 +69,26 @@ const deleteNoteRequest = async (
     };
 };
 
+const createTagRequest = async (
+    baseUrl: string,
+    name: string,
+    bearerToken?: string
+) => {
+    const response = await fetch(`${baseUrl}/api/mcp/tags/create`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...(bearerToken ? { Authorization: `Bearer ${bearerToken}` } : {})
+        },
+        body: JSON.stringify({ name })
+    });
+
+    return {
+        status: response.status,
+        body: await response.json() as Record<string, unknown>
+    };
+};
+
 test('password mode requires a valid bearer token on the MCP graphql endpoint', async (t) => {
     const { baseUrl } = await startServer(t, {
         mode: 'password',
@@ -136,6 +156,25 @@ test('disabled mode still requires a valid bearer token on the MCP note delete e
     assert.equal(authorized.body.code, 'INVALID_NOTE_ID');
 });
 
+test('disabled mode still requires a valid bearer token on the MCP tag create endpoint', async (t) => {
+    const { baseUrl } = await startServer(t, {
+        mode: 'disabled',
+        source: 'override'
+    }, { tokens: ['mcp-secret'] });
+
+    const unauthorized = await createTagRequest(baseUrl, '');
+    assert.equal(unauthorized.status, 401);
+    assert.equal(unauthorized.body.code, 'UNAUTHORIZED');
+
+    const forbidden = await createTagRequest(baseUrl, '', 'wrong-token');
+    assert.equal(forbidden.status, 403);
+    assert.equal(forbidden.body.code, 'FORBIDDEN');
+
+    const authorized = await createTagRequest(baseUrl, '', 'mcp-secret');
+    assert.equal(authorized.status, 400);
+    assert.equal(authorized.body.code, 'INVALID_TAG_NAME');
+});
+
 test('password mode returns configuration error on the MCP note delete endpoint when no bearer token is configured', async (t) => {
     const { baseUrl } = await startServer(t, {
         mode: 'password',
@@ -145,6 +184,19 @@ test('password mode returns configuration error on the MCP note delete endpoint 
     }, { tokens: [] });
 
     const response = await deleteNoteRequest(baseUrl, '1', 'mcp-secret');
+    assert.equal(response.status, 503);
+    assert.equal(response.body.code, 'MCP_AUTH_NOT_CONFIGURED');
+});
+
+test('password mode returns configuration error on the MCP tag create endpoint when no bearer token is configured', async (t) => {
+    const { baseUrl } = await startServer(t, {
+        mode: 'password',
+        password: 'secret',
+        sessionSecret: 'session-secret',
+        source: 'override'
+    }, { tokens: [] });
+
+    const response = await createTagRequest(baseUrl, 'project', 'mcp-secret');
     assert.equal(response.status, 503);
     assert.equal(response.body.code, 'MCP_AUTH_NOT_CONFIGURED');
 });

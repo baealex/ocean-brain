@@ -21,11 +21,31 @@ export const OCEAN_BRAIN_MCP_TOOLS = {
     searchNotes: 'ocean_brain_search_notes',
     readNote: 'ocean_brain_read_note',
     listTags: 'ocean_brain_list_tags',
+    listNotesByTag: 'ocean_brain_list_notes_by_tag',
     listRecentNotes: 'ocean_brain_list_recent_notes',
     writeSafetyStatus: 'ocean_brain_write_safety_status',
     findNoteCleanupCandidates: 'ocean_brain_find_note_cleanup_candidates',
+    createTag: 'ocean_brain_create_tag',
     deleteNote: 'ocean_brain_delete_note'
 } as const;
+
+const normalizeOceanBrainTagName = (name: string) => {
+    const trimmedName = name.trim();
+
+    if (!trimmedName) {
+        throw new Error('Tag name is required.');
+    }
+
+    const normalizedName = trimmedName.startsWith('@')
+        ? trimmedName
+        : `@${trimmedName}`;
+
+    if (normalizedName === '@' || /\s/.test(normalizedName.slice(1))) {
+        throw new Error('Ocean Brain tag names must be a single token. Example: @project');
+    }
+
+    return normalizedName;
+};
 
 async function graphql(
     serverUrl: string,
@@ -64,7 +84,7 @@ async function graphql(
     return result.data;
 }
 
-async function jsonRequest(
+async function jsonRequest<TResponse extends Record<string, unknown>>(
     serverUrl: string,
     token: string | undefined,
     pathName: string,
@@ -79,14 +99,9 @@ async function jsonRequest(
         body: JSON.stringify(body)
     });
 
-    const result = await response.json() as {
+    const result = await response.json() as TResponse & {
         code?: string;
         message?: string;
-        deleted?: boolean;
-        note?: {
-            id: string;
-            title: string;
-        };
     };
 
     if (!response.ok) {
@@ -266,6 +281,103 @@ export async function startMcpServer(
     );
 
     server.tool(
+        OCEAN_BRAIN_MCP_TOOLS.listNotesByTag,
+        'List Ocean Brain notes for a specific tag name. The tool accepts either @tag or tag and resolves it to the canonical Ocean Brain tag name first.',
+        {
+            tag: z.string().describe('Tag name to inspect. You can pass @project or project.'),
+            limit: z.number().optional().default(20).describe('Max results (default: 20)'),
+            offset: z.number().optional().default(0).describe('Pagination offset (default: 0)')
+        },
+        async ({ tag, limit, offset }) => {
+            const normalizedTag = normalizeOceanBrainTagName(tag);
+            const tagsData = await graphql(serverUrl, token, `
+                query ($searchFilter: SearchFilterInput, $pagination: PaginationInput) {
+                    allTags(searchFilter: $searchFilter, pagination: $pagination) {
+                        totalCount
+                        tags {
+                            id
+                            name
+                            referenceCount
+                        }
+                    }
+                }
+            `, {
+                searchFilter: { query: normalizedTag },
+                pagination: { limit: 100, offset: 0 }
+            });
+
+            const tagResult = tagsData?.allTags as {
+                totalCount: number;
+                tags: Array<{ id: string; name: string; referenceCount: number }>;
+            };
+            const exactMatches = tagResult.tags.filter((item) => item.name === normalizedTag);
+
+            if (exactMatches.length === 0) {
+                return {
+                    content: [{
+                        type: 'text' as const,
+                        text: JSON.stringify({
+                            requestedTag: tag,
+                            normalizedTag,
+                            tagFound: false,
+                            noteCount: 0,
+                            notes: []
+                        }, null, 2),
+                    }],
+                };
+            }
+
+            const selectedTag = exactMatches[0];
+            const notesData = await graphql(serverUrl, token, `
+                query ($searchFilter: SearchFilterInput, $pagination: PaginationInput) {
+                    tagNotes(searchFilter: $searchFilter, pagination: $pagination) {
+                        totalCount
+                        notes {
+                            id
+                            title
+                            updatedAt
+                            tags { id name }
+                        }
+                    }
+                }
+            `, {
+                searchFilter: { query: selectedTag.id },
+                pagination: { limit, offset }
+            });
+
+            const noteResult = notesData?.tagNotes as {
+                totalCount: number;
+                notes: Array<{
+                    id: string;
+                    title: string;
+                    updatedAt: string;
+                    tags: Array<{ id: string; name: string }>;
+                }>;
+            };
+
+            return {
+                content: [{
+                    type: 'text' as const,
+                    text: JSON.stringify({
+                        requestedTag: tag,
+                        normalizedTag,
+                        tagFound: true,
+                        duplicateExactMatchCount: exactMatches.length,
+                        tag: selectedTag,
+                        totalCount: noteResult.totalCount,
+                        notes: noteResult.notes.map((note) => ({
+                            id: note.id,
+                            title: note.title,
+                            updatedAt: note.updatedAt,
+                            tags: note.tags.map((item) => item.name)
+                        }))
+                    }, null, 2),
+                }],
+            };
+        }
+    );
+
+    server.tool(
         OCEAN_BRAIN_MCP_TOOLS.listRecentNotes,
         'List recently updated Ocean Brain notes. Returns titles and tags only. Use ocean_brain_read_note to get full content for a specific note.',
         {
@@ -325,7 +437,11 @@ export async function startMcpServer(
                     type: 'text' as const,
                     text: JSON.stringify({
                         ...writeSafety.getStatus(),
-                        writeTools: [OCEAN_BRAIN_MCP_TOOLS.deleteNote],
+                        destructiveWriteTools: [OCEAN_BRAIN_MCP_TOOLS.deleteNote],
+                        writeTools: [
+                            OCEAN_BRAIN_MCP_TOOLS.createTag,
+                            OCEAN_BRAIN_MCP_TOOLS.deleteNote
+                        ],
                         writeToolsEnabled: true
                     }, null, 2),
                 }],
@@ -393,6 +509,36 @@ export async function startMcpServer(
                         notes: result
                     }, null, 2),
                 }],
+            };
+        }
+    );
+
+    server.tool(
+        OCEAN_BRAIN_MCP_TOOLS.createTag,
+        'Create an Ocean Brain tag through the MCP write path. The tool accepts either @tag or tag and creates the canonical Ocean Brain tag if it does not already exist.',
+        {
+            name: z.string().describe('Tag name to create. You can pass @project or project.')
+        },
+        async ({ name }) => {
+            const writeToken = requireWriteToken(token, OCEAN_BRAIN_MCP_TOOLS.createTag);
+            const result = await jsonRequest<{
+                created: boolean;
+                normalizedName: string;
+                tag: {
+                    id: string;
+                    name: string;
+                    createdAt: string;
+                    updatedAt: string;
+                };
+            }>(serverUrl, writeToken, '/api/mcp/tags/create', {
+                name
+            });
+
+            return {
+                content: [{
+                    type: 'text' as const,
+                    text: JSON.stringify(result, null, 2)
+                }]
             };
         }
     );

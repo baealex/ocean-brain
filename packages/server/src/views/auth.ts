@@ -41,15 +41,38 @@ const destroySession = async (req: Request) => {
 };
 
 const sanitizeRedirectPath = (value: unknown) => {
-    if (typeof value !== 'string' || !value.startsWith('/')) {
+    if (typeof value !== 'string' || value.length === 0) {
         return '/';
     }
 
-    if (value.startsWith('//') || value.startsWith('/auth/login')) {
-        return '/';
+    if (value.startsWith('/')) {
+        if (value.startsWith('//') || value.startsWith('/auth/login')) {
+            return '/';
+        }
+
+        return value;
     }
 
-    return value;
+    try {
+        const redirectUrl = new URL(value);
+        const hostname = redirectUrl.hostname.toLowerCase();
+
+        if (!['http:', 'https:'].includes(redirectUrl.protocol)) {
+            return '/';
+        }
+
+        if (!['localhost', '127.0.0.1', '::1', '[::1]'].includes(hostname)) {
+            return '/';
+        }
+
+        if (redirectUrl.pathname.startsWith('/auth/login')) {
+            return '/';
+        }
+
+        return `${redirectUrl.origin}${redirectUrl.pathname}${redirectUrl.search}${redirectUrl.hash}`;
+    } catch {
+        return '/';
+    }
 };
 
 const escapeHtml = (value: string) => value

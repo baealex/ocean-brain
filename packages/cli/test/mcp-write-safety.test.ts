@@ -3,9 +3,11 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import test from 'node:test';
+import { z } from 'zod';
 
 import {
     createMcpWriteSafetyCoordinator,
+    destructiveMcpWriteFields,
     formatMcpGraphqlError,
     McpCliWriteSafetyError,
     resolveCliMcpWriteIntent
@@ -241,4 +243,11 @@ test('recordWriteResult appends execution results to the operation log', () => {
         .map((line) => JSON.parse(line) as { phase: string });
 
     assert.deepEqual(logLines.map((line) => line.phase), ['prepared', 'confirmed', 'executed']);
+});
+
+test('destructive MCP write fields default to dry-run mode', () => {
+    const parsed = z.object(destructiveMcpWriteFields).parse({ id: '7' });
+
+    assert.equal(parsed.dryRun, true);
+    assert.equal(parsed.force, false);
 });

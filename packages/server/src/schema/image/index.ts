@@ -1,10 +1,7 @@
 import type { IResolvers } from '@graphql-tools/utils';
-import fs from 'fs';
-import path from 'path';
-
 import models, { type Image } from '~/models.js';
 import { gql } from '~/modules/graphql.js';
-import { paths } from '~/paths.js';
+import { deleteImageById } from '~/modules/image-delete.js';
 import type { Pagination } from '~/types/index.js';
 
 export const imageType = gql`
@@ -66,22 +63,8 @@ export const imageResolvers: IResolvers = {
     Mutation: {
         deleteImage: async (_, { id }) => {
             try {
-                const $image = await models.image.findFirst({ where: { id: Number(id) } });
-
-                if (!$image) {
-                    return false;
-                }
-
-                const imagePath = path.resolve(paths.imageDir, $image.url.replace('/assets/images/', ''));
-                if (fs.existsSync(imagePath)) {
-                    fs.unlinkSync(imagePath);
-                }
-
-                await models.image.delete({ where: { id: Number(id) } });
-
-                return true;
-            } catch (error) {
-                console.log(error);
+                return Boolean(await deleteImageById(Number(id)));
+            } catch {
                 return false;
             }
         }

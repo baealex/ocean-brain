@@ -5,6 +5,7 @@ import crpyto from 'crypto';
 import type { Controller } from '~/types/index.js';
 import models from '~/models.js';
 import { paths } from '~/paths.js';
+import { deleteImageById } from '~/modules/image-delete.js';
 import { fetchRemoteImage, RemoteImageFetchError } from '~/modules/remote-image.js';
 
 const imageDir = paths.imageDir;
@@ -126,4 +127,35 @@ export const uploadImageFromSrc: Controller = async (req, res) => {
 
         throw error;
     }
+};
+
+export const createMcpDeleteImageHandler = (
+    deleteImage = deleteImageById
+): Controller => {
+    return async (req, res) => {
+        const id = Number(req.body?.id);
+
+        if (!Number.isInteger(id) || id <= 0) {
+            res.status(400).json({
+                code: 'INVALID_IMAGE_ID',
+                message: 'A valid image id is required.'
+            }).end();
+            return;
+        }
+
+        const deletedImage = await deleteImage(id);
+
+        if (!deletedImage) {
+            res.status(404).json({
+                code: 'IMAGE_NOT_FOUND',
+                message: 'The requested image was not found.'
+            }).end();
+            return;
+        }
+
+        res.status(200).json({
+            deleted: true,
+            image: deletedImage
+        }).end();
+    };
 };

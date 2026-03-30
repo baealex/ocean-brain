@@ -5,8 +5,12 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 
-import { formatMcpGraphqlError } from './mcp-write-safety.js';
-import { createMcpWriteSafetyCoordinator, defaultMcpWriteSafetyDir } from './mcp-write-safety.js';
+import {
+    createMcpWriteSafetyCoordinator,
+    defaultMcpWriteSafetyDir,
+    destructiveMcpWriteFields,
+    formatMcpGraphqlError
+} from './mcp-write-safety.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
@@ -49,6 +53,47 @@ async function graphql(
 
     return result.data;
 }
+
+async function jsonRequest(
+    serverUrl: string,
+    token: string | undefined,
+    pathName: string,
+    body: Record<string, unknown>
+) {
+    const response = await fetch(`${serverUrl}${pathName}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(body)
+    });
+
+    const result = await response.json() as {
+        code?: string;
+        message?: string;
+        deleted?: boolean;
+        image?: {
+            id: string;
+            url: string;
+            referenceCount: number;
+        };
+    };
+
+    if (!response.ok) {
+        throw new Error(`Request failed: ${result.code || response.status} ${result.message || response.statusText}`);
+    }
+
+    return result;
+}
+
+const requireWriteToken = (token: string | undefined) => {
+    if (token) {
+        return token;
+    }
+
+    throw new Error('delete_image requires an MCP bearer token. Set --token, --token-file, or --token-env.');
+};
 
 export async function startMcpServer(
     serverUrl: string,
@@ -262,17 +307,165 @@ export async function startMcpServer(
     );
 
     server.tool(
+        'list_unused_images',
+        'List images that are no longer referenced by notes so they can be reviewed before cleanup.',
+        {
+            limit: z.number().optional().default(20).describe('Max results (default: 20)'),
+            offset: z.number().optional().default(0).describe('Pagination offset (default: 0)')
+        },
+        async ({ limit, offset }) => {
+            const data = await graphql(serverUrl, token, `
+                query ($pagination: PaginationInput) {
+                    allImages(pagination: $pagination) {
+                        totalCount
+                        images {
+                            id
+                            url
+                            referenceCount
+                        }
+                    }
+                }
+            `, {
+                pagination: { limit, offset }
+            });
+
+            const result = data?.allImages as {
+                totalCount: number;
+                images: Array<{
+                    id: string;
+                    url: string;
+                    referenceCount: number;
+                }>;
+            };
+
+            const unusedImages = result.images.filter((image) => image.referenceCount === 0);
+
+            return {
+                content: [{
+                    type: 'text' as const,
+                    text: JSON.stringify({
+                        totalCount: result.totalCount,
+                        offset,
+                        limit,
+                        unusedCount: unusedImages.length,
+                        images: unusedImages
+                    }, null, 2),
+                }],
+            };
+        },
+    );
+
+    server.tool(
         'mcp_write_safety_status',
-        'Inspect the pending destructive write confirmations and local operation log state before future MCP write tools are enabled.',
+        'Inspect the pending destructive write confirmations and local operation log state for enabled MCP write tools.',
         {},
         async () => {
             return {
                 content: [{
                     type: 'text' as const,
-                    text: JSON.stringify(writeSafety.getStatus(), null, 2),
+                    text: JSON.stringify({
+                        ...writeSafety.getStatus(),
+                        writeTools: ['delete_image'],
+                        writeToolsEnabled: true
+                    }, null, 2),
                 }],
             };
         },
+    );
+
+    server.tool(
+        'delete_image',
+        'Delete an image safely through a dry-run and confirmation flow. Start with dryRun=true, then call again with dryRun=false, operationId, and confirmToken.',
+        {
+            id: z.string().describe('Image ID to delete'),
+            ...destructiveMcpWriteFields
+        },
+        async ({ id, dryRun, operationId, confirmToken, force }) => {
+            const writeToken = requireWriteToken(token);
+            const data = await graphql(serverUrl, writeToken, `
+                query ($id: ID!) {
+                    image(id: $id) {
+                        id
+                        url
+                        referenceCount
+                    }
+                }
+            `, { id });
+
+            const image = data?.image as {
+                id: string;
+                url: string;
+                referenceCount: number;
+            } | null;
+            const requiresForce = Boolean(image?.referenceCount && image.referenceCount > 0);
+
+            if (!image) {
+                return {
+                    content: [{
+                        type: 'text' as const,
+                        text: JSON.stringify({
+                            deleted: false,
+                            reason: 'IMAGE_NOT_FOUND',
+                            id
+                        }, null, 2)
+                    }]
+                };
+            }
+
+            const intent = writeSafety.ensureDestructiveWriteRequest(
+                { dryRun, operationId, confirmToken, force },
+                {
+                    actor: 'mcp-bearer',
+                    affectedIds: [image.id],
+                    estimatedChangeCount: 1,
+                    force: requiresForce,
+                    risk: 'destructive',
+                    summary: `Delete image ${image.id} (${image.url})`,
+                    toolName: 'delete_image'
+                }
+            );
+
+            if (intent.kind === 'dry-run') {
+                return {
+                    content: [{
+                        type: 'text' as const,
+                        text: JSON.stringify({
+                            mode: 'dry-run',
+                            requiresForce,
+                            operation: intent.operation,
+                            image
+                        }, null, 2)
+                    }]
+                };
+            }
+
+            if (intent.operation.force && !force) {
+                throw new Error('delete_image requires force=true because the image is still referenced by notes.');
+            }
+
+            try {
+                const result = await jsonRequest(serverUrl, writeToken, '/api/mcp/images/delete', {
+                    id: image.id
+                });
+
+                writeSafety.recordWriteResult(intent.operation, true);
+
+                return {
+                    content: [{
+                        type: 'text' as const,
+                        text: JSON.stringify({
+                            mode: 'commit',
+                            operation: intent.operation,
+                            result
+                        }, null, 2)
+                    }]
+                };
+            } catch (error) {
+                const message = error instanceof Error ? error.message : 'Unknown MCP image delete error';
+                writeSafety.recordWriteResult(intent.operation, false, message);
+                throw error;
+            }
+        }
     );
 
     const transport = new StdioServerTransport();

@@ -57,7 +57,7 @@ test('ensureDestructiveWriteRequest returns a dry-run proposal and persists a pe
             estimatedChangeCount: 2,
             risk: 'destructive',
             summary: 'Delete two notes',
-            toolName: 'delete_notes'
+            toolName: 'ocean_brain_delete_notes'
         }
     );
 
@@ -80,7 +80,7 @@ test('ensureDestructiveWriteRequest rejects destructive writes without a confirm
                 estimatedChangeCount: 1,
                 risk: 'destructive',
                 summary: 'Delete one note',
-                toolName: 'delete_note'
+                toolName: 'ocean_brain_delete_note'
             }
         ),
         (error: unknown) => {
@@ -105,7 +105,7 @@ test('ensureDestructiveWriteRequest consumes a matching confirmation and removes
         estimatedChangeCount: 1,
         risk: 'destructive',
         summary: 'Delete note 9',
-        toolName: 'delete_note'
+        toolName: 'ocean_brain_delete_note'
     });
 
     const confirmed = coordinator.ensureDestructiveWriteRequest(
@@ -120,7 +120,7 @@ test('ensureDestructiveWriteRequest consumes a matching confirmation and removes
             estimatedChangeCount: 1,
             risk: 'destructive',
             summary: 'Delete note 9',
-            toolName: 'delete_note'
+            toolName: 'ocean_brain_delete_note'
         }
     );
 
@@ -142,7 +142,7 @@ test('ensureDestructiveWriteRequest rejects invalid confirmation tokens', () => 
         estimatedChangeCount: 1,
         risk: 'destructive',
         summary: 'Delete note 7',
-        toolName: 'delete_note'
+        toolName: 'ocean_brain_delete_note'
     });
 
     assert.throws(
@@ -152,7 +152,7 @@ test('ensureDestructiveWriteRequest rejects invalid confirmation tokens', () => 
                 operationId: prepared.operationId,
                 confirmToken: 'confirm_wrong'
             },
-            { toolName: 'delete_note' }
+            { toolName: 'ocean_brain_delete_note' }
         ),
         (error: unknown) => {
             assert.ok(error instanceof McpCliWriteSafetyError);
@@ -177,7 +177,7 @@ test('expired pending confirmations are cleaned up and reported as expired', () 
         estimatedChangeCount: 1,
         risk: 'destructive',
         summary: 'Delete note 11',
-        toolName: 'delete_note'
+        toolName: 'ocean_brain_delete_note'
     });
 
     currentTime = new Date('2026-03-30T12:00:02.000Z');
@@ -189,7 +189,7 @@ test('expired pending confirmations are cleaned up and reported as expired', () 
                 operationId: prepared.operationId,
                 confirmToken: prepared.confirmToken
             },
-            { toolName: 'delete_note' }
+            { toolName: 'ocean_brain_delete_note' }
         ),
         (error: unknown) => {
             assert.ok(error instanceof McpCliWriteSafetyError);
@@ -221,7 +221,7 @@ test('recordWriteResult appends execution results to the operation log', () => {
         estimatedChangeCount: 1,
         risk: 'destructive',
         summary: 'Delete note 12',
-        toolName: 'delete_note'
+        toolName: 'ocean_brain_delete_note'
     });
 
     const confirmed = coordinator.requireConfirmedOperation(
@@ -230,7 +230,7 @@ test('recordWriteResult appends execution results to the operation log', () => {
             operationId: prepared.operationId,
             confirmToken: prepared.confirmToken
         },
-        { toolName: 'delete_note' }
+        { toolName: 'ocean_brain_delete_note' }
     );
 
     coordinator.recordWriteResult(confirmed, true);

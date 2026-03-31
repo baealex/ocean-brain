@@ -10,6 +10,7 @@ import { useTheme } from '~/store/theme';
 import { router } from './router';
 
 function App() {
+    const setSystemTheme = useTheme((state) => state.setSystemTheme);
     const setTheme = useTheme((state) => state.setTheme);
 
     useEffect(() => {
@@ -22,12 +23,12 @@ function App() {
         return handyMediaQuery.listenThemeChange(
             (isDark) => {
                 if (!getStoredTheme()) {
-                    setTheme(isDark ? 'dark' : 'light');
+                    setSystemTheme(isDark ? 'dark' : 'light');
                 }
             },
             storedTheme == null
         );
-    }, [setTheme]);
+    }, [setSystemTheme, setTheme]);
 
     return (
         <Providers>

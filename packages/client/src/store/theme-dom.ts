@@ -12,6 +12,10 @@ interface ThemeInitializerOptions {
     matchMedia?: (query: string) => { matches: boolean };
 }
 
+interface ApplyThemeClassOptions {
+    persist?: boolean;
+}
+
 function isTheme(value: string | null): value is Theme {
     return value === 'light' || value === 'dark';
 }
@@ -57,8 +61,13 @@ export function resolveTheme({ storedTheme, systemPrefersDark }: ThemeResolverOp
     return systemPrefersDark ? 'dark' : 'light';
 }
 
-export function applyThemeClass(theme: Theme) {
+export function applyThemeClass(theme: Theme, options: ApplyThemeClassOptions = {}) {
     syncThemeClass(theme);
+
+    if (options.persist === false) {
+        return;
+    }
+
     getThemeStorage()?.setItem(THEME_STORAGE_KEY, theme);
 }
 

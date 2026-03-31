@@ -44,4 +44,21 @@ describe('theme-dom', () => {
         expect(document.documentElement.className).toContain('dark');
         expect(localStorage.getItem('theme')).toBe('dark');
     });
+
+    it('can apply a system theme without creating a stored preference', () => {
+        applyThemeClass('dark', { persist: false });
+
+        expect(document.documentElement.className).toContain('dark');
+        expect(localStorage.getItem('theme')).toBeNull();
+    });
+
+    it('does not persist the system fallback during initialization', () => {
+        const applied = initializeTheme({
+            matchMedia: vi.fn(() => ({ matches: true })) as never
+        });
+
+        expect(applied).toBe('dark');
+        expect(document.documentElement.classList.contains('dark')).toBe(true);
+        expect(localStorage.getItem('theme')).toBeNull();
+    });
 });

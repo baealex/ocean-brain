@@ -33,6 +33,7 @@ const DropdownMenuSubTrigger = forwardRef<
             'font-medium',
             'text-fg-secondary',
             'outline-none',
+            'focus-ring-soft',
             'focus:bg-hover-subtle',
             'focus:text-fg-default',
             'data-[state=open]:bg-hover-subtle',
@@ -129,6 +130,7 @@ const DropdownMenuItem = forwardRef<
             'font-medium',
             'text-fg-secondary',
             'outline-none',
+            'focus-ring-soft',
             'transition-colors',
             'rounded-[12px]',
             'focus:bg-hover-subtle',
@@ -165,6 +167,7 @@ const DropdownMenuCheckboxItem = forwardRef<
             'font-medium',
             'text-fg-secondary',
             'outline-none',
+            'focus-ring-soft',
             'transition-colors',
             'focus:bg-hover-subtle',
             'focus:text-fg-default',
@@ -206,6 +209,7 @@ const DropdownMenuRadioItem = forwardRef<
             'font-medium',
             'text-fg-secondary',
             'outline-none',
+            'focus-ring-soft',
             'transition-colors',
             'focus:bg-hover-subtle',
             'focus:text-fg-default',
@@ -303,7 +307,9 @@ const Dropdown = ({ button, items }: DropdownProps) => {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <button type="button" className="flex items-center justify-center">
+                <button
+                    type="button"
+                    className="surface-base focus-ring-soft inline-flex items-center justify-center rounded-[16px] border border-border-subtle bg-elevated px-3 py-2 text-sm font-medium text-fg-default transition-colors hover:bg-hover-subtle">
                     {button}
                 </button>
             </DropdownMenuTrigger>

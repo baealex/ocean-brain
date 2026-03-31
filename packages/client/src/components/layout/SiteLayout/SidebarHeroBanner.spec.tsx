@@ -34,8 +34,9 @@ describe('<SidebarHeroBanner />', () => {
 
         render(<SidebarHeroBanner />, { wrapper: Wrapper });
 
-        const heroImage = await screen.findByAltText('Studio atmosphere banner');
-        fireEvent.click(heroImage);
+        const removeButton = await screen.findByRole('button', { name: 'Remove hero banner' });
+        expect(await screen.findByAltText('Studio atmosphere banner')).toBeInTheDocument();
+        fireEvent.click(removeButton);
 
         await waitFor(() => {
             expect(mockConfirm).toHaveBeenCalledWith('Do you want to remove this hero banner?');

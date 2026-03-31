@@ -19,6 +19,7 @@ type RouterLocation = {
 
 let mockPinnedNotes: MockPinnedNote[] = [];
 let latestOnDragEnd: ((event: { active: { id: string }; over: { id: string } | null }) => void) | undefined;
+const mockSortableAttributes = { 'data-sortable-handle': 'true' };
 
 vi.mock('@tanstack/react-router', () => ({
     Link: ({ children }: { children: ReactNode }) => <a>{children}</a>,
@@ -60,7 +61,7 @@ vi.mock('@dnd-kit/sortable', () => ({
     }),
     sortableKeyboardCoordinates: vi.fn(),
     useSortable: () => ({
-        attributes: {},
+        attributes: mockSortableAttributes,
         listeners: {},
         setNodeRef: vi.fn(),
         setActivatorNodeRef: vi.fn(),
@@ -116,7 +117,8 @@ describe('<PinnedNotesPanel />', () => {
         render(<PinnedNotesPanel />, { wrapper: Wrapper });
 
         expect(screen.getByText('Editorial note')).toBeInTheDocument();
-        expect(screen.getByRole('button')).toHaveClass('cursor-grab');
+        expect(screen.getByRole('button', { name: 'Reorder note Editorial note' })).toHaveClass('cursor-grab');
+        expect(screen.getByRole('button', { name: 'Reorder note Editorial note' })).toHaveAttribute('data-sortable-handle', 'true');
         expect(screen.getByTestId('dnd-context')).toBeInTheDocument();
     });
 

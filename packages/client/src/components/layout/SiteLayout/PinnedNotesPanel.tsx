@@ -75,11 +75,12 @@ function SortablePinnedNote({ id, tooltip, children }: SortablePinnedNoteProps) 
         <div
             ref={setNodeRef}
             style={style}
-            {...attributes}
             className="group flex items-center gap-3 rounded-[22px] border border-transparent px-3 py-3 transition-colors hover:border-border-subtle hover:bg-hover-subtle/60">
             <button
                 type="button"
                 ref={setActivatorNodeRef}
+                aria-label={`Reorder note ${tooltip ?? 'Untitled'}`}
+                {...attributes}
                 {...listeners}
                 className="focus-ring-soft flex h-8 w-8 cursor-grab items-center justify-center rounded-[14px] text-fg-tertiary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-secondary active:cursor-grabbing touch-none"
                 style={{ cursor: isDragging ? 'grabbing' : 'grab' }}>

@@ -5,6 +5,7 @@ import {
     updateNoteFromMarkdown
 } from '~/modules/note-authoring.js';
 import { deleteNoteById } from '~/modules/note-cleanup.js';
+import { MCP_SNAPSHOT_META } from '~/modules/note-snapshot.js';
 import type { NoteLayout } from '~/models.js';
 
 const NOTE_LAYOUTS = new Set<NoteLayout>(['narrow', 'wide', 'full']);
@@ -81,7 +82,9 @@ export const createMcpUpdateNoteHandler = (
     updateNote = updateNoteFromMarkdown
 ): Controller => {
     return async (req, res) => {
-        const { id, title, markdown, layout } = req.body ?? {};
+        const {
+            id, title, markdown, layout, editSessionId
+        } = req.body ?? {};
         const noteId = Number(id);
         const resolvedLayout = resolveNoteLayout(layout);
 
@@ -117,6 +120,14 @@ export const createMcpUpdateNoteHandler = (
             return;
         }
 
+        if (editSessionId !== undefined && typeof editSessionId !== 'string') {
+            res.status(400).json({
+                code: 'INVALID_EDIT_SESSION_ID',
+                message: 'Edit session id must be a string.'
+            }).end();
+            return;
+        }
+
         if (
             title === undefined &&
             markdown === undefined &&
@@ -134,7 +145,9 @@ export const createMcpUpdateNoteHandler = (
                 id: noteId,
                 ...(title !== undefined ? { title } : {}),
                 ...(markdown !== undefined ? { markdown } : {}),
-                ...(resolvedLayout ? { layout: resolvedLayout } : {})
+                ...(resolvedLayout ? { layout: resolvedLayout } : {}),
+                ...(editSessionId !== undefined ? { editSessionId } : {}),
+                snapshotMeta: MCP_SNAPSHOT_META
             });
 
             if (!note) {

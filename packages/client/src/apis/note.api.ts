@@ -217,24 +217,85 @@ export interface UpdateNoteRequestData {
     title?: string;
     content?: string;
     layout?: string;
+    editSessionId?: string;
 }
 
-export const updateNote = ({ id, ...note }: UpdateNoteRequestData) => {
+export interface NoteSnapshotMeta {
+    entrypoint?: string;
+    label?: string;
+}
+
+export interface NoteSnapshot {
+    id: string;
+    title: string;
+    createdAt: string;
+    meta: NoteSnapshotMeta;
+}
+
+export const updateNote = ({ id, editSessionId, ...note }: UpdateNoteRequestData) => {
     return graphQuery<{
         updateNote: Pick<Note, 'id' | 'title'>;
-    }, { id: string; note: Omit<UpdateNoteRequestData, 'id'> }>(
-        `mutation UpdateNote($id: ID!, $note: NoteInput!) {
-            updateNote(id: $id, note: $note) {
+    }, {
+        id: string;
+        note: Omit<UpdateNoteRequestData, 'id' | 'editSessionId'>;
+        editSessionId?: string;
+    }>(
+        `mutation UpdateNote($id: ID!, $note: NoteInput!, $editSessionId: String) {
+            updateNote(id: $id, note: $note, editSessionId: $editSessionId) {
                 id
                 title
             }
         }`,
         {
             id,
-            note
+            note,
+            ...(editSessionId ? { editSessionId } : {})
         }
     );
 };
+
+export function fetchNoteSnapshots(id: string, limit = 5) {
+    return graphQuery<{
+        noteSnapshots: NoteSnapshot[];
+    }, {
+        id: string;
+        limit: number;
+    }>(
+        `query FetchNoteSnapshots($id: ID!, $limit: Int) {
+            noteSnapshots(id: $id, limit: $limit) {
+                id
+                title
+                createdAt
+                meta {
+                    entrypoint
+                    label
+                }
+            }
+        }`,
+        {
+            id,
+            limit
+        }
+    );
+}
+
+export function restoreNoteSnapshot(id: string) {
+    return graphQuery<{
+        restoreNoteSnapshot: Pick<Note, 'id' | 'title' | 'updatedAt' | 'layout' | 'pinned' | 'content'>;
+    }, { id: string }>(
+        `mutation RestoreNoteSnapshot($id: ID!) {
+            restoreNoteSnapshot(id: $id) {
+                id
+                title
+                pinned
+                layout
+                content
+                updatedAt
+            }
+        }`,
+        { id }
+    );
+}
 
 export function pinNote(id: string, pinned: boolean) {
     return graphQuery<{

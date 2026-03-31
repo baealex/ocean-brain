@@ -55,7 +55,13 @@ test('mcp create note handler returns the created note payload', async () => {
     }));
     const response = createResponse();
 
-    await handler({ body: { title: 'Draft note', markdown: '# Body', layout: 'full' } } as never, response as never);
+    await handler({
+        body: {
+            title: 'Draft note',
+            markdown: '# Body',
+            layout: 'full'
+        }
+    } as never, response as never);
 
     assert.equal(response.statusCode, 200);
     assert.deepEqual(response.body, {
@@ -80,7 +86,12 @@ test('mcp create note handler rejects invalid note layouts', async () => {
     }));
     const response = createResponse();
 
-    await handler({ body: { title: 'Title', layout: 'giant' } } as never, response as never);
+    await handler({
+        body: {
+            title: 'Title',
+            layout: 'giant'
+        }
+    } as never, response as never);
 
     assert.equal(response.statusCode, 400);
     assert.deepEqual(response.body, {
@@ -93,7 +104,12 @@ test('mcp update note handler rejects invalid note ids', async () => {
     const handler = createMcpUpdateNoteHandler(async () => null);
     const response = createResponse();
 
-    await handler({ body: { id: 'abc', title: 'Renamed' } } as never, response as never);
+    await handler({
+        body: {
+            id: 'abc',
+            title: 'Renamed'
+        }
+    } as never, response as never);
 
     assert.equal(response.statusCode, 400);
     assert.deepEqual(response.body, {
@@ -106,7 +122,12 @@ test('mcp update note handler returns not found when the note is missing', async
     const handler = createMcpUpdateNoteHandler(async () => null);
     const response = createResponse();
 
-    await handler({ body: { id: '7', markdown: 'Updated' } } as never, response as never);
+    await handler({
+        body: {
+            id: '7',
+            markdown: 'Updated'
+        }
+    } as never, response as never);
 
     assert.equal(response.statusCode, 404);
     assert.deepEqual(response.body, {
@@ -125,7 +146,12 @@ test('mcp update note handler returns the updated note payload', async () => {
     }));
     const response = createResponse();
 
-    await handler({ body: { id: '7', title: 'Renamed' } } as never, response as never);
+    await handler({
+        body: {
+            id: '7',
+            title: 'Renamed'
+        }
+    } as never, response as never);
 
     assert.equal(response.statusCode, 200);
     assert.deepEqual(response.body, {

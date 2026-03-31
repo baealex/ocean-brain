@@ -48,6 +48,10 @@ export const queryKeys = {
             }
         ] as const,
         detail: (id: string) => ['notes', 'detail', { id }] as const,
+        snapshots: (id: string, limit = 5) => ['notes', 'snapshots', {
+            id,
+            limit
+        }] as const,
         pinned: () => ['notes', 'pinned'] as const,
         backReferences: (noteId: string) => ['notes', 'back-references', { noteId }] as const,
         graph: () => ['notes', 'graph'] as const

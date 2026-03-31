@@ -25,7 +25,11 @@ test('note authoring create converts markdown after placeholder replacement', as
             template: 'today',
             replacement: '2026-03-31'
         }],
-        parseMarkdownToContentJson: async (markdown) => JSON.stringify([{ type: 'paragraph', markdown }]),
+        parseMarkdownToContentJson: async (markdown) => JSON.stringify([{
+            type: 'paragraph',
+            markdown
+        }]),
+        captureBaseline: async () => undefined,
         updateNote: async () => {
             throw new Error('should not update');
         }
@@ -39,7 +43,10 @@ test('note authoring create converts markdown after placeholder replacement', as
 
     assert.deepEqual(created[0], {
         title: 'Plan 2026-03-31',
-        content: JSON.stringify([{ type: 'paragraph', markdown: 'Body for 2026-03-31' }]),
+        content: JSON.stringify([{
+            type: 'paragraph',
+            markdown: 'Body for 2026-03-31'
+        }]),
         layout: 'full'
     });
     assert.deepEqual(result, {
@@ -59,6 +66,7 @@ test('note authoring update returns null when the note does not exist', async ()
         findNoteById: async () => null,
         findPlaceholders: async () => [],
         parseMarkdownToContentJson: async () => '[]',
+        captureBaseline: async () => undefined,
         updateNote: async () => {
             throw new Error('should not update');
         }
@@ -87,6 +95,7 @@ test('note authoring update requires at least one change field', async () => {
         }),
         findPlaceholders: async () => [],
         parseMarkdownToContentJson: async () => '[]',
+        captureBaseline: async () => undefined,
         updateNote: async () => {
             throw new Error('should not update');
         }
@@ -113,9 +122,16 @@ test('note authoring update replaces provided fields only', async () => {
             updatedAt: new Date('2026-03-31T00:00:00.000Z')
         }),
         findPlaceholders: async () => [],
-        parseMarkdownToContentJson: async (markdown) => JSON.stringify([{ type: 'paragraph', markdown }]),
+        parseMarkdownToContentJson: async (markdown) => JSON.stringify([{
+            type: 'paragraph',
+            markdown
+        }]),
+        captureBaseline: async () => undefined,
         updateNote: async (id, input) => {
-            updated.push({ id, input });
+            updated.push({
+                id,
+                input
+            });
             return {
                 id,
                 title: input.title ?? 'Existing',
@@ -137,7 +153,10 @@ test('note authoring update replaces provided fields only', async () => {
         id: 7,
         input: {
             title: 'Renamed',
-            content: JSON.stringify([{ type: 'paragraph', markdown: 'Updated body' }])
+            content: JSON.stringify([{
+                type: 'paragraph',
+                markdown: 'Updated body'
+            }])
         }
     });
     assert.deepEqual(result, {

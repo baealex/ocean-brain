@@ -54,6 +54,7 @@ export default function NoteListCard({
                         button={(
                             <span className="focus-ring-soft inline-flex h-10 w-10 items-center justify-center rounded-[16px] border border-transparent text-fg-tertiary outline-none transition-colors group-hover:border-border-subtle group-hover:bg-hover-subtle group-hover:text-fg-default">
                                 <Icon.VerticalDots className="h-5 w-5" />
+                                <span className="sr-only">Note actions</span>
                             </span>
                         )}
                         items={[

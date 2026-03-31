@@ -125,6 +125,7 @@ function PinnedNotesList({
                 {items.map((note) => (
                     <SortablePinnedNote key={note.id} id={note.id} tooltip={note.title || 'Untitled'}>
                         <Link
+                            aria-current={pathname === `/${note.id}` ? 'page' : undefined}
                             className={`transition-colors ${
                                 pathname === `/${note.id}`
                                     ? 'text-fg-default'

@@ -22,7 +22,13 @@ let latestOnDragEnd: ((event: { active: { id: string }; over: { id: string } | n
 const mockSortableAttributes = { 'data-sortable-handle': 'true' };
 
 vi.mock('@tanstack/react-router', () => ({
-    Link: ({ children }: { children: ReactNode }) => <a>{children}</a>,
+    Link: ({
+        children,
+        ...props
+    }: {
+        children: ReactNode;
+        [key: string]: unknown;
+    }) => <a {...props}>{children}</a>,
     useLocation: ({ select }: { select: (location: RouterLocation) => unknown }) => select({ pathname: '/note-2' })
 }));
 
@@ -116,7 +122,10 @@ describe('<PinnedNotesPanel />', () => {
 
         render(<PinnedNotesPanel />, { wrapper: Wrapper });
 
-        expect(screen.getByText('Editorial note')).toBeInTheDocument();
+        const activeNote = screen.getByText('Editorial note').closest('a');
+
+        expect(activeNote).toBeInTheDocument();
+        expect(activeNote).toHaveAttribute('aria-current', 'page');
         expect(screen.getByRole('button', { name: 'Reorder note Editorial note' })).toHaveClass('cursor-grab');
         expect(screen.getByRole('button', { name: 'Reorder note Editorial note' })).toHaveAttribute('data-sortable-handle', 'true');
         expect(screen.getByTestId('dnd-context')).toBeInTheDocument();

@@ -26,6 +26,21 @@ model Note {
     layout    NoteLayout @default(wide)
     tags      Tag[]      @relation("NoteToTag")
     reminders Reminder[] @relation("NoteToReminder")
+    snapshots NoteSnapshot[]
+}
+
+model NoteSnapshot {
+    id            Int        @id @default(autoincrement())
+    noteId        Int
+    note          Note       @relation(fields: [noteId], references: [id], onDelete: Cascade)
+    title         String
+    payload       String
+    editSessionId String?
+    meta          String?
+    createdAt     DateTime   @default(now())
+
+    @@index([noteId, createdAt])
+    @@unique([noteId, editSessionId])
 }
 
 model Image {

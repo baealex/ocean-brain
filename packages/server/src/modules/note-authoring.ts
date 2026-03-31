@@ -1,5 +1,6 @@
 import models, { type NoteLayout } from '~/models.js';
 import { markdownToBlocksJson } from './blocknote.js';
+import { captureNoteBaseline } from './note-snapshot.js';
 
 interface PlaceholderRecord {
     template: string;
@@ -24,6 +25,11 @@ interface NoteAuthoringDeps {
     findNoteById: (id: number) => Promise<NoteRecord | null>;
     findPlaceholders: (templates: string[]) => Promise<PlaceholderRecord[]>;
     parseMarkdownToContentJson: (markdown: string) => Promise<string>;
+    captureBaseline: (input: {
+        noteId: number;
+        editSessionId?: string;
+        meta?: string;
+    }) => Promise<unknown>;
     updateNote: (id: number, input: {
         title?: string;
         content?: string;
@@ -42,6 +48,8 @@ export interface UpdateNoteAuthoringInput {
     title?: string;
     markdown?: string;
     layout?: NoteLayout;
+    editSessionId?: string;
+    snapshotMeta?: string;
 }
 
 export interface AuthoredNoteSummary {
@@ -162,6 +170,12 @@ export const createNoteAuthoringService = (deps: NoteAuthoringDeps) => {
                 nextData.layout = input.layout;
             }
 
+            await deps.captureBaseline({
+                noteId: input.id,
+                ...(input.editSessionId ? { editSessionId: input.editSessionId } : {}),
+                ...(input.snapshotMeta ? { meta: input.snapshotMeta } : {})
+            });
+
             const updatedNote = await deps.updateNote(input.id, nextData);
             return serializeNote(updatedNote);
         }
@@ -195,6 +209,7 @@ const defaultNoteAuthoringService = createNoteAuthoringService({
         });
     },
     parseMarkdownToContentJson: markdownToBlocksJson,
+    captureBaseline: captureNoteBaseline,
     updateNote: async (id, input) => {
         return models.note.update({
             where: { id },

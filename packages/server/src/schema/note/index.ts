@@ -1,4 +1,5 @@
 import type { IResolvers } from '@graphql-tools/utils';
+import type { Request } from 'express';
 
 import models from '~/models.js';
 import { gql } from '~/modules/graphql.js';
@@ -7,6 +8,12 @@ import {
     getNoteCleanupPreview,
     listNoteCleanupCandidates
 } from '~/modules/note-cleanup.js';
+import {
+    captureNoteBaseline,
+    createSnapshotMetaFromUserAgent,
+    listNoteSnapshots,
+    restoreNoteSnapshot
+} from '~/modules/note-snapshot.js';
 
 import type { Note, Prisma } from '~/models.js';
 import type { Pagination, SearchFilter, NoteInput } from '~/types/index.js';
@@ -102,6 +109,18 @@ export const noteType = gql`
         requiresForce: Boolean!
         forceReasons: [String!]!
     }
+
+    type NoteSnapshotMeta {
+        entrypoint: String
+        label: String
+    }
+
+    type NoteSnapshot {
+        id: ID!
+        title: String!
+        createdAt: String!
+        meta: NoteSnapshotMeta!
+    }
 `;
 
 export const noteQuery = gql`
@@ -131,6 +150,7 @@ export const noteQuery = gql`
         note(id: ID!): Note!
         noteCleanupCandidates(query: String, pagination: PaginationInput): [NoteCleanupCandidate!]!
         noteCleanupPreview(id: ID!): NoteCleanupPreview
+        noteSnapshots(id: ID!, limit: Int): [NoteSnapshot!]!
         noteGraph: NoteGraph!
     }
 `;
@@ -138,8 +158,9 @@ export const noteQuery = gql`
 export const noteMutation = gql`
     type Mutation {
         createNote(note: NoteInput!): Note!
-        updateNote(id: ID!, note: NoteInput!): Note!
+        updateNote(id: ID!, note: NoteInput!, editSessionId: String): Note!
         deleteNote(id: ID!): Boolean!
+        restoreNoteSnapshot(id: ID!): Note!
         pinNote(id: ID!, pinned: Boolean!): Note!
         reorderNotes(notes: [NoteOrderInput!]!): [Note!]!
     }
@@ -378,6 +399,15 @@ export const noteResolvers: IResolvers = {
         noteCleanupPreview: async (_, { id }: { id: string }) => {
             return getNoteCleanupPreview(Number(id));
         },
+        noteSnapshots: async (_, {
+            id,
+            limit = 5
+        }: {
+            id: string;
+            limit?: number;
+        }) => {
+            return listNoteSnapshots(Number(id), Number(limit));
+        },
         noteGraph: async () => {
             const $notes = await models.note.findMany({
                 select: {
@@ -481,7 +511,19 @@ export const noteResolvers: IResolvers = {
 
             return $note;
         },
-        updateNote: async (_, { id, note }: { id: number; note: NoteInput }) => {
+        updateNote: async (_, {
+            id,
+            note,
+            editSessionId
+        }: {
+            id: number;
+            note: NoteInput;
+            editSessionId?: string;
+        }, context: {
+            req?: Request;
+        }) => {
+            const userAgentHeader = context.req?.headers['user-agent'];
+            const userAgent = Array.isArray(userAgentHeader) ? userAgentHeader[0] : userAgentHeader;
             let blocks: BlockNote<{ id: string }>[] = [];
 
             if (note.content) {
@@ -490,6 +532,12 @@ export const noteResolvers: IResolvers = {
                     JSON.parse(note.content)
                 );
             }
+
+            await captureNoteBaseline({
+                noteId: Number(id),
+                ...(editSessionId ? { editSessionId } : {}),
+                meta: createSnapshotMetaFromUserAgent(userAgent)
+            });
 
             const $note = await models.note.update({
                 where: { id: Number(id) },
@@ -502,6 +550,19 @@ export const noteResolvers: IResolvers = {
         },
         deleteNote: async (_, { id }: Note) => {
             return Boolean(await deleteNoteById(Number(id)));
+        },
+        restoreNoteSnapshot: async (_, { id }: { id: string }, context: {
+            req?: Request;
+        }) => {
+            const userAgentHeader = context.req?.headers['user-agent'];
+            const userAgent = Array.isArray(userAgentHeader) ? userAgentHeader[0] : userAgentHeader;
+            const note = await restoreNoteSnapshot(Number(id), { meta: createSnapshotMetaFromUserAgent(userAgent) });
+
+            if (!note) {
+                throw 'NOT FOUND';
+            }
+
+            return note;
         },
         pinNote: (_, { id, pinned }: Note) => models.note.update({
             where: { id: Number(id) },

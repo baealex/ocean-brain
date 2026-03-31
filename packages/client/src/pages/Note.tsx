@@ -10,7 +10,7 @@ import { useToast } from '~/components/ui';
 import type { EditorRef } from '~/components/shared/Editor';
 import Editor from '~/components/shared/Editor';
 import { BackReferences } from '~/components/entities';
-import { LayoutModal } from '~/components/note';
+import { LayoutModal, RestoreSnapshotModal } from '~/components/note';
 import { ReminderPanel } from '~/components/reminder';
 import type { NoteLayout } from '~/models/note.model';
 import useDebounce from '~/hooks/useDebounce';
@@ -22,6 +22,14 @@ import { NOTE_ROUTE } from '~/modules/url';
 const Route = getRouteApi(NOTE_ROUTE);
 
 const formatSavedAt = (updatedAt: string) => dayjs(Number(updatedAt)).format('YYYY-MM-DD HH:mm:ss');
+
+const createEditSessionId = () => {
+    if (typeof globalThis.crypto?.randomUUID === 'function') {
+        return globalThis.crypto.randomUUID();
+    }
+
+    return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
 
 const NOTE_LAYOUT_WIDTH: Record<NoteLayout, string> = {
     narrow: 'max-w-[640px]',
@@ -48,6 +56,7 @@ function NoteContent({ id }: NoteContentProps) {
     const toast = useToast();
     const editorRef = useRef<EditorRef>(null);
     const titleRef = useRef<HTMLInputElement>(null);
+    const editSessionIdRef = useRef<string>(createEditSessionId());
 
     const { data: note } = useSuspenseQuery({
         queryKey: queryKeys.notes.detail(id),
@@ -66,6 +75,7 @@ function NoteContent({ id }: NoteContentProps) {
     const [isPinned, setIsPinned] = useState(note.pinned);
     const [layout, setLayout] = useState<NoteLayout>(note.layout || 'wide');
     const [isLayoutModalOpen, setIsLayoutModalOpen] = useState(false);
+    const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
     const [isMountedEvent, mountEvent] = useDebounce(1000);
 
     useEffect(() => {
@@ -75,6 +85,10 @@ function NoteContent({ id }: NoteContentProps) {
         setLastSavedAt(formatSavedAt(note.updatedAt));
     }, [note.layout, note.pinned, note.title, note.updatedAt]);
 
+    useEffect(() => {
+        editSessionIdRef.current = createEditSessionId();
+    }, [id]);
+
     const save = async ({
         title: nextTitle = '',
         content = ''
@@ -83,7 +97,8 @@ function NoteContent({ id }: NoteContentProps) {
             const response = await updateNote({
                 id,
                 title: nextTitle,
-                content
+                content,
+                editSessionId: editSessionIdRef.current
             });
 
             if (response.type === 'error') {
@@ -98,7 +113,15 @@ function NoteContent({ id }: NoteContentProps) {
 
     const handleChange = () => {
         save({
-            title: titleRef.current?.value,
+            title,
+            content: editorRef.current?.getContent()
+        });
+    };
+
+    const handleTitleChange = (nextTitle: string) => {
+        setTitle(nextTitle);
+        save({
+            title: nextTitle,
             content: editorRef.current?.getContent()
         });
     };
@@ -106,7 +129,8 @@ function NoteContent({ id }: NoteContentProps) {
     const handleLayoutSave = async (newLayout: NoteLayout) => {
         const response = await updateNote({
             id,
-            layout: newLayout
+            layout: newLayout,
+            editSessionId: editSessionIdRef.current
         });
 
         if (response.type === 'error') {
@@ -136,8 +160,8 @@ function NoteContent({ id }: NoteContentProps) {
                             placeholder="Title"
                             className="text-md font-bold outline-none bg-transparent w-full"
                             type="text"
-                            defaultValue={note.title}
-                            onChange={handleChange}
+                            value={title}
+                            onChange={(event) => handleTitleChange(event.target.value)}
                         />
                         {lastSavedAt && (
                             <div className="text-fg-placeholder text-xs">
@@ -172,6 +196,10 @@ function NoteContent({ id }: NoteContentProps) {
                                     })
                                 },
                                 {
+                                    name: 'Restore previous version',
+                                    onClick: () => setIsRestoreModalOpen(true)
+                                },
+                                {
                                     name: 'Change layout',
                                     onClick: () => setIsLayoutModalOpen(true)
                                 }
@@ -187,6 +215,7 @@ function NoteContent({ id }: NoteContentProps) {
                 </div>
 
                 <Editor
+                    key={`${id}:${note.updatedAt}`}
                     ref={editorRef}
                     content={note.content}
                     onChange={handleChange}
@@ -252,6 +281,14 @@ function NoteContent({ id }: NoteContentProps) {
                     onClose={() => setIsLayoutModalOpen(false)}
                     onSave={handleLayoutSave}
                     currentLayout={layout}
+                />
+                <RestoreSnapshotModal
+                    isOpen={isRestoreModalOpen}
+                    noteId={id}
+                    onClose={() => setIsRestoreModalOpen(false)}
+                    onRestored={() => {
+                        editSessionIdRef.current = createEditSessionId();
+                    }}
                 />
             </main>
         </PageLayout>

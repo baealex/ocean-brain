@@ -23,8 +23,9 @@ const SidebarHeroBanner = () => {
 
     return (
         <div className="p-3 pb-0">
-            <div
-                className="surface-floating group relative overflow-hidden rounded-[30px] border border-border-subtle cursor-pointer"
+            <button
+                type="button"
+                className="surface-floating focus-ring-soft group relative block w-full overflow-hidden rounded-[30px] border border-border-subtle text-left outline-none"
                 onClick={async () => {
                     if (await confirm('Do you want to remove this hero banner?')) {
                         await setServerCache('heroBanner', '');
@@ -54,7 +55,7 @@ const SidebarHeroBanner = () => {
                         Remove
                     </span>
                 </div>
-            </div>
+            </button>
         </div>
     );
 };

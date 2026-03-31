@@ -66,19 +66,24 @@ function SortablePinnedNote({ id, tooltip, children }: SortablePinnedNoteProps) 
     };
 
     const textContent = (
-        <div className="flex-1 min-w-0 font-bold text-sm truncate">
+        <div className="min-w-0 flex-1 truncate text-sm font-medium text-fg-default">
             {children}
         </div>
     );
 
     return (
-        <div ref={setNodeRef} style={style} {...attributes} className="flex items-center gap-2 p-2 rounded-md hover:bg-hover-subtle transition-colors">
+        <div
+            ref={setNodeRef}
+            style={style}
+            {...attributes}
+            className="group flex items-center gap-3 rounded-[22px] border border-transparent px-3 py-3 transition-colors hover:border-border-subtle hover:bg-hover-subtle/60">
             <button
+                type="button"
                 ref={setActivatorNodeRef}
                 {...listeners}
-                className="cursor-grab active:cursor-grabbing touch-none flex items-center justify-center"
+                className="focus-ring-soft flex h-8 w-8 cursor-grab items-center justify-center rounded-[14px] text-fg-tertiary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-secondary active:cursor-grabbing touch-none"
                 style={{ cursor: isDragging ? 'grabbing' : 'grab' }}>
-                <Icon.Menu className="size-4 text-fg-placeholder hover:text-fg-secondary" />
+                <Icon.Menu className="size-4" />
             </button>
             {tooltip ? (
                 <Tooltip content={tooltip} side="right">
@@ -121,7 +126,7 @@ function PinnedNotesList({
                         <Link
                             className={`transition-colors ${
                                 pathname === `/${note.id}`
-                                    ? 'text-accent-primary'
+                                    ? 'text-fg-default'
                                     : 'text-fg-secondary hover:text-fg-default'
                             }`}
                             to={NOTE_ROUTE}
@@ -175,13 +180,13 @@ const PinnedNotesPanel = () => {
     };
 
     return (
-        <div className="flex flex-col gap-2">
+        <div className="surface-base rounded-[28px] border border-border-subtle px-3 py-3">
             <QueryBoundary
                 fallback={(
-                    <>
-                        <Skeleton height="24px" opacity={0.5} />
-                        <Skeleton height="24px" opacity={0.5} />
-                    </>
+                    <div className="space-y-2 px-1 py-1">
+                        <Skeleton height="44px" opacity={0.4} />
+                        <Skeleton height="44px" opacity={0.4} />
+                    </div>
                 )}
                 errorTitle="Failed to load pinned notes"
                 errorDescription="Retry loading the pinned note list."
@@ -197,14 +202,20 @@ const PinnedNotesPanel = () => {
                 )}>
                 <PinnedNotes
                     render={(notes) => (
-                        <PinnedNotesList
-                            notes={notes}
-                            pathname={pathname}
-                            pinnedItems={pinnedItems}
-                            setPinnedItems={setPinnedItems}
-                            handleDragEnd={handleDragEnd}
-                            sensors={sensors}
-                        />
+                        notes.length > 0 ? (
+                            <PinnedNotesList
+                                notes={notes}
+                                pathname={pathname}
+                                pinnedItems={pinnedItems}
+                                setPinnedItems={setPinnedItems}
+                                handleDragEnd={handleDragEnd}
+                                sensors={sensors}
+                            />
+                        ) : (
+                            <div className="px-3 py-5 text-sm leading-6 text-fg-secondary">
+                                Pin a note to keep it in view while the rest of the workspace changes.
+                            </div>
+                        )
                     )}
                 />
             </QueryBoundary>

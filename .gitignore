@@ -12,5 +12,6 @@ packages/server/prisma/data/*
 !packages/server/prisma/data/.gitkeep
 packages/server/public/assets/images
 docs/private/
+.worktrees/
 .npm-cache
 coverage

@@ -16,6 +16,7 @@ import { getHash } from '~/modules/hash';
 import { queryKeys } from '~/modules/query-key-factory';
 import { NOTE_ROUTE } from '~/modules/url';
 import { useTheme } from '~/store/theme';
+import { getGraphTheme } from './graph-theme';
 
 interface GraphData {
     nodes: GraphNode[];
@@ -25,26 +26,6 @@ interface GraphData {
 interface ForceGraphInstance {
     zoomToFit: (duration?: number, padding?: number) => void;
     enableZoomInteraction: (enable: boolean) => void;
-}
-
-const PASTEL_COLORS_LIGHT = [
-    '#FCEBAF', '#B2E0B2', '#FFB3C1', '#FFCCB3',
-    '#A4D8E1', '#E1B7E1', '#A4DBD6', '#E1C6E7'
-];
-
-const PASTEL_COLORS_DARK = [
-    '#3f3f46', '#404047', '#42424a', '#38383f',
-    '#3b3b42', '#3d3d44', '#393940', '#414148'
-];
-
-const PASTEL_COLORS_LIGHT_DIM = PASTEL_COLORS_LIGHT.map(c => hexToRgba(c, 0.15));
-const PASTEL_COLORS_DARK_DIM = PASTEL_COLORS_DARK.map(c => hexToRgba(c, 0.15));
-
-function hexToRgba(hex: string, alpha: number) {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    return `rgba(${r},${g},${b},${alpha})`;
 }
 
 function getNodeSize(connections: number) {
@@ -73,9 +54,9 @@ function GraphContent() {
     const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
     const { theme } = useTheme(state => state);
-    const isDark = theme === 'dark';
-    const isDarkRef = useRef(isDark);
-    isDarkRef.current = isDark;
+    const graphTheme = getGraphTheme(theme);
+    const graphThemeRef = useRef(graphTheme);
+    graphThemeRef.current = graphTheme;
 
     const { data } = useSuspenseQuery({
         queryKey: queryKeys.notes.graph(),
@@ -198,7 +179,7 @@ function GraphContent() {
         ctx: CanvasRenderingContext2D,
         globalScale: number
     ) => {
-        const isDarkTheme = isDarkRef.current;
+        const palette = graphThemeRef.current;
         const selectedId = selectedNodeId;
         const adjacency = adjacencyMapRef.current;
         const nodeSize = getNodeSize(node.connections);
@@ -214,9 +195,9 @@ function GraphContent() {
 
         if (isDimmed) {
             if (node.connections > 3) {
-                ctx.fillStyle = isDarkTheme ? 'rgba(63,63,70,0.15)' : 'rgba(255,179,193,0.15)';
+                ctx.fillStyle = palette.nodeHubDimmed;
             } else {
-                const colors = isDarkTheme ? PASTEL_COLORS_DARK_DIM : PASTEL_COLORS_LIGHT_DIM;
+                const colors = palette.nodeDimmed;
                 ctx.fillStyle = colors[getHash(node.id) % colors.length];
             }
             ctx.fill();
@@ -224,25 +205,25 @@ function GraphContent() {
         }
 
         if (isSelected) {
-            ctx.fillStyle = isDarkTheme ? '#a1a1aa' : '#FFCCB3';
+            ctx.fillStyle = palette.nodeSelected;
         } else if (isConnected) {
-            ctx.fillStyle = isDarkTheme ? '#71717a' : '#E1B7E1';
+            ctx.fillStyle = palette.nodeConnected;
         } else if (node.connections > 3) {
-            ctx.fillStyle = isDarkTheme ? '#52525b' : '#FFB3C1';
+            ctx.fillStyle = palette.nodeHub;
         } else {
-            const colors = isDarkTheme ? PASTEL_COLORS_DARK : PASTEL_COLORS_LIGHT;
+            const colors = palette.nodeDefault;
             ctx.fillStyle = colors[getHash(node.id) % colors.length];
         }
         ctx.fill();
 
-        ctx.strokeStyle = isDarkTheme ? '#3f3f46' : '#3d3d3d';
+        ctx.strokeStyle = palette.nodeStroke;
         ctx.lineWidth = (isSelected ? 2 : 1) / globalScale;
         ctx.stroke();
 
         if (isSelected) {
             ctx.beginPath();
             ctx.arc(nx, ny, nodeSize + 2 / globalScale, 0, Math.PI * 2);
-            ctx.strokeStyle = isDarkTheme ? '#d4d4d8' : '#27272a';
+            ctx.strokeStyle = palette.nodeSelectedStroke;
             ctx.lineWidth = 1.5 / globalScale;
             ctx.stroke();
         }
@@ -250,7 +231,7 @@ function GraphContent() {
         if (isSelected || isConnected || globalScale > 2.5) {
             const label = node.title || 'Untitled';
             const fontSize = Math.max(10 / globalScale, 2.5);
-            ctx.font = `${isSelected || isConnected ? 'bold ' : ''}${fontSize}px Gaegu, cursive`;
+            ctx.font = `${isSelected || isConnected ? '600 ' : '500 '}${fontSize}px ${palette.labelFontFamily}`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
 
@@ -258,7 +239,7 @@ function GraphContent() {
             const padding = 2 / globalScale;
             const labelY = ny + nodeSize + 3 / globalScale;
 
-            ctx.fillStyle = isDarkTheme ? 'rgba(24,24,27,0.85)' : 'rgba(255,252,247,0.9)';
+            ctx.fillStyle = palette.labelBackground;
             ctx.fillRect(
                 nx - textWidth / 2 - padding,
                 labelY,
@@ -266,7 +247,7 @@ function GraphContent() {
                 fontSize + padding * 2
             );
 
-            ctx.fillStyle = isDarkTheme ? '#f4f4f5' : '#27272a';
+            ctx.fillStyle = palette.labelText;
             ctx.fillText(label, nx, labelY + padding);
         }
     }, [selectedNodeId]);
@@ -276,7 +257,7 @@ function GraphContent() {
         ctx: CanvasRenderingContext2D,
         globalScale: number
     ) => {
-        const isDarkTheme = isDarkRef.current;
+        const palette = graphThemeRef.current;
         const selectedId = selectedNodeId;
         const source = link.source as unknown as { x?: number; y?: number; id: string };
         const target = link.target as unknown as { x?: number; y?: number; id: string };
@@ -290,13 +271,13 @@ function GraphContent() {
         ctx.lineTo(target.x || 0, target.y || 0);
 
         if (isDimmed) {
-            ctx.strokeStyle = isDarkTheme ? 'rgba(63,63,70,0.06)' : 'rgba(212,212,216,0.06)';
+            ctx.strokeStyle = palette.linkDimmed;
             ctx.lineWidth = 0.5 / globalScale;
         } else if (isConnected) {
-            ctx.strokeStyle = isDarkTheme ? '#71717a' : '#E1B7E1';
+            ctx.strokeStyle = palette.linkConnected;
             ctx.lineWidth = 2 / globalScale;
         } else {
-            ctx.strokeStyle = isDarkTheme ? 'rgba(63,63,70,0.5)' : 'rgba(212,212,216,0.7)';
+            ctx.strokeStyle = palette.linkIdle;
             ctx.lineWidth = 0.5 / globalScale;
         }
         ctx.stroke();
@@ -320,8 +301,8 @@ function GraphContent() {
             description={`${graphData.nodes.length} linked notes, ${graphData.links.length} connections`}>
             <div
                 ref={containerRef}
-                className="relative overflow-hidden border-2 border-border rounded-sketchy-lg shadow-sketchy"
-                style={{ background: isDark ? '#1f1f23' : '#fffcf7' }}>
+                className="surface-base relative overflow-hidden border border-border-subtle"
+                style={{ background: graphTheme.background }}>
                 {selectedNodeId && (() => {
                     const node = graphData.nodes.find(item => item.id === selectedNodeId);
                     if (!node) {
@@ -329,12 +310,12 @@ function GraphContent() {
                     }
 
                     return (
-                        <div className="absolute top-3 left-3 z-10 flex items-center gap-2 px-3 py-1.5 rounded-sketchy-md border-2 border-border bg-bg-primary shadow-sketchy text-sm">
-                            <span className="font-bold truncate max-w-48">{node.title}</span>
+                        <div className="surface-floating absolute top-3 left-3 z-10 flex items-center gap-2 border border-border-subtle px-3 py-2 text-sm">
+                            <span className="max-w-48 truncate font-semibold text-fg-default">{node.title}</span>
                             <span className="text-fg-tertiary">{node.connections} links</span>
                             <button
                                 onClick={() => setSelectedNodeId(null)}
-                                className="ml-1 text-fg-tertiary hover:text-fg-primary transition-colors cursor-pointer"
+                                className="focus-ring-soft ml-1 flex h-7 w-7 cursor-pointer items-center justify-center rounded-[12px] text-fg-tertiary transition-colors hover:bg-hover-subtle hover:text-fg-default"
                                 aria-label="Deselect node">
                                 x
                             </button>
@@ -386,15 +367,15 @@ function GraphContent() {
             <div className="mt-4 flex flex-wrap gap-4 text-sm">
                 <div className="flex items-center gap-2">
                     <span
-                        className="w-4 h-4 rounded-sketchy-xs border-2 border-border"
-                        style={{ background: isDark ? '#52525b' : '#FFB3C1' }}
+                        className="h-4 w-4 rounded-full border border-border-subtle"
+                        style={{ background: graphTheme.legendHub }}
                     />
                     <span className="text-fg-tertiary font-medium">Hub notes (4+ connections)</span>
                 </div>
                 <div className="flex items-center gap-2">
                     <span
-                        className="w-4 h-4 rounded-sketchy-xs border-2 border-border"
-                        style={{ background: isDark ? '#3f3f46' : '#B2E0B2' }}
+                        className="h-4 w-4 rounded-full border border-border-subtle"
+                        style={{ background: graphTheme.legendConnected }}
                     />
                     <span className="text-fg-tertiary font-medium">Connected notes</span>
                 </div>

@@ -94,7 +94,7 @@ const TrashContent = () => {
                 <Empty
                     icon="🗑️"
                     title="Trash is empty"
-                    description="Deleted notes will stay here until you restore them."
+                    description="Deleted notes stay here until you restore them or retention cleanup removes them."
                 />
             )}>
             {data.notes.length > 0 && (
@@ -166,7 +166,7 @@ const Trash = () => {
     const { page } = Route.useSearch();
 
     return (
-        <PageLayout title="Trash" variant="subtle" description="Restore notes that were removed from your active workspace">
+        <PageLayout title="Trash" variant="subtle" description="Restore notes removed from your active workspace before retention cleanup clears them">
             <QueryBoundary
                 fallback={(
                     <div className="grid gap-4">

@@ -26,6 +26,8 @@ import {
     createMcpUpdateNoteHandler
 } from './views/note.js';
 import { createMcpCreateTagHandler } from './views/tag.js';
+import { purgeExpiredNoteSnapshots } from './modules/note-snapshot.js';
+import { purgeExpiredTrashedNotes } from './modules/note-trash.js';
 
 const shouldBlockClientRoute = (authConfig: AuthConfig, requestPath: string, authenticated: boolean) => {
     if (authConfig.mode !== 'password' || authenticated) {
@@ -47,6 +49,14 @@ export const createApp = (authConfig: AuthConfig) => {
 export const createAppWithMcpAuth = (authConfig: AuthConfig, mcpAuthConfig: McpAuthConfig) => {
     const app = express();
     app.locals.authConfig = authConfig;
+
+    void Promise.all([
+        purgeExpiredNoteSnapshots(),
+        purgeExpiredTrashedNotes()
+    ]).catch((error) => {
+        const message = error instanceof Error ? error.message : 'Unknown recovery cleanup error';
+        process.stderr.write(`[recovery] Startup cleanup failed: ${message}\n`);
+    });
 
     app.use(logger)
         .use(createSessionMiddleware(authConfig))

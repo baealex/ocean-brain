@@ -17,7 +17,7 @@ import useDebounce from '~/hooks/useDebounce';
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
 import { fetchNote, updateNote } from '~/apis/note.api';
 import { queryKeys } from '~/modules/query-key-factory';
-import { NOTE_ROUTE } from '~/modules/url';
+import { NOTE_ROUTE, SETTINGS_TRASH_ROUTE } from '~/modules/url';
 
 const Route = getRouteApi(NOTE_ROUTE);
 
@@ -54,6 +54,7 @@ interface NoteContentProps {
 
 function NoteContent({ id }: NoteContentProps) {
     const toast = useToast();
+    const navigate = Route.useNavigate();
     const editorRef = useRef<EditorRef>(null);
     const titleRef = useRef<HTMLInputElement>(null);
     const editSessionIdRef = useRef<string>(createEditSessionId());
@@ -192,7 +193,10 @@ function NoteContent({ id }: NoteContentProps) {
                                 {
                                     name: 'Delete',
                                     onClick: () => onDelete(id, () => {
-                                        toast('The note has been deleted.');
+                                        navigate({
+                                            to: SETTINGS_TRASH_ROUTE,
+                                            search: { page: 1 }
+                                        });
                                     })
                                 },
                                 {

@@ -19,6 +19,7 @@ import {
     SETTINGS_MANAGE_IMAGE_ROUTE,
     SETTINGS_PLACEHOLDER_ROUTE,
     SETTINGS_ROUTE,
+    SETTINGS_TRASH_ROUTE,
     TAG_NOTES_ROUTE,
     TAG_ROUTE
 } from '~/modules/url';
@@ -148,6 +149,19 @@ const settingsRoute = createRoute({
     )
 });
 
+const trashRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: SETTINGS_TRASH_ROUTE,
+    component: lazyRouteComponent(() => import('~/pages/setting/trash')),
+    pendingComponent: () => (
+        <RoutePendingView
+            title="Loading trash"
+            description="Preparing deleted notes for restore."
+        />
+    ),
+    validateSearch: validatePaginationSearch
+});
+
 const manageImageRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: SETTINGS_MANAGE_IMAGE_ROUTE,
@@ -196,6 +210,7 @@ const routeTree = rootRoute.addChildren([
     noteRoute,
     tagNotesRoute,
     settingsRoute,
+    trashRoute,
     manageImageRoute,
     manageImageDetailRoute,
     placeholderRoute

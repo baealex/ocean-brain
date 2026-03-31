@@ -16,7 +16,12 @@ import { getHash } from '~/modules/hash';
 import { queryKeys } from '~/modules/query-key-factory';
 import { NOTE_ROUTE } from '~/modules/url';
 import { useTheme } from '~/store/theme';
-import { getGraphTheme } from './graph-theme';
+import {
+    getGraphLabelFont,
+    getGraphLinkColor,
+    getGraphNodeFill,
+    getGraphTheme
+} from './graph-theme';
 
 interface GraphData {
     nodes: GraphNode[];
@@ -189,32 +194,23 @@ function GraphContent() {
         const isSelected = selectedId === node.id;
         const isConnected = selectedId ? adjacency.get(selectedId)?.has(node.id) ?? false : false;
         const isDimmed = selectedId !== null && !isSelected && !isConnected;
+        const colorIndex = getHash(node.id);
 
         ctx.beginPath();
         ctx.arc(nx, ny, nodeSize, 0, Math.PI * 2);
 
+        ctx.fillStyle = getGraphNodeFill(theme, {
+            connections: node.connections,
+            colorIndex,
+            selectedNodeId: selectedId,
+            nodeId: node.id,
+            isConnected
+        });
+        ctx.fill();
+
         if (isDimmed) {
-            if (node.connections > 3) {
-                ctx.fillStyle = palette.nodeHubDimmed;
-            } else {
-                const colors = palette.nodeDimmed;
-                ctx.fillStyle = colors[getHash(node.id) % colors.length];
-            }
-            ctx.fill();
             return;
         }
-
-        if (isSelected) {
-            ctx.fillStyle = palette.nodeSelected;
-        } else if (isConnected) {
-            ctx.fillStyle = palette.nodeConnected;
-        } else if (node.connections > 3) {
-            ctx.fillStyle = palette.nodeHub;
-        } else {
-            const colors = palette.nodeDefault;
-            ctx.fillStyle = colors[getHash(node.id) % colors.length];
-        }
-        ctx.fill();
 
         ctx.strokeStyle = palette.nodeStroke;
         ctx.lineWidth = (isSelected ? 2 : 1) / globalScale;
@@ -231,7 +227,10 @@ function GraphContent() {
         if (isSelected || isConnected || globalScale > 2.5) {
             const label = node.title || 'Untitled';
             const fontSize = Math.max(10 / globalScale, 2.5);
-            ctx.font = `${isSelected || isConnected ? '600 ' : '500 '}${fontSize}px ${palette.labelFontFamily}`;
+            ctx.font = getGraphLabelFont(theme, {
+                fontSize,
+                emphasize: isSelected || isConnected
+            });
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
 
@@ -250,38 +249,31 @@ function GraphContent() {
             ctx.fillStyle = palette.labelText;
             ctx.fillText(label, nx, labelY + padding);
         }
-    }, [selectedNodeId]);
+    }, [selectedNodeId, theme]);
 
     const linkCanvasObject = useCallback((
         link: GraphLink,
         ctx: CanvasRenderingContext2D,
         globalScale: number
     ) => {
-        const palette = graphThemeRef.current;
         const selectedId = selectedNodeId;
         const source = link.source as unknown as { x?: number; y?: number; id: string };
         const target = link.target as unknown as { x?: number; y?: number; id: string };
         const isConnected = selectedId
             ? source.id === selectedId || target.id === selectedId
             : false;
-        const isDimmed = selectedId !== null && !isConnected;
 
         ctx.beginPath();
         ctx.moveTo(source.x || 0, source.y || 0);
         ctx.lineTo(target.x || 0, target.y || 0);
 
-        if (isDimmed) {
-            ctx.strokeStyle = palette.linkDimmed;
-            ctx.lineWidth = 0.5 / globalScale;
-        } else if (isConnected) {
-            ctx.strokeStyle = palette.linkConnected;
-            ctx.lineWidth = 2 / globalScale;
-        } else {
-            ctx.strokeStyle = palette.linkIdle;
-            ctx.lineWidth = 0.5 / globalScale;
-        }
+        ctx.strokeStyle = getGraphLinkColor(theme, {
+            selectedNodeId: selectedId,
+            isConnected
+        });
+        ctx.lineWidth = isConnected ? 2 / globalScale : 0.5 / globalScale;
         ctx.stroke();
-    }, [selectedNodeId]);
+    }, [selectedNodeId, theme]);
 
     if (!graphData) {
         return (
@@ -375,7 +367,7 @@ function GraphContent() {
                 <div className="flex items-center gap-2">
                     <span
                         className="h-4 w-4 rounded-full border border-border-subtle"
-                        style={{ background: graphTheme.legendConnected }}
+                        style={{ background: graphTheme.nodeConnected }}
                     />
                     <span className="text-fg-tertiary font-medium">Connected notes</span>
                 </div>

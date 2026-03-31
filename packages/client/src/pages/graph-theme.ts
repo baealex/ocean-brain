@@ -17,7 +17,24 @@ export interface GraphTheme {
     linkConnected: string;
     linkDimmed: string;
     legendHub: string;
-    legendConnected: string;
+}
+
+interface GraphNodeFillOptions {
+    connections: number;
+    colorIndex: number;
+    selectedNodeId: string | null;
+    nodeId: string;
+    isConnected: boolean;
+}
+
+interface GraphLinkColorOptions {
+    selectedNodeId: string | null;
+    isConnected: boolean;
+}
+
+interface GraphLabelFontOptions {
+    fontSize: number;
+    emphasize: boolean;
 }
 
 const LIGHT_THEME: GraphTheme = {
@@ -41,8 +58,7 @@ const LIGHT_THEME: GraphTheme = {
     linkIdle: 'rgba(92, 99, 110, 0.38)',
     linkConnected: '#4f5560',
     linkDimmed: 'rgba(124, 129, 137, 0.12)',
-    legendHub: '#2c2f36',
-    legendConnected: '#9e9a92'
+    legendHub: '#2c2f36'
 };
 
 const DARK_THEME: GraphTheme = {
@@ -66,10 +82,64 @@ const DARK_THEME: GraphTheme = {
     linkIdle: 'rgba(112, 118, 128, 0.44)',
     linkConnected: '#a8afb9',
     linkDimmed: 'rgba(112, 118, 128, 0.1)',
-    legendHub: '#d7d3ca',
-    legendConnected: '#626872'
+    legendHub: '#d7d3ca'
 };
 
 export function getGraphTheme(theme: Theme): GraphTheme {
     return theme === 'dark' ? DARK_THEME : LIGHT_THEME;
+}
+
+export function getGraphNodeFill(theme: Theme, options: GraphNodeFillOptions): string {
+    const palette = getGraphTheme(theme);
+    const {
+        connections,
+        colorIndex,
+        selectedNodeId,
+        nodeId,
+        isConnected
+    } = options;
+
+    const isSelected = selectedNodeId === nodeId;
+    const isDimmed = selectedNodeId !== null && !isSelected && !isConnected;
+
+    if (isDimmed) {
+        return connections > 3
+            ? palette.nodeHubDimmed
+            : palette.nodeDimmed[colorIndex % palette.nodeDimmed.length];
+    }
+
+    if (isSelected) {
+        return palette.nodeSelected;
+    }
+
+    if (isConnected) {
+        return palette.nodeConnected;
+    }
+
+    if (connections > 3) {
+        return palette.nodeHub;
+    }
+
+    return palette.nodeDefault[colorIndex % palette.nodeDefault.length];
+}
+
+export function getGraphLinkColor(theme: Theme, options: GraphLinkColorOptions): string {
+    const palette = getGraphTheme(theme);
+
+    if (options.selectedNodeId !== null && !options.isConnected) {
+        return palette.linkDimmed;
+    }
+
+    if (options.isConnected) {
+        return palette.linkConnected;
+    }
+
+    return palette.linkIdle;
+}
+
+export function getGraphLabelFont(theme: Theme, options: GraphLabelFontOptions): string {
+    const palette = getGraphTheme(theme);
+    const weight = options.emphasize ? '700' : '400';
+
+    return `${weight} ${options.fontSize}px ${palette.labelFontFamily}`;
 }

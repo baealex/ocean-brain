@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 
+import { applyThemeClass, getStoredTheme } from './theme-dom';
+
 export type Theme = 'light' | 'dark';
 
 export interface ThemeState {
@@ -9,7 +11,7 @@ export interface ThemeState {
 }
 
 export const useTheme = create<ThemeState>((set) => ({
-    theme: 'light',
+    theme: getStoredTheme() ?? 'light',
     setTheme: (theme: Theme) => {
         set({ theme });
     },
@@ -19,7 +21,5 @@ export const useTheme = create<ThemeState>((set) => ({
 }));
 
 useTheme.subscribe((state) => {
-    localStorage.setItem('theme', state.theme);
-    document.documentElement.classList.add(state.theme);
-    document.documentElement.classList.remove(state.theme === 'dark' ? 'light' : 'dark');
+    applyThemeClass(state.theme);
 });

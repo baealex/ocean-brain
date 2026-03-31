@@ -232,6 +232,18 @@ export interface NoteSnapshot {
     meta: NoteSnapshotMeta;
 }
 
+export interface TrashedNote {
+    id: string;
+    title: string;
+    createdAt: string;
+    updatedAt: string;
+    deletedAt: string;
+    pinned: boolean;
+    order: number;
+    layout: Note['layout'];
+    tagNames: string[];
+}
+
 export const updateNote = ({ id, editSessionId, ...note }: UpdateNoteRequestData) => {
     return graphQuery<{
         updateNote: Pick<Note, 'id' | 'title'>;
@@ -285,6 +297,64 @@ export function restoreNoteSnapshot(id: string) {
     }, { id: string }>(
         `mutation RestoreNoteSnapshot($id: ID!) {
             restoreNoteSnapshot(id: $id) {
+                id
+                title
+                pinned
+                layout
+                content
+                updatedAt
+            }
+        }`,
+        { id }
+    );
+}
+
+export function fetchTrashedNotes({
+    limit = 25,
+    offset = 0
+}: Pick<FetchNotesParams, 'limit' | 'offset'> = {}) {
+    return graphQuery<{
+        trashedNotes: {
+            totalCount: number;
+            notes: TrashedNote[];
+        };
+    }, {
+        pagination: {
+            limit: number;
+            offset: number;
+        };
+    }>(
+        `query FetchTrashedNotes($pagination: PaginationInput) {
+            trashedNotes(pagination: $pagination) {
+                totalCount
+                notes {
+                    id
+                    title
+                    createdAt
+                    updatedAt
+                    deletedAt
+                    pinned
+                    order
+                    layout
+                    tagNames
+                }
+            }
+        }`,
+        {
+            pagination: {
+                limit,
+                offset
+            }
+        }
+    );
+}
+
+export function restoreTrashedNote(id: string) {
+    return graphQuery<{
+        restoreTrashedNote: Pick<Note, 'id' | 'title' | 'updatedAt' | 'layout' | 'pinned' | 'content'>;
+    }, { id: string }>(
+        `mutation RestoreTrashedNote($id: ID!) {
+            restoreTrashedNote(id: $id) {
                 id
                 title
                 pinned

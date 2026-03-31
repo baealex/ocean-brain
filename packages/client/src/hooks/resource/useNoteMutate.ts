@@ -73,18 +73,27 @@ const useNoteMutate = () => {
             }
             await Promise.all([
                 queryClient.invalidateQueries({
-                    queryKey: queryKeys.notes.listAll(),
+                    queryKey: queryKeys.notes.all(),
                     exact: false
                 }),
                 queryClient.invalidateQueries({
-                    queryKey: queryKeys.notes.tagListAll(),
+                    queryKey: queryKeys.tags.all(),
                     exact: false
                 }),
                 queryClient.invalidateQueries({
-                    queryKey: queryKeys.notes.pinned(),
-                    exact: true
+                    queryKey: queryKeys.reminders.all(),
+                    exact: false
+                }),
+                queryClient.invalidateQueries({
+                    queryKey: queryKeys.images.all(),
+                    exact: false
+                }),
+                queryClient.invalidateQueries({
+                    queryKey: ['calendar'],
+                    exact: false
                 })
             ]);
+            toast('The note has been moved to trash.');
             callback?.();
         }
     };

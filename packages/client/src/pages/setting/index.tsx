@@ -6,7 +6,8 @@ import * as Icon from '~/components/icon';
 import { useTheme } from '~/store/theme';
 import {
     SETTINGS_MANAGE_IMAGE_ROUTE,
-    SETTINGS_PLACEHOLDER_ROUTE
+    SETTINGS_PLACEHOLDER_ROUTE,
+    SETTINGS_TRASH_ROUTE
 } from '~/modules/url';
 
 const Setting = () => {
@@ -31,6 +32,16 @@ const Setting = () => {
                         {theme === 'dark' ? 'Dark mode' : 'Light mode'}
                     </span>
                 </button>
+                <Link
+                    to={SETTINGS_TRASH_ROUTE}
+                    search={{ page: 1 }}
+                    className="flex flex-col items-center gap-3 bg-subtle p-6 rounded-[12px_4px_13px_3px/4px_10px_4px_12px] border-2 border-border-secondary font-bold hover:shadow-sketchy hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all">
+                    <Icon.TrashCan className="h-8 w-8 text-fg-secondary" />
+                    <span>Trash</span>
+                    <span className="text-xs text-fg-tertiary font-medium">
+                        Restore deleted notes
+                    </span>
+                </Link>
                 <Link
                     to={SETTINGS_MANAGE_IMAGE_ROUTE}
                     search={{ page: 1 }}

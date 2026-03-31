@@ -52,6 +52,15 @@ export const queryKeys = {
             id,
             limit
         }] as const,
+        trashAll: () => ['notes', 'trash'] as const,
+        trash: (params: Pick<FetchNotesParams, 'limit' | 'offset'> = {}) => [
+            'notes',
+            'trash',
+            {
+                limit: params.limit ?? 25,
+                offset: params.offset ?? 0
+            }
+        ] as const,
         pinned: () => ['notes', 'pinned'] as const,
         backReferences: (noteId: string) => ['notes', 'back-references', { noteId }] as const,
         graph: () => ['notes', 'graph'] as const

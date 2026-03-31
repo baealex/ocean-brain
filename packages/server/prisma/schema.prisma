@@ -43,6 +43,46 @@ model NoteSnapshot {
     @@unique([noteId, editSessionId])
 }
 
+model DeletedNote {
+    id         Int              @id
+    title      String
+    content    String
+    createdAt  DateTime
+    updatedAt  DateTime
+    deletedAt  DateTime         @default(now())
+    pinned     Boolean          @default(false)
+    order      Int              @default(0)
+    layout     NoteLayout       @default(wide)
+    tags       DeletedNoteTag[]
+    reminders  DeletedReminder[]
+
+    @@index([deletedAt, updatedAt])
+}
+
+model DeletedNoteTag {
+    id            Int         @id @default(autoincrement())
+    deletedNoteId Int
+    deletedNote   DeletedNote @relation(fields: [deletedNoteId], references: [id], onDelete: Cascade)
+    name          String
+
+    @@index([deletedNoteId])
+}
+
+model DeletedReminder {
+    id               Int              @id @default(autoincrement())
+    deletedNoteId    Int
+    deletedNote      DeletedNote      @relation(fields: [deletedNoteId], references: [id], onDelete: Cascade)
+    originalId       Int?
+    reminderDate     DateTime
+    completed        Boolean          @default(false)
+    priority         ReminderPriority @default(medium)
+    content          String?
+    createdAt        DateTime
+    updatedAt        DateTime
+
+    @@index([deletedNoteId])
+}
+
 model Image {
     id        Int      @id @default(autoincrement())
     url       String

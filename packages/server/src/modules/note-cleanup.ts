@@ -1,4 +1,5 @@
 import models from '~/models.js';
+import { trashNoteById as moveNoteToTrashById } from './note-trash.js';
 
 export interface NoteCleanupBackReference {
     id: string;
@@ -269,20 +270,8 @@ const noteCleanupService = createNoteCleanupService({
     }),
     countReminders: (noteId: number) => models.reminder.count({ where: { noteId } }),
     deleteNoteAndPruneTags: async (noteId: number, orphanTagIds: number[]) => {
-        await models.$transaction(async (tx) => {
-            await tx.note.delete({ where: { id: noteId } });
-
-            if (orphanTagIds.length === 0) {
-                return;
-            }
-
-            await tx.tag.deleteMany({
-                where: {
-                    id: { in: orphanTagIds },
-                    notes: { none: {} }
-                }
-            });
-        });
+        void orphanTagIds;
+        await moveNoteToTrashById(noteId);
     },
     findBackReferences: (noteId: number) => models.note.findMany({
         select: {

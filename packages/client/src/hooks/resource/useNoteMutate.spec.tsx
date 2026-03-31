@@ -100,4 +100,51 @@ describe('useNoteMutate', () => {
 
         expect(deleteNote).not.toHaveBeenCalled();
     });
+
+    it('moves the note to trash and invalidates related caches after delete', async () => {
+        mockConfirm.mockResolvedValue(true);
+        vi.mocked(deleteNote).mockResolvedValue({
+            type: 'success',
+            deleteNote: true
+        } as never);
+
+        const queryClient = createTestQueryClient();
+        const invalidateSpy = vi
+            .spyOn(queryClient, 'invalidateQueries')
+            .mockResolvedValue(undefined);
+        const callback = vi.fn();
+        const { Wrapper } = createQueryClientWrapper(queryClient);
+        const { result } = renderHook(() => useNoteMutate(), { wrapper: Wrapper });
+
+        await act(async () => {
+            await result.current.onDelete('note-1', callback);
+        });
+
+        await waitFor(() => {
+            expect(deleteNote).toHaveBeenCalledWith('note-1');
+            expect(invalidateSpy).toHaveBeenCalledWith({
+                queryKey: queryKeys.notes.all(),
+                exact: false
+            });
+            expect(invalidateSpy).toHaveBeenCalledWith({
+                queryKey: queryKeys.tags.all(),
+                exact: false
+            });
+            expect(invalidateSpy).toHaveBeenCalledWith({
+                queryKey: queryKeys.reminders.all(),
+                exact: false
+            });
+            expect(invalidateSpy).toHaveBeenCalledWith({
+                queryKey: queryKeys.images.all(),
+                exact: false
+            });
+            expect(invalidateSpy).toHaveBeenCalledWith({
+                queryKey: ['calendar'],
+                exact: false
+            });
+        });
+
+        expect(mockToast).toHaveBeenCalledWith('The note has been moved to trash.');
+        expect(callback).toHaveBeenCalled();
+    });
 });

@@ -4,7 +4,6 @@ import type { Request } from 'express';
 import models from '~/models.js';
 import { gql } from '~/modules/graphql.js';
 import {
-    deleteNoteById,
     getNoteCleanupPreview,
     listNoteCleanupCandidates
 } from '~/modules/note-cleanup.js';
@@ -14,6 +13,11 @@ import {
     listNoteSnapshots,
     restoreNoteSnapshot
 } from '~/modules/note-snapshot.js';
+import {
+    listTrashedNotes,
+    restoreTrashedNoteById,
+    trashNoteById
+} from '~/modules/note-trash.js';
 
 import type { Note, Prisma } from '~/models.js';
 import type { Pagination, SearchFilter, NoteInput } from '~/types/index.js';
@@ -121,6 +125,23 @@ export const noteType = gql`
         createdAt: String!
         meta: NoteSnapshotMeta!
     }
+
+    type DeletedNote {
+        id: ID!
+        title: String!
+        createdAt: String!
+        updatedAt: String!
+        deletedAt: String!
+        pinned: Boolean!
+        order: Int!
+        layout: NoteLayout!
+        tagNames: [String!]!
+    }
+
+    type DeletedNotes {
+        totalCount: Int!
+        notes: [DeletedNote!]!
+    }
 `;
 
 export const noteQuery = gql`
@@ -151,6 +172,7 @@ export const noteQuery = gql`
         noteCleanupCandidates(query: String, pagination: PaginationInput): [NoteCleanupCandidate!]!
         noteCleanupPreview(id: ID!): NoteCleanupPreview
         noteSnapshots(id: ID!, limit: Int): [NoteSnapshot!]!
+        trashedNotes(pagination: PaginationInput): DeletedNotes!
         noteGraph: NoteGraph!
     }
 `;
@@ -161,6 +183,7 @@ export const noteMutation = gql`
         updateNote(id: ID!, note: NoteInput!, editSessionId: String): Note!
         deleteNote(id: ID!): Boolean!
         restoreNoteSnapshot(id: ID!): Note!
+        restoreTrashedNote(id: ID!): Note!
         pinNote(id: ID!, pinned: Boolean!): Note!
         reorderNotes(notes: [NoteOrderInput!]!): [Note!]!
     }
@@ -408,6 +431,19 @@ export const noteResolvers: IResolvers = {
         }) => {
             return listNoteSnapshots(Number(id), Number(limit));
         },
+        trashedNotes: async (_, {
+            pagination = {
+                limit: 25,
+                offset: 0
+            }
+        }: {
+            pagination: Pagination;
+        }) => {
+            return listTrashedNotes({
+                limit: Number(pagination.limit),
+                offset: Number(pagination.offset)
+            });
+        },
         noteGraph: async () => {
             const $notes = await models.note.findMany({
                 select: {
@@ -549,7 +585,13 @@ export const noteResolvers: IResolvers = {
             return $note;
         },
         deleteNote: async (_, { id }: Note) => {
-            return Boolean(await deleteNoteById(Number(id)));
+            const trashedNote = await trashNoteById(Number(id));
+
+            if (!trashedNote) {
+                throw 'NOT FOUND';
+            }
+
+            return true;
         },
         restoreNoteSnapshot: async (_, { id }: { id: string }, context: {
             req?: Request;
@@ -557,6 +599,15 @@ export const noteResolvers: IResolvers = {
             const userAgentHeader = context.req?.headers['user-agent'];
             const userAgent = Array.isArray(userAgentHeader) ? userAgentHeader[0] : userAgentHeader;
             const note = await restoreNoteSnapshot(Number(id), { meta: createSnapshotMetaFromUserAgent(userAgent) });
+
+            if (!note) {
+                throw 'NOT FOUND';
+            }
+
+            return note;
+        },
+        restoreTrashedNote: async (_, { id }: { id: string }) => {
+            const note = await restoreTrashedNoteById(Number(id));
 
             if (!note) {
                 throw 'NOT FOUND';

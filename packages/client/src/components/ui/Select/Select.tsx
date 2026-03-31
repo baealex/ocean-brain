@@ -144,6 +144,7 @@ const SelectItem = forwardRef<
             'font-medium',
             'text-fg-secondary',
             'outline-none',
+            'focus-ring-soft',
             'transition-colors',
             'rounded-[14px]',
             'data-[highlighted]:bg-hover-subtle',

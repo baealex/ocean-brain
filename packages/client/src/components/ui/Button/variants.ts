@@ -24,15 +24,16 @@ export const buttonVariants = cva(
         variants: {
             variant: {
                 primary: [
-                    'bg-elevated',
-                    'border-border-secondary',
-                    'hover:bg-hover-subtle'
-                ],
-                signature: [
                     'bg-cta',
                     'border-transparent',
                     'text-fg-on-filled',
                     'hover:bg-cta-hover'
+                ],
+                signature: [
+                    'bg-accent-secondary',
+                    'border-transparent',
+                    'text-fg-on-filled',
+                    'hover:bg-accent-secondary-hover'
                 ],
                 subtle: [
                     'bg-subtle',

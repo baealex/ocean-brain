@@ -1,4 +1,5 @@
 import type { Controller } from '~/types/index.js';
+import { createAppError } from '~/modules/error-handler.js';
 import { InvalidTagNameError, ensureTagByName } from '~/modules/tag-organization.js';
 
 export const createMcpCreateTagHandler = (
@@ -8,11 +9,7 @@ export const createMcpCreateTagHandler = (
         const name = req.body?.name;
 
         if (typeof name !== 'string') {
-            res.status(400).json({
-                code: 'INVALID_TAG_NAME',
-                message: 'A tag name is required.'
-            }).end();
-            return;
+            throw createAppError(400, 'INVALID_TAG_NAME', 'A tag name is required.');
         }
 
         try {
@@ -20,11 +17,7 @@ export const createMcpCreateTagHandler = (
             res.status(200).json(result).end();
         } catch (error) {
             if (error instanceof InvalidTagNameError) {
-                res.status(400).json({
-                    code: 'INVALID_TAG_NAME',
-                    message: error.message
-                }).end();
-                return;
+                throw createAppError(400, 'INVALID_TAG_NAME', error.message);
             }
 
             throw error;

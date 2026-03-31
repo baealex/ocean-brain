@@ -1,4 +1,5 @@
 import type { Controller } from '~/types/index.js';
+import { createAppError } from '~/modules/error-handler.js';
 import {
     createNoteFromMarkdown,
     InvalidNoteAuthoringInputError,
@@ -30,27 +31,15 @@ export const createMcpCreateNoteHandler = (
         const resolvedLayout = resolveNoteLayout(layout);
 
         if (typeof title !== 'string') {
-            res.status(400).json({
-                code: 'INVALID_NOTE_TITLE',
-                message: 'A note title is required.'
-            }).end();
-            return;
+            throw createAppError(400, 'INVALID_NOTE_TITLE', 'A note title is required.');
         }
 
         if (markdown !== undefined && typeof markdown !== 'string') {
-            res.status(400).json({
-                code: 'INVALID_NOTE_MARKDOWN',
-                message: 'Note markdown must be a string.'
-            }).end();
-            return;
+            throw createAppError(400, 'INVALID_NOTE_MARKDOWN', 'Note markdown must be a string.');
         }
 
         if (layout !== undefined && resolvedLayout === null) {
-            res.status(400).json({
-                code: 'INVALID_NOTE_LAYOUT',
-                message: 'Note layout must be one of narrow, wide, or full.'
-            }).end();
-            return;
+            throw createAppError(400, 'INVALID_NOTE_LAYOUT', 'Note layout must be one of narrow, wide, or full.');
         }
 
         try {
@@ -66,11 +55,7 @@ export const createMcpCreateNoteHandler = (
             }).end();
         } catch (error) {
             if (error instanceof InvalidNoteAuthoringInputError) {
-                res.status(400).json({
-                    code: 'INVALID_NOTE_INPUT',
-                    message: error.message
-                }).end();
-                return;
+                throw createAppError(400, 'INVALID_NOTE_INPUT', error.message);
             }
 
             throw error;
@@ -89,43 +74,23 @@ export const createMcpUpdateNoteHandler = (
         const resolvedLayout = resolveNoteLayout(layout);
 
         if (!Number.isInteger(noteId) || noteId <= 0) {
-            res.status(400).json({
-                code: 'INVALID_NOTE_ID',
-                message: 'A valid note id is required.'
-            }).end();
-            return;
+            throw createAppError(400, 'INVALID_NOTE_ID', 'A valid note id is required.');
         }
 
         if (title !== undefined && typeof title !== 'string') {
-            res.status(400).json({
-                code: 'INVALID_NOTE_TITLE',
-                message: 'Note title must be a string.'
-            }).end();
-            return;
+            throw createAppError(400, 'INVALID_NOTE_TITLE', 'Note title must be a string.');
         }
 
         if (markdown !== undefined && typeof markdown !== 'string') {
-            res.status(400).json({
-                code: 'INVALID_NOTE_MARKDOWN',
-                message: 'Note markdown must be a string.'
-            }).end();
-            return;
+            throw createAppError(400, 'INVALID_NOTE_MARKDOWN', 'Note markdown must be a string.');
         }
 
         if (layout !== undefined && resolvedLayout === null) {
-            res.status(400).json({
-                code: 'INVALID_NOTE_LAYOUT',
-                message: 'Note layout must be one of narrow, wide, or full.'
-            }).end();
-            return;
+            throw createAppError(400, 'INVALID_NOTE_LAYOUT', 'Note layout must be one of narrow, wide, or full.');
         }
 
         if (editSessionId !== undefined && typeof editSessionId !== 'string') {
-            res.status(400).json({
-                code: 'INVALID_EDIT_SESSION_ID',
-                message: 'Edit session id must be a string.'
-            }).end();
-            return;
+            throw createAppError(400, 'INVALID_EDIT_SESSION_ID', 'Edit session id must be a string.');
         }
 
         if (
@@ -133,11 +98,7 @@ export const createMcpUpdateNoteHandler = (
             markdown === undefined &&
             layout === undefined
         ) {
-            res.status(400).json({
-                code: 'INVALID_NOTE_INPUT',
-                message: 'At least one note field must be provided for update.'
-            }).end();
-            return;
+            throw createAppError(400, 'INVALID_NOTE_INPUT', 'At least one note field must be provided for update.');
         }
 
         try {
@@ -151,11 +112,7 @@ export const createMcpUpdateNoteHandler = (
             });
 
             if (!note) {
-                res.status(404).json({
-                    code: 'NOTE_NOT_FOUND',
-                    message: 'The requested note was not found.'
-                }).end();
-                return;
+                throw createAppError(404, 'NOTE_NOT_FOUND', 'The requested note was not found.');
             }
 
             res.status(200).json({
@@ -164,11 +121,7 @@ export const createMcpUpdateNoteHandler = (
             }).end();
         } catch (error) {
             if (error instanceof InvalidNoteAuthoringInputError) {
-                res.status(400).json({
-                    code: 'INVALID_NOTE_INPUT',
-                    message: error.message
-                }).end();
-                return;
+                throw createAppError(400, 'INVALID_NOTE_INPUT', error.message);
             }
 
             throw error;
@@ -183,21 +136,13 @@ export const createMcpDeleteNoteHandler = (
         const id = Number(req.body?.id);
 
         if (!Number.isInteger(id) || id <= 0) {
-            res.status(400).json({
-                code: 'INVALID_NOTE_ID',
-                message: 'A valid note id is required.'
-            }).end();
-            return;
+            throw createAppError(400, 'INVALID_NOTE_ID', 'A valid note id is required.');
         }
 
         const deletedNote = await deleteNote(id);
 
         if (!deletedNote) {
-            res.status(404).json({
-                code: 'NOTE_NOT_FOUND',
-                message: 'The requested note was not found.'
-            }).end();
-            return;
+            throw createAppError(404, 'NOTE_NOT_FOUND', 'The requested note was not found.');
         }
 
         res.status(200).json({

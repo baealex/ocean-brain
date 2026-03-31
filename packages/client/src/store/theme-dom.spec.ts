@@ -1,4 +1,10 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+    afterEach,
+    describe,
+    expect,
+    it,
+    vi
+} from 'vitest';
 
 import {
     applyThemeClass,
@@ -17,9 +23,7 @@ describe('theme-dom', () => {
     it('prefers stored theme over system theme and applies exactly one html class', () => {
         localStorage.setItem('theme', 'dark');
 
-        const applied = initializeTheme({
-            matchMedia: vi.fn(() => ({ matches: false })) as never
-        });
+        const applied = initializeTheme({ matchMedia: vi.fn(() => ({ matches: false })) as never });
 
         expect(applied).toBe('dark');
         expect(document.documentElement.classList.contains('dark')).toBe(true);
@@ -53,9 +57,7 @@ describe('theme-dom', () => {
     });
 
     it('does not persist the system fallback during initialization', () => {
-        const applied = initializeTheme({
-            matchMedia: vi.fn(() => ({ matches: true })) as never
-        });
+        const applied = initializeTheme({ matchMedia: vi.fn(() => ({ matches: true })) as never });
 
         expect(applied).toBe('dark');
         expect(document.documentElement.classList.contains('dark')).toBe(true);

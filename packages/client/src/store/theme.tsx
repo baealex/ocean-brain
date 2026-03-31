@@ -45,7 +45,5 @@ export const useTheme = create<ThemeState>((set) => ({
 }));
 
 useTheme.subscribe((state) => {
-    applyThemeClass(state.theme, {
-        persist: state.explicitTheme === state.theme
-    });
+    applyThemeClass(state.theme, { persist: state.explicitTheme === state.theme });
 });

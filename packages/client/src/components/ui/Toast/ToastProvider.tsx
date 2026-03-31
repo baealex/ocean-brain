@@ -54,7 +54,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                     {toasts.map((t) => (
                         <div
                             key={t.id}
-                            className="px-5 py-3 bg-surface border-2 border-border rounded-[12px_4px_13px_3px/4px_10px_4px_12px] shadow-sketchy text-sm font-bold text-fg-default animate-slide-in-from-bottom whitespace-nowrap">
+                            className="surface-floating whitespace-nowrap rounded-[18px] border border-border-subtle px-5 py-3 text-sm font-medium text-fg-secondary animate-slide-in-from-bottom">
                             {t.message}
                         </div>
                     ))}
@@ -64,6 +64,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useToast() {
     const context = useContext(ToastContext);
     if (!context) {

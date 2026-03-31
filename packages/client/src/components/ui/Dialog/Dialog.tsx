@@ -21,7 +21,7 @@ const DialogOverlay = forwardRef<
             'fixed',
             'inset-0',
             'z-[1100]',
-            'bg-black/50',
+            'bg-overlay',
             'data-[state=open]:animate-in',
             'data-[state=closed]:animate-out',
             'data-[state=closed]:fade-out-0',
@@ -52,10 +52,9 @@ const DialogContent = forwardRef<
                 '-translate-y-1/2',
                 'w-full',
                 'max-w-[640px]',
-                'bg-surface',
-                'border-2',
-                'border-border',
-                'shadow-sketchy-lg',
+                'surface-floating',
+                'border',
+                'border-border-subtle',
                 'data-[state=open]:animate-in',
                 'data-[state=closed]:animate-out',
                 'data-[state=closed]:fade-out-0',
@@ -63,7 +62,7 @@ const DialogContent = forwardRef<
                 'data-[state=closed]:zoom-out-95',
                 'data-[state=open]:zoom-in-95',
                 'mx-4',
-                'rounded-[24px_8px_25px_7px/8px_20px_8px_22px]',
+                'rounded-[24px]',
                 className
             ]
                 .filter(Boolean)
@@ -94,14 +93,14 @@ const DialogHeader = ({ title, onClose, className }: DialogHeaderProps) => (
         ]
             .filter(Boolean)
             .join(' ')}>
-        <DialogPrimitive.Title className="text-lg font-bold">
+        <DialogPrimitive.Title className="text-lg font-semibold text-fg-default">
             {title}
         </DialogPrimitive.Title>
         {onClose && (
             <DialogClose asChild>
                 <button
                     type="button"
-                    className="w-11 h-11 flex items-center justify-center cursor-pointer hover:bg-hover rounded-[10px_3px_11px_3px/3px_8px_3px_10px] transition-colors"
+                    className="flex h-10 w-10 items-center justify-center rounded-[14px] text-fg-secondary transition-colors hover:bg-hover-subtle hover:text-fg-default focus-ring-soft"
                     onClick={onClose}>
                     <Icon.Close className="w-5 h-5" />
                 </button>

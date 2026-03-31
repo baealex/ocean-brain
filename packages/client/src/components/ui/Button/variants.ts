@@ -6,53 +6,69 @@ export const buttonVariants = cva(
         'items-center',
         'justify-center',
         'gap-2',
-        'font-bold',
-        'transition-all',
+        'font-medium',
+        'text-fg-default',
+        'transition-colors',
         'duration-200',
-        'border-2',
-        'border-border',
+        'border',
+        'border-border-subtle',
+        'bg-elevated',
+        'focus-ring-soft',
+        'outline-none',
         'disabled:pointer-events-none',
         'disabled:opacity-50',
-        'hover:shadow-sketchy',
-        'active:translate-x-0.5',
-        'active:translate-y-0.5',
-        'active:shadow-none'
+        'hover:bg-hover',
+        'active:bg-active'
     ],
     {
         variants: {
             variant: {
                 primary: [
+                    'bg-elevated',
+                    'border-border-secondary',
+                    'hover:bg-hover-subtle'
+                ],
+                signature: [
                     'bg-cta',
+                    'border-transparent',
                     'text-fg-on-filled',
                     'hover:bg-cta-hover'
                 ],
+                subtle: [
+                    'bg-subtle',
+                    'border-transparent',
+                    'hover:bg-hover'
+                ],
                 ghost: [
                     'border-transparent',
-                    'hover:border-border',
-                    'hover:bg-ghost'
+                    'bg-transparent',
+                    'hover:bg-hover-subtle'
                 ],
                 danger: [
-                    'bg-accent-danger',
-                    'text-fg-on-filled',
+                    'bg-accent-soft-danger',
+                    'border-transparent',
+                    'text-fg-default',
                     'hover:bg-accent-danger-hover'
                 ],
                 'soft-success': [
                     'bg-accent-soft-success',
+                    'border-transparent',
                     'text-fg-default',
                     'hover:bg-accent-soft-success-hover'
                 ],
                 'soft-danger': [
                     'bg-accent-soft-danger',
+                    'border-transparent',
                     'text-fg-default',
                     'hover:bg-accent-soft-danger-hover'
                 ]
             },
             size: {
-                sm: 'h-8 px-3 text-sm rounded-[12px_4px_13px_3px/4px_10px_4px_12px]',
-                md: 'h-10 px-4 text-sm rounded-[15px_4px_16px_4px/4px_12px_5px_14px]',
-                lg: 'h-12 px-6 text-base rounded-[18px_5px_19px_5px/5px_14px_6px_16px]',
-                icon: 'h-10 w-10 rounded-[12px_4px_13px_3px/4px_10px_4px_12px]',
-                'icon-sm': 'h-8 w-8 rounded-[10px_3px_11px_3px/3px_8px_3px_10px]'
+                sm: 'h-8 px-3 text-sm rounded-[16px]',
+                md: 'h-10 px-4 text-sm rounded-[18px]',
+                lg: 'h-12 px-6 text-base rounded-[20px]',
+                icon: 'h-10 w-10 rounded-[18px]',
+                'icon-sm': 'h-8 w-8 rounded-[16px]'
             }
         },
         defaultVariants: {

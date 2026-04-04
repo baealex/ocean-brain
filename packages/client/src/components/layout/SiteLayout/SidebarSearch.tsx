@@ -68,34 +68,34 @@ const SidebarSearch = () => {
         <div className="p-3">
             <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
                 <div className="flex gap-3">
-                    <div style={{ gridTemplateColumns: '40px 1fr 32px' }} className="grid flex-1 bg-surface border-2 border-border rounded-[12px_4px_13px_3px/4px_10px_4px_12px] shadow-sketchy">
-                        <button type="submit" className="flex items-center justify-center hover:text-accent-primary transition-colors">
-                            <Icon.Search className="h-5 w-5" weight="bold" />
+                    <div style={{ gridTemplateColumns: '36px 1fr 28px' }} className="grid flex-1 border-b border-border-subtle">
+                        <button type="submit" className="flex items-center justify-center text-fg-tertiary transition-colors hover:text-fg-default">
+                            <Icon.Search className="h-4.5 w-4.5" weight="bold" />
                         </button>
                         <input
                             type="text"
                             placeholder="Search..."
                             value={query}
                             onChange={(event) => setQuery(event.target.value)}
-                            className="h-10 w-full bg-transparent text-fg-default py-4 outline-none font-bold"
+                            className="h-9 w-full bg-transparent py-2 text-sm text-fg-default outline-none"
                         />
                         {query && (
-                            <button type="button" className="flex items-center justify-center hover:text-accent-primary transition-colors" onClick={handleReset}>
+                            <button type="button" className="flex items-center justify-center text-fg-tertiary transition-colors hover:text-fg-default" onClick={handleReset}>
                                 <Icon.Close className="h-4 w-4" weight="bold" />
                             </button>
                         )}
                     </div>
                 </div>
                 {hasResults && (
-                    <div className="p-3 bg-surface border-2 border-border rounded-[16px_5px_17px_4px/5px_13px_5px_15px] shadow-sketchy">
+                    <div className="surface-base rounded-[16px] border border-border-subtle p-3">
                         {notes.length > 0 && (
                             <ul className="flex flex-col">
                                 {notes.map(({ id, title }) => (
-                                    <li key={id} className="flex py-2 items-center border-b border-dashed border-border-subtle last:border-b-0">
+                                    <li key={id} className="flex items-center border-b border-border-subtle/70 py-2 last:border-b-0">
                                         <Link
                                             to={NOTE_ROUTE}
                                             params={{ id }}
-                                            className="text-sm font-bold hover:text-accent-primary transition-colors">
+                                            className="text-sm font-medium text-fg-default transition-colors hover:text-fg-secondary">
                                             {title || 'Untitled'}
                                         </Link>
                                     </li>
@@ -116,8 +116,8 @@ const SidebarSearch = () => {
                                 ))}
                             </ul>
                         )}
-                        <div className="p-2 border-t border-dashed border-border-subtle">
-                            <button type="submit" className="text-sm font-bold text-pastel-blue-200 hover:text-pastel-teal-200 transition-colors">
+                        <div className="border-t border-border-subtle/70 p-2">
+                            <button type="submit" className="text-sm font-medium text-fg-secondary transition-colors hover:text-fg-default">
                                 view detailed results {'>'}
                             </button>
                         </div>

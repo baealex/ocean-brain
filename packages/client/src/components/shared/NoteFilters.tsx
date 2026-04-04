@@ -33,10 +33,10 @@ export default function NoteFilters({
     onPinnedFirstChange
 }: Props) {
     return (
-        <div className="flex justify-end mb-4">
-            <div className="inline-flex flex-wrap gap-3 items-center px-4 py-2.5 bg-surface border-2 border-border rounded-sketchy-lg shadow-sketchy">
+        <div className="mb-4 flex justify-end">
+            <div className="surface-base inline-flex flex-wrap items-center gap-3 rounded-[16px] border border-border-subtle px-3 py-2">
                 <div className="flex gap-1.5 items-center">
-                    <GridFourIcon fontSize={24} className="min-w-8 text-fg-tertiary" />
+                    <GridFourIcon fontSize={20} className="min-w-6 text-fg-tertiary" />
                     <Select
                         value={isAutoLimit ? 'auto' : String(itemsPerPage)}
                         onValueChange={(value) => {
@@ -52,10 +52,10 @@ export default function NoteFilters({
                     </Select>
                 </div>
 
-                <div className="w-px h-5 bg-divider" />
+                <div className="h-5 w-px bg-divider" />
 
                 <div className="flex gap-1.5 items-center">
-                    <SortAscendingIcon fontSize={24} className="min-w-8 text-fg-tertiary" />
+                    <SortAscendingIcon fontSize={20} className="min-w-6 text-fg-tertiary" />
                     <Select
                         value={sortBy}
                         onValueChange={(value) => onSortByChange(value as SortBy)}
@@ -74,9 +74,9 @@ export default function NoteFilters({
                     </Select>
                 </div>
 
-                <div className="w-px h-5 bg-divider" />
+                <div className="h-5 w-px bg-divider" />
 
-                <Label htmlFor="pinnedFirst" size="sm" className="flex items-center gap-1.5 cursor-pointer">
+                <Label htmlFor="pinnedFirst" size="sm" className="flex cursor-pointer items-center gap-1.5">
                     <Checkbox
                         id="pinnedFirst"
                         size="sm"

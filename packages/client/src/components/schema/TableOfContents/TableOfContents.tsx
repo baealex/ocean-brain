@@ -85,12 +85,12 @@ const TableOfContentsComponent = () => {
 
     if (headings.length === 0) {
         return (
-            <div className="w-full rounded-sketchy-lg border-2 border-border bg-subtle p-6">
-                <div className="flex items-center gap-3 text-fg-tertiary">
-                    <Icon.List className="text-2xl flex-shrink-0" />
+            <div className="surface-base w-full rounded-[20px] border border-border-subtle p-5">
+                <div className="flex items-start gap-3 text-fg-tertiary">
+                    <Icon.List className="mt-0.5 text-xl flex-shrink-0" />
                     <div>
-                        <div className="font-medium text-base mb-1">Table of Contents</div>
-                        <div className="text-sm opacity-75">
+                        <div className="mb-1 text-sm font-semibold text-fg-default">Table of Contents</div>
+                        <div className="text-sm text-fg-tertiary">
                             Add headings to your document to generate a table of contents
                         </div>
                     </div>
@@ -100,37 +100,43 @@ const TableOfContentsComponent = () => {
     }
 
     return (
-        <div className="w-full rounded-sketchy-lg border-2 border-border bg-subtle p-6">
-            <div className="flex items-center gap-2 mb-4">
-                <Icon.List className="text-xl text-fg-muted" />
-                <h3 className="text-base font-bold text-fg">
+        <div className="surface-base w-full rounded-[20px] border border-border-subtle p-5">
+            <div className="mb-4 flex items-center gap-2 border-b border-border-subtle pb-3">
+                <Icon.List className="text-lg text-fg-tertiary" />
+                <h3 className="text-sm font-semibold uppercase tracking-[0.1em] text-fg-tertiary">
                     Table of Contents
                 </h3>
             </div>
-            <nav className="space-y-0.5">
+            <nav className="space-y-1">
                 {headings.map((heading) => {
-                    const indent = (heading.level - 1) * 16;
+                    const indent = (heading.level - 1) * 14;
                     const isTopLevel = heading.level === 1;
 
                     return (
                         <button
                             key={heading.id}
+                            type="button"
                             onClick={() => scrollToHeading(heading.id)}
-                            className={`
-                                block w-full text-left rounded-sketchy-sm px-3 py-2 transition-all duration-150
-                                hover:bg-hover
-                                hover:translate-x-1
-                                ${isTopLevel
-                                    ? 'text-sm font-semibold text-fg'
-                                    : 'text-sm text-fg-muted'
-                                }
-                            `}
+                            className={[
+                                'focus-ring-soft',
+                                'flex',
+                                'w-full',
+                                'items-start',
+                                'gap-3',
+                                'rounded-[14px]',
+                                'px-3',
+                                'py-2.5',
+                                'text-left',
+                                'transition-colors',
+                                'hover:bg-hover-subtle',
+                                isTopLevel ? 'text-fg-default' : 'text-fg-secondary'
+                            ].join(' ')}
                             style={{ paddingLeft: `${12 + indent}px` }}>
-                            <span className="flex items-center gap-2">
-                                {isTopLevel && (
-                                    <span className="w-2 h-2 rounded-sketchy-xs bg-fg-default flex-shrink-0" />
-                                )}
-                                <span className="line-clamp-2">{heading.text}</span>
+                            <span className="mt-[1px] min-w-[1.75rem] text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-fg-tertiary">
+                                H{heading.level}
+                            </span>
+                            <span className={`line-clamp-2 text-sm ${isTopLevel ? 'font-semibold' : 'font-medium'}`}>
+                                {heading.text}
                             </span>
                         </button>
                     );

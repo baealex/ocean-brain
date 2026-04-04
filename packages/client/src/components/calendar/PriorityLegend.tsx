@@ -1,21 +1,21 @@
-import { priorityColors, overdueColor } from '~/modules/color';
+import { priorityColorsSubtle } from '~/modules/color';
 
 const priorities = [
     {
         label: 'High',
-        className: priorityColors.high
+        className: priorityColorsSubtle.high
     },
     {
         label: 'Medium',
-        className: priorityColors.medium
+        className: priorityColorsSubtle.medium
     },
     {
         label: 'Low',
-        className: priorityColors.low
+        className: priorityColorsSubtle.low
     },
     {
         label: 'Overdue',
-        className: overdueColor
+        className: 'bg-accent-soft-danger/70 dark:bg-emphasis/70'
     }
 ];
 
@@ -24,7 +24,7 @@ export const PriorityLegend = () => {
         <div className="flex flex-wrap items-center gap-3 text-xs">
             {priorities.map(({ label, className }) => (
                 <div key={label} className="flex items-center gap-1.5">
-                    <div className={`w-3 h-3 rounded-sketchy-xs ${className}`} />
+                    <div className={`h-3 w-3 rounded-full border border-border-subtle ${className}`} />
                     <span className="text-fg-tertiary font-medium">
                         {label}
                     </span>

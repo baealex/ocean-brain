@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Modal } from '~/components/shared';
+import { Modal, ModalActionRow, SelectionOptionCard } from '~/components/shared';
 import { Button } from '~/components/ui';
 
 import type { NoteLayout } from '~/models/note.model';
@@ -57,39 +57,32 @@ export default function LayoutModal({
             <Modal.Body>
                 <div className="flex flex-col gap-3 sm:gap-4">
                     <div className="flex flex-col gap-2">
-                        <label className="text-xs sm:text-sm font-bold text-fg-muted">
+                        <label className="text-xs font-semibold text-fg-muted sm:text-sm">
                             Note Layout
                         </label>
                         <div className="flex flex-col gap-2">
                             {LAYOUT_OPTIONS.map((option) => (
-                                <Button
+                                <SelectionOptionCard
                                     key={option.value}
-                                    variant={selectedLayout === option.value ? 'primary' : 'ghost'}
-                                    className={`!justify-start !text-left !h-auto p-3 sm:p-4 ${selectedLayout === option.value ? 'shadow-sketchy' : ''}`}
-                                    onClick={() => setSelectedLayout(option.value)}>
-                                    <div>
-                                        <div className="font-bold text-sm sm:text-base text-fg-default">
-                                            {option.label}
-                                        </div>
-                                        <div className="text-xs sm:text-sm text-fg-tertiary mt-1 font-medium">
-                                            {option.description}
-                                        </div>
-                                    </div>
-                                </Button>
+                                    title={option.label}
+                                    description={option.description}
+                                    selected={selectedLayout === option.value}
+                                    onClick={() => setSelectedLayout(option.value)}
+                                />
                             ))}
                         </div>
                     </div>
                 </div>
             </Modal.Body>
             <Modal.Footer>
-                <div className="flex justify-end gap-2">
+                <ModalActionRow>
                     <Button variant="ghost" size="sm" onClick={onClose}>
                         Cancel
                     </Button>
-                    <Button size="sm" onClick={handleSave}>
+                    <Button variant="primary" size="sm" onClick={handleSave}>
                         Apply
                     </Button>
-                </div>
+                </ModalActionRow>
             </Modal.Footer>
         </Modal>
     );

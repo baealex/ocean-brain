@@ -8,7 +8,8 @@ import {
     PageLayout,
     Pagination,
     Skeleton,
-    Empty
+    Empty,
+    SurfaceCard
 } from '~/components/shared';
 import { Button, useConfirm } from '~/components/ui';
 import * as Icon from '~/components/icon';
@@ -82,7 +83,6 @@ const ManageImage = () => {
                             <FallbackRender
                                 fallback={(
                                     <Empty
-                                        icon="🖼️"
                                         title="There are no images"
                                         description="Try drag and drop an image on the note editor."
                                     />
@@ -91,25 +91,25 @@ const ManageImage = () => {
                                     <>
                                         <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
                                             {images.map((image) => (
-                                                <div key={image.id} className="rounded-[12px_4px_13px_3px/4px_10px_4px_12px] overflow-hidden border-2 border-border shadow-sketchy hover:shadow-sketchy-lg hover:-translate-y-0.5 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all duration-200">
+                                                <SurfaceCard key={image.id} className="overflow-hidden p-0">
                                                     <Link
                                                         to={SETTINGS_MANAGE_IMAGE_DETAIL_ROUTE}
                                                         params={{ id: image.id }}>
                                                         <ImageComponent className="h-48 w-full object-cover" src={image.url} alt={image.id} />
                                                     </Link>
-                                                    <div className="flex p-2 justify-between items-center border-t-2 border-dashed border-border-subtle bg-subtle">
-                                                        <span className="text-xs font-bold text-fg-secondary px-1">
+                                                    <div className="flex items-center justify-between border-t border-border-subtle bg-[color:color-mix(in_srgb,var(--elevated)_72%,transparent)] px-3 py-2.5">
+                                                        <span className="px-1 text-xs font-medium text-fg-secondary">
                                                             {image.referenceCount} refs
                                                         </span>
                                                         <Button
-                                                            variant="danger"
+                                                            variant="soft-danger"
                                                             size="icon-sm"
                                                             disabled={image.referenceCount > 0}
                                                             onClick={() => handleDelete(image.id)}>
                                                             <Icon.TrashCan className="h-4 w-4" />
                                                         </Button>
                                                     </div>
-                                                </div>
+                                                </SurfaceCard>
                                             ))}
                                         </div>
                                         <FallbackRender fallback={null}>

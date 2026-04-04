@@ -1,25 +1,49 @@
 import { create } from 'zustand';
 
+import { applyThemeClass, getStoredTheme } from './theme-dom';
+
 export type Theme = 'light' | 'dark';
 
 export interface ThemeState {
+    explicitTheme: Theme | null;
     theme: Theme;
     setTheme: (theme: Theme) => void;
+    setSystemTheme: (theme: Theme) => void;
     toggleTheme: () => void;
 }
 
+const storedTheme = getStoredTheme();
+
 export const useTheme = create<ThemeState>((set) => ({
-    theme: 'light',
+    explicitTheme: storedTheme,
+    theme: storedTheme ?? 'light',
     setTheme: (theme: Theme) => {
-        set({ theme });
+        set({
+            explicitTheme: theme,
+            theme
+        });
+    },
+    setSystemTheme: (theme: Theme) => {
+        set((state) => {
+            if (state.explicitTheme) {
+                return state;
+            }
+
+            return { theme };
+        });
     },
     toggleTheme: () => {
-        set((state) => ({ theme: state.theme === 'light' ? 'dark' : 'light' }));
+        set((state) => {
+            const theme = state.theme === 'light' ? 'dark' : 'light';
+
+            return {
+                explicitTheme: theme,
+                theme
+            };
+        });
     }
 }));
 
 useTheme.subscribe((state) => {
-    localStorage.setItem('theme', state.theme);
-    document.documentElement.classList.add(state.theme);
-    document.documentElement.classList.remove(state.theme === 'dark' ? 'light' : 'dark');
+    applyThemeClass(state.theme, { persist: state.explicitTheme === state.theme });
 });

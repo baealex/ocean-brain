@@ -23,7 +23,7 @@ export const Tag = createReactInlineContentSpec(
                     to={TAG_NOTES_ROUTE}
                     params={{ id: props.inlineContent.props.id }}
                     search={{ page: 1 }}>
-                    <span className="text-fg-default">
+                    <span>
                         {props.inlineContent.props.tag}
                     </span>
                 </Link>

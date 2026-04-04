@@ -23,8 +23,10 @@ const SidebarHeroBanner = () => {
 
     return (
         <div className="p-3 pb-0">
-            <div
-                className="relative rounded-[16px_5px_17px_4px/5px_13px_5px_15px] border-2 border-border shadow-sketchy overflow-hidden cursor-pointer group"
+            <button
+                type="button"
+                aria-label="Remove hero banner"
+                className="surface-base focus-ring-soft group relative block w-full overflow-hidden rounded-[18px] border border-border-subtle text-left outline-none"
                 onClick={async () => {
                     if (await confirm('Do you want to remove this hero banner?')) {
                         await setServerCache('heroBanner', '');
@@ -35,16 +37,18 @@ const SidebarHeroBanner = () => {
                     }
                 }}>
                 <img
-                    className="w-full transition-transform duration-300 group-hover:scale-105"
+                    alt="Studio atmosphere banner"
+                    className="w-full object-cover transition duration-500 group-hover:scale-[1.01] group-hover:opacity-90"
                     style={{ filter: theme === 'dark' ? 'brightness(0.85) saturate(0.9)' : undefined }}
                     src={heroBanner}
                 />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center">
-                    <span className="text-white text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/50 px-3 py-1.5 rounded-[8px_3px_9px_2px/3px_6px_3px_7px]">
-                        Click to remove
+                <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(18,24,34,0.1),rgba(18,24,34,0.38))] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-3">
+                    <span className="rounded-[12px] border border-white/14 bg-black/16 px-2.5 py-2 text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-white/80 opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100">
+                        Remove
                     </span>
                 </div>
-            </div>
+            </button>
         </div>
     );
 };

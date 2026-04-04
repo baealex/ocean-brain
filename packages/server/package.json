@@ -5,7 +5,7 @@
     "type": "module",
     "main": "dist/main.js",
     "scripts": {
-        "dev": "prisma migrate deploy && prisma generate && tsx watch src/main.ts",
+        "dev": "prisma migrate deploy && prisma generate && node --watch --import tsx src/main.ts",
         "build": "prisma generate && tsup && tsc-alias",
         "start": "node dist/start.js",
         "lint": "eslint src",

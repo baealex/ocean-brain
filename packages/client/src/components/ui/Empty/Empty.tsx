@@ -1,15 +1,12 @@
 import { forwardRef } from 'react';
 
 interface EmptyProps extends React.HTMLAttributes<HTMLDivElement> {
-    icon?: React.ReactNode;
     title?: string;
     description?: string;
 }
 
 const Empty = forwardRef<HTMLDivElement, EmptyProps>(
-    ({
-        icon, title, description, className = '', ...props
-    }, ref) => {
+    ({ title, description, className = '', ...props }, ref) => {
         return (
             <div
                 ref={ref}
@@ -24,9 +21,6 @@ const Empty = forwardRef<HTMLDivElement, EmptyProps>(
                     className
                 ].join(' ')}
                 {...props}>
-                {icon && (
-                    <div className="mb-4 text-6xl opacity-80">{icon}</div>
-                )}
                 {title && (
                     <h3 className="text-xl font-bold mb-2 text-fg-muted">
                         {title}

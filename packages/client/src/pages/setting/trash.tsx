@@ -10,7 +10,8 @@ import {
     FallbackRender,
     PageLayout,
     Pagination,
-    Skeleton
+    Skeleton,
+    SurfaceCard
 } from '~/components/shared';
 import { useToast } from '~/components/ui';
 import { fetchTrashedNotes, restoreTrashedNote } from '~/apis/note.api';
@@ -92,7 +93,6 @@ const TrashContent = () => {
         <FallbackRender
             fallback={(
                 <Empty
-                    icon="🗑️"
                     title="Trash is empty"
                     description="Deleted notes stay here until you restore them or retention cleanup removes them."
                 />
@@ -101,15 +101,15 @@ const TrashContent = () => {
                 <>
                     <div className="grid gap-4">
                         {data.notes.map((note) => (
-                            <article
+                            <SurfaceCard
                                 key={note.id}
-                                className="rounded-[12px_4px_13px_3px/4px_10px_4px_12px] border-2 border-border-secondary bg-subtle p-4 shadow-sketchy">
+                                className="p-4">
                                 <div className="flex items-start justify-between gap-4">
                                     <div className="space-y-2">
                                         <div className="flex items-center gap-2">
-                                            <h2 className="text-base font-bold">{note.title}</h2>
+                                            <h2 className="text-base font-semibold text-fg-default">{note.title}</h2>
                                             {note.pinned && (
-                                                <span className="inline-flex items-center gap-1 rounded-full border border-border bg-surface px-2 py-0.5 text-xs font-medium text-fg-secondary">
+                                                <span className="inline-flex items-center gap-1 rounded-full border border-border-subtle bg-hover-subtle px-2 py-0.5 text-xs font-medium text-fg-secondary">
                                                     <Icon.Pin className="h-3.5 w-3.5" />
                                                     Pinned
                                                 </span>
@@ -126,7 +126,7 @@ const TrashContent = () => {
                                                 {note.tagNames.map((tagName) => (
                                                     <span
                                                         key={`${note.id}-${tagName}`}
-                                                        className="rounded-full border border-border bg-surface px-2 py-0.5 text-xs font-medium text-fg-secondary">
+                                                        className="rounded-full border border-border-subtle bg-hover-subtle px-2 py-0.5 text-xs font-medium text-fg-secondary">
                                                         {tagName}
                                                     </span>
                                                 ))}
@@ -134,12 +134,13 @@ const TrashContent = () => {
                                         )}
                                     </div>
                                     <Button
+                                        variant="subtle"
                                         isLoading={restoreMutation.isPending && restoreMutation.variables === note.id}
                                         onClick={() => restoreMutation.mutate(note.id)}>
                                         Restore
                                     </Button>
                                 </div>
-                            </article>
+                            </SurfaceCard>
                         ))}
                     </div>
                     {data.totalCount > PAGE_SIZE && (

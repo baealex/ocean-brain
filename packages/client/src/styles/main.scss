@@ -30,7 +30,8 @@ body,
 }
 
 html {
-    background: #eef3fa;
+    background: var(--page-bg);
+    color: var(--fg-default);
 
     &.dark {
         background-color: var(--page-bg);
@@ -40,6 +41,8 @@ html {
 
 body {
     font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--page-bg);
+    color: var(--fg-default);
     word-wrap: break-word;
     word-break: keep-all;
     overflow-wrap: anywhere;
@@ -61,12 +64,9 @@ div:focus {
 
 .ProseMirror {
     a {
-        color: #0070f3;
+        color: inherit;
         cursor: pointer;
-
-        html.dark & {
-            color: var(--accent-primary);
-        }
+        text-decoration: none;
     }
 }
 

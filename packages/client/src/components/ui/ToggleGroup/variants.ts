@@ -22,11 +22,11 @@ export const toggleGroupVariants = cva(
                     'bg-transparent'
                 ],
                 pills: [
-                    'bg-subtle',
-                    'rounded-[14px_4px_15px_4px/4px_12px_4px_14px]',
+                    'surface-base',
+                    'rounded-[14px]',
                     'p-1',
-                    'border-2',
-                    'border-border'
+                    'border',
+                    'border-border-subtle'
                 ]
             }
         },
@@ -63,11 +63,11 @@ export const toggleGroupItemVariants = cva(
                 ],
                 pills: [
                     'text-fg-secondary',
-                    'rounded-[10px_3px_11px_3px/3px_8px_3px_10px]',
+                    'rounded-[10px]',
+                    'hover:bg-hover-subtle',
                     'data-[state=on]:bg-accent-primary',
                     'data-[state=on]:text-fg-on-accent',
-                    'data-[state=on]:shadow-sketchy',
-                    'data-[state=on]:border-2',
+                    'data-[state=on]:border',
                     'data-[state=on]:border-border-secondary'
                 ]
             },

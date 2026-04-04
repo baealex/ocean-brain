@@ -26,7 +26,6 @@ import { QueryBoundary, QueryErrorView } from '~/components/app';
 import { PinnedNotes } from '~/components/entities';
 import * as Icon from '~/components/icon';
 import { Skeleton } from '~/components/shared';
-import { Tooltip } from '~/components/ui';
 import type { Note } from '~/models/note.model';
 import { queryKeys } from '~/modules/query-key-factory';
 import { NOTE_ROUTE } from '~/modules/url';
@@ -35,7 +34,7 @@ type PinnedNote = Pick<Note, 'id' | 'title' | 'order'>;
 
 interface SortablePinnedNoteProps {
     id: string;
-    tooltip?: string;
+    title?: string;
     children: ReactNode;
 }
 
@@ -48,7 +47,7 @@ interface PinnedNotesListProps {
     sensors: ReturnType<typeof useSensors>;
 }
 
-function SortablePinnedNote({ id, tooltip, children }: SortablePinnedNoteProps) {
+function SortablePinnedNote({ id, title, children }: SortablePinnedNoteProps) {
     const {
         attributes,
         listeners,
@@ -66,25 +65,27 @@ function SortablePinnedNote({ id, tooltip, children }: SortablePinnedNoteProps) 
     };
 
     const textContent = (
-        <div className="flex-1 min-w-0 font-bold text-sm truncate">
+        <div className="min-w-0 flex-1 truncate text-sm font-medium text-fg-default">
             {children}
         </div>
     );
 
     return (
-        <div ref={setNodeRef} style={style} {...attributes} className="flex items-center gap-2 p-2 rounded-md hover:bg-hover-subtle transition-colors">
+        <div
+            ref={setNodeRef}
+            style={style}
+            className="group flex items-center gap-2.5 rounded-[14px] border border-transparent px-2.5 py-2 transition-colors hover:border-border-subtle hover:bg-hover-subtle/60">
             <button
+                type="button"
                 ref={setActivatorNodeRef}
+                aria-label={`Reorder note ${title ?? 'Untitled'}`}
+                {...attributes}
                 {...listeners}
-                className="cursor-grab active:cursor-grabbing touch-none flex items-center justify-center"
+                className="focus-ring-soft flex h-7 w-7 cursor-grab items-center justify-center rounded-[10px] text-fg-tertiary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-secondary active:cursor-grabbing touch-none"
                 style={{ cursor: isDragging ? 'grabbing' : 'grab' }}>
-                <Icon.Menu className="size-4 text-fg-placeholder hover:text-fg-secondary" />
+                <Icon.Menu className="size-4" />
             </button>
-            {tooltip ? (
-                <Tooltip content={tooltip} side="right">
-                    {textContent}
-                </Tooltip>
-            ) : textContent}
+            {textContent}
         </div>
     );
 }
@@ -117,11 +118,12 @@ function PinnedNotesList({
                 items={items.map((item) => item.id)}
                 strategy={verticalListSortingStrategy}>
                 {items.map((note) => (
-                    <SortablePinnedNote key={note.id} id={note.id} tooltip={note.title || 'Untitled'}>
+                    <SortablePinnedNote key={note.id} id={note.id} title={note.title || 'Untitled'}>
                         <Link
+                            aria-current={pathname === `/${note.id}` ? 'page' : undefined}
                             className={`transition-colors ${
                                 pathname === `/${note.id}`
-                                    ? 'text-accent-primary'
+                                    ? 'text-fg-default'
                                     : 'text-fg-secondary hover:text-fg-default'
                             }`}
                             to={NOTE_ROUTE}
@@ -175,13 +177,13 @@ const PinnedNotesPanel = () => {
     };
 
     return (
-        <div className="flex flex-col gap-2">
+        <div className="rounded-[16px]">
             <QueryBoundary
                 fallback={(
-                    <>
-                        <Skeleton height="24px" opacity={0.5} />
-                        <Skeleton height="24px" opacity={0.5} />
-                    </>
+                    <div className="space-y-2">
+                        <Skeleton height="44px" opacity={0.4} />
+                        <Skeleton height="44px" opacity={0.4} />
+                    </div>
                 )}
                 errorTitle="Failed to load pinned notes"
                 errorDescription="Retry loading the pinned note list."
@@ -197,14 +199,20 @@ const PinnedNotesPanel = () => {
                 )}>
                 <PinnedNotes
                     render={(notes) => (
-                        <PinnedNotesList
-                            notes={notes}
-                            pathname={pathname}
-                            pinnedItems={pinnedItems}
-                            setPinnedItems={setPinnedItems}
-                            handleDragEnd={handleDragEnd}
-                            sensors={sensors}
-                        />
+                        notes.length > 0 ? (
+                            <PinnedNotesList
+                                notes={notes}
+                                pathname={pathname}
+                                pinnedItems={pinnedItems}
+                                setPinnedItems={setPinnedItems}
+                                handleDragEnd={handleDragEnd}
+                                sensors={sensors}
+                            />
+                        ) : (
+                            <div className="px-2.5 py-3 text-sm leading-6 text-fg-secondary">
+                                Pin a note to keep it in view while the rest of the workspace changes.
+                            </div>
+                        )
                     )}
                 />
             </QueryBoundary>

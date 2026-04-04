@@ -85,7 +85,14 @@ export const createDevAuthGateMiddleware = (options: {
             ? { Cookie: req.headers.cookie }
             : {};
 
-        const authResponse = await fetchImpl(`${options.backendOrigin}/api/auth/session`, { headers: authHeaders });
+        let authResponse: Response;
+
+        try {
+            authResponse = await fetchImpl(`${options.backendOrigin}/api/auth/session`, { headers: authHeaders });
+        } catch {
+            next();
+            return;
+        }
 
         if (!authResponse.ok) {
             res.statusCode = 502;

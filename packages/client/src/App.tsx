@@ -4,23 +4,31 @@ import { RouterProvider } from '@tanstack/react-router';
 
 import { Providers } from '~/components/app';
 
-import { useTheme, type Theme } from '~/store/theme';
+import { getStoredTheme } from '~/store/theme-dom';
+import { useTheme } from '~/store/theme';
 
 import { router } from './router';
 
 function App() {
-    const { setTheme } = useTheme();
+    const setSystemTheme = useTheme((state) => state.setSystemTheme);
+    const setTheme = useTheme((state) => state.setTheme);
 
     useEffect(() => {
-        const theme = localStorage.getItem('theme') as Theme;
-        if (theme) {
-            setTheme(theme);
+        const storedTheme = getStoredTheme();
+
+        if (storedTheme) {
+            setTheme(storedTheme);
         }
+
         return handyMediaQuery.listenThemeChange(
-            isDark => setTheme(isDark ? 'dark' : 'light'),
-            !theme
+            (isDark) => {
+                if (!getStoredTheme()) {
+                    setSystemTheme(isDark ? 'dark' : 'light');
+                }
+            },
+            storedTheme == null
         );
-    }, [setTheme]);
+    }, [setSystemTheme, setTheme]);
 
     return (
         <Providers>

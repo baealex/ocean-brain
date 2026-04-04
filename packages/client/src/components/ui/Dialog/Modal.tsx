@@ -3,7 +3,8 @@ import {
     DialogContent,
     DialogHeader,
     DialogBody,
-    DialogFooter
+    DialogFooter,
+    DialogDescription
 } from './Dialog';
 
 interface ModalProps {
@@ -25,5 +26,6 @@ const Modal = ({ isOpen, onClose, children }: ModalProps) => {
 Modal.Header = DialogHeader;
 Modal.Body = DialogBody;
 Modal.Footer = DialogFooter;
+Modal.Description = DialogDescription;
 
 export { Modal };

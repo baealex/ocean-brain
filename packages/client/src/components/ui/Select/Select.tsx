@@ -10,13 +10,14 @@ const selectTriggerVariants = cva(
         'items-center',
         'justify-between',
         'gap-2',
-        'border-2',
-        'bg-surface',
-        'text-fg',
-        'font-bold',
-        'transition-all',
+        'border',
+        'border-border-subtle',
+        'bg-elevated',
+        'text-fg-default',
+        'font-medium',
+        'transition-colors',
         'outline-none',
-        'focus:shadow-sketchy',
+        'focus-ring-soft',
         'disabled:cursor-not-allowed',
         'disabled:opacity-50',
         'cursor-pointer',
@@ -26,18 +27,18 @@ const selectTriggerVariants = cva(
         variants: {
             variant: {
                 default: [
-                    'border-border'
+                    'border-border-subtle'
                 ],
                 ghost: [
                     'border-transparent',
                     'bg-subtle',
-                    'focus:border-border-focus'
+                    'hover:bg-hover-subtle'
                 ]
             },
             size: {
-                sm: 'h-8 px-2 text-sm rounded-sketchy-sm',
-                md: 'h-10 px-3 text-sm rounded-sketchy-md',
-                lg: 'h-12 px-4 text-base rounded-sketchy-lg'
+                sm: 'h-8 px-3 text-sm rounded-[12px]',
+                md: 'h-9 px-3 text-sm rounded-[14px]',
+                lg: 'h-11 px-4 text-base rounded-[16px]'
             }
         },
         defaultVariants: {
@@ -108,11 +109,11 @@ const SelectContent = forwardRef<
             'z-[1100]',
             'min-w-[var(--radix-select-trigger-width)]',
             'overflow-hidden',
-            'rounded-sketchy-md',
-            'bg-surface',
-            'border-2',
-            'border-border',
-            'shadow-sketchy',
+            'surface-floating',
+            'rounded-[16px]',
+            'border',
+            'border-border-subtle',
+            'p-1',
             'data-[state=open]:animate-fade-in',
             'data-[state=open]:animate-zoom-in',
             className
@@ -140,12 +141,13 @@ const SelectItem = forwardRef<
             'px-3',
             'py-2',
             'text-sm',
-            'font-bold',
-            'text-fg-muted',
+            'font-medium',
+            'text-fg-secondary',
             'outline-none',
+            'focus-ring-soft',
             'transition-colors',
-            'rounded-sketchy-sm',
-            'data-[highlighted]:bg-hover',
+            'rounded-[10px]',
+            'data-[highlighted]:bg-hover-subtle',
             'data-[highlighted]:text-fg-default',
             'data-[disabled]:pointer-events-none',
             'data-[disabled]:opacity-50',

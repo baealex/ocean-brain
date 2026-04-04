@@ -2,6 +2,7 @@ import dayjs from 'dayjs';
 import { useEffect, useRef, useState } from 'react';
 import { Link, getRouteApi } from '@tanstack/react-router';
 import { useSuspenseQuery } from '@tanstack/react-query';
+import classNames from 'classnames';
 
 import { QueryBoundary, QueryErrorView } from '~/components/app';
 import { Button, Dropdown, PageLayout, Skeleton } from '~/components/shared';
@@ -47,6 +48,8 @@ const notePageFallback = (
         </main>
     </PageLayout>
 );
+
+const noteMetaTextClassName = 'text-[0.6875rem] font-medium uppercase tracking-[0.12em] text-fg-tertiary';
 
 interface NoteContentProps {
     id: string;
@@ -154,67 +157,85 @@ function NoteContent({ id }: NoteContentProps) {
             <main className={`mx-auto ${NOTE_LAYOUT_WIDTH[layout]}`}>
                 <div
                     style={{ zIndex: '1001' }}
-                    className="sticky top-20 mb-8 flex items-center justify-between gap-3 p-3 px-4 border-2 border-border rounded-sketchy-lg bg-surface/90 backdrop-blur-sm shadow-sketchy">
-                    <div className="flex flex-col flex-1 gap-1">
-                        <input
-                            ref={titleRef}
-                            placeholder="Title"
-                            className="text-md font-bold outline-none bg-transparent w-full"
-                            type="text"
-                            value={title}
-                            onChange={(event) => handleTitleChange(event.target.value)}
-                        />
-                        {lastSavedAt && (
-                            <div className="text-fg-placeholder text-xs">
-                                Last saved at {lastSavedAt}
+                    className="surface-floating sticky top-20 mb-8 rounded-[20px] border border-border-subtle px-5 py-4">
+                    <div className="mb-3 flex items-start justify-between gap-4">
+                        <div className="min-w-0 flex-1">
+                            <div className="mb-1 text-[0.625rem] font-semibold uppercase tracking-[0.16em] text-fg-tertiary">
+                                Thought in progress
                             </div>
-                        )}
+                            <input
+                                ref={titleRef}
+                                placeholder="Title"
+                                className="w-full bg-transparent text-[1.4rem] font-semibold tracking-[-0.02em] outline-none"
+                                type="text"
+                                value={title}
+                                onChange={(event) => handleTitleChange(event.target.value)}
+                            />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Dropdown
+                                button={(
+                                    <button
+                                        type="button"
+                                        className="focus-ring-soft inline-flex h-9 w-9 items-center justify-center rounded-[12px] border border-transparent bg-transparent text-fg-tertiary outline-none transition-colors hover:border-border-subtle hover:bg-hover-subtle hover:text-fg-default">
+                                        <Icon.VerticalDots className="h-5 w-5" />
+                                        <span className="sr-only">Note actions</span>
+                                    </button>
+                                )}
+                                items={[
+                                    {
+                                        name: isPinned ? 'Unpin' : 'Pin',
+                                        onClick: () => onPinned(id, isPinned, () => {
+                                            setIsPinned(prev => !prev);
+                                        })
+                                    },
+                                    {
+                                        name: 'Change layout',
+                                        onClick: () => setIsLayoutModalOpen(true)
+                                    },
+                                    { type: 'separator' },
+                                    {
+                                        name: 'Clone this note',
+                                        onClick: () => onCreate(
+                                            titleRef.current?.value || 'untitled',
+                                            editorRef.current?.getContent() || '',
+                                            layout
+                                        )
+                                    },
+                                    {
+                                        name: 'Restore previous version',
+                                        onClick: () => setIsRestoreModalOpen(true)
+                                    },
+                                    { type: 'separator' },
+                                    {
+                                        name: 'Delete',
+                                        onClick: () => onDelete(id, () => {
+                                            navigate({
+                                                to: SETTINGS_TRASH_ROUTE,
+                                                search: { page: 1 }
+                                            });
+                                        })
+                                    }
+                                ]}
+                            />
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                isLoading={isMountedEvent}
+                                onClick={handleChange}>
+                                Save
+                            </Button>
+                        </div>
                     </div>
-                    <div className="flex gap-2 items-center">
-                        <Dropdown
-                            button={(
-                                <Icon.VerticalDots className="w-5 h-5" />
-                            )}
-                            items={[
-                                {
-                                    name: isPinned ? 'Unpin' : 'Pin',
-                                    onClick: () => onPinned(id, isPinned, () => {
-                                        setIsPinned(prev => !prev);
-                                    })
-                                },
-                                {
-                                    name: 'Clone this note',
-                                    onClick: () => onCreate(
-                                        titleRef.current?.value || 'untitled',
-                                        editorRef.current?.getContent() || '',
-                                        layout
-                                    )
-                                },
-                                {
-                                    name: 'Delete',
-                                    onClick: () => onDelete(id, () => {
-                                        navigate({
-                                            to: SETTINGS_TRASH_ROUTE,
-                                            search: { page: 1 }
-                                        });
-                                    })
-                                },
-                                {
-                                    name: 'Restore previous version',
-                                    onClick: () => setIsRestoreModalOpen(true)
-                                },
-                                {
-                                    name: 'Change layout',
-                                    onClick: () => setIsLayoutModalOpen(true)
-                                }
-                            ]}
-                        />
-                        <Button
-                            size="sm"
-                            isLoading={isMountedEvent}
-                            onClick={handleChange}>
-                            Save
-                        </Button>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        {isPinned && (
+                            <span className={`inline-flex items-center gap-1.5 ${noteMetaTextClassName}`}>
+                                <Icon.Pin className="h-3 w-3" weight="fill" />
+                                Pinned
+                            </span>
+                        )}
+                        {isPinned && <span className={classNames('h-1 w-1 rounded-full bg-border-secondary')} />}
+                        <span className={noteMetaTextClassName}>Saved {lastSavedAt}</span>
                     </div>
                 </div>
 
@@ -259,17 +280,17 @@ function NoteContent({ id }: NoteContentProps) {
                     <BackReferences
                         noteId={id}
                         render={backReferences => backReferences && backReferences.length > 0 && (
-                            <div className="p-4 rounded-sketchy-lg border-2 border-border bg-surface/50">
-                                <p className="text-sm font-bold mb-2">
+                            <div className="surface-base rounded-[20px] border border-border-subtle p-4">
+                                <p className="mb-2 text-sm font-semibold">
                                     Back References
                                 </p>
-                                <ul className="text-sm flex flex-col gap-1">
+                                <ul className="flex flex-col gap-1 text-sm">
                                     {backReferences.map((backLink) => (
                                         <li key={backLink.id}>
                                             <Link
                                                 to={NOTE_ROUTE}
                                                 params={{ id: backLink.id }}
-                                                className="block px-2 py-1 rounded-sketchy-sm text-fg-secondary hover:bg-hover transition-colors">
+                                                className="block rounded-[10px] px-2.5 py-1.5 text-fg-secondary transition-colors hover:bg-hover-subtle hover:text-fg-default">
                                                 - {backLink.title}
                                             </Link>
                                         </li>

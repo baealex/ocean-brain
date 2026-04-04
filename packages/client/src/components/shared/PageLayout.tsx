@@ -22,7 +22,7 @@ export default function PageLayout({
                 <title>{title ? `${title} | Ocean Brain` : 'Ocean Brain'}</title>
             </Helmet>
             {variant === 'default' && (
-                <div className="mb-4 pb-3 border-b-2 border-border">
+                <div className="mb-5 border-b border-border-subtle/80 pb-4">
                     <div className={headerRight ? 'flex items-center justify-between' : undefined}>
                         <div>
                             <h1 className="text-lg font-bold">{title}</h1>

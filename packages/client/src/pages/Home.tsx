@@ -13,7 +13,7 @@ import type { HomeRouteSearch } from '~/modules/route-search';
 import { HOME_ROUTE } from '~/modules/url';
 
 const CARD_MIN_WIDTH = 240;
-const CARD_GAP = 24;
+const CARD_GAP = 20;
 const GRID_ROWS = 6;
 const Route = getRouteApi(HOME_ROUTE);
 
@@ -79,7 +79,7 @@ export default function Home() {
                 />
                 <QueryBoundary
                     fallback={(
-                        <div className="grid gap-6 mt-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
+                        <div className="mt-3 grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
                             <Skeleton height="112px" />
                             <Skeleton height="112px" />
                             <Skeleton height="112px" />
@@ -100,14 +100,13 @@ export default function Home() {
                             <FallbackRender
                                 fallback={(
                                     <Empty
-                                        icon="🧠"
                                         title="Ocean is calm"
                                         description="Capture anything and make waves in the ocean!"
                                     />
                                 )}>
                                 {notes.length > 0 && (
                                 <>
-                                    <div className="grid gap-6 mt-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
+                                    <div className="mt-3 grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
                                         {notes.map(note => (
                                             <NoteListCard
                                                 key={note.id}

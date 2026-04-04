@@ -51,4 +51,5 @@ describe('<TopNavigation />', () => {
         expect(graphLink).toHaveAttribute('aria-current', 'page');
         expect(notesLink).toHaveAttribute('href', HOME_ROUTE);
     });
+
 });

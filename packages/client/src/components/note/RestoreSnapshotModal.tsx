@@ -108,7 +108,7 @@ export default function RestoreSnapshotModal({
                         <div className="text-sm text-fg-secondary">Loading previous versions...</div>
                     )}
                     {!snapshotQuery.isLoading && snapshotQuery.data?.length === 0 && (
-                        <div className="rounded-sketchy-lg border-2 border-dashed border-border-secondary bg-muted/20 p-4 text-sm text-fg-secondary">
+                        <div className="rounded-[16px] border border-dashed border-border-secondary bg-muted/40 p-4 text-sm text-fg-secondary">
                             A recovery snapshot will appear after the first edit in a session and older ones are cleaned up automatically.
                         </div>
                     )}
@@ -117,10 +117,10 @@ export default function RestoreSnapshotModal({
                             {snapshotQuery.data.map((snapshot) => (
                                 <div
                                     key={snapshot.id}
-                                    className="rounded-sketchy-lg border-2 border-border bg-surface/60 p-3">
+                                    className="surface-base rounded-[16px] border border-border-subtle p-3">
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0">
-                                            <p className="text-sm font-bold">
+                                            <p className="text-sm font-semibold">
                                                 Before {formatSnapshotLabel(snapshot.meta.label, snapshot.meta.entrypoint)} edit
                                             </p>
                                             <p className="truncate text-sm text-fg-secondary">

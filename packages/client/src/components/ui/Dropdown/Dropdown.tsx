@@ -26,13 +26,18 @@ const DropdownMenuSubTrigger = forwardRef<
             'cursor-default',
             'select-none',
             'items-center',
-            'rounded-sm',
-            'px-2',
-            'py-1.5',
+            'rounded-[10px]',
+            'px-3',
+            'py-2',
             'text-sm',
+            'font-medium',
+            'text-fg-secondary',
             'outline-none',
-            'focus:bg-hover',
-            'data-[state=open]:bg-hover',
+            'focus-ring-soft',
+            'focus:bg-hover-subtle',
+            'focus:text-fg-default',
+            'data-[state=open]:bg-hover-subtle',
+            'data-[state=open]:text-fg-default',
             inset && 'pl-8',
             className
         ]
@@ -54,10 +59,11 @@ const DropdownMenuSubContent = forwardRef<
             'z-50',
             'min-w-[8rem]',
             'overflow-hidden',
-            'rounded-md',
-            'bg-surface',
+            'surface-floating',
+            'rounded-[14px]',
+            'border',
+            'border-border-subtle',
             'p-1',
-            'shadow-lg',
             className
         ]
             .filter(Boolean)
@@ -79,11 +85,10 @@ const DropdownMenuContent = forwardRef<
                 'z-[1100]',
                 'min-w-[10rem]',
                 'overflow-hidden',
-                'rounded-[10px_3px_11px_3px/3px_8px_3px_10px]',
-                'bg-surface',
-                'border-2',
-                'border-border',
-                'shadow-sketchy',
+                'surface-floating',
+                'rounded-[14px]',
+                'border',
+                'border-border-subtle',
                 'p-1',
                 'data-[state=open]:animate-in',
                 'data-[state=closed]:animate-out',
@@ -122,12 +127,13 @@ const DropdownMenuItem = forwardRef<
             'px-3',
             'py-2',
             'text-sm',
-            'font-bold',
-            'text-fg-muted',
+            'font-medium',
+            'text-fg-secondary',
             'outline-none',
+            'focus-ring-soft',
             'transition-colors',
-            'rounded-[6px_2px_7px_2px/2px_5px_2px_6px]',
-            'focus:bg-hover',
+            'rounded-[10px]',
+            'focus:bg-hover-subtle',
             'focus:text-fg-default',
             'data-[disabled]:pointer-events-none',
             'data-[disabled]:opacity-50',
@@ -153,14 +159,18 @@ const DropdownMenuCheckboxItem = forwardRef<
             'cursor-pointer',
             'select-none',
             'items-center',
-            'rounded-sm',
-            'py-1.5',
+            'rounded-[10px]',
+            'py-2',
             'pl-8',
-            'pr-2',
+            'pr-3',
             'text-sm',
+            'font-medium',
+            'text-fg-secondary',
             'outline-none',
+            'focus-ring-soft',
             'transition-colors',
-            'focus:bg-hover',
+            'focus:bg-hover-subtle',
+            'focus:text-fg-default',
             'data-[disabled]:pointer-events-none',
             'data-[disabled]:opacity-50',
             className
@@ -191,14 +201,18 @@ const DropdownMenuRadioItem = forwardRef<
             'cursor-pointer',
             'select-none',
             'items-center',
-            'rounded-sm',
-            'py-1.5',
+            'rounded-[10px]',
+            'py-2',
             'pl-8',
-            'pr-2',
+            'pr-3',
             'text-sm',
+            'font-medium',
+            'text-fg-secondary',
             'outline-none',
+            'focus-ring-soft',
             'transition-colors',
-            'focus:bg-hover',
+            'focus:bg-hover-subtle',
+            'focus:text-fg-default',
             'data-[disabled]:pointer-events-none',
             'data-[disabled]:opacity-50',
             className
@@ -229,6 +243,7 @@ const DropdownMenuLabel = forwardRef<
             'py-1.5',
             'text-sm',
             'font-semibold',
+            'text-fg-secondary',
             inset && 'pl-8',
             className
         ]
@@ -281,27 +296,38 @@ const DropdownMenuShortcut = ({
 DropdownMenuShortcut.displayName = 'DropdownMenuShortcut';
 
 interface DropdownProps {
-    button: React.ReactNode;
-    items: {
-        name: string;
-        onClick: () => void;
-    }[];
+    button: React.ReactElement;
+    items: (
+        | {
+            type?: 'item';
+            name: string;
+            onClick: () => void;
+        }
+        | {
+            type: 'separator';
+            key?: string;
+        }
+    )[];
 }
 
 const Dropdown = ({ button, items }: DropdownProps) => {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <button type="button" className="flex items-center justify-center">
-                    {button}
-                </button>
+                {button}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-                {items.map(item => (
-                    <DropdownMenuItem key={item.name} onClick={item.onClick}>
-                        {item.name}
-                    </DropdownMenuItem>
-                ))}
+                {items.map((item, index) => {
+                    if (item.type === 'separator') {
+                        return <DropdownMenuSeparator key={item.key ?? `separator-${index}`} />;
+                    }
+
+                    return (
+                        <DropdownMenuItem key={item.name} onClick={item.onClick}>
+                            {item.name}
+                        </DropdownMenuItem>
+                    );
+                })}
             </DropdownMenuContent>
         </DropdownMenu>
     );

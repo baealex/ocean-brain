@@ -102,4 +102,31 @@ describe('dev auth gate', () => {
         expect(next).toHaveBeenCalledOnce();
         expect(response.end).not.toHaveBeenCalled();
     });
+
+    it('fails open when the backend auth session is temporarily unavailable during dev startup', async () => {
+        const fetchImpl = vi.fn().mockRejectedValue(new TypeError('fetch failed'));
+        const middleware = createDevAuthGateMiddleware({
+            backendOrigin: 'http://localhost:6683',
+            enabled: true,
+            fetchImpl: fetchImpl as unknown as typeof fetch
+        });
+        const response = {
+            statusCode: 200,
+            setHeader: vi.fn(),
+            end: vi.fn()
+        };
+        const next = vi.fn();
+
+        await middleware({
+            method: 'GET',
+            originalUrl: '/notes',
+            headers: {
+                accept: 'text/html',
+                host: 'localhost:5173'
+            }
+        }, response, next);
+
+        expect(next).toHaveBeenCalledOnce();
+        expect(response.end).not.toHaveBeenCalled();
+    });
 });

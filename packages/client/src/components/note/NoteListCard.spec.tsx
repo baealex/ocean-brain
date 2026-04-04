@@ -14,8 +14,8 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 
 describe('<NoteListCard />', () => {
-    it('renders a restrained card without sketch tape or sketch borders', () => {
-        const { container } = render(
+    it('renders the note title as a navigable card link', () => {
+        render(
             <NoteListCard
                 id="note-1"
                 title="Quiet capture"
@@ -26,10 +26,10 @@ describe('<NoteListCard />', () => {
             />
         );
 
-        screen.getByText('Quiet capture');
+        const titleLink = screen.getByText('Quiet capture').closest('a');
 
-        expect(container.firstElementChild?.className).not.toContain('sketchy');
-        expect(container.querySelector('.sketch-tape')).not.toBeInTheDocument();
+        expect(titleLink).toBeInTheDocument();
+        expect(screen.getByText('Quiet capture')).toBeInTheDocument();
     });
 
     it('exposes an accessible name for the note actions trigger', () => {

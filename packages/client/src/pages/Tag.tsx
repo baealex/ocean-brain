@@ -52,7 +52,6 @@ export default function Tag() {
                             <FallbackRender
                                 fallback={(
                                     <Empty
-                                        icon="🤔"
                                         title="There are no tags"
                                         description="Try to tag some notes using <@> key."
                                     />
@@ -65,10 +64,9 @@ export default function Tag() {
                                                     key={tag.id}
                                                     to={TAG_NOTES_ROUTE}
                                                     params={{ id: tag.id }}
-                                                    search={{ page: 1 }}>
-                                                    <div className="bg-pastel-teal-200 dark:bg-muted px-3 py-1.5 rounded-[8px_3px_9px_2px/3px_6px_3px_7px] border-2 border-border shadow-sketchy hover:shadow-sketchy-lg hover:-translate-y-0.5 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all duration-200 font-bold text-sm text-fg-default whitespace-nowrap">
-                                                        {tag.name} <span className="text-fg-tertiary text-xs">({tag.referenceCount})</span>
-                                                    </div>
+                                                    search={{ page: 1 }}
+                                                    className="inline-flex items-center rounded-full border border-border-subtle bg-hover-subtle px-3 py-1.5 text-sm font-medium text-fg-secondary transition-colors hover:border-border-secondary hover:bg-hover hover:text-fg-default">
+                                                    {tag.name} <span className="text-fg-tertiary text-xs">({tag.referenceCount})</span>
                                                 </Link>
                                             ))}
                                         </div>

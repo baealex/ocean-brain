@@ -5,13 +5,10 @@ import * as Icon from '~/components/icon';
 import { Checkbox } from '~/components/ui';
 
 import { Reminders } from '~/components/entities';
-import { priorityColorsSubtle } from '~/modules/color';
 import useReminderMutate from '~/hooks/resource/useReminderMutate';
 import ReminderModal from './ReminderModal';
 
 import type { Reminder } from '~/models/reminder.model';
-
-import styles from './ReminderPanel.module.scss';
 
 interface ReminderPanelProps {
     noteId: string;
@@ -91,17 +88,18 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
     };
 
     return (
-        <div className="p-4 rounded-sketchy-lg mb-5 border-2 border-border bg-surface/50">
-            <div className="flex justify-between items-center mb-3">
+        <div className="surface-base mb-5 rounded-[20px] border border-border-subtle p-4">
+            <div className="mb-3 flex items-center justify-between">
                 <button
+                    type="button"
                     onClick={() => setIsCollapsed(!isCollapsed)}
-                    className="flex items-center gap-2 px-2 py-1 rounded-sketchy-sm hover:bg-hover-subtle transition-colors">
+                    className="focus-ring-soft flex items-center gap-2 rounded-[10px] px-2 py-1.5 text-fg-default transition-colors hover:bg-hover-subtle">
                     {isCollapsed ? (
                         <Icon.TriangleRight size={14} />
                     ) : (
                         <Icon.TriangleDown size={14} />
                     )}
-                    <p className="text-sm font-bold">Reminders</p>
+                    <p className="text-sm font-medium">Reminders</p>
                 </button>
                 {!isCollapsed && (
                     <Button size="sm" variant="ghost" onClick={handleOpenCreateModal}>
@@ -130,21 +128,35 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                                         {reminders.map((reminder) => {
                                             const urgency = reminder.priority || calculateUrgency(reminder.reminderDate);
                                             const timeRemaining = getTimeRemaining(reminder.reminderDate);
+                                            const priorityLabel = urgency === 'high'
+                                                ? 'High'
+                                                : urgency === 'medium'
+                                                    ? 'Medium'
+                                                    : 'Low';
 
                                             return (
                                                 <div
                                                     key={reminder.id}
-                                                    className={`flex items-start gap-2 p-2 rounded-sketchy-md transition-colors ${reminder.completed
-                                                        ? 'bg-muted'
-                                                        : priorityColorsSubtle[urgency]}`}>
+                                                    className={`flex items-start gap-2 rounded-[16px] border border-border-subtle p-3 transition-colors ${
+                                                        reminder.completed
+                                                            ? 'bg-muted/60'
+                                                            : 'bg-[color:color-mix(in_srgb,var(--surface)_84%,var(--hover-subtle))] hover:bg-hover-subtle'
+                                                    }`}>
                                                     <Checkbox
                                                         checked={reminder.completed}
                                                         onChange={() => handleToggleComplete(reminder)}
                                                         size="sm"
                                                     />
                                                     <div className="flex-1 min-w-0">
-                                                        <div className={`font-bold text-xs text-fg-muted ${reminder.completed ? 'line-through opacity-50' : ''}`}>
-                                                            {formatReminderDate(reminder.reminderDate)}
+                                                        <div className="mb-1 flex items-center gap-2">
+                                                            <div className={`font-semibold text-xs text-fg-secondary ${reminder.completed ? 'line-through opacity-50' : ''}`}>
+                                                                {formatReminderDate(reminder.reminderDate)}
+                                                            </div>
+                                                            {!reminder.completed && (
+                                                                <span className="inline-flex items-center rounded-full border border-border-subtle bg-hover-subtle px-2 py-0.5 text-[0.625rem] font-medium uppercase tracking-[0.08em] text-fg-tertiary">
+                                                                    {priorityLabel}
+                                                                </span>
+                                                            )}
                                                         </div>
                                                         {reminder.content && (
                                                             <div className={`text-xs text-fg-tertiary ${reminder.completed ? 'line-through opacity-50' : ''} truncate`}>
@@ -152,13 +164,20 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                                                             </div>
                                                         )}
                                                         {!reminder.completed && (
-                                                            <span className={`text-[10px] font-medium ${styles.pulsingText} ${urgency === 'high' ? styles.urgent : 'text-fg-placeholder'}`}>
+                                                            <span className={`mt-1 inline-flex text-[10px] font-medium ${urgency === 'high' ? 'text-fg-error' : 'text-fg-placeholder'}`}>
                                                                 {timeRemaining}
                                                             </span>
                                                         )}
                                                     </div>
                                                     <Dropdown
-                                                        button={<Icon.VerticalDots size={14} className="text-fg-placeholder" />}
+                                                        button={(
+                                                            <button
+                                                                type="button"
+                                                                className="focus-ring-soft inline-flex h-8 w-8 items-center justify-center rounded-[10px] text-fg-tertiary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default">
+                                                                <Icon.VerticalDots size={14} className="text-current" />
+                                                                <span className="sr-only">Reminder actions</span>
+                                                            </button>
+                                                        )}
                                                         items={[
                                                             {
                                                                 name: 'Edit',

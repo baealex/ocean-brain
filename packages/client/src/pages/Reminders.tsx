@@ -8,7 +8,6 @@ import {
     Skeleton
 } from '~/components/shared';
 import { Reminders as RemindersEntity } from '~/components/entities';
-import { PriorityLegend } from '~/components/calendar/PriorityLegend';
 import useReminderMutate from '~/hooks/resource/useReminderMutate';
 import ReminderCard from '~/components/reminder/ReminderCard';
 import { REMINDERS_ROUTE } from '~/modules/url';
@@ -25,8 +24,7 @@ export default function Reminders() {
     return (
         <PageLayout
             title="Reminders"
-            description="Manage all your note reminders in one place"
-            headerRight={<PriorityLegend />}>
+            description="Manage all your note reminders in one place">
             <QueryBoundary
                 fallback={(
                     <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
@@ -49,7 +47,6 @@ export default function Reminders() {
                             <FallbackRender
                                 fallback={(
                                     <Empty
-                                        icon="🔔"
                                         title="No upcoming reminders"
                                         description="Add reminders to your notes to see them here"
                                     />
@@ -71,11 +68,11 @@ export default function Reminders() {
                                         <Pagination
                                             page={page}
                                             last={Math.ceil(totalCount / limit)}
-                                            onChange={(page) => {
+                                            onChange={(nextPage) => {
                                                 navigate({
                                                     search: prev => ({
                                                         ...prev,
-                                                        page
+                                                        page: nextPage
                                                     })
                                                 });
                                             }}

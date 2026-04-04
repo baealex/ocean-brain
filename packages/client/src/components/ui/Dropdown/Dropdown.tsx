@@ -26,7 +26,7 @@ const DropdownMenuSubTrigger = forwardRef<
             'cursor-default',
             'select-none',
             'items-center',
-            'rounded-[12px]',
+            'rounded-[10px]',
             'px-3',
             'py-2',
             'text-sm',
@@ -60,7 +60,7 @@ const DropdownMenuSubContent = forwardRef<
             'min-w-[8rem]',
             'overflow-hidden',
             'surface-floating',
-            'rounded-[18px]',
+            'rounded-[14px]',
             'border',
             'border-border-subtle',
             'p-1',
@@ -86,7 +86,7 @@ const DropdownMenuContent = forwardRef<
                 'min-w-[10rem]',
                 'overflow-hidden',
                 'surface-floating',
-                'rounded-[18px]',
+                'rounded-[14px]',
                 'border',
                 'border-border-subtle',
                 'p-1',
@@ -132,7 +132,7 @@ const DropdownMenuItem = forwardRef<
             'outline-none',
             'focus-ring-soft',
             'transition-colors',
-            'rounded-[12px]',
+            'rounded-[10px]',
             'focus:bg-hover-subtle',
             'focus:text-fg-default',
             'data-[disabled]:pointer-events-none',
@@ -159,7 +159,7 @@ const DropdownMenuCheckboxItem = forwardRef<
             'cursor-pointer',
             'select-none',
             'items-center',
-            'rounded-[12px]',
+            'rounded-[10px]',
             'py-2',
             'pl-8',
             'pr-3',
@@ -201,7 +201,7 @@ const DropdownMenuRadioItem = forwardRef<
             'cursor-pointer',
             'select-none',
             'items-center',
-            'rounded-[12px]',
+            'rounded-[10px]',
             'py-2',
             'pl-8',
             'pr-3',
@@ -296,29 +296,38 @@ const DropdownMenuShortcut = ({
 DropdownMenuShortcut.displayName = 'DropdownMenuShortcut';
 
 interface DropdownProps {
-    button: React.ReactNode;
-    items: {
-        name: string;
-        onClick: () => void;
-    }[];
+    button: React.ReactElement;
+    items: (
+        | {
+            type?: 'item';
+            name: string;
+            onClick: () => void;
+        }
+        | {
+            type: 'separator';
+            key?: string;
+        }
+    )[];
 }
 
 const Dropdown = ({ button, items }: DropdownProps) => {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <button
-                    type="button"
-                    className="surface-base focus-ring-soft inline-flex items-center justify-center rounded-[16px] border border-border-subtle bg-elevated px-3 py-2 text-sm font-medium text-fg-default transition-colors hover:bg-hover-subtle">
-                    {button}
-                </button>
+                {button}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-                {items.map(item => (
-                    <DropdownMenuItem key={item.name} onClick={item.onClick}>
-                        {item.name}
-                    </DropdownMenuItem>
-                ))}
+                {items.map((item, index) => {
+                    if (item.type === 'separator') {
+                        return <DropdownMenuSeparator key={item.key ?? `separator-${index}`} />;
+                    }
+
+                    return (
+                        <DropdownMenuItem key={item.name} onClick={item.onClick}>
+                            {item.name}
+                        </DropdownMenuItem>
+                    );
+                })}
             </DropdownMenuContent>
         </DropdownMenu>
     );

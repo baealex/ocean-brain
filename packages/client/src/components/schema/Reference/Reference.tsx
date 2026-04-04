@@ -22,7 +22,7 @@ const Reference = createReactInlineContentSpec(
                 <Link
                     to={NOTE_ROUTE}
                     params={{ id: props.inlineContent.props.id }}>
-                    <span className="text-fg-default">
+                    <span>
                         [{props.inlineContent.props.title}]
                     </span>
                 </Link>

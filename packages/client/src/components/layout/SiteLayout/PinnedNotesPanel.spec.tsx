@@ -93,7 +93,20 @@ vi.mock('~/components/entities', () => ({
     )
 }));
 
-vi.mock('~/components/ui', () => ({ Tooltip: ({ children }: { children: ReactNode }) => <>{children}</> }));
+vi.mock('~/components/ui', () => ({
+    Tooltip: ({
+        children,
+        content
+    }: {
+        children: ReactNode;
+        content: ReactNode;
+    }) => (
+        <>
+            {children}
+            <span data-testid="pinned-note-tooltip">{content}</span>
+        </>
+    )
+}));
 
 describe('<PinnedNotesPanel />', () => {
     beforeEach(() => {
@@ -126,9 +139,21 @@ describe('<PinnedNotesPanel />', () => {
 
         expect(activeNote).toBeInTheDocument();
         expect(activeNote).toHaveAttribute('aria-current', 'page');
-        expect(screen.getByRole('button', { name: 'Reorder note Editorial note' })).toHaveClass('cursor-grab');
         expect(screen.getByRole('button', { name: 'Reorder note Editorial note' })).toHaveAttribute('data-sortable-handle', 'true');
         expect(screen.getByTestId('dnd-context')).toBeInTheDocument();
+    });
+
+    it('does not render a tooltip layer for pinned note titles', () => {
+        mockPinnedNotes = [{
+            id: 'note-2',
+            title: 'Editorial note',
+            order: 0
+        }];
+        const { Wrapper } = createQueryClientWrapper();
+
+        render(<PinnedNotesPanel />, { wrapper: Wrapper });
+
+        expect(screen.queryByTestId('pinned-note-tooltip')).not.toBeInTheDocument();
     });
 
     it('reorders pinned notes through the drag end handler', async () => {

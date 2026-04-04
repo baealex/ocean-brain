@@ -19,6 +19,7 @@ interface LayoutShellProps {
 const LayoutShell = ({ sidebar, topNavigation, children }: LayoutShellProps) => {
     const pathname = useLocation({ select: (location) => location.pathname });
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const sidebarId = 'site-layout-sidebar';
 
     useEffect(() => {
         setIsMenuOpen(false);
@@ -30,11 +31,14 @@ const LayoutShell = ({ sidebar, topNavigation, children }: LayoutShellProps) => 
                 <button
                     type="button"
                     className={cx('menu')}
+                    aria-label="Toggle sidebar"
+                    aria-controls={sidebarId}
+                    aria-expanded={isMenuOpen}
                     onClick={() => setIsMenuOpen((prev) => !prev)}>
-                    <Icon.Menu className="h-6 w-6 text-fg-on-accent" />
+                    <Icon.Menu className="h-6 w-6" />
                 </button>
             </div>
-            <aside className={cx('side', { open: isMenuOpen })}>
+            <aside id={sidebarId} className={cx('side', { open: isMenuOpen })}>
                 {sidebar}
             </aside>
             <main className={cx('center')}>

@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from './Dialog'
 import { Dropdown } from '../Dropdown';
 
 describe('<DialogContent />', () => {
-    it('renders as a floating surface instead of a sketchy card', () => {
+    it('renders dialog content with its accessible title and description', () => {
         render(
             <Dialog open>
                 <DialogContent>
@@ -15,36 +15,43 @@ describe('<DialogContent />', () => {
             </Dialog>
         );
 
-        const dialog = screen.getByRole('dialog');
-        expect(dialog.className).toContain('surface-floating');
-        expect(dialog.className).not.toContain('shadow-sketchy-lg');
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
+        expect(screen.getByText('Title')).toBeInTheDocument();
+        expect(screen.getByText('Body')).toBeInTheDocument();
     });
 });
 
 describe('<Dropdown />', () => {
-    it('applies quiet tool styling to the trigger and menu items', async () => {
+    it('opens the menu and invokes the selected action', async () => {
         const user = userEvent.setup();
+        const handleArchive = vi.fn();
 
         render(
             <Dropdown
-                button={<span>Open menu</span>}
+                button={(
+                    <button
+                        type="button"
+                        className="focus-ring-soft rounded-[12px] border border-border-subtle px-3 py-2">
+                        Open menu
+                    </button>
+                )}
                 items={[{
                     name: 'Archive',
-                    onClick: () => undefined
+                    onClick: handleArchive
                 }]}
             />
         );
 
         const trigger = screen.getByRole('button', { name: 'Open menu' });
-        expect(trigger.className).toContain('focus-ring-soft');
-        expect(trigger.className).toContain('rounded-[16px]');
-        expect(trigger.className).not.toContain('shadow-sketchy');
+        expect(trigger).toBeInTheDocument();
 
         await user.click(trigger);
 
         const item = screen.getByRole('menuitem', { name: 'Archive' });
-        const itemClasses = item.className.split(' ');
-        expect(item.className).toContain('focus-ring-soft');
-        expect(itemClasses).not.toContain('focus:bg-hover');
+        expect(item).toBeInTheDocument();
+
+        await user.click(item);
+
+        expect(handleArchive).toHaveBeenCalledTimes(1);
     });
 });

@@ -101,9 +101,9 @@ const renderLoginPage = ({
     <style>
         :root {
             color-scheme: light;
-            font-family: "Segoe UI", sans-serif;
-            background: #f5f1e8;
-            color: #1f2937;
+            font-family: "Pretendard Variable", "Segoe UI", sans-serif;
+            background: #eef2f6;
+            color: #111827;
         }
         body {
             margin: 0;
@@ -111,76 +111,142 @@ const renderLoginPage = ({
             display: grid;
             place-items: center;
             background:
-                radial-gradient(circle at top, rgba(245, 158, 11, 0.22), transparent 36%),
-                linear-gradient(180deg, #f6f0e4 0%, #efe4cf 100%);
+                radial-gradient(circle at top, rgba(148, 163, 184, 0.14), transparent 34%),
+                linear-gradient(180deg, #f7fafc 0%, #eef2f6 100%);
+            padding: 24px;
         }
         .card {
             width: min(420px, calc(100vw - 32px));
             padding: 28px;
-            border: 2px solid #8b6f47;
-            border-radius: 20px 8px 22px 10px / 10px 18px 10px 22px;
-            background: rgba(255, 250, 240, 0.96);
-            box-shadow: 8px 8px 0 rgba(107, 70, 27, 0.18);
+            border: 1px solid rgba(148, 163, 184, 0.28);
+            border-radius: 22px;
+            background: rgba(255, 255, 255, 0.94);
+            box-shadow:
+                0 24px 48px -32px rgba(15, 23, 42, 0.24),
+                inset 0 1px 0 rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+        }
+        .eyebrow {
+            display: inline-flex;
+            margin-bottom: 16px;
+            color: #64748b;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
         }
         h1 {
             margin: 0 0 10px;
-            font-size: 28px;
+            font-size: clamp(28px, 4vw, 32px);
+            line-height: 1.08;
+            letter-spacing: -0.03em;
         }
         p {
-            margin: 0 0 16px;
-            line-height: 1.5;
-            color: #4b5563;
+            margin: 0 0 22px;
+            line-height: 1.6;
+            color: #475569;
         }
         label {
             display: block;
-            margin-bottom: 8px;
-            font-size: 14px;
+            margin-bottom: 10px;
+            font-size: 13px;
             font-weight: 700;
+            letter-spacing: 0.02em;
+            color: #334155;
+        }
+        form {
+            display: grid;
+            gap: 16px;
+        }
+        .field {
+            display: grid;
         }
         input {
             width: 100%;
             box-sizing: border-box;
-            margin-bottom: 16px;
-            padding: 12px 14px;
-            border: 2px solid #c7b08a;
-            border-radius: 12px 4px 13px 3px / 4px 10px 4px 12px;
-            background: #fffdf7;
+            padding: 14px 16px;
+            border: 1px solid #cbd5e1;
+            border-radius: 14px;
+            background: rgba(248, 250, 252, 0.96);
             font-size: 16px;
+            color: #0f172a;
+            transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+        }
+        input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            background: #ffffff;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.14);
+        }
+        .hint {
+            margin-top: 10px;
+            font-size: 13px;
+            color: #64748b;
         }
         button {
             width: 100%;
-            border: 2px solid #6b461b;
-            border-radius: 12px 4px 13px 3px / 4px 10px 4px 12px;
-            background: #d97706;
-            color: #fff7ed;
-            padding: 12px 16px;
+            border: 1px solid #1d4ed8;
+            border-radius: 14px;
+            background: #2563eb;
+            color: #eff6ff;
+            padding: 14px 18px;
             font-size: 16px;
             font-weight: 700;
             cursor: pointer;
+            box-shadow: 0 14px 28px -20px rgba(29, 78, 216, 0.45);
+            transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+        }
+        button:hover {
+            background: #1d4ed8;
+            box-shadow: 0 18px 32px -24px rgba(29, 78, 216, 0.46);
+        }
+        button:active {
+            transform: translateY(1px);
+        }
+        button:focus-visible {
+            outline: none;
+            box-shadow:
+                0 0 0 4px rgba(59, 130, 246, 0.14),
+                0 16px 28px -22px rgba(29, 78, 216, 0.42);
         }
         .error {
-            margin-bottom: 16px;
-            padding: 12px 14px;
-            border: 2px solid #dc2626;
-            border-radius: 12px 4px 13px 3px / 4px 10px 4px 12px;
-            background: #fef2f2;
-            color: #991b1b;
+            margin-bottom: 18px;
+            padding: 13px 14px;
+            border: 1px solid rgba(239, 68, 68, 0.24);
+            border-radius: 14px;
+            background: rgba(254, 242, 242, 0.92);
+            color: #b91c1c;
             font-size: 14px;
             font-weight: 700;
+        }
+        @media (max-width: 640px) {
+            body {
+                place-items: stretch;
+                padding: 18px;
+            }
+            .card {
+                width: auto;
+                padding: 24px;
+                margin: auto 0;
+            }
         }
     </style>
 </head>
 <body>
     <main class="card">
+        <div class="eyebrow">Workspace Locked</div>
         <h1>Protected Workspace</h1>
         <p>Password mode is enabled. Sign in before Ocean Brain serves the app.</p>
         ${escapedErrorMessage ? `<div class="error">${escapedErrorMessage}</div>` : ''}
         <form method="post" action="/auth/login">
             <input type="hidden" name="next" value="${escapedNextPath}" />
-            <label for="password">Password</label>
-            <input id="password" name="password" type="password" autocomplete="current-password" required />
+            <div class="field">
+                <label for="password">Password</label>
+                <input id="password" name="password" type="password" autocomplete="current-password" required />
+            </div>
             <button type="submit">Sign in</button>
         </form>
+        <div class="hint">This session must be authenticated before the workspace loads.</div>
     </main>
 </body>
 </html>`;

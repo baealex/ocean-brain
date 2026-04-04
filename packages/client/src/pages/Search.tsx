@@ -50,7 +50,6 @@ export default function Search() {
                                 <FallbackRender
                                     fallback={(
                                         <Empty
-                                            icon="👀"
                                             title="No results found"
                                             description="Try searching for something else."
                                         />

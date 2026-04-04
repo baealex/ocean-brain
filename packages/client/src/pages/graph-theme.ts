@@ -38,51 +38,51 @@ interface GraphLabelFontOptions {
 }
 
 const LIGHT_THEME: GraphTheme = {
-    background: '#f3f1ec',
+    background: '#f4f6f8',
     nodeHub: '#2c2f36',
     nodeSelected: '#111318',
-    nodeConnected: '#5a606b',
-    nodeDefault: ['#d8d4cc', '#c9c5bd', '#b8b4ac', '#a7a49d'],
+    nodeConnected: '#636b76',
+    nodeDefault: ['#d6dbe1', '#c8ced6', '#b7bec7', '#a7afb9'],
     nodeDimmed: [
-        'rgba(216,212,204,0.28)',
-        'rgba(201,197,189,0.24)',
-        'rgba(184,180,172,0.24)',
-        'rgba(167,164,157,0.2)'
+        'rgba(214,219,225,0.28)',
+        'rgba(200,206,214,0.24)',
+        'rgba(183,190,199,0.24)',
+        'rgba(167,175,185,0.2)'
     ],
-    nodeHubDimmed: 'rgba(44,47,54,0.18)',
-    nodeStroke: '#f8f6f1',
-    nodeSelectedStroke: '#ddd7cc',
-    labelBackground: 'rgba(249,247,242,0.9)',
-    labelText: '#21242b',
+    nodeHubDimmed: 'rgba(44,47,54,0.16)',
+    nodeStroke: '#eef1f4',
+    nodeSelectedStroke: '#a6b0bc',
+    labelBackground: 'rgba(246,248,250,0.92)',
+    labelText: '#222831',
     labelFontFamily: 'Pretendard Variable, Pretendard, system-ui, sans-serif',
-    linkIdle: 'rgba(92, 99, 110, 0.38)',
-    linkConnected: '#4f5560',
-    linkDimmed: 'rgba(124, 129, 137, 0.12)',
+    linkIdle: 'rgba(99, 107, 117, 0.34)',
+    linkConnected: '#68717c',
+    linkDimmed: 'rgba(127, 136, 146, 0.12)',
     legendHub: '#2c2f36'
 };
 
 const DARK_THEME: GraphTheme = {
     background: '#121316',
-    nodeHub: '#d7d3ca',
-    nodeSelected: '#f4f1e8',
-    nodeConnected: '#8b919c',
-    nodeDefault: ['#3a3d43', '#32353b', '#2a2d33', '#23262c'],
+    nodeHub: '#d6dce3',
+    nodeSelected: '#eef1f5',
+    nodeConnected: '#9099a4',
+    nodeDefault: ['#343a43', '#2d333c', '#262c35', '#20262f'],
     nodeDimmed: [
-        'rgba(58,61,67,0.28)',
-        'rgba(50,53,59,0.24)',
-        'rgba(42,45,51,0.22)',
-        'rgba(35,38,44,0.2)'
+        'rgba(52,58,67,0.28)',
+        'rgba(45,51,60,0.24)',
+        'rgba(38,44,53,0.22)',
+        'rgba(32,38,47,0.2)'
     ],
-    nodeHubDimmed: 'rgba(215,211,202,0.18)',
-    nodeStroke: '#1b1d22',
-    nodeSelectedStroke: '#8b919c',
-    labelBackground: 'rgba(18,19,22,0.88)',
-    labelText: '#f5f3ed',
+    nodeHubDimmed: 'rgba(214,220,227,0.16)',
+    nodeStroke: '#171c23',
+    nodeSelectedStroke: '#7f8a97',
+    labelBackground: 'rgba(16,18,22,0.9)',
+    labelText: '#eef2f6',
     labelFontFamily: 'Pretendard Variable, Pretendard, system-ui, sans-serif',
-    linkIdle: 'rgba(112, 118, 128, 0.44)',
-    linkConnected: '#a8afb9',
-    linkDimmed: 'rgba(112, 118, 128, 0.1)',
-    legendHub: '#d7d3ca'
+    linkIdle: 'rgba(118, 127, 138, 0.42)',
+    linkConnected: '#a2abb6',
+    linkDimmed: 'rgba(118, 127, 138, 0.1)',
+    legendHub: '#d6dce3'
 };
 
 export function getGraphTheme(theme: Theme): GraphTheme {

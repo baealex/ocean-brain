@@ -4,7 +4,7 @@ interface BadgeProps {
 
 export default function Badge({ name }: BadgeProps) {
     return (
-        <div className="bg-pastel-teal-200 dark:bg-muted text-fg-default text-xs font-bold border border-border-secondary px-2 py-1 rounded-[8px_3px_9px_2px/3px_6px_3px_7px]">
+        <div className="inline-flex items-center rounded-full border border-border-subtle bg-hover-subtle px-2.5 py-1 text-[0.75rem] font-medium text-fg-secondary">
             {name}
         </div>
     );

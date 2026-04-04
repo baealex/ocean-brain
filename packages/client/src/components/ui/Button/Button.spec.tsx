@@ -1,32 +1,33 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 
 import { Button } from './Button';
 
 describe('<Button />', () => {
-    it('uses restrained control classes instead of sketchy classes', () => {
-        render(<Button>Capture</Button>);
+    it('renders an accessible button and calls the click handler', () => {
+        const handleClick = vi.fn();
+
+        render(<Button onClick={handleClick}>Capture</Button>);
 
         const button = screen.getByRole('button', { name: 'Capture' });
-        expect(button.className).toContain('rounded-[18px]');
-        expect(button.className).toContain('focus-ring-soft');
-        expect(button.className).not.toContain('shadow-sketchy');
-        expect(button.className).not.toContain('rounded-[12px_4px_13px_3px/4px_10px_4px_12px]');
+        expect(button).toBeInTheDocument();
+
+        fireEvent.click(button);
+
+        expect(handleClick).toHaveBeenCalledTimes(1);
     });
 
-    it('keeps primary as the emphasized CTA and subtle as the quieter neutral option', () => {
+    it('respects the disabled state regardless of visual variant', () => {
         render(
             <>
-                <Button>Primary action</Button>
-                <Button variant="subtle">Quiet action</Button>
+                <Button disabled>Primary action</Button>
+                <Button variant="subtle" disabled>Quiet action</Button>
             </>
         );
 
         const primaryButton = screen.getByRole('button', { name: 'Primary action' });
         const subtleButton = screen.getByRole('button', { name: 'Quiet action' });
 
-        expect(primaryButton.className).toContain('bg-cta');
-        expect(primaryButton.className).toContain('text-fg-on-filled');
-        expect(subtleButton.className).toContain('bg-subtle');
-        expect(subtleButton.className).not.toContain('bg-cta');
+        expect(primaryButton).toBeDisabled();
+        expect(subtleButton).toBeDisabled();
     });
 });

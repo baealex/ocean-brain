@@ -26,7 +26,7 @@ const SidebarHeroBanner = () => {
             <button
                 type="button"
                 aria-label="Remove hero banner"
-                className="surface-floating focus-ring-soft group relative block w-full overflow-hidden rounded-[30px] border border-border-subtle text-left outline-none"
+                className="surface-base focus-ring-soft group relative block w-full overflow-hidden rounded-[18px] border border-border-subtle text-left outline-none"
                 onClick={async () => {
                     if (await confirm('Do you want to remove this hero banner?')) {
                         await setServerCache('heroBanner', '');
@@ -38,21 +38,13 @@ const SidebarHeroBanner = () => {
                 }}>
                 <img
                     alt="Studio atmosphere banner"
-                    className="h-44 w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                    className="w-full object-cover transition duration-500 group-hover:scale-[1.01] group-hover:opacity-90"
                     style={{ filter: theme === 'dark' ? 'brightness(0.85) saturate(0.9)' : undefined }}
                     src={heroBanner}
                 />
-                <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.06),rgba(15,23,42,0.42))]" />
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4">
-                    <div className="rounded-[22px] border border-white/20 bg-black/20 px-3 py-2 backdrop-blur-sm transition-colors duration-300 group-hover:bg-black/35">
-                        <div className="text-[0.6875rem] font-semibold uppercase tracking-[0.24em] text-white/70">
-                            Studio view
-                        </div>
-                        <div className="mt-1 text-sm font-medium text-white">
-                            Quiet atmosphere for the next note.
-                        </div>
-                    </div>
-                    <span className="rounded-[18px] border border-white/20 bg-black/20 px-3 py-2 text-[0.6875rem] font-semibold uppercase tracking-[0.18em] text-white/80 opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100">
+                <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(18,24,34,0.1),rgba(18,24,34,0.38))] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-3">
+                    <span className="rounded-[12px] border border-white/14 bg-black/16 px-2.5 py-2 text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-white/80 opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100">
                         Remove
                     </span>
                 </div>

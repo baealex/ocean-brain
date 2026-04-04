@@ -12,53 +12,54 @@ import {
 
 const Setting = () => {
     const { theme, toggleTheme } = useTheme(state => state);
+    const cardClassName = 'surface-base flex flex-col items-center gap-3 rounded-[18px] border border-border-subtle p-6 text-center transition-colors hover:bg-hover-subtle';
 
     return (
         <PageLayout title="Settings" description="Customize your Ocean Brain experience">
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                 <button
                     type="button"
-                    className="flex flex-col items-center gap-3 bg-subtle p-6 rounded-[12px_4px_13px_3px/4px_10px_4px_12px] border-2 border-border-secondary font-bold hover:shadow-sketchy hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all"
+                    className={cardClassName}
                     onClick={toggleTheme}>
                     <span className="text-3xl">
                         {theme === 'dark' ? (
-                            <Icon.Moon className="h-8 w-8 text-pastel-yellow-200" weight="fill" />
+                            <Icon.Moon className="h-8 w-8 text-fg-secondary" weight="fill" />
                         ) : (
-                            <Icon.Sun className="h-8 w-8 text-pastel-orange-200" weight="fill" />
+                            <Icon.Sun className="h-8 w-8 text-fg-secondary" weight="fill" />
                         )}
                     </span>
-                    <span>Theme</span>
-                    <span className="text-xs text-fg-tertiary font-medium">
+                    <span className="font-semibold">Theme</span>
+                    <span className="text-xs font-medium text-fg-tertiary">
                         {theme === 'dark' ? 'Dark mode' : 'Light mode'}
                     </span>
                 </button>
                 <Link
                     to={SETTINGS_TRASH_ROUTE}
                     search={{ page: 1 }}
-                    className="flex flex-col items-center gap-3 bg-subtle p-6 rounded-[12px_4px_13px_3px/4px_10px_4px_12px] border-2 border-border-secondary font-bold hover:shadow-sketchy hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all">
+                    className={cardClassName}>
                     <Icon.TrashCan className="h-8 w-8 text-fg-secondary" />
-                    <span>Trash</span>
-                    <span className="text-xs text-fg-tertiary font-medium">
+                    <span className="font-semibold">Trash</span>
+                    <span className="text-xs font-medium text-fg-tertiary">
                         Restore deleted notes
                     </span>
                 </Link>
                 <Link
                     to={SETTINGS_MANAGE_IMAGE_ROUTE}
                     search={{ page: 1 }}
-                    className="flex flex-col items-center gap-3 bg-subtle p-6 rounded-[12px_4px_13px_3px/4px_10px_4px_12px] border-2 border-border-secondary font-bold hover:shadow-sketchy hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all">
+                    className={cardClassName}>
                     <Icon.Image className="h-8 w-8 text-fg-secondary" />
-                    <span>Manage Image</span>
-                    <span className="text-xs text-fg-tertiary font-medium">
+                    <span className="font-semibold">Manage Image</span>
+                    <span className="text-xs font-medium text-fg-tertiary">
                         Upload and organize images
                     </span>
                 </Link>
                 <Link
                     to={SETTINGS_PLACEHOLDER_ROUTE}
                     search={{ page: 1 }}
-                    className="flex flex-col items-center gap-3 bg-subtle p-6 rounded-[12px_4px_13px_3px/4px_10px_4px_12px] border-2 border-border-secondary font-bold hover:shadow-sketchy hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all">
+                    className={cardClassName}>
                     <Icon.Pencil className="h-8 w-8 text-fg-secondary" />
-                    <span>Placeholder</span>
-                    <span className="text-xs text-fg-tertiary font-medium">
+                    <span className="font-semibold">Placeholder</span>
+                    <span className="text-xs font-medium text-fg-tertiary">
                         Manage template variables
                     </span>
                 </Link>

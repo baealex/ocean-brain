@@ -7,18 +7,13 @@ export const buttonVariants = cva(
         'justify-center',
         'gap-2',
         'font-medium',
-        'text-fg-default',
         'transition-colors',
         'duration-200',
         'border',
-        'border-border-subtle',
-        'bg-elevated',
         'focus-ring-soft',
         'outline-none',
         'disabled:pointer-events-none',
-        'disabled:opacity-50',
-        'hover:bg-hover',
-        'active:bg-active'
+        'disabled:opacity-50'
     ],
     {
         variants: {
@@ -27,49 +22,59 @@ export const buttonVariants = cva(
                     'bg-cta',
                     'border-transparent',
                     'text-fg-on-filled',
-                    'hover:bg-cta-hover'
+                    'hover:bg-cta-hover',
+                    'active:bg-cta-hover'
                 ],
                 signature: [
                     'bg-accent-secondary',
                     'border-transparent',
                     'text-fg-on-filled',
-                    'hover:bg-accent-secondary-hover'
+                    'hover:bg-accent-secondary-hover',
+                    'active:bg-accent-secondary-hover'
                 ],
                 subtle: [
                     'bg-subtle',
                     'border-transparent',
-                    'hover:bg-hover'
+                    'text-fg-default',
+                    'hover:bg-hover',
+                    'active:bg-active'
                 ],
                 ghost: [
                     'border-transparent',
                     'bg-transparent',
-                    'hover:bg-hover-subtle'
+                    'text-fg-secondary',
+                    'hover:bg-hover-subtle',
+                    'hover:text-fg-default',
+                    'active:bg-hover'
                 ],
                 danger: [
-                    'bg-accent-soft-danger',
+                    'bg-accent-danger',
                     'border-transparent',
-                    'text-fg-default',
-                    'hover:bg-accent-danger-hover'
+                    'text-fg-on-filled',
+                    'hover:bg-accent-danger-hover',
+                    'active:bg-accent-danger-hover'
                 ],
                 'soft-success': [
                     'bg-accent-soft-success',
                     'border-transparent',
                     'text-fg-default',
-                    'hover:bg-accent-soft-success-hover'
+                    'hover:bg-accent-soft-success-hover',
+                    'active:bg-accent-soft-success-hover'
                 ],
                 'soft-danger': [
                     'bg-accent-soft-danger',
                     'border-transparent',
                     'text-fg-default',
-                    'hover:bg-accent-soft-danger-hover'
+                    'hover:bg-accent-soft-danger-hover',
+                    'active:bg-accent-soft-danger-hover'
                 ]
             },
             size: {
-                sm: 'h-8 px-3 text-sm rounded-[16px]',
-                md: 'h-10 px-4 text-sm rounded-[18px]',
-                lg: 'h-12 px-6 text-base rounded-[20px]',
-                icon: 'h-10 w-10 rounded-[18px]',
-                'icon-sm': 'h-8 w-8 rounded-[16px]'
+                sm: 'h-8 px-3 text-sm rounded-[12px]',
+                md: 'h-9 px-4 text-sm rounded-[14px]',
+                lg: 'h-11 px-5 text-[0.9375rem] rounded-[16px]',
+                icon: 'h-9 w-9 rounded-[14px]',
+                'icon-sm': 'h-8 w-8 rounded-[12px]'
             }
         },
         defaultVariants: {

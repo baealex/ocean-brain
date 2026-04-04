@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import dayjs from 'dayjs';
-import { Button, Modal } from '~/components/shared';
+import { Button, Modal, ModalActionRow } from '~/components/shared';
 import {
     Input,
     Label,
@@ -23,16 +23,16 @@ interface ReminderModalProps {
 
 const priorityStyles: Record<Priority, { active: string; inactive: string }> = {
     low: {
-        active: 'bg-accent-success text-fg-default border-2 border-border shadow-sketchy',
-        inactive: 'bg-subtle text-fg-muted border-2 border-transparent'
+        active: 'border-border-secondary bg-elevated text-fg-default',
+        inactive: 'border-transparent bg-transparent text-fg-muted hover:bg-hover-subtle'
     },
     medium: {
-        active: 'bg-pastel-yellow-200 dark:bg-elevated text-fg-default border-2 border-border shadow-sketchy',
-        inactive: 'bg-subtle text-fg-muted border-2 border-transparent'
+        active: 'border-border-secondary bg-elevated text-fg-default',
+        inactive: 'border-transparent bg-transparent text-fg-muted hover:bg-hover-subtle'
     },
     high: {
-        active: 'bg-accent-danger text-fg-default border-2 border-border shadow-sketchy',
-        inactive: 'bg-subtle text-fg-muted border-2 border-transparent'
+        active: 'border-border-secondary bg-elevated text-fg-default',
+        inactive: 'border-transparent bg-transparent text-fg-muted hover:bg-hover-subtle'
     }
 };
 
@@ -104,20 +104,20 @@ export default function ReminderModal({
                             type="single"
                             value={reminderPriority}
                             onValueChange={(value: string) => value && setReminderPriority(value as Priority)}
-                            className="border-none gap-1.5 sm:gap-2">
+                            className="gap-1.5 border-none rounded-[14px] bg-muted/70 p-1 sm:gap-2">
                             <ToggleGroupItem
                                 value="low"
-                                className={`flex-1 rounded-[8px_3px_9px_2px/3px_6px_3px_7px] font-bold ${getPriorityClassName('low')}`}>
+                                className={`flex-1 rounded-[10px] border text-sm font-medium ${getPriorityClassName('low')}`}>
                                 Low
                             </ToggleGroupItem>
                             <ToggleGroupItem
                                 value="medium"
-                                className={`flex-1 rounded-[8px_3px_9px_2px/3px_6px_3px_7px] font-bold ${getPriorityClassName('medium')}`}>
+                                className={`flex-1 rounded-[10px] border text-sm font-medium ${getPriorityClassName('medium')}`}>
                                 Medium
                             </ToggleGroupItem>
                             <ToggleGroupItem
                                 value="high"
-                                className={`flex-1 rounded-[8px_3px_9px_2px/3px_6px_3px_7px] font-bold ${getPriorityClassName('high')}`}>
+                                className={`flex-1 rounded-[10px] border text-sm font-medium ${getPriorityClassName('high')}`}>
                                 High
                             </ToggleGroupItem>
                         </ToggleGroup>
@@ -125,14 +125,14 @@ export default function ReminderModal({
                 </div>
             </Modal.Body>
             <Modal.Footer>
-                <div className="flex justify-end gap-2">
+                <ModalActionRow>
                     <Button variant="ghost" size="sm" onClick={onClose}>
                         Cancel
                     </Button>
-                    <Button size="sm" onClick={handleSave}>
+                    <Button variant="primary" size="sm" onClick={handleSave}>
                         {mode === 'create' ? 'Create' : 'Save'}
                     </Button>
-                </div>
+                </ModalActionRow>
             </Modal.Footer>
         </Modal>
     );

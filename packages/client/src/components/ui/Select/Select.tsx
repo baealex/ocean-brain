@@ -36,9 +36,9 @@ const selectTriggerVariants = cva(
                 ]
             },
             size: {
-                sm: 'h-8 px-3 text-sm rounded-[14px]',
-                md: 'h-10 px-3 text-sm rounded-[16px]',
-                lg: 'h-12 px-4 text-base rounded-[18px]'
+                sm: 'h-8 px-3 text-sm rounded-[12px]',
+                md: 'h-9 px-3 text-sm rounded-[14px]',
+                lg: 'h-11 px-4 text-base rounded-[16px]'
             }
         },
         defaultVariants: {
@@ -110,7 +110,7 @@ const SelectContent = forwardRef<
             'min-w-[var(--radix-select-trigger-width)]',
             'overflow-hidden',
             'surface-floating',
-            'rounded-[20px]',
+            'rounded-[16px]',
             'border',
             'border-border-subtle',
             'p-1',
@@ -146,7 +146,7 @@ const SelectItem = forwardRef<
             'outline-none',
             'focus-ring-soft',
             'transition-colors',
-            'rounded-[14px]',
+            'rounded-[10px]',
             'data-[highlighted]:bg-hover-subtle',
             'data-[highlighted]:text-fg-default',
             'data-[disabled]:pointer-events-none',

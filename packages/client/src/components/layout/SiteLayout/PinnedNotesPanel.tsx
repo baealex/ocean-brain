@@ -26,7 +26,6 @@ import { QueryBoundary, QueryErrorView } from '~/components/app';
 import { PinnedNotes } from '~/components/entities';
 import * as Icon from '~/components/icon';
 import { Skeleton } from '~/components/shared';
-import { Tooltip } from '~/components/ui';
 import type { Note } from '~/models/note.model';
 import { queryKeys } from '~/modules/query-key-factory';
 import { NOTE_ROUTE } from '~/modules/url';
@@ -35,7 +34,7 @@ type PinnedNote = Pick<Note, 'id' | 'title' | 'order'>;
 
 interface SortablePinnedNoteProps {
     id: string;
-    tooltip?: string;
+    title?: string;
     children: ReactNode;
 }
 
@@ -48,7 +47,7 @@ interface PinnedNotesListProps {
     sensors: ReturnType<typeof useSensors>;
 }
 
-function SortablePinnedNote({ id, tooltip, children }: SortablePinnedNoteProps) {
+function SortablePinnedNote({ id, title, children }: SortablePinnedNoteProps) {
     const {
         attributes,
         listeners,
@@ -75,22 +74,18 @@ function SortablePinnedNote({ id, tooltip, children }: SortablePinnedNoteProps) 
         <div
             ref={setNodeRef}
             style={style}
-            className="group flex items-center gap-3 rounded-[22px] border border-transparent px-3 py-3 transition-colors hover:border-border-subtle hover:bg-hover-subtle/60">
+            className="group flex items-center gap-2.5 rounded-[14px] border border-transparent px-2.5 py-2 transition-colors hover:border-border-subtle hover:bg-hover-subtle/60">
             <button
                 type="button"
                 ref={setActivatorNodeRef}
-                aria-label={`Reorder note ${tooltip ?? 'Untitled'}`}
+                aria-label={`Reorder note ${title ?? 'Untitled'}`}
                 {...attributes}
                 {...listeners}
-                className="focus-ring-soft flex h-8 w-8 cursor-grab items-center justify-center rounded-[14px] text-fg-tertiary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-secondary active:cursor-grabbing touch-none"
+                className="focus-ring-soft flex h-7 w-7 cursor-grab items-center justify-center rounded-[10px] text-fg-tertiary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-secondary active:cursor-grabbing touch-none"
                 style={{ cursor: isDragging ? 'grabbing' : 'grab' }}>
                 <Icon.Menu className="size-4" />
             </button>
-            {tooltip ? (
-                <Tooltip content={tooltip} side="right">
-                    {textContent}
-                </Tooltip>
-            ) : textContent}
+            {textContent}
         </div>
     );
 }
@@ -123,7 +118,7 @@ function PinnedNotesList({
                 items={items.map((item) => item.id)}
                 strategy={verticalListSortingStrategy}>
                 {items.map((note) => (
-                    <SortablePinnedNote key={note.id} id={note.id} tooltip={note.title || 'Untitled'}>
+                    <SortablePinnedNote key={note.id} id={note.id} title={note.title || 'Untitled'}>
                         <Link
                             aria-current={pathname === `/${note.id}` ? 'page' : undefined}
                             className={`transition-colors ${
@@ -182,10 +177,10 @@ const PinnedNotesPanel = () => {
     };
 
     return (
-        <div className="surface-base rounded-[28px] border border-border-subtle px-3 py-3">
+        <div className="rounded-[16px]">
             <QueryBoundary
                 fallback={(
-                    <div className="space-y-2 px-1 py-1">
+                    <div className="space-y-2">
                         <Skeleton height="44px" opacity={0.4} />
                         <Skeleton height="44px" opacity={0.4} />
                     </div>
@@ -214,7 +209,7 @@ const PinnedNotesPanel = () => {
                                 sensors={sensors}
                             />
                         ) : (
-                            <div className="px-3 py-5 text-sm leading-6 text-fg-secondary">
+                            <div className="px-2.5 py-3 text-sm leading-6 text-fg-secondary">
                                 Pin a note to keep it in view while the rest of the workspace changes.
                             </div>
                         )

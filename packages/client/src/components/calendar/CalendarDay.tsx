@@ -3,6 +3,7 @@ import { memo, useCallback, useMemo, useState } from 'react';
 import { Modal } from '~/components/ui';
 import type { Note } from '~/models/note.model';
 import type { Reminder } from '~/models/reminder.model';
+import { CalendarDayView } from './CalendarDayView';
 import { NoteCard } from './NoteCard';
 import { ReminderCard } from './ReminderCard';
 import type { CalendarDisplayType, CalendarItem } from './types';
@@ -65,26 +66,34 @@ const CalendarDayComponent = ({
     }, [isPast, notes, reminders]);
 
     const hasOverflow = sortedItems.length > MAX_VISIBLE_ITEMS;
+    const visibleItems = useMemo(
+        () => renderItems(sortedItems.slice(0, MAX_VISIBLE_ITEMS), type, isPast),
+        [isPast, sortedItems, type]
+    );
+    const allItems = useMemo(
+        () => renderItems(sortedItems, type, isPast),
+        [isPast, sortedItems, type]
+    );
 
     const handleOpenModal = useCallback(() => setIsModalOpen(true), []);
     const handleCloseModal = useCallback(() => setIsModalOpen(false), []);
 
     const getCellStyle = () => {
         if (!isCurrentMonth) {
-            return 'bg-muted/30 border-border-subtle';
+            return 'bg-muted/18 border-border-subtle/70';
         }
         if (isToday) {
-            return 'border-border outline outline-1 outline-border';
+            return 'border-border-secondary/70 bg-[color:color-mix(in_srgb,var(--surface)_88%,var(--accent-soft-primary)_12%)]';
         }
         return 'bg-surface border-border-subtle';
     };
 
     const getDayNumberStyle = () => {
         if (isToday) {
-            return 'bg-accent-primary text-fg-on-accent border-2 border-border font-bold';
+            return 'border border-border-secondary/60 bg-accent-soft-primary text-accent-primary font-semibold';
         }
         if (!isCurrentMonth) {
-            return 'text-fg-disabled';
+            return 'text-fg-disabled opacity-55';
         }
         if (isSunday) {
             return 'text-fg-weekend font-bold';
@@ -94,40 +103,25 @@ const CalendarDayComponent = ({
 
     return (
         <>
-            <div className={`min-h-[140px] rounded-sketchy-sm border p-2 ${getCellStyle()}`}>
-                <div className="flex justify-end mb-2">
-                    <span
-                        className={`
-                            flex items-center justify-center
-                            w-7 h-7 text-sm
-                            rounded-sketchy-xs
-                            ${getDayNumberStyle()}
-                        `}>
-                        {day}
-                    </span>
-                </div>
-
-                {isCurrentMonth && sortedItems.length > 0 && (
-                    <div className="flex flex-col gap-1">
-                        {renderItems(sortedItems.slice(0, MAX_VISIBLE_ITEMS), type, isPast)}
-                        {hasOverflow && (
-                            <button
-                                type="button"
-                                onClick={handleOpenModal}
-                                className="text-center text-[10px] font-bold text-fg-tertiary py-1 cursor-pointer hover:text-fg-muted hover:bg-hover-subtle rounded-sketchy-xs transition-colors">
-                                +{sortedItems.length - MAX_VISIBLE_ITEMS} more
-                            </button>
-                        )}
-                    </div>
-                )}
-            </div>
+            <CalendarDayView
+                day={day}
+                cellClassName={getCellStyle()}
+                dayNumberClassName={getDayNumberStyle()}
+                isCurrentMonth={isCurrentMonth}
+                items={visibleItems}
+                overflowCount={hasOverflow ? sortedItems.length - MAX_VISIBLE_ITEMS : 0}
+                onOpenOverflow={handleOpenModal}
+            />
 
             {hasOverflow && (
                 <Modal isOpen={isModalOpen} onClose={handleCloseModal}>
-                    <Modal.Header title={`${day}일`} onClose={handleCloseModal} />
+                    <Modal.Header title={`Day ${day}`} onClose={handleCloseModal} />
                     <Modal.Body>
-                        <div className="flex flex-col gap-2 max-h-[60vh] overflow-y-auto">
-                            {renderItems(sortedItems, type, isPast)}
+                        <Modal.Description className="sr-only">
+                            View all notes and reminders scheduled for day {day}.
+                        </Modal.Description>
+                        <div className="flex max-h-[60vh] flex-col gap-2 overflow-y-auto">
+                            {allItems}
                         </div>
                     </Modal.Body>
                 </Modal>

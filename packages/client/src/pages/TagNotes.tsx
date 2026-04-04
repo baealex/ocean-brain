@@ -50,7 +50,6 @@ export default function TagNotes() {
                         <FallbackRender
                             fallback={(
                                 <Empty
-                                    icon="🧠"
                                     title="Ocean is calm"
                                     description="Capture anything and make waves in the ocean!"
                                 />

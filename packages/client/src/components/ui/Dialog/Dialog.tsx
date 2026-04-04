@@ -22,6 +22,7 @@ const DialogOverlay = forwardRef<
             'inset-0',
             'z-[1100]',
             'bg-overlay',
+            'backdrop-blur-[2px]',
             'data-[state=open]:animate-in',
             'data-[state=closed]:animate-out',
             'data-[state=closed]:fade-out-0',
@@ -50,19 +51,23 @@ const DialogContent = forwardRef<
                 'z-[1100]',
                 '-translate-x-1/2',
                 '-translate-y-1/2',
-                'w-full',
+                'w-[calc(100vw-2rem)]',
                 'max-w-[640px]',
-                'surface-floating',
+                'max-h-[calc(100vh-2rem)]',
+                'overflow-y-auto',
+                'bg-white',
+                'dark:bg-elevated',
                 'border',
                 'border-border-subtle',
+                'shadow-[0_32px_80px_-32px_rgba(15,18,24,0.45)]',
+                'overscroll-contain',
                 'data-[state=open]:animate-in',
                 'data-[state=closed]:animate-out',
                 'data-[state=closed]:fade-out-0',
                 'data-[state=open]:fade-in-0',
                 'data-[state=closed]:zoom-out-95',
                 'data-[state=open]:zoom-in-95',
-                'mx-4',
-                'rounded-[24px]',
+                'rounded-[22px]',
                 className
             ]
                 .filter(Boolean)
@@ -86,7 +91,10 @@ const DialogHeader = ({ title, onClose, className }: DialogHeaderProps) => (
             'flex',
             'items-center',
             'justify-between',
-            'p-4',
+            'px-4',
+            'py-3.5',
+            'border-b',
+            'border-border-subtle/80',
             'text-lg',
             'font-bold',
             className
@@ -114,7 +122,7 @@ const DialogBody = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
     ({ className, ...props }, ref) => (
         <div
             ref={ref}
-            className={['p-4', className].filter(Boolean).join(' ')}
+            className={['px-4 py-5 sm:px-5', className].filter(Boolean).join(' ')}
             {...props}
         />
     )
@@ -129,7 +137,10 @@ const DialogFooter = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElem
                 'flex',
                 'items-center',
                 'justify-end',
-                'p-4',
+                'border-t',
+                'border-border-subtle/80',
+                'px-4',
+                'py-3.5',
                 className
             ]
                 .filter(Boolean)

@@ -33,9 +33,9 @@ const textareaVariants = cva(
                 ]
             },
             size: {
-                sm: 'min-h-[60px] p-3 text-sm rounded-[14px]',
-                md: 'min-h-[80px] p-3 text-sm rounded-[16px]',
-                lg: 'min-h-[100px] p-4 text-base rounded-[18px]'
+                sm: 'min-h-[60px] p-3 text-sm rounded-[12px]',
+                md: 'min-h-[80px] p-3 text-sm rounded-[14px]',
+                lg: 'min-h-[100px] p-4 text-base rounded-[16px]'
             }
         },
         defaultVariants: {

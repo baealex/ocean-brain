@@ -7,8 +7,10 @@ import {
     Callout,
     FallbackRender,
     Modal,
+    ModalActionRow,
     PageLayout,
-    Pagination
+    Pagination,
+    SurfaceCard
 } from '~/components/shared';
 import { Input, Label, useToast } from '~/components/ui';
 import * as Icon from '~/components/icon';
@@ -19,7 +21,7 @@ import { SETTINGS_PLACEHOLDER_ROUTE } from '~/modules/url';
 
 import { createPlaceholder, deletePlaceholder, fetchPlaceholders } from '~/apis/placeholder.api';
 
-const cardClassName = 'bg-subtle flex flex-col gap-1 p-4 rounded-[10px_3px_11px_3px/3px_8px_3px_10px] border-2 border-border-secondary font-bold';
+const cardClassName = 'p-4';
 const Route = getRouteApi(SETTINGS_PLACEHOLDER_ROUTE);
 
 const Placeholder = () => {
@@ -89,52 +91,52 @@ const Placeholder = () => {
     return (
         <PageLayout title="Placeholders" variant="subtle" description="Manage template variables for note cloning">
             <Callout className="mb-4">
-                <div className="flex gap-2 items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                     <span>Placeholders will be replaced with new note data during cloning.</span>
-                    <Button onClick={() => setIsModalOpen(true)}>
+                    <Button variant="subtle" size="icon-sm" onClick={() => setIsModalOpen(true)}>
                         <Icon.Plus width={20} height={20} />
                     </Button>
                 </div>
             </Callout>
-            <div className="flex flex-col gap-3 mt-3">
+            <div className="mt-3 flex flex-col gap-3">
                 <button
                     type="button"
                     onClick={() => setIsFixedListOpen(!isFixedListOpen)}
-                    className="bg-subtle flex gap-2 items-center justify-between p-4 rounded-[10px_3px_11px_3px/3px_8px_3px_10px] border-2 border-border-secondary font-bold">
+                    className="focus-ring-soft surface-base flex items-center justify-between gap-2 rounded-[18px] px-4 py-3 text-left text-sm font-semibold text-fg-default transition-colors hover:bg-hover-subtle">
                     <div>System Placeholders</div>
-                    <div className="w-6 h-6">
+                    <div className="flex h-6 w-6 items-center justify-center text-fg-tertiary">
                         {isFixedListOpen ? <Icon.TriangleUp /> : <Icon.TriangleDown />}
                     </div>
                 </button>
                 {isFixedListOpen && (
-                    <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
                         {fixedPlaceholders.map(placeholder => (
-                            <div key={placeholder.name} className={cardClassName}>
-                                <div className="text-sm">{placeholder.name}</div>
-                                <div className="text-fg-tertiary text-xs font-medium">
-                                    {PLACEHOLDER_PREFIX}{placeholder.template}{PLACEHOLDER_SUFFIX} → '{placeholder.replacement}'
+                            <SurfaceCard key={placeholder.name} className={cardClassName}>
+                                <div className="text-sm font-semibold text-fg-default">{placeholder.name}</div>
+                                <div className="text-xs font-medium text-fg-tertiary">
+                                    {PLACEHOLDER_PREFIX}{placeholder.template}{PLACEHOLDER_SUFFIX} = '{placeholder.replacement}'
                                 </div>
-                            </div>
+                            </SurfaceCard>
                         ))}
                     </div>
                 )}
                 {!isLoading && placeholders?.placeholders && placeholders.placeholders.length > 0 && (
-                    <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
                         {placeholders.placeholders.map(placeholder => (
-                            <div key={placeholder.id} className={`${cardClassName} relative`}>
+                            <SurfaceCard key={placeholder.id} className={`${cardClassName} relative`}>
                                 <div className="flex items-center justify-between">
-                                    <div className="text-sm">{placeholder.name}</div>
+                                    <div className="text-sm font-semibold text-fg-default">{placeholder.name}</div>
                                     <button
                                         type="button"
-                                        className="w-5 h-5 hover:text-red-500 transition-colors"
+                                        className="focus-ring-soft inline-flex h-8 w-8 items-center justify-center rounded-[10px] text-fg-tertiary transition-colors hover:bg-hover-subtle hover:text-fg-default"
                                         onClick={() => removePlaceholder.mutate(placeholder.id.toString())}>
                                         <Icon.Close />
                                     </button>
                                 </div>
-                                <div className="text-fg-tertiary text-xs font-medium">
-                                    {PLACEHOLDER_PREFIX}{placeholder.template}{PLACEHOLDER_SUFFIX} → '{placeholder.replacement}'
+                                <div className="text-xs font-medium text-fg-tertiary">
+                                    {PLACEHOLDER_PREFIX}{placeholder.template}{PLACEHOLDER_SUFFIX} = '{placeholder.replacement}'
                                 </div>
-                            </div>
+                            </SurfaceCard>
                         ))}
                     </div>
                 )}
@@ -179,9 +181,10 @@ const Placeholder = () => {
                     </div>
                 </Modal.Body>
                 <Modal.Footer>
-                    <div className="flex gap-2">
+                    <ModalActionRow>
                         <Button variant="ghost" onClick={() => setIsModalOpen(false)}>Cancel</Button>
                         <Button
+                            variant="primary"
                             isLoading={addPlaceholder.isPending}
                             onClick={() => {
                                 if (!form.name || !form.template || !form.replacement) {
@@ -194,7 +197,7 @@ const Placeholder = () => {
                                     replacement: form.replacement
                                 });
                             }}>Add</Button>
-                    </div>
+                    </ModalActionRow>
                 </Modal.Footer>
             </Modal>
             <FallbackRender fallback={null}>

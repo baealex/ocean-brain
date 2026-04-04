@@ -64,12 +64,9 @@ div:focus {
 
 .ProseMirror {
     a {
-        color: #0070f3;
+        color: inherit;
         cursor: pointer;
-
-        html.dark & {
-            color: var(--accent-primary);
-        }
+        text-decoration: none;
     }
 }
 

@@ -30,9 +30,9 @@ export const inputVariants = cva(
                 ]
             },
             size: {
-                sm: 'h-8 px-3 text-sm rounded-[14px]',
-                md: 'h-10 px-3 text-sm rounded-[16px]',
-                lg: 'h-12 px-4 text-base rounded-[18px]'
+                sm: 'h-8 px-3 text-sm rounded-[12px]',
+                md: 'h-9 px-3 text-sm rounded-[14px]',
+                lg: 'h-11 px-4 text-base rounded-[16px]'
             }
         },
         defaultVariants: {

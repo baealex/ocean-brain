@@ -1,11 +1,11 @@
 import { Link } from '@tanstack/react-router';
 import dayjs from 'dayjs';
 
-import { Button } from '~/components/ui';
+import * as Icon from '~/components/icon';
+import { Button, Dropdown } from '~/components/shared';
 import type { Reminder } from '~/models/reminder.model';
-import { priorityColors } from '~/modules/color';
+import { priorityColorsSubtle } from '~/modules/color';
 import { NOTE_ROUTE } from '~/modules/url';
-import styles from './ReminderCard.module.scss';
 
 interface ReminderCardProps {
     reminder: Reminder;
@@ -18,7 +18,6 @@ export default function ReminderCard({
     onUpdate,
     onDelete
 }: ReminderCardProps) {
-
     const formatReminderDate = (dateString: string) => {
         const date = dayjs(Number(dateString));
         const now = dayjs();
@@ -44,52 +43,77 @@ export default function ReminderCard({
     };
 
     const isOverdue = getTimeRemaining(reminder.reminderDate) === 'Overdue';
-    const priorityClass = reminder.priority === 'high'
-        ? styles.priorityHigh
-        : reminder.priority === 'medium'
-            ? styles.priorityMedium
-            : '';
+    const priority = reminder.priority || 'low';
+    const priorityLabel = priority === 'high'
+        ? 'High'
+        : priority === 'medium'
+            ? 'Medium'
+            : 'Low';
+    const priorityToneClassName = `${priorityColorsSubtle[priority]} text-fg-default`;
+    const noteId = reminder.noteId.toString();
+    const detailToneClassName = isOverdue ? 'text-fg-error' : 'text-fg-tertiary';
+    const primaryText = reminder.content?.trim() || reminder.note?.title || 'Untitled reminder';
+    const noteTitle = reminder.note?.title || 'Untitled note';
 
     return (
-        <div className={`flex justify-between items-center p-4 border-2 rounded-[12px_4px_13px_3px/4px_10px_4px_12px] shadow-sketchy ${priorityColors[reminder.priority || 'low']} border-border-secondary ${priorityClass}`}>
-            <div className="flex flex-col">
+        <div className="surface-base group flex flex-col gap-4 rounded-[20px] border border-border-subtle p-4">
+            <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                        <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-fg-tertiary">
+                            <span className={`h-2.5 w-2.5 rounded-full border border-border-subtle ${priorityToneClassName}`} />
+                            {priorityLabel}
+                        </span>
+                        <p className="min-w-0 line-clamp-2 text-base font-semibold leading-6 text-fg-default">
+                            {primaryText}
+                        </p>
+                    </div>
+                </div>
+                <Dropdown
+                    button={(
+                        <button
+                            type="button"
+                            className="focus-ring-soft inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] border border-transparent bg-transparent text-fg-tertiary outline-none transition-colors hover:border-border-subtle hover:bg-hover-subtle hover:text-fg-default group-hover:border-border-subtle group-hover:bg-hover-subtle/80 group-hover:text-fg-default">
+                            <Icon.VerticalDots className="h-5 w-5 text-current" />
+                            <span className="sr-only">Reminder actions</span>
+                        </button>
+                    )}
+                    items={[
+                        {
+                            name: 'Delete',
+                            onClick: () => onDelete(reminder.id, noteId)
+                        }
+                    ]}
+                />
+            </div>
+
+            <div className="flex items-center gap-2 text-sm text-fg-secondary">
+                <Icon.File size={14} />
                 <Link
                     to={NOTE_ROUTE}
                     params={{ id: String(reminder.note?.id ?? reminder.noteId) }}
-                    className="font-bold hover:underline flex items-center gap-2 text-fg-default">
-                    {reminder.note?.title || 'Untitled Note'}
+                    className="truncate transition-colors hover:text-fg-default hover:underline">
+                    {noteTitle}
                 </Link>
-                {reminder.content && (
-                    <p className="text-sm text-fg-muted mt-1 mb-1 font-medium">
-                        {reminder.content}
-                    </p>
-                )}
-                <div className="flex items-center gap-2">
-                    <span className="text-sm text-fg-secondary font-medium">
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-2 text-sm text-fg-secondary">
+                    <Icon.Clock size={14} />
+                    <span className="font-medium">
                         {formatReminderDate(reminder.reminderDate)}
                     </span>
-                    <span
-                        className={`text-xs font-bold ${
-                            isOverdue
-                                ? `text-fg-error ${styles.urgentPulsing}`
-                                : 'text-fg-tertiary'
-                        }`}>
+                    <span className="h-1 w-1 rounded-full bg-border-secondary" />
+                    <span className={`text-xs font-medium ${detailToneClassName}`}>
                         {getTimeRemaining(reminder.reminderDate)}
                     </span>
                 </div>
-            </div>
-            <div className="flex gap-2">
                 <Button
-                    variant="soft-success"
+                    variant="subtle"
                     size="sm"
-                    onClick={() => onUpdate(reminder.id, reminder.noteId.toString(), { completed: true })}>
+                    onClick={() => onUpdate(reminder.id, noteId, { completed: true })}>
+                    <Icon.Check size={14} />
                     Complete
-                </Button>
-                <Button
-                    variant="soft-danger"
-                    size="sm"
-                    onClick={() => onDelete(reminder.id, reminder.noteId.toString())}>
-                    Delete
                 </Button>
             </div>
         </div>

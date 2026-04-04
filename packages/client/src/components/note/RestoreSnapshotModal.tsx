@@ -109,7 +109,7 @@ export default function RestoreSnapshotModal({
                     )}
                     {!snapshotQuery.isLoading && snapshotQuery.data?.length === 0 && (
                         <div className="rounded-[16px] border border-dashed border-border-secondary bg-muted/40 p-4 text-sm text-fg-secondary">
-                            A recovery snapshot will appear after the first edit in a session.
+                            A recovery snapshot will appear after the first edit in a session and older ones are cleaned up automatically.
                         </div>
                     )}
                     {!snapshotQuery.isLoading && snapshotQuery.data && snapshotQuery.data.length > 0 && (

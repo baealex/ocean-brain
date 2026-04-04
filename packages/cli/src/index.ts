@@ -1,4 +1,3 @@
-import { execSync } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -9,18 +8,6 @@ import { resolveMcpBearerToken } from './mcp-auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const serverRoot = path.resolve(__dirname, '..', 'server');
-
-function findBin(name: string, fromDir: string): string {
-    let dir = path.resolve(fromDir, '..');
-    while (true) {
-        const bin = path.resolve(dir, 'node_modules', '.bin', name);
-        if (fs.existsSync(bin)) return bin;
-        const parent = path.dirname(dir);
-        if (parent === dir) break;
-        dir = parent;
-    }
-    throw new Error(`Could not find "${name}" binary. Make sure it is installed.`);
-}
 
 const pkg = JSON.parse(
     fs.readFileSync(path.resolve(__dirname, '..', 'package.json'), 'utf-8')
@@ -67,18 +54,7 @@ program
                 process.env.OCEAN_BRAIN_ALLOW_INSECURE_NO_AUTH = authEnvironment.OCEAN_BRAIN_ALLOW_INSECURE_NO_AUTH;
             }
 
-            const schemaPath = path.resolve(serverRoot, 'prisma/schema.prisma');
-            const prisma = findBin('prisma', __dirname);
-            execSync(`"${prisma}" generate --schema="${schemaPath}"`, {
-                stdio: 'inherit',
-                env: { ...process.env }
-            });
-            execSync(`"${prisma}" migrate deploy --schema="${schemaPath}"`, {
-                stdio: 'inherit',
-                env: { ...process.env }
-            });
-
-            const serverEntry = pathToFileURL(path.resolve(serverRoot, 'dist/main.js')).href;
+            const serverEntry = pathToFileURL(path.resolve(serverRoot, 'dist/start.js')).href;
             await import(serverEntry);
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Unknown CLI auth configuration error';

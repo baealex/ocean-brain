@@ -1,4 +1,9 @@
 import models, { type NoteLayout, type ReminderPriority } from '~/models.js';
+import {
+    createRetentionCutoff,
+    RECOVERY_CLEANUP_BATCH_LIMIT,
+    TRASH_RETENTION_DAYS
+} from './recovery-retention.js';
 
 interface LiveTagRecord {
     id: number;
@@ -105,6 +110,7 @@ interface NoteTrashServiceDeps {
     listDeletedNotes: (skip: number, take: number) => Promise<DeletedNoteRecord[]>;
     liveNoteExists: (id: number) => Promise<boolean>;
     moveNoteToTrash: (note: LiveNoteRecord) => Promise<DeletedNoteRecord>;
+    purgeExpiredDeletedNotes: (before: Date, limit: number) => Promise<number>;
     restoreDeletedNote: (note: DeletedNoteRecord) => Promise<RestoredNoteRecord>;
 }
 
@@ -163,6 +169,11 @@ export const createNoteTrashService = (deps: NoteTrashServiceDeps) => ({
         limit?: number;
         offset?: number;
     }): Promise<TrashedNotesResult> => {
+        await deps.purgeExpiredDeletedNotes(
+            createRetentionCutoff(TRASH_RETENTION_DAYS),
+            RECOVERY_CLEANUP_BATCH_LIMIT
+        );
+
         const limit = Math.max(1, Number(input?.limit ?? 25));
         const offset = Math.max(0, Number(input?.offset ?? 0));
         const [totalCount, notes] = await Promise.all([
@@ -177,6 +188,11 @@ export const createNoteTrashService = (deps: NoteTrashServiceDeps) => ({
     },
 
     trashNoteById: async (id: number): Promise<TrashedNoteSummary | null> => {
+        await deps.purgeExpiredDeletedNotes(
+            createRetentionCutoff(TRASH_RETENTION_DAYS),
+            RECOVERY_CLEANUP_BATCH_LIMIT
+        );
+
         const note = await deps.findLiveNote(id);
 
         if (!note) {
@@ -188,6 +204,11 @@ export const createNoteTrashService = (deps: NoteTrashServiceDeps) => ({
     },
 
     restoreNoteById: async (id: number) => {
+        await deps.purgeExpiredDeletedNotes(
+            createRetentionCutoff(TRASH_RETENTION_DAYS),
+            RECOVERY_CLEANUP_BATCH_LIMIT
+        );
+
         const deletedNote = await deps.findDeletedNote(id);
 
         if (!deletedNote) {
@@ -205,6 +226,23 @@ export const createNoteTrashService = (deps: NoteTrashServiceDeps) => ({
 const includeDeletedNote = {
     reminders: { orderBy: { reminderDate: 'asc' as const } },
     tags: { orderBy: { name: 'asc' as const } }
+};
+
+const defaultPurgeExpiredDeletedNotes = async (before: Date, limit: number) => {
+    const expiredNotes = await models.deletedNote.findMany({
+        where: { deletedAt: { lt: before } },
+        orderBy: { deletedAt: 'asc' },
+        take: limit,
+        select: { id: true }
+    });
+
+    if (expiredNotes.length === 0) {
+        return 0;
+    }
+
+    const deleted = await models.deletedNote.deleteMany({ where: { id: { in: expiredNotes.map((note) => note.id) } } });
+
+    return deleted.count;
 };
 
 const noteTrashService = createNoteTrashService({
@@ -239,6 +277,7 @@ const noteTrashService = createNoteTrashService({
         });
         return Boolean(note);
     },
+    purgeExpiredDeletedNotes: defaultPurgeExpiredDeletedNotes,
     moveNoteToTrash: async (note) => {
         return models.$transaction(async (tx) => {
             await tx.deletedNote.create({
@@ -357,3 +396,9 @@ const noteTrashService = createNoteTrashService({
 export const listTrashedNotes = noteTrashService.listTrashedNotes;
 export const trashNoteById = noteTrashService.trashNoteById;
 export const restoreTrashedNoteById = noteTrashService.restoreNoteById;
+export const purgeExpiredTrashedNotes = async () => {
+    return defaultPurgeExpiredDeletedNotes(
+        createRetentionCutoff(TRASH_RETENTION_DAYS),
+        RECOVERY_CLEANUP_BATCH_LIMIT
+    );
+};

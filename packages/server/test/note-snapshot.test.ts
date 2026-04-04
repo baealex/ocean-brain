@@ -39,6 +39,8 @@ test('captureBaseline stores one snapshot per note edit session', async () => {
             snapshots.push(snapshot);
             return snapshot;
         },
+        purgeExpiredSnapshots: async () => 0,
+        trimOverflowSnapshots: async () => 0,
         listSnapshots: async () => snapshots,
         findSnapshotById: async () => null,
         updateNote: async () => {
@@ -106,6 +108,8 @@ test('restoreSnapshot reapplies payload and stores the current state first', asy
             createdSnapshots.push(snapshot);
             return snapshot;
         },
+        purgeExpiredSnapshots: async () => 0,
+        trimOverflowSnapshots: async () => 0,
         listSnapshots: async () => [],
         findSnapshotById: async () => ({
             id: 3,
@@ -153,4 +157,42 @@ test('restoreSnapshot reapplies payload and stores the current state first', asy
         }
     }]);
     assert.equal(restored?.title, 'Previous title');
+});
+
+test('listSnapshots runs retention cleanup before returning recent snapshots', async () => {
+    const calls: string[] = [];
+    const service = createNoteSnapshotService({
+        findNoteById: async () => null,
+        findSnapshotByEditSessionId: async () => null,
+        createSnapshot: async () => {
+            throw new Error('should not create');
+        },
+        purgeExpiredSnapshots: async () => {
+            calls.push('purge');
+            return 1;
+        },
+        trimOverflowSnapshots: async () => {
+            calls.push('trim');
+            return 1;
+        },
+        listSnapshots: async () => [{
+            id: 9,
+            noteId: 7,
+            title: 'Current baseline',
+            payload: '{}',
+            editSessionId: null,
+            meta: '{"label":"Web browser"}',
+            createdAt: new Date('2026-03-31T00:00:00.000Z')
+        }],
+        findSnapshotById: async () => null,
+        updateNote: async () => {
+            throw new Error('should not update');
+        }
+    });
+
+    const snapshots = await service.listSnapshots(7, 5);
+
+    assert.deepEqual(calls, ['purge', 'trim']);
+    assert.equal(snapshots.length, 1);
+    assert.equal(snapshots[0]?.title, 'Current baseline');
 });

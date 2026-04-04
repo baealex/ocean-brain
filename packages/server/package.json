@@ -7,7 +7,7 @@
     "scripts": {
         "dev": "prisma migrate deploy && prisma generate && node --watch --import tsx src/main.ts",
         "build": "prisma generate && tsup && tsc-alias",
-        "start": "prisma migrate deploy && node dist/main.js",
+        "start": "node dist/start.js",
         "lint": "eslint src",
         "test": "tsx --tsconfig tsconfig.json --test test/**/*.test.ts",
         "test:ci": "tsx --tsconfig tsconfig.json --test test/**/*.test.ts",

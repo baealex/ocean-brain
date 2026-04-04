@@ -20,6 +20,7 @@ import {
     createLogoutPageHandler
 } from './views/auth.js';
 import useAsync from './modules/use-async.js';
+import { createErrorHandler } from './modules/error-handler.js';
 import {
     createMcpCreateNoteHandler,
     createMcpDeleteNoteHandler,
@@ -120,7 +121,8 @@ export const createAppWithMcpAuth = (authConfig: AuthConfig, mcpAuthConfig: McpA
         .use(express.static(paths.clientDist, { extensions: ['html'] }))
         .get(/.*/, (_req, res) => {
             res.sendFile(paths.clientIndex);
-        });
+        })
+        .use(createErrorHandler());
 
     return app;
 };

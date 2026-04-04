@@ -3,6 +3,7 @@ import type { Request } from 'express';
 import type { Controller } from '~/types/index.js';
 import { compareSharedSecret } from '~/modules/auth.js';
 import type { AuthConfig } from '~/modules/auth-mode.js';
+import { createAppError } from '~/modules/error-handler.js';
 
 const buildSessionResponse = (authConfig: AuthConfig, req: Request) => ({
     mode: authConfig.mode,
@@ -189,11 +190,7 @@ const renderLoginPage = ({
 export const createLoginHandler = (authConfig: AuthConfig): Controller => {
     return async (req, res) => {
         if (authConfig.mode !== 'password' || !authConfig.password) {
-            res.status(409).json({
-                code: 'AUTH_DISABLED',
-                message: 'Login is unavailable while auth mode is disabled.'
-            }).end();
-            return;
+            throw createAppError(409, 'AUTH_DISABLED', 'Login is unavailable while auth mode is disabled.');
         }
 
         const password = typeof req.body?.password === 'string'
@@ -201,11 +198,7 @@ export const createLoginHandler = (authConfig: AuthConfig): Controller => {
             : '';
 
         if (!password || !compareSharedSecret(authConfig.password, password)) {
-            res.status(401).json({
-                code: 'UNAUTHORIZED',
-                message: 'Invalid password'
-            }).end();
-            return;
+            throw createAppError(401, 'UNAUTHORIZED', 'Invalid password');
         }
 
         await regenerateSession(req);

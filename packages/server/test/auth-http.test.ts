@@ -119,7 +119,8 @@ test('password mode protects write paths until login and unlocks them after sess
 
     const authenticatedImageWrite = await jsonRequest(baseUrl, '/api/image', 'POST', {}, login.cookie);
     assert.equal(authenticatedImageWrite.status, 400);
-    assert.equal(authenticatedImageWrite.body.error, 'No image uploaded');
+    assert.equal(authenticatedImageWrite.body.code, 'INVALID_IMAGE_UPLOAD');
+    assert.equal(authenticatedImageWrite.body.message, 'No image uploaded');
 
     const authenticatedMutation = await graphRequest(baseUrl, 'mutation { __typename }', login.cookie);
     assert.equal(authenticatedMutation.status, 200);
@@ -162,7 +163,8 @@ test('disabled mode keeps auth endpoints explicit and allows existing open write
 
     const imageWrite = await jsonRequest(baseUrl, '/api/image', 'POST', {});
     assert.equal(imageWrite.status, 400);
-    assert.equal(imageWrite.body.error, 'No image uploaded');
+    assert.equal(imageWrite.body.code, 'INVALID_IMAGE_UPLOAD');
+    assert.equal(imageWrite.body.message, 'No image uploaded');
 
     const mutation = await graphRequest(baseUrl, 'mutation { __typename }');
     assert.equal(mutation.status, 200);

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+import { AppError } from '../src/modules/error-handler.js';
 import { createMcpDeleteNoteHandler } from '../src/views/note.js';
 
 const createResponse = () => {
@@ -25,28 +26,30 @@ const createResponse = () => {
 
 test('mcp delete note handler rejects invalid note ids', async () => {
     const handler = createMcpDeleteNoteHandler(async () => null);
-    const response = createResponse();
-
-    await handler({ body: { id: 'abc' } } as never, response as never);
-
-    assert.equal(response.statusCode, 400);
-    assert.deepEqual(response.body, {
-        code: 'INVALID_NOTE_ID',
-        message: 'A valid note id is required.'
-    });
+    await assert.rejects(
+        () => handler({ body: { id: 'abc' } } as never, createResponse() as never),
+        (error: unknown) => {
+            assert.ok(error instanceof AppError);
+            assert.equal(error.status, 400);
+            assert.equal(error.code, 'INVALID_NOTE_ID');
+            assert.equal(error.message, 'A valid note id is required.');
+            return true;
+        }
+    );
 });
 
 test('mcp delete note handler returns not found when the note is missing', async () => {
     const handler = createMcpDeleteNoteHandler(async () => null);
-    const response = createResponse();
-
-    await handler({ body: { id: '11' } } as never, response as never);
-
-    assert.equal(response.statusCode, 404);
-    assert.deepEqual(response.body, {
-        code: 'NOTE_NOT_FOUND',
-        message: 'The requested note was not found.'
-    });
+    await assert.rejects(
+        () => handler({ body: { id: '11' } } as never, createResponse() as never),
+        (error: unknown) => {
+            assert.ok(error instanceof AppError);
+            assert.equal(error.status, 404);
+            assert.equal(error.code, 'NOTE_NOT_FOUND');
+            assert.equal(error.message, 'The requested note was not found.');
+            return true;
+        }
+    );
 });
 
 test('mcp delete note handler returns the deleted note payload', async () => {

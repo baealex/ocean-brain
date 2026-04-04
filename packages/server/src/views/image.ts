@@ -1,4 +1,5 @@
 import type { Controller } from '~/types/index.js';
+import { createAppError } from '~/modules/error-handler.js';
 import { persistUploadedImage } from '~/modules/image-upload.js';
 import { fetchRemoteImage, RemoteImageFetchError } from '~/modules/remote-image.js';
 
@@ -6,8 +7,7 @@ export const uploadImage: Controller = async (req, res) => {
     const { image } = req.body;
 
     if (!image || !image.match(/data:image\/\s*(\w+);base64,/)) {
-        res.status(400).json({ error: 'No image uploaded' }).end();
-        return;
+        throw createAppError(400, 'INVALID_IMAGE_UPLOAD', 'No image uploaded');
     }
 
     const [info, data] = image.split(',');
@@ -40,11 +40,7 @@ export const uploadImageFromSrc: Controller = async (req, res) => {
         }).end();
     } catch (error) {
         if (error instanceof RemoteImageFetchError) {
-            res.status(error.status).json({
-                code: error.code,
-                message: error.message
-            }).end();
-            return;
+            throw createAppError(error.status, error.code, error.message);
         }
 
         throw error;

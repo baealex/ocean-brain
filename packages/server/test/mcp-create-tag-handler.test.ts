@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+import { AppError } from '../src/modules/error-handler.js';
 import { createMcpCreateTagHandler } from '../src/views/tag.js';
 import { InvalidTagNameError } from '../src/modules/tag-organization.js';
 
@@ -35,15 +36,16 @@ test('mcp create tag handler rejects missing tag names', async () => {
             updatedAt: '2026-03-31T00:00:00.000Z'
         }
     }));
-    const response = createResponse();
-
-    await handler({ body: {} } as never, response as never);
-
-    assert.equal(response.statusCode, 400);
-    assert.deepEqual(response.body, {
-        code: 'INVALID_TAG_NAME',
-        message: 'A tag name is required.'
-    });
+    await assert.rejects(
+        () => handler({ body: {} } as never, createResponse() as never),
+        (error: unknown) => {
+            assert.ok(error instanceof AppError);
+            assert.equal(error.status, 400);
+            assert.equal(error.code, 'INVALID_TAG_NAME');
+            assert.equal(error.message, 'A tag name is required.');
+            return true;
+        }
+    );
 });
 
 test('mcp create tag handler returns the created-or-existing tag payload', async () => {
@@ -78,13 +80,14 @@ test('mcp create tag handler surfaces invalid normalized tag names', async () =>
     const handler = createMcpCreateTagHandler(async () => {
         throw new InvalidTagNameError('Tag names must be a single token like @project.');
     });
-    const response = createResponse();
-
-    await handler({ body: { name: 'project alpha' } } as never, response as never);
-
-    assert.equal(response.statusCode, 400);
-    assert.deepEqual(response.body, {
-        code: 'INVALID_TAG_NAME',
-        message: 'Tag names must be a single token like @project.'
-    });
+    await assert.rejects(
+        () => handler({ body: { name: 'project alpha' } } as never, createResponse() as never),
+        (error: unknown) => {
+            assert.ok(error instanceof AppError);
+            assert.equal(error.status, 400);
+            assert.equal(error.code, 'INVALID_TAG_NAME');
+            assert.equal(error.message, 'Tag names must be a single token like @project.');
+            return true;
+        }
+    );
 });

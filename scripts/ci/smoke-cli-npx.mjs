@@ -11,6 +11,7 @@ const tarballPath = tarballArg ? path.resolve(tarballArg) : null;
 const host = '127.0.0.1';
 const port = Number(process.env.CLI_SMOKE_PORT ?? '6683');
 const rootUrl = `http://${host}:${port}`;
+export const AUTH_SESSION_PATH = '/api/auth/session';
 const isWindows = process.platform === 'win32';
 const readyTimeoutMs = Number(
     process.env.CLI_SMOKE_READY_TIMEOUT_MS ?? (isWindows ? '300000' : '120000')
@@ -141,18 +142,18 @@ async function assertGraphql() {
 }
 
 async function assertAuthSession(expected) {
-    const response = await fetch(`${rootUrl}/auth/session`, {
+    const response = await fetch(`${rootUrl}${AUTH_SESSION_PATH}`, {
         signal: AbortSignal.timeout(5000)
     });
 
     if (response.status !== 200) {
-        throw new Error(`/auth/session returned HTTP ${response.status}`);
+        throw new Error(`${AUTH_SESSION_PATH} returned HTTP ${response.status}`);
     }
 
     const payload = await response.json();
     for (const [key, value] of Object.entries(expected)) {
         if (payload[key] !== value) {
-            throw new Error(`/auth/session returned unexpected ${key}: ${payload[key]}`);
+            throw new Error(`${AUTH_SESSION_PATH} returned unexpected ${key}: ${payload[key]}`);
         }
     }
 }

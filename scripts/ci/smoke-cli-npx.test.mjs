@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+    AUTH_SESSION_PATH,
     buildSmokeScenarios,
     isExpectedAuthFailure
 } from './smoke-cli-npx.mjs';
@@ -55,4 +56,8 @@ test('isExpectedAuthFailure matches the documented startup failure message', () 
         ),
         true
     );
+});
+
+test('smoke checks auth session status through the mounted API router path', () => {
+    assert.equal(AUTH_SESSION_PATH, '/api/auth/session');
 });

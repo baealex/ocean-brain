@@ -23,6 +23,7 @@
     "scripts": {
         "dev": "tsx src/index.ts",
         "build": "tsup",
+        "postinstall": "prisma generate --schema ./server/prisma/schema.prisma",
         "test": "tsx --test test/**/*.test.ts",
         "test:ci": "tsx --test test/**/*.test.ts",
         "type-check": "tsc --noEmit"

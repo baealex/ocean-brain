@@ -1,9 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { EventEmitter } from 'node:events';
 
 import {
     AUTH_SESSION_PATH,
     buildSmokeScenarios,
+    expectAuthFailure,
     isExpectedAuthFailure
 } from './smoke-cli-npx.mjs';
 
@@ -60,4 +62,20 @@ test('isExpectedAuthFailure matches the documented startup failure message', () 
 
 test('smoke checks auth session status through the mounted API router path', () => {
     assert.equal(AUTH_SESSION_PATH, '/api/auth/session');
+});
+
+test('expectAuthFailure reads the latest stderr through the provided getter', async () => {
+    const child = new EventEmitter();
+    child.exitCode = null;
+    child.signalCode = null;
+
+    const pending = expectAuthFailure(
+        child,
+        () => 'Unable to resolve auth mode. Set OCEAN_BRAIN_PASSWORD and OCEAN_BRAIN_SESSION_SECRET for password mode, or set OCEAN_BRAIN_ALLOW_INSECURE_NO_AUTH=true for disabled mode.'
+    );
+
+    child.exitCode = 1;
+    child.emit('exit', 1);
+
+    await assert.doesNotReject(pending);
 });

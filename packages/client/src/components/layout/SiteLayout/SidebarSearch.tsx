@@ -68,7 +68,7 @@ const SidebarSearch = () => {
         <div className="p-3">
             <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
                 <div className="flex gap-3">
-                    <div style={{ gridTemplateColumns: '36px 1fr 28px' }} className="grid flex-1 border-b border-border-subtle">
+                    <div style={{ gridTemplateColumns: '36px 1fr 28px' }} className="grid flex-1 rounded-[14px] border border-border-subtle bg-surface transition-colors hover:border-border">
                         <button type="submit" className="flex items-center justify-center text-fg-tertiary transition-colors hover:text-fg-default">
                             <Icon.Search className="h-4.5 w-4.5" weight="bold" />
                         </button>
@@ -87,38 +87,42 @@ const SidebarSearch = () => {
                     </div>
                 </div>
                 {hasResults && (
-                    <div className="surface-base rounded-[16px] border border-border-subtle p-3">
+                    <div className="surface-base overflow-hidden p-1.5">
                         {notes.length > 0 && (
-                            <ul className="flex flex-col">
+                            <div>
+                                {tags.length > 0 && (
+                                    <div className="px-2.5 pb-1 pt-1 text-xs font-medium text-fg-tertiary">Notes</div>
+                                )}
                                 {notes.map(({ id, title }) => (
-                                    <li key={id} className="flex items-center border-b border-border-subtle/70 py-2 last:border-b-0">
-                                        <Link
-                                            to={NOTE_ROUTE}
-                                            params={{ id }}
-                                            className="text-sm font-medium text-fg-default transition-colors hover:text-fg-secondary">
-                                            {title || 'Untitled'}
-                                        </Link>
-                                    </li>
+                                    <Link
+                                        key={id}
+                                        to={NOTE_ROUTE}
+                                        params={{ id }}
+                                        className="flex items-center gap-2.5 rounded-[10px] px-2.5 py-2 transition-colors hover:bg-hover-subtle">
+                                        <Icon.FileNote className="h-4 w-4 shrink-0 text-fg-tertiary" />
+                                        <span className="truncate text-sm text-fg-default">{title || 'Untitled'}</span>
+                                    </Link>
                                 ))}
-                            </ul>
+                            </div>
                         )}
                         {tags.length > 0 && (
-                            <ul className="flex flex-wrap gap-2 p-2">
-                                {tags.map(({ id, name }) => (
-                                    <li key={id} className="flex items-center gap-2">
-                                        <Link
-                                            to={TAG_NOTES_ROUTE}
-                                            params={{ id }}
-                                            search={{ page: 1 }}>
+                            <div>
+                                {notes.length > 0 && (
+                                    <div className="px-2.5 pb-1 pt-2 text-xs font-medium text-fg-tertiary">Tags</div>
+                                )}
+                                <div className="flex flex-wrap gap-1.5 px-2 py-1.5">
+                                    {tags.map(({ id, name }) => (
+                                        <Link key={id} to={TAG_NOTES_ROUTE} params={{ id }} search={{ page: 1 }}>
                                             <Badge name={name} />
                                         </Link>
-                                    </li>
-                                ))}
-                            </ul>
+                                    ))}
+                                </div>
+                            </div>
                         )}
-                        <div className="border-t border-border-subtle/70 p-2">
-                            <button type="submit" className="text-sm font-medium text-fg-secondary transition-colors hover:text-fg-default">
-                                view detailed results {'>'}
+                        <div className="mt-1 border-t border-border-subtle/50 px-2.5 pb-1 pt-1.5">
+                            <button type="submit" className="flex items-center gap-1.5 text-sm font-medium text-fg-secondary transition-colors hover:text-fg-default">
+                                view detailed results
+                                <Icon.ChevronRight className="h-3.5 w-3.5" weight="bold" />
                             </button>
                         </div>
                     </div>

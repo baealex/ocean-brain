@@ -181,7 +181,7 @@ export default function Calendar() {
                 {isError ? (
                     <Callout>Failed to load calendar data. Please try again later.</Callout>
                 ) : (
-                    <div className="surface-base overflow-x-auto rounded-[20px] border border-border-subtle p-3 sm:p-4">
+                    <div className="surface-base overflow-x-auto p-3 sm:p-4">
                         <CalendarHeader
                             month={month}
                             year={year}

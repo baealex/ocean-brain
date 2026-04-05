@@ -4,7 +4,6 @@ import { Link, getRouteApi } from '@tanstack/react-router';
 import { QueryBoundary } from '~/components/app';
 import {
     Image as ImageComponent,
-    FallbackRender,
     PageLayout,
     Pagination,
     Skeleton,
@@ -65,7 +64,7 @@ const ManageImage = () => {
             <div ref={containerRef}>
                 <QueryBoundary
                     fallback={(
-                        <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
+                        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
                             <Skeleton height="200px"/>
                             <Skeleton height="200px"/>
                             <Skeleton height="200px"/>
@@ -79,59 +78,63 @@ const ManageImage = () => {
                             offset: (page - 1) * limit,
                             limit
                         }}
-                        render={({ images, totalCount }) => (
-                            <FallbackRender
-                                fallback={(
+                        render={({ images, totalCount }) => {
+                            if (images.length === 0) {
+                                return (
                                     <Empty
                                         title="There are no images"
                                         description="Try drag and drop an image on the note editor."
                                     />
-                                )}>
-                                {images.length > 0 && (
-                                    <>
-                                        <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
-                                            {images.map((image) => (
-                                                <SurfaceCard key={image.id} className="overflow-hidden p-0">
-                                                    <Link
-                                                        to={SETTINGS_MANAGE_IMAGE_DETAIL_ROUTE}
-                                                        params={{ id: image.id }}>
-                                                        <ImageComponent className="h-48 w-full object-cover" src={image.url} alt={image.id} />
-                                                    </Link>
-                                                    <div className="flex items-center justify-between border-t border-border-subtle bg-[color:color-mix(in_srgb,var(--elevated)_72%,transparent)] px-3 py-2.5">
-                                                        <span className="px-1 text-xs font-medium text-fg-secondary">
-                                                            {image.referenceCount} refs
-                                                        </span>
-                                                        <Button
-                                                            variant="soft-danger"
-                                                            size="icon-sm"
-                                                            disabled={image.referenceCount > 0}
-                                                            onClick={() => handleDelete(image.id)}>
-                                                            <Icon.TrashCan className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
-                                                </SurfaceCard>
-                                            ))}
-                                        </div>
-                                        <FallbackRender fallback={null}>
-                                            {totalCount && limit < totalCount && (
-                                                <Pagination
-                                                    page={page}
-                                                    last={Math.ceil(totalCount / limit)}
-                                                    onChange={(page) => {
-                                                        navigate({
-                                                            search: prev => ({
-                                                                ...prev,
-                                                                page
-                                                            })
-                                                        });
-                                                    }}
-                                                />
-                                            )}
-                                        </FallbackRender>
-                                    </>
-                                )}
-                            </FallbackRender>
-                        )}
+                                );
+                            }
+                            return (
+                                <>
+                                    <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
+                                        {images.map((image) => (
+                                            <SurfaceCard key={image.id} className="overflow-hidden p-0">
+                                                <Link
+                                                    to={SETTINGS_MANAGE_IMAGE_DETAIL_ROUTE}
+                                                    params={{ id: image.id }}
+                                                    className="block overflow-hidden">
+                                                    <ImageComponent
+                                                        className="h-48 w-full object-cover transition-transform duration-200 hover:scale-[1.02]"
+                                                        src={image.url}
+                                                        alt={image.id}
+                                                    />
+                                                </Link>
+                                                <div className="flex items-center justify-between border-t border-border-subtle px-3 py-2.5">
+                                                    <span className="flex items-center gap-1.5 text-sm font-medium text-fg-tertiary">
+                                                        <Icon.LinkIcon className="h-3.5 w-3.5" />
+                                                        {image.referenceCount}
+                                                    </span>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon-sm"
+                                                        disabled={image.referenceCount > 0}
+                                                        onClick={() => handleDelete(image.id)}>
+                                                        <Icon.TrashCan className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </SurfaceCard>
+                                        ))}
+                                    </div>
+                                    {totalCount && limit < totalCount && (
+                                        <Pagination
+                                            page={page}
+                                            last={Math.ceil(totalCount / limit)}
+                                            onChange={(page) => {
+                                                navigate({
+                                                    search: prev => ({
+                                                        ...prev,
+                                                        page
+                                                    })
+                                                });
+                                            }}
+                                        />
+                                    )}
+                                </>
+                            );
+                        }}
                     />
                 </QueryBoundary>
             </div>

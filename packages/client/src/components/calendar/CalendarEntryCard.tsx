@@ -25,7 +25,7 @@ export const CalendarEntryCard = ({
             params={params}
             className="group block min-h-[44px]">
             <div
-                className={`surface-base flex h-full flex-col justify-center rounded-[12px] border border-border-subtle px-2 py-1.5 transition-colors group-hover:bg-hover-subtle ${toneClassName}`.trim()}>
+                className={`surface-base flex h-full flex-col justify-center px-2 py-1.5 transition-colors group-hover:bg-hover-subtle ${toneClassName}`.trim()}>
                 {header ? (
                     <div className="mb-0.5 flex items-center gap-1 text-fg-muted">
                         {header}

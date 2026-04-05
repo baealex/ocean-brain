@@ -16,7 +16,7 @@ const Empty = forwardRef<HTMLDivElement, EmptyProps>(
                     'bg-muted/30',
                     'border-2 border-dashed',
                     'border-border-secondary',
-                    'rounded-[24px_8px_25px_7px/8px_20px_8px_22px]',
+                    'rounded-[20px]',
                     'p-8',
                     className
                 ].join(' ')}

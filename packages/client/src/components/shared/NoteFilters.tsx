@@ -1,4 +1,4 @@
-import { GridFourIcon, SortAscendingIcon } from '@phosphor-icons/react';
+import * as Icon from '~/components/icon';
 import {
     Checkbox,
     Label,
@@ -34,9 +34,9 @@ export default function NoteFilters({
 }: Props) {
     return (
         <div className="mb-4 flex justify-end">
-            <div className="surface-base inline-flex flex-wrap items-center gap-3 rounded-[16px] border border-border-subtle px-3 py-2">
+            <div className="surface-base inline-flex flex-wrap items-center gap-3 rounded-[16px] px-3 py-2">
                 <div className="flex gap-1.5 items-center">
-                    <GridFourIcon fontSize={20} className="min-w-6 text-fg-tertiary" />
+                    <Icon.Grid className="h-5 w-5 min-w-6 text-fg-tertiary" />
                     <Select
                         value={isAutoLimit ? 'auto' : String(itemsPerPage)}
                         onValueChange={(value) => {
@@ -55,7 +55,7 @@ export default function NoteFilters({
                 <div className="h-5 w-px bg-divider" />
 
                 <div className="flex gap-1.5 items-center">
-                    <SortAscendingIcon fontSize={20} className="min-w-6 text-fg-tertiary" />
+                    <Icon.SortAscending className="h-5 w-5 min-w-6 text-fg-tertiary" />
                     <Select
                         value={sortBy}
                         onValueChange={(value) => onSortByChange(value as SortBy)}

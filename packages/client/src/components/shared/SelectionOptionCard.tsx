@@ -19,10 +19,10 @@ export default function SelectionOptionCard({
         <button
             type="button"
             aria-pressed={selected}
-            className={`focus-ring-soft flex w-full items-start justify-between gap-3 rounded-[14px] border p-3 text-left transition-colors sm:p-4 ${
+            className={`focus-ring-soft flex w-full items-start justify-between gap-3 p-3 text-left transition-colors sm:p-4 ${
                 selected
-                    ? 'surface-floating border-border bg-elevated'
-                    : 'border-border-subtle bg-transparent hover:border-border-secondary hover:bg-hover-subtle'
+                    ? 'surface-floating bg-elevated'
+                    : 'rounded-[14px] border border-border-subtle bg-transparent hover:border-border-secondary hover:bg-hover-subtle'
             }`}
             onClick={onClick}>
             <div className="min-w-0">

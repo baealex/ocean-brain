@@ -1,6 +1,6 @@
 export const priorityColors: Record<string, string> = {
     high: 'bg-accent-danger',
-    medium: 'bg-accent-primary dark:bg-emphasis',
+    medium: 'bg-cta',
     low: 'bg-accent-success'
 };
 

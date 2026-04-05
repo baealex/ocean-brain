@@ -85,7 +85,7 @@ const TableOfContentsComponent = () => {
 
     if (headings.length === 0) {
         return (
-            <div className="surface-base w-full rounded-[20px] border border-border-subtle p-5">
+            <div className="surface-base w-full p-5">
                 <div className="flex items-start gap-3 text-fg-tertiary">
                     <Icon.List className="mt-0.5 text-xl flex-shrink-0" />
                     <div>
@@ -100,7 +100,7 @@ const TableOfContentsComponent = () => {
     }
 
     return (
-        <div className="surface-base w-full rounded-[20px] border border-border-subtle p-5">
+        <div className="surface-base w-full p-5">
             <div className="mb-4 flex items-center gap-2 border-b border-border-subtle pb-3">
                 <Icon.List className="text-lg text-fg-tertiary" />
                 <h3 className="text-sm font-semibold uppercase tracking-[0.1em] text-fg-tertiary">

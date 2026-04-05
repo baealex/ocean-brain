@@ -2,7 +2,6 @@ import { getRouteApi } from '@tanstack/react-router';
 import { QueryBoundary } from '~/components/app';
 import {
     Empty,
-    FallbackRender,
     PageLayout,
     Pagination,
     Skeleton
@@ -43,43 +42,41 @@ export default function Reminders() {
                         limit
                     }}
                     render={({ reminders, totalCount }) => {
+                        if (reminders.length === 0) {
+                            return (
+                                <Empty
+                                    title="No upcoming reminders"
+                                    description="Add reminders to your notes to see them here"
+                                />
+                            );
+                        }
                         return (
-                            <FallbackRender
-                                fallback={(
-                                    <Empty
-                                        title="No upcoming reminders"
-                                        description="Add reminders to your notes to see them here"
-                                    />
-                                )}>
-                                {reminders.length > 0 && (
-                                    <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
-                                        {reminders.map((reminder) => (
-                                            <ReminderCard
-                                                key={reminder.id}
-                                                reminder={reminder}
-                                                onUpdate={onUpdate}
-                                                onDelete={onDelete}
-                                            />
-                                        ))}
-                                    </div>
-                                )}
-                                <FallbackRender fallback={null}>
-                                    {totalCount && limit < totalCount && (
-                                        <Pagination
-                                            page={page}
-                                            last={Math.ceil(totalCount / limit)}
-                                            onChange={(nextPage) => {
-                                                navigate({
-                                                    search: prev => ({
-                                                        ...prev,
-                                                        page: nextPage
-                                                    })
-                                                });
-                                            }}
+                            <>
+                                <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+                                    {reminders.map((reminder) => (
+                                        <ReminderCard
+                                            key={reminder.id}
+                                            reminder={reminder}
+                                            onUpdate={onUpdate}
+                                            onDelete={onDelete}
                                         />
-                                    )}
-                                </FallbackRender>
-                            </FallbackRender>
+                                    ))}
+                                </div>
+                                {totalCount && limit < totalCount && (
+                                    <Pagination
+                                        page={page}
+                                        last={Math.ceil(totalCount / limit)}
+                                        onChange={(nextPage) => {
+                                            navigate({
+                                                search: prev => ({
+                                                    ...prev,
+                                                    page: nextPage
+                                                })
+                                            });
+                                        }}
+                                    />
+                                )}
+                            </>
                         );
                     }}
                 />

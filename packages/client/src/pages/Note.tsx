@@ -157,7 +157,7 @@ function NoteContent({ id }: NoteContentProps) {
             <main className={`mx-auto ${NOTE_LAYOUT_WIDTH[layout]}`}>
                 <div
                     style={{ zIndex: '1001' }}
-                    className="surface-floating sticky top-20 mb-8 rounded-[20px] border border-border-subtle px-5 py-4">
+                    className="surface-floating sticky top-20 mb-8 px-5 py-4">
                     <div className="mb-3 flex items-start justify-between gap-4">
                         <div className="min-w-0 flex-1">
                             <div className="mb-1 text-[0.625rem] font-semibold uppercase tracking-[0.16em] text-fg-tertiary">
@@ -280,7 +280,7 @@ function NoteContent({ id }: NoteContentProps) {
                     <BackReferences
                         noteId={id}
                         render={backReferences => backReferences && backReferences.length > 0 && (
-                            <div className="surface-base rounded-[20px] border border-border-subtle p-4">
+                            <div className="surface-base p-4">
                                 <p className="mb-2 text-sm font-semibold">
                                     Back References
                                 </p>

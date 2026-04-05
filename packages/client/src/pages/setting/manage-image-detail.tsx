@@ -114,7 +114,7 @@ const ManageImageDetail = () => {
                                         </Button>
                                     </Tooltip>
                                     <Button
-                                        variant="subtle"
+                                        variant="primary"
                                         size="sm"
                                         className="flex-1"
                                         onClick={async () => {
@@ -124,7 +124,7 @@ const ManageImageDetail = () => {
                                                 exact: true
                                             });
                                         }}>
-                                        <Icon.Heart size={16} className="fill-red-500 text-red-500" />
+                                        <Icon.Heart size={16} className="text-fg-secondary" />
                                         <span>Set hero banner</span>
                                     </Button>
                                 </div>
@@ -147,10 +147,10 @@ const ManageImageDetail = () => {
                             </ul>
                         </SurfaceCard>
                     ) : (
-                        <SurfaceCard className="flex flex-col items-center justify-center p-8 text-center">
-                            <Icon.Image size={32} className="mb-2 text-fg-disabled" />
+                        <SurfaceCard className="flex flex-col items-center justify-center p-6 text-center">
+                            <Icon.Image size={28} className="mb-2 text-fg-disabled" />
                             <p className="text-sm font-semibold text-fg-secondary">No notes reference this image</p>
-                            <p className="mt-1 text-xs text-fg-placeholder">This image can be safely deleted</p>
+                            <p className="mt-1 text-sm text-fg-secondary">This image can be safely deleted</p>
                         </SurfaceCard>
                     )}
                 </div>

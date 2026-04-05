@@ -82,7 +82,7 @@ const McpSetting = () => {
         <PageLayout title="MCP" description="Manage MCP access and issue a single service token">
             <div className="grid grid-cols-1 gap-4">
                 <SurfaceCard className="p-4 space-y-4">
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="mb-4 flex items-center justify-between gap-4 border-b border-border-subtle pb-4">
                         <div>
                             <h2 className="text-base font-semibold text-fg-default">MCP Access</h2>
                             <p className="text-xs font-medium text-fg-tertiary">
@@ -103,7 +103,7 @@ const McpSetting = () => {
                 </SurfaceCard>
 
                 <SurfaceCard className="p-4 space-y-4">
-                    <div>
+                    <div className="mb-4 border-b border-border-subtle pb-4">
                         <h2 className="text-base font-semibold text-fg-default">Token Management</h2>
                         <p className="text-xs font-medium text-fg-tertiary">
                             Ocean Brain supports one active MCP token per service.
@@ -119,7 +119,7 @@ const McpSetting = () => {
                             Rotate token
                         </Button>
                         <Button
-                            variant="ghost"
+                            variant="soft-danger"
                             onClick={() => revokeTokenMutation.mutate()}
                             isLoading={revokeTokenMutation.isPending}
                             disabled={!status?.hasActiveToken}>
@@ -140,7 +140,7 @@ const McpSetting = () => {
                 </SurfaceCard>
 
                 <SurfaceCard className="p-4 space-y-4">
-                    <div>
+                    <div className="mb-4 border-b border-border-subtle pb-4">
                         <h2 className="text-base font-semibold text-fg-default">Connection Guide</h2>
                         <p className="text-xs font-medium text-fg-tertiary">
                             Default server URL uses current origin. Change it when registering a public host.

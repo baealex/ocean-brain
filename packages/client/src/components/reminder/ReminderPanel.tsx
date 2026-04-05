@@ -88,7 +88,7 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
     };
 
     return (
-        <div className="surface-base mb-5 rounded-[20px] border border-border-subtle p-4">
+        <div className="surface-base mb-5 p-4">
             <div className="mb-3 flex items-center justify-between">
                 <button
                     type="button"
@@ -120,8 +120,8 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                         return (
                             <div className="flex flex-col gap-2">
                                 {reminders.length === 0 ? (
-                                    <p className="text-fg-placeholder text-xs">
-                                        {totalCount === 0 ? 'No reminders.' : 'No incomplete reminders.'}
+                                    <p className="py-3 text-center text-sm text-fg-tertiary">
+                                        {totalCount === 0 ? 'No reminders yet' : 'All reminders complete'}
                                     </p>
                                 ) : (
                                     <div className="flex flex-col gap-1.5">
@@ -140,7 +140,7 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                                                     className={`flex items-start gap-2 rounded-[16px] border border-border-subtle p-3 transition-colors ${
                                                         reminder.completed
                                                             ? 'bg-muted/60'
-                                                            : 'bg-[color:color-mix(in_srgb,var(--surface)_84%,var(--hover-subtle))] hover:bg-hover-subtle'
+                                                            : 'bg-surface hover:bg-hover-subtle'
                                                     }`}>
                                                     <Checkbox
                                                         checked={reminder.completed}
@@ -149,7 +149,7 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                                                     />
                                                     <div className="flex-1 min-w-0">
                                                         <div className="mb-1 flex items-center gap-2">
-                                                            <div className={`font-semibold text-xs text-fg-secondary ${reminder.completed ? 'line-through opacity-50' : ''}`}>
+                                                            <div className={`font-semibold text-sm text-fg-secondary ${reminder.completed ? 'line-through opacity-50' : ''}`}>
                                                                 {formatReminderDate(reminder.reminderDate)}
                                                             </div>
                                                             {!reminder.completed && (
@@ -159,12 +159,12 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                                                             )}
                                                         </div>
                                                         {reminder.content && (
-                                                            <div className={`text-xs text-fg-tertiary ${reminder.completed ? 'line-through opacity-50' : ''} truncate`}>
+                                                            <div className={`text-sm text-fg-tertiary ${reminder.completed ? 'line-through opacity-50' : ''} truncate`}>
                                                                 {reminder.content}
                                                             </div>
                                                         )}
                                                         {!reminder.completed && (
-                                                            <span className={`mt-1 inline-flex text-[10px] font-medium ${urgency === 'high' ? 'text-fg-error' : 'text-fg-placeholder'}`}>
+                                                            <span className={`mt-1 inline-flex text-xs font-medium ${urgency === 'high' ? 'text-fg-error' : 'text-fg-placeholder'}`}>
                                                                 {timeRemaining}
                                                             </span>
                                                         )}

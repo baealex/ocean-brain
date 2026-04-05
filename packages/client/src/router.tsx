@@ -15,6 +15,7 @@ import {
     NOTE_ROUTE,
     REMINDERS_ROUTE,
     SEARCH_ROUTE,
+    SETTINGS_MCP_ROUTE,
     SETTINGS_MANAGE_IMAGE_DETAIL_ROUTE,
     SETTINGS_MANAGE_IMAGE_ROUTE,
     SETTINGS_PLACEHOLDER_ROUTE,
@@ -149,6 +150,18 @@ const settingsRoute = createRoute({
     )
 });
 
+const mcpRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: SETTINGS_MCP_ROUTE,
+    component: lazyRouteComponent(() => import('~/pages/setting/mcp')),
+    pendingComponent: () => (
+        <RoutePendingView
+            title="Loading MCP settings"
+            description="Preparing MCP access controls."
+        />
+    )
+});
+
 const trashRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: SETTINGS_TRASH_ROUTE,
@@ -210,6 +223,7 @@ const routeTree = rootRoute.addChildren([
     noteRoute,
     tagNotesRoute,
     settingsRoute,
+    mcpRoute,
     trashRoute,
     manageImageRoute,
     manageImageDetailRoute,

@@ -68,12 +68,11 @@ program
     .description('Start MCP server for AI integration')
     .option('-s, --server <url>', 'Ocean Brain server URL', 'http://localhost:6683')
     .option('--token-file <path>', 'read the MCP bearer token from a file')
-    .option('--token-env <name>', 'environment variable name to read the MCP bearer token from', 'OCEAN_BRAIN_MCP_TOKEN')
     .option('--token <token>', 'explicit MCP bearer token fallback')
     .option('--write-safety-dir <path>', 'directory for pending MCP write confirmations and operation logs')
     .action(async (opts) => {
         const { startMcpServer } = await import('./mcp.js');
-        const token = resolveMcpBearerToken(opts, process.env);
+        const token = resolveMcpBearerToken(opts);
         const writeSafetyDir = opts.writeSafetyDir || process.env.OCEAN_BRAIN_MCP_WRITE_SAFETY_DIR;
         await startMcpServer(opts.server, token, { writeSafetyDir });
     });

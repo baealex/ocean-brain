@@ -23,20 +23,6 @@ type DevGateResponse = {
 
 type DevGateNext = () => void;
 
-export const isPasswordModeEnabled = (env: Record<string, string | undefined>) => {
-    const explicitMode = env.OCEAN_BRAIN_AUTH_MODE?.trim();
-
-    if (explicitMode === 'disabled') {
-        return false;
-    }
-
-    if (explicitMode === 'password') {
-        return true;
-    }
-
-    return Boolean(env.OCEAN_BRAIN_PASSWORD);
-};
-
 export const shouldBypassDevAuthGate = (pathname: string) => {
     return (
         pathname.startsWith('/@')
@@ -56,13 +42,12 @@ export const buildDevAuthLoginRedirect = (requestUrl: string) => {
 
 export const createDevAuthGateMiddleware = (options: {
     backendOrigin: string;
-    enabled: boolean;
     fetchImpl?: typeof fetch;
 }) => {
     const fetchImpl = options.fetchImpl ?? fetch;
 
     return async (req: DevGateRequest, res: DevGateResponse, next: DevGateNext) => {
-        if (!options.enabled || req.method !== 'GET') {
+        if (req.method !== 'GET') {
             next();
             return;
         }

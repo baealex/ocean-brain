@@ -9,13 +9,10 @@ export interface AuthConfig {
 
 export interface AuthModeEnvironment {
     [key: string]: string | undefined;
-    OCEAN_BRAIN_AUTH_MODE?: string;
     OCEAN_BRAIN_ALLOW_INSECURE_NO_AUTH?: string;
     OCEAN_BRAIN_PASSWORD?: string;
     OCEAN_BRAIN_SESSION_SECRET?: string;
 }
-
-const AUTH_MODE_VALUES: AuthMode[] = ['password', 'disabled'];
 
 const isTruthy = (value?: string) => {
     if (!value) {
@@ -40,38 +37,7 @@ const ensurePasswordModeRequirements = (env: AuthModeEnvironment) => {
 };
 
 export const resolveAuthConfig = (env: AuthModeEnvironment): AuthConfig => {
-    const explicitMode = env.OCEAN_BRAIN_AUTH_MODE?.trim();
     const allowInsecureNoAuth = isTruthy(env.OCEAN_BRAIN_ALLOW_INSECURE_NO_AUTH);
-
-    if (explicitMode && !AUTH_MODE_VALUES.includes(explicitMode as AuthMode)) {
-        throw new Error(
-            `Invalid OCEAN_BRAIN_AUTH_MODE "${explicitMode}". Expected one of: password, disabled.`
-        );
-    }
-
-    if (explicitMode === 'password') {
-        if (allowInsecureNoAuth) {
-            throw new Error(
-                'Conflicting auth config: OCEAN_BRAIN_AUTH_MODE=password cannot be combined with OCEAN_BRAIN_ALLOW_INSECURE_NO_AUTH=true.'
-            );
-        }
-
-        ensurePasswordModeRequirements(env);
-
-        return {
-            mode: 'password',
-            password: env.OCEAN_BRAIN_PASSWORD,
-            sessionSecret: env.OCEAN_BRAIN_SESSION_SECRET,
-            source: 'override'
-        };
-    }
-
-    if (explicitMode === 'disabled') {
-        return {
-            mode: 'disabled',
-            source: 'override'
-        };
-    }
 
     if (allowInsecureNoAuth) {
         return {

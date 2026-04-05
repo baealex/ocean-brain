@@ -3,22 +3,10 @@ import { describe, expect, it, vi } from 'vitest';
 import {
     buildDevAuthLoginRedirect,
     createDevAuthGateMiddleware,
-    isPasswordModeEnabled,
     shouldBypassDevAuthGate
 } from '../dev-auth-gate';
 
 describe('dev auth gate', () => {
-    it('enables password mode when password env or explicit password mode is set', () => {
-        expect(isPasswordModeEnabled({ OCEAN_BRAIN_PASSWORD: 'secret' })).toBe(true);
-
-        expect(isPasswordModeEnabled({ OCEAN_BRAIN_AUTH_MODE: 'password' })).toBe(true);
-
-        expect(isPasswordModeEnabled({
-            OCEAN_BRAIN_AUTH_MODE: 'disabled',
-            OCEAN_BRAIN_PASSWORD: 'secret'
-        })).toBe(false);
-    });
-
     it('bypasses vite internals and proxied server paths', () => {
         expect(shouldBypassDevAuthGate('/@vite/client')).toBe(true);
         expect(shouldBypassDevAuthGate('/src/main.tsx')).toBe(true);
@@ -43,7 +31,6 @@ describe('dev auth gate', () => {
         });
         const middleware = createDevAuthGateMiddleware({
             backendOrigin: 'http://localhost:6683',
-            enabled: true,
             fetchImpl: fetchImpl as unknown as typeof fetch
         });
         const response = {
@@ -74,7 +61,6 @@ describe('dev auth gate', () => {
     it('allows html requests through when the backend session is authenticated', async () => {
         const middleware = createDevAuthGateMiddleware({
             backendOrigin: 'http://localhost:6683',
-            enabled: true,
             fetchImpl: vi.fn().mockResolvedValue({
                 ok: true,
                 json: async () => ({
@@ -107,7 +93,6 @@ describe('dev auth gate', () => {
         const fetchImpl = vi.fn().mockRejectedValue(new TypeError('fetch failed'));
         const middleware = createDevAuthGateMiddleware({
             backendOrigin: 'http://localhost:6683',
-            enabled: true,
             fetchImpl: fetchImpl as unknown as typeof fetch
         });
         const response = {

@@ -10,7 +10,7 @@ packages/cli/dist
 packages/cli/server
 packages/server/prisma/data/*
 !packages/server/prisma/data/.gitkeep
-packages/server/public/assets/images
+packages/server/assets/images
 docs/private/
 .worktrees/
 .npm-cache

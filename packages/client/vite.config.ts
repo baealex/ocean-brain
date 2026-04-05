@@ -17,9 +17,7 @@ export default defineConfig({
         {
             name: 'ocean-brain-dev-auth-gate',
             configureServer(server) {
-                server.middlewares.use(createDevAuthGateMiddleware({
-                    backendOrigin
-                }));
+                server.middlewares.use(createDevAuthGateMiddleware({ backendOrigin }));
             }
         }
     ],

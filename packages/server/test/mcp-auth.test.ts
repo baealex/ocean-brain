@@ -3,15 +3,15 @@ import assert from 'node:assert/strict';
 import type { AddressInfo } from 'node:net';
 
 import type { AuthConfig } from '../src/modules/auth-mode.js';
-import type { McpAuthConfig } from '../src/modules/mcp-auth.js';
+import type { McpAdminService } from '../src/modules/mcp-admin.js';
 import { createAppWithMcpAuth } from '../src/app.js';
 
 const startServer = async (
     t: TestContext,
     authConfig: AuthConfig,
-    mcpAuthConfig: McpAuthConfig
+    mcpAdminAuth: McpAdminService
 ) => {
-    const app = createAppWithMcpAuth(authConfig, mcpAuthConfig);
+    const app = createAppWithMcpAuth(authConfig, mcpAdminAuth);
     const server = app.listen(0);
 
     await new Promise<void>((resolve, reject) => {
@@ -129,13 +129,56 @@ const updateNoteRequest = async (
     };
 };
 
+const createMcpAdminAuth = (options: {
+    enabled: boolean;
+    expectedToken?: string;
+    configured?: boolean;
+}): McpAdminService => {
+    const expectedToken = options.expectedToken ?? 'mcp-secret';
+    const configured = options.configured ?? true;
+
+    return {
+        setEnabled: async () => {},
+        rotateToken: async () => ({ token: 'issued-mcp-token' }),
+        revokeActiveToken: async () => {},
+        getStatus: async () => ({
+            enabled: options.enabled,
+            hasActiveToken: configured,
+            token: configured
+                ? {
+                    id: '1',
+                    createdAt: '2026-04-04T00:00:00.000Z',
+                    lastUsedAt: null
+                }
+                : null
+        }),
+        validatePresentedToken: async (token) => {
+            if (!configured) {
+                return {
+                    ok: false,
+                    reason: 'not_configured'
+                };
+            }
+
+            if (token === expectedToken) {
+                return { ok: true };
+            }
+
+            return {
+                ok: false,
+                reason: 'forbidden'
+            };
+        }
+    };
+};
+
 test('password mode requires a valid bearer token on the MCP graphql endpoint', async (t) => {
     const { baseUrl } = await startServer(t, {
         mode: 'password',
         password: 'secret',
         sessionSecret: 'session-secret',
         source: 'override'
-    }, { tokens: ['mcp-secret'] });
+    }, createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }));
 
     const unauthorized = await graphRequest(baseUrl, '/graphql/mcp', 'query { __typename }');
     assert.equal(unauthorized.status, 401);
@@ -156,7 +199,7 @@ test('password mode keeps the MCP graphql endpoint read-only even with a valid b
         password: 'secret',
         sessionSecret: 'session-secret',
         source: 'override'
-    }, { tokens: ['mcp-secret'] });
+    }, createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }));
 
     const mutation = await graphRequest(baseUrl, '/graphql/mcp', 'mutation { __typename }', 'mcp-secret');
     assert.equal(mutation.status, 200);
@@ -166,22 +209,22 @@ test('password mode keeps the MCP graphql endpoint read-only even with a valid b
     );
 });
 
-test('disabled mode allows read-only MCP graphql access without a token', async (t) => {
+test('mcp disabled state blocks MCP graphql access even with a valid token', async (t) => {
     const { baseUrl } = await startServer(t, {
         mode: 'disabled',
         source: 'override'
-    }, { tokens: [] });
+    }, createMcpAdminAuth({ enabled: false, expectedToken: 'mcp-secret' }));
 
-    const query = await graphRequest(baseUrl, '/graphql/mcp', 'query { __typename }');
-    assert.equal(query.status, 200);
-    assert.equal((query.body.data as { __typename?: string }).__typename, 'Query');
+    const query = await graphRequest(baseUrl, '/graphql/mcp', 'query { __typename }', 'mcp-secret');
+    assert.equal(query.status, 403);
+    assert.equal(query.body.code, 'MCP_DISABLED');
 });
 
-test('disabled mode still requires a valid bearer token on the MCP note delete endpoint', async (t) => {
+test('enabled state still requires a valid bearer token on the MCP note delete endpoint', async (t) => {
     const { baseUrl } = await startServer(t, {
         mode: 'disabled',
         source: 'override'
-    }, { tokens: ['mcp-secret'] });
+    }, createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }));
 
     const unauthorized = await deleteNoteRequest(baseUrl, '1');
     assert.equal(unauthorized.status, 401);
@@ -196,11 +239,11 @@ test('disabled mode still requires a valid bearer token on the MCP note delete e
     assert.equal(authorized.body.code, 'INVALID_NOTE_ID');
 });
 
-test('disabled mode still requires a valid bearer token on the MCP note create endpoint', async (t) => {
+test('enabled state still requires a valid bearer token on the MCP note create endpoint', async (t) => {
     const { baseUrl } = await startServer(t, {
         mode: 'disabled',
         source: 'override'
-    }, { tokens: ['mcp-secret'] });
+    }, createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }));
 
     const unauthorized = await createNoteRequest(baseUrl, {});
     assert.equal(unauthorized.status, 401);
@@ -215,11 +258,11 @@ test('disabled mode still requires a valid bearer token on the MCP note create e
     assert.equal(authorized.body.code, 'INVALID_NOTE_TITLE');
 });
 
-test('disabled mode still requires a valid bearer token on the MCP note update endpoint', async (t) => {
+test('enabled state still requires a valid bearer token on the MCP note update endpoint', async (t) => {
     const { baseUrl } = await startServer(t, {
         mode: 'disabled',
         source: 'override'
-    }, { tokens: ['mcp-secret'] });
+    }, createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }));
 
     const unauthorized = await updateNoteRequest(baseUrl, { id: 'abc' });
     assert.equal(unauthorized.status, 401);
@@ -234,11 +277,11 @@ test('disabled mode still requires a valid bearer token on the MCP note update e
     assert.equal(authorized.body.code, 'INVALID_NOTE_ID');
 });
 
-test('disabled mode still requires a valid bearer token on the MCP tag create endpoint', async (t) => {
+test('enabled state still requires a valid bearer token on the MCP tag create endpoint', async (t) => {
     const { baseUrl } = await startServer(t, {
         mode: 'disabled',
         source: 'override'
-    }, { tokens: ['mcp-secret'] });
+    }, createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }));
 
     const unauthorized = await createTagRequest(baseUrl, '');
     assert.equal(unauthorized.status, 401);
@@ -259,7 +302,7 @@ test('password mode returns configuration error on the MCP note delete endpoint 
         password: 'secret',
         sessionSecret: 'session-secret',
         source: 'override'
-    }, { tokens: [] });
+    }, createMcpAdminAuth({ enabled: true, configured: false }));
 
     const response = await deleteNoteRequest(baseUrl, '1', 'mcp-secret');
     assert.equal(response.status, 503);
@@ -272,7 +315,7 @@ test('password mode returns configuration error on the MCP note create endpoint 
         password: 'secret',
         sessionSecret: 'session-secret',
         source: 'override'
-    }, { tokens: [] });
+    }, createMcpAdminAuth({ enabled: true, configured: false }));
 
     const response = await createNoteRequest(baseUrl, { title: 'Draft' }, 'mcp-secret');
     assert.equal(response.status, 503);
@@ -285,7 +328,7 @@ test('password mode returns configuration error on the MCP note update endpoint 
         password: 'secret',
         sessionSecret: 'session-secret',
         source: 'override'
-    }, { tokens: [] });
+    }, createMcpAdminAuth({ enabled: true, configured: false }));
 
     const response = await updateNoteRequest(baseUrl, { id: '1', title: 'Draft' }, 'mcp-secret');
     assert.equal(response.status, 503);
@@ -298,7 +341,7 @@ test('password mode returns configuration error on the MCP tag create endpoint w
         password: 'secret',
         sessionSecret: 'session-secret',
         source: 'override'
-    }, { tokens: [] });
+    }, createMcpAdminAuth({ enabled: true, configured: false }));
 
     const response = await createTagRequest(baseUrl, 'project', 'mcp-secret');
     assert.equal(response.status, 503);

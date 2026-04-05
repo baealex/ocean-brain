@@ -2,35 +2,19 @@ import type { NextFunction, Request, Response, RequestHandler } from 'express';
 import type { ValidationRule } from 'graphql';
 import { GraphQLError } from 'graphql';
 
-import { compareSharedSecret } from './auth.js';
 import type { AuthConfig } from './auth-mode.js';
 
-export interface McpAuthConfig {
-    tokens: string[];
+export interface McpTokenValidationResult {
+    ok: boolean;
+    reason?: 'not_configured' | 'forbidden';
 }
 
-export interface McpAuthMiddlewareOptions {
-    allowAnonymousWhenDisabled?: boolean;
-}
-
-export interface McpAuthEnvironment {
-    [key: string]: string | undefined;
-    OCEAN_BRAIN_MCP_TOKEN?: string;
-    OCEAN_BRAIN_MCP_TOKENS?: string;
+export interface McpAdminAuthPort {
+    getStatus: () => Promise<{ enabled: boolean }>;
+    validatePresentedToken: (token: string) => Promise<McpTokenValidationResult>;
 }
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
-
-const splitTokens = (value?: string) => {
-    if (!value) {
-        return [];
-    }
-
-    return value
-        .split(/[,\r\n]+/)
-        .map((token) => token.trim())
-        .filter(Boolean);
-};
 
 const readBearerToken = (authorizationHeader?: string) => {
     if (!authorizationHeader?.startsWith('Bearer ')) {
@@ -40,67 +24,69 @@ const readBearerToken = (authorizationHeader?: string) => {
     return authorizationHeader.slice('Bearer '.length).trim() || undefined;
 };
 
-export const resolveMcpAuthConfig = (env: McpAuthEnvironment): McpAuthConfig => {
-    return {
-        tokens: Array.from(new Set([
-            ...splitTokens(env.OCEAN_BRAIN_MCP_TOKEN),
-            ...splitTokens(env.OCEAN_BRAIN_MCP_TOKENS)
-        ]))
-    };
-};
-
 export const createMcpAuthMiddleware = (
-    authConfig: AuthConfig,
-    mcpAuthConfig: McpAuthConfig,
-    options: McpAuthMiddlewareOptions = {}
+    _authConfig: AuthConfig,
+    mcpAdminAuth: McpAdminAuthPort
 ): RequestHandler => {
-    return (req: Request, res: Response, next: NextFunction) => {
-        if (authConfig.mode === 'disabled' && (options.allowAnonymousWhenDisabled ?? true)) {
+    return async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const status = await mcpAdminAuth.getStatus();
+            if (!status.enabled) {
+                res
+                    .status(403)
+                    .set(JSON_HEADERS)
+                    .json({
+                        code: 'MCP_DISABLED',
+                        message: 'MCP access is disabled by admin.'
+                    })
+                    .end();
+                return;
+            }
+
+            const bearerToken = readBearerToken(req.headers.authorization);
+
+            if (!bearerToken) {
+                res
+                    .status(401)
+                    .set(JSON_HEADERS)
+                    .json({
+                        code: 'UNAUTHORIZED',
+                        message: 'A valid MCP bearer token is required.'
+                    })
+                    .end();
+                return;
+            }
+
+            const validation = await mcpAdminAuth.validatePresentedToken(bearerToken);
+
+            if (!validation.ok && validation.reason === 'not_configured') {
+                res
+                    .status(503)
+                    .set(JSON_HEADERS)
+                    .json({
+                        code: 'MCP_AUTH_NOT_CONFIGURED',
+                        message: 'MCP bearer auth is not configured.'
+                    })
+                    .end();
+                return;
+            }
+
+            if (!validation.ok) {
+                res
+                    .status(403)
+                    .set(JSON_HEADERS)
+                    .json({
+                        code: 'FORBIDDEN',
+                        message: 'Invalid MCP bearer token.'
+                    })
+                    .end();
+                return;
+            }
+
             next();
-            return;
+        } catch (error) {
+            next(error);
         }
-
-        if (mcpAuthConfig.tokens.length === 0) {
-            res
-                .status(503)
-                .set(JSON_HEADERS)
-                .json({
-                    code: 'MCP_AUTH_NOT_CONFIGURED',
-                    message: 'MCP bearer auth is not configured for password mode.'
-                })
-                .end();
-            return;
-        }
-
-        const bearerToken = readBearerToken(req.headers.authorization);
-
-        if (!bearerToken) {
-            res
-                .status(401)
-                .set(JSON_HEADERS)
-                .json({
-                    code: 'UNAUTHORIZED',
-                    message: 'A valid MCP bearer token is required.'
-                })
-                .end();
-            return;
-        }
-
-        const isValidToken = mcpAuthConfig.tokens.some((token) => compareSharedSecret(token, bearerToken));
-
-        if (!isValidToken) {
-            res
-                .status(403)
-                .set(JSON_HEADERS)
-                .json({
-                    code: 'FORBIDDEN',
-                    message: 'Invalid MCP bearer token.'
-                })
-                .end();
-            return;
-        }
-
-        next();
     };
 };
 

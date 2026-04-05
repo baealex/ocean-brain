@@ -5,6 +5,7 @@ import * as Icon from '~/components/icon';
 
 import { useTheme } from '~/store/theme';
 import {
+    SETTINGS_MCP_ROUTE,
     SETTINGS_MANAGE_IMAGE_ROUTE,
     SETTINGS_PLACEHOLDER_ROUTE,
     SETTINGS_TRASH_ROUTE
@@ -33,6 +34,15 @@ const Setting = () => {
                         {theme === 'dark' ? 'Dark mode' : 'Light mode'}
                     </span>
                 </button>
+                <Link
+                    to={SETTINGS_MCP_ROUTE}
+                    className={cardClassName}>
+                    <Icon.LinkIcon className="h-8 w-8 text-fg-secondary" />
+                    <span className="font-semibold">MCP</span>
+                    <span className="text-xs font-medium text-fg-tertiary">
+                        Manage AI integration access
+                    </span>
+                </Link>
                 <Link
                     to={SETTINGS_TRASH_ROUTE}
                     search={{ page: 1 }}

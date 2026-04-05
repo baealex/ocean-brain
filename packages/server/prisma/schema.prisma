@@ -15,6 +15,16 @@ model Cache {
     updatedAt DateTime @updatedAt
 }
 
+model McpToken {
+    id         Int      @id @default(autoincrement())
+    tokenHash  String
+    createdAt  DateTime @default(now())
+    lastUsedAt DateTime?
+    revokedAt  DateTime?
+
+    @@index([revokedAt, createdAt])
+}
+
 model Note {
     id        Int        @id @default(autoincrement())
     title     String

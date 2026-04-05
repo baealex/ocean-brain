@@ -120,7 +120,7 @@ const requireWriteToken = (token: string | undefined, toolName: string) => {
         return token;
     }
 
-    throw new Error(`${toolName} requires an MCP bearer token. Set --token, --token-file, or --token-env.`);
+    throw new Error(`${toolName} requires an MCP bearer token. Set --token or --token-file.`);
 };
 
 export async function startMcpServer(

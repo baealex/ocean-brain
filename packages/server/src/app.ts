@@ -10,10 +10,9 @@ import { createSessionMiddleware, isAuthenticatedRequest, requireSessionForGraph
 import type { AuthConfig } from './modules/auth-mode.js';
 import {
     createMcpAuthMiddleware,
-    createReadOnlyMcpValidationRule,
-    resolveMcpAuthConfig,
-    type McpAuthConfig
+    createReadOnlyMcpValidationRule
 } from './modules/mcp-auth.js';
+import { createMcpAdminService, type McpAdminService } from './modules/mcp-admin.js';
 import {
     createLoginPageHandler,
     createLoginPageSubmitHandler,
@@ -43,11 +42,11 @@ const shouldBlockClientRoute = (authConfig: AuthConfig, requestPath: string, aut
 };
 
 export const createApp = (authConfig: AuthConfig) => {
-    const mcpAuthConfig = resolveMcpAuthConfig(process.env);
-    return createAppWithMcpAuth(authConfig, mcpAuthConfig);
+    const mcpAdminService = createMcpAdminService();
+    return createAppWithMcpAuth(authConfig, mcpAdminService);
 };
 
-export const createAppWithMcpAuth = (authConfig: AuthConfig, mcpAuthConfig: McpAuthConfig) => {
+export const createAppWithMcpAuth = (authConfig: AuthConfig, mcpAdminService: McpAdminService) => {
     const app = express();
     app.locals.authConfig = authConfig;
 
@@ -66,29 +65,29 @@ export const createAppWithMcpAuth = (authConfig: AuthConfig, mcpAuthConfig: McpA
         .use('/assets/images/', express.static(paths.imageDir))
         .post(
             '/api/mcp/notes/create',
-            createMcpAuthMiddleware(authConfig, mcpAuthConfig, { allowAnonymousWhenDisabled: false }),
+            createMcpAuthMiddleware(authConfig, mcpAdminService),
             useAsync(createMcpCreateNoteHandler())
         )
         .post(
             '/api/mcp/notes/update',
-            createMcpAuthMiddleware(authConfig, mcpAuthConfig, { allowAnonymousWhenDisabled: false }),
+            createMcpAuthMiddleware(authConfig, mcpAdminService),
             useAsync(createMcpUpdateNoteHandler())
         )
         .post(
             '/api/mcp/tags/create',
-            createMcpAuthMiddleware(authConfig, mcpAuthConfig, { allowAnonymousWhenDisabled: false }),
+            createMcpAuthMiddleware(authConfig, mcpAdminService),
             useAsync(createMcpCreateTagHandler())
         )
         .post(
             '/api/mcp/notes/delete',
-            createMcpAuthMiddleware(authConfig, mcpAuthConfig, { allowAnonymousWhenDisabled: false }),
+            createMcpAuthMiddleware(authConfig, mcpAdminService),
             useAsync(createMcpDeleteNoteHandler())
         )
-        .use('/api', createApiRouter(authConfig))
+        .use('/api', createApiRouter(authConfig, mcpAdminService))
         .get('/auth/login', createLoginPageHandler(authConfig))
         .post('/auth/login', createLoginPageSubmitHandler(authConfig))
         .post('/auth/logout', createLogoutPageHandler(authConfig))
-        .use('/graphql/mcp', createMcpAuthMiddleware(authConfig, mcpAuthConfig), createHandler({
+        .use('/graphql/mcp', createMcpAuthMiddleware(authConfig, mcpAdminService), createHandler({
             schema,
             context: (req) => ({
                 authMode: authConfig.mode,

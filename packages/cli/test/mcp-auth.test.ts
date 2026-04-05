@@ -6,49 +6,23 @@ import assert from 'node:assert/strict';
 
 import { resolveMcpBearerToken } from '../src/mcp-auth.js';
 
-test('resolveMcpBearerToken prefers token-file over env and direct token', () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ocean-brain-mcp-token-'));
-    const tokenFile = path.join(tempDir, 'token.txt');
+const writeTempToken = (value: string) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ocean-brain-mcp-token-'));
+    const tokenFile = path.join(dir, 'token.txt');
+    fs.writeFileSync(tokenFile, `${value}\n`, 'utf-8');
+    return tokenFile;
+};
 
-    fs.writeFileSync(tokenFile, 'from-file\n', 'utf-8');
-
-    assert.equal(
-        resolveMcpBearerToken(
-            {
-                tokenFile,
-                tokenEnv: 'CUSTOM_TOKEN',
-                token: 'from-option'
-            },
-            {
-                CUSTOM_TOKEN: 'from-env'
-            }
-        ),
-        'from-file'
-    );
+test('resolveMcpBearerToken prefers token-file over direct token', () => {
+    const tokenFile = writeTempToken('from-file');
+    const token = resolveMcpBearerToken({
+        tokenFile,
+        token: 'from-option'
+    });
+    assert.equal(token, 'from-file');
 });
 
-test('resolveMcpBearerToken reads the configured token env name', () => {
-    assert.equal(
-        resolveMcpBearerToken(
-            {
-                tokenEnv: 'CUSTOM_TOKEN'
-            },
-            {
-                CUSTOM_TOKEN: 'from-env'
-            }
-        ),
-        'from-env'
-    );
-});
-
-test('resolveMcpBearerToken falls back to the direct token when no file or env token exists', () => {
-    assert.equal(
-        resolveMcpBearerToken(
-            {
-                token: 'from-option'
-            },
-            {}
-        ),
-        'from-option'
-    );
+test('resolveMcpBearerToken falls back to direct token', () => {
+    const token = resolveMcpBearerToken({ token: 'from-option' });
+    assert.equal(token, 'from-option');
 });

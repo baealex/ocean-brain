@@ -26,7 +26,6 @@ program
     .option('-p, --port <port>', 'port to listen on', '6683')
     .option('-H, --host <host>', 'host to bind to', '0.0.0.0')
     .option('--allow-insecure-no-auth', 'explicitly disable auth protection for local or trusted environments')
-    .option('--auth-mode <mode>', 'override auth mode (password|disabled)')
     .action(async (opts) => {
         try {
             const defaultRoot = path.resolve(os.homedir(), '.ocean-brain');
@@ -45,10 +44,6 @@ program
             process.env.HOST = process.env.HOST || opts.host;
 
             const authEnvironment = resolveServeAuthEnvironment(opts, process.env);
-
-            if (authEnvironment.OCEAN_BRAIN_AUTH_MODE) {
-                process.env.OCEAN_BRAIN_AUTH_MODE = authEnvironment.OCEAN_BRAIN_AUTH_MODE;
-            }
 
             if (authEnvironment.OCEAN_BRAIN_ALLOW_INSECURE_NO_AUTH) {
                 process.env.OCEAN_BRAIN_ALLOW_INSECURE_NO_AUTH = authEnvironment.OCEAN_BRAIN_ALLOW_INSECURE_NO_AUTH;

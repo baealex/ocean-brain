@@ -26,14 +26,11 @@ test('resolveAuthConfig throws when password mode is missing session secret', ()
     );
 });
 
-test('resolveAuthConfig throws on conflicting explicit password and insecure flag', () => {
-    assert.throws(
-        () => resolveAuthConfig({
-            OCEAN_BRAIN_AUTH_MODE: 'password',
-            OCEAN_BRAIN_ALLOW_INSECURE_NO_AUTH: 'true',
-            OCEAN_BRAIN_PASSWORD: 'secret',
-            OCEAN_BRAIN_SESSION_SECRET: 'session-secret'
-        }),
-        /Conflicting auth config/
-    );
+test('resolveAuthConfig prioritizes insecure flag when both insecure flag and password env are present', () => {
+    const authConfig = resolveAuthConfig({
+        OCEAN_BRAIN_ALLOW_INSECURE_NO_AUTH: 'true',
+        OCEAN_BRAIN_PASSWORD: 'secret'
+    });
+
+    assert.equal(authConfig.mode, 'disabled');
 });

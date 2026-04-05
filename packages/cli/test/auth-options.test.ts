@@ -12,40 +12,32 @@ test('resolveServeAuthEnvironment maps allow insecure flag to canonical env', ()
     assert.equal(authEnv.OCEAN_BRAIN_ALLOW_INSECURE_NO_AUTH, 'true');
 });
 
-test('resolveServeAuthEnvironment preserves explicit password mode', () => {
-    const authEnv = resolveServeAuthEnvironment(
-        { authMode: 'password' },
-        {
-            OCEAN_BRAIN_PASSWORD: 'secret',
-            OCEAN_BRAIN_SESSION_SECRET: 'session-secret'
-        }
-    );
-
-    assert.equal(authEnv.OCEAN_BRAIN_AUTH_MODE, 'password');
-});
-
-test('resolveServeAuthEnvironment throws on conflicting password mode and insecure flag', () => {
+test('resolveServeAuthEnvironment validates password mode requirements when password env is present', () => {
     assert.throws(
         () => resolveServeAuthEnvironment(
-            {
-                authMode: 'password',
-                allowInsecureNoAuth: true
-            },
-            {
-                OCEAN_BRAIN_PASSWORD: 'secret',
-                OCEAN_BRAIN_SESSION_SECRET: 'session-secret'
-            }
-        ),
-        /Conflicting auth config/
-    );
-});
-
-test('resolveServeAuthEnvironment throws when password mode is missing session secret', () => {
-    assert.throws(
-        () => resolveServeAuthEnvironment(
-            { authMode: 'password' },
+            {},
             { OCEAN_BRAIN_PASSWORD: 'secret' }
         ),
         /OCEAN_BRAIN_SESSION_SECRET/
     );
+});
+
+test('resolveServeAuthEnvironment skips password requirements when insecure flag is enabled', () => {
+    const authEnv = resolveServeAuthEnvironment(
+        { allowInsecureNoAuth: true },
+        {
+            OCEAN_BRAIN_PASSWORD: 'secret'
+        }
+    );
+
+    assert.equal(authEnv.OCEAN_BRAIN_ALLOW_INSECURE_NO_AUTH, 'true');
+});
+
+test('resolveServeAuthEnvironment validates explicit insecure flag from existing env', () => {
+    const authEnv = resolveServeAuthEnvironment(
+        {},
+        { OCEAN_BRAIN_ALLOW_INSECURE_NO_AUTH: 'true' }
+    );
+
+    assert.equal(authEnv.OCEAN_BRAIN_ALLOW_INSECURE_NO_AUTH, 'true');
 });

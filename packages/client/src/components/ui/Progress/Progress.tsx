@@ -22,7 +22,7 @@ const Progress = forwardRef<HTMLDivElement, ProgressProps>(
                     'w-full h-3',
                     'bg-surface',
                     'border-2 border-border',
-                    'rounded-[6px_2px_7px_2px/2px_5px_2px_6px]',
+                    'rounded-[6px]',
                     'overflow-hidden',
                     className
                 ].join(' ')}

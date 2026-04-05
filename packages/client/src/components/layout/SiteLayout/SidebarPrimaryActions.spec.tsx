@@ -15,8 +15,8 @@ describe('<SidebarPrimaryActions />', () => {
         const captureButton = screen.getByRole('button', { name: /capture/i });
 
         expect(captureButton).toBeInTheDocument();
+        expect(screen.getByText('Start a new note right away')).toBeInTheDocument();
         expect(screen.getByText('Pinned')).toBeInTheDocument();
-        expect(screen.getByText('Deliberately kept close for repeat reference.')).toBeInTheDocument();
         expect(screen.getByTestId('pinned-notes-panel')).toBeInTheDocument();
 
         fireEvent.click(captureButton);

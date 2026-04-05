@@ -21,7 +21,7 @@ interface Props {
     type: CalendarDisplayType;
 }
 
-const renderItems = (items: CalendarItem[], type: CalendarDisplayType, isPast: boolean) =>
+const renderItems = (items: CalendarItem[], type: CalendarDisplayType) =>
     items.map((calendarItem) =>
         calendarItem.type === 'note' ? (
             <NoteCard
@@ -33,7 +33,6 @@ const renderItems = (items: CalendarItem[], type: CalendarDisplayType, isPast: b
             <ReminderCard
                 key={`reminder-${calendarItem.item.id}`}
                 reminder={calendarItem.item}
-                isPast={isPast}
             />
         )
     );
@@ -67,12 +66,12 @@ const CalendarDayComponent = ({
 
     const hasOverflow = sortedItems.length > MAX_VISIBLE_ITEMS;
     const visibleItems = useMemo(
-        () => renderItems(sortedItems.slice(0, MAX_VISIBLE_ITEMS), type, isPast),
-        [isPast, sortedItems, type]
+        () => renderItems(sortedItems.slice(0, MAX_VISIBLE_ITEMS), type),
+        [sortedItems, type]
     );
     const allItems = useMemo(
-        () => renderItems(sortedItems, type, isPast),
-        [isPast, sortedItems, type]
+        () => renderItems(sortedItems, type),
+        [sortedItems, type]
     );
 
     const handleOpenModal = useCallback(() => setIsModalOpen(true), []);
@@ -90,7 +89,7 @@ const CalendarDayComponent = ({
 
     const getDayNumberStyle = () => {
         if (isToday) {
-            return 'border border-border-secondary/60 bg-accent-soft-primary text-accent-primary font-semibold';
+            return 'bg-cta text-fg-on-filled font-semibold';
         }
         if (!isCurrentMonth) {
             return 'text-fg-disabled opacity-55';

@@ -110,10 +110,6 @@ const SelectContent = forwardRef<
             'min-w-[var(--radix-select-trigger-width)]',
             'overflow-hidden',
             'surface-floating',
-            'rounded-[16px]',
-            'border',
-            'border-border-subtle',
-            'p-1',
             'data-[state=open]:animate-fade-in',
             'data-[state=open]:animate-zoom-in',
             className

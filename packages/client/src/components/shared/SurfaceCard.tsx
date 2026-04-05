@@ -5,7 +5,7 @@ interface SurfaceCardProps {
 
 export default function SurfaceCard({ children, className = '' }: SurfaceCardProps) {
     return (
-        <div className={`surface-base rounded-[18px] border border-border-subtle ${className}`.trim()}>
+        <div className={`surface-base ${className}`.trim()}>
             {children}
         </div>
     );

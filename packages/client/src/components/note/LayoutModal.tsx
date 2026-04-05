@@ -57,7 +57,7 @@ export default function LayoutModal({
             <Modal.Body>
                 <div className="flex flex-col gap-3 sm:gap-4">
                     <div className="flex flex-col gap-2">
-                        <label className="text-xs font-semibold text-fg-muted sm:text-sm">
+                        <label className="text-sm font-semibold text-fg-secondary">
                             Note Layout
                         </label>
                         <div className="flex flex-col gap-2">

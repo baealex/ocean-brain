@@ -13,7 +13,7 @@ import {
 
 const Setting = () => {
     const { theme, toggleTheme } = useTheme(state => state);
-    const cardClassName = 'surface-base flex flex-col items-center gap-3 rounded-[18px] border border-border-subtle p-6 text-center transition-colors hover:bg-hover-subtle';
+    const cardClassName = 'surface-base flex flex-col items-center gap-3 p-6 text-center transition-colors hover:bg-hover-subtle';
 
     return (
         <PageLayout title="Settings" description="Customize your Ocean Brain experience">

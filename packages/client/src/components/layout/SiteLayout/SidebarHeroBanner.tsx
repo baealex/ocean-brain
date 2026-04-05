@@ -26,7 +26,7 @@ const SidebarHeroBanner = () => {
             <button
                 type="button"
                 aria-label="Remove hero banner"
-                className="surface-base focus-ring-soft group relative block w-full overflow-hidden rounded-[18px] border border-border-subtle text-left outline-none"
+                className="surface-base focus-ring-soft group relative block w-full overflow-hidden text-left outline-none"
                 onClick={async () => {
                     if (await confirm('Do you want to remove this hero banner?')) {
                         await setServerCache('heroBanner', '');

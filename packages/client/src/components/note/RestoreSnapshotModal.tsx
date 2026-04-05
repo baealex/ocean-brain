@@ -108,7 +108,7 @@ export default function RestoreSnapshotModal({
                         <div className="text-sm text-fg-secondary">Loading previous versions...</div>
                     )}
                     {!snapshotQuery.isLoading && snapshotQuery.data?.length === 0 && (
-                        <div className="rounded-[16px] border border-dashed border-border-secondary bg-muted/40 p-4 text-sm text-fg-secondary">
+                        <div className="rounded-[14px] border border-border-subtle bg-hover-subtle/50 px-4 py-3 text-sm text-fg-secondary">
                             A recovery snapshot will appear after the first edit in a session and older ones are cleaned up automatically.
                         </div>
                     )}
@@ -117,7 +117,7 @@ export default function RestoreSnapshotModal({
                             {snapshotQuery.data.map((snapshot) => (
                                 <div
                                     key={snapshot.id}
-                                    className="surface-base rounded-[16px] border border-border-subtle p-3">
+                                    className="surface-base p-3">
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0">
                                             <p className="text-sm font-semibold">

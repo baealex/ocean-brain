@@ -20,42 +20,32 @@ export default function NoteListCard({
     title,
     tags,
     pinned,
-    createdAt,
     updatedAt,
     onPinned,
     onDelete
 }: Props) {
-    const createdAtText = new Date(Number(createdAt));
     const updatedTimeSince = timeSince(Number(updatedAt));
     const rootClassName = 'surface-base';
 
     return (
         <div
             key={id}
-            className={`${rootClassName} group relative flex h-full flex-col overflow-hidden rounded-[18px] border p-4 transition-colors ${pinned ? 'border-border-secondary' : 'border-border-subtle'}`}>
+            className={`${rootClassName} relative flex h-full flex-col overflow-hidden p-4 transition-colors`}>
             <div className="flex h-full flex-col gap-4">
                 <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 space-y-2.5">
-                        <div className="space-y-1">
+                        <div className={`inline-flex items-center gap-1.5 ${noteMetaTextClassName}`}>
                             {pinned && (
-                                <div className={`inline-flex items-center gap-1.5 ${noteMetaTextClassName}`}>
-                                    <Icon.Pin className="h-3 w-3" weight="fill" />
-                                    Pinned
-                                </div>
+                                <Icon.Pin className="h-3 w-3 shrink-0" weight="fill" />
                             )}
-                            <div className={noteMetaTextClassName}>
-                                Updated {updatedTimeSince}
-                            </div>
-                            <div className={noteMetaTextClassName}>
-                                Opened {createdAtText.toDateString()}
-                            </div>
+                            Updated {updatedTimeSince}
                         </div>
                     </div>
                     <Dropdown
                         button={(
                             <button
                                 type="button"
-                                className="focus-ring-soft inline-flex h-8 w-8 items-center justify-center rounded-[10px] border border-transparent bg-transparent text-fg-tertiary outline-none transition-colors hover:border-border-subtle hover:bg-hover-subtle hover:text-fg-default group-hover:border-border-subtle group-hover:bg-hover-subtle/80 group-hover:text-fg-default">
+                                className="focus-ring-soft inline-flex h-8 w-8 items-center justify-center rounded-[10px] border border-transparent bg-transparent text-fg-tertiary outline-none transition-colors hover:border-border-subtle hover:bg-hover-subtle hover:text-fg-default">
                                 <Icon.VerticalDots className="h-5 w-5" />
                                 <span className="sr-only">Note actions</span>
                             </button>

@@ -11,6 +11,8 @@ export {
     Tag,
     GridFour as Grid,
     DotsThreeVertical as VerticalDots,
+    DotsSix as DragHandle,
+    FileText as FileNote,
     Trash as TrashCan,
     CaretLeft as ChevronLeft,
     CaretRight as ChevronRight,

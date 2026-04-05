@@ -74,16 +74,16 @@ function SortablePinnedNote({ id, title, children }: SortablePinnedNoteProps) {
         <div
             ref={setNodeRef}
             style={style}
-            className="group flex items-center gap-2.5 rounded-[14px] border border-transparent px-2.5 py-2 transition-colors hover:border-border-subtle hover:bg-hover-subtle/60">
+            className="group flex min-h-[44px] items-center gap-2 border-b border-border-subtle px-1 last:border-b-0">
             <button
                 type="button"
                 ref={setActivatorNodeRef}
                 aria-label={`Reorder note ${title ?? 'Untitled'}`}
                 {...attributes}
                 {...listeners}
-                className="focus-ring-soft flex h-7 w-7 cursor-grab items-center justify-center rounded-[10px] text-fg-tertiary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-secondary active:cursor-grabbing touch-none"
+                className="focus-ring-soft flex h-9 w-9 cursor-grab items-center justify-center text-fg-tertiary outline-none active:cursor-grabbing touch-none"
                 style={{ cursor: isDragging ? 'grabbing' : 'grab' }}>
-                <Icon.Menu className="size-4" />
+                <Icon.DragHandle className="size-4" />
             </button>
             {textContent}
         </div>

@@ -292,7 +292,7 @@ function GraphContent() {
             description={`${graphData.nodes.length} linked notes, ${graphData.links.length} connections`}>
             <div
                 ref={containerRef}
-                className="surface-base relative overflow-hidden border border-border-subtle"
+                className="surface-base relative overflow-hidden"
                 style={{ background: graphTheme.background }}>
                 {selectedNodeId && (() => {
                     const node = graphData.nodes.find(item => item.id === selectedNodeId);
@@ -301,7 +301,7 @@ function GraphContent() {
                     }
 
                     return (
-                        <div className="surface-floating absolute top-3 left-3 z-10 flex items-center gap-2 border border-border-subtle px-3 py-2 text-sm">
+                        <div className="surface-floating absolute top-3 left-3 z-10 flex items-center gap-2 px-3 py-2 text-sm">
                             <span className="max-w-48 truncate font-semibold text-fg-default">{node.title}</span>
                             <span className="text-fg-tertiary">{node.connections} links</span>
                             <button

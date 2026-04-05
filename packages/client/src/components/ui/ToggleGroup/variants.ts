@@ -12,21 +12,18 @@ export const toggleGroupVariants = cva(
                 default: [
                     'border-2',
                     'border-border',
-                    'rounded-[12px_4px_13px_3px/4px_10px_4px_12px]',
+                    'rounded-[10px]',
                     'bg-surface'
                 ],
                 outline: [
                     'border-2',
                     'border-border',
-                    'rounded-[12px_4px_13px_3px/4px_10px_4px_12px]',
+                    'rounded-[10px]',
                     'bg-transparent'
                 ],
                 pills: [
                     'surface-base',
-                    'rounded-[14px]',
-                    'p-1',
-                    'border',
-                    'border-border-subtle'
+                    'p-1'
                 ]
             }
         },
@@ -51,22 +48,21 @@ export const toggleGroupItemVariants = cva(
                 default: [
                     'text-fg-muted',
                     'hover:bg-hover',
-                    'data-[state=on]:bg-accent-primary',
-                    'data-[state=on]:text-fg-on-accent',
-                    'data-[state=on]:shadow-sketchy'
+                    'data-[state=on]:bg-cta',
+                    'data-[state=on]:text-fg-on-filled'
                 ],
                 outline: [
                     'text-fg-muted',
                     'hover:bg-hover-subtle',
-                    'data-[state=on]:bg-accent-primary',
-                    'data-[state=on]:text-fg-on-accent'
+                    'data-[state=on]:bg-cta',
+                    'data-[state=on]:text-fg-on-filled'
                 ],
                 pills: [
                     'text-fg-secondary',
                     'rounded-[10px]',
                     'hover:bg-hover-subtle',
-                    'data-[state=on]:bg-accent-primary',
-                    'data-[state=on]:text-fg-on-accent',
+                    'data-[state=on]:bg-cta',
+                    'data-[state=on]:text-fg-on-filled',
                     'data-[state=on]:border',
                     'data-[state=on]:border-border-secondary'
                 ]

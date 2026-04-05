@@ -54,7 +54,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                     {toasts.map((t) => (
                         <div
                             key={t.id}
-                            className="surface-floating whitespace-nowrap rounded-[18px] border border-border-subtle px-5 py-3 text-sm font-medium text-fg-secondary animate-slide-in-from-bottom">
+                            className="surface-floating whitespace-nowrap px-5 py-3 text-sm font-medium text-fg-secondary animate-slide-in-from-bottom">
                             {t.message}
                         </div>
                     ))}

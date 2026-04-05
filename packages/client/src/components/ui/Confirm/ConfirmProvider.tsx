@@ -7,7 +7,6 @@ import {
 } from 'react';
 
 import { Button } from '../Button';
-import ModalActionRow from '../../shared/ModalActionRow';
 import { Modal } from '../Dialog/Modal';
 
 interface ConfirmContextValue {
@@ -44,21 +43,19 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
     return (
         <ConfirmContext.Provider value={{ confirm }}>
             {children}
-            <Modal isOpen={isOpen} onClose={handleCancel}>
-                <Modal.Header title="Confirm" onClose={handleCancel} />
-                <Modal.Body>
+            <Modal isOpen={isOpen} onClose={handleCancel} className="max-w-[360px]">
+                <Modal.Body className="px-5 pb-4 pt-5">
+                    <p className="mb-1 text-base font-semibold text-fg-default">Confirm</p>
                     <p className="text-sm leading-6 text-fg-secondary">{message}</p>
                 </Modal.Body>
-                <Modal.Footer>
-                    <ModalActionRow>
-                        <Button variant="ghost" size="sm" onClick={handleCancel}>
-                            Cancel
-                        </Button>
-                        <Button variant="danger" size="sm" onClick={handleConfirm}>
-                            OK
-                        </Button>
-                    </ModalActionRow>
-                </Modal.Footer>
+                <div className="flex justify-end gap-2 px-5 pb-5">
+                    <Button variant="ghost" size="sm" onClick={handleCancel}>
+                        Cancel
+                    </Button>
+                    <Button variant="danger" size="sm" onClick={handleConfirm}>
+                        OK
+                    </Button>
+                </div>
             </Modal>
         </ConfirmContext.Provider>
     );

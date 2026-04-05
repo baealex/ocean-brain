@@ -104,18 +104,18 @@ const PaginationItem = forwardRef<HTMLButtonElement, PaginationItemProps>(
     }, ref) => {
         const baseStyles = `
             flex justify-center items-center
-            leading-normal text-base font-bold
+            leading-normal text-base font-medium
             w-9 h-9 md:w-10 md:h-10
-            border-2 border-transparent
-            rounded-[10px_3px_11px_3px/3px_8px_3px_10px]
+            border border-transparent
+            rounded-[10px]
             transition-all duration-200
         `;
 
         const stateStyles = active
-            ? 'cursor-default bg-accent-primary border-border text-fg-on-accent shadow-sketchy sketchy-sm'
+            ? 'cursor-default bg-cta border-cta text-fg-on-filled'
             : disabled
                 ? 'cursor-default text-fg-disabled border-transparent'
-                : 'cursor-pointer text-fg-default hover:bg-hover hover:border-border-secondary';
+                : 'cursor-pointer text-fg-default hover:bg-hover hover:border-border-subtle';
 
         const skipStyles = isSkip ? 'relative [&>svg]:absolute [&>svg:first-child]:-translate-x-[3px] [&>svg:last-child]:translate-x-[3px]' : '';
 

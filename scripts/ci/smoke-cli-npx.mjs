@@ -4,67 +4,99 @@ import { spawn, spawnSync } from 'child_process';
 import { mkdirSync, mkdtempSync, rmSync } from 'fs';
 import os from 'os';
 import path from 'path';
+import { pathToFileURL } from 'url';
 
 const [, , tarballArg] = process.argv;
-
-if (!tarballArg) {
-    console.error('Usage: node scripts/ci/smoke-cli-npx.mjs <path-to-cli-tarball>');
-    process.exit(1);
-}
-
-const tarballPath = path.resolve(tarballArg);
+const tarballPath = tarballArg ? path.resolve(tarballArg) : null;
 const host = '127.0.0.1';
 const port = Number(process.env.CLI_SMOKE_PORT ?? '6683');
 const rootUrl = `http://${host}:${port}`;
+export const AUTH_SESSION_PATH = '/api/auth/session';
 const isWindows = process.platform === 'win32';
 const readyTimeoutMs = Number(
     process.env.CLI_SMOKE_READY_TIMEOUT_MS ?? (isWindows ? '300000' : '120000')
 );
 
-const tempRoot = mkdtempSync(path.join(os.tmpdir(), 'ocean-brain-smoke-'));
-const dataDir = path.join(tempRoot, 'data');
-const imageDir = path.join(dataDir, 'assets', 'images');
-mkdirSync(imageDir, { recursive: true });
-
-const npxArgs = [
-    '--yes',
-    '--package',
-    tarballPath,
-    'ocean-brain',
-    'serve',
-    '--port',
-    String(port),
-    '--host',
-    host
-];
-
-const child = spawn(
-    isWindows ? 'cmd.exe' : 'npx',
-    isWindows
-        ? ['/d', '/s', '/c', 'npx', ...npxArgs]
-        : npxArgs,
-    {
-        detached: !isWindows,
-        env: {
-            ...process.env,
-            OCEAN_BRAIN_DATA_DIR: dataDir,
-            OCEAN_BRAIN_IMAGE_DIR: imageDir
-        },
-        stdio: ['ignore', 'pipe', 'pipe']
-    }
-);
-
-let stderrBuffer = '';
-child.stdout.on('data', chunk => process.stdout.write(chunk));
-child.stderr.on('data', chunk => {
-    const text = chunk.toString();
-    stderrBuffer += text;
-    process.stderr.write(text);
-});
-
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-async function waitForReady(timeoutMs) {
+export function buildSmokeScenarios(resolvedTarballPath) {
+    const baseArgs = [
+        '--yes',
+        '--package',
+        resolvedTarballPath,
+        'ocean-brain',
+        'serve',
+        '--port',
+        String(port),
+        '--host',
+        host
+    ];
+
+    return [
+        {
+            name: 'insecure-no-auth',
+            args: [...baseArgs, '--allow-insecure-no-auth'],
+            env: {},
+            expectation: 'graphql-open'
+        },
+        {
+            name: 'missing-auth',
+            args: baseArgs,
+            env: {},
+            expectation: 'startup-auth-failure'
+        },
+        {
+            name: 'password-auth',
+            args: baseArgs,
+            env: {
+                OCEAN_BRAIN_PASSWORD: 'smoke-password',
+                OCEAN_BRAIN_SESSION_SECRET: 'smoke-session-secret-for-cli-tests'
+            },
+            expectation: 'password-auth'
+        }
+    ];
+}
+
+export function isExpectedAuthFailure(stderr) {
+    return stderr.includes('Unable to resolve auth mode.')
+        && stderr.includes('OCEAN_BRAIN_PASSWORD')
+        && stderr.includes('OCEAN_BRAIN_SESSION_SECRET')
+        && stderr.includes('OCEAN_BRAIN_ALLOW_INSECURE_NO_AUTH=true');
+}
+
+function spawnScenarioProcess(scenario, dataDir, imageDir) {
+    const child = spawn(
+        isWindows ? 'cmd.exe' : 'npx',
+        isWindows
+            ? ['/d', '/s', '/c', 'npx', ...scenario.args]
+            : scenario.args,
+        {
+            detached: !isWindows,
+            env: {
+                ...process.env,
+                ...scenario.env,
+                OCEAN_BRAIN_DATA_DIR: dataDir,
+                OCEAN_BRAIN_IMAGE_DIR: imageDir
+            },
+            stdio: ['ignore', 'pipe', 'pipe']
+        }
+    );
+
+    let stderrBuffer = '';
+    child.stdout.on('data', chunk => process.stdout.write(chunk));
+    child.stderr.on('data', chunk => {
+        const text = chunk.toString();
+        stderrBuffer += text;
+        process.stderr.write(text);
+    });
+
+    return {
+        child,
+        getStderr: () => stderrBuffer
+    };
+}
+
+async function waitForReady(child, timeoutMs) {
     const deadline = Date.now() + timeoutMs;
 
     while (Date.now() < deadline) {
@@ -109,7 +141,46 @@ async function assertGraphql() {
     }
 }
 
-async function stopProcess() {
+async function assertAuthSession(expected) {
+    const response = await fetch(`${rootUrl}${AUTH_SESSION_PATH}`, {
+        signal: AbortSignal.timeout(5000)
+    });
+
+    if (response.status !== 200) {
+        throw new Error(`${AUTH_SESSION_PATH} returned HTTP ${response.status}`);
+    }
+
+    const payload = await response.json();
+    for (const [key, value] of Object.entries(expected)) {
+        if (payload[key] !== value) {
+            throw new Error(`${AUTH_SESSION_PATH} returned unexpected ${key}: ${payload[key]}`);
+        }
+    }
+}
+
+async function assertGraphqlUnauthorized() {
+    const response = await fetch(`${rootUrl}/graphql`, {
+        method: 'POST',
+        signal: AbortSignal.timeout(5000),
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            query: '{ allImages(pagination: {limit: 1, offset: 0}) { totalCount } }'
+        })
+    });
+
+    if (response.status !== 401) {
+        throw new Error(`/graphql returned HTTP ${response.status} instead of 401`);
+    }
+
+    const bodyText = await response.text();
+    if (!bodyText.includes('Authentication required')) {
+        throw new Error(`GraphQL unauthorized response missing expected message: ${bodyText}`);
+    }
+}
+
+async function stopProcess(child) {
     if (child.exitCode !== null || child.signalCode !== null) return;
 
     if (process.platform === 'win32') {
@@ -146,20 +217,68 @@ async function stopProcess() {
     }
 }
 
-async function main() {
+export async function expectAuthFailure(child, getStderr) {
+    if (child.exitCode === null && child.signalCode === null) {
+        await Promise.race([
+            new Promise(resolve => child.once('exit', resolve)),
+            sleep(15000)
+        ]);
+    }
+
+    if (child.exitCode === null && child.signalCode === null) {
+        throw new Error('CLI process did not fail within 15000ms for missing-auth scenario');
+    }
+
+    const stderrBuffer = getStderr();
+    if (!isExpectedAuthFailure(stderrBuffer)) {
+        throw new Error(`CLI process failed without the expected auth guidance.\n\n${stderrBuffer}`);
+    }
+}
+
+async function runScenario(scenario) {
+    const tempRoot = mkdtempSync(path.join(os.tmpdir(), 'ocean-brain-smoke-'));
+    const dataDir = path.join(tempRoot, 'data');
+    const imageDir = path.join(dataDir, 'assets', 'images');
+    mkdirSync(imageDir, { recursive: true });
+
+    const { child, getStderr } = spawnScenarioProcess(scenario, dataDir, imageDir);
+
     try {
-        await waitForReady(readyTimeoutMs);
-        await assertGraphql();
-        console.log('CLI smoke test passed.');
+        if (scenario.name === 'missing-auth') {
+            await expectAuthFailure(child, getStderr);
+            console.log(`CLI smoke scenario passed: ${scenario.name}`);
+            return;
+        }
+
+        await waitForReady(child, readyTimeoutMs);
+        if (scenario.expectation === 'graphql-open') {
+            await assertAuthSession({
+                mode: 'disabled',
+                authRequired: false,
+                authenticated: false
+            });
+            await assertGraphql();
+        }
+
+        if (scenario.expectation === 'password-auth') {
+            await assertAuthSession({
+                mode: 'password',
+                authRequired: true,
+                authenticated: false
+            });
+            await assertGraphqlUnauthorized();
+        }
+        console.log(`CLI smoke scenario passed: ${scenario.name}`);
     } catch (error) {
+        const stderrBuffer = getStderr();
         if (stderrBuffer.length > 0) {
-            console.error('\n--- CLI stderr ---');
+            console.error(`\n--- CLI stderr (${scenario.name}) ---`);
             console.error(stderrBuffer);
-            console.error('--- end stderr ---\n');
+            console.error(`--- end stderr (${scenario.name}) ---\n`);
         }
         throw error;
     } finally {
-        await stopProcess();
+        await stopProcess(child);
         let cleaned = false;
         for (let i = 0; i < 6; i++) {
             try {
@@ -179,7 +298,25 @@ async function main() {
     }
 }
 
-main().catch(error => {
-    console.error(error);
-    process.exit(1);
-});
+async function main() {
+    if (!tarballPath) {
+        console.error('Usage: node scripts/ci/smoke-cli-npx.mjs <path-to-cli-tarball>');
+        process.exit(1);
+    }
+
+    try {
+        for (const scenario of buildSmokeScenarios(tarballPath)) {
+            await runScenario(scenario);
+        }
+        console.log('CLI smoke test passed.');
+    } catch (error) {
+        throw error;
+    }
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+    main().catch(error => {
+        console.error(error);
+        process.exit(1);
+    });
+}

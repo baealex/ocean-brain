@@ -15,6 +15,7 @@
     },
     "files": [
         "dist",
+        "scripts/postinstall-prisma.mjs",
         "server/dist",
         "server/prisma/schema.prisma",
         "server/prisma/migrations",
@@ -23,11 +24,13 @@
     "scripts": {
         "dev": "tsx src/index.ts",
         "build": "tsup",
+        "postinstall": "node ./scripts/postinstall-prisma.mjs",
         "test": "tsx --test test/**/*.test.ts",
         "test:ci": "tsx --test test/**/*.test.ts",
         "type-check": "tsc --noEmit"
     },
     "dependencies": {
+        "@blocknote/server-util": "^0.46.2",
         "@graphql-tools/schema": "^10.0.31",
         "@graphql-tools/utils": "^11.0.0",
         "@modelcontextprotocol/sdk": "^1.27.1",

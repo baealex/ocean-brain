@@ -88,9 +88,7 @@ const toStatus = (
 export const createMcpAdminService = (db: McpAdminDb = models as unknown as McpAdminDb): McpAdminService => {
     return {
         async getStatus() {
-            const enabledCache = await db.cache.findUnique({
-                where: { key: MCP_ENABLED_CACHE_KEY }
-            });
+            const enabledCache = await db.cache.findUnique({ where: { key: MCP_ENABLED_CACHE_KEY } });
             const activeToken = await db.mcpToken.findFirst({
                 where: { revokedAt: null },
                 orderBy: { createdAt: 'desc' }
@@ -102,7 +100,10 @@ export const createMcpAdminService = (db: McpAdminDb = models as unknown as McpA
             await db.cache.upsert({
                 where: { key: MCP_ENABLED_CACHE_KEY },
                 update: { value: String(enabled) },
-                create: { key: MCP_ENABLED_CACHE_KEY, value: String(enabled) }
+                create: {
+                    key: MCP_ENABLED_CACHE_KEY,
+                    value: String(enabled)
+                }
             });
         },
         async rotateToken() {
@@ -114,11 +115,7 @@ export const createMcpAdminService = (db: McpAdminDb = models as unknown as McpA
                     where: { revokedAt: null },
                     data: { revokedAt: now }
                 });
-                await transaction.mcpToken.create({
-                    data: {
-                        tokenHash: issued.hash
-                    }
-                });
+                await transaction.mcpToken.create({ data: { tokenHash: issued.hash } });
             });
 
             return { token: issued.plaintext };
@@ -136,11 +133,17 @@ export const createMcpAdminService = (db: McpAdminDb = models as unknown as McpA
             });
 
             if (!activeToken) {
-                return { ok: false, reason: 'not_configured' };
+                return {
+                    ok: false,
+                    reason: 'not_configured'
+                };
             }
 
             if (!verifyMcpToken(activeToken.tokenHash, token)) {
-                return { ok: false, reason: 'forbidden' };
+                return {
+                    ok: false,
+                    reason: 'forbidden'
+                };
             }
 
             await db.mcpToken.update({

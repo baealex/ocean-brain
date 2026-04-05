@@ -19,7 +19,10 @@ export const issueMcpToken = (): IssuedMcpToken => {
     const plaintext = crypto.randomBytes(TOKEN_BYTE_LENGTH).toString('base64url');
     const hash = toTokenHash(plaintext);
 
-    return { plaintext, hash };
+    return {
+        plaintext,
+        hash
+    };
 };
 
 export const verifyMcpToken = (storedHash: string, presentedToken: string) => {

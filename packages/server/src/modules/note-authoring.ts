@@ -1,5 +1,8 @@
 import models, { type NoteLayout } from '~/models.js';
-import { markdownToBlocksJson } from './blocknote.js';
+import {
+    extractTagIdsFromContentJson,
+    markdownToBlocksJson
+} from './blocknote.js';
 import { captureNoteBaseline } from './note-snapshot.js';
 
 interface PlaceholderRecord {
@@ -21,10 +24,12 @@ interface NoteAuthoringDeps {
         title: string;
         content: string;
         layout?: NoteLayout;
+        tagIds?: string[];
     }) => Promise<NoteRecord>;
     findNoteById: (id: number) => Promise<NoteRecord | null>;
     findPlaceholders: (templates: string[]) => Promise<PlaceholderRecord[]>;
     parseMarkdownToContentJson: (markdown: string) => Promise<string>;
+    extractTagIds: (contentJson: string) => string[];
     captureBaseline: (input: {
         noteId: number;
         editSessionId?: string;
@@ -34,6 +39,7 @@ interface NoteAuthoringDeps {
         title?: string;
         content?: string;
         layout?: NoteLayout;
+        tagIds?: string[];
     }) => Promise<NoteRecord>;
 }
 
@@ -121,9 +127,11 @@ export const createNoteAuthoringService = (deps: NoteAuthoringDeps) => {
             const replacedTitle = await replacePlaceholders(title);
             const replacedMarkdown = await replacePlaceholders(input.markdown ?? '');
             const content = await deps.parseMarkdownToContentJson(replacedMarkdown);
+            const tagIds = deps.extractTagIds(content);
             const note = await deps.createNote({
                 title: replacedTitle,
                 content,
+                tagIds,
                 ...(input.layout ? { layout: input.layout } : {})
             });
 
@@ -149,6 +157,7 @@ export const createNoteAuthoringService = (deps: NoteAuthoringDeps) => {
                 title?: string;
                 content?: string;
                 layout?: NoteLayout;
+                tagIds?: string[];
             } = {};
 
             if (input.title !== undefined) {
@@ -164,6 +173,7 @@ export const createNoteAuthoringService = (deps: NoteAuthoringDeps) => {
             if (input.markdown !== undefined) {
                 const replacedMarkdown = await replacePlaceholders(input.markdown);
                 nextData.content = await deps.parseMarkdownToContentJson(replacedMarkdown);
+                nextData.tagIds = deps.extractTagIds(nextData.content);
             }
 
             if (input.layout !== undefined) {
@@ -188,7 +198,10 @@ const defaultNoteAuthoringService = createNoteAuthoringService({
             data: {
                 title: input.title,
                 content: input.content,
-                ...(input.layout ? { layout: input.layout } : {})
+                ...(input.layout ? { layout: input.layout } : {}),
+                ...(input.tagIds
+                    ? { tags: { connect: input.tagIds.map((id) => ({ id: Number(id) })) } }
+                    : {})
             }
         });
     },
@@ -209,11 +222,19 @@ const defaultNoteAuthoringService = createNoteAuthoringService({
         });
     },
     parseMarkdownToContentJson: markdownToBlocksJson,
+    extractTagIds: extractTagIdsFromContentJson,
     captureBaseline: captureNoteBaseline,
     updateNote: async (id, input) => {
         return models.note.update({
             where: { id },
-            data: input
+            data: {
+                title: input.title,
+                content: input.content,
+                layout: input.layout,
+                ...(input.tagIds
+                    ? { tags: { set: input.tagIds.map((tagId) => ({ id: Number(tagId) })) } }
+                    : {})
+            }
         });
     }
 });

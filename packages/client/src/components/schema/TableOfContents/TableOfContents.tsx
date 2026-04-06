@@ -4,6 +4,7 @@ import type { Block } from '@blocknote/core';
 import { useEffect, useState } from 'react';
 import classNames from 'classnames';
 import * as Icon from '~/components/icon';
+import { AuxiliaryPanelHeader } from '~/components/shared';
 import { Text } from '~/components/ui';
 
 interface HeadingItem {
@@ -94,25 +95,18 @@ const TableOfContentsComponent = () => {
     };
 
     const header = (
-        <div className="flex items-center gap-2">
-            <Icon.List className="h-3.5 w-3.5 shrink-0 text-fg-tertiary" />
-            <Text
-                as="span"
-                variant="label"
-                weight="semibold"
-                tone="tertiary"
-                tracking="wider"
-                transform="uppercase">
-                Table of Contents
-            </Text>
-        </div>
+        <AuxiliaryPanelHeader
+            icon={<Icon.List className="h-3.5 w-3.5" />}
+            title="Table of Contents"
+            className="text-fg-tertiary"
+        />
     );
 
     if (headings.length === 0) {
         return (
             <div className="surface-base w-full p-4">
                 {header}
-                <Text as="p" variant="meta" tone="tertiary" className="mt-2">
+                <Text as="p" variant="meta" tone="secondary" className="mt-2">
                     Add headings to your document to generate a table of contents
                 </Text>
             </div>
@@ -149,19 +143,16 @@ const TableOfContentsComponent = () => {
                             <Text
                                 as="span"
                                 variant="label"
-                                weight="semibold"
+                                weight="medium"
                                 tone="tertiary"
-                                tracking="wide"
-                                transform="uppercase"
                                 className="min-w-[1.5rem]">
                                 H{heading.level}
                             </Text>
                             <Text
                                 as="span"
-                                variant="meta"
+                                variant="body"
                                 weight={isTopLevel ? 'semibold' : 'medium'}
-                                tone={isTopLevel ? 'default' : 'secondary'}
-                                className="line-clamp-2">
+                                className="line-clamp-2 text-current">
                                 {heading.text}
                             </Text>
                         </button>

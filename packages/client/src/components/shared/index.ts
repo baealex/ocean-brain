@@ -1,3 +1,4 @@
+export { default as AuxiliaryPanelHeader } from './AuxiliaryPanelHeader';
 export { default as Badge } from './Badge';
 export { Button } from '~/components/ui';
 export { default as Callout } from './Callout';

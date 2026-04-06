@@ -57,8 +57,8 @@ export default function LayoutModal({
             <Modal.Body>
                 <div className="flex flex-col gap-3 sm:gap-4">
                     <div className="flex flex-col gap-2">
-                        <Text as="div" weight="semibold" tone="secondary">
-                            Note Layout
+                        <Text as="div" variant="body" weight="semibold" tone="secondary">
+                            Note layout
                         </Text>
                         <div className="flex flex-col gap-2">
                             {LAYOUT_OPTIONS.map((option) => (

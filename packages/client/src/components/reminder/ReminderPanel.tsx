@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import classNames from 'classnames';
 import dayjs from 'dayjs';
-import { Button, Dropdown } from '~/components/shared';
+import { AuxiliaryPanelHeader, Button, Dropdown } from '~/components/shared';
 import * as Icon from '~/components/icon';
 import { Checkbox, Text } from '~/components/ui';
 
@@ -94,15 +94,11 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                 <button
                     type="button"
                     onClick={() => setIsCollapsed(!isCollapsed)}
-                    className="focus-ring-soft flex items-center gap-2 rounded-[10px] px-2 py-1.5 text-fg-tertiary transition-colors hover:bg-hover-subtle">
-                    {isCollapsed ? (
-                        <Icon.TriangleRight size={12} />
-                    ) : (
-                        <Icon.TriangleDown size={12} />
-                    )}
-                    <Text variant="label" weight="semibold" tracking="wider" transform="uppercase">
-                        Reminders
-                    </Text>
+                    className="focus-ring-soft flex items-center gap-2 rounded-[10px] px-2 py-1.5 text-fg-tertiary transition-colors hover:bg-hover-subtle hover:text-fg-default">
+                    <AuxiliaryPanelHeader
+                        icon={isCollapsed ? <Icon.TriangleRight size={12} /> : <Icon.TriangleDown size={12} />}
+                        title="Reminders"
+                    />
                 </button>
                 {!isCollapsed && (
                     <Button size="sm" variant="ghost" onClick={handleOpenCreateModal}>
@@ -123,7 +119,7 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                         return (
                             <div className="flex flex-col gap-2">
                                 {reminders.length === 0 ? (
-                                    <Text as="p" variant="meta" tone="tertiary" className="py-3 text-center">
+                                    <Text as="p" variant="meta" tone="secondary" className="py-3 text-center">
                                         {totalCount === 0 ? 'No reminders yet' : 'All reminders complete'}
                                     </Text>
                                 ) : (
@@ -146,7 +142,7 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                                                     />
                                                     <Text
                                                         as="div"
-                                                        variant="meta"
+                                                        variant="body"
                                                         weight="medium"
                                                         className={classNames(
                                                             'truncate flex-1 min-w-0',
@@ -160,7 +156,7 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                                                             reminder.completed && 'opacity-40'
                                                         )}>
                                                         {reminder.content && (
-                                                            <Text as="span" variant="label" tone="tertiary">
+                                                            <Text as="span" variant="meta" tone="secondary">
                                                                 {formatReminderDate(reminder.reminderDate)}
                                                             </Text>
                                                         )}
@@ -169,7 +165,7 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                                                                 as="span"
                                                                 variant="label"
                                                                 weight="medium"
-                                                                tone={isOverdue || urgency === 'high' ? 'error' : 'placeholder'}
+                                                                tone={isOverdue || urgency === 'high' ? 'error' : 'tertiary'}
                                                                 className={classNames(
                                                                     reminder.content && 'before:content-["·"] before:mr-1'
                                                                 )}>

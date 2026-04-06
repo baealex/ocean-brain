@@ -30,17 +30,17 @@ export default function SelectionOptionCard({
             <div className="min-w-0">
                 <Text
                     as="div"
+                    variant="body"
                     weight="semibold"
-                    tone={selected ? 'default' : 'secondary'}
-                    className="sm:text-base">
+                    tone={selected ? 'default' : 'secondary'}>
                     {title}
                 </Text>
                 <Text
                     as="div"
-                    variant="label"
+                    variant="meta"
                     weight="medium"
-                    tone={selected ? 'tertiary' : 'placeholder'}
-                    className="mt-1 sm:text-body">
+                    tone={selected ? 'secondary' : 'tertiary'}
+                    className="mt-1">
                     {description}
                 </Text>
             </div>

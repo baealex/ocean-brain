@@ -4,13 +4,13 @@ import {
     useSuspenseQuery
 } from '@tanstack/react-query';
 import { Link, getRouteApi } from '@tanstack/react-router';
+import { Helmet } from 'react-helmet';
 
 import { QueryBoundary } from '~/components/app';
 import * as Icon from '~/components/icon';
 import { NoteListItem } from '~/components/note';
 import {
     Image as ImageComponent,
-    PageLayout,
     Skeleton,
     SurfaceCard
 } from '~/components/shared';
@@ -34,6 +34,8 @@ const Route = getRouteApi(SETTINGS_MANAGE_IMAGE_DETAIL_ROUTE);
 const DETAIL_PREVIEW_HEIGHT = 352;
 
 const backLinkClassName = 'mb-4 inline-flex items-center gap-1 text-fg-secondary transition-colors hover:text-fg-default';
+const previewFrameClassName = 'flex items-center justify-center bg-muted/25 p-3';
+const previewImageClassName = 'h-full w-full rounded-[12px] object-contain';
 const sectionHeaderClassName = 'mb-3 flex flex-wrap items-start justify-between gap-3 border-b border-border-subtle pb-3';
 const sectionTextClassName = 'space-y-1';
 
@@ -64,12 +66,12 @@ const ManageImageDetailSkeleton = () => (
         <div className="w-full lg:w-[400px] lg:flex-shrink-0">
             <SurfaceCard flush>
                 <div
-                    className="flex items-center justify-center bg-muted/20 p-4"
+                    className={previewFrameClassName}
                     style={{ height: DETAIL_PREVIEW_HEIGHT }}>
                     <Skeleton
                         width="100%"
-                        height={DETAIL_PREVIEW_HEIGHT - 32}
-                        className="rounded-[14px]"
+                        height={DETAIL_PREVIEW_HEIGHT - 24}
+                        className="rounded-[12px]"
                     />
                 </div>
                 <div className="flex flex-col gap-4 border-t border-border-subtle p-4">
@@ -198,27 +200,27 @@ const ManageImageDetailContent = ({ id }: ManageImageDetailContentProps) => {
             <div className="w-full lg:w-[400px] lg:flex-shrink-0">
                 <SurfaceCard flush>
                     <div
-                        className="flex items-center justify-center bg-muted/20 p-4"
+                        className={previewFrameClassName}
                         style={{ height: DETAIL_PREVIEW_HEIGHT }}>
                         <ImageComponent
-                            className="max-h-full w-auto max-w-full rounded-[14px] object-contain"
+                            className={previewImageClassName}
                             src={image.url}
                             alt={`Image ${image.id}`}
                         />
                     </div>
                     <div className="flex flex-col gap-4 border-t border-border-subtle p-4">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="space-y-1">
                             <div className="flex items-center gap-2">
                                 <Icon.LinkIcon size={14} className="text-fg-tertiary" />
                                 <Text as="span" variant="meta" weight="medium" tone="secondary">
                                     {referenceText}
                                 </Text>
                             </div>
-                            {!canDelete && (
-                                <Text as="span" variant="label" weight="medium" tone="tertiary">
-                                    In use
-                                </Text>
-                            )}
+                            <Text as="p" variant="meta" tone="tertiary">
+                                {canDelete
+                                    ? 'Delete is available because no notes reference this image'
+                                    : 'Remove this image from notes before deleting it'}
+                            </Text>
                         </div>
                         <div className="flex gap-2">
                             <Tooltip
@@ -232,9 +234,7 @@ const ManageImageDetailContent = ({ id }: ManageImageDetailContentProps) => {
                                     isLoading={deleteImageMutation.isPending}
                                     onClick={handleDelete}>
                                     <Icon.TrashCan size={16} />
-                                    <Text as="span" weight="medium" className="text-current">
-                                        Delete
-                                    </Text>
+                                    Delete
                                 </Button>
                             </Tooltip>
                             <Button
@@ -243,31 +243,29 @@ const ManageImageDetailContent = ({ id }: ManageImageDetailContentProps) => {
                                 className="flex-1"
                                 isLoading={setHeroBannerMutation.isPending}
                                 onClick={() => setHeroBannerMutation.mutate()}>
-                                <Icon.Heart size={16} className="text-fg-secondary" />
-                                <Text as="span" weight="medium" className="text-current">
-                                    Set hero banner
-                                </Text>
+                                <Icon.Heart size={16} />
+                                Set hero banner
                             </Button>
                         </div>
                     </div>
                 </SurfaceCard>
             </div>
             <div className="flex-1 min-w-0">
-                {referenceCount > 0 ? (
-                    <SurfaceCard>
-                        <div className={sectionHeaderClassName}>
-                            <div className={sectionTextClassName}>
-                                <Text as="h2" variant="subheading" weight="medium" tracking="tight">
-                                    Referenced Notes
-                                </Text>
-                                <Text as="p" variant="meta" tone="secondary">
-                                    Notes currently using this image
-                                </Text>
-                            </div>
-                            <Text as="span" variant="meta" weight="medium" tone="secondary">
-                                {referenceText}
+                <SurfaceCard>
+                    <div className={sectionHeaderClassName}>
+                        <div className={sectionTextClassName}>
+                            <Text as="h2" variant="subheading" weight="medium" tracking="tight">
+                                Referenced Notes
+                            </Text>
+                            <Text as="p" variant="meta" tone="secondary">
+                                Notes currently using this image
                             </Text>
                         </div>
+                        <Text as="span" variant="meta" weight="medium" tone="secondary">
+                            {referenceText}
+                        </Text>
+                    </div>
+                    {referenceCount > 0 ? (
                         <ul className="flex flex-col">
                             {imageNotes.map((note) => (
                                 <li key={note.id}>
@@ -275,18 +273,22 @@ const ManageImageDetailContent = ({ id }: ManageImageDetailContentProps) => {
                                 </li>
                             ))}
                         </ul>
-                    </SurfaceCard>
-                ) : (
-                    <SurfaceCard padding="roomy" className="flex flex-col items-center justify-center text-center">
-                        <Icon.Image size={28} className="mb-2 text-fg-disabled" />
-                        <Text as="p" variant="subheading" weight="medium" tone="secondary">
-                            No notes reference this image
-                        </Text>
-                        <Text as="p" variant="meta" tone="secondary" className="mt-1">
-                            This image can be safely deleted or reused
-                        </Text>
-                    </SurfaceCard>
-                )}
+                    ) : (
+                        <div className="flex items-start gap-3 py-1">
+                            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-muted/25 text-fg-disabled">
+                                <Icon.Image size={18} />
+                            </div>
+                            <div className="space-y-1">
+                                <Text as="p" variant="body" weight="medium" tone="secondary">
+                                    No notes reference this image
+                                </Text>
+                                <Text as="p" variant="meta" tone="secondary">
+                                    This image can be deleted or reused in another note
+                                </Text>
+                            </div>
+                        </div>
+                    )}
+                </SurfaceCard>
             </div>
         </div>
     );
@@ -296,10 +298,10 @@ const ManageImageDetail = () => {
     const { id } = Route.useParams();
 
     return (
-        <PageLayout
-            title="Image Detail"
-            variant="default"
-            description="See which notes use this uploaded image and whether you can remove it">
+        <>
+            <Helmet>
+                <title>Image Detail | Ocean Brain</title>
+            </Helmet>
             <Link
                 to={SETTINGS_MANAGE_IMAGE_ROUTE}
                 search={{ page: 1 }}
@@ -309,6 +311,14 @@ const ManageImageDetail = () => {
                     Back to Images
                 </Text>
             </Link>
+            <Text
+                as="h1"
+                variant="heading"
+                weight="bold"
+                tracking="tighter"
+                className="sr-only">
+                Image Detail
+            </Text>
             <QueryBoundary
                 fallback={<ManageImageDetailSkeleton />}
                 errorTitle="Failed to load image detail"
@@ -316,7 +326,7 @@ const ManageImageDetail = () => {
                 resetKeys={[id]}>
                 <ManageImageDetailContent id={id} />
             </QueryBoundary>
-        </PageLayout>
+        </>
     );
 };
 

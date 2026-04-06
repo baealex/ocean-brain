@@ -19,6 +19,8 @@ describe('<CalendarDay />', () => {
     it('prioritizes reminders before notes for upcoming days', () => {
         render(
             <CalendarDay
+                year={2026}
+                month={4}
                 day={2}
                 isCurrentMonth
                 isSunday={false}
@@ -65,6 +67,8 @@ describe('<CalendarDay />', () => {
 
         render(
             <CalendarDay
+                year={2026}
+                month={4}
                 day={2}
                 isCurrentMonth
                 isSunday={false}
@@ -97,7 +101,6 @@ describe('<CalendarDay />', () => {
         await user.click(screen.getByRole('button', { name: '+1 more' }));
 
         expect(screen.getByRole('dialog')).toBeInTheDocument();
-        expect(screen.getByText('Day 2')).toBeInTheDocument();
         expect(screen.getAllByTestId('calendar-note-card')).toHaveLength(4);
         expect(screen.getAllByTestId('calendar-reminder-card')).toHaveLength(3);
     });

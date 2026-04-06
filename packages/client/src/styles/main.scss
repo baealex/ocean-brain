@@ -66,13 +66,14 @@ div:focus {
     a {
         color: var(--fg-muted);
         cursor: pointer;
-        text-decoration: none;
-        transition: color 0.15s ease;
+        text-decoration: underline;
+        text-decoration-color: var(--border-secondary);
+        text-underline-offset: 2px;
+        transition: color 0.15s ease, text-decoration-color 0.15s ease;
 
         &:hover {
             color: var(--fg-default);
-            text-decoration: underline;
-            text-underline-offset: 3px;
+            text-decoration-color: var(--fg-muted);
         }
     }
 }

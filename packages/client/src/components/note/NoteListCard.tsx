@@ -31,10 +31,10 @@ export default function NoteListCard({
         <div
             key={id}
             className={`${rootClassName} relative flex h-full flex-col overflow-hidden p-4 transition-colors`}>
-            <div className="flex h-full flex-col gap-4">
+            <div className="flex h-full flex-col gap-2">
                 <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 space-y-2.5">
-                        <div className={`inline-flex items-center gap-1.5 ${noteMetaTextClassName}`}>
+                        <div className={`inline-flex items-center gap-2 ${noteMetaTextClassName}`}>
                             {pinned && (
                                 <Icon.Pin className="h-3 w-3 shrink-0" weight="fill" />
                             )}
@@ -62,7 +62,7 @@ export default function NoteListCard({
                         ]}
                     />
                 </div>
-                <div className="flex flex-1 flex-col justify-between gap-4">
+                <div className="flex flex-1 flex-col justify-between gap-2">
                     <Link
                         className="text-body font-semibold tracking-[-0.01em] text-fg-default transition-colors hover:text-fg-default/85"
                         to={NOTE_ROUTE}

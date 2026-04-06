@@ -90,17 +90,17 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
 
     return (
         <div className="surface-base mb-5 p-4">
-            <div className="mb-3 flex items-center justify-between">
+            <div className={classNames('flex items-center justify-between', !isCollapsed && 'mb-3')}>
                 <button
                     type="button"
                     onClick={() => setIsCollapsed(!isCollapsed)}
-                    className="focus-ring-soft flex items-center gap-2 rounded-[10px] px-2 py-1.5 text-fg-default transition-colors hover:bg-hover-subtle">
+                    className="focus-ring-soft flex items-center gap-2 rounded-[10px] px-2 py-1.5 text-fg-tertiary transition-colors hover:bg-hover-subtle">
                     {isCollapsed ? (
-                        <Icon.TriangleRight size={14} />
+                        <Icon.TriangleRight size={12} />
                     ) : (
-                        <Icon.TriangleDown size={14} />
+                        <Icon.TriangleDown size={12} />
                     )}
-                    <p className="text-body font-medium">Reminders</p>
+                    <span className="text-label font-semibold uppercase tracking-[0.12em]">Reminders</span>
                 </button>
                 {!isCollapsed && (
                     <Button size="sm" variant="ghost" onClick={handleOpenCreateModal}>
@@ -135,7 +135,7 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                                                 <div
                                                     key={reminder.id}
                                                     className={classNames(
-                                                        'group flex items-center gap-2.5 rounded-[10px] px-2 py-2 transition-colors hover:bg-hover-subtle'
+                                                        'flex items-center gap-2.5 px-2 py-1.5'
                                                     )}>
                                                     <Checkbox
                                                         checked={reminder.completed}

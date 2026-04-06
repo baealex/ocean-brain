@@ -21,11 +21,11 @@ const priorities = [
 
 export const PriorityLegend = () => {
     return (
-        <div className="flex flex-wrap items-center gap-3 text-xs">
+        <div className="flex flex-wrap items-center gap-3">
             {priorities.map(({ label, className }) => (
                 <div key={label} className="flex items-center gap-1.5">
                     <div className={`h-3 w-3 rounded-full border border-border-subtle ${className}`} />
-                    <span className="text-fg-tertiary font-medium">
+                    <span className="text-label font-medium text-fg-tertiary">
                         {label}
                     </span>
                 </div>

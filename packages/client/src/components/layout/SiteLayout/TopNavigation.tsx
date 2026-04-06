@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { Link, useLocation } from '@tanstack/react-router';
 
 import * as Icon from '~/components/icon';
@@ -47,24 +48,25 @@ const TopNavigation = () => {
     const pathname = useLocation({ select: (location) => location.pathname });
 
     return (
-        <nav aria-label="Primary navigation" className="flex gap-1 px-4 py-2.5">
-            {NAVIGATION_ITEMS.map((item) => {
-                const isActive = pathname === item.path;
-
-                return (
-                    <Link key={item.path} to={item.path}>
+        <nav aria-label="Primary navigation" className="flex items-center gap-1 px-4 py-2.5">
+            {NAVIGATION_ITEMS.map((item, index) => (
+                <Fragment key={item.path}>
+                    {index > 0 && (
+                        <span className="h-3.5 w-px shrink-0 bg-border-subtle" />
+                    )}
+                    <Link to={item.path}>
                         <div
-                            className={`flex items-center gap-2 border-b px-2 py-2 text-sm font-medium transition-colors ${
-                                isActive
+                            className={`flex min-w-26 items-center justify-center gap-2 border-b px-2 py-2 text-sm font-medium transition-colors ${
+                                pathname === item.path
                                     ? 'border-fg-muted text-fg-default'
                                     : 'border-transparent text-fg-secondary hover:border-border-subtle hover:text-fg-default'
                             }`}>
-                            <item.icon className="size-5" weight={isActive ? 'fill' : 'regular'} />
+                            <item.icon className="size-5" weight={pathname === item.path ? 'fill' : 'regular'} />
                             {item.name}
                         </div>
                     </Link>
-                );
-            })}
+                </Fragment>
+            ))}
         </nav>
     );
 };

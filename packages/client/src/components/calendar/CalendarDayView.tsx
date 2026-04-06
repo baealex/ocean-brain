@@ -18,10 +18,10 @@ export const CalendarDayView = ({
     onOpenOverflow
 }: CalendarDayViewProps) => {
     return (
-        <div className={`min-h-[140px] rounded-[14px] border p-2 ${cellClassName}`.trim()}>
+        <div className={`min-h-[200px] rounded-[14px] border p-2 ${cellClassName}`.trim()}>
             <div className="mb-2 flex justify-end">
                 <span
-                    className={`flex h-7 w-7 items-center justify-center rounded-[10px] text-sm ${dayNumberClassName}`.trim()}>
+                    className={`flex h-6 w-6 items-center justify-center rounded-[8px] text-label ${dayNumberClassName}`.trim()}>
                     {day}
                 </span>
             </div>

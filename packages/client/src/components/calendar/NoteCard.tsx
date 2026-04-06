@@ -1,5 +1,6 @@
 import dayjs from 'dayjs';
 
+import * as Icon from '~/components/icon';
 import type { Note } from '~/models/note.model';
 import { CalendarEntryCard } from './CalendarEntryCard';
 import type { CalendarDisplayType } from './types';
@@ -13,6 +14,7 @@ export const NoteCard = ({ note, type }: Props) => {
     return (
         <CalendarEntryCard
             params={{ id: note.id }}
+            header={<Icon.FileNote size={12} />}
             title={note.title}
             meta={dayjs(type === 'create' ? Number(note.createdAt) : Number(note.updatedAt)).format('HH:mm')}
         />

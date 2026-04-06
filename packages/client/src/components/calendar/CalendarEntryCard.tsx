@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router';
+import classNames from 'classnames';
 
 import { Text } from '~/components/ui';
 import { NOTE_ROUTE } from '~/modules/url';
@@ -24,26 +25,43 @@ export const CalendarEntryCard = ({
         <Link
             to={NOTE_ROUTE}
             params={params}
-            className="group block">
+            className="focus-ring-soft group block rounded-[8px] outline-none">
             <div
-                className={`rounded-[6px] bg-emphasis flex h-full flex-col justify-center px-1.5 py-0.5 transition-colors group-hover:bg-hover-subtle ${toneClassName}`.trim()}>
-                <Text
-                    as="div"
-                    variant="label"
-                    weight="semibold"
-                    className={`flex items-center gap-1 line-clamp-1 ${titleClassName}`.trim()}>
-                    {header ? (
-                        <Text as="span" variant="label" tone="muted" className="shrink-0">
-                            {header}
+                className={classNames(
+                    'flex items-start gap-1.5 rounded-[8px] px-1.5 py-1 transition-colors group-hover:bg-hover-subtle',
+                    toneClassName
+                )}>
+                {header ? (
+                    <span className="mt-[2px] flex h-4 w-4 shrink-0 items-center justify-center text-fg-tertiary">
+                        {header}
+                    </span>
+                ) : (
+                    <span
+                        aria-hidden="true"
+                        className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-fg-placeholder"
+                    />
+                )}
+
+                <div className="min-w-0 flex-1">
+                    <Text
+                        as="div"
+                        variant="label"
+                        weight="medium"
+                        tone="secondary"
+                        className={classNames('line-clamp-1', titleClassName)}>
+                        {title}
+                    </Text>
+                    {meta ? (
+                        <Text
+                            as="div"
+                            variant="micro"
+                            weight="medium"
+                            tone="tertiary"
+                            className="mt-0.5">
+                            {meta}
                         </Text>
                     ) : null}
-                    {title}
-                </Text>
-                {meta ? (
-                    <Text as="div" variant="micro" weight="medium" tone="secondary">
-                        {meta}
-                    </Text>
-                ) : null}
+                </div>
             </div>
         </Link>
     );

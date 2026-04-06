@@ -216,7 +216,7 @@ export default function Calendar() {
             ) : (
                 <div className="surface-base">
                     {/* Header - not scrollable */}
-                    <div className="border-b border-border-subtle px-3 py-3">
+                    <div className="border-b border-border-subtle/80 px-4 py-4 sm:px-5">
                         <CalendarHeader
                             month={month}
                             year={year}
@@ -231,13 +231,13 @@ export default function Calendar() {
                     {/* Scrollable grid */}
                     <div
                         ref={gridScrollRef}
-                        className="overflow-x-auto cursor-grab px-3 pb-3 pt-2"
+                        className="cursor-grab overflow-x-auto px-4 pb-4 pt-3 sm:px-5"
                         onMouseDown={handleMouseDown}
                         onMouseMove={handleMouseMove}
                         onMouseUp={handleMouseUp}
                         onMouseLeave={handleMouseUp}>
                         <div className="min-w-[1260px]">
-                            <div className="grid grid-cols-7 gap-1.5 mb-2">
+                            <div className="mb-2.5 grid grid-cols-7 gap-1.5">
                                 {DAYS_OF_WEEK.map((day, index) => (
                                     <Text
                                         key={day}

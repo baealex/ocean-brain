@@ -251,10 +251,10 @@ export async function startMcpServer(
 
     server.tool(
         OCEAN_BRAIN_MCP_TOOLS.createNote,
-        'Create an Ocean Brain note from markdown through the MCP write path. This is the preferred way to author new notes without sending internal BlockNote JSON.',
+        'Create an Ocean Brain note from markdown through the MCP write path. In MCP markdown, use explicit tags like [@project] or [#project], and use [[Note Title]] for note links.',
         {
             title: z.string().describe('Note title'),
-            markdown: z.string().optional().default('').describe('Markdown body for the new note. Defaults to an empty note body.'),
+            markdown: z.string().optional().default('').describe('Markdown body for the new note. In MCP markdown, tags must use [@tag] or [#tag]. Defaults to an empty note body.'),
             layout: noteLayoutSchema.optional().describe('Optional note layout: narrow, wide, or full. Prefer wide for most notes unless the user explicitly wants narrow or full.')
         },
         async ({ title, markdown, layout }) => {
@@ -285,11 +285,11 @@ export async function startMcpServer(
 
     server.tool(
         OCEAN_BRAIN_MCP_TOOLS.updateNote,
-        'Update an Ocean Brain note from markdown through the MCP write path. Pass only the fields you want to change.',
+        'Update an Ocean Brain note from markdown through the MCP write path. In MCP markdown, use explicit tags like [@project] or [#project], and use [[Note Title]] for note links.',
         {
             id: z.string().describe('Note ID to update'),
             title: z.string().optional().describe('New note title'),
-            markdown: z.string().optional().describe('Replacement markdown body'),
+            markdown: z.string().optional().describe('Replacement markdown body. In MCP markdown, tags must use [@tag] or [#tag].'),
             layout: noteLayoutSchema.optional().describe('Optional note layout: narrow, wide, or full. Prefer wide for most notes unless the user explicitly wants narrow or full.')
         },
         async ({ id, title, markdown, layout }) => {

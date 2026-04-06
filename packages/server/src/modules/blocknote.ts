@@ -42,6 +42,8 @@ interface MarkdownImportDeps {
 const UNSUPPORTED_MARKDOWN_BLOCK_TYPES = new Set([
     'tableOfContents'
 ]);
+const TAG_PLACEHOLDER_PREFIX = 'OCEAN_BRAIN_TAG_';
+const TAG_PLACEHOLDER_SUFFIX = '_TOKEN';
 
 const defaultMarkdownImportDeps: MarkdownImportDeps = {
     ensureTag: async (name) => ensureTagByName(name),
@@ -74,7 +76,15 @@ function stripUnsupportedMarkdownBlocks(blocks: BlockNote[]): BlockNote[] {
         }));
 }
 
-function preprocessCustomInlineContent(blocks: BlockNote[]): BlockNote[] {
+function createTagPlaceholder(index: number) {
+    return `${TAG_PLACEHOLDER_PREFIX}${index}${TAG_PLACEHOLDER_SUFFIX}`;
+}
+
+function preprocessCustomInlineContent(
+    blocks: BlockNote[],
+    placeholderToTag: Map<string, string>,
+    nextPlaceholderIndex: { value: number }
+): BlockNote[] {
     return blocks.map((block) => ({
         ...block,
         content: Array.isArray(block.content)
@@ -88,9 +98,11 @@ function preprocessCustomInlineContent(blocks: BlockNote[]): BlockNote[] {
                 }
                 if (inline.type === 'tag') {
                     const tag = (inline.props?.tag as string) || '';
+                    const placeholder = createTagPlaceholder(nextPlaceholderIndex.value++);
+                    placeholderToTag.set(placeholder, tag);
                     return {
                         type: 'text',
-                        text: tag,
+                        text: placeholder,
                         styles: {}
                     };
                 }
@@ -98,7 +110,79 @@ function preprocessCustomInlineContent(blocks: BlockNote[]): BlockNote[] {
             })
             : block.content,
         children: block.children?.length
-            ? preprocessCustomInlineContent(block.children)
+            ? preprocessCustomInlineContent(block.children, placeholderToTag, nextPlaceholderIndex)
+            : []
+    }));
+}
+
+function restoreTagPlaceholdersInMarkdown(markdown: string, placeholderToTag: Map<string, string>) {
+    let restoredMarkdown = markdown;
+
+    for (const [placeholder, tag] of placeholderToTag.entries()) {
+        restoredMarkdown = restoredMarkdown.split(placeholder).join(`[${tag}]`);
+    }
+
+    return restoredMarkdown;
+}
+
+function preprocessMarkdownExplicitTags(markdown: string) {
+    const placeholderToTag = new Map<string, string>();
+    let nextPlaceholderIndex = 0;
+    const preprocessedMarkdown = markdown.replace(/\[([@#][^\s[\]]+)\]/g, (_match, tagToken: string) => {
+        const placeholder = createTagPlaceholder(nextPlaceholderIndex++);
+        placeholderToTag.set(placeholder, tagToken);
+        return placeholder;
+    });
+
+    return {
+        markdown: preprocessedMarkdown,
+        placeholderToTag
+    };
+}
+
+function findTagPlaceholderAtCursor(
+    text: string,
+    cursor: number,
+    placeholderToTag: Map<string, string>
+) {
+    for (const [placeholder, tagToken] of placeholderToTag.entries()) {
+        if (text.startsWith(placeholder, cursor)) {
+            return {
+                placeholder,
+                tagToken
+            };
+        }
+    }
+
+    return null;
+}
+
+function restoreRemainingTagPlaceholders(
+    blocks: BlockNote[],
+    placeholderToTag: Map<string, string>
+): BlockNote[] {
+    return blocks.map((block) => ({
+        ...block,
+        content: Array.isArray(block.content)
+            ? block.content.map((inline) => {
+                if (inline.type !== 'text' || typeof inline.text !== 'string') {
+                    return inline;
+                }
+
+                let text = inline.text;
+
+                for (const [placeholder, tagToken] of placeholderToTag.entries()) {
+                    text = text.split(placeholder).join(`[${tagToken}]`);
+                }
+
+                return {
+                    ...inline,
+                    text
+                };
+            })
+            : block.content,
+        children: block.children?.length
+            ? restoreRemainingTagPlaceholders(block.children, placeholderToTag)
             : []
     }));
 }
@@ -130,7 +214,8 @@ function appendInline(target: BlockNoteInline[], inline: BlockNoteInline) {
 
 async function restoreCustomInlineContent(
     blocks: BlockNote[],
-    deps: MarkdownImportDeps
+    deps: MarkdownImportDeps,
+    placeholderToTag: Map<string, string>
 ): Promise<BlockNote[]> {
     const tagCache = new Map<string, Promise<{ id: string; tag: string }>>();
     const noteCache = new Map<string, Promise<Array<{ id: string; title: string }>>>();
@@ -178,9 +263,7 @@ async function restoreCustomInlineContent(
         let cursor = 0;
 
         while (cursor < inline.text.length) {
-            if (
-                inline.text.startsWith('[[', cursor)
-            ) {
+            if (inline.text.startsWith('[[', cursor)) {
                 const closeIndex = inline.text.indexOf(']]', cursor + 2);
 
                 if (closeIndex !== -1) {
@@ -201,35 +284,32 @@ async function restoreCustomInlineContent(
                 }
             }
 
-            if (
-                (inline.text[cursor] === '@' || inline.text[cursor] === '#') &&
-                (cursor === 0 || /\s/.test(inline.text[cursor - 1]))
-            ) {
-                const remainder = inline.text.slice(cursor);
-                const tagMatch = remainder.match(/^[@#][^\s[\]]+/);
+            const tagPlaceholderMatch = findTagPlaceholderAtCursor(inline.text, cursor, placeholderToTag);
 
-                if (tagMatch) {
-                    const tag = await getTag(tagMatch[0]);
-                    appendInline(restored, {
-                        type: 'tag',
-                        props: tag
-                    });
-                    cursor += tagMatch[0].length;
-                    continue;
-                }
+            if (tagPlaceholderMatch) {
+                const tag = await getTag(tagPlaceholderMatch.tagToken);
+                appendInline(restored, {
+                    type: 'tag',
+                    props: tag
+                });
+                cursor += tagPlaceholderMatch.placeholder.length;
+                continue;
             }
 
-            let nextCursor = cursor + 1;
+            let nextCursor = inline.text.length;
 
-            while (
-                nextCursor < inline.text.length &&
-                !inline.text.startsWith('[[', nextCursor) &&
-                !(
-                    inline.text[nextCursor] === '#' &&
-                    /\s/.test(inline.text[nextCursor - 1] ?? '')
-                )
-            ) {
-                nextCursor += 1;
+            const nextReferenceCursor = inline.text.indexOf('[[', cursor + 1);
+
+            if (nextReferenceCursor !== -1) {
+                nextCursor = Math.min(nextCursor, nextReferenceCursor);
+            }
+
+            for (const placeholder of placeholderToTag.keys()) {
+                const nextPlaceholderCursor = inline.text.indexOf(placeholder, cursor + 1);
+
+                if (nextPlaceholderCursor !== -1) {
+                    nextCursor = Math.min(nextCursor, nextPlaceholderCursor);
+                }
             }
 
             appendInline(restored, createTextInline(inline.text.slice(cursor, nextCursor), styles));
@@ -246,7 +326,7 @@ async function restoreCustomInlineContent(
                 ? (await Promise.all(block.content.map((inline) => restoreTextInline(inline)))).flat()
                 : undefined,
             children: block.children?.length
-                ? await restoreCustomInlineContent(block.children, deps)
+                ? await restoreCustomInlineContent(block.children, deps, placeholderToTag)
                 : []
         }))
     );
@@ -286,10 +366,16 @@ export async function blocksToMarkdown(contentJson: string): Promise<string> {
     try {
         const blocks = JSON.parse(contentJson);
         const supportedBlocks = stripUnsupportedMarkdownBlocks(blocks);
-        const processed = preprocessCustomInlineContent(supportedBlocks);
+        const placeholderToTag = new Map<string, string>();
+        const processed = preprocessCustomInlineContent(
+            supportedBlocks,
+            placeholderToTag,
+            { value: 0 }
+        );
         const editor = getEditor();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return await editor.blocksToMarkdownLossy(processed as any);
+        const markdown = await editor.blocksToMarkdownLossy(processed as any);
+        return restoreTagPlaceholdersInMarkdown(markdown, placeholderToTag);
     } catch {
         return '';
     }
@@ -300,9 +386,16 @@ export async function markdownToBlocksJson(
     deps: MarkdownImportDeps = defaultMarkdownImportDeps
 ): Promise<string> {
     const editor = getEditor();
-    const blocks = await editor.tryParseMarkdownToBlocks(markdown);
-    const restoredBlocks = await restoreCustomInlineContent(blocks as BlockNote[], deps);
-    return JSON.stringify(restoredBlocks);
+    const preprocessedMarkdown = preprocessMarkdownExplicitTags(markdown);
+    const blocks = await editor.tryParseMarkdownToBlocks(preprocessedMarkdown.markdown);
+    const restoredBlocks = await restoreCustomInlineContent(
+        blocks as BlockNote[],
+        deps,
+        preprocessedMarkdown.placeholderToTag
+    );
+    return JSON.stringify(
+        restoreRemainingTagPlaceholders(restoredBlocks, preprocessedMarkdown.placeholderToTag)
+    );
 }
 
 export function extractTagIdsFromContentJson(contentJson: string): string[] {

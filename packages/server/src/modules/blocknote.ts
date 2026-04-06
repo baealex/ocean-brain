@@ -77,24 +77,26 @@ function stripUnsupportedMarkdownBlocks(blocks: BlockNote[]): BlockNote[] {
 function preprocessCustomInlineContent(blocks: BlockNote[]): BlockNote[] {
     return blocks.map((block) => ({
         ...block,
-        content: block.content?.map((inline) => {
-            if (inline.type === 'reference') {
-                return {
-                    type: 'text',
-                    text: `[[${inline.props?.title || inline.props?.id || ''}]]`,
-                    styles: {}
-                };
-            }
-            if (inline.type === 'tag') {
-                const tag = (inline.props?.tag as string)?.replace(/^@/, '') || '';
-                return {
-                    type: 'text',
-                    text: `#${tag}`,
-                    styles: {}
-                };
-            }
-            return inline;
-        }),
+        content: Array.isArray(block.content)
+            ? block.content.map((inline) => {
+                if (inline.type === 'reference') {
+                    return {
+                        type: 'text',
+                        text: `[[${inline.props?.title || inline.props?.id || ''}]]`,
+                        styles: {}
+                    };
+                }
+                if (inline.type === 'tag') {
+                    const tag = (inline.props?.tag as string) || '';
+                    return {
+                        type: 'text',
+                        text: tag,
+                        styles: {}
+                    };
+                }
+                return inline;
+            })
+            : block.content,
         children: block.children?.length
             ? preprocessCustomInlineContent(block.children)
             : []
@@ -134,14 +136,17 @@ async function restoreCustomInlineContent(
     const noteCache = new Map<string, Promise<Array<{ id: string; title: string }>>>();
 
     const getTag = (token: string) => {
-        let existing = tagCache.get(token);
+        const normalizedToken = token.startsWith('#')
+            ? `@${token.slice(1)}`
+            : token;
+        let existing = tagCache.get(normalizedToken);
 
         if (!existing) {
-            existing = deps.ensureTag(token.slice(1)).then((result) => ({
+            existing = deps.ensureTag(normalizedToken.slice(1)).then((result) => ({
                 id: 'tag' in result ? result.tag.id : result.id,
                 tag: 'tag' in result ? result.tag.name : result.name
             }));
-            tagCache.set(token, existing);
+            tagCache.set(normalizedToken, existing);
         }
 
         return existing;
@@ -197,11 +202,11 @@ async function restoreCustomInlineContent(
             }
 
             if (
-                inline.text[cursor] === '#' &&
+                (inline.text[cursor] === '@' || inline.text[cursor] === '#') &&
                 (cursor === 0 || /\s/.test(inline.text[cursor - 1]))
             ) {
                 const remainder = inline.text.slice(cursor);
-                const tagMatch = remainder.match(/^#[^\s[\]]+/);
+                const tagMatch = remainder.match(/^[@#][^\s[\]]+/);
 
                 if (tagMatch) {
                     const tag = await getTag(tagMatch[0]);

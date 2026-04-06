@@ -37,7 +37,9 @@ export const toggleGroupItemVariants = cva(
         'items-center',
         'justify-center',
         'font-bold',
-        'transition-all',
+        'border',
+        'border-transparent',
+        'transition-colors',
         'duration-200',
         'disabled:pointer-events-none',
         'disabled:opacity-50'
@@ -63,7 +65,6 @@ export const toggleGroupItemVariants = cva(
                     'hover:bg-hover-subtle',
                     'data-[state=on]:bg-cta',
                     'data-[state=on]:text-fg-on-filled',
-                    'data-[state=on]:border',
                     'data-[state=on]:border-border-secondary'
                 ]
             },

@@ -30,37 +30,35 @@ export default function NoteListCard({
     return (
         <div
             key={id}
-            className={`${rootClassName} relative flex h-full flex-col overflow-hidden p-4 transition-colors`}>
+            className={`${rootClassName} group relative flex h-full flex-col overflow-hidden p-4 transition-colors`}>
+            <div className="absolute right-2 top-2">
+                <Dropdown
+                    button={(
+                        <button
+                            type="button"
+                            className="focus-ring-soft inline-flex h-7 w-7 items-center justify-center rounded-[8px] border border-transparent bg-transparent text-fg-tertiary outline-none transition-colors hover:border-border-subtle hover:bg-hover-subtle hover:text-fg-default">
+                            <Icon.VerticalDots className="h-4 w-4" />
+                            <span className="sr-only">Note actions</span>
+                        </button>
+                    )}
+                    items={[
+                        {
+                            name: pinned ? 'Unpin' : 'Pin',
+                            onClick: () => onPinned?.()
+                        },
+                        {
+                            name: 'Delete',
+                            onClick: () => onDelete?.()
+                        }
+                    ]}
+                />
+            </div>
             <div className="flex h-full flex-col gap-2">
-                <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0 space-y-2.5">
-                        <div className={`inline-flex items-center gap-2 ${noteMetaTextClassName}`}>
-                            {pinned && (
-                                <Icon.Pin className="h-3 w-3 shrink-0" weight="fill" />
-                            )}
-                            Updated {updatedTimeSince}
-                        </div>
-                    </div>
-                    <Dropdown
-                        button={(
-                            <button
-                                type="button"
-                                className="focus-ring-soft inline-flex h-8 w-8 items-center justify-center rounded-[10px] border border-transparent bg-transparent text-fg-tertiary outline-none transition-colors hover:border-border-subtle hover:bg-hover-subtle hover:text-fg-default">
-                                <Icon.VerticalDots className="h-5 w-5" />
-                                <span className="sr-only">Note actions</span>
-                            </button>
-                        )}
-                        items={[
-                            {
-                                name: pinned ? 'Unpin' : 'Pin',
-                                onClick: () => onPinned?.()
-                            },
-                            {
-                                name: 'Delete',
-                                onClick: () => onDelete?.()
-                            }
-                        ]}
-                    />
+                <div className={`inline-flex items-center gap-2 ${noteMetaTextClassName}`}>
+                    {pinned && (
+                        <Icon.Pin className="h-3 w-3 shrink-0" weight="fill" />
+                    )}
+                    Updated {updatedTimeSince}
                 </div>
                 <div className="flex flex-1 flex-col justify-between gap-2">
                     <Link
@@ -89,3 +87,4 @@ export default function NoteListCard({
         </div>
     );
 }
+

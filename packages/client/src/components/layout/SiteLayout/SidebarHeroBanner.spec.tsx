@@ -16,7 +16,14 @@ vi.mock('~/apis/server-cache.api', () => ({
     setServerCache: vi.fn()
 }));
 
-vi.mock('~/components/ui', () => ({ useConfirm: () => mockConfirm }));
+vi.mock('~/components/ui', async () => {
+    const actual = await vi.importActual<object>('~/components/ui');
+
+    return {
+        ...actual,
+        useConfirm: () => mockConfirm
+    };
+});
 
 vi.mock('~/store/theme', () => ({ useTheme: (selector: (state: ThemeState) => unknown) => selector({ theme: 'light' }) }));
 

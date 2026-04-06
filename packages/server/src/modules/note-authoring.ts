@@ -200,11 +200,7 @@ const defaultNoteAuthoringService = createNoteAuthoringService({
                 content: input.content,
                 ...(input.layout ? { layout: input.layout } : {}),
                 ...(input.tagIds
-                    ? {
-                        tags: {
-                            connect: input.tagIds.map((id) => ({ id: Number(id) }))
-                        }
-                    }
+                    ? { tags: { connect: input.tagIds.map((id) => ({ id: Number(id) })) } }
                     : {})
             }
         });
@@ -236,11 +232,7 @@ const defaultNoteAuthoringService = createNoteAuthoringService({
                 content: input.content,
                 layout: input.layout,
                 ...(input.tagIds
-                    ? {
-                        tags: {
-                            set: input.tagIds.map((tagId) => ({ id: Number(tagId) }))
-                        }
-                    }
+                    ? { tags: { set: input.tagIds.map((tagId) => ({ id: Number(tagId) })) } }
                     : {})
             }
         });

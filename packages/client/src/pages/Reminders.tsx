@@ -7,11 +7,27 @@ import {
     Skeleton
 } from '~/components/shared';
 import { Reminders as RemindersEntity } from '~/components/entities';
+import { Text } from '~/components/ui';
 import useReminderMutate from '~/hooks/resource/useReminderMutate';
 import ReminderCard from '~/components/reminder/ReminderCard';
+import { priorityColors } from '~/modules/color';
 import { REMINDERS_ROUTE } from '~/modules/url';
 
 const Route = getRouteApi(REMINDERS_ROUTE);
+const priorityHints = [
+    {
+        label: 'High',
+        className: priorityColors.high
+    },
+    {
+        label: 'Medium',
+        className: priorityColors.medium
+    },
+    {
+        label: 'Low',
+        className: priorityColors.low
+    }
+] as const;
 
 export default function Reminders() {
     const navigate = Route.useNavigate();
@@ -26,7 +42,7 @@ export default function Reminders() {
             description="Manage all your note reminders in one place">
             <QueryBoundary
                 fallback={(
-                    <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+                    <div className="flex flex-col gap-2.5">
                         <Skeleton height="60px" />
                         <Skeleton height="60px" />
                         <Skeleton height="60px" />
@@ -51,8 +67,30 @@ export default function Reminders() {
                             );
                         }
                         return (
-                            <>
-                                <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+                            <div className="flex flex-col gap-4">
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                    <Text as="p" variant="meta" weight="medium" tone="secondary">
+                                        {totalCount === 1 ? '1 reminder' : `${totalCount} reminders`}
+                                    </Text>
+                                    <div className="flex flex-wrap items-center gap-3">
+                                        {priorityHints.map(({ label, className }) => (
+                                            <div key={label} className="flex items-center gap-1.5">
+                                                <span
+                                                    className={`h-2.5 w-2.5 rounded-full border border-border-subtle ${className}`}
+                                                    aria-hidden="true"
+                                                />
+                                                <Text
+                                                    as="span"
+                                                    variant="label"
+                                                    weight="medium"
+                                                    tone="tertiary">
+                                                    {label}
+                                                </Text>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="flex flex-col gap-2.5">
                                     {reminders.map((reminder) => (
                                         <ReminderCard
                                             key={reminder.id}
@@ -76,7 +114,7 @@ export default function Reminders() {
                                         }}
                                     />
                                 )}
-                            </>
+                            </div>
                         );
                     }}
                 />

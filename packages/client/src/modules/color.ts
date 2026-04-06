@@ -1,7 +1,7 @@
 export const priorityColors: Record<string, string> = {
-    high: 'bg-accent-danger',
-    medium: 'bg-cta',
-    low: 'bg-accent-success'
+    high: 'bg-priority-high',
+    medium: 'bg-priority-medium',
+    low: 'bg-priority-low'
 };
 
 export const priorityColorsSubtle: Record<string, string> = {

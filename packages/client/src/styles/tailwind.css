@@ -112,6 +112,9 @@ html.dark {
     --color-pastel-purple-200: #b5aabd;
     --color-pastel-teal-200: #90aba3;
     --color-pastel-lavender-200: #c0b7c6;
+    --color-priority-high: #e4a29f;
+    --color-priority-medium: #deb07e;
+    --color-priority-low: #dec988;
     --color-surface: var(--surface);
     --color-muted: var(--muted);
     --color-subtle: var(--subtle);
@@ -320,7 +323,7 @@ html.dark {
     background: var(--surface);
     border: 1px solid var(--border-subtle);
     border-radius: 16px;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 2px 8px -2px rgba(23, 29, 38, 0.07);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 1px 4px -2px rgba(23, 29, 38, 0.04);
 }
 
 .surface-floating {
@@ -338,7 +341,7 @@ html.dark {
 }
 
 html.dark .surface-base {
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 2px 8px -2px rgba(0, 0, 0, 0.28);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 1px 4px -2px rgba(0, 0, 0, 0.18);
 }
 
 /* Grid layouts */

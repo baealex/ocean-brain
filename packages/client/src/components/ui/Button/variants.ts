@@ -33,17 +33,19 @@ export const buttonVariants = cva(
                     'active:bg-accent-secondary-hover'
                 ],
                 subtle: [
-                    'bg-subtle',
-                    'border-transparent',
+                    'bg-transparent',
+                    'border-border',
                     'text-fg-default',
-                    'hover:bg-hover',
-                    'active:bg-active'
+                    'hover:bg-hover-subtle',
+                    'hover:border-border-secondary',
+                    'active:bg-hover'
                 ],
                 ghost: [
                     'border-transparent',
                     'bg-transparent',
                     'text-fg-secondary',
                     'hover:bg-hover-subtle',
+                    'hover:border-border-subtle',
                     'hover:text-fg-default',
                     'active:bg-hover'
                 ],

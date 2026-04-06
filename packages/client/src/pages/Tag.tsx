@@ -29,10 +29,10 @@ export default function Tag() {
 
     return (
         <PageLayout title="Tags" description="Organize and browse notes by tags">
-            <div ref={containerRef}>
+            <div ref={containerRef} className="flex flex-col gap-4">
                 <QueryBoundary
                     fallback={(
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-2.5">
                             <Skeleton width="90px" height="36px" />
                             <Skeleton width="120px" height="36px" />
                             <Skeleton width="80px" height="36px" />
@@ -53,25 +53,33 @@ export default function Tag() {
                             <FallbackRender
                                 fallback={(
                                     <Empty
-                                        title="There are no tags"
-                                        description="Try to tag some notes using <@> key."
+                                        title="No tags yet"
+                                        description="Add tags to notes and they will appear here."
                                     />
                                 )}>
                                 {tags.length > 0 && (
-                                    <>
-                                        <div className="flex flex-wrap gap-2">
+                                    <div className="flex flex-col gap-4">
+                                        <Text as="p" variant="meta" tone="secondary">
+                                            {totalCount === 1 ? '1 tag in use' : `${totalCount} tags in use`}
+                                        </Text>
+                                        <div className="flex flex-wrap gap-2.5">
                                             {tags.map((tag) => (
                                                 <Link
                                                     key={tag.id}
                                                     to={TAG_NOTES_ROUTE}
                                                     params={{ id: tag.id }}
                                                     search={{ page: 1 }}
-                                                    className="inline-flex items-center rounded-full border border-border-subtle bg-hover-subtle px-3 py-1.5 text-fg-secondary transition-colors hover:border-border-secondary hover:bg-hover hover:text-fg-default">
+                                                    className="inline-flex items-center gap-1.5 rounded-full border border-border-subtle bg-hover-subtle px-3 py-1.5 text-fg-secondary transition-colors hover:border-border-secondary hover:bg-hover hover:text-fg-default">
                                                     <Text as="span" variant="meta" weight="medium" className="text-current">
                                                         {tag.name}
                                                     </Text>
-                                                    <Text as="span" variant="label" tone="tertiary">
-                                                        ({tag.referenceCount})
+                                                    <Text
+                                                        as="span"
+                                                        variant="label"
+                                                        weight="medium"
+                                                        tone="tertiary"
+                                                        className="text-current/70">
+                                                        {tag.referenceCount}
                                                     </Text>
                                                 </Link>
                                             ))}
@@ -93,7 +101,7 @@ export default function Tag() {
                                             />
                                             )}
                                         </FallbackRender>
-                                    </>
+                                    </div>
                                 )}
                             </FallbackRender>
                         )}

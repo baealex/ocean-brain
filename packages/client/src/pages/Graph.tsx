@@ -10,6 +10,7 @@ import { useSuspenseQuery } from '@tanstack/react-query';
 import ForceGraph2D from 'react-force-graph-2d';
 
 import { fetchNoteGraph, type GraphLink, type GraphNode } from '~/apis/note.api';
+import * as Icon from '~/components/icon';
 import { QueryBoundary, QueryErrorView } from '~/components/app';
 import { Empty, PageLayout, Skeleton } from '~/components/shared';
 import { getHash } from '~/modules/hash';
@@ -34,10 +35,10 @@ interface ForceGraphInstance {
 }
 
 function getNodeSize(connections: number) {
-    if (connections <= 1) return 3;
-    if (connections <= 3) return 4;
-    if (connections <= 5) return 5;
-    return Math.min(8, 5 + Math.sqrt(connections) * 0.8);
+    if (connections <= 1) return 3.5;
+    if (connections <= 3) return 4.5;
+    if (connections <= 6) return 5.5;
+    return Math.min(7, 5.5 + Math.sqrt(connections) * 0.5);
 }
 
 const graphPageFallback = (
@@ -224,12 +225,13 @@ function GraphContent() {
             ctx.stroke();
         }
 
-        if (isSelected || isConnected || globalScale > 2.5) {
+        const isHubConnected = isConnected && node.connections >= 4;
+        if (isSelected || isHubConnected || globalScale > 2.5) {
             const label = node.title || 'Untitled';
             const fontSize = Math.max(10 / globalScale, 2.5);
             ctx.font = getGraphLabelFont(theme, {
                 fontSize,
-                emphasize: isSelected || isConnected
+                emphasize: isSelected
             });
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
@@ -301,18 +303,35 @@ function GraphContent() {
                     }
 
                     return (
-                        <div className="surface-floating absolute top-3 left-3 z-10 flex items-center gap-2 px-3 py-2 text-sm">
-                            <span className="max-w-48 truncate font-semibold text-fg-default">{node.title}</span>
-                            <span className="text-fg-tertiary">{node.connections} links</span>
+                        <div className="surface-floating absolute top-3 left-3 z-10 flex items-center gap-2 px-3 py-2">
+                            <span className="text-meta max-w-48 truncate font-semibold text-fg-default">{node.title}</span>
+                            <span className="text-label text-fg-tertiary">{node.connections} links</span>
                             <button
+                                type="button"
                                 onClick={() => setSelectedNodeId(null)}
-                                className="focus-ring-soft ml-1 flex h-7 w-7 cursor-pointer items-center justify-center rounded-[12px] text-fg-tertiary transition-colors hover:bg-hover-subtle hover:text-fg-default"
+                                className="focus-ring-soft ml-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-[8px] text-fg-tertiary transition-colors hover:bg-hover-subtle hover:text-fg-default"
                                 aria-label="Deselect node">
-                                x
+                                <Icon.Close className="h-3.5 w-3.5" />
                             </button>
                         </div>
                     );
                 })()}
+                <div className="surface-floating absolute top-3 right-3 z-10 flex flex-col gap-1.5 px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                        <span
+                            className="legend-dot h-2.5 w-2.5 shrink-0 rounded-full"
+                            style={{ '--legend-color': graphTheme.legendHub } as React.CSSProperties}
+                        />
+                        <span className="text-label font-medium text-fg-secondary">Hub notes (4+ connections)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span
+                            className="legend-dot h-2.5 w-2.5 shrink-0 rounded-full"
+                            style={{ '--legend-color': graphTheme.nodeConnected } as React.CSSProperties}
+                        />
+                        <span className="text-label font-medium text-fg-secondary">Connected notes</span>
+                    </div>
+                </div>
                 <ForceGraph2D
                     ref={graphRef as React.MutableRefObject<never>}
                     graphData={graphData}
@@ -354,22 +373,6 @@ function GraphContent() {
                     minZoom={0.3}
                     maxZoom={5}
                 />
-            </div>
-            <div className="mt-4 flex flex-wrap gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                    <span
-                        className="legend-dot h-4 w-4 rounded-full border border-border-subtle"
-                        style={{ '--legend-color': graphTheme.legendHub } as React.CSSProperties}
-                    />
-                    <span className="text-fg-tertiary font-medium">Hub notes (4+ connections)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <span
-                        className="legend-dot h-4 w-4 rounded-full border border-border-subtle"
-                        style={{ '--legend-color': graphTheme.nodeConnected } as React.CSSProperties}
-                    />
-                    <span className="text-fg-tertiary font-medium">Connected notes</span>
-                </div>
             </div>
         </PageLayout>
     );

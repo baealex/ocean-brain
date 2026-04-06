@@ -67,6 +67,19 @@
         z-index: 1001;
         background: var(--page-bg);
         border-bottom: 1px solid var(--border-subtle);
+
+        @media (max-width: var.$BREAKPOINT_TABLET) {
+            &::after {
+                content: '';
+                position: absolute;
+                top: 0;
+                right: 0;
+                bottom: 0;
+                width: 48px;
+                background: linear-gradient(to right, transparent, var(--page-bg));
+                pointer-events: none;
+            }
+        }
     }
 
     .top-content {
@@ -74,6 +87,11 @@
         align-items: center;
         white-space: nowrap;
         overflow-x: auto;
+        scrollbar-width: none;
+
+        &::-webkit-scrollbar {
+            display: none;
+        }
     }
 
     .center {

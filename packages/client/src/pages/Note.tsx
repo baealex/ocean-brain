@@ -280,9 +280,10 @@ function NoteContent({ id }: NoteContentProps) {
                         noteId={id}
                         render={backReferences => backReferences && backReferences.length > 0 && (
                             <div className="surface-base p-4">
-                                <p className="text-subheading mb-2 px-2.5 font-semibold text-fg-default">
-                                    Back References
-                                </p>
+                                <div className="mb-3 flex items-center gap-2">
+                                    <Icon.LinkSimple className="h-3.5 w-3.5 text-fg-tertiary" />
+                                    <span className="text-label font-semibold uppercase tracking-[0.12em] text-fg-tertiary">Back References</span>
+                                </div>
                                 <ul className="flex flex-col">
                                     {backReferences.map((backLink) => (
                                         <li key={backLink.id}>

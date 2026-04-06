@@ -92,31 +92,30 @@ const TableOfContentsComponent = () => {
         }
     };
 
+    const header = (
+        <div className="flex items-center gap-2">
+            <Icon.List className="h-3.5 w-3.5 shrink-0 text-fg-tertiary" />
+            <span className="text-label font-semibold uppercase tracking-[0.12em] text-fg-tertiary">
+                Table of Contents
+            </span>
+        </div>
+    );
+
     if (headings.length === 0) {
         return (
-            <div className="surface-base w-full p-5">
-                <div className="flex items-start gap-3 text-fg-tertiary">
-                    <Icon.List className="mt-0.5 text-xl flex-shrink-0" />
-                    <div>
-                        <div className="text-subheading mb-1 font-semibold text-fg-default">Table of Contents</div>
-                        <div className="text-meta text-fg-tertiary">
-                            Add headings to your document to generate a table of contents
-                        </div>
-                    </div>
-                </div>
+            <div className="surface-base w-full p-4">
+                {header}
+                <p className="mt-2 text-meta text-fg-tertiary">
+                    Add headings to your document to generate a table of contents
+                </p>
             </div>
         );
     }
 
     return (
-        <div className="surface-base w-full p-5">
-            <div className="mb-4 flex items-center gap-2 border-b border-border-subtle pb-3">
-                <Icon.List className="text-lg text-fg-tertiary" />
-                <h3 className="text-subheading font-semibold uppercase tracking-[0.1em] text-fg-tertiary">
-                    Table of Contents
-                </h3>
-            </div>
-            <nav className="space-y-1">
+        <div className="surface-base w-full p-4">
+            <div className="mb-2">{header}</div>
+            <nav className="space-y-0.5">
                 {headings.map((heading) => {
                     const isTopLevel = heading.level === 1;
 
@@ -129,21 +128,21 @@ const TableOfContentsComponent = () => {
                                 'focus-ring-soft',
                                 'flex',
                                 'w-full',
-                                'items-start',
-                                'gap-3',
-                                'rounded-[14px]',
-                                'px-3',
-                                'py-2.5',
-                                tocIndentClass[heading.level] ?? 'pl-3',
+                                'items-center',
+                                'gap-2',
+                                'rounded-[10px]',
+                                'px-2.5',
+                                'py-1.5',
+                                tocIndentClass[heading.level] ?? 'pl-2.5',
                                 'text-left',
                                 'transition-colors',
                                 'hover:bg-hover-subtle',
                                 isTopLevel ? 'text-fg-default' : 'text-fg-secondary'
                             )}>
-                            <span className="text-micro mt-[1px] min-w-[1.75rem] font-semibold uppercase tracking-[0.12em] text-fg-tertiary">
+                            <span className="text-label min-w-[1.5rem] font-semibold uppercase tracking-[0.08em] text-fg-tertiary">
                                 H{heading.level}
                             </span>
-                            <span className={`text-body line-clamp-2 ${isTopLevel ? 'font-semibold' : 'font-medium'}`}>
+                            <span className={`text-meta line-clamp-2 ${isTopLevel ? 'font-semibold' : 'font-medium'}`}>
                                 {heading.text}
                             </span>
                         </button>

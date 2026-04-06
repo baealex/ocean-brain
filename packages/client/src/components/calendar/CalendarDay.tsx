@@ -11,6 +11,8 @@ import type { CalendarDisplayType, CalendarItem } from './types';
 const MAX_VISIBLE_ITEMS = 3;
 
 interface Props {
+    year: number;
+    month: number;
     day: number;
     isCurrentMonth: boolean;
     isSunday: boolean;
@@ -38,6 +40,8 @@ const renderItems = (items: CalendarItem[], type: CalendarDisplayType) =>
     );
 
 const CalendarDayComponent = ({
+    year,
+    month,
     day,
     isCurrentMonth,
     isSunday,
@@ -114,7 +118,7 @@ const CalendarDayComponent = ({
 
             {hasOverflow && (
                 <Modal isOpen={isModalOpen} onClose={handleCloseModal}>
-                    <Modal.Header title={`Day ${day}`} onClose={handleCloseModal} />
+                    <Modal.Header title={`${year}/${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}`} onClose={handleCloseModal} />
                     <Modal.Body>
                         <Modal.Description className="sr-only">
                             View all notes and reminders scheduled for day {day}.

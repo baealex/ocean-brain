@@ -1,16 +1,15 @@
 import dayjs from 'dayjs';
-import { useMemo } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { getRouteApi } from '@tanstack/react-router';
 
 import {
     CalendarDay,
     CalendarHeader,
-    PriorityLegend,
     useCalendarData
 } from '~/components/calendar';
 import type { CalendarDisplayType } from '~/components/calendar';
 import { Callout, PageLayout } from '~/components/shared';
-import { Skeleton, ToggleGroup, ToggleGroupItem } from '~/components/ui';
+import { Skeleton } from '~/components/ui';
 import type { Note } from '~/models/note.model';
 import type { Reminder } from '~/models/reminder.model';
 import { CALENDAR_ROUTE } from '~/modules/url';
@@ -22,6 +21,8 @@ const EMPTY_REMINDERS: Reminder[] = [];
 
 interface CalendarDayView {
     key: string;
+    year: number;
+    month: number;
     day: number;
     isCurrentMonth: boolean;
     isSunday: boolean;
@@ -40,6 +41,37 @@ export default function Calendar() {
         month,
         type
     } = Route.useSearch();
+
+    const gridScrollRef = useRef<HTMLDivElement>(null);
+    const isDragging = useRef(false);
+    const dragStartX = useRef(0);
+    const dragScrollLeft = useRef(0);
+
+    const handleMouseDown = useCallback((e: React.MouseEvent) => {
+        isDragging.current = true;
+        dragStartX.current = e.pageX - (gridScrollRef.current?.offsetLeft ?? 0);
+        dragScrollLeft.current = gridScrollRef.current?.scrollLeft ?? 0;
+        if (gridScrollRef.current) {
+            gridScrollRef.current.style.cursor = 'grabbing';
+            gridScrollRef.current.style.userSelect = 'none';
+        }
+    }, []);
+
+    const handleMouseMove = useCallback((e: React.MouseEvent) => {
+        if (!isDragging.current || !gridScrollRef.current) return;
+        e.preventDefault();
+        const x = e.pageX - gridScrollRef.current.offsetLeft;
+        const walk = (x - dragStartX.current) * 1.2;
+        gridScrollRef.current.scrollLeft = dragScrollLeft.current - walk;
+    }, []);
+
+    const handleMouseUp = useCallback(() => {
+        isDragging.current = false;
+        if (gridScrollRef.current) {
+            gridScrollRef.current.style.cursor = 'grab';
+            gridScrollRef.current.style.userSelect = '';
+        }
+    }, []);
 
     const { notes, reminders, isLoading, isError } = useCalendarData({
         year,
@@ -120,6 +152,8 @@ export default function Calendar() {
             const dayDate = dayjs(`${d.year}-${String(d.month).padStart(2, '0')}-${String(d.day).padStart(2, '0')}`);
             return {
                 key,
+                year: d.year,
+                month: d.month,
                 day: d.day,
                 isCurrentMonth: d.isCurrentMonth,
                 isSunday: index % 7 === 0,
@@ -177,45 +211,55 @@ export default function Calendar() {
 
     return (
         <PageLayout title="Calendar" variant="none">
-            <div className="w-full px-4 sm:px-6 py-6 sm:py-10 max-w-screen-2xl mx-auto">
-                {isError ? (
-                    <Callout>Failed to load calendar data. Please try again later.</Callout>
-                ) : (
-                    <div className="surface-base overflow-x-auto p-3 sm:p-4">
+            {isError ? (
+                <Callout>Failed to load calendar data. Please try again later.</Callout>
+            ) : (
+                <div className="surface-base">
+                    {/* Header - not scrollable */}
+                    <div className="border-b border-border-subtle px-3 py-3">
                         <CalendarHeader
                             month={month}
                             year={year}
+                            type={type}
                             onPrevMonth={handlePrevMonth}
                             onNextMonth={handleNextMonth}
                             onToday={handleToday}
+                            onTypeChange={handleTypeChange}
                         />
-                        <div className="min-w-[900px]">
-                            {/* Week header */}
-                            <div className="grid grid-cols-7 gap-1 mb-2">
+                    </div>
+
+                    {/* Scrollable grid */}
+                    <div
+                        ref={gridScrollRef}
+                        className="overflow-x-auto cursor-grab px-3 pb-3 pt-2"
+                        onMouseDown={handleMouseDown}
+                        onMouseMove={handleMouseMove}
+                        onMouseUp={handleMouseUp}
+                        onMouseLeave={handleMouseUp}>
+                        <div className="min-w-[1260px]">
+                            <div className="grid grid-cols-7 gap-1.5 mb-2">
                                 {DAYS_OF_WEEK.map((day, index) => (
                                     <div
                                         key={day}
-                                        className={`
-                                            py-2 text-center text-xs font-bold tracking-wider
-                                            ${index === 0 ? 'text-fg-weekend' : 'text-fg-secondary'}
-                                        `}>
+                                        className={`py-2 text-center text-label font-semibold uppercase tracking-[0.12em] ${index === 0 ? 'text-fg-weekend' : 'text-fg-tertiary'}`}>
                                         {day}
                                     </div>
                                 ))}
                             </div>
 
-                            {/* Calendar grid */}
                             {isLoading ? (
-                                <div className="grid grid-cols-7 gap-1">
+                                <div className="grid grid-cols-7 gap-1.5">
                                     {Array.from({ length: 35 }).map((_, i) => (
-                                        <Skeleton key={i} height={140} />
+                                        <Skeleton key={i} height={180} />
                                     ))}
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-7 gap-1">
+                                <div className="grid grid-cols-7 gap-1.5">
                                     {calendarDayViews.map((view) => (
                                         <CalendarDay
                                             key={view.key}
+                                            year={view.year}
+                                            month={view.month}
                                             day={view.day}
                                             isCurrentMonth={view.isCurrentMonth}
                                             isSunday={view.isSunday}
@@ -230,31 +274,8 @@ export default function Calendar() {
                             )}
                         </div>
                     </div>
-                )}
-
-                {/* Footer */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mt-6">
-                    <PriorityLegend />
-                    <div className="flex items-center gap-3">
-                        <span className="text-sm text-fg-tertiary font-bold">
-                            Display by:
-                        </span>
-                        <ToggleGroup
-                            type="single"
-                            variant="pills"
-                            size="sm"
-                            value={type}
-                            onValueChange={handleTypeChange}>
-                            <ToggleGroupItem value="create">
-                                Create date
-                            </ToggleGroupItem>
-                            <ToggleGroupItem value="update">
-                                Update date
-                            </ToggleGroupItem>
-                        </ToggleGroup>
-                    </div>
                 </div>
-            </div>
+            )}
         </PageLayout>
     );
 }

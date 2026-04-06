@@ -23,15 +23,11 @@ export const CalendarEntryCard = ({
         <Link
             to={NOTE_ROUTE}
             params={params}
-            className="group block min-h-[44px]">
+            className="group block">
             <div
-                className={`surface-base flex h-full flex-col justify-center px-2 py-1.5 transition-colors group-hover:bg-hover-subtle ${toneClassName}`.trim()}>
-                {header ? (
-                    <div className="mb-0.5 flex items-center gap-1 text-fg-muted">
-                        {header}
-                    </div>
-                ) : null}
-                <div className={`text-label line-clamp-1 font-semibold text-fg-default ${titleClassName}`.trim()}>
+                className={`rounded-[6px] bg-emphasis flex h-full flex-col justify-center px-1.5 py-0.5 transition-colors group-hover:bg-hover-subtle ${toneClassName}`.trim()}>
+                <div className={`flex items-center gap-1 text-label line-clamp-1 font-semibold text-fg-default ${titleClassName}`.trim()}>
+                    {header ? <span className="shrink-0 text-fg-muted">{header}</span> : null}
                     {title}
                 </div>
                 {meta ? (

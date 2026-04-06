@@ -26,6 +26,7 @@ import { queryKeys } from '~/modules/query-key-factory';
 const IMAGE_MIN_WIDTH = 240;
 const IMAGE_GAP = 20;
 const IMAGE_ROWS = 4;
+const IMAGE_PREVIEW_HEIGHT = 192;
 const Route = getRouteApi(SETTINGS_MANAGE_IMAGE_ROUTE);
 
 const ManageImage = () => {
@@ -64,41 +65,71 @@ const ManageImage = () => {
     );
 
     return (
-        <PageLayout
-            title="Images"
-            variant="default"
-            description="Manage uploaded images across your workspace.">
-            <div ref={containerRef}>
-                <QueryBoundary
-                    fallback={(
-                        <div className="grid-auto-cards grid gap-4">
-                            <Skeleton height="200px"/>
-                            <Skeleton height="200px"/>
-                            <Skeleton height="200px"/>
+        <div ref={containerRef}>
+            <QueryBoundary
+                fallback={(
+                    <PageLayout
+                        title="Images"
+                        variant="default"
+                        heading={<Skeleton width={136} height={24} className="rounded-full" />}
+                        description={<Skeleton width={232} height={16} className="rounded-full" />}>
+                        <div className="flex flex-col gap-4">
+                            <div className="grid-auto-cards grid gap-4">
+                                {Array.from({ length: 3 }, (_, index) => (
+                                    <SurfaceCard key={index} flush>
+                                        <div
+                                            className="flex items-center justify-center bg-muted/25 p-3"
+                                            style={{ height: IMAGE_PREVIEW_HEIGHT }}>
+                                            <Skeleton
+                                                width="100%"
+                                                height={IMAGE_PREVIEW_HEIGHT - 24}
+                                                className="rounded-[12px]"
+                                            />
+                                        </div>
+                                        <div className="flex items-center justify-between gap-3 border-t border-border-subtle px-3 py-2.5">
+                                            <Skeleton width={92} height={14} className="rounded-full" />
+                                            <Skeleton width={32} height={32} className="rounded-[12px]" />
+                                        </div>
+                                    </SurfaceCard>
+                                ))}
+                            </div>
                         </div>
-                    )}
-                    errorTitle="Failed to load images"
-                    errorDescription="Retry loading uploaded image metadata."
-                    resetKeys={[page, limit]}>
-                    <Images
-                        searchParams={{
-                            offset: (page - 1) * limit,
-                            limit
-                        }}
-                        render={({ images, totalCount }) => {
-                            if (images.length === 0) {
-                                return (
+                    </PageLayout>
+                )}
+                errorTitle="Failed to load images"
+                errorDescription="Retry loading uploaded image metadata"
+                resetKeys={[page, limit]}>
+                <Images
+                    searchParams={{
+                        offset: (page - 1) * limit,
+                        limit
+                    }}
+                    render={({ images, totalCount }) => {
+                        const heading = totalCount > 0 ? `Images (${totalCount})` : undefined;
+                        const description = 'Review and manage the images you uploaded inside notes';
+
+                        if (images.length === 0) {
+                            return (
+                                <PageLayout
+                                    title="Images"
+                                    variant="default"
+                                    heading={heading}
+                                    description={description}>
                                     <Empty
                                         title="There are no images"
-                                        description="Drag and drop an image into a note to add it here."
+                                        description="Upload an image in any note and it will appear here"
                                     />
-                                );
-                            }
-                            return (
+                                </PageLayout>
+                            );
+                        }
+
+                        return (
+                            <PageLayout
+                                title="Images"
+                                variant="default"
+                                heading={heading}
+                                description={description}>
                                 <div className="flex flex-col gap-4">
-                                    <Text as="p" variant="meta" weight="medium" tone="secondary">
-                                        {totalCount === 1 ? '1 image' : `${totalCount} images`}
-                                    </Text>
                                     <div className="grid-auto-cards grid gap-4">
                                         {images.map((image) => (
                                             <SurfaceCard key={image.id} flush>
@@ -106,7 +137,9 @@ const ManageImage = () => {
                                                     to={SETTINGS_MANAGE_IMAGE_DETAIL_ROUTE}
                                                     params={{ id: image.id }}
                                                     className="focus-ring-soft block overflow-hidden rounded-t-[18px] outline-none">
-                                                    <div className="flex h-48 items-center justify-center bg-muted/25 p-3">
+                                                    <div
+                                                        className="flex items-center justify-center bg-muted/25 p-3"
+                                                        style={{ height: IMAGE_PREVIEW_HEIGHT }}>
                                                         <ImageComponent
                                                             className="h-full w-full rounded-[12px] object-contain transition-transform duration-200 hover:scale-[1.02]"
                                                             src={image.url}
@@ -152,12 +185,12 @@ const ManageImage = () => {
                                         />
                                     )}
                                 </div>
-                            );
-                        }}
-                    />
-                </QueryBoundary>
-            </div>
-        </PageLayout>
+                            </PageLayout>
+                        );
+                    }}
+                />
+            </QueryBoundary>
+        </div>
     );
 };
 

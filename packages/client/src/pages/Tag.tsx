@@ -28,10 +28,13 @@ export default function Tag() {
     });
 
     return (
-        <PageLayout title="Tags" description="Organize and browse notes by tags">
-            <div ref={containerRef} className="flex flex-col gap-4">
-                <QueryBoundary
-                    fallback={(
+        <div ref={containerRef}>
+            <QueryBoundary
+                fallback={(
+                    <PageLayout
+                        title="Tags"
+                        heading={<Skeleton width={120} height={24} className="rounded-full" />}
+                        description={<Skeleton width={188} height={16} className="rounded-full" />}>
                         <div className="flex flex-wrap gap-2.5">
                             <Skeleton width="90px" height="36px" />
                             <Skeleton width="120px" height="36px" />
@@ -40,28 +43,30 @@ export default function Tag() {
                             <Skeleton width="110px" height="36px" />
                             <Skeleton width="70px" height="36px" />
                         </div>
-                    )}
-                    errorTitle="Failed to load tags"
-                    errorDescription="Retry loading the tag catalog."
-                    resetKeys={[page, limit]}>
-                    <Tags
-                        searchParams={{
-                            offset: (page - 1) * limit,
-                            limit
-                        }}
-                        render={({ tags, totalCount }) => (
+                    </PageLayout>
+                )}
+                errorTitle="Failed to load tags"
+                errorDescription="Retry loading the tag catalog"
+                resetKeys={[page, limit]}>
+                <Tags
+                    searchParams={{
+                        offset: (page - 1) * limit,
+                        limit
+                    }}
+                    render={({ tags, totalCount }) => (
+                        <PageLayout
+                            title="Tags"
+                            heading={totalCount > 0 ? `Tags (${totalCount})` : undefined}
+                            description="Browse the tags you added with @ across your notes">
                             <FallbackRender
                                 fallback={(
                                     <Empty
                                         title="No tags yet"
-                                        description="Add tags to notes and they will appear here."
+                                        description="Add @tags inside notes and they will appear here"
                                     />
                                 )}>
                                 {tags.length > 0 && (
                                     <div className="flex flex-col gap-4">
-                                        <Text as="p" variant="meta" tone="secondary">
-                                            {totalCount === 1 ? '1 tag in use' : `${totalCount} tags in use`}
-                                        </Text>
                                         <div className="flex flex-wrap gap-2.5">
                                             {tags.map((tag) => (
                                                 <Link
@@ -84,8 +89,7 @@ export default function Tag() {
                                                 </Link>
                                             ))}
                                         </div>
-                                        <FallbackRender
-                                            fallback={null}>
+                                        <FallbackRender fallback={null}>
                                             {totalCount && limit < totalCount && (
                                             <Pagination
                                                 page={page}
@@ -104,10 +108,10 @@ export default function Tag() {
                                     </div>
                                 )}
                             </FallbackRender>
-                        )}
-                    />
-                </QueryBoundary>
-            </div>
-        </PageLayout>
+                        </PageLayout>
+                    )}
+                />
+            </QueryBoundary>
+        </div>
     );
 }

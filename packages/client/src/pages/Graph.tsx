@@ -43,7 +43,9 @@ function getNodeSize(connections: number) {
 }
 
 const graphPageFallback = (
-    <PageLayout title="Knowledge Graph">
+    <PageLayout
+        title="Knowledge Graph"
+        description={<Skeleton width={184} height={16} className="rounded-full" />}>
         <div className="flex h-[600px] items-center justify-center">
             <Skeleton width="100%" height="100%" />
         </div>
@@ -280,10 +282,12 @@ function GraphContent() {
 
     if (!graphData) {
         return (
-            <PageLayout title="Knowledge Graph">
+            <PageLayout
+                title="Knowledge Graph"
+                description="0 linked notes, 0 connections">
                 <Empty
                     title="No constellations yet"
-                    description="Link your notes together and watch your own starry sky unfold."
+                    description="Link your notes together and watch your own starry sky unfold"
                 />
             </PageLayout>
         );
@@ -397,12 +401,12 @@ export default function Graph() {
         <QueryBoundary
             fallback={graphPageFallback}
             errorTitle="Failed to load graph"
-            errorDescription="Retry loading your linked note constellation."
+            errorDescription="Retry loading your linked note constellation"
             renderError={({ error, retry }) => (
                 <PageLayout title="Knowledge Graph">
                     <QueryErrorView
                         title="Failed to load graph"
-                        description="Retry loading your linked note constellation."
+                        description="Retry loading your linked note constellation"
                         error={error}
                         onRetry={retry}
                     />

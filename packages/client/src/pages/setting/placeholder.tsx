@@ -9,6 +9,7 @@ import {
     ModalActionRow,
     PageLayout,
     Pagination,
+    Skeleton,
     SurfaceCard
 } from '~/components/shared';
 import { Input, Label, Text, useToast } from '~/components/ui';
@@ -100,19 +101,18 @@ const Placeholder = () => {
     const removePlaceholderButtonClassName = 'absolute right-2 top-2';
     const addCardButtonClassName = 'focus-ring-soft surface-base group flex flex-col items-center justify-center gap-0.5 px-4 py-4 text-center text-fg-secondary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default';
     const addCardIconClassName = 'inline-flex h-[34px] w-[34px] items-center justify-center rounded-full border border-border-subtle bg-surface text-current transition-colors group-hover:border-border-secondary/70';
-    const summaryText = isLoading
-        ? `${fixedPlaceholderCount} system placeholders`
-        : `${customPlaceholderCount} custom placeholders · ${fixedPlaceholderCount} system placeholders`;
+    const heading = customPlaceholderCount > 0
+        ? `Placeholders (${customPlaceholderCount})`
+        : undefined;
+    const description = 'Create tokens that get replaced with values when you clone a note';
 
     return (
         <PageLayout
             title="Placeholders"
             variant="default"
-            description="Placeholders are replaced with new note data during cloning.">
+            heading={isLoading ? <Skeleton width={244} height={24} className="rounded-full" /> : heading}
+            description={isLoading ? <Skeleton width={260} height={16} className="rounded-full" /> : description}>
             <div className="flex flex-col gap-5">
-                <Text as="p" variant="meta" weight="medium" tone="secondary">
-                    {summaryText}
-                </Text>
                 <section className="space-y-3 border-b border-border-subtle/80 pb-5">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="space-y-1">
@@ -120,7 +120,7 @@ const Placeholder = () => {
                                 System placeholders
                             </Text>
                             <Text as="p" variant="meta" tone="secondary">
-                                Built-in date and time variables used across note cloning.
+                                Built-in tokens for date and time that are always available when cloning notes
                             </Text>
                         </div>
                         <button
@@ -177,7 +177,7 @@ const Placeholder = () => {
                                 Custom placeholders
                             </Text>
                             <Text as="p" variant="meta" tone="secondary">
-                                Reusable variables you define for note cloning.
+                                Custom tokens you define once and reuse whenever you clone a note
                             </Text>
                         </div>
                         {!isLoading && (
@@ -252,7 +252,7 @@ const Placeholder = () => {
                 <Modal.Header title="Add Placeholder" onClose={() => setIsModalOpen(false)} />
                 <Modal.Body>
                     <Modal.Description className="mb-4">
-                        Create a reusable variable for note cloning.
+                        Create a token that swaps in a value when you clone a note
                     </Modal.Description>
                     <div className="flex flex-col gap-4">
                         <div className="space-y-2">
@@ -268,7 +268,7 @@ const Placeholder = () => {
                                 placeholder="Description of this placeholder"
                             />
                             <Text as="p" variant="meta" tone="secondary">
-                                Human-readable label shown in the list.
+                                A readable label so you can find this placeholder later
                             </Text>
                         </div>
                         <div className="space-y-2">
@@ -284,7 +284,7 @@ const Placeholder = () => {
                                 placeholder="note_app"
                             />
                             <Text as="p" variant="meta" tone="secondary">
-                                Used as {PLACEHOLDER_PREFIX}your_placeholder{PLACEHOLDER_SUFFIX}.
+                                Use it in a note as {PLACEHOLDER_PREFIX}your_placeholder{PLACEHOLDER_SUFFIX}
                             </Text>
                         </div>
                         <div className="space-y-2">
@@ -300,7 +300,7 @@ const Placeholder = () => {
                                 placeholder="Ocean Brain"
                             />
                             <Text as="p" variant="meta" tone="secondary">
-                                Value inserted when the placeholder is resolved.
+                                This value is inserted when the placeholder is replaced during cloning
                             </Text>
                         </div>
                     </div>

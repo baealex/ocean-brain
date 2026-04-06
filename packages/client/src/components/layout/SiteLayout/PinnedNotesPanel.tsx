@@ -81,8 +81,7 @@ function SortablePinnedNote({ id, title, children }: SortablePinnedNoteProps) {
                 aria-label={`Reorder note ${title ?? 'Untitled'}`}
                 {...attributes}
                 {...listeners}
-                className="focus-ring-soft flex h-9 w-9 cursor-grab items-center justify-center text-fg-tertiary outline-none active:cursor-grabbing touch-none"
-                style={{ cursor: isDragging ? 'grabbing' : 'grab' }}>
+                className={`focus-ring-soft flex h-9 w-9 cursor-grab items-center justify-center text-fg-tertiary outline-none active:cursor-grabbing touch-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}>
                 <Icon.DragHandle className="size-4" />
             </button>
             {textContent}

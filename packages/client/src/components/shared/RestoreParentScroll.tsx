@@ -54,5 +54,5 @@ export default function RestoreParentScroll() {
         }
     }, [pathname]);
 
-    return <div ref={ref} style={{ display: 'none' }} />;
+    return <div ref={ref} className="hidden" />;
 }

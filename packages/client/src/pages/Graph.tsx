@@ -42,7 +42,7 @@ function getNodeSize(connections: number) {
 
 const graphPageFallback = (
     <PageLayout title="Knowledge Graph">
-        <div className="flex items-center justify-center" style={{ height: '600px' }}>
+        <div className="flex h-[600px] items-center justify-center">
             <Skeleton width="100%" height="100%" />
         </div>
     </PageLayout>
@@ -292,8 +292,8 @@ function GraphContent() {
             description={`${graphData.nodes.length} linked notes, ${graphData.links.length} connections`}>
             <div
                 ref={containerRef}
-                className="surface-base relative overflow-hidden"
-                style={{ background: graphTheme.background }}>
+                className="surface-base graph-canvas relative overflow-hidden"
+                style={{ '--graph-bg': graphTheme.background } as React.CSSProperties}>
                 {selectedNodeId && (() => {
                     const node = graphData.nodes.find(item => item.id === selectedNodeId);
                     if (!node) {
@@ -358,15 +358,15 @@ function GraphContent() {
             <div className="mt-4 flex flex-wrap gap-4 text-sm">
                 <div className="flex items-center gap-2">
                     <span
-                        className="h-4 w-4 rounded-full border border-border-subtle"
-                        style={{ background: graphTheme.legendHub }}
+                        className="legend-dot h-4 w-4 rounded-full border border-border-subtle"
+                        style={{ '--legend-color': graphTheme.legendHub } as React.CSSProperties}
                     />
                     <span className="text-fg-tertiary font-medium">Hub notes (4+ connections)</span>
                 </div>
                 <div className="flex items-center gap-2">
                     <span
-                        className="h-4 w-4 rounded-full border border-border-subtle"
-                        style={{ background: graphTheme.nodeConnected }}
+                        className="legend-dot h-4 w-4 rounded-full border border-border-subtle"
+                        style={{ '--legend-color': graphTheme.nodeConnected } as React.CSSProperties}
                     />
                     <span className="text-fg-tertiary font-medium">Connected notes</span>
                 </div>

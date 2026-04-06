@@ -21,7 +21,6 @@ import { SETTINGS_PLACEHOLDER_ROUTE } from '~/modules/url';
 
 import { createPlaceholder, deletePlaceholder, fetchPlaceholders } from '~/apis/placeholder.api';
 
-const cardClassName = 'p-4';
 const Route = getRouteApi(SETTINGS_PLACEHOLDER_ROUTE);
 
 const Placeholder = () => {
@@ -111,7 +110,7 @@ const Placeholder = () => {
                 {isFixedListOpen && (
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
                         {fixedPlaceholders.map(placeholder => (
-                            <SurfaceCard key={placeholder.name} className={cardClassName}>
+                            <SurfaceCard key={placeholder.name}>
                                 <div className="text-sm font-semibold text-fg-default">{placeholder.name}</div>
                                 <div className="text-xs font-medium text-fg-tertiary">
                                     {PLACEHOLDER_PREFIX}{placeholder.template}{PLACEHOLDER_SUFFIX} = '{placeholder.replacement}'
@@ -123,7 +122,7 @@ const Placeholder = () => {
                 {!isLoading && placeholders?.placeholders && placeholders.placeholders.length > 0 && (
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
                         {placeholders.placeholders.map(placeholder => (
-                            <SurfaceCard key={placeholder.id} className={`${cardClassName} relative`}>
+                            <SurfaceCard key={placeholder.id} className="relative">
                                 <div className="flex items-center justify-between">
                                     <div className="text-sm font-semibold text-fg-default">{placeholder.name}</div>
                                     <button

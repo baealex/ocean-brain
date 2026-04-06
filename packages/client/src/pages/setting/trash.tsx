@@ -102,23 +102,22 @@ const TrashContent = () => {
                     <div className="grid gap-4">
                         {data.notes.map((note) => (
                             <SurfaceCard
-                                key={note.id}
-                                className="p-4">
+                                key={note.id}>
                                 <div className="flex items-start justify-between gap-4">
                                     <div className="space-y-2">
                                         <div className="flex items-center gap-2">
-                                            <h2 className="text-base font-semibold text-fg-default">{note.title}</h2>
+                                            <h2 className="text-subheading font-semibold text-fg-default">{note.title}</h2>
                                             {note.pinned && (
-                                                <span className="inline-flex items-center gap-1 rounded-full border border-border-subtle bg-hover-subtle px-2 py-0.5 text-xs font-medium text-fg-secondary">
+                                                <span className="text-label inline-flex items-center gap-1 rounded-full border border-border-subtle bg-hover-subtle px-2 py-0.5 font-medium text-fg-secondary">
                                                     <Icon.Pin className="h-3.5 w-3.5" />
                                                     Pinned
                                                 </span>
                                             )}
                                         </div>
-                                        <div className="text-sm text-fg-secondary">
+                                        <div className="text-meta text-fg-secondary">
                                             Deleted {formatDate(note.deletedAt)}
                                         </div>
-                                        <div className="text-xs text-fg-tertiary">
+                                        <div className="text-label text-fg-tertiary">
                                             Last edited {formatDate(note.updatedAt)}
                                         </div>
                                         {note.tagNames.length > 0 && (
@@ -126,7 +125,7 @@ const TrashContent = () => {
                                                 {note.tagNames.map((tagName) => (
                                                     <span
                                                         key={`${note.id}-${tagName}`}
-                                                        className="rounded-full border border-border-subtle bg-hover-subtle px-2 py-0.5 text-xs font-medium text-fg-secondary">
+                                                        className="text-label rounded-full border border-border-subtle bg-hover-subtle px-2 py-0.5 font-medium text-fg-secondary">
                                                         {tagName}
                                                     </span>
                                                 ))}

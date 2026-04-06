@@ -87,11 +87,11 @@ export function QueryErrorView({
 
     return (
         <div className="rounded-[18px] border-2 border-border bg-surface p-6">
-            <p className="text-lg font-bold">{title}</p>
+            <p className="text-heading font-bold">{title}</p>
             {description && (
-                <p className="mt-2 text-sm text-fg-tertiary">{description}</p>
+                <p className="text-meta mt-2 text-fg-tertiary">{description}</p>
             )}
-            <div className="mt-4 rounded-[14px] border border-border-subtle bg-subtle px-3 py-2 text-sm text-fg-secondary">
+            <div className="text-body mt-4 rounded-[14px] border border-border-subtle bg-subtle px-3 py-2 text-fg-secondary">
                 {message}
                 {errorCode && (
                     <span className="ml-2 font-bold text-fg-tertiary">[{errorCode}]</span>
@@ -171,8 +171,8 @@ export function RouteNotFoundView() {
     return (
         <PageLayout title="Not found" variant="none">
             <div className="rounded-[18px] border-2 border-border bg-surface p-6">
-                <p className="text-lg font-bold">This page does not exist.</p>
-                <p className="mt-2 text-sm text-fg-tertiary">
+                <p className="text-heading font-bold">This page does not exist.</p>
+                <p className="text-meta mt-2 text-fg-tertiary">
                     Check the URL or navigate from the sidebar.
                 </p>
             </div>

@@ -49,7 +49,7 @@ const notePageFallback = (
     </PageLayout>
 );
 
-const noteMetaTextClassName = 'text-[0.6875rem] font-medium uppercase tracking-[0.12em] text-fg-tertiary';
+const noteMetaTextClassName = 'text-label font-medium uppercase tracking-[0.12em] text-fg-tertiary';
 
 interface NoteContentProps {
     id: string;
@@ -154,19 +154,18 @@ function NoteContent({ id }: NoteContentProps) {
 
     return (
         <PageLayout title={title} variant="none">
-            <main className={`mx-auto ${NOTE_LAYOUT_WIDTH[layout]}`}>
+            <main className={classNames('mx-auto', NOTE_LAYOUT_WIDTH[layout])}>
                 <div
-                    style={{ zIndex: '1001' }}
-                    className="surface-floating sticky top-20 mb-8 px-5 py-4">
+                    className="surface-floating sticky top-20 z-[1001] mb-8 px-5 py-4">
                     <div className="mb-3 flex items-start justify-between gap-4">
                         <div className="min-w-0 flex-1">
-                            <div className="mb-1 text-[0.625rem] font-semibold uppercase tracking-[0.16em] text-fg-tertiary">
+                            <div className="mb-1 text-micro font-semibold uppercase tracking-[0.16em] text-fg-tertiary">
                                 Thought in progress
                             </div>
                             <input
                                 ref={titleRef}
                                 placeholder="Title"
-                                className="w-full bg-transparent text-[1.4rem] font-semibold tracking-[-0.02em] outline-none"
+                                className="text-display w-full bg-transparent font-semibold tracking-[-0.02em] outline-none"
                                 type="text"
                                 value={title}
                                 onChange={(event) => handleTitleChange(event.target.value)}
@@ -229,12 +228,12 @@ function NoteContent({ id }: NoteContentProps) {
                     </div>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                         {isPinned && (
-                            <span className={`inline-flex items-center gap-1.5 ${noteMetaTextClassName}`}>
+                            <span className={classNames('inline-flex items-center gap-1.5', noteMetaTextClassName)}>
                                 <Icon.Pin className="h-3 w-3" weight="fill" />
                                 Pinned
                             </span>
                         )}
-                        {isPinned && <span className={classNames('h-1 w-1 rounded-full bg-border-secondary')} />}
+                        {isPinned && <span className="h-1 w-1 rounded-full bg-border-secondary" />}
                         <span className={noteMetaTextClassName}>Saved {lastSavedAt}</span>
                     </div>
                 </div>
@@ -281,7 +280,7 @@ function NoteContent({ id }: NoteContentProps) {
                         noteId={id}
                         render={backReferences => backReferences && backReferences.length > 0 && (
                             <div className="surface-base p-4">
-                                <p className="mb-2 px-2.5 text-sm font-medium text-fg-default">
+                                <p className="text-subheading mb-2 px-2.5 font-semibold text-fg-default">
                                     Back References
                                 </p>
                                 <ul className="flex flex-col">

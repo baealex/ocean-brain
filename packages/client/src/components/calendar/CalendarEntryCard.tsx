@@ -31,11 +31,11 @@ export const CalendarEntryCard = ({
                         {header}
                     </div>
                 ) : null}
-                <div className={`line-clamp-1 text-xs font-semibold text-fg-default ${titleClassName}`.trim()}>
+                <div className={`text-label line-clamp-1 font-semibold text-fg-default ${titleClassName}`.trim()}>
                     {title}
                 </div>
                 {meta ? (
-                    <div className="text-[10px] font-medium text-fg-secondary">
+                    <div className="text-micro font-medium text-fg-secondary">
                         {meta}
                     </div>
                 ) : null}

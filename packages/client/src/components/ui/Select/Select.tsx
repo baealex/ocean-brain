@@ -2,6 +2,7 @@ import { forwardRef } from 'react';
 import * as SelectPrimitive from '@radix-ui/react-select';
 import type { VariantProps } from 'class-variance-authority';
 import { cva } from 'class-variance-authority';
+import classNames from 'classnames';
 import * as Icon from '~/components/icon';
 
 const selectTriggerVariants = cva(
@@ -105,7 +106,7 @@ const SelectContent = forwardRef<
         ref={ref}
         position="popper"
         sideOffset={4}
-        className={[
+        className={classNames(
             'z-[1100]',
             'min-w-[var(--radix-select-trigger-width)]',
             'overflow-hidden',
@@ -113,9 +114,7 @@ const SelectContent = forwardRef<
             'data-[state=open]:animate-fade-in',
             'data-[state=open]:animate-zoom-in',
             className
-        ]
-            .filter(Boolean)
-            .join(' ')}
+        )}
         {...props}>
         {children}
     </SelectPrimitive.Content>
@@ -128,7 +127,7 @@ const SelectItem = forwardRef<
 >(({ className, children, ...props }, ref) => (
     <SelectPrimitive.Item
         ref={ref}
-        className={[
+        className={classNames(
             'relative',
             'flex',
             'items-center',
@@ -148,9 +147,7 @@ const SelectItem = forwardRef<
             'data-[disabled]:pointer-events-none',
             'data-[disabled]:opacity-50',
             className
-        ]
-            .filter(Boolean)
-            .join(' ')}
+        )}
         {...props}>
         <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
     </SelectPrimitive.Item>

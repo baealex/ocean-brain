@@ -1,5 +1,6 @@
 import { forwardRef } from 'react';
 import type { VariantProps } from 'class-variance-authority';
+import classNames from 'classnames';
 import { progressBarVariants } from './variants';
 
 interface ProgressProps
@@ -18,22 +19,22 @@ const Progress = forwardRef<HTMLDivElement, ProgressProps>(
         return (
             <div
                 ref={ref}
-                className={[
+                className={classNames(
                     'w-full h-3',
                     'bg-surface',
                     'border-2 border-border',
                     'rounded-[6px]',
                     'overflow-hidden',
                     className
-                ].join(' ')}
+                )}
                 role="progressbar"
                 aria-valuenow={value}
                 aria-valuemin={0}
                 aria-valuemax={max}
                 {...props}>
                 <div
-                    className={progressBarVariants({ color })}
-                    style={{ width: `${percentage}%` }}
+                    className={`progress-fill ${progressBarVariants({ color })}`}
+                    style={{ '--progress-width': `${percentage}%` } as React.CSSProperties}
                 />
             </div>
         );

@@ -100,12 +100,12 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                     ) : (
                         <Icon.TriangleDown size={14} />
                     )}
-                    <p className="text-sm font-medium">Reminders</p>
+                    <p className="text-body font-medium">Reminders</p>
                 </button>
                 {!isCollapsed && (
                     <Button size="sm" variant="ghost" onClick={handleOpenCreateModal}>
                         <Icon.Plus className="w-3 h-3" />
-                        <span className="hidden sm:inline text-xs">Add</span>
+                        <span className="text-label hidden sm:inline">Add</span>
                     </Button>
                 )}
             </div>
@@ -121,7 +121,7 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                         return (
                             <div className="flex flex-col gap-2">
                                 {reminders.length === 0 ? (
-                                    <p className="py-3 text-center text-sm text-fg-tertiary">
+                                    <p className="text-meta py-3 text-center text-fg-tertiary">
                                         {totalCount === 0 ? 'No reminders yet' : 'All reminders complete'}
                                     </p>
                                 ) : (

@@ -33,7 +33,7 @@ export const CalendarDayView = ({
                         <button
                             type="button"
                             onClick={onOpenOverflow}
-                            className="rounded-[10px] py-1 text-center text-[10px] font-semibold text-fg-tertiary transition-colors hover:bg-hover-subtle hover:text-fg-muted">
+                            className="text-micro rounded-[10px] py-1 text-center font-semibold text-fg-tertiary transition-colors hover:bg-hover-subtle hover:text-fg-muted">
                             +{overflowCount} more
                         </button>
                     ) : null}

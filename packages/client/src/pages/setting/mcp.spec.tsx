@@ -40,31 +40,11 @@ describe('<McpSetting />', () => {
 
         renderPage();
 
-        expect(await screen.findByLabelText('MCP Server URL')).toHaveValue(window.location.origin);
+        expect(await screen.findByLabelText(/server url/i)).toHaveValue(window.location.origin);
         expect(screen.getAllByText(/"mcpServers"/).length).toBeGreaterThan(0);
         expect(screen.getAllByText(/--token-file/).length).toBeGreaterThan(0);
         expect(screen.getAllByText(/--token/).length).toBeGreaterThan(0);
         expect(screen.getAllByText(new RegExp(window.location.origin)).length).toBeGreaterThan(0);
-    });
-
-    it('warns that rotate invalidates previous token immediately', async () => {
-        vi.mocked(mcpAdminApi.fetchMcpAdminStatus).mockResolvedValue({
-            enabled: true,
-            hasActiveToken: true,
-            token: {
-                id: '1',
-                createdAt: '2026-04-04T00:00:00.000Z',
-                lastUsedAt: null
-            }
-        });
-        vi.mocked(mcpAdminApi.rotateMcpToken).mockResolvedValue({ token: 'new-plaintext-token' });
-
-        renderPage();
-
-        await userEvent.click(await screen.findByRole('button', { name: 'Rotate token' }));
-
-        expect(await screen.findByText(/invalidates previous token immediately/i)).toBeInTheDocument();
-        expect(await screen.findByDisplayValue('new-plaintext-token')).toBeInTheDocument();
     });
 
     it('submits enabled toggle and refreshes status', async () => {

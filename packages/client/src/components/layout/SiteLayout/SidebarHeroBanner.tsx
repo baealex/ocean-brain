@@ -3,12 +3,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getServerCache, setServerCache } from '~/apis/server-cache.api';
 import { useConfirm } from '~/components/ui';
 import { queryKeys } from '~/modules/query-key-factory';
-import { useTheme } from '~/store/theme';
 
 const SidebarHeroBanner = () => {
     const confirm = useConfirm();
     const queryClient = useQueryClient();
-    const { theme } = useTheme((state) => state);
 
     const { data: heroBanner } = useQuery({
         queryKey: queryKeys.ui.heroBanner(),
@@ -38,13 +36,12 @@ const SidebarHeroBanner = () => {
                 }}>
                 <img
                     alt="Studio atmosphere banner"
-                    className="w-full object-cover transition duration-500 group-hover:scale-[1.01] group-hover:opacity-90"
-                    style={{ filter: theme === 'dark' ? 'brightness(0.85) saturate(0.9)' : undefined }}
+                    className="w-full object-cover transition duration-500 group-hover:scale-[1.01] group-hover:opacity-90 dark:brightness-[0.85] dark:saturate-[0.9]"
                     src={heroBanner}
                 />
                 <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(18,24,34,0.1),rgba(18,24,34,0.38))] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-3">
-                    <span className="rounded-[12px] border border-white/14 bg-black/16 px-2.5 py-2 text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-white/80 opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100">
+                    <span className="text-micro rounded-[12px] border border-white/14 bg-black/16 px-2.5 py-2 font-semibold uppercase tracking-[0.12em] text-white/80 opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100">
                         Remove
                     </span>
                 </div>

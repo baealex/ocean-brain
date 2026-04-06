@@ -115,7 +115,7 @@ If you run server/client in separate terminals, only the server terminal needs p
 | Feature | Description |
 |---------|-------------|
 | Block editor | Notion-like editing with `/` commands |
-| Bi-directional links | Link notes with `[` and track backlinks |
+| Bi-directional links | Link notes with `[[Note Title]]` and track backlinks |
 | Knowledge graph | Explore connections between notes visually |
 | Tags | Organize with `@` mentions |
 | Search | Full-text search across all notes |

@@ -136,7 +136,7 @@ test('blocksToMarkdown does not drop the whole note when table blocks are presen
     assert.match(markdown, /Summary/);
 });
 
-test('blocksToMarkdown serializes tags using @ mentions', async () => {
+test('blocksToMarkdown serializes tags using explicit bracket syntax', async () => {
     const content = JSON.stringify([
         {
             id: 'paragraph-1',
@@ -173,13 +173,13 @@ test('blocksToMarkdown serializes tags using @ mentions', async () => {
 
     const markdown = await blocksToMarkdown(content);
 
-    assert.match(markdown, /@project/);
+    assert.match(markdown, /\[@project\]/);
     assert.match(markdown, /\[\[Reference Note\]\]/);
 });
 
-test('markdownToBlocksJson restores custom tag and reference inline content from @ mentions', async () => {
+test('markdownToBlocksJson restores custom tag and reference inline content from explicit @ tags', async () => {
     const contentJson = await markdownToBlocksJson(
-        '@project [[Reference Note]]',
+        '[@project] [[Reference Note]]',
         {
             ensureTag: async () => ({
                 id: '12',
@@ -223,9 +223,9 @@ test('markdownToBlocksJson restores custom tag and reference inline content from
     ]);
 });
 
-test('markdownToBlocksJson restores custom tag and reference inline content from # tags for backward compatibility', async () => {
+test('markdownToBlocksJson restores custom tag and reference inline content from explicit # tags', async () => {
     const contentJson = await markdownToBlocksJson(
-        '#project [[Reference Note]]',
+        '[#project] [[Reference Note]]',
         {
             ensureTag: async () => ({
                 id: '12',
@@ -265,6 +265,28 @@ test('markdownToBlocksJson restores custom tag and reference inline content from
                 id: '44',
                 title: 'Reference Note'
             }
+        }
+    ]);
+});
+
+test('markdownToBlocksJson leaves plain @ and # tokens as text to avoid accidental tag creation', async () => {
+    const contentJson = await markdownToBlocksJson(
+        'Use @layer and #111 as-is.',
+        {
+            ensureTag: async () => {
+                throw new Error('should not ensure tags');
+            },
+            findNotesByTitle: async () => []
+        }
+    );
+
+    const blocks = JSON.parse(contentJson);
+
+    assert.deepEqual(blocks[0].content, [
+        {
+            type: 'text',
+            text: 'Use @layer and #111 as-is.',
+            styles: {}
         }
     ]);
 });

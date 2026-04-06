@@ -159,7 +159,7 @@ const ManageImageDetail = () => {
                             </ul>
                         </SurfaceCard>
                     ) : (
-                        <SurfaceCard className="flex flex-col items-center justify-center p-6 text-center">
+                        <SurfaceCard padding="roomy" className="flex flex-col items-center justify-center text-center">
                             <Icon.Image size={28} className="mb-2 text-fg-disabled" />
                             <Text as="p" weight="semibold" tone="secondary">
                                 No notes reference this image

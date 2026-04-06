@@ -59,8 +59,15 @@ const ManageImage = () => {
         }
     };
 
+    const getReferenceText = (count: number) => (
+        count === 1 ? '1 reference' : `${count} references`
+    );
+
     return (
-        <PageLayout title="Images" variant="subtle" description="Manage images uploaded to your notes">
+        <PageLayout
+            title="Images"
+            variant="default"
+            description="Manage uploaded images across your workspace.">
             <div ref={containerRef}>
                 <QueryBoundary
                     fallback={(
@@ -83,34 +90,42 @@ const ManageImage = () => {
                                 return (
                                     <Empty
                                         title="There are no images"
-                                        description="Try drag and drop an image on the note editor."
+                                        description="Drag and drop an image into a note to add it here."
                                     />
                                 );
                             }
                             return (
-                                <>
+                                <div className="flex flex-col gap-4">
+                                    <Text as="p" variant="meta" weight="medium" tone="secondary">
+                                        {totalCount === 1 ? '1 image' : `${totalCount} images`}
+                                    </Text>
                                     <div className="grid-auto-cards grid gap-4">
                                         {images.map((image) => (
                                             <SurfaceCard key={image.id} flush>
                                                 <Link
                                                     to={SETTINGS_MANAGE_IMAGE_DETAIL_ROUTE}
                                                     params={{ id: image.id }}
-                                                    className="block overflow-hidden">
-                                                    <ImageComponent
-                                                        className="h-48 w-full object-cover transition-transform duration-200 hover:scale-[1.02]"
-                                                        src={image.url}
-                                                        alt={image.id}
-                                                    />
+                                                    className="focus-ring-soft block overflow-hidden rounded-t-[18px] outline-none">
+                                                    <div className="flex h-48 items-center justify-center bg-muted/25 p-3">
+                                                        <ImageComponent
+                                                            className="h-full w-full rounded-[12px] object-contain transition-transform duration-200 hover:scale-[1.02]"
+                                                            src={image.url}
+                                                            alt={image.id}
+                                                        />
+                                                    </div>
                                                 </Link>
-                                                <div className="flex items-center justify-between border-t border-border-subtle px-3 py-2.5">
-                                                    <Text
-                                                        as="span"
-                                                        weight="medium"
-                                                        tone="tertiary"
-                                                        className="flex items-center gap-1.5">
-                                                        <Icon.LinkIcon className="h-3.5 w-3.5" />
-                                                        {image.referenceCount}
-                                                    </Text>
+                                                <div className="flex items-center justify-between gap-3 border-t border-border-subtle px-3 py-2.5">
+                                                    <div className="flex min-w-0 items-center gap-2 text-fg-secondary">
+                                                        <Icon.LinkIcon className="h-3.5 w-3.5 shrink-0 text-fg-tertiary" />
+                                                        <Text
+                                                            as="span"
+                                                            variant="meta"
+                                                            weight="medium"
+                                                            tone="secondary"
+                                                            className="truncate">
+                                                            {getReferenceText(image.referenceCount)}
+                                                        </Text>
+                                                    </div>
                                                     <Button
                                                         variant="ghost"
                                                         size="icon-sm"
@@ -136,7 +151,7 @@ const ManageImage = () => {
                                             }}
                                         />
                                     )}
-                                </>
+                                </div>
                             );
                         }}
                     />

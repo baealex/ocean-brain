@@ -90,12 +90,16 @@ const Placeholder = () => {
     const customPlaceholderCount = placeholders?.totalCount ?? 0;
     const customPlaceholders = placeholders?.placeholders ?? [];
     const fieldLabelClassName = 'font-medium text-fg-tertiary';
-    const cardClassName = '!bg-elevated !px-3 !py-2.5';
     const cardTitleClassName = 'leading-[1.2]';
     const tokenPreviewClassName = 'break-all leading-[1.2]';
     const valuePreviewClassName = 'leading-[1.2]';
     const cardBodyClassName = 'flex flex-col gap-px';
     const cardMetaGroupClassName = 'space-y-px';
+    const sectionToggleClassName = 'focus-ring-soft inline-flex items-center gap-2 rounded-[12px] border border-transparent px-2.5 py-1.5 text-fg-tertiary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default';
+    const customCardClassName = 'relative';
+    const removePlaceholderButtonClassName = 'absolute right-2 top-2';
+    const addCardButtonClassName = 'focus-ring-soft surface-base group flex flex-col items-center justify-center gap-0.5 px-4 py-4 text-center text-fg-secondary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default';
+    const addCardIconClassName = 'inline-flex h-[34px] w-[34px] items-center justify-center rounded-full border border-border-subtle bg-surface text-current transition-colors group-hover:border-border-secondary/70';
     const summaryText = isLoading
         ? `${fixedPlaceholderCount} system placeholders`
         : `${customPlaceholderCount} custom placeholders · ${fixedPlaceholderCount} system placeholders`;
@@ -122,7 +126,7 @@ const Placeholder = () => {
                         <button
                             type="button"
                             onClick={() => setIsFixedListOpen(!isFixedListOpen)}
-                            className="focus-ring-soft inline-flex items-center gap-2 rounded-[12px] border border-transparent px-2.5 py-1.5 text-fg-tertiary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default">
+                            className={sectionToggleClassName}>
                             <Text as="span" variant="meta" weight="medium" tone="secondary">
                                 {fixedPlaceholderCount} items
                             </Text>
@@ -134,9 +138,9 @@ const Placeholder = () => {
                         </button>
                     </div>
                     {isFixedListOpen && (
-                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                        <div className="grid-auto-cards grid gap-5">
                             {fixedPlaceholders.map(placeholder => (
-                                <SurfaceCard key={placeholder.name} className={cardClassName}>
+                                <SurfaceCard key={placeholder.name}>
                                     <div className={cardBodyClassName}>
                                         <Text as="div" variant="body" weight="medium" className={cardTitleClassName}>
                                             {placeholder.name}
@@ -183,13 +187,15 @@ const Placeholder = () => {
                         )}
                     </div>
                     {!isLoading && (
-                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                        <div className="grid-auto-cards grid gap-5">
                             {customPlaceholders.map(placeholder => (
-                                <SurfaceCard key={placeholder.id} className={`${cardClassName} relative`}>
+                                <SurfaceCard
+                                    key={placeholder.id}
+                                    className={customCardClassName}>
                                     <Button
                                         variant="ghost"
                                         size="icon-sm"
-                                        className="absolute right-2 top-2"
+                                        className={removePlaceholderButtonClassName}
                                         onClick={() => removePlaceholder.mutate(placeholder.id.toString())}>
                                         <Icon.Close className="h-4 w-4" />
                                     </Button>
@@ -225,8 +231,8 @@ const Placeholder = () => {
                             <button
                                 type="button"
                                 onClick={() => setIsModalOpen(true)}
-                                className="focus-ring-soft surface-base group !bg-elevated flex flex-col items-center justify-center gap-0.5 !px-3 !py-2.5 text-center text-fg-secondary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default">
-                                <span className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-full border border-border-subtle bg-surface text-current transition-colors group-hover:border-border-secondary/70">
+                                className={addCardButtonClassName}>
+                                <span className={addCardIconClassName}>
                                     <Icon.Plus className="h-4.5 w-4.5" />
                                 </span>
                                 <Text

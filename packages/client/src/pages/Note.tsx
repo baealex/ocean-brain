@@ -219,7 +219,7 @@ function NoteContent({ id }: NoteContentProps) {
                             />
                             <Button
                                 size="sm"
-                                variant="ghost"
+                                variant="subtle"
                                 isLoading={isMountedEvent}
                                 onClick={handleChange}>
                                 Save
@@ -280,17 +280,18 @@ function NoteContent({ id }: NoteContentProps) {
                         noteId={id}
                         render={backReferences => backReferences && backReferences.length > 0 && (
                             <div className="surface-base p-4">
-                                <p className="text-subheading mb-2 font-semibold">
+                                <p className="text-subheading mb-2 px-2.5 font-semibold text-fg-default">
                                     Back References
                                 </p>
-                                <ul className="text-body flex flex-col gap-1">
+                                <ul className="flex flex-col">
                                     {backReferences.map((backLink) => (
                                         <li key={backLink.id}>
                                             <Link
                                                 to={NOTE_ROUTE}
                                                 params={{ id: backLink.id }}
-                                                className="block rounded-[10px] px-2.5 py-1.5 text-fg-secondary transition-colors hover:bg-hover-subtle hover:text-fg-default">
-                                                - {backLink.title}
+                                                className="flex items-center gap-2 rounded-[10px] px-2.5 py-1.5 text-meta text-fg-secondary transition-colors hover:bg-hover-subtle hover:text-fg-default">
+                                                <Icon.File className="h-3.5 w-3.5 shrink-0 text-fg-tertiary" />
+                                                {backLink.title}
                                             </Link>
                                         </li>
                                     ))}

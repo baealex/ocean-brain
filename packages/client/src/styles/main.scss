@@ -64,9 +64,16 @@ div:focus {
 
 .ProseMirror {
     a {
-        color: inherit;
+        color: var(--fg-muted);
         cursor: pointer;
         text-decoration: none;
+        transition: color 0.15s ease;
+
+        &:hover {
+            color: var(--fg-default);
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
     }
 }
 

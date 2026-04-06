@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import classNames from 'classnames';
 import dayjs from 'dayjs';
 import { Button, Dropdown } from '~/components/shared';
 import * as Icon from '~/components/icon';
@@ -124,47 +125,45 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                                         {totalCount === 0 ? 'No reminders yet' : 'All reminders complete'}
                                     </p>
                                 ) : (
-                                    <div className="flex flex-col gap-1.5">
+                                    <div className="flex flex-col">
                                         {reminders.map((reminder) => {
                                             const urgency = reminder.priority || calculateUrgency(reminder.reminderDate);
                                             const timeRemaining = getTimeRemaining(reminder.reminderDate);
-                                            const priorityLabel = urgency === 'high'
-                                                ? 'High'
-                                                : urgency === 'medium'
-                                                    ? 'Medium'
-                                                    : 'Low';
+                                            const isOverdue = timeRemaining === 'Overdue';
 
                                             return (
                                                 <div
                                                     key={reminder.id}
-                                                    className={`flex items-start gap-2 rounded-[16px] border border-border-subtle p-3 transition-colors ${
-                                                        reminder.completed
-                                                            ? 'bg-muted/60'
-                                                            : 'bg-surface hover:bg-hover-subtle'
-                                                    }`}>
+                                                    className={classNames(
+                                                        'group flex items-center gap-2.5 rounded-[10px] px-2 py-2 transition-colors hover:bg-hover-subtle'
+                                                    )}>
                                                     <Checkbox
                                                         checked={reminder.completed}
                                                         onChange={() => handleToggleComplete(reminder)}
                                                         size="sm"
                                                     />
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="mb-1 flex items-center gap-2">
-                                                            <div className={`text-body font-semibold text-fg-secondary ${reminder.completed ? 'line-through opacity-50' : ''}`}>
-                                                                {formatReminderDate(reminder.reminderDate)}
-                                                            </div>
-                                                            {!reminder.completed && (
-                                                                <span className="text-micro inline-flex items-center rounded-full border border-border-subtle bg-hover-subtle px-2 py-0.5 font-medium uppercase tracking-[0.08em] text-fg-tertiary">
-                                                                    {priorityLabel}
-                                                                </span>
-                                                            )}
-                                                        </div>
+                                                    <div
+                                                        className={classNames(
+                                                            'text-meta font-medium text-fg-default truncate flex-1 min-w-0',
+                                                            reminder.completed && 'line-through opacity-40'
+                                                        )}>
+                                                        {reminder.content || formatReminderDate(reminder.reminderDate)}
+                                                    </div>
+                                                    <div
+                                                        className={classNames(
+                                                            'shrink-0 flex items-center gap-1 text-label text-fg-tertiary',
+                                                            reminder.completed && 'opacity-40'
+                                                        )}>
                                                         {reminder.content && (
-                                                            <div className={`text-body text-fg-tertiary ${reminder.completed ? 'line-through opacity-50' : ''} truncate`}>
-                                                                {reminder.content}
-                                                            </div>
+                                                            <span>{formatReminderDate(reminder.reminderDate)}</span>
                                                         )}
                                                         {!reminder.completed && (
-                                                            <span className={`text-label mt-1 inline-flex font-medium ${urgency === 'high' ? 'text-fg-error' : 'text-fg-placeholder'}`}>
+                                                            <span
+                                                                className={classNames(
+                                                                    'font-medium',
+                                                                    reminder.content && 'before:content-["·"] before:mr-1',
+                                                                    isOverdue || urgency === 'high' ? 'text-fg-error' : 'text-fg-placeholder'
+                                                                )}>
                                                                 {timeRemaining}
                                                             </span>
                                                         )}
@@ -173,8 +172,8 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                                                         button={(
                                                             <button
                                                                 type="button"
-                                                                className="focus-ring-soft inline-flex h-8 w-8 items-center justify-center rounded-[10px] text-fg-tertiary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default">
-                                                                <Icon.VerticalDots size={14} className="text-current" />
+                                                                className="focus-ring-soft inline-flex h-8 w-8 items-center justify-center rounded-[10px] text-fg-secondary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default">
+                                                                <Icon.VerticalDots size={16} className="text-current" />
                                                                 <span className="sr-only">Reminder actions</span>
                                                             </button>
                                                         )}

@@ -9,6 +9,7 @@ import {
 } from '~/components/shared';
 import { NoteListCard } from '~/components/note';
 import { TagNotes as TagNotesEntity } from '~/components/entities';
+import { Text } from '~/components/ui';
 
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
 import { TAG_NOTES_ROUTE } from '~/modules/url';
@@ -28,10 +29,13 @@ export default function TagNotes() {
     } = useNoteMutate();
 
     return (
-        <PageLayout title="Tag" variant="subtle">
+        <PageLayout
+            title="Tagged Notes"
+            description="Browse notes grouped under a single tag"
+            variant="default">
             <QueryBoundary
                 fallback={(
-                    <div className="grid-auto-cards grid gap-6 mt-3">
+                    <div className="grid-auto-cards grid gap-5">
                         <Skeleton height="112px" />
                         <Skeleton height="112px" />
                         <Skeleton height="112px" />
@@ -50,13 +54,25 @@ export default function TagNotes() {
                         <FallbackRender
                             fallback={(
                                 <Empty
-                                    title="Ocean is calm"
-                                    description="Capture anything and make waves in the ocean!"
+                                    title="No tagged notes yet"
+                                    description="Notes linked to this tag will appear here."
                                 />
                             )}>
                             {notes.length > 0 && (
-                                <>
-                                    <div className="grid-auto-cards grid gap-6 mt-3">
+                                <div className="flex flex-col gap-4">
+                                    <div className="flex flex-col gap-1">
+                                        <Text as="p" variant="meta" tone="secondary">
+                                            {totalCount === 1 ? '1 note in this tag' : `${totalCount} notes in this tag`}
+                                        </Text>
+                                        <Text as="p" variant="subheading" weight="semibold" tone="secondary">
+                                            {
+                                                notes
+                                                    .flatMap((note) => note.tags)
+                                                    .find((tag) => tag.id === id)?.name ?? 'Tagged collection'
+                                            }
+                                        </Text>
+                                    </div>
+                                    <div className="grid-auto-cards grid gap-5">
                                         {notes.map(note => (
                                             <NoteListCard
                                                 key={note.id}
@@ -83,7 +99,7 @@ export default function TagNotes() {
                                             />
                                         )}
                                     </FallbackRender>
-                                </>
+                                </div>
                             )}
                         </FallbackRender>
                     )}

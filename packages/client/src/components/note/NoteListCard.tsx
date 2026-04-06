@@ -31,7 +31,7 @@ export default function NoteListCard({
         <div
             key={id}
             className={`${rootClassName} group relative flex h-full flex-col overflow-hidden p-4 transition-colors`}>
-            <div className="absolute right-2 top-2">
+            <div className="absolute right-2 top-3">
                 <Dropdown
                     button={(
                         <button
@@ -87,4 +87,3 @@ export default function NoteListCard({
         </div>
     );
 }
-

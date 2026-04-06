@@ -162,7 +162,7 @@ function NoteContent({ id }: NoteContentProps) {
                 <div
                     className="surface-floating sticky top-20 z-[1001] mb-7 px-5 pt-4 pb-3.5">
                     <div className="flex flex-col gap-3.5">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-5">
+                        <div className="flex items-start justify-between gap-5">
                             <div className="min-w-0 flex-1 pt-0.5">
                                 <Text
                                     as="div"
@@ -177,13 +177,13 @@ function NoteContent({ id }: NoteContentProps) {
                                 <input
                                     ref={titleRef}
                                     placeholder="Title"
-                                    className="text-display w-full bg-transparent font-semibold leading-[1.25] tracking-[-0.02em] outline-none"
+                                    className="text-heading sm:text-display w-full bg-transparent font-semibold leading-[1.25] tracking-[-0.02em] outline-none"
                                     type="text"
                                     value={title}
                                     onChange={(event) => handleTitleChange(event.target.value)}
                                 />
                             </div>
-                            <div className="flex shrink-0 items-center gap-2 self-end sm:self-start">
+                            <div className="flex shrink-0 items-center gap-2">
                                 <Dropdown
                                     button={(
                                         <button

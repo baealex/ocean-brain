@@ -1,4 +1,5 @@
 import { forwardRef } from 'react';
+import classNames from 'classnames';
 import * as Icon from '~/components/icon';
 
 export interface CheckboxProps
@@ -31,13 +32,11 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
     ) => {
         return (
             <label
-                className={[
+                className={classNames(
                     'relative inline-flex items-center justify-center cursor-pointer',
                     disabled && 'cursor-not-allowed opacity-50',
                     className
-                ]
-                    .filter(Boolean)
-                    .join(' ')}>
+                )}>
                 <input
                     ref={ref}
                     type="checkbox"
@@ -47,7 +46,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
                     {...props}
                 />
                 <span
-                    className={[
+                    className={classNames(
                         sizeClasses[size],
                         'flex items-center justify-center',
                         'border border-border-secondary',
@@ -57,7 +56,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
                         'peer-checked:bg-cta',
                         'peer-checked:border-cta',
                         'focus-ring-soft'
-                    ].join(' ')}>
+                    )}>
                     {checked && (
                         <Icon.Check
                             width={iconSizes[size]}

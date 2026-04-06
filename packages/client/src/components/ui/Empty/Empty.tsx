@@ -1,4 +1,5 @@
 import { forwardRef } from 'react';
+import classNames from 'classnames';
 
 interface EmptyProps extends React.HTMLAttributes<HTMLDivElement> {
     title?: string;
@@ -10,7 +11,7 @@ const Empty = forwardRef<HTMLDivElement, EmptyProps>(
         return (
             <div
                 ref={ref}
-                className={[
+                className={classNames(
                     'flex flex-col items-center justify-center text-center',
                     'h-[400px]',
                     'bg-muted/30',
@@ -19,7 +20,7 @@ const Empty = forwardRef<HTMLDivElement, EmptyProps>(
                     'rounded-[20px]',
                     'p-8',
                     className
-                ].join(' ')}
+                )}
                 {...props}>
                 {title && (
                     <h3 className="text-xl font-bold mb-2 text-fg-muted">

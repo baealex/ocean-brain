@@ -1,5 +1,6 @@
 import * as TooltipPrimitive from '@radix-ui/react-tooltip';
 import { forwardRef } from 'react';
+import classNames from 'classnames';
 
 const TooltipProvider = TooltipPrimitive.Provider;
 
@@ -22,7 +23,7 @@ const TooltipContent = forwardRef<
         <TooltipPrimitive.Content
             ref={ref}
             sideOffset={sideOffset}
-            className={[
+            className={classNames(
                 'z-50',
                 'overflow-hidden',
                 'px-3',
@@ -46,9 +47,7 @@ const TooltipContent = forwardRef<
                 'data-[side=right]:slide-in-from-left-2',
                 'data-[side=top]:slide-in-from-bottom-2',
                 className
-            ]
-                .filter(Boolean)
-                .join(' ')}
+            )}
             {...props}
         />
     )

@@ -56,7 +56,7 @@ export default function Search() {
                                     )}>
                                     {notes.length > 0 && notes.map((note) => (
                                         <div key={note.id} className="mb-5">
-                                            <div className="font-semibold text-lg mb-1">
+                                            <div className="text-heading mb-1 font-semibold">
                                                 <Link
                                                     to={NOTE_ROUTE}
                                                     params={{ id: note.id }}>

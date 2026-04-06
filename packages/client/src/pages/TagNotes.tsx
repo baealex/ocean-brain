@@ -31,7 +31,7 @@ export default function TagNotes() {
         <PageLayout title="Tag" variant="subtle">
             <QueryBoundary
                 fallback={(
-                    <div className="grid gap-6 mt-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
+                    <div className="grid-auto-cards grid gap-6 mt-3">
                         <Skeleton height="112px" />
                         <Skeleton height="112px" />
                         <Skeleton height="112px" />
@@ -56,7 +56,7 @@ export default function TagNotes() {
                             )}>
                             {notes.length > 0 && (
                                 <>
-                                    <div className="grid gap-6 mt-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
+                                    <div className="grid-auto-cards grid gap-6 mt-3">
                                         {notes.map(note => (
                                             <NoteListCard
                                                 key={note.id}

@@ -83,7 +83,7 @@ const ManageImageDetail = () => {
             <div className="flex flex-col gap-6 lg:flex-row">
                 {image && (
                     <div className="w-full lg:w-[400px] lg:flex-shrink-0">
-                        <SurfaceCard className="overflow-hidden p-0">
+                        <SurfaceCard flush>
                             <div className="flex items-center justify-center bg-muted/20 p-4">
                                 <ImageComponent
                                     className="max-h-80 w-auto max-w-full rounded-[14px] object-contain"
@@ -134,7 +134,7 @@ const ManageImageDetail = () => {
                 )}
                 <div className="flex-1 min-w-0">
                     {imageNotes && imageNotes.length > 0 ? (
-                        <SurfaceCard className="p-4">
+                        <SurfaceCard>
                             <p className="mb-3 border-b border-border-subtle pb-2 text-sm font-semibold text-fg-default">
                                 Referenced Notes
                             </p>

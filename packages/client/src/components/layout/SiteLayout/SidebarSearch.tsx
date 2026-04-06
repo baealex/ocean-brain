@@ -68,7 +68,7 @@ const SidebarSearch = () => {
         <div className="p-3">
             <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
                 <div className="flex gap-3">
-                    <div style={{ gridTemplateColumns: '36px 1fr 28px' }} className="grid flex-1 rounded-[14px] border border-border-subtle bg-surface transition-colors hover:border-border">
+                    <div className="grid-search-bar grid flex-1 rounded-[14px] border border-border-subtle bg-surface transition-colors hover:border-border">
                         <button type="submit" className="flex items-center justify-center text-fg-tertiary transition-colors hover:text-fg-default">
                             <Icon.Search className="h-4.5 w-4.5" weight="bold" />
                         </button>

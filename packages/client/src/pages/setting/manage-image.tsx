@@ -64,7 +64,7 @@ const ManageImage = () => {
             <div ref={containerRef}>
                 <QueryBoundary
                     fallback={(
-                        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
+                        <div className="grid-auto-cards grid gap-4">
                             <Skeleton height="200px"/>
                             <Skeleton height="200px"/>
                             <Skeleton height="200px"/>
@@ -89,9 +89,9 @@ const ManageImage = () => {
                             }
                             return (
                                 <>
-                                    <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
+                                    <div className="grid-auto-cards grid gap-4">
                                         {images.map((image) => (
-                                            <SurfaceCard key={image.id} className="overflow-hidden p-0">
+                                            <SurfaceCard key={image.id} flush>
                                                 <Link
                                                     to={SETTINGS_MANAGE_IMAGE_DETAIL_ROUTE}
                                                     params={{ id: image.id }}

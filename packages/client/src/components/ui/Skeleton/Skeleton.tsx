@@ -1,4 +1,5 @@
 import { forwardRef } from 'react';
+import classNames from 'classnames';
 
 interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
     width?: string | number;
@@ -13,8 +14,9 @@ const Skeleton = forwardRef<HTMLDivElement, SkeletonProps>(
         return (
             <div
                 ref={ref}
-                className={[
+                className={classNames(
                     'rounded-[14px]',
+                    'skeleton-sized',
                     'bg-[length:200%_100%]',
                     'bg-gradient-to-r',
                     'from-pastel-lavender-200/30',
@@ -23,13 +25,13 @@ const Skeleton = forwardRef<HTMLDivElement, SkeletonProps>(
                     'animate-shimmer',
                     'animate-fade-in',
                     className
-                ].join(' ')}
+                )}
                 style={{
-                    width,
-                    height,
-                    opacity,
+                    '--skeleton-width': width,
+                    '--skeleton-height': height,
+                    '--skeleton-opacity': opacity,
                     ...style
-                }}
+                } as React.CSSProperties}
                 {...props}
             />
         );

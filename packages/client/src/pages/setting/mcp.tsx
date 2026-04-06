@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
-import { Button, Callout, PageLayout, SurfaceCard } from '~/components/shared';
+import { Button, PageLayout, SurfaceCard } from '~/components/shared';
 import {
     Input,
     Label,
@@ -31,6 +31,25 @@ const createTokenFileMcpJsonSnippet = (serverUrl: string) => {
                     serverUrl,
                     '--token-file',
                     '/path/to/token.txt'
+                ]
+            }
+        }
+    }, null, 2);
+};
+
+const createInlineTokenMcpJsonSnippet = (serverUrl: string) => {
+    return JSON.stringify({
+        mcpServers: {
+            'ocean-brain': {
+                command: 'npx',
+                args: [
+                    '-y',
+                    'ocean-brain',
+                    'mcp',
+                    '--server',
+                    serverUrl,
+                    '--token',
+                    'your-token-here'
                 ]
             }
         }
@@ -79,13 +98,13 @@ const McpSetting = () => {
     const canToggle = !isLoading && !setEnabledMutation.isPending;
 
     return (
-        <PageLayout title="MCP" description="Manage MCP access and issue a single service token">
+        <PageLayout title="MCP" variant="subtle" description="Manage MCP access and issue a single service token">
             <div className="grid grid-cols-1 gap-4">
-                <SurfaceCard className="p-4 space-y-4">
-                    <div className="mb-4 flex items-center justify-between gap-4 border-b border-border-subtle pb-4">
+                <SurfaceCard className="space-y-4">
+                    <div className="flex items-center justify-between gap-4">
                         <div>
-                            <h2 className="text-base font-semibold text-fg-default">MCP Access</h2>
-                            <p className="text-xs font-medium text-fg-tertiary">
+                            <h2 className="text-subheading font-semibold text-fg-default">MCP Access</h2>
+                            <p className="text-label font-medium text-fg-tertiary">
                                 Allow or block MCP requests at the server level.
                             </p>
                         </div>
@@ -102,16 +121,13 @@ const McpSetting = () => {
                     </div>
                 </SurfaceCard>
 
-                <SurfaceCard className="p-4 space-y-4">
-                    <div className="mb-4 border-b border-border-subtle pb-4">
-                        <h2 className="text-base font-semibold text-fg-default">Token Management</h2>
-                        <p className="text-xs font-medium text-fg-tertiary">
-                            Ocean Brain supports one active MCP token per service.
+                <SurfaceCard className="space-y-4">
+                    <div className="border-b border-border-subtle pb-4">
+                        <h2 className="text-subheading font-semibold text-fg-default">Token Management</h2>
+                        <p className="text-label font-medium text-fg-tertiary">
+                            Ocean Brain supports one active MCP token at a time. Rotating immediately invalidates the previous one.
                         </p>
                     </div>
-                    <Callout>
-                        Rotating token invalidates previous token immediately.
-                    </Callout>
                     <div className="flex flex-wrap gap-2">
                         <Button
                             onClick={() => rotateTokenMutation.mutate(undefined)}
@@ -139,29 +155,40 @@ const McpSetting = () => {
                     )}
                 </SurfaceCard>
 
-                <SurfaceCard className="p-4 space-y-4">
-                    <div className="mb-4 border-b border-border-subtle pb-4">
-                        <h2 className="text-base font-semibold text-fg-default">Connection Guide</h2>
-                        <p className="text-xs font-medium text-fg-tertiary">
-                            Default server URL uses current origin. Change it when registering a public host.
+                <SurfaceCard className="space-y-4">
+                    <div className="border-b border-border-subtle pb-4">
+                        <h2 className="text-subheading font-semibold text-fg-default">Connection Guide</h2>
+                        <p className="text-label font-medium text-fg-tertiary">
+                            How to connect your MCP client to this server.
                         </p>
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="mcp-server-url">MCP Server URL</Label>
+                        <Label htmlFor="mcp-server-url">Server URL</Label>
                         <Input
                             id="mcp-server-url"
                             value={serverUrl}
                             onChange={(event) => setServerUrl(event.target.value)}
                         />
                     </div>
-                    <Callout>
-                        Recommended: <code>--token-file</code>. For quick local tests, <code>--token</code> also works.
-                    </Callout>
-                    <div className="space-y-2">
-                        <Label>Recommended (.mcp.json with token file)</Label>
-                        <pre className="overflow-x-auto rounded-[14px] border border-border-subtle bg-surface px-4 py-3 text-xs text-fg-secondary">
-                            {createTokenFileMcpJsonSnippet(serverUrl)}
-                        </pre>
+                    <div className="space-y-3">
+                        <div className="space-y-2">
+                            <p className="text-body font-semibold text-fg-default">
+                                Token file{' '}
+                                <span className="text-label font-medium text-fg-tertiary">(recommended — keeps token out of config)</span>
+                            </p>
+                            <pre className="overflow-x-auto rounded-[14px] border border-border-subtle bg-surface px-4 py-3 text-xs text-fg-secondary">
+                                {createTokenFileMcpJsonSnippet(serverUrl)}
+                            </pre>
+                        </div>
+                        <div className="space-y-2">
+                            <p className="text-body font-semibold text-fg-default">
+                                Inline token{' '}
+                                <span className="text-label font-medium text-fg-tertiary">(quick local testing)</span>
+                            </p>
+                            <pre className="overflow-x-auto rounded-[14px] border border-border-subtle bg-surface px-4 py-3 text-xs text-fg-secondary">
+                                {createInlineTokenMcpJsonSnippet(serverUrl)}
+                            </pre>
+                        </div>
                     </div>
                 </SurfaceCard>
             </div>

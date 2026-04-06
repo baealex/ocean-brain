@@ -25,9 +25,9 @@ export default function PageLayout({
                 <div className="mb-5 border-b border-border-subtle/80 pb-4">
                     <div className={headerRight ? 'flex items-center justify-between' : undefined}>
                         <div>
-                            <h1 className="text-lg font-bold">{title}</h1>
+                            <h1 className="text-heading font-bold">{title}</h1>
                             {description && (
-                                <p className="text-sm text-fg-tertiary font-medium mt-1">{description}</p>
+                                <p className="text-meta mt-1 font-medium text-fg-tertiary">{description}</p>
                             )}
                         </div>
                         {headerRight}
@@ -38,9 +38,9 @@ export default function PageLayout({
                 <div className="mb-6">
                     <div className={headerRight ? 'flex items-center justify-between' : undefined}>
                         <div>
-                            <h1 className="text-lg font-bold">{title}</h1>
+                            <h1 className="text-heading font-bold">{title}</h1>
                             {description && (
-                                <p className="text-sm text-fg-tertiary font-medium mt-1">{description}</p>
+                                <p className="text-meta mt-1 font-medium text-fg-tertiary">{description}</p>
                             )}
                         </div>
                         {headerRight}

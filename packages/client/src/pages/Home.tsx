@@ -79,7 +79,7 @@ export default function Home() {
                 />
                 <QueryBoundary
                     fallback={(
-                        <div className="mt-3 grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
+                        <div className="grid-auto-cards mt-3 grid gap-5">
                             <Skeleton height="112px" />
                             <Skeleton height="112px" />
                             <Skeleton height="112px" />
@@ -106,7 +106,7 @@ export default function Home() {
                                 )}>
                                 {notes.length > 0 && (
                                 <>
-                                    <div className="mt-3 grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
+                                    <div className="grid-auto-cards mt-3 grid gap-5">
                                         {notes.map(note => (
                                             <NoteListCard
                                                 key={note.id}

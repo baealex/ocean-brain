@@ -99,12 +99,12 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                     ) : (
                         <Icon.TriangleDown size={14} />
                     )}
-                    <p className="text-sm font-medium">Reminders</p>
+                    <p className="text-body font-medium">Reminders</p>
                 </button>
                 {!isCollapsed && (
                     <Button size="sm" variant="ghost" onClick={handleOpenCreateModal}>
                         <Icon.Plus className="w-3 h-3" />
-                        <span className="hidden sm:inline text-xs">Add</span>
+                        <span className="text-label hidden sm:inline">Add</span>
                     </Button>
                 )}
             </div>
@@ -120,7 +120,7 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                         return (
                             <div className="flex flex-col gap-2">
                                 {reminders.length === 0 ? (
-                                    <p className="py-3 text-center text-sm text-fg-tertiary">
+                                    <p className="text-meta py-3 text-center text-fg-tertiary">
                                         {totalCount === 0 ? 'No reminders yet' : 'All reminders complete'}
                                     </p>
                                 ) : (
@@ -149,22 +149,22 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                                                     />
                                                     <div className="flex-1 min-w-0">
                                                         <div className="mb-1 flex items-center gap-2">
-                                                            <div className={`font-semibold text-sm text-fg-secondary ${reminder.completed ? 'line-through opacity-50' : ''}`}>
+                                                            <div className={`text-body font-semibold text-fg-secondary ${reminder.completed ? 'line-through opacity-50' : ''}`}>
                                                                 {formatReminderDate(reminder.reminderDate)}
                                                             </div>
                                                             {!reminder.completed && (
-                                                                <span className="inline-flex items-center rounded-full border border-border-subtle bg-hover-subtle px-2 py-0.5 text-[0.625rem] font-medium uppercase tracking-[0.08em] text-fg-tertiary">
+                                                                <span className="text-micro inline-flex items-center rounded-full border border-border-subtle bg-hover-subtle px-2 py-0.5 font-medium uppercase tracking-[0.08em] text-fg-tertiary">
                                                                     {priorityLabel}
                                                                 </span>
                                                             )}
                                                         </div>
                                                         {reminder.content && (
-                                                            <div className={`text-sm text-fg-tertiary ${reminder.completed ? 'line-through opacity-50' : ''} truncate`}>
+                                                            <div className={`text-body text-fg-tertiary ${reminder.completed ? 'line-through opacity-50' : ''} truncate`}>
                                                                 {reminder.content}
                                                             </div>
                                                         )}
                                                         {!reminder.completed && (
-                                                            <span className={`mt-1 inline-flex text-xs font-medium ${urgency === 'high' ? 'text-fg-error' : 'text-fg-placeholder'}`}>
+                                                            <span className={`text-label mt-1 inline-flex font-medium ${urgency === 'high' ? 'text-fg-error' : 'text-fg-placeholder'}`}>
                                                                 {timeRemaining}
                                                             </span>
                                                         )}

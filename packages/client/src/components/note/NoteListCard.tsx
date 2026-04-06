@@ -13,7 +13,7 @@ interface Props extends Note {
     onDelete?: () => void;
 }
 
-const noteMetaTextClassName = 'text-[0.6875rem] font-medium uppercase tracking-[0.12em] text-fg-tertiary';
+const noteMetaTextClassName = 'text-label font-medium uppercase tracking-[0.12em] text-fg-tertiary';
 
 export default function NoteListCard({
     id,
@@ -64,7 +64,7 @@ export default function NoteListCard({
                 </div>
                 <div className="flex flex-1 flex-col justify-between gap-4">
                     <Link
-                        className="text-[0.96rem] font-semibold leading-6 tracking-[-0.01em] text-fg-default transition-colors hover:text-fg-default/85"
+                        className="text-body font-semibold tracking-[-0.01em] text-fg-default transition-colors hover:text-fg-default/85"
                         to={NOTE_ROUTE}
                         params={{ id }}>
                         {title || 'Untitled'}
@@ -77,7 +77,7 @@ export default function NoteListCard({
                                     to={TAG_NOTES_ROUTE}
                                     params={{ id: tag.id }}
                                     search={{ page: 1 }}>
-                                    <span className="inline-flex items-center rounded-full border border-border-subtle bg-transparent px-2.5 py-1 text-[0.75rem] font-medium text-fg-secondary transition-colors hover:bg-hover-subtle hover:text-fg-default">
+                                    <span className="text-label inline-flex items-center rounded-full border border-border-subtle bg-transparent px-2.5 py-1 font-medium text-fg-secondary transition-colors hover:bg-hover-subtle hover:text-fg-default">
                                         {tag.name}
                                     </span>
                                 </Link>

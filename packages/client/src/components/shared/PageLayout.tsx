@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import { Helmet } from 'react-helmet';
 
+import { Text } from '~/components/ui';
+
 interface PageLayoutProps {
     title: string;
     variant?: 'default' | 'subtle' | 'none';
@@ -25,9 +27,18 @@ export default function PageLayout({
                 <div className="mb-5 border-b border-border-subtle/80 pb-4">
                     <div className={headerRight ? 'flex items-center justify-between' : undefined}>
                         <div>
-                            <h1 className="text-heading font-bold">{title}</h1>
+                            <Text as="h1" variant="heading" weight="bold" tracking="tighter">
+                                {title}
+                            </Text>
                             {description && (
-                                <p className="text-meta mt-1 font-medium text-fg-tertiary">{description}</p>
+                                <Text
+                                    as="p"
+                                    variant="meta"
+                                    weight="medium"
+                                    tone="tertiary"
+                                    className="mt-1">
+                                    {description}
+                                </Text>
                             )}
                         </div>
                         {headerRight}
@@ -38,9 +49,18 @@ export default function PageLayout({
                 <div className="mb-6">
                     <div className={headerRight ? 'flex items-center justify-between' : undefined}>
                         <div>
-                            <h1 className="text-heading font-bold">{title}</h1>
+                            <Text as="h1" variant="heading" weight="bold" tracking="tighter">
+                                {title}
+                            </Text>
                             {description && (
-                                <p className="text-meta mt-1 font-medium text-fg-tertiary">{description}</p>
+                                <Text
+                                    as="p"
+                                    variant="meta"
+                                    weight="medium"
+                                    tone="tertiary"
+                                    className="mt-1">
+                                    {description}
+                                </Text>
                             )}
                         </div>
                         {headerRight}

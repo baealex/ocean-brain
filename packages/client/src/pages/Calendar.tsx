@@ -9,7 +9,7 @@ import {
 } from '~/components/calendar';
 import type { CalendarDisplayType } from '~/components/calendar';
 import { Callout, PageLayout } from '~/components/shared';
-import { Skeleton } from '~/components/ui';
+import { Skeleton, Text } from '~/components/ui';
 import type { Note } from '~/models/note.model';
 import type { Reminder } from '~/models/reminder.model';
 import { CALENDAR_ROUTE } from '~/modules/url';
@@ -239,11 +239,16 @@ export default function Calendar() {
                         <div className="min-w-[1260px]">
                             <div className="grid grid-cols-7 gap-1.5 mb-2">
                                 {DAYS_OF_WEEK.map((day, index) => (
-                                    <div
+                                    <Text
                                         key={day}
-                                        className={`py-2 text-center text-label font-semibold uppercase tracking-[0.12em] ${index === 0 ? 'text-fg-weekend' : 'text-fg-tertiary'}`}>
+                                        as="div"
+                                        variant="label"
+                                        weight="semibold"
+                                        tracking="wider"
+                                        transform="uppercase"
+                                        className={`py-2 text-center ${index === 0 ? 'text-fg-weekend' : 'text-fg-tertiary'}`}>
                                         {day}
-                                    </div>
+                                    </Text>
                                 ))}
                             </div>
 

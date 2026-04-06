@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Modal, ModalActionRow, SelectionOptionCard } from '~/components/shared';
-import { Button } from '~/components/ui';
+import { Button, Text } from '~/components/ui';
 
 import type { NoteLayout } from '~/models/note.model';
 
@@ -57,9 +57,9 @@ export default function LayoutModal({
             <Modal.Body>
                 <div className="flex flex-col gap-3 sm:gap-4">
                     <div className="flex flex-col gap-2">
-                        <label className="text-sm font-semibold text-fg-secondary">
+                        <Text as="div" weight="semibold" tone="secondary">
                             Note Layout
-                        </label>
+                        </Text>
                         <div className="flex flex-col gap-2">
                             {LAYOUT_OPTIONS.map((option) => (
                                 <SelectionOptionCard

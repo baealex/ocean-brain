@@ -4,6 +4,7 @@ import { Button, Modal, ModalActionRow } from '~/components/shared';
 import {
     Input,
     Label,
+    Text,
     Textarea,
     ToggleGroup,
     ToggleGroupItem
@@ -107,18 +108,24 @@ export default function ReminderModal({
                             className="gap-1.5 border-none rounded-[14px] bg-muted/70 p-1 sm:gap-2">
                             <ToggleGroupItem
                                 value="low"
-                                className={`flex-1 rounded-[10px] border text-sm font-medium ${getPriorityClassName('low')}`}>
-                                Low
+                                className={`flex-1 rounded-[10px] border ${getPriorityClassName('low')}`}>
+                                <Text as="span" weight="medium" className="text-current">
+                                    Low
+                                </Text>
                             </ToggleGroupItem>
                             <ToggleGroupItem
                                 value="medium"
-                                className={`flex-1 rounded-[10px] border text-sm font-medium ${getPriorityClassName('medium')}`}>
-                                Medium
+                                className={`flex-1 rounded-[10px] border ${getPriorityClassName('medium')}`}>
+                                <Text as="span" weight="medium" className="text-current">
+                                    Medium
+                                </Text>
                             </ToggleGroupItem>
                             <ToggleGroupItem
                                 value="high"
-                                className={`flex-1 rounded-[10px] border text-sm font-medium ${getPriorityClassName('high')}`}>
-                                High
+                                className={`flex-1 rounded-[10px] border ${getPriorityClassName('high')}`}>
+                                <Text as="span" weight="medium" className="text-current">
+                                    High
+                                </Text>
                             </ToggleGroupItem>
                         </ToggleGroup>
                     </div>

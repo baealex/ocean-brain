@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router';
 
 import { Badge } from '~/components/shared';
+import { Text } from '~/components/ui';
 
 import type { Note } from '~/models/note.model';
 
@@ -30,15 +31,17 @@ export default function NoteListItem({
         <div className="border-b-2 border-dashed border-border-subtle last:border-b-0">
             <div className="py-4 flex flex-col gap-2">
                 <div className="flex items-center gap-2">
-                    <span className="text-fg-tertiary text-xs font-medium">{updatedTimeSince}</span>
-                    <span className="text-fg-placeholder text-xs">({createdAtText.toDateString()})</span>
+                    <Text variant="label" weight="medium" tone="tertiary">{updatedTimeSince}</Text>
+                    <Text variant="label" tone="placeholder">({createdAtText.toDateString()})</Text>
                 </div>
-                <Link
-                    className="font-bold text-fg-default hover:text-accent-primary transition-colors"
-                    to={NOTE_ROUTE}
-                    params={{ id }}>
-                    {title || 'Untitled'}
-                </Link>
+                <Text as="div" variant="body" weight="bold" tracking="tight">
+                    <Link
+                        className="transition-colors hover:text-accent-primary"
+                        to={NOTE_ROUTE}
+                        params={{ id }}>
+                        {title || 'Untitled'}
+                    </Link>
+                </Text>
                 {tags && tags.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
                         {tags.map(tag => (

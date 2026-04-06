@@ -1,4 +1,5 @@
 import * as Icon from '~/components/icon';
+import { Text } from '~/components/ui';
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
 
 import PinnedNotesPanel from './PinnedNotesPanel';
@@ -18,10 +19,10 @@ const SidebarPrimaryActions = () => {
                         <Icon.Pencil className="h-4.5 w-4.5" weight="bold" />
                     </span>
                     <span className="flex flex-col">
-                        <span className="text-sm font-medium">Capture</span>
-                        <span className="text-xs text-fg-secondary">
+                        <Text variant="body" weight="medium">Capture</Text>
+                        <Text variant="label" tone="secondary">
                             Start a new note right away
-                        </span>
+                        </Text>
                     </span>
                 </span>
                 <Icon.ArrowRight className="h-4 w-4 text-fg-tertiary transition-colors group-hover:text-fg-default" weight="bold" />

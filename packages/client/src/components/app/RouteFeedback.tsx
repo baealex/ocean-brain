@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useRouter } from '@tanstack/react-router';
 
 import { PageLayout, Skeleton } from '~/components/shared';
-import { Button } from '~/components/ui';
+import { Button, Text } from '~/components/ui';
 import { HOME_ROUTE } from '~/modules/url';
 
 interface RoutePendingViewProps {
@@ -87,16 +87,31 @@ export function QueryErrorView({
 
     return (
         <div className="rounded-[18px] border-2 border-border bg-surface p-6">
-            <p className="text-heading font-bold">{title}</p>
+            <Text as="p" variant="heading" weight="bold" tracking="tighter">
+                {title}
+            </Text>
             {description && (
-                <p className="text-meta mt-2 text-fg-tertiary">{description}</p>
+                <Text as="p" variant="meta" tone="tertiary" className="mt-2">
+                    {description}
+                </Text>
             )}
-            <div className="text-body mt-4 rounded-[14px] border border-border-subtle bg-subtle px-3 py-2 text-fg-secondary">
+            <Text
+                as="div"
+                variant="body"
+                tone="secondary"
+                className="mt-4 rounded-[14px] border border-border-subtle bg-subtle px-3 py-2">
                 {message}
                 {errorCode && (
-                    <span className="ml-2 font-bold text-fg-tertiary">[{errorCode}]</span>
+                    <Text
+                        as="span"
+                        variant="body"
+                        weight="bold"
+                        tone="tertiary"
+                        className="ml-2">
+                        [{errorCode}]
+                    </Text>
                 )}
-            </div>
+            </Text>
             <div className="mt-4 flex flex-wrap gap-2">
                 {onRetry && (
                     <Button size="sm" onClick={onRetry}>
@@ -171,10 +186,12 @@ export function RouteNotFoundView() {
     return (
         <PageLayout title="Not found" variant="none">
             <div className="rounded-[18px] border-2 border-border bg-surface p-6">
-                <p className="text-heading font-bold">This page does not exist.</p>
-                <p className="text-meta mt-2 text-fg-tertiary">
+                <Text as="p" variant="heading" weight="bold" tracking="tighter">
+                    This page does not exist.
+                </Text>
+                <Text as="p" variant="meta" tone="tertiary" className="mt-2">
                     Check the URL or navigate from the sidebar.
-                </p>
+                </Text>
             </div>
         </PageLayout>
     );

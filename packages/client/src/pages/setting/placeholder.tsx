@@ -12,7 +12,7 @@ import {
     Pagination,
     SurfaceCard
 } from '~/components/shared';
-import { Input, Label, useToast } from '~/components/ui';
+import { Input, Label, Text, useToast } from '~/components/ui';
 import * as Icon from '~/components/icon';
 
 import { getFixedPlaceholders, PLACEHOLDER_PREFIX, PLACEHOLDER_SUFFIX } from '~/modules/fixed-placeholder';
@@ -91,7 +91,9 @@ const Placeholder = () => {
         <PageLayout title="Placeholders" variant="subtle" description="Manage template variables for note cloning">
             <Callout className="mb-4">
                 <div className="flex items-center justify-between gap-2">
-                    <span>Placeholders will be replaced with new note data during cloning.</span>
+                    <Text as="span" variant="meta" weight="medium" tone="secondary">
+                        Placeholders will be replaced with new note data during cloning.
+                    </Text>
                     <Button variant="subtle" size="icon-sm" onClick={() => setIsModalOpen(true)}>
                         <Icon.Plus width={20} height={20} />
                     </Button>
@@ -101,8 +103,10 @@ const Placeholder = () => {
                 <button
                     type="button"
                     onClick={() => setIsFixedListOpen(!isFixedListOpen)}
-                    className="focus-ring-soft surface-base flex items-center justify-between gap-2 rounded-[18px] px-4 py-3 text-left text-sm font-semibold text-fg-default transition-colors hover:bg-hover-subtle">
-                    <div>System Placeholders</div>
+                    className="focus-ring-soft surface-base flex items-center justify-between gap-2 rounded-[18px] px-4 py-3 text-left text-fg-default transition-colors hover:bg-hover-subtle">
+                    <Text as="div" variant="meta" weight="semibold" className="text-current">
+                        System Placeholders
+                    </Text>
                     <div className="flex h-6 w-6 items-center justify-center text-fg-tertiary">
                         {isFixedListOpen ? <Icon.TriangleUp /> : <Icon.TriangleDown />}
                     </div>
@@ -111,10 +115,12 @@ const Placeholder = () => {
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
                         {fixedPlaceholders.map(placeholder => (
                             <SurfaceCard key={placeholder.name}>
-                                <div className="text-sm font-semibold text-fg-default">{placeholder.name}</div>
-                                <div className="text-xs font-medium text-fg-tertiary">
+                                <Text as="div" weight="semibold">
+                                    {placeholder.name}
+                                </Text>
+                                <Text as="div" variant="label" weight="medium" tone="tertiary">
                                     {PLACEHOLDER_PREFIX}{placeholder.template}{PLACEHOLDER_SUFFIX} = '{placeholder.replacement}'
-                                </div>
+                                </Text>
                             </SurfaceCard>
                         ))}
                     </div>
@@ -124,7 +130,9 @@ const Placeholder = () => {
                         {placeholders.placeholders.map(placeholder => (
                             <SurfaceCard key={placeholder.id} className="relative">
                                 <div className="flex items-center justify-between">
-                                    <div className="text-sm font-semibold text-fg-default">{placeholder.name}</div>
+                                    <Text as="div" weight="semibold">
+                                        {placeholder.name}
+                                    </Text>
                                     <button
                                         type="button"
                                         className="focus-ring-soft inline-flex h-8 w-8 items-center justify-center rounded-[10px] text-fg-tertiary transition-colors hover:bg-hover-subtle hover:text-fg-default"
@@ -132,9 +140,9 @@ const Placeholder = () => {
                                         <Icon.Close />
                                     </button>
                                 </div>
-                                <div className="text-xs font-medium text-fg-tertiary">
+                                <Text as="div" variant="label" weight="medium" tone="tertiary">
                                     {PLACEHOLDER_PREFIX}{placeholder.template}{PLACEHOLDER_SUFFIX} = '{placeholder.replacement}'
-                                </div>
+                                </Text>
                             </SurfaceCard>
                         ))}
                     </div>

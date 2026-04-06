@@ -1,4 +1,5 @@
 import { priorityColorsSubtle } from '~/modules/color';
+import { Text } from '~/components/ui';
 
 const priorities = [
     {
@@ -25,9 +26,9 @@ export const PriorityLegend = () => {
             {priorities.map(({ label, className }) => (
                 <div key={label} className="flex items-center gap-1.5">
                     <div className={`h-3 w-3 rounded-full border border-border-subtle ${className}`} />
-                    <span className="text-label font-medium text-fg-tertiary">
+                    <Text as="span" variant="label" weight="medium" tone="tertiary">
                         {label}
-                    </span>
+                    </Text>
                 </div>
             ))}
         </div>

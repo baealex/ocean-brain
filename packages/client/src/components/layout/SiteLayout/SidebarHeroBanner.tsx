@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { getServerCache, setServerCache } from '~/apis/server-cache.api';
-import { useConfirm } from '~/components/ui';
+import { Text, useConfirm } from '~/components/ui';
 import { queryKeys } from '~/modules/query-key-factory';
 
 const SidebarHeroBanner = () => {
@@ -41,9 +41,15 @@ const SidebarHeroBanner = () => {
                 />
                 <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(18,24,34,0.1),rgba(18,24,34,0.38))] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-3">
-                    <span className="text-micro rounded-[12px] border border-white/14 bg-black/16 px-2.5 py-2 font-semibold uppercase tracking-[0.12em] text-white/80 opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100">
+                    <Text
+                        as="span"
+                        variant="micro"
+                        weight="semibold"
+                        tracking="wider"
+                        transform="uppercase"
+                        className="rounded-[12px] border border-white/14 bg-black/16 px-2.5 py-2 text-white/80 opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100">
                         Remove
-                    </span>
+                    </Text>
                 </div>
             </button>
         </div>

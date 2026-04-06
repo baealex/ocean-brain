@@ -2,7 +2,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, getRouteApi } from '@tanstack/react-router';
 import { Image as ImageComponent, PageLayout, SurfaceCard } from '~/components/shared';
 import { NoteListItem } from '~/components/note';
-import { Button, Tooltip, useConfirm, useToast } from '~/components/ui';
+import {
+    Button,
+    Text,
+    Tooltip,
+    useConfirm,
+    useToast
+} from '~/components/ui';
 import * as Icon from '~/components/icon';
 
 import { deleteImage, fetchImage } from '~/apis/image.api';
@@ -75,9 +81,11 @@ const ManageImageDetail = () => {
             <Link
                 to={SETTINGS_MANAGE_IMAGE_ROUTE}
                 search={{ page: 1 }}
-                className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-fg-secondary transition-colors hover:text-fg-default">
+                className="mb-4 inline-flex items-center gap-1 text-fg-secondary transition-colors hover:text-fg-default">
                 <Icon.ChevronLeft size={16} />
-                Back to Images
+                <Text as="span" variant="meta" weight="medium" className="text-current">
+                    Back to Images
+                </Text>
             </Link>
 
             <div className="flex flex-col gap-6 lg:flex-row">
@@ -94,9 +102,9 @@ const ManageImageDetail = () => {
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                         <Icon.LinkIcon size={14} className="text-fg-tertiary" />
-                                        <span className="text-sm font-medium text-fg-secondary">
+                                        <Text as="span" weight="medium" tone="secondary">
                                             {imageNotes?.length || 0} {(imageNotes?.length || 0) === 1 ? 'reference' : 'references'}
-                                        </span>
+                                        </Text>
                                     </div>
                                 </div>
                                 <div className="flex gap-2">
@@ -110,7 +118,9 @@ const ManageImageDetail = () => {
                                             disabled={disabledDelete}
                                             onClick={handleDelete}>
                                             <Icon.TrashCan size={16} />
-                                            <span>Delete</span>
+                                            <Text as="span" weight="medium" className="text-current">
+                                                Delete
+                                            </Text>
                                         </Button>
                                     </Tooltip>
                                     <Button
@@ -125,7 +135,9 @@ const ManageImageDetail = () => {
                                             });
                                         }}>
                                         <Icon.Heart size={16} className="text-fg-secondary" />
-                                        <span>Set hero banner</span>
+                                        <Text as="span" weight="medium" className="text-current">
+                                            Set hero banner
+                                        </Text>
                                     </Button>
                                 </div>
                             </div>
@@ -135,9 +147,9 @@ const ManageImageDetail = () => {
                 <div className="flex-1 min-w-0">
                     {imageNotes && imageNotes.length > 0 ? (
                         <SurfaceCard>
-                            <p className="mb-3 border-b border-border-subtle pb-2 text-sm font-semibold text-fg-default">
+                            <Text as="p" weight="semibold" className="mb-3 border-b border-border-subtle pb-2">
                                 Referenced Notes
-                            </p>
+                            </Text>
                             <ul className="flex flex-col">
                                 {imageNotes.map((note) => (
                                     <li key={note.id}>
@@ -149,8 +161,12 @@ const ManageImageDetail = () => {
                     ) : (
                         <SurfaceCard className="flex flex-col items-center justify-center p-6 text-center">
                             <Icon.Image size={28} className="mb-2 text-fg-disabled" />
-                            <p className="text-sm font-semibold text-fg-secondary">No notes reference this image</p>
-                            <p className="mt-1 text-sm text-fg-secondary">This image can be safely deleted</p>
+                            <Text as="p" weight="semibold" tone="secondary">
+                                No notes reference this image
+                            </Text>
+                            <Text as="p" tone="secondary" className="mt-1">
+                                This image can be safely deleted
+                            </Text>
                         </SurfaceCard>
                     )}
                 </div>

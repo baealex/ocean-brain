@@ -1,3 +1,5 @@
+import { Text } from '~/components/ui';
+
 interface CalendarDayViewProps {
     day: number;
     cellClassName: string;
@@ -20,22 +22,26 @@ export const CalendarDayView = ({
     return (
         <div className={`min-h-[200px] rounded-[14px] border p-2 ${cellClassName}`.trim()}>
             <div className="mb-2 flex justify-end">
-                <span
-                    className={`flex h-6 w-6 items-center justify-center rounded-[8px] text-label ${dayNumberClassName}`.trim()}>
+                <Text
+                    as="span"
+                    variant="label"
+                    className={`flex h-6 w-6 items-center justify-center rounded-[8px] ${dayNumberClassName}`.trim()}>
                     {day}
-                </span>
+                </Text>
             </div>
 
             {isCurrentMonth && items.length > 0 ? (
                 <div className="flex flex-col gap-1">
                     {items}
                     {overflowCount > 0 ? (
-                        <button
-                            type="button"
-                            onClick={onOpenOverflow}
-                            className="text-micro rounded-[10px] py-1 text-center font-semibold text-fg-tertiary transition-colors hover:bg-hover-subtle hover:text-fg-muted">
-                            +{overflowCount} more
-                        </button>
+                        <Text as="div" variant="micro" weight="semibold" tone="tertiary">
+                            <button
+                                type="button"
+                                onClick={onOpenOverflow}
+                                className="w-full rounded-[10px] py-1 text-center transition-colors hover:bg-hover-subtle hover:text-fg-muted">
+                                +{overflowCount} more
+                            </button>
+                        </Text>
                     ) : null}
                 </div>
             ) : null}

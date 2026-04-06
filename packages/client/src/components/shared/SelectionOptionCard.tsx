@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 
+import { Text } from '~/components/ui';
+
 interface SelectionOptionCardProps {
     title: string;
     description: string;
@@ -26,12 +28,21 @@ export default function SelectionOptionCard({
             }`}
             onClick={onClick}>
             <div className="min-w-0">
-                <div className={`text-sm font-semibold sm:text-base ${selected ? 'text-fg-default' : 'text-fg-secondary'}`}>
+                <Text
+                    as="div"
+                    weight="semibold"
+                    tone={selected ? 'default' : 'secondary'}
+                    className="sm:text-base">
                     {title}
-                </div>
-                <div className={`mt-1 text-xs font-medium sm:text-sm ${selected ? 'text-fg-tertiary' : 'text-fg-placeholder'}`}>
+                </Text>
+                <Text
+                    as="div"
+                    variant="label"
+                    weight="medium"
+                    tone={selected ? 'tertiary' : 'placeholder'}
+                    className="mt-1 sm:text-body">
                     {description}
-                </div>
+                </Text>
             </div>
             {children ? <div className="shrink-0">{children}</div> : null}
         </button>

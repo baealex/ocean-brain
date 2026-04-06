@@ -26,6 +26,7 @@ import { QueryBoundary, QueryErrorView } from '~/components/app';
 import { PinnedNotes } from '~/components/entities';
 import * as Icon from '~/components/icon';
 import { Skeleton } from '~/components/shared';
+import { Text } from '~/components/ui';
 import type { Note } from '~/models/note.model';
 import { queryKeys } from '~/modules/query-key-factory';
 import { NOTE_ROUTE } from '~/modules/url';
@@ -64,12 +65,6 @@ function SortablePinnedNote({ id, title, children }: SortablePinnedNoteProps) {
         opacity: isDragging ? 0.5 : 1
     };
 
-    const textContent = (
-        <div className="min-w-0 flex-1 truncate text-sm font-medium text-fg-default">
-            {children}
-        </div>
-    );
-
     return (
         <div
             ref={setNodeRef}
@@ -84,7 +79,9 @@ function SortablePinnedNote({ id, title, children }: SortablePinnedNoteProps) {
                 className={`focus-ring-soft flex h-9 w-9 cursor-grab items-center justify-center text-fg-tertiary outline-none active:cursor-grabbing touch-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}>
                 <Icon.DragHandle className="size-4" />
             </button>
-            {textContent}
+            <Text as="div" truncate weight="medium" className="min-w-0 flex-1">
+                {children}
+            </Text>
         </div>
     );
 }
@@ -208,9 +205,9 @@ const PinnedNotesPanel = () => {
                                 sensors={sensors}
                             />
                         ) : (
-                            <div className="px-2.5 py-3 text-sm leading-6 text-fg-secondary">
+                            <Text as="div" tone="secondary" className="px-2.5 py-3 leading-6">
                                 Pin a note to keep it in view while the rest of the workspace changes.
-                            </div>
+                            </Text>
                         )
                     )}
                 />

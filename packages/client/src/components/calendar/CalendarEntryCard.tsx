@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router';
 
+import { Text } from '~/components/ui';
 import { NOTE_ROUTE } from '~/modules/url';
 
 interface CalendarEntryCardProps {
@@ -26,14 +27,22 @@ export const CalendarEntryCard = ({
             className="group block">
             <div
                 className={`rounded-[6px] bg-emphasis flex h-full flex-col justify-center px-1.5 py-0.5 transition-colors group-hover:bg-hover-subtle ${toneClassName}`.trim()}>
-                <div className={`flex items-center gap-1 text-label line-clamp-1 font-semibold text-fg-default ${titleClassName}`.trim()}>
-                    {header ? <span className="shrink-0 text-fg-muted">{header}</span> : null}
+                <Text
+                    as="div"
+                    variant="label"
+                    weight="semibold"
+                    className={`flex items-center gap-1 line-clamp-1 ${titleClassName}`.trim()}>
+                    {header ? (
+                        <Text as="span" variant="label" tone="muted" className="shrink-0">
+                            {header}
+                        </Text>
+                    ) : null}
                     {title}
-                </div>
+                </Text>
                 {meta ? (
-                    <div className="text-micro font-medium text-fg-secondary">
+                    <Text as="div" variant="micro" weight="medium" tone="secondary">
                         {meta}
-                    </div>
+                    </Text>
                 ) : null}
             </div>
         </Link>

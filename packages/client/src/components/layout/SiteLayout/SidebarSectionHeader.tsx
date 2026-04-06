@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 
+import { Text } from '~/components/ui';
+
 interface SidebarSectionHeaderProps {
     title: string;
     icon?: ReactNode;
@@ -8,9 +10,14 @@ interface SidebarSectionHeaderProps {
 const SidebarSectionHeader = ({ title, icon }: SidebarSectionHeaderProps) => (
     <div className="mb-2.5 flex items-center justify-between gap-3">
         <div className="flex min-w-0 flex-1 items-center gap-2">
-            <div className="text-xs font-medium tracking-wide text-fg-tertiary">
+            <Text
+                variant="label"
+                weight="medium"
+                tracking="wider"
+                transform="uppercase"
+                tone="tertiary">
                 {title}
-            </div>
+            </Text>
             <span className="h-px flex-1 bg-border-subtle" />
         </div>
         {icon ? <div className="shrink-0 text-fg-tertiary">{icon}</div> : null}

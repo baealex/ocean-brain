@@ -6,6 +6,7 @@ import {
     Input,
     Label,
     Switch,
+    Text,
     Textarea,
     useToast
 } from '~/components/ui';
@@ -103,10 +104,12 @@ const McpSetting = () => {
                 <SurfaceCard className="space-y-4">
                     <div className="flex items-center justify-between gap-4">
                         <div>
-                            <h2 className="text-subheading font-semibold text-fg-default">MCP Access</h2>
-                            <p className="text-label font-medium text-fg-tertiary">
+                            <Text as="h2" variant="subheading" weight="semibold">
+                                MCP Access
+                            </Text>
+                            <Text as="p" variant="label" weight="medium" tone="tertiary">
                                 Allow or block MCP requests at the server level.
-                            </p>
+                            </Text>
                         </div>
                         <div className="inline-flex items-center">
                             <Switch
@@ -123,10 +126,12 @@ const McpSetting = () => {
 
                 <SurfaceCard className="space-y-4">
                     <div className="border-b border-border-subtle pb-4">
-                        <h2 className="text-subheading font-semibold text-fg-default">Token Management</h2>
-                        <p className="text-label font-medium text-fg-tertiary">
+                        <Text as="h2" variant="subheading" weight="semibold">
+                            Token Management
+                        </Text>
+                        <Text as="p" variant="label" weight="medium" tone="tertiary">
                             Ocean Brain supports one active MCP token at a time. Rotating immediately invalidates the previous one.
-                        </p>
+                        </Text>
                     </div>
                     <div className="flex flex-wrap gap-2">
                         <Button
@@ -157,10 +162,12 @@ const McpSetting = () => {
 
                 <SurfaceCard className="space-y-4">
                     <div className="border-b border-border-subtle pb-4">
-                        <h2 className="text-subheading font-semibold text-fg-default">Connection Guide</h2>
-                        <p className="text-label font-medium text-fg-tertiary">
+                        <Text as="h2" variant="subheading" weight="semibold">
+                            Connection Guide
+                        </Text>
+                        <Text as="p" variant="label" weight="medium" tone="tertiary">
                             How to connect your MCP client to this server.
-                        </p>
+                        </Text>
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="mcp-server-url">Server URL</Label>
@@ -172,19 +179,23 @@ const McpSetting = () => {
                     </div>
                     <div className="space-y-3">
                         <div className="space-y-2">
-                            <p className="text-body font-semibold text-fg-default">
+                            <Text as="p" variant="body" weight="semibold">
                                 Token file{' '}
-                                <span className="text-label font-medium text-fg-tertiary">(recommended — keeps token out of config)</span>
-                            </p>
+                                <Text as="span" variant="label" weight="medium" tone="tertiary">
+                                    (recommended - keeps token out of config)
+                                </Text>
+                            </Text>
                             <pre className="overflow-x-auto rounded-[14px] border border-border-subtle bg-surface px-4 py-3 text-xs text-fg-secondary">
                                 {createTokenFileMcpJsonSnippet(serverUrl)}
                             </pre>
                         </div>
                         <div className="space-y-2">
-                            <p className="text-body font-semibold text-fg-default">
+                            <Text as="p" variant="body" weight="semibold">
                                 Inline token{' '}
-                                <span className="text-label font-medium text-fg-tertiary">(quick local testing)</span>
-                            </p>
+                                <Text as="span" variant="label" weight="medium" tone="tertiary">
+                                    (quick local testing)
+                                </Text>
+                            </Text>
                             <pre className="overflow-x-auto rounded-[14px] border border-border-subtle bg-surface px-4 py-3 text-xs text-fg-secondary">
                                 {createInlineTokenMcpJsonSnippet(serverUrl)}
                             </pre>

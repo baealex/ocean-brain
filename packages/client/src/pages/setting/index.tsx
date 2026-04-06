@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router';
 
 import { PageLayout } from '~/components/shared';
 import * as Icon from '~/components/icon';
+import { Text } from '~/components/ui';
 
 import { useTheme } from '~/store/theme';
 import {
@@ -29,49 +30,49 @@ const Setting = () => {
                             <Icon.Sun className="h-8 w-8 text-fg-secondary" weight="fill" />
                         )}
                     </span>
-                    <span className="font-semibold">Theme</span>
-                    <span className="text-xs font-medium text-fg-tertiary">
+                    <Text variant="body" weight="semibold">Theme</Text>
+                    <Text variant="label" weight="medium" tone="tertiary">
                         {theme === 'dark' ? 'Dark mode' : 'Light mode'}
-                    </span>
+                    </Text>
                 </button>
                 <Link
                     to={SETTINGS_MCP_ROUTE}
                     className={cardClassName}>
                     <Icon.LinkIcon className="h-8 w-8 text-fg-secondary" />
-                    <span className="font-semibold">MCP</span>
-                    <span className="text-xs font-medium text-fg-tertiary">
+                    <Text variant="body" weight="semibold">MCP</Text>
+                    <Text variant="label" weight="medium" tone="tertiary">
                         Manage AI integration access
-                    </span>
+                    </Text>
                 </Link>
                 <Link
                     to={SETTINGS_TRASH_ROUTE}
                     search={{ page: 1 }}
                     className={cardClassName}>
                     <Icon.TrashCan className="h-8 w-8 text-fg-secondary" />
-                    <span className="font-semibold">Trash</span>
-                    <span className="text-xs font-medium text-fg-tertiary">
+                    <Text variant="body" weight="semibold">Trash</Text>
+                    <Text variant="label" weight="medium" tone="tertiary">
                         Restore deleted notes
-                    </span>
+                    </Text>
                 </Link>
                 <Link
                     to={SETTINGS_MANAGE_IMAGE_ROUTE}
                     search={{ page: 1 }}
                     className={cardClassName}>
                     <Icon.Image className="h-8 w-8 text-fg-secondary" />
-                    <span className="font-semibold">Manage Image</span>
-                    <span className="text-xs font-medium text-fg-tertiary">
+                    <Text variant="body" weight="semibold">Manage Image</Text>
+                    <Text variant="label" weight="medium" tone="tertiary">
                         Upload and organize images
-                    </span>
+                    </Text>
                 </Link>
                 <Link
                     to={SETTINGS_PLACEHOLDER_ROUTE}
                     search={{ page: 1 }}
                     className={cardClassName}>
                     <Icon.Pencil className="h-8 w-8 text-fg-secondary" />
-                    <span className="font-semibold">Placeholder</span>
-                    <span className="text-xs font-medium text-fg-tertiary">
+                    <Text variant="body" weight="semibold">Placeholder</Text>
+                    <Text variant="label" weight="medium" tone="tertiary">
                         Manage template variables
-                    </span>
+                    </Text>
                 </Link>
             </div>
         </PageLayout>

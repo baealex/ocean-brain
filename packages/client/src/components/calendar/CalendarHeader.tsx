@@ -1,5 +1,5 @@
 import * as Icon from '~/components/icon';
-import { Button, ToggleGroup, ToggleGroupItem } from '~/components/ui';
+import { Button, Text, ToggleGroup, ToggleGroupItem } from '~/components/ui';
 import type { CalendarDisplayType } from './types';
 
 const MONTHS = [
@@ -30,12 +30,22 @@ export const CalendarHeader = ({
     return (
         <div className="flex items-center justify-between gap-4">
             <div className="flex items-baseline gap-2.5">
-                <span className="text-2xl sm:text-3xl font-bold tracking-tight text-fg-default">
+                <Text
+                    as="span"
+                    variant="display"
+                    weight="bold"
+                    tracking="tighter"
+                    className="text-2xl sm:text-3xl">
                     {MONTHS[month - 1]}
-                </span>
-                <span className="text-lg sm:text-xl font-medium text-fg-placeholder">
+                </Text>
+                <Text
+                    as="span"
+                    variant="heading"
+                    weight="medium"
+                    tone="placeholder"
+                    className="text-lg sm:text-xl">
                     {year}
-                </span>
+                </Text>
             </div>
             <div className="flex items-center gap-3">
                 <ToggleGroup

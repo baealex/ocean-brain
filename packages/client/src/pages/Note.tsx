@@ -7,7 +7,7 @@ import classNames from 'classnames';
 import { QueryBoundary, QueryErrorView } from '~/components/app';
 import { Button, Dropdown, PageLayout, Skeleton } from '~/components/shared';
 import * as Icon from '~/components/icon';
-import { useToast } from '~/components/ui';
+import { Text, useToast } from '~/components/ui';
 import type { EditorRef } from '~/components/shared/Editor';
 import Editor from '~/components/shared/Editor';
 import { BackReferences } from '~/components/entities';
@@ -48,8 +48,6 @@ const notePageFallback = (
         </main>
     </PageLayout>
 );
-
-const noteMetaTextClassName = 'text-label font-medium uppercase tracking-[0.12em] text-fg-tertiary';
 
 interface NoteContentProps {
     id: string;
@@ -159,9 +157,16 @@ function NoteContent({ id }: NoteContentProps) {
                     className="surface-floating sticky top-20 z-[1001] mb-8 px-5 py-4">
                     <div className="mb-3 flex items-start justify-between gap-4">
                         <div className="min-w-0 flex-1">
-                            <div className="mb-1 text-micro font-semibold uppercase tracking-[0.16em] text-fg-tertiary">
+                            <Text
+                                as="div"
+                                variant="micro"
+                                weight="semibold"
+                                tracking="widest"
+                                transform="uppercase"
+                                tone="tertiary"
+                                className="mb-1">
                                 Thought in progress
-                            </div>
+                            </Text>
                             <input
                                 ref={titleRef}
                                 placeholder="Title"
@@ -228,13 +233,28 @@ function NoteContent({ id }: NoteContentProps) {
                     </div>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                         {isPinned && (
-                            <span className={classNames('inline-flex items-center gap-1.5', noteMetaTextClassName)}>
+                            <Text
+                                as="span"
+                                variant="label"
+                                weight="medium"
+                                tracking="wider"
+                                transform="uppercase"
+                                tone="tertiary"
+                                className="inline-flex items-center gap-1.5">
                                 <Icon.Pin className="h-3 w-3" weight="fill" />
                                 Pinned
-                            </span>
+                            </Text>
                         )}
                         {isPinned && <span className="h-1 w-1 rounded-full bg-border-secondary" />}
-                        <span className={noteMetaTextClassName}>Saved {lastSavedAt}</span>
+                        <Text
+                            as="span"
+                            variant="label"
+                            weight="medium"
+                            tracking="wider"
+                            transform="uppercase"
+                            tone="tertiary">
+                            Saved {lastSavedAt}
+                        </Text>
                     </div>
                 </div>
 
@@ -282,7 +302,14 @@ function NoteContent({ id }: NoteContentProps) {
                             <div className="surface-base p-4">
                                 <div className="mb-3 flex items-center gap-2">
                                     <Icon.LinkSimple className="h-3.5 w-3.5 text-fg-tertiary" />
-                                    <span className="text-label font-semibold uppercase tracking-[0.12em] text-fg-tertiary">Back References</span>
+                                    <Text
+                                        variant="label"
+                                        weight="semibold"
+                                        tracking="wider"
+                                        transform="uppercase"
+                                        tone="tertiary">
+                                        Back References
+                                    </Text>
                                 </div>
                                 <ul className="flex flex-col">
                                     {backReferences.map((backLink) => (
@@ -290,9 +317,11 @@ function NoteContent({ id }: NoteContentProps) {
                                             <Link
                                                 to={NOTE_ROUTE}
                                                 params={{ id: backLink.id }}
-                                                className="flex items-center gap-2 rounded-[10px] px-2.5 py-1.5 text-meta text-fg-secondary transition-colors hover:bg-hover-subtle hover:text-fg-default">
+                                                className="flex items-center gap-2 rounded-[10px] px-2.5 py-1.5 text-fg-secondary transition-colors hover:bg-hover-subtle hover:text-fg-default">
                                                 <Icon.File className="h-3.5 w-3.5 shrink-0 text-fg-tertiary" />
-                                                {backLink.title}
+                                                <Text as="span" variant="meta" className="text-current">
+                                                    {backLink.title}
+                                                </Text>
                                             </Link>
                                         </li>
                                     ))}

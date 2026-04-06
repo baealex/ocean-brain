@@ -9,6 +9,7 @@ import {
     Skeleton
 } from '~/components/shared';
 import { Tags } from '~/components/entities';
+import { Text } from '~/components/ui';
 import { useGridLimit } from '~/hooks/useGridLimit';
 import { TAG_NOTES_ROUTE, TAG_ROUTE } from '~/modules/url';
 
@@ -65,8 +66,13 @@ export default function Tag() {
                                                     to={TAG_NOTES_ROUTE}
                                                     params={{ id: tag.id }}
                                                     search={{ page: 1 }}
-                                                    className="inline-flex items-center rounded-full border border-border-subtle bg-hover-subtle px-3 py-1.5 text-sm font-medium text-fg-secondary transition-colors hover:border-border-secondary hover:bg-hover hover:text-fg-default">
-                                                    {tag.name} <span className="text-fg-tertiary text-xs">({tag.referenceCount})</span>
+                                                    className="inline-flex items-center rounded-full border border-border-subtle bg-hover-subtle px-3 py-1.5 text-fg-secondary transition-colors hover:border-border-secondary hover:bg-hover hover:text-fg-default">
+                                                    <Text as="span" variant="meta" weight="medium" className="text-current">
+                                                        {tag.name}
+                                                    </Text>
+                                                    <Text as="span" variant="label" tone="tertiary">
+                                                        ({tag.referenceCount})
+                                                    </Text>
                                                 </Link>
                                             ))}
                                         </div>

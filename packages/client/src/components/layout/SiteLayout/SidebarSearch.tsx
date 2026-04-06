@@ -6,6 +6,7 @@ import { fetchNotes } from '~/apis/note.api';
 import { fetchTags } from '~/apis/tag.api';
 import * as Icon from '~/components/icon';
 import { Badge } from '~/components/shared';
+import { Text } from '~/components/ui';
 import useDebounce from '~/hooks/useDebounce';
 import type { Note } from '~/models/note.model';
 import type { Tag } from '~/models/tag.model';
@@ -91,7 +92,14 @@ const SidebarSearch = () => {
                         {notes.length > 0 && (
                             <div>
                                 {tags.length > 0 && (
-                                    <div className="px-2.5 pb-1 pt-1 text-xs font-medium text-fg-tertiary">Notes</div>
+                                    <Text
+                                        as="div"
+                                        variant="label"
+                                        weight="medium"
+                                        tone="tertiary"
+                                        className="px-2.5 pb-1 pt-1">
+                                        Notes
+                                    </Text>
                                 )}
                                 {notes.map(({ id, title }) => (
                                     <Link
@@ -100,7 +108,9 @@ const SidebarSearch = () => {
                                         params={{ id }}
                                         className="flex items-center gap-2.5 rounded-[10px] px-2.5 py-2 transition-colors hover:bg-hover-subtle">
                                         <Icon.FileNote className="h-4 w-4 shrink-0 text-fg-tertiary" />
-                                        <span className="truncate text-sm text-fg-default">{title || 'Untitled'}</span>
+                                        <Text as="span" truncate className="min-w-0 flex-1">
+                                            {title || 'Untitled'}
+                                        </Text>
                                     </Link>
                                 ))}
                             </div>
@@ -108,7 +118,14 @@ const SidebarSearch = () => {
                         {tags.length > 0 && (
                             <div>
                                 {notes.length > 0 && (
-                                    <div className="px-2.5 pb-1 pt-2 text-xs font-medium text-fg-tertiary">Tags</div>
+                                    <Text
+                                        as="div"
+                                        variant="label"
+                                        weight="medium"
+                                        tone="tertiary"
+                                        className="px-2.5 pb-1 pt-2">
+                                        Tags
+                                    </Text>
                                 )}
                                 <div className="flex flex-wrap gap-1.5 px-2 py-1.5">
                                     {tags.map(({ id, name }) => (
@@ -120,8 +137,10 @@ const SidebarSearch = () => {
                             </div>
                         )}
                         <div className="mt-1 border-t border-border-subtle/50 px-2.5 pb-1 pt-1.5">
-                            <button type="submit" className="flex items-center gap-1.5 text-sm font-medium text-fg-secondary transition-colors hover:text-fg-default">
-                                view detailed results
+                            <button type="submit" className="flex items-center gap-1.5 text-fg-secondary transition-colors hover:text-fg-default">
+                                <Text as="span" variant="meta" weight="medium" className="text-current">
+                                    view detailed results
+                                </Text>
                                 <Icon.ChevronRight className="h-3.5 w-3.5" weight="bold" />
                             </button>
                         </div>

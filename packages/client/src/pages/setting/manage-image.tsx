@@ -10,7 +10,7 @@ import {
     Empty,
     SurfaceCard
 } from '~/components/shared';
-import { Button, useConfirm } from '~/components/ui';
+import { Button, Text, useConfirm } from '~/components/ui';
 import * as Icon from '~/components/icon';
 
 import {
@@ -103,10 +103,14 @@ const ManageImage = () => {
                                                     />
                                                 </Link>
                                                 <div className="flex items-center justify-between border-t border-border-subtle px-3 py-2.5">
-                                                    <span className="flex items-center gap-1.5 text-sm font-medium text-fg-tertiary">
+                                                    <Text
+                                                        as="span"
+                                                        weight="medium"
+                                                        tone="tertiary"
+                                                        className="flex items-center gap-1.5">
                                                         <Icon.LinkIcon className="h-3.5 w-3.5" />
                                                         {image.referenceCount}
-                                                    </span>
+                                                    </Text>
                                                     <Button
                                                         variant="ghost"
                                                         size="icon-sm"

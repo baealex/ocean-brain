@@ -10,6 +10,7 @@ import {
     Skeleton
 } from '~/components/shared';
 import { Notes } from '~/components/entities';
+import { Text } from '~/components/ui';
 
 import { NOTE_ROUTE, SEARCH_ROUTE } from '~/modules/url';
 
@@ -56,7 +57,7 @@ export default function Search() {
                                     )}>
                                     {notes.length > 0 && notes.map((note) => (
                                         <div key={note.id} className="mb-5">
-                                            <div className="text-heading mb-1 font-semibold">
+                                            <Text as="div" variant="heading" weight="semibold" className="mb-1">
                                                 <Link
                                                     to={NOTE_ROUTE}
                                                     params={{ id: note.id }}>
@@ -64,7 +65,7 @@ export default function Search() {
                                                         {note.title}
                                                     </Highlight>
                                                 </Link>
-                                            </div>
+                                            </Text>
                                             <div className="bg-muted p-3 rounded-lg">
                                                 {(JSON.parse(note.content) as object[]).filter(item => JSON.stringify(item).includes(query)).map((item) => (
                                                     <Highlight match={query}>

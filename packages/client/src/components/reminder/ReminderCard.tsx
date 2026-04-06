@@ -3,6 +3,7 @@ import dayjs from 'dayjs';
 
 import * as Icon from '~/components/icon';
 import { Button, Dropdown } from '~/components/shared';
+import { Text } from '~/components/ui';
 import type { Reminder } from '~/models/reminder.model';
 import { priorityColorsSubtle } from '~/modules/color';
 import { NOTE_ROUTE } from '~/modules/url';
@@ -60,13 +61,18 @@ export default function ReminderCard({
             <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                        <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-fg-tertiary">
+                        <Text
+                            as="span"
+                            variant="label"
+                            weight="medium"
+                            tone="tertiary"
+                            className="inline-flex shrink-0 items-center gap-1.5">
                             <span className={`h-2.5 w-2.5 rounded-full border border-border-subtle ${priorityToneClassName}`} />
                             {priorityLabel}
-                        </span>
-                        <p className="min-w-0 line-clamp-2 text-base font-semibold leading-6 text-fg-default">
+                        </Text>
+                        <Text as="p" variant="body" weight="semibold" className="min-w-0 line-clamp-2">
                             {primaryText}
-                        </p>
+                        </Text>
                     </div>
                 </div>
                 <Dropdown
@@ -87,7 +93,7 @@ export default function ReminderCard({
                 />
             </div>
 
-            <div className="flex items-center gap-2 text-sm text-fg-secondary">
+            <Text as="div" variant="meta" tone="secondary" className="flex items-center gap-2">
                 <Icon.File size={14} />
                 <Link
                     to={NOTE_ROUTE}
@@ -95,19 +101,23 @@ export default function ReminderCard({
                     className="truncate transition-colors hover:text-fg-default hover:underline">
                     {noteTitle}
                 </Link>
-            </div>
+            </Text>
 
             <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex flex-wrap items-center gap-2 text-sm text-fg-secondary">
+                <Text as="div" variant="meta" tone="secondary" className="flex flex-wrap items-center gap-2">
                     <Icon.Clock size={14} />
-                    <span className="font-medium">
+                    <Text as="span" variant="meta" weight="medium" tone="secondary">
                         {formatReminderDate(reminder.reminderDate)}
-                    </span>
+                    </Text>
                     <span className="h-1 w-1 rounded-full bg-border-secondary" />
-                    <span className={`text-xs font-medium ${detailToneClassName}`}>
+                    <Text
+                        as="span"
+                        variant="label"
+                        weight="medium"
+                        className={detailToneClassName}>
                         {getTimeRemaining(reminder.reminderDate)}
-                    </span>
-                </div>
+                    </Text>
+                </Text>
                 <Button
                     variant="subtle"
                     size="sm"

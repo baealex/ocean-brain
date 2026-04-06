@@ -1,8 +1,8 @@
 # Ocean Brain Deployment and Release Strategy
 
-Updated: 2026-03-06
+Updated: 2026-04-06
 
-## 1. Current Deployment Channels (As-Is)
+## 1. Current Deployment Channels
 1. npm distribution
 - Published package: `ocean-brain` (`packages/cli`)
 - Run via: `npx ocean-brain` or `npx ocean-brain@<version>`
@@ -15,25 +15,32 @@ Updated: 2026-03-06
 3. Source-based run
 - `pnpm install && pnpm build && pnpm start`
 
-## 2. Versioned Install and Run Rules (Docker + npx)
-1. Production (reproducible)
-- npx: `npx ocean-brain@<exact-version>` (example: `npx ocean-brain@0.2.0`)
-- Docker: `baealex/ocean-brain:<exact-version>` (example: `baealex/ocean-brain:0.2.0`)
+## 2. Versioned Install and Run Rules
+1. Production
+- npx: `npx ocean-brain@<exact-version>`
+- Docker: `baealex/ocean-brain:<exact-version>`
 - Do not use floating `latest` in production.
 
 2. Fast trial/development
-- npx: `npx ocean-brain` (or `npx ocean-brain@latest`)
+- npx: `npx ocean-brain` or `npx ocean-brain@latest`
 - Docker: `baealex/ocean-brain:latest`
-- Accepts potential behavior drift over time.
 
 3. Rollback target
 - npx: `npx ocean-brain@<previous-version>`
 - Docker: `baealex/ocean-brain:<previous-version>`
 
 ## 3. Release Trigger
-- GitHub Actions `RELEASE` runs only on `v*` tag pushes.
-- Example: `v0.2.1`
-- Every tag release (`vX.Y.Z`, for example `v0.2.0`) must include a written GitHub Release note at:
+- GitHub Actions `RELEASE` runs only on an explicit `v*` tag push.
+- Example: `v0.3.1`
+- Official release trigger:
+
+```bash
+git tag v0.3.1
+git push origin v0.3.1
+```
+
+- Do not rely on automatic tag creation as the release trigger.
+- Every tagged release must include a written GitHub Release note at:
   `https://github.com/baealex/ocean-brain/releases/tag/vX.Y.Z`
 
 ## 4. Release Pipeline Details
@@ -64,7 +71,7 @@ Updated: 2026-03-06
 
 ## 6. Manual Release Runbook
 1. Verify release package
-- Required: latest `CLI_SMOKE` workflow is green for the release target commit/PR.
+- Required: latest `CLI_SMOKE` workflow is green for the release target PR or commit.
 
 2. Collect unreleased changes before version bump
 - Commit list:
@@ -79,118 +86,129 @@ Updated: 2026-03-06
 4. Create dedicated release branch
 - `git checkout -b chore/release-v<version>`
 
-5. Commit version bump (release-only scope)
+5. Commit version bump
 - `git add packages/cli/package.json`
-- `git commit -m "<release-emoji> Bump version to <version>"`
-- Version bump must be a separate PR (direct merge/push to `main` is not allowed).
+- `git commit -m "🔖 Bump version to <version>"`
+- Version bump must be a separate PR. Direct release bumps on `main` are not allowed.
 
 6. Open and merge release PR to `main`
-- PR title: `<release-emoji> Bump version to <version>`
+- PR title: `🔖 Bump version to <version>`
 - PR body must include expected tag (`v<version>`) and verification result.
 
-7. Tag from merged `main` and push tag
-- `git checkout main && git pull`
-- `git tag v<version>`
-- `git push origin v<version>`
+7. Trigger release explicitly from merged `main`
 
-8. After tag push
-- `RELEASE` automatically publishes npm + Docker artifacts.
+```bash
+git checkout main
+git pull --ff-only origin main
+git tag v<version>
+git push origin v<version>
+```
+
+- This tag push is the supported release trigger.
+- Do not treat PR merge itself as deployment.
+
+8. Monitor the `RELEASE` workflow
+- Example:
+
+```bash
+gh run list --workflow RELEASE.yml --limit 5
+```
+
+- Wait for npm publish, Docker publish, and manifest jobs to finish.
 
 9. Finalize GitHub Release note
-- Open the created release page (`https://github.com/baealex/ocean-brain/releases/tag/v<version>`).
-- Treat auto-generated notes as draft only; edit and finalize before sharing the release.
-- If additional commits were merged after initial investigation, rerun range checks and refresh the note.
+- Open the created release page after `RELEASE` creates it.
+- Treat auto-generated notes as a draft only.
+- Replace the body with the final note before sharing the release externally.
 
-## 7. GitHub Release Note Policy (Required)
+## 7. Recovery Guide
+Use this section when the version bump PR is merged but the release did not start cleanly.
+
+1. Confirm the merged `main` commit
+
+```bash
+git checkout main
+git pull --ff-only origin main
+git rev-parse HEAD
+```
+
+2. Confirm whether the tag exists remotely
+
+```bash
+git ls-remote --tags origin v<version>
+```
+
+3. Confirm whether `RELEASE` started
+
+```bash
+gh run list --workflow RELEASE.yml --limit 10
+```
+
+4. If the tag exists but no `RELEASE` run started, recreate the tag explicitly
+
+```bash
+git checkout main
+git pull --ff-only origin main
+git push origin :refs/tags/v<version>
+git tag -d v<version> 2>/dev/null || true
+git tag v<version>
+git push origin v<version>
+```
+
+5. Re-check release creation
+
+```bash
+gh run list --workflow RELEASE.yml --limit 10
+gh release view v<version> --json tagName,url,publishedAt
+```
+
+## 8. GitHub Release Note Policy
 1. Scope
 - Applies to every release created from a `v*` tag.
-- Example: `v0.2.0` release page.
 
 2. Mandatory rule
 - Release notes are required for every release.
 - Auto-generated notes are not the final version by default.
-- The maintainer who creates/pushes the release tag is responsible for final note quality.
+- The maintainer who pushes the release tag is responsible for the final note.
 
-3. Required sections
-- The note must follow section names from `.github/PULL_REQUEST_TEMPLATE.md` and include:
-  `Goal`, `Core Changes`, `Key Decisions`, `Verification Guide`.
-- For release context, also include:
-  `Risks`, `Unreleased Commits`, `Merged PRs`.
-- Include rollback guidance for Docker and npm/npx.
+3. Format by semver type
+- Patch release (`X.Y.Z` where only `Z` changes):
+  use `What's Changed`
+- Minor release (`X.Y.0` where `Y` changes):
+  use `What's New`
 
-4. Completeness rule (commit + PR based)
+4. Patch release rule
+- Keep `What's Changed` short and user-facing.
+- Do not add migration/setup guidance unless the patch requires user action.
+
+5. Minor release rule
+- `What's New` must explain:
+  what changed, how to use it, and whether the user must take any extra action.
+- When configuration, auth, runtime, or startup behavior changes, include exact commands and environment variables.
+- When the release changes how users run the product, include concrete examples for the affected distribution methods such as `npx`, `docker run`, and `docker-compose`.
+- Use fenced code blocks for commands, `.env` examples, and compose snippets.
+
+6. Investigation rule before writing the note
 - Range baseline: previous release tag to current release tag.
-  Example: `v0.2.0..v0.2.1` (or `v0.2.0..HEAD` before tagging).
+- Example: `v0.3.0..v0.3.1` or `v0.2.2..v0.3.0`
 - Commit source command:
   `git log v<previous>..v<current-or-HEAD> --pretty=format:"%h %s"`
-- PR source command (merge commits):
+- PR source command:
   `git log v<previous>..v<current-or-HEAD> --merges --pretty=format:"%s"`
-- Investigate and list all unreleased commits and merged PRs without omission.
-- If a commit has no PR, keep it under `Unreleased Commits` as a direct commit.
+- Investigate the range before writing the note even if the final note is short.
 
-## 8. Release Note Template
-Use this template when editing a release like `v0.2.0`.
+## 9. Release Note Reference
+Use the published release page as the source of truth for the final note content.
 
-```md
-## Goal
-- Why this release exists.
-- User-visible outcome.
+1. Patch release example
+- `gh release view v0.3.1`
 
-## Core Changes
-- Feature/fix 1
-- Feature/fix 2
-- Internal or infra change (if relevant)
+2. Minor release example
+- `gh release view v0.3.0`
 
-## Key Decisions
-- Major decisions made in this release.
-- Alternatives considered and why they were not selected.
-
-## Verification Guide
-### How to verify
-  - `CLI_SMOKE` workflow passed
-  - `pnpm build`
-
-### Expected result
-  - Passed/Failed + short note
-
-## Risks
-- Breaking changes: Yes/No (details if Yes)
-- Known limitations:
-  - ...
-
-## Unreleased Commits
-- `<short-hash>` `<subject>`
-- ...
-
-## Merged PRs
-- `#<number>` <title or merge subject>
-- ...
-
-## Rollback
-- Docker: redeploy `baealex/ocean-brain:<previous-version>`
-- npm/npx: run `npx ocean-brain@<previous-version>`
-
-## Links
-- Release: `https://github.com/baealex/ocean-brain/releases/tag/vX.Y.Z`
-- Compare: `https://github.com/baealex/ocean-brain/compare/vX.Y.(Z-1)...vX.Y.Z`
-```
-
-## 9. Current Unreleased Changes Snapshot (Since `v0.2.0`)
-Checked at document update time (`2026-03-06`) using:
-- `git log v0.2.0..HEAD --pretty=format:"%h %s"`
-- `git log v0.2.0..HEAD --merges --pretty=format:"%s"`
-
-1. Unreleased commits
-- `999310a` `Add deployment strategy reference in git convention`
-- `dcd0ecd` `Refine pull request template structure`
-- `b5f8658` `Update bump-version release commit message`
-- `dc722ab` `Add process conventions and PR template`
-- `9ccac01` `Merge pull request #49 from baealex/fix/native-arm64-runner`
-- `e88075c` `Remove paths filter from CI workflow`
-- `bd06dce` `Use native arm64 runner for Docker builds`
-
-2. Merged PRs
-- `#49` `Merge pull request #49 from baealex/fix/native-arm64-runner`
+3. Browser links
+- `https://github.com/baealex/ocean-brain/releases/tag/v0.3.1`
+- `https://github.com/baealex/ocean-brain/releases/tag/v0.3.0`
 
 ## 10. Required Secrets
 - `DOCKERHUB_USERNAME`

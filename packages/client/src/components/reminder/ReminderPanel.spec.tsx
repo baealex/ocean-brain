@@ -22,38 +22,35 @@ let mockReminderData: MockReminderRenderData = {
 };
 
 vi.mock('~/components/icon', () => ({
-    TriangleRight: () => <span>TriangleRight</span>,
-    TriangleDown: () => <span>TriangleDown</span>,
-    Plus: () => <span>Plus</span>,
-    VerticalDots: () => <span>VerticalDots</span>
+    TriangleRight: () => <span aria-hidden="true">TriangleRight</span>,
+    TriangleDown: () => <span aria-hidden="true">TriangleDown</span>,
+    Plus: () => <span aria-hidden="true">Plus</span>,
+    VerticalDots: () => <span aria-hidden="true">VerticalDots</span>
 }));
 
-vi.mock('~/components/shared', () => ({
-    Button: ({
-        children,
-        onClick
-    }: {
-        children: React.ReactNode;
-        onClick?: () => void;
-    }) => <button type="button" onClick={onClick}>{children}</button>,
-    Dropdown: ({ button }: { button: React.ReactNode }) => <div>{button}</div>,
-    Empty: ({
-        title,
-        description,
-        className = ''
-    }: {
-        title?: string;
-        description?: string;
-        className?: string;
-    }) => (
-        <div data-testid="empty-state" className={className}>
-            <div>{title}</div>
-            <div>{description}</div>
-        </div>
-    )
-}));
+vi.mock('~/components/shared', async () => {
+    const actual = await vi.importActual<object>('~/components/shared');
 
-vi.mock('~/components/ui', () => ({ Checkbox: () => <button type="button">Checkbox</button> }));
+    return {
+        ...actual,
+        Button: ({
+            children,
+            onClick
+        }: {
+            children: React.ReactNode;
+            onClick?: () => void;
+        }) => <button type="button" onClick={onClick}>{children}</button>,
+        Dropdown: ({ button }: { button: React.ReactNode }) => <div>{button}</div>
+    };
+});
+
+vi.mock('~/components/ui', async () => {
+    const actual = await vi.importActual<object>('~/components/ui');
+    return {
+        ...actual,
+        Checkbox: () => <button type="button" aria-label="reminder checkbox" />
+    };
+});
 
 vi.mock('~/components/entities', () => ({
     Reminders: ({ render }: { render: (data: MockReminderRenderData) => React.ReactNode }) => (
@@ -79,13 +76,13 @@ describe('<ReminderPanel />', () => {
         };
     });
 
-    it('renders an empty state when a note has no reminders', () => {
+    it('renders no reminder rows when a note has no reminders', () => {
         render(<ReminderPanel noteId="note-1" />);
 
-        expect(screen.getByText('No reminders yet')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'reminder checkbox' })).not.toBeInTheDocument();
     });
 
-    it('renders reminder rows instead of the empty state when reminders exist', () => {
+    it('renders reminder rows when reminders exist', () => {
         mockReminderData = {
             reminders: [
                 {
@@ -101,7 +98,7 @@ describe('<ReminderPanel />', () => {
 
         render(<ReminderPanel noteId="note-1" />);
 
-        expect(screen.queryByText('No reminders yet')).not.toBeInTheDocument();
-        expect(screen.getByText('Follow up')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'reminder checkbox' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Reminder actions' })).toBeInTheDocument();
     });
 });

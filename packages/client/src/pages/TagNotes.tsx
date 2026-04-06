@@ -28,67 +28,83 @@ export default function TagNotes() {
     } = useNoteMutate();
 
     return (
-        <PageLayout title="Tag" variant="subtle">
-            <QueryBoundary
-                fallback={(
-                    <div className="grid-auto-cards grid gap-6 mt-3">
+        <QueryBoundary
+            fallback={(
+                <PageLayout
+                    title="Tagged Notes"
+                    heading={<Skeleton width={148} height={24} className="rounded-full" />}
+                    description={<Skeleton width={196} height={16} className="rounded-full" />}
+                    variant="default">
+                    <div className="grid-auto-cards grid gap-5">
                         <Skeleton height="112px" />
                         <Skeleton height="112px" />
                         <Skeleton height="112px" />
                     </div>
-                )}
-                errorTitle="Failed to load tagged notes"
-                errorDescription="Retry loading notes for this tag."
-                resetKeys={[id, page, limit]}>
-                <TagNotesEntity
-                    searchParams={{
-                        query: id,
-                        offset: (page - 1) * limit,
-                        limit
-                    }}
-                    render={({ notes, totalCount }) => (
-                        <FallbackRender
-                            fallback={(
-                                <Empty
-                                    title="Ocean is calm"
-                                    description="Capture anything and make waves in the ocean!"
-                                />
-                            )}>
-                            {notes.length > 0 && (
-                                <>
-                                    <div className="grid-auto-cards grid gap-6 mt-3">
-                                        {notes.map(note => (
-                                            <NoteListCard
-                                                key={note.id}
-                                                {...note}
-                                                onPinned={() => onPinned(note.id, note.pinned)}
-                                                onDelete={() => onDelete(note.id)}
-                                            />
-                                        ))}
+                </PageLayout>
+            )}
+            errorTitle="Failed to load tagged notes"
+            errorDescription="Retry loading notes for this tag"
+            resetKeys={[id, page, limit]}>
+            <TagNotesEntity
+                searchParams={{
+                    query: id,
+                    offset: (page - 1) * limit,
+                    limit
+                }}
+                render={({ notes, totalCount }) => {
+                    const tagName = notes
+                        .flatMap(note => note.tags)
+                        .find(tag => tag.id === id)?.name;
+
+                    return (
+                        <PageLayout
+                            title={tagName ?? 'Tagged Notes'}
+                            heading={tagName ? (totalCount > 0 ? `${tagName} (${totalCount})` : tagName) : 'Tagged Notes'}
+                            description="Browse every note linked to this tag"
+                            variant="default">
+                            <FallbackRender
+                                fallback={(
+                                    <Empty
+                                        title="No tagged notes yet"
+                                        description="Notes tagged with this label will appear here"
+                                    />
+                                )}>
+                                {notes.length > 0 && (
+                                    <div className="flex flex-col gap-4">
+                                        <div className="grid-auto-cards grid gap-5">
+                                            {notes.map(note => (
+                                                <NoteListCard
+                                                    key={note.id}
+                                                    {...note}
+                                                    onPinned={() => onPinned(note.id, note.pinned)}
+                                                    onDelete={() => onDelete(note.id)}
+                                                />
+                                            ))}
+                                        </div>
+                                        <FallbackRender
+                                            fallback={null}>
+                                            {totalCount && limit < totalCount && (
+                                                <Pagination
+                                                    page={page}
+                                                    last={Math.ceil(totalCount / limit)}
+                                                    onChange={(page) => {
+                                                        navigate({
+                                                            search: prev => ({
+                                                                ...prev,
+                                                                page
+                                                            })
+                                                        });
+                                                    }}
+                                                />
+                                            )}
+                                        </FallbackRender>
                                     </div>
-                                    <FallbackRender
-                                        fallback={null}>
-                                        {totalCount && limit < totalCount && (
-                                            <Pagination
-                                                page={page}
-                                                last={Math.ceil(totalCount / limit)}
-                                                onChange={(page) => {
-                                                    navigate({
-                                                        search: prev => ({
-                                                            ...prev,
-                                                            page
-                                                        })
-                                                    });
-                                                }}
-                                            />
-                                        )}
-                                    </FallbackRender>
-                                </>
-                            )}
-                        </FallbackRender>
-                    )}
-                />
-            </QueryBoundary>
-        </PageLayout>
+                                )}
+                            </FallbackRender>
+                        </PageLayout>
+                    );
+                }}
+            />
+        </QueryBoundary>
     );
 }

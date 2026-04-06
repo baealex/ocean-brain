@@ -2,6 +2,7 @@ import { Fragment } from 'react';
 import { Link, useLocation } from '@tanstack/react-router';
 
 import * as Icon from '~/components/icon';
+import { Text } from '~/components/ui';
 import {
     CALENDAR_ROUTE,
     GRAPH_ROUTE,
@@ -56,13 +57,15 @@ const TopNavigation = () => {
                     )}
                     <Link to={item.path}>
                         <div
-                            className={`flex min-w-26 items-center justify-center gap-2 border-b px-2 py-2 text-sm font-medium transition-colors ${
+                            className={`flex min-w-26 items-center justify-center gap-2 border-b px-2 py-2 transition-colors ${
                                 pathname === item.path
                                     ? 'border-fg-muted text-fg-default'
                                     : 'border-transparent text-fg-secondary hover:border-border-subtle hover:text-fg-default'
                             }`}>
                             <item.icon className="size-5" weight={pathname === item.path ? 'fill' : 'regular'} />
-                            {item.name}
+                            <Text as="span" variant="meta" weight="medium" className="text-current">
+                                {item.name}
+                            </Text>
                         </div>
                     </Link>
                 </Fragment>

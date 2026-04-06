@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { fetchNoteSnapshots, restoreNoteSnapshot } from '~/apis/note.api';
 import { Button, Modal } from '~/components/shared';
-import { useToast } from '~/components/ui';
+import { Text, useToast } from '~/components/ui';
 import { queryKeys } from '~/modules/query-key-factory';
 
 import type { Note } from '~/models/note.model';
@@ -101,16 +101,22 @@ export default function RestoreSnapshotModal({
             />
             <Modal.Body>
                 <div className="flex flex-col gap-3">
-                    <p className="text-sm text-fg-secondary">
+                    <Text as="p" variant="meta" tone="secondary">
                         Choose a previous snapshot to restore this note back to that state.
-                    </p>
+                    </Text>
                     {snapshotQuery.isLoading && (
-                        <div className="text-sm text-fg-secondary">Loading previous versions...</div>
+                        <Text as="div" variant="meta" tone="secondary">
+                            Loading previous versions...
+                        </Text>
                     )}
                     {!snapshotQuery.isLoading && snapshotQuery.data?.length === 0 && (
-                        <div className="rounded-[14px] border border-border-subtle bg-hover-subtle/50 px-4 py-3 text-sm text-fg-secondary">
+                        <Text
+                            as="div"
+                            variant="meta"
+                            tone="secondary"
+                            className="rounded-[14px] border border-border-subtle bg-hover-subtle/50 px-4 py-3">
                             A recovery snapshot will appear after the first edit in a session and older ones are cleaned up automatically.
-                        </div>
+                        </Text>
                     )}
                     {!snapshotQuery.isLoading && snapshotQuery.data && snapshotQuery.data.length > 0 && (
                         <div className="flex flex-col gap-2">
@@ -120,15 +126,15 @@ export default function RestoreSnapshotModal({
                                     className="surface-base p-3">
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0">
-                                            <p className="text-sm font-semibold">
+                                            <Text as="p" variant="body" weight="semibold">
                                                 Before {formatSnapshotLabel(snapshot.meta.label, snapshot.meta.entrypoint)} edit
-                                            </p>
-                                            <p className="truncate text-sm text-fg-secondary">
+                                            </Text>
+                                            <Text as="p" variant="meta" truncate tone="secondary">
                                                 {snapshot.title}
-                                            </p>
-                                            <p className="text-xs text-fg-placeholder">
+                                            </Text>
+                                            <Text as="p" variant="label" tone="tertiary">
                                                 {dayjs(snapshot.createdAt).format('YYYY-MM-DD HH:mm:ss')}
-                                            </p>
+                                            </Text>
                                         </div>
                                         <Button
                                             size="sm"

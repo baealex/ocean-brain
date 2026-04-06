@@ -1,32 +1,40 @@
 import * as Icon from '~/components/icon';
+import { Text } from '~/components/ui';
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
 
 import PinnedNotesPanel from './PinnedNotesPanel';
 import SidebarSectionHeader from './SidebarSectionHeader';
 
+const rootClassName = 'flex flex-col gap-3.5 p-3 pt-2';
+const captureButtonClassName = 'focus-ring-soft surface-base group flex w-full items-center justify-between gap-2.5 px-3 py-2.5 text-left text-fg-default outline-none transition-colors hover:bg-hover-subtle';
+const captureContentClassName = 'flex items-center gap-2.5';
+const captureIconWrapClassName = 'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] bg-cta text-fg-on-filled';
+const captureTextWrapClassName = 'flex flex-col';
+const trailingIconClassName = 'h-4 w-4 text-fg-tertiary transition-colors group-hover:text-fg-default';
+
 const SidebarPrimaryActions = () => {
     const { onCreate } = useNoteMutate();
 
     return (
-        <div className="flex flex-col gap-5 p-3">
+        <div className={rootClassName}>
             <button
                 type="button"
-                className="focus-ring-soft group flex w-full items-center justify-between gap-3 rounded-[16px] border border-border-subtle bg-surface px-3.5 py-3 text-left text-fg-default outline-none transition-colors hover:border-border hover:bg-hover-subtle"
+                className={captureButtonClassName}
                 onClick={() => onCreate()}>
-                <span className="flex items-center gap-3">
-                    <span className="inline-flex h-9 w-9 items-center justify-center rounded-[12px] bg-cta text-fg-on-filled">
+                <span className={captureContentClassName}>
+                    <span className={captureIconWrapClassName}>
                         <Icon.Pencil className="h-4.5 w-4.5" weight="bold" />
                     </span>
-                    <span className="flex flex-col">
-                        <span className="text-sm font-medium">Capture</span>
-                        <span className="text-xs text-fg-secondary">
-                            Start a new note right away
-                        </span>
+                    <span className={captureTextWrapClassName}>
+                        <Text variant="meta" weight="semibold" tracking="tight">Capture</Text>
+                        <Text variant="label" tone="secondary">
+                            Open a new note
+                        </Text>
                     </span>
                 </span>
-                <Icon.ArrowRight className="h-4 w-4 text-fg-tertiary transition-colors group-hover:text-fg-default" weight="bold" />
+                <Icon.ChevronRight className={trailingIconClassName} weight="bold" />
             </button>
-            <section className="px-1 pt-4">
+            <section className="pt-1">
                 <SidebarSectionHeader
                     title="Pinned"
                     icon={<Icon.Pin className="h-4 w-4" weight="fill" />}

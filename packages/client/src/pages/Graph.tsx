@@ -13,6 +13,7 @@ import { fetchNoteGraph, type GraphLink, type GraphNode } from '~/apis/note.api'
 import * as Icon from '~/components/icon';
 import { QueryBoundary, QueryErrorView } from '~/components/app';
 import { Empty, PageLayout, Skeleton } from '~/components/shared';
+import { Text } from '~/components/ui';
 import { getHash } from '~/modules/hash';
 import { queryKeys } from '~/modules/query-key-factory';
 import { NOTE_ROUTE } from '~/modules/url';
@@ -42,7 +43,9 @@ function getNodeSize(connections: number) {
 }
 
 const graphPageFallback = (
-    <PageLayout title="Knowledge Graph">
+    <PageLayout
+        title="Knowledge Graph"
+        description={<Skeleton width={184} height={16} className="rounded-full" />}>
         <div className="flex h-[600px] items-center justify-center">
             <Skeleton width="100%" height="100%" />
         </div>
@@ -279,10 +282,12 @@ function GraphContent() {
 
     if (!graphData) {
         return (
-            <PageLayout title="Knowledge Graph">
+            <PageLayout
+                title="Knowledge Graph"
+                description="0 linked notes, 0 connections">
                 <Empty
                     title="No constellations yet"
-                    description="Link your notes together and watch your own starry sky unfold."
+                    description="Link your notes together and watch your own starry sky unfold"
                 />
             </PageLayout>
         );
@@ -304,8 +309,17 @@ function GraphContent() {
 
                     return (
                         <div className="surface-floating absolute top-3 left-3 z-10 flex items-center gap-2 px-3 py-2">
-                            <span className="text-meta max-w-48 truncate font-semibold text-fg-default">{node.title}</span>
-                            <span className="text-label text-fg-tertiary">{node.connections} links</span>
+                            <Text
+                                as="span"
+                                variant="meta"
+                                weight="semibold"
+                                truncate
+                                className="max-w-48">
+                                {node.title}
+                            </Text>
+                            <Text as="span" variant="label" tone="tertiary">
+                                {node.connections} links
+                            </Text>
                             <button
                                 type="button"
                                 onClick={() => setSelectedNodeId(null)}
@@ -322,14 +336,18 @@ function GraphContent() {
                             className="legend-dot h-2.5 w-2.5 shrink-0 rounded-full"
                             style={{ '--legend-color': graphTheme.legendHub } as React.CSSProperties}
                         />
-                        <span className="text-label font-medium text-fg-secondary">Hub notes (4+ connections)</span>
+                        <Text as="span" variant="label" weight="medium" tone="secondary">
+                            Hub notes (4+ connections)
+                        </Text>
                     </div>
                     <div className="flex items-center gap-2">
                         <span
                             className="legend-dot h-2.5 w-2.5 shrink-0 rounded-full"
                             style={{ '--legend-color': graphTheme.nodeConnected } as React.CSSProperties}
                         />
-                        <span className="text-label font-medium text-fg-secondary">Connected notes</span>
+                        <Text as="span" variant="label" weight="medium" tone="secondary">
+                            Connected notes
+                        </Text>
                     </div>
                 </div>
                 <ForceGraph2D
@@ -383,12 +401,12 @@ export default function Graph() {
         <QueryBoundary
             fallback={graphPageFallback}
             errorTitle="Failed to load graph"
-            errorDescription="Retry loading your linked note constellation."
+            errorDescription="Retry loading your linked note constellation"
             renderError={({ error, retry }) => (
                 <PageLayout title="Knowledge Graph">
                     <QueryErrorView
                         title="Failed to load graph"
-                        description="Retry loading your linked note constellation."
+                        description="Retry loading your linked note constellation"
                         error={error}
                         onRetry={retry}
                     />

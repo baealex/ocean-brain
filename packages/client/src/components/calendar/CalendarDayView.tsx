@@ -1,3 +1,5 @@
+import { Text } from '~/components/ui';
+
 interface CalendarDayViewProps {
     day: number;
     cellClassName: string;
@@ -18,22 +20,24 @@ export const CalendarDayView = ({
     onOpenOverflow
 }: CalendarDayViewProps) => {
     return (
-        <div className={`min-h-[200px] rounded-[14px] border p-2 ${cellClassName}`.trim()}>
-            <div className="mb-2 flex justify-end">
-                <span
-                    className={`flex h-6 w-6 items-center justify-center rounded-[8px] text-label ${dayNumberClassName}`.trim()}>
+        <div className={`min-h-[196px] rounded-[16px] border p-2.5 ${cellClassName}`.trim()}>
+            <div className="mb-2.5 flex justify-end">
+                <Text
+                    as="span"
+                    variant="label"
+                    className={`flex h-7 w-7 items-center justify-center rounded-[10px] ${dayNumberClassName}`.trim()}>
                     {day}
-                </span>
+                </Text>
             </div>
 
             {isCurrentMonth && items.length > 0 ? (
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1.5">
                     {items}
                     {overflowCount > 0 ? (
                         <button
                             type="button"
                             onClick={onOpenOverflow}
-                            className="text-micro rounded-[10px] py-1 text-center font-semibold text-fg-tertiary transition-colors hover:bg-hover-subtle hover:text-fg-muted">
+                            className="focus-ring-soft w-full rounded-[10px] border border-dashed border-border-subtle/70 bg-subtle/70 py-1 text-center text-micro font-semibold text-fg-tertiary outline-none transition-colors hover:border-border-secondary/70 hover:bg-hover-subtle hover:text-fg-secondary">
                             +{overflowCount} more
                         </button>
                     ) : null}

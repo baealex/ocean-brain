@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import classNames from 'classnames';
 import dayjs from 'dayjs';
-import { Button, Dropdown } from '~/components/shared';
+import { AuxiliaryPanelHeader, Button, Dropdown } from '~/components/shared';
 import * as Icon from '~/components/icon';
-import { Checkbox } from '~/components/ui';
+import { Checkbox, Text } from '~/components/ui';
 
 import { Reminders } from '~/components/entities';
 import useReminderMutate from '~/hooks/resource/useReminderMutate';
@@ -94,18 +94,16 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                 <button
                     type="button"
                     onClick={() => setIsCollapsed(!isCollapsed)}
-                    className="focus-ring-soft flex items-center gap-2 rounded-[10px] px-2 py-1.5 text-fg-tertiary transition-colors hover:bg-hover-subtle">
-                    {isCollapsed ? (
-                        <Icon.TriangleRight size={12} />
-                    ) : (
-                        <Icon.TriangleDown size={12} />
-                    )}
-                    <span className="text-label font-semibold uppercase tracking-[0.12em]">Reminders</span>
+                    className="focus-ring-soft flex items-center gap-2 rounded-[10px] px-2 py-1.5 text-fg-tertiary transition-colors hover:bg-hover-subtle hover:text-fg-default">
+                    <AuxiliaryPanelHeader
+                        icon={isCollapsed ? <Icon.TriangleRight size={12} /> : <Icon.TriangleDown size={12} />}
+                        title="Reminders"
+                    />
                 </button>
                 {!isCollapsed && (
                     <Button size="sm" variant="ghost" onClick={handleOpenCreateModal}>
                         <Icon.Plus className="w-3 h-3" />
-                        <span className="text-label hidden sm:inline">Add</span>
+                        <Text as="span" variant="label" className="hidden sm:inline">Add</Text>
                     </Button>
                 )}
             </div>
@@ -121,9 +119,9 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                         return (
                             <div className="flex flex-col gap-2">
                                 {reminders.length === 0 ? (
-                                    <p className="text-meta py-3 text-center text-fg-tertiary">
+                                    <Text as="p" variant="meta" tone="secondary" className="py-3 text-center">
                                         {totalCount === 0 ? 'No reminders yet' : 'All reminders complete'}
-                                    </p>
+                                    </Text>
                                 ) : (
                                     <div className="flex flex-col">
                                         {reminders.map((reminder) => {
@@ -142,30 +140,37 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                                                         onChange={() => handleToggleComplete(reminder)}
                                                         size="sm"
                                                     />
-                                                    <div
+                                                    <Text
+                                                        as="div"
+                                                        variant="body"
+                                                        weight="medium"
                                                         className={classNames(
-                                                            'text-meta font-medium text-fg-default truncate flex-1 min-w-0',
+                                                            'truncate flex-1 min-w-0',
                                                             reminder.completed && 'line-through opacity-40'
                                                         )}>
                                                         {reminder.content || formatReminderDate(reminder.reminderDate)}
-                                                    </div>
+                                                    </Text>
                                                     <div
                                                         className={classNames(
-                                                            'shrink-0 flex items-center gap-1 text-label text-fg-tertiary',
+                                                            'shrink-0 flex items-center gap-1',
                                                             reminder.completed && 'opacity-40'
                                                         )}>
                                                         {reminder.content && (
-                                                            <span>{formatReminderDate(reminder.reminderDate)}</span>
+                                                            <Text as="span" variant="meta" tone="secondary">
+                                                                {formatReminderDate(reminder.reminderDate)}
+                                                            </Text>
                                                         )}
                                                         {!reminder.completed && (
-                                                            <span
+                                                            <Text
+                                                                as="span"
+                                                                variant="label"
+                                                                weight="medium"
+                                                                tone={isOverdue || urgency === 'high' ? 'error' : 'tertiary'}
                                                                 className={classNames(
-                                                                    'font-medium',
-                                                                    reminder.content && 'before:content-["·"] before:mr-1',
-                                                                    isOverdue || urgency === 'high' ? 'text-fg-error' : 'text-fg-placeholder'
+                                                                    reminder.content && 'before:content-["·"] before:mr-1'
                                                                 )}>
                                                                 {timeRemaining}
-                                                            </span>
+                                                            </Text>
                                                         )}
                                                     </div>
                                                     <Dropdown

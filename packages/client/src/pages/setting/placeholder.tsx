@@ -4,15 +4,15 @@ import { useState } from 'react';
 
 import {
     Button,
-    Callout,
     FallbackRender,
     Modal,
     ModalActionRow,
     PageLayout,
     Pagination,
+    Skeleton,
     SurfaceCard
 } from '~/components/shared';
-import { Input, Label, useToast } from '~/components/ui';
+import { Input, Label, Text, useToast } from '~/components/ui';
 import * as Icon from '~/components/icon';
 
 import { getFixedPlaceholders, PLACEHOLDER_PREFIX, PLACEHOLDER_SUFFIX } from '~/modules/fixed-placeholder';
@@ -30,7 +30,7 @@ const Placeholder = () => {
     const navigate = Route.useNavigate();
     const { page } = Route.useSearch();
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isFixedListOpen, setIsFixedListOpen] = useState(false);
+    const [isFixedListOpen, setIsFixedListOpen] = useState(true);
 
     const [form, setForm] = useState({
         name: '',
@@ -87,96 +87,222 @@ const Placeholder = () => {
         }
     });
 
+    const fixedPlaceholderCount = fixedPlaceholders.length;
+    const customPlaceholderCount = placeholders?.totalCount ?? 0;
+    const customPlaceholders = placeholders?.placeholders ?? [];
+    const fieldLabelClassName = 'font-medium text-fg-tertiary';
+    const cardTitleClassName = 'leading-[1.2]';
+    const tokenPreviewClassName = 'break-all leading-[1.2]';
+    const valuePreviewClassName = 'leading-[1.2]';
+    const cardBodyClassName = 'flex flex-col gap-px';
+    const cardMetaGroupClassName = 'space-y-px';
+    const sectionToggleClassName = 'focus-ring-soft inline-flex items-center gap-2 rounded-[12px] border border-transparent px-2.5 py-1.5 text-fg-tertiary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default';
+    const customCardClassName = 'relative';
+    const removePlaceholderButtonClassName = 'absolute right-2 top-2';
+    const addCardButtonClassName = 'focus-ring-soft surface-base group flex flex-col items-center justify-center gap-0.5 px-4 py-4 text-center text-fg-secondary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default';
+    const addCardIconClassName = 'inline-flex h-[34px] w-[34px] items-center justify-center rounded-full border border-border-subtle bg-surface text-current transition-colors group-hover:border-border-secondary/70';
+    const heading = customPlaceholderCount > 0
+        ? `Placeholders (${customPlaceholderCount})`
+        : undefined;
+    const description = 'Create tokens that get replaced with values when you clone a note';
+
     return (
-        <PageLayout title="Placeholders" variant="subtle" description="Manage template variables for note cloning">
-            <Callout className="mb-4">
-                <div className="flex items-center justify-between gap-2">
-                    <span>Placeholders will be replaced with new note data during cloning.</span>
-                    <Button variant="subtle" size="icon-sm" onClick={() => setIsModalOpen(true)}>
-                        <Icon.Plus width={20} height={20} />
-                    </Button>
-                </div>
-            </Callout>
-            <div className="mt-3 flex flex-col gap-3">
-                <button
-                    type="button"
-                    onClick={() => setIsFixedListOpen(!isFixedListOpen)}
-                    className="focus-ring-soft surface-base flex items-center justify-between gap-2 rounded-[18px] px-4 py-3 text-left text-sm font-semibold text-fg-default transition-colors hover:bg-hover-subtle">
-                    <div>System Placeholders</div>
-                    <div className="flex h-6 w-6 items-center justify-center text-fg-tertiary">
-                        {isFixedListOpen ? <Icon.TriangleUp /> : <Icon.TriangleDown />}
+        <PageLayout
+            title="Placeholders"
+            variant="default"
+            heading={isLoading ? <Skeleton width={244} height={24} className="rounded-full" /> : heading}
+            description={isLoading ? <Skeleton width={260} height={16} className="rounded-full" /> : description}>
+            <div className="flex flex-col gap-5">
+                <section className="space-y-3 border-b border-border-subtle/80 pb-5">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="space-y-1">
+                            <Text as="p" variant="body" weight="medium">
+                                System placeholders
+                            </Text>
+                            <Text as="p" variant="meta" tone="secondary">
+                                Built-in tokens for date and time that are always available when cloning notes
+                            </Text>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setIsFixedListOpen(!isFixedListOpen)}
+                            className={sectionToggleClassName}>
+                            <Text as="span" variant="meta" weight="medium" tone="secondary">
+                                {fixedPlaceholderCount} items
+                            </Text>
+                            {isFixedListOpen ? (
+                                <Icon.TriangleUp className="h-4 w-4" />
+                            ) : (
+                                <Icon.TriangleDown className="h-4 w-4" />
+                            )}
+                        </button>
                     </div>
-                </button>
-                {isFixedListOpen && (
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-                        {fixedPlaceholders.map(placeholder => (
-                            <SurfaceCard key={placeholder.name}>
-                                <div className="text-sm font-semibold text-fg-default">{placeholder.name}</div>
-                                <div className="text-xs font-medium text-fg-tertiary">
-                                    {PLACEHOLDER_PREFIX}{placeholder.template}{PLACEHOLDER_SUFFIX} = '{placeholder.replacement}'
-                                </div>
-                            </SurfaceCard>
-                        ))}
+                    {isFixedListOpen && (
+                        <div className="grid-auto-cards grid gap-5">
+                            {fixedPlaceholders.map(placeholder => (
+                                <SurfaceCard key={placeholder.name}>
+                                    <div className={cardBodyClassName}>
+                                        <Text as="div" variant="body" weight="medium" className={cardTitleClassName}>
+                                            {placeholder.name}
+                                        </Text>
+                                        <div className={cardMetaGroupClassName}>
+                                            <Text
+                                                as="div"
+                                                variant="meta"
+                                                weight="medium"
+                                                tone="secondary"
+                                                className={tokenPreviewClassName}>
+                                                {PLACEHOLDER_PREFIX}{placeholder.template}{PLACEHOLDER_SUFFIX}
+                                            </Text>
+                                            <Text
+                                                as="div"
+                                                variant="label"
+                                                weight="medium"
+                                                tone="tertiary"
+                                                className={valuePreviewClassName}>
+                                                Current value: {placeholder.replacement}
+                                            </Text>
+                                        </div>
+                                    </div>
+                                </SurfaceCard>
+                            ))}
+                        </div>
+                    )}
+                </section>
+
+                <section className="space-y-3">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="space-y-1">
+                            <Text as="p" variant="body" weight="medium">
+                                Custom placeholders
+                            </Text>
+                            <Text as="p" variant="meta" tone="secondary">
+                                Custom tokens you define once and reuse whenever you clone a note
+                            </Text>
+                        </div>
+                        {!isLoading && (
+                            <Text as="span" variant="meta" weight="medium" tone="secondary">
+                                {customPlaceholderCount === 1 ? '1 item' : `${customPlaceholderCount} items`}
+                            </Text>
+                        )}
                     </div>
-                )}
-                {!isLoading && placeholders?.placeholders && placeholders.placeholders.length > 0 && (
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-                        {placeholders.placeholders.map(placeholder => (
-                            <SurfaceCard key={placeholder.id} className="relative">
-                                <div className="flex items-center justify-between">
-                                    <div className="text-sm font-semibold text-fg-default">{placeholder.name}</div>
-                                    <button
-                                        type="button"
-                                        className="focus-ring-soft inline-flex h-8 w-8 items-center justify-center rounded-[10px] text-fg-tertiary transition-colors hover:bg-hover-subtle hover:text-fg-default"
+                    {!isLoading && (
+                        <div className="grid-auto-cards grid gap-5">
+                            {customPlaceholders.map(placeholder => (
+                                <SurfaceCard
+                                    key={placeholder.id}
+                                    className={customCardClassName}>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        className={removePlaceholderButtonClassName}
                                         onClick={() => removePlaceholder.mutate(placeholder.id.toString())}>
-                                        <Icon.Close />
-                                    </button>
-                                </div>
-                                <div className="text-xs font-medium text-fg-tertiary">
-                                    {PLACEHOLDER_PREFIX}{placeholder.template}{PLACEHOLDER_SUFFIX} = '{placeholder.replacement}'
-                                </div>
-                            </SurfaceCard>
-                        ))}
-                    </div>
-                )}
+                                        <Icon.Close className="h-4 w-4" />
+                                    </Button>
+                                    <div className={cardBodyClassName}>
+                                        <Text
+                                            as="div"
+                                            variant="body"
+                                            weight="medium"
+                                            className={`min-w-0 pr-8 ${cardTitleClassName}`}>
+                                            {placeholder.name}
+                                        </Text>
+                                        <div className={cardMetaGroupClassName}>
+                                            <Text
+                                                as="div"
+                                                variant="meta"
+                                                weight="medium"
+                                                tone="secondary"
+                                                className={tokenPreviewClassName}>
+                                                {PLACEHOLDER_PREFIX}{placeholder.template}{PLACEHOLDER_SUFFIX}
+                                            </Text>
+                                            <Text
+                                                as="div"
+                                                variant="label"
+                                                weight="medium"
+                                                tone="tertiary"
+                                                className={valuePreviewClassName}>
+                                                Replaces with: {placeholder.replacement}
+                                            </Text>
+                                        </div>
+                                    </div>
+                                </SurfaceCard>
+                            ))}
+                            <button
+                                type="button"
+                                onClick={() => setIsModalOpen(true)}
+                                className={addCardButtonClassName}>
+                                <span className={addCardIconClassName}>
+                                    <Icon.Plus className="h-4.5 w-4.5" />
+                                </span>
+                                <Text
+                                    as="div"
+                                    variant="meta"
+                                    weight="medium"
+                                    tone="secondary"
+                                    className="text-current">
+                                    New custom
+                                </Text>
+                            </button>
+                        </div>
+                    )}
+                </section>
             </div>
             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
                 <Modal.Header title="Add Placeholder" onClose={() => setIsModalOpen(false)} />
                 <Modal.Body>
-                    <div className="flex flex-col gap-3">
-                        <Label htmlFor="name">Name:</Label>
-                        <Input
-                            id="name"
-                            type="text"
-                            value={form.name}
-                            onChange={(e) => setForm({
-                                ...form,
-                                name: e.target.value
-                            })}
-                            placeholder="Description of this placeholder"
-                        />
-                        <Label htmlFor="template">Placeholder:</Label>
-                        <Input
-                            id="template"
-                            type="text"
-                            value={form.template}
-                            onChange={(e) => setForm({
-                                ...form,
-                                template: e.target.value
-                            })}
-                            placeholder="note_app"
-                        />
-                        <Label htmlFor="replacement">Replacement:</Label>
-                        <Input
-                            id="replacement"
-                            type="text"
-                            value={form.replacement}
-                            onChange={(e) => setForm({
-                                ...form,
-                                replacement: e.target.value
-                            })}
-                            placeholder="Ocean Brain"
-                        />
+                    <Modal.Description className="mb-4">
+                        Create a token that swaps in a value when you clone a note
+                    </Modal.Description>
+                    <div className="flex flex-col gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="name" className={fieldLabelClassName}>Name</Label>
+                            <Input
+                                id="name"
+                                type="text"
+                                value={form.name}
+                                onChange={(e) => setForm({
+                                    ...form,
+                                    name: e.target.value
+                                })}
+                                placeholder="Description of this placeholder"
+                            />
+                            <Text as="p" variant="meta" tone="secondary">
+                                A readable label so you can find this placeholder later
+                            </Text>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="template" className={fieldLabelClassName}>Placeholder</Label>
+                            <Input
+                                id="template"
+                                type="text"
+                                value={form.template}
+                                onChange={(e) => setForm({
+                                    ...form,
+                                    template: e.target.value
+                                })}
+                                placeholder="note_app"
+                            />
+                            <Text as="p" variant="meta" tone="secondary">
+                                Use it in a note as {PLACEHOLDER_PREFIX}your_placeholder{PLACEHOLDER_SUFFIX}
+                            </Text>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="replacement" className={fieldLabelClassName}>Replacement</Label>
+                            <Input
+                                id="replacement"
+                                type="text"
+                                value={form.replacement}
+                                onChange={(e) => setForm({
+                                    ...form,
+                                    replacement: e.target.value
+                                })}
+                                placeholder="Ocean Brain"
+                            />
+                            <Text as="p" variant="meta" tone="secondary">
+                                This value is inserted when the placeholder is replaced during cloning
+                            </Text>
+                        </div>
                     </div>
                 </Modal.Body>
                 <Modal.Footer>

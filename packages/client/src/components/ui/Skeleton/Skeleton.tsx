@@ -7,6 +7,14 @@ interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
     opacity?: number;
 }
 
+const resolveDimension = (value?: string | number) => {
+    if (typeof value === 'number') {
+        return `${value}px`;
+    }
+
+    return value;
+};
+
 const Skeleton = forwardRef<HTMLDivElement, SkeletonProps>(
     ({
         width, height = 30, opacity, className = '', style, ...props
@@ -27,8 +35,8 @@ const Skeleton = forwardRef<HTMLDivElement, SkeletonProps>(
                     className
                 )}
                 style={{
-                    '--skeleton-width': width,
-                    '--skeleton-height': height,
+                    '--skeleton-width': resolveDimension(width),
+                    '--skeleton-height': resolveDimension(height),
                     '--skeleton-opacity': opacity,
                     ...style
                 } as React.CSSProperties}

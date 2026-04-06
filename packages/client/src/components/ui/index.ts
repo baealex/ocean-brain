@@ -54,6 +54,9 @@ export type { SelectProps } from './Select';
 export { Textarea } from './Textarea';
 export type { TextareaProps } from './Textarea';
 
+export { Text, textVariants } from './Text';
+export type { TextProps } from './Text';
+
 export { Switch } from './Switch';
 export type { SwitchProps } from './Switch';
 

@@ -3,6 +3,7 @@ import { forwardRef } from 'react';
 import classNames from 'classnames';
 
 import * as Icon from '~/components/icon';
+import { textVariants } from '../Text/variants';
 
 const Dialog = DialogPrimitive.Root;
 
@@ -91,13 +92,11 @@ const DialogHeader = ({ title, onClose, className }: DialogHeaderProps) => (
             'py-3.5',
             'border-b',
             'border-border-subtle/80',
-            'text-heading',
-            'font-bold',
             className
         )}>
-        <DialogPrimitive.Title className="text-heading font-semibold text-fg-default">
+        <DialogTitle className="font-semibold tracking-[-0.02em]">
             {title}
-        </DialogPrimitive.Title>
+        </DialogTitle>
         {onClose && (
             <DialogClose asChild>
                 <button
@@ -143,9 +142,41 @@ const DialogFooter = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElem
 );
 DialogFooter.displayName = 'DialogFooter';
 
-const DialogTitle = DialogPrimitive.Title;
+const DialogTitle = forwardRef<
+    React.ComponentRef<typeof DialogPrimitive.Title>,
+    React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
+>(({ className, ...props }, ref) => (
+    <DialogPrimitive.Title
+        ref={ref}
+        className={classNames(
+            textVariants({
+                variant: 'heading',
+                tone: 'default'
+            }),
+            className
+        )}
+        {...props}
+    />
+));
+DialogTitle.displayName = DialogPrimitive.Title.displayName;
 
-const DialogDescription = DialogPrimitive.Description;
+const DialogDescription = forwardRef<
+    React.ComponentRef<typeof DialogPrimitive.Description>,
+    React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
+>(({ className, ...props }, ref) => (
+    <DialogPrimitive.Description
+        ref={ref}
+        className={classNames(
+            textVariants({
+                variant: 'meta',
+                tone: 'secondary'
+            }),
+            className
+        )}
+        {...props}
+    />
+));
+DialogDescription.displayName = DialogPrimitive.Description.displayName;
 
 export {
     Dialog,

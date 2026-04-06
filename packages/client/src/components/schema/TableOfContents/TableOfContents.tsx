@@ -4,6 +4,8 @@ import type { Block } from '@blocknote/core';
 import { useEffect, useState } from 'react';
 import classNames from 'classnames';
 import * as Icon from '~/components/icon';
+import { AuxiliaryPanelHeader } from '~/components/shared';
+import { Text } from '~/components/ui';
 
 interface HeadingItem {
     id: string;
@@ -93,21 +95,20 @@ const TableOfContentsComponent = () => {
     };
 
     const header = (
-        <div className="flex items-center gap-2">
-            <Icon.List className="h-3.5 w-3.5 shrink-0 text-fg-tertiary" />
-            <span className="text-label font-semibold uppercase tracking-[0.12em] text-fg-tertiary">
-                Table of Contents
-            </span>
-        </div>
+        <AuxiliaryPanelHeader
+            icon={<Icon.List className="h-3.5 w-3.5" />}
+            title="Table of Contents"
+            className="text-fg-tertiary"
+        />
     );
 
     if (headings.length === 0) {
         return (
             <div className="surface-base w-full p-4">
                 {header}
-                <p className="mt-2 text-meta text-fg-tertiary">
+                <Text as="p" variant="meta" tone="secondary" className="mt-2">
                     Add headings to your document to generate a table of contents
-                </p>
+                </Text>
             </div>
         );
     }
@@ -139,12 +140,21 @@ const TableOfContentsComponent = () => {
                                 'hover:bg-hover-subtle',
                                 isTopLevel ? 'text-fg-default' : 'text-fg-secondary'
                             )}>
-                            <span className="text-label min-w-[1.5rem] font-semibold uppercase tracking-[0.08em] text-fg-tertiary">
+                            <Text
+                                as="span"
+                                variant="label"
+                                weight="medium"
+                                tone="tertiary"
+                                className="min-w-[1.5rem]">
                                 H{heading.level}
-                            </span>
-                            <span className={`text-meta line-clamp-2 ${isTopLevel ? 'font-semibold' : 'font-medium'}`}>
+                            </Text>
+                            <Text
+                                as="span"
+                                variant="body"
+                                weight={isTopLevel ? 'semibold' : 'medium'}
+                                className="line-clamp-2 text-current">
                                 {heading.text}
-                            </span>
+                            </Text>
                         </button>
                     );
                 })}

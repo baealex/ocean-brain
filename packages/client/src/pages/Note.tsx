@@ -5,9 +5,15 @@ import { useSuspenseQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
 
 import { QueryBoundary, QueryErrorView } from '~/components/app';
-import { Button, Dropdown, PageLayout, Skeleton } from '~/components/shared';
+import {
+    AuxiliaryPanelHeader,
+    Button,
+    Dropdown,
+    PageLayout,
+    Skeleton
+} from '~/components/shared';
 import * as Icon from '~/components/icon';
-import { useToast } from '~/components/ui';
+import { Text, useToast } from '~/components/ui';
 import type { EditorRef } from '~/components/shared/Editor';
 import Editor from '~/components/shared/Editor';
 import { BackReferences } from '~/components/entities';
@@ -48,8 +54,6 @@ const notePageFallback = (
         </main>
     </PageLayout>
 );
-
-const noteMetaTextClassName = 'text-label font-medium uppercase tracking-[0.12em] text-fg-tertiary';
 
 interface NoteContentProps {
     id: string;
@@ -156,85 +160,105 @@ function NoteContent({ id }: NoteContentProps) {
         <PageLayout title={title} variant="none">
             <main className={classNames('mx-auto', NOTE_LAYOUT_WIDTH[layout])}>
                 <div
-                    className="surface-floating sticky top-20 z-[1001] mb-8 px-5 py-4">
-                    <div className="mb-3 flex items-start justify-between gap-4">
-                        <div className="min-w-0 flex-1">
-                            <div className="mb-1 text-micro font-semibold uppercase tracking-[0.16em] text-fg-tertiary">
-                                Thought in progress
+                    className="surface-floating sticky top-20 z-[1001] mb-7 px-5 pt-4 pb-3.5">
+                    <div className="flex flex-col gap-3.5">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-5">
+                            <div className="min-w-0 flex-1 pt-0.5">
+                                <Text
+                                    as="div"
+                                    variant="micro"
+                                    weight="semibold"
+                                    tracking="widest"
+                                    transform="uppercase"
+                                    tone="tertiary"
+                                    className="mb-1.5">
+                                    Thought in progress
+                                </Text>
+                                <input
+                                    ref={titleRef}
+                                    placeholder="Title"
+                                    className="text-display w-full bg-transparent font-semibold leading-[1.25] tracking-[-0.02em] outline-none"
+                                    type="text"
+                                    value={title}
+                                    onChange={(event) => handleTitleChange(event.target.value)}
+                                />
                             </div>
-                            <input
-                                ref={titleRef}
-                                placeholder="Title"
-                                className="text-display w-full bg-transparent font-semibold tracking-[-0.02em] outline-none"
-                                type="text"
-                                value={title}
-                                onChange={(event) => handleTitleChange(event.target.value)}
-                            />
+                            <div className="flex shrink-0 items-center gap-2 self-end sm:self-start">
+                                <Dropdown
+                                    button={(
+                                        <button
+                                            type="button"
+                                            className="focus-ring-soft inline-flex h-9 w-9 items-center justify-center rounded-[12px] border border-transparent bg-transparent text-fg-tertiary outline-none transition-colors hover:border-border-subtle hover:bg-hover-subtle hover:text-fg-default">
+                                            <Icon.VerticalDots className="h-5 w-5" />
+                                            <span className="sr-only">Note actions</span>
+                                        </button>
+                                    )}
+                                    items={[
+                                        {
+                                            name: isPinned ? 'Unpin' : 'Pin',
+                                            onClick: () => onPinned(id, isPinned, () => {
+                                                setIsPinned(prev => !prev);
+                                            })
+                                        },
+                                        {
+                                            name: 'Change layout',
+                                            onClick: () => setIsLayoutModalOpen(true)
+                                        },
+                                        { type: 'separator' },
+                                        {
+                                            name: 'Clone this note',
+                                            onClick: () => onCreate(
+                                                titleRef.current?.value || 'untitled',
+                                                editorRef.current?.getContent() || '',
+                                                layout
+                                            )
+                                        },
+                                        {
+                                            name: 'Restore previous version',
+                                            onClick: () => setIsRestoreModalOpen(true)
+                                        },
+                                        { type: 'separator' },
+                                        {
+                                            name: 'Delete',
+                                            onClick: () => onDelete(id, () => {
+                                                navigate({
+                                                    to: SETTINGS_TRASH_ROUTE,
+                                                    search: { page: 1 }
+                                                });
+                                            })
+                                        }
+                                    ]}
+                                />
+                                <Button
+                                    size="sm"
+                                    variant="subtle"
+                                    isLoading={isMountedEvent}
+                                    onClick={handleChange}>
+                                    Save
+                                </Button>
+                            </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <Dropdown
-                                button={(
-                                    <button
-                                        type="button"
-                                        className="focus-ring-soft inline-flex h-9 w-9 items-center justify-center rounded-[12px] border border-transparent bg-transparent text-fg-tertiary outline-none transition-colors hover:border-border-subtle hover:bg-hover-subtle hover:text-fg-default">
-                                        <Icon.VerticalDots className="h-5 w-5" />
-                                        <span className="sr-only">Note actions</span>
-                                    </button>
-                                )}
-                                items={[
-                                    {
-                                        name: isPinned ? 'Unpin' : 'Pin',
-                                        onClick: () => onPinned(id, isPinned, () => {
-                                            setIsPinned(prev => !prev);
-                                        })
-                                    },
-                                    {
-                                        name: 'Change layout',
-                                        onClick: () => setIsLayoutModalOpen(true)
-                                    },
-                                    { type: 'separator' },
-                                    {
-                                        name: 'Clone this note',
-                                        onClick: () => onCreate(
-                                            titleRef.current?.value || 'untitled',
-                                            editorRef.current?.getContent() || '',
-                                            layout
-                                        )
-                                    },
-                                    {
-                                        name: 'Restore previous version',
-                                        onClick: () => setIsRestoreModalOpen(true)
-                                    },
-                                    { type: 'separator' },
-                                    {
-                                        name: 'Delete',
-                                        onClick: () => onDelete(id, () => {
-                                            navigate({
-                                                to: SETTINGS_TRASH_ROUTE,
-                                                search: { page: 1 }
-                                            });
-                                        })
-                                    }
-                                ]}
-                            />
-                            <Button
-                                size="sm"
-                                variant="subtle"
-                                isLoading={isMountedEvent}
-                                onClick={handleChange}>
-                                Save
-                            </Button>
+                        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 border-t border-border-subtle/80 pt-3">
+                            {isPinned && (
+                                <Text
+                                    as="span"
+                                    variant="label"
+                                    weight="medium"
+                                    tone="secondary"
+                                    className="inline-flex items-center gap-1.5">
+                                    <Icon.Pin className="h-3 w-3" weight="fill" />
+                                    Pinned
+                                </Text>
+                            )}
+                            {isPinned && <span className="h-1 w-1 rounded-full bg-border-secondary" />}
+                            <Text
+                                as="span"
+                                variant="label"
+                                weight="medium"
+                                tone="secondary">
+                                Last saved {lastSavedAt}
+                            </Text>
                         </div>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                        {isPinned && (
-                            <span className={classNames('inline-flex items-center gap-1.5', noteMetaTextClassName)}>
-                                <Icon.Pin className="h-3 w-3" weight="fill" />
-                                Pinned
-                            </span>
-                        )}
-                        {isPinned && <span className="h-1 w-1 rounded-full bg-border-secondary" />}
-                        <span className={noteMetaTextClassName}>Saved {lastSavedAt}</span>
                     </div>
                 </div>
 
@@ -280,19 +304,22 @@ function NoteContent({ id }: NoteContentProps) {
                         noteId={id}
                         render={backReferences => backReferences && backReferences.length > 0 && (
                             <div className="surface-base p-4">
-                                <div className="mb-3 flex items-center gap-2">
-                                    <Icon.LinkSimple className="h-3.5 w-3.5 text-fg-tertiary" />
-                                    <span className="text-label font-semibold uppercase tracking-[0.12em] text-fg-tertiary">Back References</span>
-                                </div>
+                                <AuxiliaryPanelHeader
+                                    icon={<Icon.LinkSimple className="h-3.5 w-3.5" />}
+                                    title="Back References"
+                                    className="mb-3 text-fg-tertiary"
+                                />
                                 <ul className="flex flex-col">
                                     {backReferences.map((backLink) => (
                                         <li key={backLink.id}>
                                             <Link
                                                 to={NOTE_ROUTE}
                                                 params={{ id: backLink.id }}
-                                                className="flex items-center gap-2 rounded-[10px] px-2.5 py-1.5 text-meta text-fg-secondary transition-colors hover:bg-hover-subtle hover:text-fg-default">
+                                                className="flex items-center gap-2 rounded-[10px] px-2.5 py-1.5 text-fg-secondary transition-colors hover:bg-hover-subtle hover:text-fg-default">
                                                 <Icon.File className="h-3.5 w-3.5 shrink-0 text-fg-tertiary" />
-                                                {backLink.title}
+                                                <Text as="span" variant="body" weight="medium" className="text-current">
+                                                    {backLink.title}
+                                                </Text>
                                             </Link>
                                         </li>
                                     ))}

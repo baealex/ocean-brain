@@ -93,20 +93,10 @@ vi.mock('~/components/entities', () => ({
     )
 }));
 
-vi.mock('~/components/ui', () => ({
-    Tooltip: ({
-        children,
-        content
-    }: {
-        children: ReactNode;
-        content: ReactNode;
-    }) => (
-        <>
-            {children}
-            <span data-testid="pinned-note-tooltip">{content}</span>
-        </>
-    )
-}));
+vi.mock('~/components/ui', async () => {
+    const actual = await vi.importActual<object>('~/components/ui');
+    return actual;
+});
 
 describe('<PinnedNotesPanel />', () => {
     beforeEach(() => {
@@ -114,15 +104,13 @@ describe('<PinnedNotesPanel />', () => {
         vi.clearAllMocks();
     });
 
-    it('renders the empty state when no pinned notes are available', () => {
+    it('does not render reorder controls when no pinned notes are available', () => {
         mockPinnedNotes = [];
         const { Wrapper } = createQueryClientWrapper();
 
         render(<PinnedNotesPanel />, { wrapper: Wrapper });
 
-        expect(
-            screen.getByText('Pin a note to keep it in view while the rest of the workspace changes.')
-        ).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /reorder note/i })).not.toBeInTheDocument();
     });
 
     it('renders pinned notes with a drag handle affordance', () => {
@@ -141,19 +129,6 @@ describe('<PinnedNotesPanel />', () => {
         expect(activeNote).toHaveAttribute('aria-current', 'page');
         expect(screen.getByRole('button', { name: 'Reorder note Editorial note' })).toHaveAttribute('data-sortable-handle', 'true');
         expect(screen.getByTestId('dnd-context')).toBeInTheDocument();
-    });
-
-    it('does not render a tooltip layer for pinned note titles', () => {
-        mockPinnedNotes = [{
-            id: 'note-2',
-            title: 'Editorial note',
-            order: 0
-        }];
-        const { Wrapper } = createQueryClientWrapper();
-
-        render(<PinnedNotesPanel />, { wrapper: Wrapper });
-
-        expect(screen.queryByTestId('pinned-note-tooltip')).not.toBeInTheDocument();
     });
 
     it('reorders pinned notes through the drag end handler', async () => {

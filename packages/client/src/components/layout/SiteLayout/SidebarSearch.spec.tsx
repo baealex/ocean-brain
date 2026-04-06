@@ -40,7 +40,7 @@ describe('<SidebarSearch />', () => {
 
         render(<SidebarSearch />);
 
-        fireEvent.change(screen.getByPlaceholderText('Search...'), { target: { value: 'alpha' } });
+        fireEvent.change(screen.getByRole('textbox'), { target: { value: 'alpha' } });
 
         await waitFor(() => {
             expect(fetchNotes).toHaveBeenCalledWith({
@@ -60,7 +60,7 @@ describe('<SidebarSearch />', () => {
     it('navigates to the search route on submit', () => {
         render(<SidebarSearch />);
 
-        fireEvent.change(screen.getByPlaceholderText('Search...'), { target: { value: 'waves' } });
+        fireEvent.change(screen.getByRole('textbox'), { target: { value: 'waves' } });
         fireEvent.submit(screen.getByRole('textbox').closest('form')!);
 
         expect(mockNavigate).toHaveBeenCalledWith({

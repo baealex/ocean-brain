@@ -34,7 +34,7 @@ vi.mock('~/components/ui', async () => {
 });
 
 describe('<ManageImage />', () => {
-    it('renders the empty state copy', async () => {
+    it('renders the empty state when there are no images', async () => {
         window.history.pushState({}, '', `${SETTINGS_MANAGE_IMAGE_ROUTE}?page=1`);
 
         const queryClient = createTestQueryClient();
@@ -56,7 +56,7 @@ describe('<ManageImage />', () => {
             await router.load();
         });
 
-        expect(screen.getByText('There are no images')).toBeInTheDocument();
-        expect(screen.getByText('Try drag and drop an image on the note editor.')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Images' })).toBeInTheDocument();
+        expect(screen.queryByRole('img')).not.toBeInTheDocument();
     });
 });

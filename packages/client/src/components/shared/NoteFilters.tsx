@@ -3,7 +3,8 @@ import {
     Checkbox,
     Label,
     Select,
-    SelectItem
+    SelectItem,
+    Text
 } from '~/components/ui';
 
 export type SortBy = 'updatedAt' | 'createdAt';
@@ -33,10 +34,13 @@ export default function NoteFilters({
     onPinnedFirstChange
 }: Props) {
     return (
-        <div className="mb-4 flex justify-end">
-            <div className="surface-base inline-flex flex-wrap items-center gap-3 rounded-[16px] px-3 py-2">
-                <div className="flex gap-1.5 items-center">
-                    <Icon.Grid className="h-5 w-5 min-w-6 text-fg-tertiary" />
+        <div className="flex justify-end">
+            <div className="surface-base inline-flex flex-wrap items-center gap-3 rounded-[16px] px-3.5 py-2.5">
+                <div className="flex items-center gap-2">
+                    <Icon.Grid className="h-4 w-4 shrink-0 text-fg-tertiary" />
+                    <Text as="span" variant="label" weight="medium" tone="tertiary">
+                        Items
+                    </Text>
                     <Select
                         value={isAutoLimit ? 'auto' : String(itemsPerPage)}
                         onValueChange={(value) => {
@@ -54,8 +58,11 @@ export default function NoteFilters({
 
                 <div className="h-5 w-px bg-divider" />
 
-                <div className="flex gap-1.5 items-center">
-                    <Icon.SortAscending className="h-5 w-5 min-w-6 text-fg-tertiary" />
+                <div className="flex items-center gap-2">
+                    <Icon.SortAscending className="h-4 w-4 shrink-0 text-fg-tertiary" />
+                    <Text as="span" variant="label" weight="medium" tone="tertiary">
+                        Sort
+                    </Text>
                     <Select
                         value={sortBy}
                         onValueChange={(value) => onSortByChange(value as SortBy)}
@@ -83,7 +90,9 @@ export default function NoteFilters({
                         checked={pinnedFirst}
                         onChange={(e) => onPinnedFirstChange(e.target.checked)}
                     />
-                    <span className="text-fg-secondary">Pinned First</span>
+                    <Text as="span" variant="label" weight="medium" tone="secondary">
+                        Pinned First
+                    </Text>
                 </Label>
             </div>
         </div>

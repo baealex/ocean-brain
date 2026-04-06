@@ -1,20 +1,30 @@
+import { Fragment } from 'react';
+
 interface HighlightProps {
     children: string;
     match: string;
 }
 
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 const Highlight = ({ children, match }: HighlightProps) => {
-    if (!match) {
+    const normalizedMatch = match.trim();
+
+    if (!normalizedMatch) {
         return <span>{children}</span>;
     }
 
-    const regex = new RegExp(`(${match})`, 'gi');
-    const parts = children.split(regex);
+    const escapedMatch = escapeRegExp(normalizedMatch);
+    const splitRegex = new RegExp(`(${escapedMatch})`, 'gi');
+    const exactMatchRegex = new RegExp(`^${escapedMatch}$`, 'i');
+    const parts = children.split(splitRegex);
 
     return (
         <span>
             {parts.map((part, index) =>
-                regex.test(part) ? <mark key={index}>{part}</mark> : part
+                exactMatchRegex.test(part)
+                    ? <mark key={index}>{part}</mark>
+                    : <Fragment key={index}>{part}</Fragment>
             )}
         </span>
     );

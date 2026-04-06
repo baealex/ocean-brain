@@ -1,6 +1,8 @@
 import { forwardRef } from 'react';
 import classNames from 'classnames';
 
+import { Text } from '../Text';
+
 interface EmptyProps extends React.HTMLAttributes<HTMLDivElement> {
     title?: string;
     description?: string;
@@ -23,14 +25,24 @@ const Empty = forwardRef<HTMLDivElement, EmptyProps>(
                 )}
                 {...props}>
                 {title && (
-                    <h3 className="text-xl font-bold mb-2 text-fg-muted">
+                    <Text
+                        as="h3"
+                        variant="heading"
+                        weight="bold"
+                        tone="muted"
+                        className="mb-2">
                         {title}
-                    </h3>
+                    </Text>
                 )}
                 {description && (
-                    <p className="text-fg-tertiary max-w-[400px] font-medium">
+                    <Text
+                        as="p"
+                        variant="meta"
+                        weight="medium"
+                        tone="tertiary"
+                        className="max-w-[400px]">
                         {description}
-                    </p>
+                    </Text>
                 )}
             </div>
         );

@@ -2,9 +2,10 @@ import { Link } from '@tanstack/react-router';
 import dayjs from 'dayjs';
 
 import * as Icon from '~/components/icon';
-import { Button, Dropdown } from '~/components/shared';
+import { Dropdown } from '~/components/shared';
+import { Checkbox, Text } from '~/components/ui';
 import type { Reminder } from '~/models/reminder.model';
-import { priorityColorsSubtle } from '~/modules/color';
+import { priorityColors } from '~/modules/color';
 import { NOTE_ROUTE } from '~/modules/url';
 
 interface ReminderCardProps {
@@ -49,26 +50,73 @@ export default function ReminderCard({
         : priority === 'medium'
             ? 'Medium'
             : 'Low';
-    const priorityToneClassName = `${priorityColorsSubtle[priority]} text-fg-default`;
+    const priorityToneClassName = priorityColors[priority];
     const noteId = reminder.noteId.toString();
     const detailToneClassName = isOverdue ? 'text-fg-error' : 'text-fg-tertiary';
     const primaryText = reminder.content?.trim() || reminder.note?.title || 'Untitled reminder';
     const noteTitle = reminder.note?.title || 'Untitled note';
+    const showNoteTitle = Boolean(reminder.content?.trim() && reminder.note?.title);
+    const timeRemaining = getTimeRemaining(reminder.reminderDate);
+    const reminderDateText = formatReminderDate(reminder.reminderDate);
 
     return (
-        <div className="surface-base flex flex-col gap-4 p-4">
-            <div className="flex items-start justify-between gap-3">
+        <div className="surface-base flex flex-col gap-2.5 px-4 py-3 sm:flex-row sm:items-center sm:gap-4">
+            <div className="flex min-w-0 flex-1 items-start gap-2.5 sm:items-center">
+                <Checkbox
+                    checked={reminder.completed}
+                    onChange={() => onUpdate(reminder.id, noteId, { completed: !reminder.completed })}
+                    size="sm"
+                />
                 <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                        <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-fg-tertiary">
-                            <span className={`h-2.5 w-2.5 rounded-full border border-border-subtle ${priorityToneClassName}`} />
-                            {priorityLabel}
-                        </span>
-                        <p className="min-w-0 line-clamp-2 text-base font-semibold leading-6 text-fg-default">
-                            {primaryText}
-                        </p>
-                    </div>
+                    <Text
+                        as="p"
+                        variant="body"
+                        weight="semibold"
+                        className={reminder.completed ? 'truncate line-through opacity-45' : 'truncate'}>
+                        {primaryText}
+                    </Text>
+                    {showNoteTitle && (
+                        <Text
+                            as="div"
+                            variant="meta"
+                            tone="secondary"
+                            className={reminder.completed ? 'mt-0.5 truncate opacity-45' : 'mt-0.5 truncate'}>
+                            <Link
+                                to={NOTE_ROUTE}
+                                params={{ id: String(reminder.note?.id ?? reminder.noteId) }}
+                                className="transition-colors hover:text-fg-default hover:underline">
+                                {noteTitle}
+                            </Link>
+                        </Text>
+                    )}
                 </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:shrink-0">
+                <span
+                    className={`h-3 w-3 shrink-0 rounded-full border border-border-subtle ${priorityToneClassName}`}
+                    aria-label={`${priorityLabel} priority`}
+                    title={`${priorityLabel} priority`}
+                />
+                <Text
+                    as="span"
+                    variant="meta"
+                    weight="medium"
+                    tone="secondary"
+                    className={reminder.completed ? 'opacity-45' : undefined}>
+                    {reminderDateText}
+                </Text>
+                <span className="h-1 w-1 rounded-full bg-border-secondary" />
+                <Text
+                    as="span"
+                    variant="label"
+                    weight="medium"
+                    className={reminder.completed ? 'opacity-45' : detailToneClassName}>
+                    {timeRemaining}
+                </Text>
+            </div>
+
+            <div className="flex items-center justify-end gap-1.5 sm:shrink-0">
                 <Dropdown
                     button={(
                         <button
@@ -85,36 +133,6 @@ export default function ReminderCard({
                         }
                     ]}
                 />
-            </div>
-
-            <div className="flex items-center gap-2 text-sm text-fg-secondary">
-                <Icon.File size={14} />
-                <Link
-                    to={NOTE_ROUTE}
-                    params={{ id: String(reminder.note?.id ?? reminder.noteId) }}
-                    className="truncate transition-colors hover:text-fg-default hover:underline">
-                    {noteTitle}
-                </Link>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex flex-wrap items-center gap-2 text-sm text-fg-secondary">
-                    <Icon.Clock size={14} />
-                    <span className="font-medium">
-                        {formatReminderDate(reminder.reminderDate)}
-                    </span>
-                    <span className="h-1 w-1 rounded-full bg-border-secondary" />
-                    <span className={`text-xs font-medium ${detailToneClassName}`}>
-                        {getTimeRemaining(reminder.reminderDate)}
-                    </span>
-                </div>
-                <Button
-                    variant="subtle"
-                    size="sm"
-                    onClick={() => onUpdate(reminder.id, noteId, { completed: true })}>
-                    <Icon.Check size={14} />
-                    Complete
-                </Button>
             </div>
         </div>
     );

@@ -354,7 +354,7 @@ html.dark .surface-base {
 }
 
 .grid-search-bar {
-    grid-template-columns: 36px 1fr 28px;
+    grid-template-columns: 32px 1fr 24px;
 }
 
 /* Progress bar */

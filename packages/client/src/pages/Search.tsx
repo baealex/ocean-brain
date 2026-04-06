@@ -3,7 +3,6 @@ import { Link, getRouteApi } from '@tanstack/react-router';
 import { QueryBoundary } from '~/components/app';
 import {
     Empty,
-    FallbackRender,
     Highlight,
     PageLayout,
     Pagination,
@@ -166,6 +165,35 @@ const getSearchPreviewBlocks = (content: string, query: string) => {
 const formatResultCount = (count: number) => (count === 1 ? '1 result' : `${count} results`);
 
 const getSearchFallbackPreview = () => 'Open the note to inspect matching content.';
+const getSearchDescription = (query: string, totalCount: number) => `${formatResultCount(totalCount)} for "${query}"`;
+
+const SearchResultsSkeleton = () => (
+    <PageLayout
+        title="Search"
+        variant="default"
+        description={<Skeleton width={208} height={16} className="rounded-full" />}>
+        <main className="flex flex-col gap-3">
+            {Array.from({ length: 2 }, (_, index) => (
+                <div key={index} className="surface-base flex flex-col gap-3 p-4">
+                    <Skeleton width="34%" height={18} className="rounded-full" />
+                    <div className="rounded-[14px] bg-muted px-3 py-3">
+                        <div className="flex flex-col gap-2">
+                            <div>
+                                <Skeleton width={84} height={12} className="rounded-full" />
+                                <Skeleton width="100%" height={14} className="mt-2 rounded-full" />
+                                <Skeleton width="82%" height={14} className="mt-1.5 rounded-full" />
+                            </div>
+                            <div className="border-t border-border-subtle pt-2">
+                                <Skeleton width={72} height={12} className="rounded-full" />
+                                <Skeleton width="94%" height={14} className="mt-2 rounded-full" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ))}
+        </main>
+    </PageLayout>
+);
 
 export default function Search() {
     const navigate = Route.useNavigate();
@@ -181,12 +209,12 @@ export default function Search() {
         return (
             <PageLayout
                 title="Search"
-                description="Find notes by content"
+                description="Search note titles and matching sections across your workspace"
                 variant="default">
                 <main>
                     <Empty
                         title="Start searching"
-                        description="Enter a keyword to look through note content."
+                        description="Enter a keyword to look through note titles and matching content"
                     />
                 </main>
             </PageLayout>
@@ -194,123 +222,107 @@ export default function Search() {
     }
 
     return (
-        <PageLayout
-            title="Search"
-            description={`Results for "${normalizedQuery}"`}
-            variant="default">
-            <main className="flex flex-col gap-4">
-                <QueryBoundary
-                    fallback={(
-                        <div className="flex flex-col gap-3">
-                            <Skeleton height="20px" />
-                            <Skeleton height="108px" />
-                            <Skeleton height="108px" />
-                        </div>
-                    )}
-                    errorTitle="Failed to load search results"
-                    errorDescription={`Retry loading results for "${normalizedQuery}".`}
-                    resetKeys={[normalizedQuery, page]}>
-                    <Notes
-                        searchParams={{
-                            query: normalizedQuery,
-                            limit,
-                            offset: (page - 1) * limit,
-                            fields: ['content']
-                        }}
-                        render={({ notes, totalCount }) => (
-                            <div className="flex flex-col gap-4">
-                                <Text as="p" variant="meta" tone="secondary">
-                                    {formatResultCount(totalCount)} in note content
-                                </Text>
-                                <FallbackRender
-                                    fallback={(
-                                        <Empty
-                                            title="No results found"
-                                            description="Try searching for something else."
-                                        />
-                                    )}>
-                                    {notes.length > 0 && (
-                                        <div className="flex flex-col gap-3">
-                                            {notes.map((note) => {
-                                                const previewBlocks = getSearchPreviewBlocks(note.content, normalizedQuery);
+        <QueryBoundary
+            fallback={<SearchResultsSkeleton />}
+            errorTitle="Failed to load search results"
+            errorDescription={`Retry loading results for "${normalizedQuery}".`}
+            resetKeys={[normalizedQuery, page]}>
+            <Notes
+                searchParams={{
+                    query: normalizedQuery,
+                    limit,
+                    offset: (page - 1) * limit,
+                    fields: ['content']
+                }}
+                render={({ notes, totalCount }) => (
+                    <PageLayout
+                        title="Search"
+                        description={getSearchDescription(normalizedQuery, totalCount)}
+                        variant="default">
+                        <main className="flex flex-col gap-4">
+                            {notes.length > 0 ? (
+                                <div className="flex flex-col gap-3">
+                                    {notes.map((note) => {
+                                        const previewBlocks = getSearchPreviewBlocks(note.content, normalizedQuery);
 
-                                                return (
-                                                    <article key={note.id} className="surface-base flex flex-col gap-3 p-4">
-                                                        <Text as="h2" variant="body" weight="semibold" tracking="tight">
-                                                            <Link
-                                                                to={NOTE_ROUTE}
-                                                                params={{ id: note.id }}
-                                                                className="transition-colors hover:text-fg-default/85">
-                                                                <Highlight match={normalizedQuery}>
-                                                                    {note.title || 'Untitled'}
-                                                                </Highlight>
-                                                            </Link>
-                                                        </Text>
-                                                        {previewBlocks.length > 0 ? (
-                                                            <div className="rounded-[14px] bg-muted px-3 py-3">
-                                                                <div className="flex flex-col gap-2">
-                                                                    {previewBlocks.map((block, index) => (
-                                                                        <div
-                                                                            key={`${note.id}:${block.label}:${index}`}
-                                                                            className={index > 0 ? 'border-t border-border-subtle pt-2' : undefined}>
-                                                                            <Text
-                                                                                as="div"
-                                                                                variant="micro"
-                                                                                weight="semibold"
-                                                                                tracking="wider"
-                                                                                transform="uppercase"
-                                                                                tone="tertiary">
-                                                                                {block.label}
-                                                                            </Text>
-                                                                            <Text
-                                                                                as="p"
-                                                                                variant="meta"
-                                                                                tone="secondary"
-                                                                                className="mt-1 leading-[1.65]">
-                                                                                <Highlight match={normalizedQuery}>
-                                                                                    {block.text}
-                                                                                </Highlight>
-                                                                            </Text>
-                                                                        </div>
-                                                                    ))}
+                                        return (
+                                            <article key={note.id} className="surface-base flex flex-col gap-3 p-4">
+                                                <Text as="h2" variant="body" weight="semibold" tracking="tight">
+                                                    <Link
+                                                        to={NOTE_ROUTE}
+                                                        params={{ id: note.id }}
+                                                        className="transition-colors hover:text-fg-default/85">
+                                                        <Highlight match={normalizedQuery}>
+                                                            {note.title || 'Untitled'}
+                                                        </Highlight>
+                                                    </Link>
+                                                </Text>
+                                                {previewBlocks.length > 0 ? (
+                                                    <div className="rounded-[14px] bg-muted px-3 py-3">
+                                                        <div className="flex flex-col gap-2">
+                                                            {previewBlocks.map((block, index) => (
+                                                                <div
+                                                                    key={`${note.id}:${block.label}:${index}`}
+                                                                    className={index > 0 ? 'border-t border-border-subtle pt-2' : undefined}>
+                                                                    <Text
+                                                                        as="div"
+                                                                        variant="micro"
+                                                                        weight="semibold"
+                                                                        tracking="wider"
+                                                                        transform="uppercase"
+                                                                        tone="tertiary">
+                                                                        {block.label}
+                                                                    </Text>
+                                                                    <Text
+                                                                        as="p"
+                                                                        variant="meta"
+                                                                        tone="secondary"
+                                                                        className="mt-1 leading-[1.65]">
+                                                                        <Highlight match={normalizedQuery}>
+                                                                            {block.text}
+                                                                        </Highlight>
+                                                                    </Text>
                                                                 </div>
-                                                            </div>
-                                                        ) : (
-                                                            <Text
-                                                                as="p"
-                                                                variant="meta"
-                                                                tone="secondary"
-                                                                className="leading-[1.65]">
-                                                                {getSearchFallbackPreview()}
-                                                            </Text>
-                                                        )}
-                                                    </article>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </FallbackRender>
-                                <FallbackRender fallback={null}>
-                                    {totalCount && limit < totalCount && (
-                                        <Pagination
-                                            page={page}
-                                            last={Math.ceil(totalCount / limit)}
-                                            onChange={(page) => {
-                                                navigate({
-                                                    search: prev => ({
-                                                        ...prev,
-                                                        page
-                                                    })
-                                                });
-                                            }}
-                                        />
-                                    )}
-                                </FallbackRender>
-                            </div>
-                        )}
-                    />
-                </QueryBoundary>
-            </main>
-        </PageLayout>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <Text
+                                                        as="p"
+                                                        variant="meta"
+                                                        tone="secondary"
+                                                        className="leading-[1.65]">
+                                                        {getSearchFallbackPreview()}
+                                                    </Text>
+                                                )}
+                                            </article>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <Empty
+                                    title="No results found"
+                                    description="Try searching for a different word or phrase"
+                                />
+                            )}
+                            {totalCount > limit && (
+                                <Pagination
+                                    page={page}
+                                    last={Math.ceil(totalCount / limit)}
+                                    onChange={(page) => {
+                                        navigate({
+                                            search: prev => ({
+                                                ...prev,
+                                                page
+                                            })
+                                        });
+                                    }}
+                                />
+                            )}
+                        </main>
+                    </PageLayout>
+                )}
+            />
+        </QueryBoundary>
     );
 }

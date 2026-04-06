@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useLocation } from '@tanstack/react-router';
 import type { DragEndEvent } from '@dnd-kit/core';
+import classNames from 'classnames';
 import {
     DndContext,
     KeyboardSensor,
@@ -36,6 +37,7 @@ type PinnedNote = Pick<Note, 'id' | 'title' | 'order'>;
 interface SortablePinnedNoteProps {
     id: string;
     title?: string;
+    isActive?: boolean;
     children: ReactNode;
 }
 
@@ -48,7 +50,10 @@ interface PinnedNotesListProps {
     sensors: ReturnType<typeof useSensors>;
 }
 
-function SortablePinnedNote({ id, title, children }: SortablePinnedNoteProps) {
+const dragHandleBaseClassName = 'focus-ring-soft flex h-8 w-8 items-center justify-center rounded-[10px] text-fg-secondary outline-none transition-colors hover:text-fg-default active:cursor-grabbing touch-none';
+const pinnedLinkBaseClassName = 'focus-ring-soft block truncate rounded-[10px] px-1.5 py-1 outline-none transition-colors';
+
+function SortablePinnedNote({ id, title, isActive = false, children }: SortablePinnedNoteProps) {
     const {
         attributes,
         listeners,
@@ -69,17 +74,28 @@ function SortablePinnedNote({ id, title, children }: SortablePinnedNoteProps) {
         <div
             ref={setNodeRef}
             style={style}
-            className="group flex min-h-[44px] items-center gap-2 border-b border-border-subtle px-1 last:border-b-0">
+            className={classNames(
+                'group flex min-h-[40px] items-center gap-1.5 rounded-[12px] px-1.5 py-1 transition-colors',
+                isActive && 'bg-hover-subtle'
+            )}>
             <button
                 type="button"
                 ref={setActivatorNodeRef}
                 aria-label={`Reorder note ${title ?? 'Untitled'}`}
                 {...attributes}
                 {...listeners}
-                className={`focus-ring-soft flex h-9 w-9 cursor-grab items-center justify-center text-fg-tertiary outline-none active:cursor-grabbing touch-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}>
-                <Icon.DragHandle className="size-4" />
+                className={classNames(
+                    dragHandleBaseClassName,
+                    isDragging ? 'cursor-grabbing' : 'cursor-grab'
+                )}>
+                <Icon.DragHandle className="size-3.5" />
             </button>
-            <Text as="div" truncate weight="medium" className="min-w-0 flex-1">
+            <Text
+                as="div"
+                truncate
+                variant="body"
+                weight="medium"
+                className="min-w-0 flex-1">
                 {children}
             </Text>
         </div>
@@ -114,14 +130,19 @@ function PinnedNotesList({
                 items={items.map((item) => item.id)}
                 strategy={verticalListSortingStrategy}>
                 {items.map((note) => (
-                    <SortablePinnedNote key={note.id} id={note.id} title={note.title || 'Untitled'}>
+                    <SortablePinnedNote
+                        key={note.id}
+                        id={note.id}
+                        title={note.title || 'Untitled'}
+                        isActive={pathname === `/${note.id}`}>
                         <Link
                             aria-current={pathname === `/${note.id}` ? 'page' : undefined}
-                            className={`transition-colors ${
+                            className={classNames(
+                                pinnedLinkBaseClassName,
                                 pathname === `/${note.id}`
                                     ? 'text-fg-default'
-                                    : 'text-fg-secondary hover:text-fg-default'
-                            }`}
+                                    : 'text-fg-secondary hover:bg-hover-subtle hover:text-fg-default'
+                            )}
                             to={NOTE_ROUTE}
                             params={{ id: note.id }}>
                             {note.title || 'Untitled'}
@@ -173,12 +194,12 @@ const PinnedNotesPanel = () => {
     };
 
     return (
-        <div className="rounded-[16px]">
+        <div className="flex flex-col gap-1">
             <QueryBoundary
                 fallback={(
-                    <div className="space-y-2">
-                        <Skeleton height="44px" opacity={0.4} />
-                        <Skeleton height="44px" opacity={0.4} />
+                    <div className="space-y-1">
+                        <Skeleton height="40px" opacity={0.4} />
+                        <Skeleton height="40px" opacity={0.4} />
                     </div>
                 )}
                 errorTitle="Failed to load pinned notes"
@@ -205,7 +226,7 @@ const PinnedNotesPanel = () => {
                                 sensors={sensors}
                             />
                         ) : (
-                            <Text as="div" tone="secondary" className="px-2.5 py-3 leading-6">
+                            <Text as="div" variant="meta" tone="secondary" className="px-2 py-2.5 leading-6">
                                 Pin a note to keep it in view while the rest of the workspace changes.
                             </Text>
                         )

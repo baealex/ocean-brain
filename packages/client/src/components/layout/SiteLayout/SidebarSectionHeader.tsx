@@ -5,22 +5,33 @@ import { Text } from '~/components/ui';
 interface SidebarSectionHeaderProps {
     title: string;
     icon?: ReactNode;
+    detail?: ReactNode;
 }
 
-const SidebarSectionHeader = ({ title, icon }: SidebarSectionHeaderProps) => (
-    <div className="mb-2.5 flex items-center justify-between gap-3">
-        <div className="flex min-w-0 flex-1 items-center gap-2">
+const rootClassName = 'mb-2.5 flex items-center justify-between gap-3 px-1';
+const leadingClassName = 'flex min-w-0 items-center gap-2';
+const iconClassName = 'inline-flex h-4 w-4 shrink-0 items-center justify-center text-fg-tertiary';
+
+const SidebarSectionHeader = ({ title, icon, detail }: SidebarSectionHeaderProps) => (
+    <div className={rootClassName}>
+        <div className={leadingClassName}>
+            {icon ? (
+                <span className={iconClassName}>
+                    {icon}
+                </span>
+            ) : null}
             <Text
                 variant="label"
                 weight="medium"
-                tracking="wider"
-                transform="uppercase"
                 tone="tertiary">
                 {title}
             </Text>
-            <span className="h-px flex-1 bg-border-subtle" />
         </div>
-        {icon ? <div className="shrink-0 text-fg-tertiary">{icon}</div> : null}
+        {detail ? (
+            <Text as="div" variant="meta" weight="medium" tone="tertiary">
+                {detail}
+            </Text>
+        ) : null}
     </div>
 );
 

@@ -73,7 +73,12 @@ export default function NoteListCard({
                     />
                 </div>
                 <div className="flex flex-1 flex-col justify-between gap-2.5">
-                    <Text as="div" variant="body" weight="semibold" tracking="tight" className="leading-[1.45]">
+                    <Text
+                        as="div"
+                        variant="body"
+                        weight="semibold"
+                        tracking="tight"
+                        className="leading-[1.45]">
                         <Link
                             className="line-clamp-2 transition-colors hover:text-fg-default/85"
                             to={NOTE_ROUTE}

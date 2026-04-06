@@ -67,11 +67,6 @@ export default function ReminderCard({
                     onChange={() => onUpdate(reminder.id, noteId, { completed: !reminder.completed })}
                     size="sm"
                 />
-                <span
-                    className={`mt-1.5 h-3 w-3 shrink-0 rounded-full border border-border-subtle sm:mt-0 ${priorityToneClassName}`}
-                    aria-label={`${priorityLabel} priority`}
-                    title={`${priorityLabel} priority`}
-                />
                 <div className="min-w-0 flex-1">
                     <Text
                         as="p"
@@ -98,6 +93,11 @@ export default function ReminderCard({
             </div>
 
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:shrink-0">
+                <span
+                    className={`h-3 w-3 shrink-0 rounded-full border border-border-subtle ${priorityToneClassName}`}
+                    aria-label={`${priorityLabel} priority`}
+                    title={`${priorityLabel} priority`}
+                />
                 <Text
                     as="span"
                     variant="meta"

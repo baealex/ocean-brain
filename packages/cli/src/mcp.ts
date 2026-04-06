@@ -255,7 +255,7 @@ export async function startMcpServer(
         {
             title: z.string().describe('Note title'),
             markdown: z.string().optional().default('').describe('Markdown body for the new note. Defaults to an empty note body.'),
-            layout: noteLayoutSchema.optional().describe('Optional note layout: narrow, wide, or full.')
+            layout: noteLayoutSchema.optional().describe('Optional note layout: narrow, wide, or full. Prefer wide for most notes unless the user explicitly wants narrow or full.')
         },
         async ({ title, markdown, layout }) => {
             const writeToken = requireWriteToken(token, OCEAN_BRAIN_MCP_TOOLS.createNote);
@@ -290,7 +290,7 @@ export async function startMcpServer(
             id: z.string().describe('Note ID to update'),
             title: z.string().optional().describe('New note title'),
             markdown: z.string().optional().describe('Replacement markdown body'),
-            layout: noteLayoutSchema.optional().describe('Optional note layout: narrow, wide, or full.')
+            layout: noteLayoutSchema.optional().describe('Optional note layout: narrow, wide, or full. Prefer wide for most notes unless the user explicitly wants narrow or full.')
         },
         async ({ id, title, markdown, layout }) => {
             const writeToken = requireWriteToken(token, OCEAN_BRAIN_MCP_TOOLS.updateNote);

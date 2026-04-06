@@ -40,7 +40,7 @@ describe('<McpSetting />', () => {
 
         renderPage();
 
-        expect(await screen.findByLabelText('MCP Server URL')).toHaveValue(window.location.origin);
+        expect(await screen.findByLabelText(/server url/i)).toHaveValue(window.location.origin);
         expect(screen.getAllByText(/"mcpServers"/).length).toBeGreaterThan(0);
         expect(screen.getAllByText(/--token-file/).length).toBeGreaterThan(0);
         expect(screen.getAllByText(/--token/).length).toBeGreaterThan(0);

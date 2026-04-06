@@ -53,7 +53,7 @@ export default function Home() {
 
     return (
         <PageLayout title="" variant="none">
-            <div ref={containerRef}>
+            <div ref={containerRef} className="flex flex-col gap-5">
                 <NoteFilters
                     itemsPerPage={limit}
                     onItemsPerPageChange={(count) => updateSearchParams({
@@ -79,7 +79,7 @@ export default function Home() {
                 />
                 <QueryBoundary
                     fallback={(
-                        <div className="grid-auto-cards mt-3 grid gap-5">
+                        <div className="grid-auto-cards grid gap-5">
                             <Skeleton height="112px" />
                             <Skeleton height="112px" />
                             <Skeleton height="112px" />
@@ -106,7 +106,7 @@ export default function Home() {
                                 )}>
                                 {notes.length > 0 && (
                                 <>
-                                    <div className="grid-auto-cards mt-3 grid gap-5">
+                                    <div className="grid-auto-cards grid gap-5">
                                         {notes.map(note => (
                                             <NoteListCard
                                                 key={note.id}

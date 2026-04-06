@@ -1,3 +1,4 @@
+import classNames from 'classnames';
 import { Link } from '@tanstack/react-router';
 
 import { Dropdown } from '~/components/shared';
@@ -24,59 +25,64 @@ export default function NoteListCard({
     onDelete
 }: Props) {
     const updatedTimeSince = timeSince(Number(updatedAt));
-    const rootClassName = 'surface-base';
 
     return (
         <div
             key={id}
-            className={`${rootClassName} group relative flex h-full flex-col overflow-hidden p-4 transition-colors`}>
-            <div className="absolute right-2 top-3">
-                <Dropdown
-                    button={(
-                        <button
-                            type="button"
-                            className="focus-ring-soft inline-flex h-7 w-7 items-center justify-center rounded-[8px] border border-transparent bg-transparent text-fg-tertiary outline-none transition-colors hover:border-border-subtle hover:bg-hover-subtle hover:text-fg-default">
-                            <Icon.VerticalDots className="h-4 w-4" />
-                            <span className="sr-only">Note actions</span>
-                        </button>
-                    )}
-                    items={[
-                        {
-                            name: pinned ? 'Unpin' : 'Pin',
-                            onClick: () => onPinned?.()
-                        },
-                        {
-                            name: 'Delete',
-                            onClick: () => onDelete?.()
-                        }
-                    ]}
-                />
-            </div>
-            <div className="flex h-full flex-col gap-2">
-                <Text
-                    as="div"
-                    variant="label"
-                    weight="medium"
-                    tracking="wider"
-                    transform="uppercase"
-                    tone="tertiary"
-                    className="inline-flex items-center gap-2">
-                    {pinned && (
-                        <Icon.Pin className="h-3 w-3 shrink-0" weight="fill" />
-                    )}
-                    Updated {updatedTimeSince}
-                </Text>
-                <div className="flex flex-1 flex-col justify-between gap-2">
-                    <Text as="div" variant="body" weight="semibold" tracking="tight">
+            className={classNames(
+                'surface-base group relative flex h-full flex-col px-4 py-3.5 transition-colors'
+            )}>
+            {pinned && (
+                <div className="absolute left-1/2 top-0 z-[1] -translate-x-1/2 -translate-y-[38%]">
+                    <div className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border-secondary/70 bg-elevated text-fg-tertiary shadow-[0_8px_18px_-14px_rgba(23,29,38,0.32)]">
+                        <Icon.Pin className="h-3.5 w-3.5" weight="fill" />
+                        <span className="sr-only">Pinned note</span>
+                    </div>
+                </div>
+            )}
+            <div className="flex h-full flex-col gap-2.5">
+                <div className="flex items-center justify-between gap-2.5">
+                    <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
+                        <Text
+                            as="span"
+                            variant="label"
+                            weight="medium"
+                            tone="secondary">
+                            Updated {updatedTimeSince}
+                        </Text>
+                    </div>
+                    <Dropdown
+                        button={(
+                            <button
+                                type="button"
+                                className="focus-ring-soft inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] border border-transparent bg-transparent text-fg-tertiary outline-none transition-colors hover:border-border-subtle hover:bg-hover-subtle hover:text-fg-default">
+                                <Icon.VerticalDots className="h-4 w-4" />
+                                <span className="sr-only">Note actions</span>
+                            </button>
+                        )}
+                        items={[
+                            {
+                                name: pinned ? 'Unpin' : 'Pin',
+                                onClick: () => onPinned?.()
+                            },
+                            {
+                                name: 'Delete',
+                                onClick: () => onDelete?.()
+                            }
+                        ]}
+                    />
+                </div>
+                <div className="flex flex-1 flex-col justify-between gap-2.5">
+                    <Text as="div" variant="body" weight="semibold" tracking="tight" className="leading-[1.45]">
                         <Link
-                            className="transition-colors hover:text-fg-default/85"
+                            className="line-clamp-2 transition-colors hover:text-fg-default/85"
                             to={NOTE_ROUTE}
                             params={{ id }}>
                             {title || 'Untitled'}
                         </Link>
                     </Text>
                     {tags.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-1.5 pt-0.5">
                             {tags.map(tag => (
                                 <Link
                                     key={tag.id}
@@ -88,7 +94,7 @@ export default function NoteListCard({
                                         variant="label"
                                         weight="medium"
                                         tone="secondary"
-                                        className="inline-flex items-center rounded-full border border-border-subtle bg-transparent px-2.5 py-1 transition-colors hover:bg-hover-subtle hover:text-fg-default">
+                                        className="inline-flex items-center rounded-full border border-border-subtle bg-transparent px-2 py-0.5 transition-colors hover:bg-hover-subtle hover:text-fg-default">
                                         {tag.name}
                                     </Text>
                                 </Link>

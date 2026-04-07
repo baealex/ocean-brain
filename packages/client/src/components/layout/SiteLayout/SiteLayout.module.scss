@@ -100,7 +100,11 @@
         display: flex;
         flex-direction: column;
         height: 100%;
-        overflow: auto;
+        overflow-x: hidden;
+        overflow-y: auto;
+        // Keep the content width stable when vertical overflow appears so
+        // auto page-size measurement does not bounce across card-count breakpoints.
+        scrollbar-gutter: stable;
     }
 
     .content {

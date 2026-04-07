@@ -1,6 +1,7 @@
 import {
     useCallback,
     useLayoutEffect,
+    useRef,
     useState
 } from 'react';
 
@@ -12,16 +13,34 @@ interface UseGridLimitOptions {
     override?: number | null;
 }
 
+const GRID_LIMIT_BREAKPOINT_BUFFER_PX = 16;
+
+function calculateCardsPerRow(
+    containerWidth: number,
+    minItemWidth: number,
+    gap: number
+): number {
+    return Math.max(
+        Math.floor((Math.max(containerWidth, 0) + gap) / (minItemWidth + gap)),
+        1
+    );
+}
+
+function getMinimumWidthForColumns(
+    columns: number,
+    minItemWidth: number,
+    gap: number
+): number {
+    return columns * minItemWidth + (columns - 1) * gap;
+}
+
 export function calculateAutoLimit(
     containerWidth: number,
     minItemWidth: number,
     gap: number,
     rows: number
 ): number {
-    const cardsPerRow = Math.max(
-        Math.floor((Math.max(containerWidth, 0) + gap) / (minItemWidth + gap)),
-        1
-    );
+    const cardsPerRow = calculateCardsPerRow(containerWidth, minItemWidth, gap);
 
     return Math.max(cardsPerRow * rows, rows);
 }
@@ -35,6 +54,7 @@ export function useGridLimit({
 }: UseGridLimitOptions) {
     const [containerElement, setContainerElement] = useState<HTMLDivElement | null>(null);
     const [autoLimit, setAutoLimit] = useState(fallback ?? rows);
+    const previousCardsPerRowRef = useRef<number | null>(null);
 
     const containerRef = useCallback((node: HTMLDivElement | null) => {
         setContainerElement(node);
@@ -45,10 +65,12 @@ export function useGridLimit({
 
     useLayoutEffect(() => {
         if (!isAutoLimit) {
+            previousCardsPerRowRef.current = null;
             return;
         }
 
         if (!containerElement) {
+            previousCardsPerRowRef.current = null;
             setAutoLimit(prev => prev === (fallback ?? rows) ? prev : (fallback ?? rows));
             return;
         }
@@ -56,12 +78,43 @@ export function useGridLimit({
         let frameId: number | null = null;
 
         const measure = () => {
-            const nextLimit = calculateAutoLimit(
-                containerElement.offsetWidth,
+            const containerWidth = containerElement.offsetWidth;
+            const measuredCardsPerRow = calculateCardsPerRow(
+                containerWidth,
                 minItemWidth,
-                gap,
-                rows
+                gap
             );
+            const previousCardsPerRow = previousCardsPerRowRef.current;
+
+            let nextCardsPerRow = measuredCardsPerRow;
+
+            if (previousCardsPerRow !== null && previousCardsPerRow !== measuredCardsPerRow) {
+                if (measuredCardsPerRow > previousCardsPerRow) {
+                    const nextBreakpoint = getMinimumWidthForColumns(
+                        previousCardsPerRow + 1,
+                        minItemWidth,
+                        gap
+                    );
+
+                    if (containerWidth < nextBreakpoint + GRID_LIMIT_BREAKPOINT_BUFFER_PX) {
+                        nextCardsPerRow = previousCardsPerRow;
+                    }
+                } else {
+                    const previousBreakpoint = getMinimumWidthForColumns(
+                        previousCardsPerRow,
+                        minItemWidth,
+                        gap
+                    );
+
+                    if (containerWidth > previousBreakpoint - GRID_LIMIT_BREAKPOINT_BUFFER_PX) {
+                        nextCardsPerRow = previousCardsPerRow;
+                    }
+                }
+            }
+
+            previousCardsPerRowRef.current = nextCardsPerRow;
+
+            const nextLimit = Math.max(nextCardsPerRow * rows, rows);
 
             setAutoLimit(prev => prev === nextLimit ? prev : nextLimit);
         };

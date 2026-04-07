@@ -117,13 +117,81 @@ describe('useGridLimit', () => {
         });
         expect(screen.getByTestId('limit')).toHaveTextContent('6');
 
-        setOffsetWidth(grid, 340);
+        setOffsetWidth(grid, 356);
         act(() => {
             observer.trigger(grid);
             flushAnimationFrame();
         });
         expect(screen.getByTestId('limit')).toHaveTextContent('9');
         expect(screen.getByTestId('auto-mode')).toHaveTextContent('true');
+    });
+
+    it('keeps the current limit when the width jitters around a breakpoint', () => {
+        render(
+            <GridLimitHarness
+                minItemWidth={100}
+                gap={20}
+                rows={3}
+            />
+        );
+
+        const grid = screen.getByTestId('grid');
+        const observer = resizeObserverInstances[0];
+
+        setOffsetWidth(grid, 340);
+        act(() => {
+            observer.trigger(grid);
+            flushAnimationFrame();
+        });
+        expect(screen.getByTestId('limit')).toHaveTextContent('9');
+
+        setOffsetWidth(grid, 339);
+        act(() => {
+            observer.trigger(grid);
+            flushAnimationFrame();
+        });
+        expect(screen.getByTestId('limit')).toHaveTextContent('9');
+
+        setOffsetWidth(grid, 323);
+        act(() => {
+            observer.trigger(grid);
+            flushAnimationFrame();
+        });
+        expect(screen.getByTestId('limit')).toHaveTextContent('6');
+    });
+
+    it('waits for the width to clear the breakpoint buffer before increasing the limit', () => {
+        render(
+            <GridLimitHarness
+                minItemWidth={100}
+                gap={20}
+                rows={3}
+            />
+        );
+
+        const grid = screen.getByTestId('grid');
+        const observer = resizeObserverInstances[0];
+
+        setOffsetWidth(grid, 339);
+        act(() => {
+            observer.trigger(grid);
+            flushAnimationFrame();
+        });
+        expect(screen.getByTestId('limit')).toHaveTextContent('6');
+
+        setOffsetWidth(grid, 340);
+        act(() => {
+            observer.trigger(grid);
+            flushAnimationFrame();
+        });
+        expect(screen.getByTestId('limit')).toHaveTextContent('6');
+
+        setOffsetWidth(grid, 356);
+        act(() => {
+            observer.trigger(grid);
+            flushAnimationFrame();
+        });
+        expect(screen.getByTestId('limit')).toHaveTextContent('9');
     });
 
     it('keeps the override limit fixed and disables auto mode', () => {

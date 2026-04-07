@@ -18,6 +18,7 @@ import {
     restoreTrashedNoteById,
     trashNoteById
 } from '~/modules/note-trash.js';
+import { buildNoteTagNamesWhere, normalizeNoteTagNames, type NoteTagMatchMode } from '~/modules/note-tag-filter.js';
 
 import type { Note, Prisma } from '~/models.js';
 import type { Pagination, SearchFilter, NoteInput } from '~/types/index.js';
@@ -44,6 +45,11 @@ export const noteType = gql`
         narrow
         wide
         full
+    }
+
+    enum TagMatchMode {
+        and
+        or
     }
 
     input NoteInput {
@@ -164,6 +170,7 @@ export const noteQuery = gql`
     type Query {
         allNotes(searchFilter: SearchFilterInput, pagination: PaginationInput): Notes!
         tagNotes(searchFilter: SearchFilterInput, pagination: PaginationInput): Notes!
+        notesByTagNames(tagNames: [String!]!, mode: TagMatchMode!, pagination: PaginationInput): Notes!
         notesInDateRange(dateRange: DateRangeInput): [Note!]!
         pinnedNotes: [Note!]!
         imageNotes(src: String!): [Note!]!
@@ -336,6 +343,38 @@ export const noteResolvers: IResolvers = {
                 take: Number(pagination.limit),
                 skip: Number(pagination.offset)
             });
+            return {
+                totalCount: models.note.count({ where }),
+                notes: $notes
+            };
+        },
+        notesByTagNames: async (_, {
+            tagNames,
+            mode,
+            pagination
+        }: {
+            tagNames: string[];
+            mode: NoteTagMatchMode;
+            pagination: Pagination;
+        }) => {
+            const normalizedTagNames = normalizeNoteTagNames(tagNames);
+
+            if (normalizedTagNames.length === 0) {
+                return {
+                    totalCount: 0,
+                    notes: []
+                };
+            }
+
+            const where = buildNoteTagNamesWhere(normalizedTagNames, mode);
+
+            const $notes = models.note.findMany({
+                orderBy: { updatedAt: 'desc' },
+                where,
+                take: Number(pagination.limit),
+                skip: Number(pagination.offset)
+            });
+
             return {
                 totalCount: models.note.count({ where }),
                 notes: $notes

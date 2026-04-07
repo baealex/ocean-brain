@@ -25,6 +25,7 @@ export const OCEAN_BRAIN_MCP_TOOLS = {
     updateNote: 'ocean_brain_update_note',
     listTags: 'ocean_brain_list_tags',
     listNotesByTag: 'ocean_brain_list_notes_by_tag',
+    listNotesByTags: 'ocean_brain_list_notes_by_tags',
     listRecentNotes: 'ocean_brain_list_recent_notes',
     writeSafetyStatus: 'ocean_brain_write_safety_status',
     findNoteCleanupCandidates: 'ocean_brain_find_note_cleanup_candidates',
@@ -33,6 +34,7 @@ export const OCEAN_BRAIN_MCP_TOOLS = {
 } as const;
 
 const noteLayoutSchema = z.enum(['narrow', 'wide', 'full']);
+const tagMatchModeSchema = z.enum(['and', 'or']);
 
 const normalizeOceanBrainTagName = (name: string) => {
     const trimmedName = name.trim();
@@ -50,6 +52,39 @@ const normalizeOceanBrainTagName = (name: string) => {
     }
 
     return normalizedName;
+};
+
+const normalizeOceanBrainTagNames = (names: string[]) => {
+    return Array.from(
+        new Set(names.map(normalizeOceanBrainTagName))
+    );
+};
+
+const fetchOceanBrainTags = async (
+    serverUrl: string,
+    token: string | undefined,
+    query: string
+) => {
+    const data = await graphql(serverUrl, token, `
+        query ($searchFilter: SearchFilterInput, $pagination: PaginationInput) {
+            allTags(searchFilter: $searchFilter, pagination: $pagination) {
+                totalCount
+                tags {
+                    id
+                    name
+                    referenceCount
+                }
+            }
+        }
+    `, {
+        searchFilter: { query },
+        pagination: { limit: 100, offset: 0 }
+    });
+
+    return data?.allTags as {
+        totalCount: number;
+        tags: Array<{ id: string; name: string; referenceCount: number }>;
+    };
 };
 
 async function graphql(
@@ -359,26 +394,7 @@ export async function startMcpServer(
         },
         async ({ tag, limit, offset }) => {
             const normalizedTag = normalizeOceanBrainTagName(tag);
-            const tagsData = await graphql(serverUrl, token, `
-                query ($searchFilter: SearchFilterInput, $pagination: PaginationInput) {
-                    allTags(searchFilter: $searchFilter, pagination: $pagination) {
-                        totalCount
-                        tags {
-                            id
-                            name
-                            referenceCount
-                        }
-                    }
-                }
-            `, {
-                searchFilter: { query: normalizedTag },
-                pagination: { limit: 100, offset: 0 }
-            });
-
-            const tagResult = tagsData?.allTags as {
-                totalCount: number;
-                tags: Array<{ id: string; name: string; referenceCount: number }>;
-            };
+            const tagResult = await fetchOceanBrainTags(serverUrl, token, normalizedTag);
             const exactMatches = tagResult.tags.filter((item) => item.name === normalizedTag);
 
             if (exactMatches.length === 0) {
@@ -433,6 +449,106 @@ export async function startMcpServer(
                         tagFound: true,
                         duplicateExactMatchCount: exactMatches.length,
                         tag: selectedTag,
+                        totalCount: noteResult.totalCount,
+                        notes: noteResult.notes.map((note) => ({
+                            id: note.id,
+                            title: note.title,
+                            updatedAt: note.updatedAt,
+                            tags: note.tags.map((item) => item.name)
+                        }))
+                    }, null, 2),
+                }],
+            };
+        }
+    );
+
+    server.tool(
+        OCEAN_BRAIN_MCP_TOOLS.listNotesByTags,
+        'List Ocean Brain notes for multiple tag names. Supports AND/OR matching and resolves each input tag to the canonical Ocean Brain tag name first.',
+        {
+            tags: z.array(z.string()).min(1).describe('Tag names to inspect. You can pass @project or project values.'),
+            mode: tagMatchModeSchema.optional().default('and').describe('Tag match mode. Use and for intersection, or for union. Defaults to and.'),
+            limit: z.number().optional().default(20).describe('Max results (default: 20)'),
+            offset: z.number().optional().default(0).describe('Pagination offset (default: 0)')
+        },
+        async ({ tags, mode, limit, offset }) => {
+            const normalizedTags = normalizeOceanBrainTagNames(tags);
+            const tagResults = await Promise.all(
+                normalizedTags.map(async (normalizedTag) => {
+                    const result = await fetchOceanBrainTags(serverUrl, token, normalizedTag);
+                    const exactMatches = result.tags.filter((item) => item.name === normalizedTag);
+
+                    return {
+                        normalizedTag,
+                        exactMatches
+                    };
+                })
+            );
+
+            const matchedTags = tagResults
+                .filter((tagResult) => tagResult.exactMatches.length > 0)
+                .map((tagResult) => {
+                    const selectedTag = tagResult.exactMatches[0];
+
+                    return {
+                        id: selectedTag.id,
+                        name: selectedTag.name,
+                        referenceCount: selectedTag.referenceCount,
+                        duplicateExactMatchCount: tagResult.exactMatches.length
+                    };
+                });
+            const missingTags = tagResults
+                .filter((tagResult) => tagResult.exactMatches.length === 0)
+                .map((tagResult) => tagResult.normalizedTag);
+
+            let noteResult: {
+                totalCount: number;
+                notes: Array<{
+                    id: string;
+                    title: string;
+                    updatedAt: string;
+                    tags: Array<{ id: string; name: string }>;
+                }>;
+            } = {
+                totalCount: 0,
+                notes: []
+            };
+
+            if (
+                (mode === 'and' && missingTags.length === 0)
+                || (mode === 'or' && matchedTags.length > 0)
+            ) {
+                const notesData = await graphql(serverUrl, token, `
+                    query ($tagNames: [String!]!, $mode: TagMatchMode!, $pagination: PaginationInput) {
+                        notesByTagNames(tagNames: $tagNames, mode: $mode, pagination: $pagination) {
+                            totalCount
+                            notes {
+                                id
+                                title
+                                updatedAt
+                                tags { id name }
+                            }
+                        }
+                    }
+                `, {
+                    tagNames: normalizedTags,
+                    mode,
+                    pagination: { limit, offset }
+                });
+
+                noteResult = notesData?.notesByTagNames as typeof noteResult;
+            }
+
+            return {
+                content: [{
+                    type: 'text' as const,
+                    text: JSON.stringify({
+                        requestedTags: tags,
+                        normalizedTags,
+                        mode,
+                        allTagsFound: missingTags.length === 0,
+                        missingTags,
+                        tags: matchedTags,
                         totalCount: noteResult.totalCount,
                         notes: noteResult.notes.map((note) => ({
                             id: note.id,

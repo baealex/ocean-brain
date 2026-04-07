@@ -1,7 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { blocksToMarkdown, markdownToBlocksJson } from '../src/modules/blocknote.js';
+import {
+    blocksToMarkdown,
+    extractTagIdsFromContentJson,
+    markdownToBlocksJson
+} from '../src/modules/blocknote.js';
 
 test('blocksToMarkdown preserves supported content when tableOfContents blocks are present', async () => {
     const content = JSON.stringify([
@@ -177,6 +181,109 @@ test('blocksToMarkdown serializes tags using explicit bracket syntax', async () 
     assert.match(markdown, /\[\[Reference Note\]\]/);
 });
 
+test('blocksToMarkdown serializes custom inline content inside table cells', async () => {
+    const content = JSON.stringify([
+        {
+            id: 'table-1',
+            type: 'table',
+            props: {
+                textColor: 'default'
+            },
+            content: {
+                type: 'tableContent',
+                columnWidths: [null, null],
+                headerRows: 1,
+                rows: [
+                    {
+                        cells: [
+                            {
+                                type: 'tableCell',
+                                content: [
+                                    {
+                                        type: 'text',
+                                        text: 'Name',
+                                        styles: {}
+                                    }
+                                ],
+                                props: {
+                                    colspan: 1,
+                                    rowspan: 1
+                                }
+                            },
+                            {
+                                type: 'tableCell',
+                                content: [
+                                    {
+                                        type: 'text',
+                                        text: 'Value',
+                                        styles: {}
+                                    }
+                                ],
+                                props: {
+                                    colspan: 1,
+                                    rowspan: 1
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        cells: [
+                            {
+                                type: 'tableCell',
+                                content: [
+                                    {
+                                        type: 'text',
+                                        text: 'Project',
+                                        styles: {}
+                                    }
+                                ],
+                                props: {
+                                    colspan: 1,
+                                    rowspan: 1
+                                }
+                            },
+                            {
+                                type: 'tableCell',
+                                content: [
+                                    {
+                                        type: 'tag',
+                                        props: {
+                                            id: '12',
+                                            tag: '@project'
+                                        }
+                                    },
+                                    {
+                                        type: 'text',
+                                        text: ' ',
+                                        styles: {}
+                                    },
+                                    {
+                                        type: 'reference',
+                                        props: {
+                                            id: '44',
+                                            title: 'Reference Note'
+                                        }
+                                    }
+                                ],
+                                props: {
+                                    colspan: 1,
+                                    rowspan: 1
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            children: []
+        }
+    ]);
+
+    const markdown = await blocksToMarkdown(content);
+
+    assert.match(markdown, /\[@project\]/);
+    assert.match(markdown, /\[\[Reference Note\]\]/);
+});
+
 test('markdownToBlocksJson restores custom tag and reference inline content from explicit @ tags', async () => {
     const contentJson = await markdownToBlocksJson(
         '[@project] [[Reference Note]]',
@@ -314,4 +421,104 @@ test('markdownToBlocksJson leaves ambiguous references as plain text', async () 
             styles: {}
         }
     ]);
+});
+
+test('markdownToBlocksJson restores custom inline content inside table cells', async () => {
+    const contentJson = await markdownToBlocksJson(
+        '| Name | Value |\n| --- | --- |\n| Project | [@project] [[Reference Note]] |',
+        {
+            ensureTag: async () => ({
+                id: '12',
+                name: '@project'
+            }),
+            findNotesByTitle: async (title) => {
+                if (title === 'Reference Note') {
+                    return [{
+                        id: '44',
+                        title
+                    }];
+                }
+
+                return [];
+            }
+        }
+    );
+
+    const blocks = JSON.parse(contentJson);
+    const tableBlock = blocks.find((block: { type: string }) => block.type === 'table');
+
+    assert.ok(tableBlock);
+    assert.deepEqual(tableBlock.content.rows[1].cells[1].content, [
+        {
+            type: 'tag',
+            props: {
+                id: '12',
+                tag: '@project'
+            }
+        },
+        {
+            type: 'text',
+            text: ' ',
+            styles: {}
+        },
+        {
+            type: 'reference',
+            props: {
+                id: '44',
+                title: 'Reference Note'
+            }
+        }
+    ]);
+});
+
+test('extractTagIdsFromContentJson collects tags from table cells', () => {
+    const tagIds = extractTagIdsFromContentJson(JSON.stringify([
+        {
+            id: 'table-1',
+            type: 'table',
+            content: {
+                type: 'tableContent',
+                rows: [
+                    {
+                        cells: [
+                            {
+                                type: 'tableCell',
+                                content: [
+                                    {
+                                        type: 'tag',
+                                        props: {
+                                            id: '12',
+                                            tag: '@project'
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                type: 'tableCell',
+                                content: [
+                                    {
+                                        type: 'tag',
+                                        props: {
+                                            id: '12',
+                                            tag: '@project'
+                                        }
+                                    },
+                                    {
+                                        type: 'tag',
+                                        props: {
+                                            id: '34',
+                                            tag: '@todo'
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+            children: []
+        }
+    ]));
+
+    assert.deepEqual(tagIds.sort(), ['12', '34']);
 });

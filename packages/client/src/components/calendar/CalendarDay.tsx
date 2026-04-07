@@ -117,7 +117,7 @@ const CalendarDayComponent = ({
             />
 
             {hasOverflow && (
-                <Modal isOpen={isModalOpen} onClose={handleCloseModal}>
+                <Modal isOpen={isModalOpen} onClose={handleCloseModal} variant="inspect">
                     <Modal.Header title={`${year}/${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}`} onClose={handleCloseModal} />
                     <Modal.Body>
                         <Modal.Description className="sr-only">

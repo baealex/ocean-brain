@@ -1,19 +1,13 @@
 import {
-    createContext,
     useCallback,
-    useContext,
     useRef,
     useState
 } from 'react';
 
 import { Button } from '../Button';
 import { Modal } from '../Dialog/Modal';
-
-interface ConfirmContextValue {
-    confirm: (message: string) => Promise<boolean>;
-}
-
-const ConfirmContext = createContext<ConfirmContextValue | null>(null);
+import { Text } from '../Text';
+import { ConfirmContext } from './ConfirmContext';
 
 export function ConfirmProvider({ children }: { children: React.ReactNode }) {
     const [isOpen, setIsOpen] = useState(false);
@@ -43,28 +37,24 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
     return (
         <ConfirmContext.Provider value={{ confirm }}>
             {children}
-            <Modal isOpen={isOpen} onClose={handleCancel} className="max-w-[360px]">
-                <Modal.Body className="px-5 pb-4 pt-5">
-                    <p className="mb-1 text-base font-semibold text-fg-default">Confirm</p>
-                    <p className="text-sm leading-6 text-fg-secondary">{message}</p>
+            <Modal isOpen={isOpen} onClose={handleCancel} variant="confirm">
+                <Modal.Body>
+                    <Text as="p" variant="subheading" weight="semibold" tracking="tight">
+                        Confirm
+                    </Text>
+                    <Text as="p" variant="meta" tone="secondary">
+                        {message}
+                    </Text>
                 </Modal.Body>
-                <div className="flex justify-end gap-2 px-5 pb-5">
+                <Modal.Footer>
                     <Button variant="ghost" size="sm" onClick={handleCancel}>
                         Cancel
                     </Button>
                     <Button variant="danger" size="sm" onClick={handleConfirm}>
                         OK
                     </Button>
-                </div>
+                </Modal.Footer>
             </Modal>
         </ConfirmContext.Provider>
     );
-}
-
-export function useConfirm() {
-    const context = useContext(ConfirmContext);
-    if (!context) {
-        throw new Error('useConfirm must be used within a ConfirmProvider');
-    }
-    return context.confirm;
 }

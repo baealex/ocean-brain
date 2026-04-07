@@ -1,1 +1,2 @@
-export { ConfirmProvider, useConfirm } from './ConfirmProvider';
+export { ConfirmProvider } from './ConfirmProvider';
+export { useConfirm } from './useConfirm';

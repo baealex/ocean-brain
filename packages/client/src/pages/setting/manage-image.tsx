@@ -55,7 +55,7 @@ const ManageImage = () => {
     });
 
     const handleDelete = async (id: string) => {
-        if (await confirm('Are you really sure?')) {
+        if (await confirm('Delete this image? It is not referenced by any notes.')) {
             deleteImageMutation.mutate(id);
         }
     };

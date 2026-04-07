@@ -65,7 +65,7 @@ const useNoteMutate = () => {
     };
 
     const onDelete = async (id: string, callback?: () => void) => {
-        if (await confirm('Are you really sure?')) {
+        if (await confirm('Move this note to trash?')) {
             const response = await deleteNote(id);
             if (response.type === 'error') {
                 toast(response.errors[0].message);

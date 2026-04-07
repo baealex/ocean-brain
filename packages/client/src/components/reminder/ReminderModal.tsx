@@ -72,7 +72,7 @@ export default function ReminderModal({
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose}>
+        <Modal isOpen={isOpen} onClose={onClose} variant="form">
             <Modal.Header
                 title={mode === 'create' ? 'Create Reminder' : 'Edit Reminder'}
                 onClose={onClose}

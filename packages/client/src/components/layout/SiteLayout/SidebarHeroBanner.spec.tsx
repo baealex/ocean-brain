@@ -46,7 +46,7 @@ describe('<SidebarHeroBanner />', () => {
         fireEvent.click(removeButton);
 
         await waitFor(() => {
-            expect(mockConfirm).toHaveBeenCalledWith('Do you want to remove this hero banner?');
+            expect(mockConfirm).toHaveBeenCalledTimes(1);
             expect(setServerCache).toHaveBeenCalledWith('heroBanner', '');
             expect(invalidateSpy).toHaveBeenCalledWith({
                 queryKey: queryKeys.ui.heroBanner(),

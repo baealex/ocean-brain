@@ -49,7 +49,7 @@ export default function LayoutModal({
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose}>
+        <Modal isOpen={isOpen} onClose={onClose} variant="compact">
             <Modal.Header
                 title="Layout Settings"
                 onClose={onClose}

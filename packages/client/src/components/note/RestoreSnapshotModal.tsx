@@ -94,7 +94,7 @@ export default function RestoreSnapshotModal({
     });
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose}>
+        <Modal isOpen={isOpen} onClose={onClose} variant="inspect">
             <Modal.Header
                 title="Restore Previous Version"
                 onClose={onClose}

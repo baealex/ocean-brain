@@ -26,7 +26,7 @@ const SidebarHeroBanner = () => {
                 aria-label="Remove hero banner"
                 className="surface-base focus-ring-soft group relative block w-full overflow-hidden text-left outline-none"
                 onClick={async () => {
-                    if (await confirm('Do you want to remove this hero banner?')) {
+                    if (await confirm('Remove this hero banner from the sidebar?')) {
                         await setServerCache('heroBanner', '');
                         await queryClient.invalidateQueries({
                             queryKey: queryKeys.ui.heroBanner(),

@@ -248,7 +248,7 @@ const Placeholder = () => {
                     )}
                 </section>
             </div>
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
+            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} variant="form">
                 <Modal.Header title="Add Placeholder" onClose={() => setIsModalOpen(false)} />
                 <Modal.Body>
                     <Modal.Description className="mb-4">

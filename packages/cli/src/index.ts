@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'url';
 import { Command } from 'commander';
 import { resolveServeAuthEnvironment } from './auth-options.js';
 import { resolveMcpBearerToken } from './mcp-auth.js';
+import { resolveSqliteDatabaseUrl } from './sqlite-url.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const serverRoot = path.resolve(__dirname, '..', 'server');
@@ -36,7 +37,7 @@ program
             fs.mkdirSync(dataDir, { recursive: true });
             fs.mkdirSync(imageDir, { recursive: true });
 
-            process.env.DATABASE_URL = process.env.DATABASE_URL || `file:${dbPath}`;
+            process.env.DATABASE_URL = process.env.DATABASE_URL || resolveSqliteDatabaseUrl(dbPath);
             process.env.OCEAN_BRAIN_PACKAGE_ROOT = serverRoot;
             process.env.OCEAN_BRAIN_DATA_DIR = dataDir;
             process.env.OCEAN_BRAIN_IMAGE_DIR = imageDir;

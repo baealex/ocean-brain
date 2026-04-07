@@ -11,6 +11,7 @@ import {
     destructiveMcpWriteFields,
     formatMcpGraphqlError
 } from './mcp-write-safety.js';
+import { formatMcpReadNoteOutput } from './mcp-note-output.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
@@ -192,7 +193,7 @@ export async function startMcpServer(
 
     server.tool(
         OCEAN_BRAIN_MCP_TOOLS.readNote,
-        'Read an Ocean Brain note by ID. Returns truncated content by default (1000 chars). Set maxLength to 0 only when full content is necessary.',
+        'Read an Ocean Brain note by ID. Returns truncated content by default (1000 chars) and includes a back-reference summary. Set maxLength to 0 only when full content is necessary.',
         {
             id: z.string().describe('Note ID'),
             maxLength: z.number().optional().default(1000).describe('Max content length in characters. 0 for full content. (default: 1000)'),
@@ -208,6 +209,10 @@ export async function startMcpServer(
                         updatedAt
                         tags { id name }
                     }
+                    backReferences(id: $id) {
+                        id
+                        title
+                    }
                 }
             `, { id });
 
@@ -219,26 +224,15 @@ export async function startMcpServer(
                 updatedAt: string;
                 tags: Array<{ id: string; name: string }>;
             };
-
-            let markdown = note.contentAsMarkdown;
-            const totalLength = markdown.length;
-            let truncated = false;
-            if (maxLength > 0 && markdown.length > maxLength) {
-                markdown = markdown.slice(0, maxLength);
-                truncated = true;
-            }
-
-            const output = [
-                `# ${note.title}`,
-                '',
-                `Tags: ${note.tags.map((t) => t.name).join(', ') || '(none)'}`,
-                `Created: ${note.createdAt}`,
-                `Updated: ${note.updatedAt}`,
-                ...(truncated ? [`Content: ${totalLength} chars (showing first ${maxLength})`] : []),
-                '',
-                markdown,
-                ...(truncated ? ['\n... (truncated, use maxLength: 0 to read full content)'] : []),
-            ].join('\n');
+            const backReferences = (data?.backReferences as Array<{
+                id: string;
+                title: string;
+            }> | undefined) ?? [];
+            const output = formatMcpReadNoteOutput({
+                note,
+                backReferences,
+                maxLength
+            });
 
             return {
                 content: [{
@@ -251,7 +245,7 @@ export async function startMcpServer(
 
     server.tool(
         OCEAN_BRAIN_MCP_TOOLS.createNote,
-        'Create an Ocean Brain note from markdown through the MCP write path. In MCP markdown, use explicit tags like [@project] or [#project], and use [[Note Title]] for note links.',
+        'Create an Ocean Brain note from markdown through the MCP write path. In MCP markdown, use explicit tags like [@project] or [#project], and use [[Note Title]] for note links. When writing linked notes, prefer creating or organizing the reference target note first. A single link is enough for Ocean Brain to surface a back reference on the other note.',
         {
             title: z.string().describe('Note title'),
             markdown: z.string().optional().default('').describe('Markdown body for the new note. In MCP markdown, tags must use [@tag] or [#tag]. Defaults to an empty note body.'),
@@ -285,7 +279,7 @@ export async function startMcpServer(
 
     server.tool(
         OCEAN_BRAIN_MCP_TOOLS.updateNote,
-        'Update an Ocean Brain note from markdown through the MCP write path. In MCP markdown, use explicit tags like [@project] or [#project], and use [[Note Title]] for note links.',
+        'Update an Ocean Brain note from markdown through the MCP write path. In MCP markdown, use explicit tags like [@project] or [#project], and use [[Note Title]] for note links. When you add linked notes, prefer organizing the reference target note first. A single link is enough for Ocean Brain to surface a back reference on the other note.',
         {
             id: z.string().describe('Note ID to update'),
             title: z.string().optional().describe('New note title'),

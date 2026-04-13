@@ -7,6 +7,7 @@ import { createQueryClientWrapper, createTestQueryClient } from '~/test/test-uti
 import SidebarHeroBanner from './SidebarHeroBanner';
 
 const mockConfirm = vi.fn();
+const mockToast = vi.fn();
 type ThemeState = {
     theme: string;
 };
@@ -21,7 +22,8 @@ vi.mock('~/components/ui', async () => {
 
     return {
         ...actual,
-        useConfirm: () => mockConfirm
+        useConfirm: () => mockConfirm,
+        useToast: () => mockToast
     };
 });
 
@@ -30,7 +32,10 @@ vi.mock('~/store/theme', () => ({ useTheme: (selector: (state: ThemeState) => un
 describe('<SidebarHeroBanner />', () => {
     it('renders the hero image and removes it through the confirm flow', async () => {
         vi.mocked(getServerCache).mockResolvedValue('https://example.com/hero.jpg');
-        vi.mocked(setServerCache).mockResolvedValue('' as never);
+        vi.mocked(setServerCache).mockResolvedValue({
+            type: 'success',
+            setCache: { value: '' }
+        });
         mockConfirm.mockResolvedValue(true);
 
         const queryClient = createTestQueryClient();

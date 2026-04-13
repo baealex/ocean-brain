@@ -171,7 +171,6 @@ const ManageImageDetailContent = ({ id }: ManageImageDetailContentProps) => {
             if (response.type === 'error') {
                 throw response;
             }
-            return response.cache.value;
         },
         onSuccess: async () => {
             await queryClient.invalidateQueries({

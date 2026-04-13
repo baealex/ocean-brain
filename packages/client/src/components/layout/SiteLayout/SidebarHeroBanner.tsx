@@ -1,11 +1,12 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { getServerCache, setServerCache } from '~/apis/server-cache.api';
-import { Text, useConfirm } from '~/components/ui';
+import { Text, useConfirm, useToast } from '~/components/ui';
 import { queryKeys } from '~/modules/query-key-factory';
 
 const SidebarHeroBanner = () => {
     const confirm = useConfirm();
+    const toast = useToast();
     const queryClient = useQueryClient();
 
     const { data: heroBanner } = useQuery({
@@ -27,7 +28,12 @@ const SidebarHeroBanner = () => {
                 className="surface-base focus-ring-soft group relative block w-full overflow-hidden text-left outline-none"
                 onClick={async () => {
                     if (await confirm('Remove this hero banner from the sidebar?')) {
-                        await setServerCache('heroBanner', '');
+                        const response = await setServerCache('heroBanner', '');
+                        if (response.type === 'error') {
+                            toast(response.errors[0]?.message ?? 'Failed to remove hero banner');
+                            return;
+                        }
+
                         await queryClient.invalidateQueries({
                             queryKey: queryKeys.ui.heroBanner(),
                             exact: true

@@ -1,4 +1,4 @@
-import { backfillStaleNoteSearchText } from './note-search-backfill.js';
+import { backfillStaleNoteSearchText } from '~/features/note/services/search-backfill.js';
 
 export interface DataMaintenanceJobResult {
     key: string;

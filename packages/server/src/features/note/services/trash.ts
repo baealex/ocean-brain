@@ -1,6 +1,10 @@
 import models, { type NoteLayout, type ReminderPriority } from '~/models.js';
-import { buildNoteSearchProjection } from './note-search.js';
-import { createRetentionCutoff, RECOVERY_CLEANUP_BATCH_LIMIT, TRASH_RETENTION_DAYS } from './recovery-retention.js';
+import {
+    createRetentionCutoff,
+    RECOVERY_CLEANUP_BATCH_LIMIT,
+    TRASH_RETENTION_DAYS,
+} from '~/modules/recovery-retention.js';
+import { buildNoteSearchProjection } from './search.js';
 
 interface LiveTagRecord {
     id: number;

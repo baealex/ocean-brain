@@ -1,5 +1,5 @@
 import models from '~/models.js';
-import { trashNoteById as moveNoteToTrashById } from './note-trash.js';
+import { trashNoteById as moveNoteToTrashById } from './trash.js';
 
 export interface NoteCleanupBackReference {
     id: string;

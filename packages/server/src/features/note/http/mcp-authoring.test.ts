@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { AppError } from '../src/modules/error-handler.js';
-import { createMcpCreateNoteHandler, createMcpUpdateNoteHandler } from '../src/views/note.js';
+import { AppError } from '~/modules/error-handler.js';
+import { createMcpCreateNoteHandler, createMcpUpdateNoteHandler } from './mcp.js';
 
 const createResponse = () => {
     const response = {

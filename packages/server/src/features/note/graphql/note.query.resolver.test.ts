@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createAllNotesQueryResolver } from '../src/schema/note/index.js';
+import { createAllNotesQueryResolver } from './note.query.resolver.js';
 
 test('allNotes resolver uses stored searchable text with DB pagination when no stale notes exist', async () => {
     const findCalls: unknown[] = [];

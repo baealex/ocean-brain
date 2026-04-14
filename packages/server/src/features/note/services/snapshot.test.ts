@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createNoteSnapshotService } from '../src/modules/note-snapshot.js';
+import { createNoteSnapshotService } from './snapshot.js';
 
 test('captureBaseline stores one snapshot per note edit session', async () => {
     const snapshots: Array<{

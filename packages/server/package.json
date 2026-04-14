@@ -10,8 +10,8 @@
         "start": "node dist/start.js",
         "lint": "biome check .",
         "format": "biome check --write .",
-        "test": "tsx --tsconfig tsconfig.json --test test/**/*.test.ts",
-        "test:ci": "tsx --tsconfig tsconfig.json --test test/**/*.test.ts",
+        "test": "tsx --tsconfig tsconfig.json --test src/**/*.test.ts test/**/*.test.ts",
+        "test:ci": "tsx --tsconfig tsconfig.json --test src/**/*.test.ts test/**/*.test.ts",
         "type-check": "tsc --noEmit"
     },
     "dependencies": {

@@ -1,7 +1,7 @@
 import models, { type NoteLayout } from '~/models.js';
-import { extractTagIdsFromContentJson, markdownToBlocksJson } from './blocknote.js';
-import { buildNoteSearchProjection } from './note-search.js';
-import { captureNoteBaseline } from './note-snapshot.js';
+import { extractTagIdsFromContentJson, markdownToBlocksJson } from '~/modules/blocknote.js';
+import { buildNoteSearchProjection } from './search.js';
+import { captureNoteBaseline } from './snapshot.js';
 
 interface PlaceholderRecord {
     template: string;

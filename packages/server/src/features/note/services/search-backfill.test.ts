@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createNoteSearchBackfillService } from '../src/modules/note-search-backfill.js';
+import { createNoteSearchBackfillService } from './search-backfill.js';
 
 test('note search backfill updates stale notes in batches until complete', async () => {
     const listedLimits: number[] = [];

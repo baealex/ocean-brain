@@ -3,7 +3,7 @@ import test from 'node:test';
 import {
     OCEAN_BRAIN_CUSTOM_BLOCK_TYPES,
     OCEAN_BRAIN_CUSTOM_INLINE_CONTENT_TYPES,
-} from '../../client/src/components/schema/custom-types.ts';
+} from '../../../../../client/src/components/schema/custom-types.js';
 import {
     buildNoteSearchProjection,
     buildNoteSearchText,
@@ -16,7 +16,7 @@ import {
     NOTE_SEARCH_TEXT_SCHEMA_VERSION,
     parseNoteSearchQuery,
     resetUnknownNoteSearchNodeTypeCountsForTest,
-} from '../src/modules/note-search.js';
+} from './search.js';
 
 test('note search text schema version is explicit for future projection rebuilds', () => {
     assert.equal(NOTE_SEARCH_TEXT_SCHEMA_VERSION, 1);

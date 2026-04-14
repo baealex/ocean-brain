@@ -2,6 +2,7 @@ import type { IResolvers } from '@graphql-tools/utils';
 
 import models, { type Tag, type Prisma } from '~/models.js';
 import { gql } from '~/modules/graphql.js';
+import { ensureTagByName } from '~/modules/tag-organization.js';
 import type { Pagination, SearchFilter } from '~/types/index.js';
 
 export const tagType = gql`
@@ -46,6 +47,20 @@ export const tagTypeDefs = `
     ${tagMutation}
 `;
 
+export const createTagMutationResolver = (
+    ensureTag = ensureTagByName
+) => {
+    return async (_: unknown, { name }: { name: string }) => {
+        const result = await ensureTag(name);
+
+        return result.tag;
+    };
+};
+
+type TagReferenceCountSource = Pick<Tag, 'id'> | {
+    id: string;
+};
+
 export const tagResolvers: IResolvers = {
     Query: {
         allTags: async (_, {
@@ -72,14 +87,10 @@ export const tagResolvers: IResolvers = {
             };
         }
     },
-    Mutation: {
-        createTag: async (_, { name }: Tag) => {
-            return models.tag.create({ data: { name } });
-        }
-    },
+    Mutation: { createTag: createTagMutationResolver() },
     Tag: {
-        referenceCount: async (tag: Tag) => {
-            return models.note.count({ where: { tags: { some: { id: tag.id } } } });
+        referenceCount: async (tag: TagReferenceCountSource) => {
+            return models.note.count({ where: { tags: { some: { id: Number(tag.id) } } } });
         }
     }
 };

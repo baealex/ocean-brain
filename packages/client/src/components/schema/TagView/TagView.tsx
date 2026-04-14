@@ -1,5 +1,6 @@
 import { SuggestionMenuController } from '@blocknote/react';
 import { createTag, fetchTags } from '~/apis/tag.api';
+import { hasExactTagMatch } from './tag-match';
 
 interface TagViewProps {
     onClick: (content: {
@@ -27,7 +28,7 @@ const TagView = ({ onClick }: TagViewProps) => {
 
                 const { tags } = response.allTags;
 
-                const noMatchedTag = tags.some(tag => tag.name !== `@${query}`);
+                const hasMatchingTag = hasExactTagMatch(query, tags);
 
                 const itemAddNewTag = [{
                     title: 'Add a new tag',
@@ -60,7 +61,7 @@ const TagView = ({ onClick }: TagViewProps) => {
                             tag: tag.name
                         }
                     })
-                })).concat((query && noMatchedTag) ? itemAddNewTag : []);
+                })).concat((query && !hasMatchingTag) ? itemAddNewTag : []);
             }}
         />
     );

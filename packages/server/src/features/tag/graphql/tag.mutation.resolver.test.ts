@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createTagMutationResolver } from '../src/schema/tag/index.js';
+import { createTagMutationResolver } from './tag.mutation.resolver.js';
 
 test('createTag mutation returns the canonical tag from the tag organization service', async () => {
     const resolver = createTagMutationResolver(async () => ({

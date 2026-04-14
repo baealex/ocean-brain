@@ -1,5 +1,5 @@
+import { ensureTagByName, InvalidTagNameError } from '~/features/tag/services/organization.js';
 import { createAppError } from '~/modules/error-handler.js';
-import { ensureTagByName, InvalidTagNameError } from '~/modules/tag-organization.js';
 import type { Controller } from '~/types/index.js';
 
 export const createMcpCreateTagHandler = (ensureTag = ensureTagByName): Controller => {

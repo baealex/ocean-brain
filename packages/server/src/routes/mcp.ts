@@ -4,11 +4,11 @@ import {
     createMcpDeleteNoteHandler,
     createMcpUpdateNoteHandler,
 } from '../features/note/http/mcp.js';
+import { createMcpCreateTagHandler } from '../features/tag/http/mcp.js';
 import type { AuthConfig } from '../modules/auth-mode.js';
 import type { McpAdminService } from '../modules/mcp-admin.js';
 import { createMcpAuthMiddleware } from '../modules/mcp-auth.js';
 import useAsync from '../modules/use-async.js';
-import { createMcpCreateTagHandler } from '../views/tag.js';
 
 type McpRouteService = Pick<McpAdminService, 'getStatus' | 'validatePresentedToken'>;
 

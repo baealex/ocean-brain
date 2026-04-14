@@ -9,6 +9,10 @@ import { initializeTheme } from './store/theme-dom.ts';
 import './styles/main.scss';
 import './styles/tailwind.css';
 
+if (import.meta.env.DEV) {
+    void import('react-grab');
+}
+
 useTheme.setState({ theme: initializeTheme() });
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

@@ -7,6 +7,7 @@ import {
 } from '~/modules/note-authoring.js';
 import { deleteNoteById } from '~/modules/note-cleanup.js';
 import { MCP_SNAPSHOT_META } from '~/modules/note-snapshot.js';
+import { emitServerEvent, type ServerEventInput } from '~/modules/server-events.js';
 import type { Controller } from '~/types/index.js';
 
 const NOTE_LAYOUTS = new Set<NoteLayout>(['narrow', 'wide', 'full']);
@@ -23,7 +24,12 @@ const resolveNoteLayout = (value: unknown): NoteLayout | null | undefined => {
     return null;
 };
 
-export const createMcpCreateNoteHandler = (createNote = createNoteFromMarkdown): Controller => {
+type EmitServerEvent = (event: ServerEventInput) => unknown;
+
+export const createMcpCreateNoteHandler = (
+    createNote = createNoteFromMarkdown,
+    emitEvent: EmitServerEvent = emitServerEvent,
+): Controller => {
     return async (req, res) => {
         const { title, markdown, layout } = req.body ?? {};
         const resolvedLayout = resolveNoteLayout(layout);
@@ -47,6 +53,13 @@ export const createMcpCreateNoteHandler = (createNote = createNoteFromMarkdown):
                 ...(resolvedLayout ? { layout: resolvedLayout } : {}),
             });
 
+            emitEvent({
+                type: 'mcp.note.created',
+                source: 'mcp',
+                noteId: note.id,
+                updatedAt: note.updatedAt,
+            });
+
             res.status(200)
                 .json({
                     created: true,
@@ -63,7 +76,10 @@ export const createMcpCreateNoteHandler = (createNote = createNoteFromMarkdown):
     };
 };
 
-export const createMcpUpdateNoteHandler = (updateNote = updateNoteFromMarkdown): Controller => {
+export const createMcpUpdateNoteHandler = (
+    updateNote = updateNoteFromMarkdown,
+    emitEvent: EmitServerEvent = emitServerEvent,
+): Controller => {
     return async (req, res) => {
         const { id, title, markdown, layout, editSessionId } = req.body ?? {};
         const noteId = Number(id);
@@ -107,6 +123,13 @@ export const createMcpUpdateNoteHandler = (updateNote = updateNoteFromMarkdown):
                 throw createAppError(404, 'NOTE_NOT_FOUND', 'The requested note was not found.');
             }
 
+            emitEvent({
+                type: 'mcp.note.updated',
+                source: 'mcp',
+                noteId: note.id,
+                updatedAt: note.updatedAt,
+            });
+
             res.status(200)
                 .json({
                     updated: true,
@@ -123,7 +146,10 @@ export const createMcpUpdateNoteHandler = (updateNote = updateNoteFromMarkdown):
     };
 };
 
-export const createMcpDeleteNoteHandler = (deleteNote = deleteNoteById): Controller => {
+export const createMcpDeleteNoteHandler = (
+    deleteNote = deleteNoteById,
+    emitEvent: EmitServerEvent = emitServerEvent,
+): Controller => {
     return async (req, res) => {
         const id = Number(req.body?.id);
 
@@ -136,6 +162,12 @@ export const createMcpDeleteNoteHandler = (deleteNote = deleteNoteById): Control
         if (!deletedNote) {
             throw createAppError(404, 'NOTE_NOT_FOUND', 'The requested note was not found.');
         }
+
+        emitEvent({
+            type: 'mcp.note.deleted',
+            source: 'mcp',
+            noteId: deletedNote.id,
+        });
 
         res.status(200)
             .json({

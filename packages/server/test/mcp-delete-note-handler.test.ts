@@ -86,3 +86,34 @@ test('mcp delete note handler returns the deleted note payload', async () => {
         },
     });
 });
+
+test('mcp delete note handler emits a deleted server event', async () => {
+    const emittedEvents: unknown[] = [];
+    const handler = createMcpDeleteNoteHandler(
+        async () => ({
+            id: '7',
+            title: 'Temp note',
+            updatedAt: '2026-03-30T00:00:00.000Z',
+            pinned: false,
+            tagNames: ['temp'],
+            reminderCount: 0,
+            backReferences: [],
+            orphanedTagNames: ['temp'],
+            requiresForce: true,
+            forceReasons: ['orphan_tags'],
+        }),
+        (event) => {
+            emittedEvents.push(event);
+        },
+    );
+
+    await handler({ body: { id: '7' } } as never, createResponse() as never);
+
+    assert.deepEqual(emittedEvents, [
+        {
+            type: 'mcp.note.deleted',
+            source: 'mcp',
+            noteId: '7',
+        },
+    ]);
+});

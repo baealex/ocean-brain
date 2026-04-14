@@ -14,14 +14,10 @@
         "declarationMap": true,
         "sourceMap": true,
         "paths": {
-            "~/*": [
-                "./*"
-            ]
+            "~/*": ["./*"]
         }
     },
-    "include": [
-        "src/**/*"
-    ],
+    "include": ["src/**/*"],
     "tsx": {
         "tsconfig": "./tsconfig.json"
     }

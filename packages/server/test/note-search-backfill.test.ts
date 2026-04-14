@@ -1,5 +1,5 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 
 import { createNoteSearchBackfillService } from '../src/modules/note-search-backfill.js';
 
@@ -11,42 +11,50 @@ test('note search backfill updates stale notes in batches until complete', async
             {
                 id: 1,
                 title: 'Roadmap',
-                content: JSON.stringify([{
-                    id: 'paragraph-1',
-                    type: 'paragraph',
-                    props: {},
-                    content: [{
-                        type: 'text',
-                        text: 'Sprint 42',
-                        styles: {}
-                    }],
-                    children: []
-                }])
+                content: JSON.stringify([
+                    {
+                        id: 'paragraph-1',
+                        type: 'paragraph',
+                        props: {},
+                        content: [
+                            {
+                                type: 'text',
+                                text: 'Sprint 42',
+                                styles: {},
+                            },
+                        ],
+                        children: [],
+                    },
+                ]),
             },
             {
                 id: 2,
                 title: 'Release',
-                content: JSON.stringify([{
-                    id: 'paragraph-2',
-                    type: 'paragraph',
-                    props: {},
-                    content: [{
-                        type: 'text',
-                        text: 'Candidate',
-                        styles: {}
-                    }],
-                    children: []
-                }])
-            }
+                content: JSON.stringify([
+                    {
+                        id: 'paragraph-2',
+                        type: 'paragraph',
+                        props: {},
+                        content: [
+                            {
+                                type: 'text',
+                                text: 'Candidate',
+                                styles: {},
+                            },
+                        ],
+                        children: [],
+                    },
+                ]),
+            },
         ],
         [
             {
                 id: 3,
                 title: 'Archive',
-                content: JSON.stringify([])
-            }
+                content: JSON.stringify([]),
+            },
         ],
-        []
+        [],
     ];
 
     const service = createNoteSearchBackfillService({
@@ -59,10 +67,10 @@ test('note search backfill updates stale notes in batches until complete', async
                 updates.map(({ id, projection }) => ({
                     id,
                     searchableText: projection.searchableText,
-                    searchableTextVersion: projection.searchableTextVersion
-                }))
+                    searchableTextVersion: projection.searchableTextVersion,
+                })),
             );
-        }
+        },
     });
 
     const backfilled = await service.backfillAll(2);
@@ -74,21 +82,21 @@ test('note search backfill updates stale notes in batches until complete', async
             {
                 id: 1,
                 searchableText: 'roadmap sprint 42',
-                searchableTextVersion: 1
+                searchableTextVersion: 1,
             },
             {
                 id: 2,
                 searchableText: 'release candidate',
-                searchableTextVersion: 1
-            }
+                searchableTextVersion: 1,
+            },
         ],
         [
             {
                 id: 3,
                 searchableText: 'archive',
-                searchableTextVersion: 1
-            }
-        ]
+                searchableTextVersion: 1,
+            },
+        ],
     ]);
 });
 
@@ -97,7 +105,7 @@ test('note search backfill stops cleanly when nothing is stale', async () => {
         listStaleNotes: async () => [],
         updateNotes: async () => {
             throw new Error('should not update when there is nothing to backfill');
-        }
+        },
     });
 
     const backfilled = await service.backfillAll(50);

@@ -1,5 +1,5 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 
 import { AppError } from '../src/modules/error-handler.js';
 import { createMcpDeleteNoteHandler } from '../src/views/note.js';
@@ -18,7 +18,7 @@ const createResponse = () => {
         },
         end() {
             return this;
-        }
+        },
     };
 
     return response;
@@ -34,7 +34,7 @@ test('mcp delete note handler rejects invalid note ids', async () => {
             assert.equal(error.code, 'INVALID_NOTE_ID');
             assert.equal(error.message, 'A valid note id is required.');
             return true;
-        }
+        },
     );
 });
 
@@ -48,7 +48,7 @@ test('mcp delete note handler returns not found when the note is missing', async
             assert.equal(error.code, 'NOTE_NOT_FOUND');
             assert.equal(error.message, 'The requested note was not found.');
             return true;
-        }
+        },
     );
 });
 
@@ -63,7 +63,7 @@ test('mcp delete note handler returns the deleted note payload', async () => {
         backReferences: [],
         orphanedTagNames: ['temp'],
         requiresForce: true,
-        forceReasons: ['orphan_tags']
+        forceReasons: ['orphan_tags'],
     }));
     const response = createResponse();
 
@@ -82,7 +82,7 @@ test('mcp delete note handler returns the deleted note payload', async () => {
             backReferences: [],
             orphanedTagNames: ['temp'],
             requiresForce: true,
-            forceReasons: ['orphan_tags']
-        }
+            forceReasons: ['orphan_tags'],
+        },
     });
 });

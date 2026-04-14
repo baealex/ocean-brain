@@ -37,7 +37,7 @@ export const NOTE_SEARCH_EXTRACTOR_NODE_TYPES = [
     'image',
     'video',
     'audio',
-    'file'
+    'file',
 ] as const;
 
 export const NOTE_SEARCH_PASS_THROUGH_NODE_TYPES = [
@@ -53,17 +53,15 @@ export const NOTE_SEARCH_PASS_THROUGH_NODE_TYPES = [
     'divider',
     'table',
     'tableContent',
-    'tableCell'
+    'tableCell',
 ] as const;
 
-export const NOTE_SEARCH_IGNORED_NODE_TYPES = [
-    'tableOfContents'
-] as const;
+export const NOTE_SEARCH_IGNORED_NODE_TYPES = ['tableOfContents'] as const;
 
 const KNOWN_NOTE_SEARCH_NODE_TYPES = new Set<string>([
     ...NOTE_SEARCH_EXTRACTOR_NODE_TYPES,
     ...NOTE_SEARCH_PASS_THROUGH_NODE_TYPES,
-    ...NOTE_SEARCH_IGNORED_NODE_TYPES
+    ...NOTE_SEARCH_IGNORED_NODE_TYPES,
 ]);
 const SEARCH_NODE_EXTRACTOR_TYPE_SET = new Set<string>(NOTE_SEARCH_EXTRACTOR_NODE_TYPES);
 
@@ -90,7 +88,7 @@ const SEARCH_NODE_EXTRACTORS: Record<SearchExtractorNodeType, SearchNodeExtracto
     },
     file: (node, context) => {
         pushVisibleProps(context, node.props, FILE_BLOCK_VISIBLE_PROP_KEYS);
-    }
+    },
 };
 
 const recordUnknownNoteSearchNodeType = (type: string) => {
@@ -104,7 +102,7 @@ const recordUnknownNoteSearchNodeType = (type: string) => {
     if (nextCount === 1) {
         process.emitWarning(
             `note-search encountered unsupported BlockNote node type "${type}". Only nested text will be indexed until explicit support is added.`,
-            { code: 'OCEAN_BRAIN_NOTE_SEARCH_UNKNOWN_NODE' }
+            { code: 'OCEAN_BRAIN_NOTE_SEARCH_UNKNOWN_NODE' },
         );
     }
 };
@@ -135,11 +133,7 @@ const pushVisibleSegment = (context: SearchProjectionContext, value: unknown) =>
     context.segments.push(normalizedValue);
 };
 
-const pushVisibleProps = (
-    context: SearchProjectionContext,
-    props: unknown,
-    keys: readonly string[]
-) => {
+const pushVisibleProps = (context: SearchProjectionContext, props: unknown, keys: readonly string[]) => {
     if (!isRecord(props)) {
         return;
     }
@@ -193,10 +187,12 @@ export const buildNoteSearchText = (note: Pick<SearchableNoteLike, 'title' | 'co
     return normalizeSearchToken(`${normalizedTitle} ${normalizedContent}`);
 };
 
-export const buildNoteSearchProjection = (note: Pick<SearchableNoteLike, 'title' | 'content'>): NoteSearchProjection => {
+export const buildNoteSearchProjection = (
+    note: Pick<SearchableNoteLike, 'title' | 'content'>,
+): NoteSearchProjection => {
     return {
         searchableText: buildNoteSearchText(note),
-        searchableTextVersion: NOTE_SEARCH_TEXT_SCHEMA_VERSION
+        searchableTextVersion: NOTE_SEARCH_TEXT_SCHEMA_VERSION,
     };
 };
 
@@ -204,7 +200,10 @@ export const parseNoteSearchQuery = (query: string): NoteSearchQuery => {
     const included: string[] = [];
     const excluded: string[] = [];
 
-    for (const item of query.split(/\s+/).map((value) => value.trim()).filter(Boolean)) {
+    for (const item of query
+        .split(/\s+/)
+        .map((value) => value.trim())
+        .filter(Boolean)) {
         if (item.startsWith('-') && item.length > 1) {
             excluded.push(normalizeSearchToken(item.slice(1)));
             continue;
@@ -216,7 +215,7 @@ export const parseNoteSearchQuery = (query: string): NoteSearchQuery => {
     return {
         included,
         excluded,
-        hasFilters: included.length > 0 || excluded.length > 0
+        hasFilters: included.length > 0 || excluded.length > 0,
     };
 };
 
@@ -233,29 +232,25 @@ export const extractVisibleSearchTextFromContent = (content: string) => {
     }
 };
 
-export const matchesNoteSearchQuery = (
-    note: SearchableNoteLike,
-    query: string | NoteSearchQuery
-) => {
+export const matchesNoteSearchQuery = (note: SearchableNoteLike, query: string | NoteSearchQuery) => {
     const parsedQuery = typeof query === 'string' ? parseNoteSearchQuery(query) : query;
 
     if (!parsedQuery.hasFilters) {
         return true;
     }
 
-    const haystack = note.searchableTextVersion === NOTE_SEARCH_TEXT_SCHEMA_VERSION
-        && typeof note.searchableText === 'string'
-        ? normalizeSearchToken(note.searchableText)
-        : buildNoteSearchText(note);
+    const haystack =
+        note.searchableTextVersion === NOTE_SEARCH_TEXT_SCHEMA_VERSION && typeof note.searchableText === 'string'
+            ? normalizeSearchToken(note.searchableText)
+            : buildNoteSearchText(note);
 
-    return parsedQuery.included.every((term) => haystack.includes(term))
-        && parsedQuery.excluded.every((term) => !haystack.includes(term));
+    return (
+        parsedQuery.included.every((term) => haystack.includes(term)) &&
+        parsedQuery.excluded.every((term) => !haystack.includes(term))
+    );
 };
 
-export const filterNotesBySearchQuery = <T extends SearchableNoteLike>(
-    notes: T[],
-    query: string | NoteSearchQuery
-) => {
+export const filterNotesBySearchQuery = <T extends SearchableNoteLike>(notes: T[], query: string | NoteSearchQuery) => {
     const parsedQuery = typeof query === 'string' ? parseNoteSearchQuery(query) : query;
 
     if (!parsedQuery.hasFilters) {

@@ -1,10 +1,10 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 
 import {
-    InvalidTagNameError,
     createTagOrganizationService,
-    normalizeTagName
+    InvalidTagNameError,
+    normalizeTagName,
 } from '../src/modules/tag-organization.js';
 
 test('normalizeTagName trims input and prefixes Ocean Brain tags with @', () => {
@@ -28,8 +28,8 @@ test('tag organization service returns an existing tag without creating a duplic
             id: 3,
             name: '@project',
             createdAt: new Date('2026-03-30T00:00:00.000Z'),
-            updatedAt: new Date('2026-03-30T00:00:00.000Z')
-        })
+            updatedAt: new Date('2026-03-30T00:00:00.000Z'),
+        }),
     });
 
     const result = await service.ensureTag('project');
@@ -42,8 +42,8 @@ test('tag organization service returns an existing tag without creating a duplic
             id: '3',
             name: '@project',
             createdAt: '2026-03-30T00:00:00.000Z',
-            updatedAt: '2026-03-30T00:00:00.000Z'
-        }
+            updatedAt: '2026-03-30T00:00:00.000Z',
+        },
     });
 });
 
@@ -53,9 +53,9 @@ test('tag organization service creates a tag when the normalized name is missing
             id: 5,
             name,
             createdAt: new Date('2026-03-31T00:00:00.000Z'),
-            updatedAt: new Date('2026-03-31T00:00:00.000Z')
+            updatedAt: new Date('2026-03-31T00:00:00.000Z'),
         }),
-        findTagByName: async () => null
+        findTagByName: async () => null,
     });
 
     const result = await service.ensureTag('@inbox');
@@ -67,8 +67,8 @@ test('tag organization service creates a tag when the normalized name is missing
             id: '5',
             name: '@inbox',
             createdAt: '2026-03-31T00:00:00.000Z',
-            updatedAt: '2026-03-31T00:00:00.000Z'
-        }
+            updatedAt: '2026-03-31T00:00:00.000Z',
+        },
     });
 });
 
@@ -79,8 +79,8 @@ test('tag organization service returns the canonical tag after a unique conflict
             throw {
                 code: 'P2002',
                 meta: {
-                    target: ['name']
-                }
+                    target: ['name'],
+                },
             };
         },
         findTagByName: async () => {
@@ -94,9 +94,9 @@ test('tag organization service returns the canonical tag after a unique conflict
                 id: 7,
                 name: '@project',
                 createdAt: new Date('2026-04-13T00:00:00.000Z'),
-                updatedAt: new Date('2026-04-13T00:00:00.000Z')
+                updatedAt: new Date('2026-04-13T00:00:00.000Z'),
             };
-        }
+        },
     });
 
     const result = await service.ensureTag('project');
@@ -109,7 +109,7 @@ test('tag organization service returns the canonical tag after a unique conflict
             id: '7',
             name: '@project',
             createdAt: '2026-04-13T00:00:00.000Z',
-            updatedAt: '2026-04-13T00:00:00.000Z'
-        }
+            updatedAt: '2026-04-13T00:00:00.000Z',
+        },
     });
 });

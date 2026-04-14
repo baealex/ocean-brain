@@ -1,8 +1,4 @@
-import {
-    useCallback,
-    useRef,
-    useState
-} from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import { Button } from '../Button';
 import { Modal } from '../Dialog/Modal';

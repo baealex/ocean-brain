@@ -19,7 +19,7 @@ const TagView = ({ onClick }: TagViewProps) => {
             getItems={async (query) => {
                 const response = await fetchTags({
                     query,
-                    limit: 5
+                    limit: 5,
                 });
 
                 if (response.type === 'error') {
@@ -30,38 +30,43 @@ const TagView = ({ onClick }: TagViewProps) => {
 
                 const hasMatchingTag = hasExactTagMatch(query, tags);
 
-                const itemAddNewTag = [{
-                    title: 'Add a new tag',
-                    onItemClick: async () => {
-                        const response = await createTag({ name: '@' + query });
-                        if (response.type === 'error') {
-                            return;
-                        }
-                        const { id, name: tag } = response.createTag;
-                        onClick({
-                            type: 'tag',
-                            props: {
-                                id,
-                                tag
+                const itemAddNewTag = [
+                    {
+                        title: 'Add a new tag',
+                        onItemClick: async () => {
+                            const response = await createTag({ name: '@' + query });
+                            if (response.type === 'error') {
+                                return;
                             }
-                        });
-                    }
-                }];
+                            const { id, name: tag } = response.createTag;
+                            onClick({
+                                type: 'tag',
+                                props: {
+                                    id,
+                                    tag,
+                                },
+                            });
+                        },
+                    },
+                ];
 
                 if (tags.length === 0) {
                     return itemAddNewTag;
                 }
 
-                return tags.map(tag => ({
-                    title: tag.name,
-                    onItemClick: () => onClick({
-                        type: 'tag',
-                        props: {
-                            id: tag.id,
-                            tag: tag.name
-                        }
-                    })
-                })).concat((query && !hasMatchingTag) ? itemAddNewTag : []);
+                return tags
+                    .map((tag) => ({
+                        title: tag.name,
+                        onItemClick: () =>
+                            onClick({
+                                type: 'tag',
+                                props: {
+                                    id: tag.id,
+                                    tag: tag.name,
+                                },
+                            }),
+                    }))
+                    .concat(query && !hasMatchingTag ? itemAddNewTag : []);
             }}
         />
     );

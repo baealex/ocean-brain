@@ -1,15 +1,10 @@
 import { getRouteApi } from '@tanstack/react-router';
 import { QueryBoundary } from '~/components/app';
-import {
-    Empty,
-    PageLayout,
-    Pagination,
-    Skeleton
-} from '~/components/shared';
 import { Reminders as RemindersEntity } from '~/components/entities';
+import ReminderCard from '~/components/reminder/ReminderCard';
+import { Empty, PageLayout, Pagination, Skeleton } from '~/components/shared';
 import { Text } from '~/components/ui';
 import useReminderMutate from '~/hooks/resource/useReminderMutate';
-import ReminderCard from '~/components/reminder/ReminderCard';
 import { priorityColors } from '~/modules/color';
 import { REMINDERS_ROUTE } from '~/modules/url';
 
@@ -17,16 +12,16 @@ const Route = getRouteApi(REMINDERS_ROUTE);
 const priorityHints = [
     {
         label: 'High',
-        className: priorityColors.high
+        className: priorityColors.high,
     },
     {
         label: 'Medium',
-        className: priorityColors.medium
+        className: priorityColors.medium,
     },
     {
         label: 'Low',
-        className: priorityColors.low
-    }
+        className: priorityColors.low,
+    },
 ] as const;
 
 export default function Reminders() {
@@ -43,11 +38,7 @@ export default function Reminders() {
                         className={`h-2.5 w-2.5 rounded-full border border-border-subtle ${className}`}
                         aria-hidden="true"
                     />
-                    <Text
-                        as="span"
-                        variant="label"
-                        weight="medium"
-                        tone="tertiary">
+                    <Text as="span" variant="label" weight="medium" tone="tertiary">
                         {label}
                     </Text>
                 </div>
@@ -57,12 +48,13 @@ export default function Reminders() {
 
     return (
         <QueryBoundary
-            fallback={(
+            fallback={
                 <PageLayout
                     title="Reminders"
                     heading={<Skeleton width={164} height={24} className="rounded-full" />}
                     description={<Skeleton width={224} height={16} className="rounded-full" />}
-                    headerRight={priorityLegend}>
+                    headerRight={priorityLegend}
+                >
                     <div className="flex flex-col gap-2.5">
                         <Skeleton height="60px" />
                         <Skeleton height="60px" />
@@ -70,14 +62,15 @@ export default function Reminders() {
                         <Skeleton height="60px" />
                     </div>
                 </PageLayout>
-            )}
+            }
             errorTitle="Failed to load reminders"
             errorDescription="Retry loading the upcoming reminder list"
-            resetKeys={[page, limit]}>
+            resetKeys={[page, limit]}
+        >
             <RemindersEntity
                 searchParams={{
                     offset: (page - 1) * limit,
-                    limit
+                    limit,
                 }}
                 render={({ reminders, totalCount }) => {
                     const heading = totalCount > 0 ? `Reminders (${totalCount})` : undefined;
@@ -89,7 +82,8 @@ export default function Reminders() {
                                 title="Reminders"
                                 heading={heading}
                                 description={description}
-                                headerRight={priorityLegend}>
+                                headerRight={priorityLegend}
+                            >
                                 <Empty
                                     title="No upcoming reminders"
                                     description="Add a reminder inside any note to see it here"
@@ -103,7 +97,8 @@ export default function Reminders() {
                             title="Reminders"
                             heading={heading}
                             description={description}
-                            headerRight={priorityLegend}>
+                            headerRight={priorityLegend}
+                        >
                             <div className="flex flex-col gap-4">
                                 <div className="flex flex-col gap-2.5">
                                     {reminders.map((reminder) => (
@@ -121,10 +116,10 @@ export default function Reminders() {
                                         last={Math.ceil(totalCount / limit)}
                                         onChange={(nextPage) => {
                                             navigate({
-                                                search: prev => ({
+                                                search: (prev) => ({
                                                     ...prev,
-                                                    page: nextPage
-                                                })
+                                                    page: nextPage,
+                                                }),
                                             });
                                         }}
                                     />

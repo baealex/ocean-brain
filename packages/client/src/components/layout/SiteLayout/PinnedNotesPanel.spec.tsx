@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
 import { act, render, screen, waitFor } from '@testing-library/react';
+import type { ReactNode } from 'react';
 
 import { reorderNotes } from '~/apis/note.api';
 
@@ -22,20 +22,14 @@ let latestOnDragEnd: ((event: { active: { id: string }; over: { id: string } | n
 const mockSortableAttributes = { 'data-sortable-handle': 'true' };
 
 vi.mock('@tanstack/react-router', () => ({
-    Link: ({
-        children,
-        ...props
-    }: {
-        children: ReactNode;
-        [key: string]: unknown;
-    }) => <a {...props}>{children}</a>,
-    useLocation: ({ select }: { select: (location: RouterLocation) => unknown }) => select({ pathname: '/note-2' })
+    Link: ({ children, ...props }: { children: ReactNode; [key: string]: unknown }) => <a {...props}>{children}</a>,
+    useLocation: ({ select }: { select: (location: RouterLocation) => unknown }) => select({ pathname: '/note-2' }),
 }));
 
 vi.mock('@dnd-kit/core', () => ({
     DndContext: ({
         children,
-        onDragEnd
+        onDragEnd,
     }: {
         children: ReactNode;
         onDragEnd?: (event: { active: { id: string }; over: { id: string } | null }) => void;
@@ -49,9 +43,9 @@ vi.mock('@dnd-kit/core', () => ({
     closestCenter: vi.fn(),
     useSensor: vi.fn((sensor: unknown, options?: unknown) => ({
         sensor,
-        options
+        options,
     })),
-    useSensors: vi.fn((...sensors: unknown[]) => sensors)
+    useSensors: vi.fn((...sensors: unknown[]) => sensors),
 }));
 
 vi.mock('@dnd-kit/modifiers', () => ({ restrictToVerticalAxis: vi.fn() }));
@@ -73,9 +67,9 @@ vi.mock('@dnd-kit/sortable', () => ({
         setActivatorNodeRef: vi.fn(),
         transform: null,
         transition: undefined,
-        isDragging: false
+        isDragging: false,
     }),
-    verticalListSortingStrategy: {}
+    verticalListSortingStrategy: {},
 }));
 
 vi.mock('@dnd-kit/utilities', () => ({ CSS: { Transform: { toString: () => undefined } } }));
@@ -84,13 +78,11 @@ vi.mock('~/apis/note.api', () => ({ reorderNotes: vi.fn() }));
 
 vi.mock('~/components/app', () => ({
     QueryBoundary: ({ children }: { children: ReactNode }) => <>{children}</>,
-    QueryErrorView: () => <div>Error</div>
+    QueryErrorView: () => <div>Error</div>,
 }));
 
 vi.mock('~/components/entities', () => ({
-    PinnedNotes: ({ render }: { render: (notes: MockPinnedNote[]) => ReactNode }) => (
-        <>{render(mockPinnedNotes)}</>
-    )
+    PinnedNotes: ({ render }: { render: (notes: MockPinnedNote[]) => ReactNode }) => <>{render(mockPinnedNotes)}</>,
 }));
 
 vi.mock('~/components/ui', async () => {
@@ -114,11 +106,13 @@ describe('<PinnedNotesPanel />', () => {
     });
 
     it('renders pinned notes with a drag handle affordance', () => {
-        mockPinnedNotes = [{
-            id: 'note-2',
-            title: 'Editorial note',
-            order: 0
-        }];
+        mockPinnedNotes = [
+            {
+                id: 'note-2',
+                title: 'Editorial note',
+                order: 0,
+            },
+        ];
         const { Wrapper } = createQueryClientWrapper();
 
         render(<PinnedNotesPanel />, { wrapper: Wrapper });
@@ -127,7 +121,10 @@ describe('<PinnedNotesPanel />', () => {
 
         expect(activeNote).toBeInTheDocument();
         expect(activeNote).toHaveAttribute('aria-current', 'page');
-        expect(screen.getByRole('button', { name: 'Reorder note Editorial note' })).toHaveAttribute('data-sortable-handle', 'true');
+        expect(screen.getByRole('button', { name: 'Reorder note Editorial note' })).toHaveAttribute(
+            'data-sortable-handle',
+            'true',
+        );
         expect(screen.getByTestId('dnd-context')).toBeInTheDocument();
     });
 
@@ -137,13 +134,13 @@ describe('<PinnedNotesPanel />', () => {
             {
                 id: 'note-1',
                 title: 'First note',
-                order: 0
+                order: 0,
             },
             {
                 id: 'note-2',
                 title: 'Second note',
-                order: 1
-            }
+                order: 1,
+            },
         ];
         const { Wrapper } = createQueryClientWrapper();
 
@@ -152,7 +149,7 @@ describe('<PinnedNotesPanel />', () => {
         await act(async () => {
             latestOnDragEnd?.({
                 active: { id: 'note-1' },
-                over: { id: 'note-2' }
+                over: { id: 'note-2' },
             });
         });
 
@@ -161,12 +158,12 @@ describe('<PinnedNotesPanel />', () => {
             expect(vi.mocked(reorderNotes).mock.calls[0]?.[0]).toEqual([
                 {
                     id: 'note-2',
-                    order: 0
+                    order: 0,
                 },
                 {
                     id: 'note-1',
-                    order: 1
-                }
+                    order: 1,
+                },
             ]);
         });
     });

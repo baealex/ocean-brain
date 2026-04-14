@@ -1,5 +1,5 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 
 import { createImageUploadService, hashImageBuffer } from '../src/modules/image-upload.js';
 
@@ -20,25 +20,25 @@ test('image upload service returns the existing image without writing a new file
         },
         findImageByHash: async () => ({
             id: 9,
-            url: '/assets/images/existing.png'
+            url: '/assets/images/existing.png',
         }),
         removeFile: async () => {
             throw new Error('remove should not run');
         },
         writeFile: async () => {
             writeCount += 1;
-        }
+        },
     });
 
     const image = await service.persistImage({
         buffer: Buffer.from('existing-image'),
-        extension: 'png'
+        extension: 'png',
     });
 
     assert.equal(writeCount, 0);
     assert.deepEqual(image, {
         id: 9,
-        url: '/assets/images/existing.png'
+        url: '/assets/images/existing.png',
     });
 });
 
@@ -51,7 +51,7 @@ test('image upload service writes a file and creates an image row for a new imag
             created.push(input);
             return {
                 id: 12,
-                url: input.url
+                url: input.url,
             };
         },
         ensureDir: async () => undefined,
@@ -60,14 +60,14 @@ test('image upload service writes a file and creates an image row for a new imag
         writeFile: async (filePath, buffer) => {
             writes.push({
                 filePath,
-                size: buffer.length
+                size: buffer.length,
             });
-        }
+        },
     });
 
     const image = await service.persistImage({
         buffer: Buffer.from('brand-new-image'),
-        extension: 'png'
+        extension: 'png',
     });
 
     assert.equal(writes.length, 1);
@@ -75,7 +75,7 @@ test('image upload service writes a file and creates an image row for a new imag
     assert.match(created[0]?.url ?? '', /\/assets\/images\/\d+\/\d+\/\d+\/[a-f0-9]+\.png$/);
     assert.deepEqual(image, {
         id: 12,
-        url: created[0]?.url
+        url: created[0]?.url,
     });
 });
 
@@ -88,7 +88,7 @@ test('image upload service removes the file and returns the winning row on hash 
         createImage: async () => {
             throw {
                 code: 'P2002',
-                meta: { target: ['hash'] }
+                meta: { target: ['hash'] },
             };
         },
         ensureDir: async () => undefined,
@@ -101,24 +101,24 @@ test('image upload service removes the file and returns the winning row on hash 
 
             return {
                 id: 15,
-                url: `/assets/images/2026/3/31/${hash}.png`
+                url: `/assets/images/2026/3/31/${hash}.png`,
             };
         },
         removeFile: async (filePath) => {
             removed.push(filePath);
         },
-        writeFile: async () => undefined
+        writeFile: async () => undefined,
     });
 
     const image = await service.persistImage({
         buffer: Buffer.from('race-image'),
-        extension: 'png'
+        extension: 'png',
     });
 
     assert.equal(removed.length, 1);
     assert.deepEqual(image, {
         id: 15,
-        url: `/assets/images/2026/3/31/${hash}.png`
+        url: `/assets/images/2026/3/31/${hash}.png`,
     });
 });
 
@@ -133,15 +133,16 @@ test('image upload service removes the file before surfacing non-unique create f
         removeFile: async (filePath) => {
             removed.push(filePath);
         },
-        writeFile: async () => undefined
+        writeFile: async () => undefined,
     });
 
     await assert.rejects(
-        () => service.persistImage({
-            buffer: Buffer.from('broken-image'),
-            extension: 'png'
-        }),
-        /database down/
+        () =>
+            service.persistImage({
+                buffer: Buffer.from('broken-image'),
+                extension: 'png',
+            }),
+        /database down/,
     );
 
     assert.equal(removed.length, 1);

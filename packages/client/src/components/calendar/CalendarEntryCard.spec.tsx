@@ -1,12 +1,12 @@
-import { act, render, screen } from '@testing-library/react';
-import { createMemoryHistory } from '@tanstack/react-router';
 import {
-    Outlet,
+    createMemoryHistory,
     createRootRoute,
     createRoute,
     createRouter,
-    RouterProvider
+    Outlet,
+    RouterProvider,
 } from '@tanstack/react-router';
+import { act, render, screen } from '@testing-library/react';
 
 import { NOTE_ROUTE } from '~/modules/url';
 
@@ -26,11 +26,11 @@ describe('<CalendarEntryCard />', () => {
                     title="Card title"
                     meta="09:30"
                 />
-            )
+            ),
         });
         const router = createRouter({
             routeTree: rootRoute.addChildren([noteRoute]),
-            history: createMemoryHistory({ initialEntries: ['/test-note'] })
+            history: createMemoryHistory({ initialEntries: ['/test-note'] }),
         });
 
         render(<RouterProvider router={router} />);

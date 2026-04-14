@@ -22,9 +22,7 @@ const Highlight = ({ children, match }: HighlightProps) => {
     return (
         <span>
             {parts.map((part, index) =>
-                exactMatchRegex.test(part)
-                    ? <mark key={index}>{part}</mark>
-                    : <Fragment key={index}>{part}</Fragment>
+                exactMatchRegex.test(part) ? <mark key={index}>{part}</mark> : <Fragment key={index}>{part}</Fragment>,
             )}
         </span>
     );

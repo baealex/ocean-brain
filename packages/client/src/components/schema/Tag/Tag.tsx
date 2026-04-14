@@ -1,17 +1,12 @@
-import styles from './Tag.module.scss';
 import classNames from 'classnames/bind';
+import styles from './Tag.module.scss';
+
 const cx = classNames.bind(styles);
 
-import type {
-    CustomInlineContentConfig,
-    StyleSchema
-} from '@blocknote/core';
-import {
-    createReactInlineContentSpec,
-    type ReactCustomInlineContentRenderProps
-} from '@blocknote/react';
-import type { KeyboardEvent, MouseEvent } from 'react';
+import type { CustomInlineContentConfig, StyleSchema } from '@blocknote/core';
+import { createReactInlineContentSpec, type ReactCustomInlineContentRenderProps } from '@blocknote/react';
 import { useNavigate } from '@tanstack/react-router';
+import type { KeyboardEvent, MouseEvent } from 'react';
 
 import { TAG_NOTES_ROUTE } from '~/modules/url';
 
@@ -19,9 +14,9 @@ const tagConfig = {
     type: 'tag',
     propSchema: {
         id: { default: '' },
-        tag: { default: '@Unknown' }
+        tag: { default: '@Unknown' },
     },
-    content: 'none'
+    content: 'none',
 } satisfies CustomInlineContentConfig;
 
 type TagRenderProps = ReactCustomInlineContentRenderProps<typeof tagConfig, StyleSchema>;
@@ -34,7 +29,7 @@ function TagContent(props: TagRenderProps) {
         void navigate({
             to: TAG_NOTES_ROUTE,
             params: { id: props.inlineContent.props.id },
-            search: { page: 1 }
+            search: { page: 1 },
         });
     };
 
@@ -61,17 +56,13 @@ function TagContent(props: TagRenderProps) {
 
                 stopEditorInteraction(event);
                 navigateToTag();
-            }}>
-            <span>
-                {props.inlineContent.props.tag}
-            </span>
+            }}
+        >
+            <span>{props.inlineContent.props.tag}</span>
         </span>
     );
 }
 
-export const Tag = createReactInlineContentSpec(
-    tagConfig,
-    { render: (props) => <TagContent {...props} /> }
-);
+export const Tag = createReactInlineContentSpec(tagConfig, { render: (props) => <TagContent {...props} /> });
 
 export default Tag;

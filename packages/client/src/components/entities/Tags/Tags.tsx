@@ -8,10 +8,7 @@ interface TagsProps {
         offset: number;
         limit: number;
     };
-    render: (data: {
-        tags: Tag[];
-        totalCount: number;
-    }) => React.ReactNode;
+    render: (data: { tags: Tag[]; totalCount: number }) => React.ReactNode;
 }
 
 const Tags = (props: TagsProps) => {
@@ -20,13 +17,13 @@ const Tags = (props: TagsProps) => {
         async queryFn() {
             const response = await fetchTags({
                 offset: props.searchParams.offset,
-                limit: props.searchParams.limit
+                limit: props.searchParams.limit,
             });
             if (response.type === 'error') {
                 throw response;
             }
             return response.allTags;
-        }
+        },
     });
 
     return props.render(data);

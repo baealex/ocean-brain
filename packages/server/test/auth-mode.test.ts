@@ -1,12 +1,12 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 
 import { resolveAuthConfig } from '../src/modules/auth-mode.js';
 
 test('resolveAuthConfig returns password mode when password env is present', () => {
     const authConfig = resolveAuthConfig({
         OCEAN_BRAIN_PASSWORD: 'secret',
-        OCEAN_BRAIN_SESSION_SECRET: 'session-secret'
+        OCEAN_BRAIN_SESSION_SECRET: 'session-secret',
     });
 
     assert.equal(authConfig.mode, 'password');
@@ -20,16 +20,13 @@ test('resolveAuthConfig returns disabled mode when insecure flag is enabled', ()
 });
 
 test('resolveAuthConfig throws when password mode is missing session secret', () => {
-    assert.throws(
-        () => resolveAuthConfig({ OCEAN_BRAIN_PASSWORD: 'secret' }),
-        /OCEAN_BRAIN_SESSION_SECRET/
-    );
+    assert.throws(() => resolveAuthConfig({ OCEAN_BRAIN_PASSWORD: 'secret' }), /OCEAN_BRAIN_SESSION_SECRET/);
 });
 
 test('resolveAuthConfig prioritizes insecure flag when both insecure flag and password env are present', () => {
     const authConfig = resolveAuthConfig({
         OCEAN_BRAIN_ALLOW_INSECURE_NO_AUTH: 'true',
-        OCEAN_BRAIN_PASSWORD: 'secret'
+        OCEAN_BRAIN_PASSWORD: 'secret',
     });
 
     assert.equal(authConfig.mode, 'disabled');

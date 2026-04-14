@@ -1,5 +1,5 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 
 import { createNoteSnapshotService } from '../src/modules/note-snapshot.js';
 
@@ -21,10 +21,13 @@ test('captureBaseline stores one snapshot per note edit session', async () => {
             content: '{"type":"doc"}',
             pinned: false,
             order: 0,
-            layout: 'wide'
+            layout: 'wide',
         }),
         findSnapshotByEditSessionId: async (noteId, editSessionId) => {
-            return snapshots.find((snapshot) => snapshot.noteId === noteId && snapshot.editSessionId === editSessionId) ?? null;
+            return (
+                snapshots.find((snapshot) => snapshot.noteId === noteId && snapshot.editSessionId === editSessionId) ??
+                null
+            );
         },
         createSnapshot: async (input) => {
             const snapshot = {
@@ -34,7 +37,7 @@ test('captureBaseline stores one snapshot per note edit session', async () => {
                 payload: input.payload,
                 editSessionId: input.editSessionId ?? null,
                 meta: input.meta ?? null,
-                createdAt: new Date('2026-03-31T00:00:00.000Z')
+                createdAt: new Date('2026-03-31T00:00:00.000Z'),
             };
             snapshots.push(snapshot);
             return snapshot;
@@ -45,18 +48,18 @@ test('captureBaseline stores one snapshot per note edit session', async () => {
         findSnapshotById: async () => null,
         updateNote: async () => {
             throw new Error('should not restore');
-        }
+        },
     });
 
     const first = await service.captureBaseline({
         noteId: 7,
         editSessionId: 'session-1',
-        meta: '{"label":"Web browser"}'
+        meta: '{"label":"Web browser"}',
     });
     const second = await service.captureBaseline({
         noteId: 7,
         editSessionId: 'session-1',
-        meta: '{"label":"Web browser"}'
+        meta: '{"label":"Web browser"}',
     });
 
     assert.equal(snapshots.length, 1);
@@ -92,7 +95,7 @@ test('restoreSnapshot reapplies payload and stores the current state first', asy
             content: '{"type":"current"}',
             pinned: true,
             order: 2,
-            layout: 'full'
+            layout: 'full',
         }),
         findSnapshotByEditSessionId: async () => null,
         createSnapshot: async (input) => {
@@ -103,7 +106,7 @@ test('restoreSnapshot reapplies payload and stores the current state first', asy
                 payload: input.payload,
                 editSessionId: input.editSessionId ?? null,
                 meta: input.meta ?? null,
-                createdAt: new Date('2026-03-31T00:00:00.000Z')
+                createdAt: new Date('2026-03-31T00:00:00.000Z'),
             };
             createdSnapshots.push(snapshot);
             return snapshot;
@@ -120,16 +123,16 @@ test('restoreSnapshot reapplies payload and stores the current state first', asy
                 content: '{"type":"previous"}',
                 pinned: false,
                 order: 0,
-                layout: 'wide'
+                layout: 'wide',
             }),
             editSessionId: 'session-1',
             meta: '{"label":"Web browser"}',
-            createdAt: new Date('2026-03-30T00:00:00.000Z')
+            createdAt: new Date('2026-03-30T00:00:00.000Z'),
         }),
         updateNote: async (id, input) => {
             updated.push({
                 id,
-                input
+                input,
             });
             return {
                 id,
@@ -137,25 +140,27 @@ test('restoreSnapshot reapplies payload and stores the current state first', asy
                 content: input.content,
                 pinned: input.pinned,
                 order: input.order,
-                layout: input.layout
+                layout: input.layout,
             };
-        }
+        },
     });
 
     const restored = await service.restoreSnapshot(3, { meta: '{"label":"Web browser"}' });
 
     assert.equal(createdSnapshots.length, 1);
     assert.equal(createdSnapshots[0]?.title, 'Current title');
-    assert.deepEqual(updated, [{
-        id: 7,
-        input: {
-            title: 'Previous title',
-            content: '{"type":"previous"}',
-            pinned: false,
-            order: 0,
-            layout: 'wide'
-        }
-    }]);
+    assert.deepEqual(updated, [
+        {
+            id: 7,
+            input: {
+                title: 'Previous title',
+                content: '{"type":"previous"}',
+                pinned: false,
+                order: 0,
+                layout: 'wide',
+            },
+        },
+    ]);
     assert.equal(restored?.title, 'Previous title');
 });
 
@@ -175,19 +180,21 @@ test('listSnapshots runs retention cleanup before returning recent snapshots', a
             calls.push('trim');
             return 1;
         },
-        listSnapshots: async () => [{
-            id: 9,
-            noteId: 7,
-            title: 'Current baseline',
-            payload: '{}',
-            editSessionId: null,
-            meta: '{"label":"Web browser"}',
-            createdAt: new Date('2026-03-31T00:00:00.000Z')
-        }],
+        listSnapshots: async () => [
+            {
+                id: 9,
+                noteId: 7,
+                title: 'Current baseline',
+                payload: '{}',
+                editSessionId: null,
+                meta: '{"label":"Web browser"}',
+                createdAt: new Date('2026-03-31T00:00:00.000Z'),
+            },
+        ],
         findSnapshotById: async () => null,
         updateNote: async () => {
             throw new Error('should not update');
-        }
+        },
     });
 
     const snapshots = await service.listSnapshots(7, 5);

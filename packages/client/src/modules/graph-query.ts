@@ -42,18 +42,18 @@ const toGraphQLError = (errors: GraphQLErrorPayload[]): GraphQueryErrorResponse 
         errors: errors.map((error) => ({
             code: error.extensions?.code ?? 'GRAPHQL_ERROR',
             message: error.message ?? 'GraphQL request failed',
-            details: error
-        }))
+            details: error,
+        })),
     };
 };
 
 const toNetworkError = (error: unknown): GraphQueryErrorResponse => {
     const message = axios.isAxiosError<{ message?: string }>(error)
-        ? error.response?.data?.message ?? error.message ?? 'Network request failed'
+        ? (error.response?.data?.message ?? error.message ?? 'Network request failed')
         : 'Network request failed';
 
     const code = axios.isAxiosError(error)
-        ? error.code ?? (error.response?.status ? `HTTP_${error.response.status}` : 'NETWORK_ERROR')
+        ? (error.code ?? (error.response?.status ? `HTTP_${error.response.status}` : 'NETWORK_ERROR'))
         : 'NETWORK_ERROR';
 
     const details = axios.isAxiosError(error) ? error.response?.data : undefined;
@@ -61,34 +61,37 @@ const toNetworkError = (error: unknown): GraphQueryErrorResponse => {
     return {
         type: 'error',
         category: 'network',
-        errors: [{
-            code,
-            message,
-            details
-        }]
+        errors: [
+            {
+                code,
+                message,
+                details,
+            },
+        ],
     };
 };
 
 export function graphQuery<TData extends object, TVariables extends object = Record<string, unknown>>(
-    request: GraphQueryRequest<TVariables>
+    request: GraphQueryRequest<TVariables>,
 ): Promise<GraphQueryResponse<TData>>;
 export function graphQuery<TData extends object, TVariables extends object = Record<string, unknown>>(
     query: string,
     variables?: TVariables,
-    operationName?: string
+    operationName?: string,
 ): Promise<GraphQueryResponse<TData>>;
 export async function graphQuery<TData extends object, TVariables extends object = Record<string, unknown>>(
     queryOrRequest: string | GraphQueryRequest<TVariables>,
     variables?: TVariables,
-    operationName?: string
+    operationName?: string,
 ): Promise<GraphQueryResponse<TData>> {
-    const request = typeof queryOrRequest === 'string'
-        ? {
-            query: queryOrRequest,
-            variables,
-            operationName
-        }
-        : queryOrRequest;
+    const request =
+        typeof queryOrRequest === 'string'
+            ? {
+                  query: queryOrRequest,
+                  variables,
+                  operationName,
+              }
+            : queryOrRequest;
 
     try {
         const { data } = await axios.post<{
@@ -104,19 +107,21 @@ export async function graphQuery<TData extends object, TVariables extends object
             return {
                 type: 'error',
                 category: 'graphql',
-                errors: [{
-                    code: 'EMPTY_RESPONSE',
-                    message: 'GraphQL response data is empty',
-                    details: data
-                }]
+                errors: [
+                    {
+                        code: 'EMPTY_RESPONSE',
+                        message: 'GraphQL response data is empty',
+                        details: data,
+                    },
+                ],
             };
         }
 
         return {
             type: 'success',
-            ...data.data
+            ...data.data,
         };
     } catch (error) {
         return toNetworkError(error);
     }
-};
+}

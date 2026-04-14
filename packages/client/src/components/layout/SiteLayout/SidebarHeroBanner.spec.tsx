@@ -14,7 +14,7 @@ type ThemeState = {
 
 vi.mock('~/apis/server-cache.api', () => ({
     getServerCache: vi.fn(),
-    setServerCache: vi.fn()
+    setServerCache: vi.fn(),
 }));
 
 vi.mock('~/components/ui', async () => {
@@ -23,25 +23,25 @@ vi.mock('~/components/ui', async () => {
     return {
         ...actual,
         useConfirm: () => mockConfirm,
-        useToast: () => mockToast
+        useToast: () => mockToast,
     };
 });
 
-vi.mock('~/store/theme', () => ({ useTheme: (selector: (state: ThemeState) => unknown) => selector({ theme: 'light' }) }));
+vi.mock('~/store/theme', () => ({
+    useTheme: (selector: (state: ThemeState) => unknown) => selector({ theme: 'light' }),
+}));
 
 describe('<SidebarHeroBanner />', () => {
     it('renders the hero image and removes it through the confirm flow', async () => {
         vi.mocked(getServerCache).mockResolvedValue('https://example.com/hero.jpg');
         vi.mocked(setServerCache).mockResolvedValue({
             type: 'success',
-            setCache: { value: '' }
+            setCache: { value: '' },
         });
         mockConfirm.mockResolvedValue(true);
 
         const queryClient = createTestQueryClient();
-        const invalidateSpy = vi
-            .spyOn(queryClient, 'invalidateQueries')
-            .mockResolvedValue(undefined);
+        const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined);
         const { Wrapper } = createQueryClientWrapper(queryClient);
 
         render(<SidebarHeroBanner />, { wrapper: Wrapper });
@@ -55,7 +55,7 @@ describe('<SidebarHeroBanner />', () => {
             expect(setServerCache).toHaveBeenCalledWith('heroBanner', '');
             expect(invalidateSpy).toHaveBeenCalledWith({
                 queryKey: queryKeys.ui.heroBanner(),
-                exact: true
+                exact: true,
             });
         });
     });

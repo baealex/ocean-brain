@@ -15,15 +15,8 @@ const iconClassName = 'inline-flex h-4 w-4 shrink-0 items-center justify-center 
 const SidebarSectionHeader = ({ title, icon, detail }: SidebarSectionHeaderProps) => (
     <div className={rootClassName}>
         <div className={leadingClassName}>
-            {icon ? (
-                <span className={iconClassName}>
-                    {icon}
-                </span>
-            ) : null}
-            <Text
-                variant="label"
-                weight="medium"
-                tone="tertiary">
+            {icon ? <span className={iconClassName}>{icon}</span> : null}
+            <Text variant="label" weight="medium" tone="tertiary">
                 {title}
             </Text>
         </div>

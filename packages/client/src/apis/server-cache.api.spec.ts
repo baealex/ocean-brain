@@ -16,11 +16,13 @@ describe('server-cache.api', () => {
         expect(response).toEqual({
             type: 'error',
             category: 'graphql',
-            errors: [{
-                code: 'INVALID_RESPONSE_SHAPE',
-                message: 'GraphQL response field "setCache" is missing or invalid',
-                details: { type: 'success' }
-            }]
+            errors: [
+                {
+                    code: 'INVALID_RESPONSE_SHAPE',
+                    message: 'GraphQL response field "setCache" is missing or invalid',
+                    details: { type: 'success' },
+                },
+            ],
         });
     });
 
@@ -29,21 +31,18 @@ describe('server-cache.api', () => {
 
         vi.mocked(graphQuery).mockResolvedValue({
             type: 'success',
-            setCache: { value: encodedValue }
+            setCache: { value: encodedValue },
         } as never);
 
         const response = await setServerCache('heroBanner', 'https://example.com/hero.jpg');
 
-        expect(graphQuery).toHaveBeenCalledWith(
-            expect.stringContaining('mutation SetServerCache'),
-            {
-                key: 'heroBanner',
-                value: encodedValue
-            }
-        );
+        expect(graphQuery).toHaveBeenCalledWith(expect.stringContaining('mutation SetServerCache'), {
+            key: 'heroBanner',
+            value: encodedValue,
+        });
         expect(response).toEqual({
             type: 'success',
-            setCache: { value: encodedValue }
+            setCache: { value: encodedValue },
         });
     });
 

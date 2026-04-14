@@ -24,19 +24,23 @@ export const createErrorHandler = (): ErrorRequestHandler => {
         }
 
         if (error instanceof AppError) {
-            res.status(error.status).json({
-                code: error.code,
-                message: error.message
-            }).end();
+            res.status(error.status)
+                .json({
+                    code: error.code,
+                    message: error.message,
+                })
+                .end();
             return;
         }
 
         const message = error instanceof Error ? error.stack || error.message : String(error);
         process.stderr.write(`[error] ${message}\n`);
 
-        res.status(500).json({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: 'Internal Server Error'
-        }).end();
+        res.status(500)
+            .json({
+                code: 'INTERNAL_SERVER_ERROR',
+                message: 'Internal Server Error',
+            })
+            .end();
     };
 };

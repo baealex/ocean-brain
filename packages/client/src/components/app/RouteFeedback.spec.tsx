@@ -1,21 +1,17 @@
-import type { ReactNode } from 'react';
-import { act, render, screen } from '@testing-library/react';
 import { RouterProvider } from '@tanstack/react-router';
+import { act, render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
 
 import { createTestRouter } from '~/test/create-test-router';
 
-import {
-    RouteErrorView,
-    RouteNotFoundView,
-    RoutePendingView
-} from './RouteFeedback';
+import { RouteErrorView, RouteNotFoundView, RoutePendingView } from './RouteFeedback';
 
 describe('RouteFeedback', () => {
     const renderWithRouter = async (component: () => ReactNode) => {
         const router = createTestRouter({
             initialPath: '/',
             routePath: '/',
-            rootComponent: component
+            rootComponent: component,
         });
 
         render(<RouterProvider router={router} />);
@@ -26,10 +22,7 @@ describe('RouteFeedback', () => {
 
     it('renders the pending skeleton layout without a visible page header', () => {
         const { container } = render(
-            <RoutePendingView
-                title="Loading graph"
-                description="Preparing the linked note constellation."
-            />
+            <RoutePendingView title="Loading graph" description="Preparing the linked note constellation." />,
         );
 
         expect(screen.queryByText('Loading graph')).not.toBeInTheDocument();
@@ -40,10 +33,12 @@ describe('RouteFeedback', () => {
         await renderWithRouter(() => (
             <RouteErrorView
                 error={{
-                    errors: [{
-                        code: 'GRAPHQL_ERROR',
-                        message: 'Graph exploded'
-                    }]
+                    errors: [
+                        {
+                            code: 'GRAPHQL_ERROR',
+                            message: 'Graph exploded',
+                        },
+                    ],
                 }}
                 reset={vi.fn()}
             />

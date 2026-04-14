@@ -52,23 +52,26 @@ export const placeholderTypeDefs = `
 
 export const placeholderResolvers: IResolvers = {
     Query: {
-        allPlaceholders: async (_, { searchFilter, pagination }: { searchFilter?: SearchFilter; pagination?: Pagination }) => {
+        allPlaceholders: async (
+            _,
+            { searchFilter, pagination }: { searchFilter?: SearchFilter; pagination?: Pagination },
+        ) => {
             const placeholders = await models.placeholder.findMany({
                 where: searchFilter?.query ? { name: { contains: searchFilter.query } } : undefined,
                 take: pagination?.limit,
-                skip: pagination?.offset
+                skip: pagination?.offset,
             });
 
             const totalCount = await models.placeholder.count();
 
             return {
                 totalCount,
-                placeholders
+                placeholders,
             };
         },
         placeholder: async (_, { id }: { id: number }) => {
             return await models.placeholder.findFirst({ where: { id } });
-        }
+        },
     },
     Mutation: {
         createPlaceholder: async (_, { name, template, replacement }: Placeholder) => {
@@ -76,8 +79,8 @@ export const placeholderResolvers: IResolvers = {
                 data: {
                     name,
                     template,
-                    replacement
-                }
+                    replacement,
+                },
             });
         },
         updatePlaceholder: async (_, { id, name, template, replacement }: Placeholder) => {
@@ -91,8 +94,8 @@ export const placeholderResolvers: IResolvers = {
                 data: {
                     name,
                     template,
-                    replacement
-                }
+                    replacement,
+                },
             });
 
             return placeholder;
@@ -105,6 +108,6 @@ export const placeholderResolvers: IResolvers = {
 
             await models.placeholder.delete({ where: { id: Number(id) } });
             return true;
-        }
-    }
+        },
+    },
 };

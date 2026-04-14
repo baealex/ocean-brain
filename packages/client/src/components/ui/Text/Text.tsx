@@ -1,13 +1,11 @@
-import type { HTMLAttributes, ReactNode } from 'react';
 import type { VariantProps } from 'class-variance-authority';
+import type { HTMLAttributes, ReactNode } from 'react';
 
 import { textVariants } from './variants';
 
 type TextTag = 'span' | 'p' | 'div' | 'h1' | 'h2' | 'h3' | 'h4' | 'label' | 'small';
 
-export interface TextProps
-    extends HTMLAttributes<HTMLElement>,
-        VariantProps<typeof textVariants> {
+export interface TextProps extends HTMLAttributes<HTMLElement>, VariantProps<typeof textVariants> {
     as?: TextTag;
     children?: ReactNode;
 }
@@ -35,9 +33,10 @@ export function Text({
                 tracking,
                 transform,
                 truncate,
-                className
+                className,
             })}
-            {...props}>
+            {...props}
+        >
             {children}
         </Component>
     );

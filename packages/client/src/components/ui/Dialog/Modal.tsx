@@ -1,11 +1,4 @@
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogBody,
-    DialogFooter,
-    DialogDescription
-} from './Dialog';
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader } from './Dialog';
 import type { DialogVariant } from './variants';
 
 interface ModalProps {
@@ -16,9 +9,7 @@ interface ModalProps {
     variant?: DialogVariant;
 }
 
-const Modal = ({
-    isOpen, onClose, children, className, variant = 'default'
-}: ModalProps) => {
+const Modal = ({ isOpen, onClose, children, className, variant = 'default' }: ModalProps) => {
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent variant={variant} className={className}>

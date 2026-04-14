@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
 import { render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
 
 import SiteLayout from './SiteLayout';
 
@@ -7,7 +7,7 @@ vi.mock('./LayoutShell', () => ({
     default: ({
         sidebar,
         topNavigation,
-        children
+        children,
     }: {
         sidebar: ReactNode;
         topNavigation: ReactNode;
@@ -18,7 +18,7 @@ vi.mock('./LayoutShell', () => ({
             <div data-testid="top-navigation-slot">{topNavigation}</div>
             <div data-testid="content-slot">{children}</div>
         </div>
-    )
+    ),
 }));
 
 vi.mock('./SidebarHeroBanner', () => ({ default: () => <div>Hero Banner</div> }));
@@ -34,7 +34,7 @@ describe('<SiteLayout />', () => {
         render(
             <SiteLayout>
                 <div>Page Content</div>
-            </SiteLayout>
+            </SiteLayout>,
         );
 
         expect(screen.getByTestId('sidebar-slot')).toHaveTextContent('Hero Banner');

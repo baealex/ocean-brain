@@ -11,10 +11,7 @@ interface ImageRecord {
 }
 
 interface ImageUploadDeps {
-    createImage: (input: {
-        hash: string;
-        url: string;
-    }) => Promise<ImageRecord>;
+    createImage: (input: { hash: string; url: string }) => Promise<ImageRecord>;
     ensureDir: (dirPath: string) => Promise<void>;
     findImageByHash: (hash: string) => Promise<ImageRecord | null>;
     removeFile: (filePath: string) => Promise<void>;
@@ -37,18 +34,14 @@ export const hashImageBuffer = (buffer: Buffer) => {
 
 const buildImageTarget = (hash: string, extension: string, now = new Date()) => {
     const normalizedExtension = extension.trim().toLowerCase().replace(/^\./, '');
-    const currentPath = [
-        now.getFullYear().toString(),
-        (now.getMonth() + 1).toString(),
-        now.getDate().toString()
-    ];
+    const currentPath = [now.getFullYear().toString(), (now.getMonth() + 1).toString(), now.getDate().toString()];
     const targetDir = path.resolve(paths.imageDir, ...currentPath);
     const fileName = `${hash}.${normalizedExtension}`;
 
     return {
         targetDir,
         absolutePath: path.resolve(targetDir, fileName),
-        url: `/assets/images/${currentPath.join('/')}/${fileName}`
+        url: `/assets/images/${currentPath.join('/')}/${fileName}`,
     };
 };
 
@@ -68,7 +61,9 @@ const isImageHashUniqueConflict = (error: unknown) => {
     const rawTarget = 'target' in error.meta ? error.meta.target : undefined;
     const targets = Array.isArray(rawTarget)
         ? rawTarget.filter((value): value is string => typeof value === 'string')
-        : (typeof rawTarget === 'string' ? [rawTarget] : []);
+        : typeof rawTarget === 'string'
+          ? [rawTarget]
+          : [];
 
     return targets.length === 0 || targets.includes('hash');
 };
@@ -77,12 +72,7 @@ const removeFileIfPresent = async (deps: Pick<ImageUploadDeps, 'removeFile'>, fi
     try {
         await deps.removeFile(filePath);
     } catch (error) {
-        if (
-            typeof error === 'object' &&
-            error !== null &&
-            'code' in error &&
-            error.code === 'ENOENT'
-        ) {
+        if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT') {
             return;
         }
 
@@ -108,7 +98,7 @@ export const createImageUploadService = (deps: ImageUploadDeps) => {
             try {
                 return await deps.createImage({
                     hash,
-                    url: target.url
+                    url: target.url,
                 });
             } catch (error) {
                 await removeFileIfPresent(deps, target.absolutePath);
@@ -123,7 +113,7 @@ export const createImageUploadService = (deps: ImageUploadDeps) => {
 
                 throw error;
             }
-        }
+        },
     };
 };
 
@@ -133,8 +123,8 @@ const defaultImageUploadService = createImageUploadService({
             data: input,
             select: {
                 id: true,
-                url: true
-            }
+                url: true,
+            },
         });
     },
     ensureDir: async (dirPath) => {
@@ -145,8 +135,8 @@ const defaultImageUploadService = createImageUploadService({
             where: { hash },
             select: {
                 id: true,
-                url: true
-            }
+                url: true,
+            },
         });
     },
     removeFile: async (filePath) => {
@@ -154,7 +144,7 @@ const defaultImageUploadService = createImageUploadService({
     },
     writeFile: async (filePath, buffer) => {
         await fs.writeFile(filePath, buffer);
-    }
+    },
 });
 
 export const persistUploadedImage = async (input: PersistImageInput) => {

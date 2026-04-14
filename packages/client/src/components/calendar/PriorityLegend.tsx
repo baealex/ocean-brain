@@ -1,23 +1,23 @@
-import { priorityColorsSubtle } from '~/modules/color';
 import { Text } from '~/components/ui';
+import { priorityColorsSubtle } from '~/modules/color';
 
 const priorities = [
     {
         label: 'High',
-        className: priorityColorsSubtle.high
+        className: priorityColorsSubtle.high,
     },
     {
         label: 'Medium',
-        className: priorityColorsSubtle.medium
+        className: priorityColorsSubtle.medium,
     },
     {
         label: 'Low',
-        className: priorityColorsSubtle.low
+        className: priorityColorsSubtle.low,
     },
     {
         label: 'Overdue',
-        className: 'bg-accent-soft-danger/70 dark:bg-emphasis/70'
-    }
+        className: 'bg-accent-soft-danger/70 dark:bg-emphasis/70',
+    },
 ];
 
 export const PriorityLegend = () => {

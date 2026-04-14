@@ -1,11 +1,5 @@
+import { createRootRoute, createRoute, createRouter, Outlet, RouterProvider } from '@tanstack/react-router';
 import { act, render, screen, within } from '@testing-library/react';
-import {
-    Outlet,
-    RouterProvider,
-    createRootRoute,
-    createRoute,
-    createRouter
-} from '@tanstack/react-router';
 
 import { GRAPH_ROUTE, HOME_ROUTE } from '~/modules/url';
 
@@ -21,19 +15,19 @@ describe('<TopNavigation />', () => {
                     <TopNavigation />
                     <Outlet />
                 </>
-            )
+            ),
         });
 
         const homeRoute = createRoute({
             getParentRoute: () => rootRoute,
             path: HOME_ROUTE,
-            component: () => <div>Home</div>
+            component: () => <div>Home</div>,
         });
 
         const graphRoute = createRoute({
             getParentRoute: () => rootRoute,
             path: GRAPH_ROUTE,
-            component: () => <div>Graph</div>
+            component: () => <div>Graph</div>,
         });
 
         const router = createRouter({ routeTree: rootRoute.addChildren([homeRoute, graphRoute]) });
@@ -51,5 +45,4 @@ describe('<TopNavigation />', () => {
         expect(graphLink).toHaveAttribute('aria-current', 'page');
         expect(notesLink).toHaveAttribute('href', HOME_ROUTE);
     });
-
 });

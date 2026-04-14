@@ -1,5 +1,5 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 
 import { createPrismaRuntime } from '../src/modules/prisma-runtime.js';
 
@@ -18,10 +18,10 @@ test('prisma runtime invokes migrate deploy through the Prisma CLI entry', () =>
             calls.push({
                 file,
                 args,
-                options
+                options,
             });
         },
-        resolvePrismaCliEntry: () => '/virtual/prisma/build/index.js'
+        resolvePrismaCliEntry: () => '/virtual/prisma/build/index.js',
     });
 
     runtime.runMigrateDeploy();

@@ -25,9 +25,7 @@ interface DataMaintenanceService {
 let activeDataMaintenanceTimer: ReturnType<typeof setInterval> | null = null;
 const DEFAULT_DATA_MAINTENANCE_INTERVAL_MS = 15 * 60 * 1000;
 
-export const createDataMaintenanceService = (
-    jobs: DataMaintenanceJob[]
-): DataMaintenanceService => {
+export const createDataMaintenanceService = (jobs: DataMaintenanceJob[]): DataMaintenanceService => {
     let activeDataMaintenancePromise: Promise<DataMaintenanceJobResult[]> | null = null;
 
     const runNow = async (limit?: number) => {
@@ -39,7 +37,7 @@ export const createDataMaintenanceService = (
             if (processedCount > 0) {
                 results.push({
                     key: job.key,
-                    processedCount
+                    processedCount,
                 });
             }
         }
@@ -52,25 +50,24 @@ export const createDataMaintenanceService = (
             return activeDataMaintenancePromise;
         }
 
-        activeDataMaintenancePromise = runNow(limit)
-            .finally(() => {
-                activeDataMaintenancePromise = null;
-            });
+        activeDataMaintenancePromise = runNow(limit).finally(() => {
+            activeDataMaintenancePromise = null;
+        });
 
         return activeDataMaintenancePromise;
     };
 
     return {
         runNow,
-        runInBackground
+        runInBackground,
     };
 };
 
 const defaultDataMaintenanceService = createDataMaintenanceService([
     {
         key: 'note-search-projection',
-        run: backfillStaleNoteSearchText
-    }
+        run: backfillStaleNoteSearchText,
+    },
 ]);
 
 export const runDataMaintenance = async (limit?: number) => {
@@ -81,11 +78,9 @@ export const runDataMaintenanceInBackground = (limit?: number) => {
     return defaultDataMaintenanceService.runInBackground(limit);
 };
 
-export const startDataMaintenanceScheduler = (
-    options: DataMaintenanceSchedulerOptions = {}
-) => {
+export const startDataMaintenanceScheduler = (options: DataMaintenanceSchedulerOptions = {}) => {
     if (activeDataMaintenanceTimer) {
-        return () => {};
+        return () => undefined;
     }
 
     const intervalMs = options.intervalMs ?? DEFAULT_DATA_MAINTENANCE_INTERVAL_MS;

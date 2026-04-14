@@ -2,8 +2,8 @@ import { useSuspenseQuery } from '@tanstack/react-query';
 import { fetchNoteReminders, fetchUpcomingReminders } from '~/apis/reminder.api';
 
 import type { Reminders as RemindersType } from '~/models/reminder.model';
-import type { Pagination } from '~/types';
 import { queryKeys } from '~/modules/query-key-factory';
+import type { Pagination } from '~/types';
 
 interface RemindersProps {
     noteId?: string;
@@ -13,9 +13,7 @@ interface RemindersProps {
 
 export default function Reminders({ noteId, searchParams, render }: RemindersProps) {
     const { data } = useSuspenseQuery({
-        queryKey: noteId
-            ? queryKeys.reminders.note(noteId, searchParams)
-            : queryKeys.reminders.upcoming(searchParams),
+        queryKey: noteId ? queryKeys.reminders.note(noteId, searchParams) : queryKeys.reminders.upcoming(searchParams),
         queryFn: async () => {
             if (noteId) {
                 const noteRemindersResponse = await fetchNoteReminders(noteId, searchParams);
@@ -30,7 +28,7 @@ export default function Reminders({ noteId, searchParams, render }: RemindersPro
                 throw upcomingRemindersResponse;
             }
             return upcomingRemindersResponse.upcomingReminders;
-        }
+        },
     });
 
     return <>{render(data)}</>;

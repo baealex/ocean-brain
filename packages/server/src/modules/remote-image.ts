@@ -34,7 +34,7 @@ const SUPPORTED_IMAGE_TYPES = new Map([
     ['image/gif', 'gif'],
     ['image/webp', 'webp'],
     ['image/bmp', 'bmp'],
-    ['image/avif', 'avif']
+    ['image/avif', 'avif'],
 ]);
 
 const createRemoteImageFetchError = (code: string, status: number, message: string) => {
@@ -104,7 +104,7 @@ const isBlockedAddress = (address: string) => {
 
 const assertSafeRemoteUrl = async (
     src: string,
-    lookupHostname: NonNullable<RemoteImageFetchOptions['lookupHostname']>
+    lookupHostname: NonNullable<RemoteImageFetchOptions['lookupHostname']>,
 ) => {
     let remoteUrl: URL;
 
@@ -123,10 +123,10 @@ const assertSafeRemoteUrl = async (
     }
 
     if (
-        remoteUrl.port
-        && !(
-            (remoteUrl.protocol === 'http:' && remoteUrl.port === '80')
-            || (remoteUrl.protocol === 'https:' && remoteUrl.port === '443')
+        remoteUrl.port &&
+        !(
+            (remoteUrl.protocol === 'http:' && remoteUrl.port === '80') ||
+            (remoteUrl.protocol === 'https:' && remoteUrl.port === '443')
         )
     ) {
         throw createRemoteImageFetchError('REMOTE_URL_BLOCKED', 403, 'Remote image host is not allowed.');
@@ -188,17 +188,16 @@ const readImageBody = async (response: Response, maxBytes: number) => {
     return Buffer.concat(chunks);
 };
 
-export const fetchRemoteImage = async (
-    src: string,
-    options: RemoteImageFetchOptions = {}
-): Promise<RemoteImage> => {
+export const fetchRemoteImage = async (src: string, options: RemoteImageFetchOptions = {}): Promise<RemoteImage> => {
     const fetchImpl = options.fetchImpl ?? fetch;
-    const lookupHostname = options.lookupHostname ?? ((hostname: string) => {
-        return dnsLookup(hostname, {
-            all: true,
-            verbatim: true
+    const lookupHostname =
+        options.lookupHostname ??
+        ((hostname: string) => {
+            return dnsLookup(hostname, {
+                all: true,
+                verbatim: true,
+            });
         });
-    });
     const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
     const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
@@ -210,17 +209,14 @@ export const fetchRemoteImage = async (
         response = await fetchImpl(remoteUrl, {
             method: 'GET',
             redirect: 'error',
-            signal: AbortSignal.timeout(timeoutMs)
+            signal: AbortSignal.timeout(timeoutMs),
         });
     } catch (error) {
         if (error instanceof RemoteImageFetchError) {
             throw error;
         }
 
-        if (
-            error instanceof Error
-            && (error.name === 'TimeoutError' || error.name === 'AbortError')
-        ) {
+        if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
             throw createRemoteImageFetchError('REMOTE_FETCH_TIMEOUT', 504, 'Remote image fetch timed out.');
         }
 
@@ -238,13 +234,13 @@ export const fetchRemoteImage = async (
         throw createRemoteImageFetchError(
             'REMOTE_IMAGE_UNSUPPORTED_CONTENT_TYPE',
             415,
-            'Remote image content type is not supported.'
+            'Remote image content type is not supported.',
         );
     }
 
     return {
         buffer: await readImageBody(response, maxBytes),
         contentType: contentTypeHeader,
-        extension
+        extension,
     };
 };

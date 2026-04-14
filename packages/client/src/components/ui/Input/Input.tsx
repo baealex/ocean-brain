@@ -1,5 +1,5 @@
-import { forwardRef } from 'react';
 import type { VariantProps } from 'class-variance-authority';
+import { forwardRef } from 'react';
 
 import { inputVariants } from './variants';
 
@@ -8,16 +8,7 @@ export interface InputProps
         VariantProps<typeof inputVariants> {}
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-    (
-        {
-            className,
-            variant,
-            size,
-            type = 'text',
-            ...props
-        },
-        ref
-    ) => {
+    ({ className, variant, size, type = 'text', ...props }, ref) => {
         return (
             <input
                 ref={ref}
@@ -25,12 +16,12 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                 className={inputVariants({
                     variant,
                     size,
-                    className
+                    className,
                 })}
                 {...props}
             />
         );
-    }
+    },
 );
 
 Input.displayName = 'Input';

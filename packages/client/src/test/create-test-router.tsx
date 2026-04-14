@@ -1,9 +1,5 @@
+import { createRootRoute, createRoute, createRouter } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import {
-    createRootRoute,
-    createRoute,
-    createRouter
-} from '@tanstack/react-router';
 
 interface CreateTestRouterOptions {
     initialPath?: string;
@@ -16,7 +12,7 @@ export const createTestRouter = ({
     initialPath = '/',
     routePath = '/',
     rootComponent,
-    routeComponent = () => null
+    routeComponent = () => null,
 }: CreateTestRouterOptions) => {
     window.history.pushState({}, '', initialPath);
 
@@ -24,7 +20,7 @@ export const createTestRouter = ({
     const childRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: routePath,
-        component: routeComponent
+        component: routeComponent,
     });
 
     return createRouter({ routeTree: rootRoute.addChildren([childRoute]) });

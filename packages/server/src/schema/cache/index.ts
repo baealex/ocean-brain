@@ -34,7 +34,7 @@ export const cacheTypeDefs = `
 export const cacheResolvers: IResolvers = {
     Query: {
         allCaches: models.cache.findMany,
-        cache: (_, { key }: Cache) => models.cache.findUnique({ where: { key } })
+        cache: (_, { key }: Cache) => models.cache.findUnique({ where: { key } }),
     },
     Mutation: {
         setCache: async (_, { key, value }: Cache) => {
@@ -42,16 +42,16 @@ export const cacheResolvers: IResolvers = {
             if (cache) {
                 return models.cache.update({
                     where: { key },
-                    data: { value: decodeURIComponent(value) }
+                    data: { value: decodeURIComponent(value) },
                 });
             }
             return models.cache.create({
                 data: {
                     key,
-                    value: decodeURIComponent(value)
-                }
+                    value: decodeURIComponent(value),
+                },
             });
         },
-        deleteCache: (_, { key }: Cache) => models.cache.delete({ where: { key } }).then(() => true)
-    }
+        deleteCache: (_, { key }: Cache) => models.cache.delete({ where: { key } }).then(() => true),
+    },
 };

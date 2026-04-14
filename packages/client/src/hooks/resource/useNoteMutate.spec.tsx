@@ -1,10 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 
-import {
-    createNote,
-    deleteNote,
-    pinNote
-} from '~/apis/note.api';
+import { createNote, deleteNote, pinNote } from '~/apis/note.api';
 import { queryKeys } from '~/modules/query-key-factory';
 import { NOTE_ROUTE } from '~/modules/url';
 import { createQueryClientWrapper, createTestQueryClient } from '~/test/test-utils';
@@ -19,20 +15,20 @@ vi.mock('@tanstack/react-router', () => ({ useNavigate: () => mockNavigate }));
 
 vi.mock('~/components/ui', () => ({
     useConfirm: () => mockConfirm,
-    useToast: () => mockToast
+    useToast: () => mockToast,
 }));
 
 vi.mock('~/apis/note.api', () => ({
     createNote: vi.fn(),
     deleteNote: vi.fn(),
-    pinNote: vi.fn()
+    pinNote: vi.fn(),
 }));
 
 describe('useNoteMutate', () => {
     it('navigates to the created note on successful create', async () => {
         vi.mocked(createNote).mockResolvedValue({
             type: 'success',
-            createNote: { id: 'note-1' }
+            createNote: { id: 'note-1' },
         } as never);
 
         const queryClient = createTestQueryClient();
@@ -45,11 +41,11 @@ describe('useNoteMutate', () => {
 
         expect(createNote).toHaveBeenCalledWith({
             title: 'Title',
-            content: 'Content'
+            content: 'Content',
         });
         expect(mockNavigate).toHaveBeenCalledWith({
             to: NOTE_ROUTE,
-            params: { id: 'note-1' }
+            params: { id: 'note-1' },
         });
     });
 
@@ -57,9 +53,7 @@ describe('useNoteMutate', () => {
         vi.mocked(pinNote).mockResolvedValue({ type: 'success' } as never);
 
         const queryClient = createTestQueryClient();
-        const invalidateSpy = vi
-            .spyOn(queryClient, 'invalidateQueries')
-            .mockResolvedValue(undefined);
+        const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined);
         const callback = vi.fn();
         const { Wrapper } = createQueryClientWrapper(queryClient);
         const { result } = renderHook(() => useNoteMutate(), { wrapper: Wrapper });
@@ -72,15 +66,15 @@ describe('useNoteMutate', () => {
             expect(pinNote).toHaveBeenCalledWith('note-1', true);
             expect(invalidateSpy).toHaveBeenCalledWith({
                 queryKey: queryKeys.notes.listAll(),
-                exact: false
+                exact: false,
             });
             expect(invalidateSpy).toHaveBeenCalledWith({
                 queryKey: queryKeys.notes.tagListAll(),
-                exact: false
+                exact: false,
             });
             expect(invalidateSpy).toHaveBeenCalledWith({
                 queryKey: queryKeys.notes.pinned(),
-                exact: true
+                exact: true,
             });
         });
 
@@ -105,13 +99,11 @@ describe('useNoteMutate', () => {
         mockConfirm.mockResolvedValue(true);
         vi.mocked(deleteNote).mockResolvedValue({
             type: 'success',
-            deleteNote: true
+            deleteNote: true,
         } as never);
 
         const queryClient = createTestQueryClient();
-        const invalidateSpy = vi
-            .spyOn(queryClient, 'invalidateQueries')
-            .mockResolvedValue(undefined);
+        const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined);
         const callback = vi.fn();
         const { Wrapper } = createQueryClientWrapper(queryClient);
         const { result } = renderHook(() => useNoteMutate(), { wrapper: Wrapper });
@@ -124,23 +116,23 @@ describe('useNoteMutate', () => {
             expect(deleteNote).toHaveBeenCalledWith('note-1');
             expect(invalidateSpy).toHaveBeenCalledWith({
                 queryKey: queryKeys.notes.all(),
-                exact: false
+                exact: false,
             });
             expect(invalidateSpy).toHaveBeenCalledWith({
                 queryKey: queryKeys.tags.all(),
-                exact: false
+                exact: false,
             });
             expect(invalidateSpy).toHaveBeenCalledWith({
                 queryKey: queryKeys.reminders.all(),
-                exact: false
+                exact: false,
             });
             expect(invalidateSpy).toHaveBeenCalledWith({
                 queryKey: queryKeys.images.all(),
-                exact: false
+                exact: false,
             });
             expect(invalidateSpy).toHaveBeenCalledWith({
                 queryKey: ['calendar'],
-                exact: false
+                exact: false,
             });
         });
 

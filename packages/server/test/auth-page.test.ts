@@ -1,9 +1,8 @@
-import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import type { AddressInfo } from 'node:net';
-
-import type { AuthConfig } from '../src/modules/auth-mode.js';
+import test, { type TestContext } from 'node:test';
 import { createApp } from '../src/app.js';
+import type { AuthConfig } from '../src/modules/auth-mode.js';
 
 const startServer = async (t: TestContext, authConfig: AuthConfig) => {
     const app = createApp(authConfig);
@@ -23,27 +22,22 @@ const startServer = async (t: TestContext, authConfig: AuthConfig) => {
     return { baseUrl: `http://127.0.0.1:${address.port}` };
 };
 
-const formRequest = async (
-    baseUrl: string,
-    path: string,
-    body: Record<string, string>,
-    cookie?: string
-) => {
+const formRequest = async (baseUrl: string, path: string, body: Record<string, string>, cookie?: string) => {
     const response = await fetch(`${baseUrl}${path}`, {
         method: 'POST',
         redirect: 'manual',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
-            ...(cookie ? { Cookie: cookie } : {})
+            ...(cookie ? { Cookie: cookie } : {}),
         },
-        body: new URLSearchParams(body).toString()
+        body: new URLSearchParams(body).toString(),
     });
 
     return {
         status: response.status,
         text: await response.text(),
         location: response.headers.get('location') ?? undefined,
-        cookie: response.headers.get('set-cookie') ?? undefined
+        cookie: response.headers.get('set-cookie') ?? undefined,
     };
 };
 
@@ -52,7 +46,7 @@ test('password mode blocks client routes until the server-side login form succee
         mode: 'password',
         password: 'secret',
         sessionSecret: 'session-secret',
-        source: 'override'
+        source: 'override',
     });
 
     const blockedHome = await fetch(`${baseUrl}/`, { redirect: 'manual' });
@@ -69,7 +63,7 @@ test('password mode blocks client routes until the server-side login form succee
 
     const invalidLogin = await formRequest(baseUrl, '/auth/login', {
         next: '/notes',
-        password: 'wrong'
+        password: 'wrong',
     });
 
     assert.equal(invalidLogin.status, 401);
@@ -77,7 +71,7 @@ test('password mode blocks client routes until the server-side login form succee
 
     const validLogin = await formRequest(baseUrl, '/auth/login', {
         next: '/notes',
-        password: 'secret'
+        password: 'secret',
     });
 
     assert.equal(validLogin.status, 303);
@@ -90,7 +84,7 @@ test('password mode blocks client routes until the server-side login form succee
     assert.deepEqual(await sessionStatus.json(), {
         mode: 'password',
         authRequired: true,
-        authenticated: true
+        authenticated: true,
     });
 
     const logout = await formRequest(baseUrl, '/auth/logout', {}, validLogin.cookie);

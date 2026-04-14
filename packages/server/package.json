@@ -8,7 +8,8 @@
         "dev": "prisma migrate deploy && prisma generate && node --watch --import tsx src/main.ts",
         "build": "prisma generate && tsup && tsc-alias",
         "start": "node dist/start.js",
-        "lint": "eslint src",
+        "lint": "biome check .",
+        "format": "biome check --write .",
         "test": "tsx --tsconfig tsconfig.json --test test/**/*.test.ts",
         "test:ci": "tsx --tsconfig tsconfig.json --test test/**/*.test.ts",
         "type-check": "tsc --noEmit"
@@ -27,10 +28,9 @@
         "winston": "^3.19.0"
     },
     "devDependencies": {
-        "@baejino/eslint-config": "^0.1.1",
+        "@biomejs/biome": "2.4.11",
         "@types/express": "^5.0.6",
         "@types/express-session": "^1.18.2",
-        "eslint": "^9.39.2",
         "glob": "^13.0.6",
         "tsc-alias": "^1.8.16",
         "tsup": "^8.5.1",

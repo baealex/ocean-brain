@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react';
 import type * as TanStackRouter from '@tanstack/react-router';
+import { render, screen } from '@testing-library/react';
 
 vi.mock('@baejino/handy', () => ({ handyMediaQuery: { listenThemeChange: () => () => undefined } }));
 
@@ -8,7 +8,7 @@ vi.mock('@tanstack/react-router', async () => {
 
     return {
         ...actual,
-        RouterProvider: () => <div>Router Provider</div>
+        RouterProvider: () => <div>Router Provider</div>,
     };
 });
 

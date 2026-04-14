@@ -1,5 +1,5 @@
+import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import session from 'express-session';
-import type { NextFunction, Request, Response, RequestHandler } from 'express';
 import type { ValidationRule } from 'graphql';
 import { GraphQLError } from 'graphql';
 
@@ -9,14 +9,16 @@ const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
 const buildUnauthorizedPayload = () => ({
     code: 'UNAUTHORIZED',
-    message: 'Authentication required'
+    message: 'Authentication required',
 });
 
 const buildUnauthorizedGraphqlPayload = () => ({
-    errors: [{
-        message: 'Authentication required',
-        extensions: { code: 'UNAUTHORIZED' }
-    }]
+    errors: [
+        {
+            message: 'Authentication required',
+            extensions: { code: 'UNAUTHORIZED' },
+        },
+    ],
 });
 
 export const isAuthenticatedRequest = (req: Request) => Boolean(req.session?.authenticated);
@@ -33,8 +35,8 @@ export const createSessionMiddleware = (authConfig: AuthConfig): RequestHandler 
         saveUninitialized: false,
         cookie: {
             httpOnly: true,
-            sameSite: 'lax'
-        }
+            sameSite: 'lax',
+        },
     });
 };
 
@@ -45,11 +47,7 @@ export const requireSessionForWrite = (authConfig: AuthConfig): RequestHandler =
             return;
         }
 
-        res
-            .status(401)
-            .set(JSON_HEADERS)
-            .json(buildUnauthorizedPayload())
-            .end();
+        res.status(401).set(JSON_HEADERS).json(buildUnauthorizedPayload()).end();
     };
 };
 
@@ -60,11 +58,7 @@ export const requireSessionForGraphql = (authConfig: AuthConfig): RequestHandler
             return;
         }
 
-        res
-            .status(401)
-            .set(JSON_HEADERS)
-            .json(buildUnauthorizedGraphqlPayload())
-            .end();
+        res.status(401).set(JSON_HEADERS).json(buildUnauthorizedGraphqlPayload()).end();
     };
 };
 
@@ -76,14 +70,13 @@ export const createMutationAuthValidationRule = (): ValidationRule => {
                     return;
                 }
 
-                context.reportError(new GraphQLError(
-                    'Authentication required',
-                    {
+                context.reportError(
+                    new GraphQLError('Authentication required', {
                         nodes: [node],
-                        extensions: { code: 'UNAUTHORIZED' }
-                    }
-                ));
-            }
+                        extensions: { code: 'UNAUTHORIZED' },
+                    }),
+                );
+            },
         };
     };
 };

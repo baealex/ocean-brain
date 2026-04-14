@@ -17,13 +17,7 @@ interface Props {
     updatedAt: string;
 }
 
-export default function NoteListItem({
-    id,
-    title,
-    tags,
-    createdAt,
-    updatedAt
-}: Props) {
+export default function NoteListItem({ id, title, tags, createdAt, updatedAt }: Props) {
     const createdAtText = new Date(Number(createdAt));
     const updatedTimeSince = timeSince(Number(updatedAt));
 
@@ -31,25 +25,22 @@ export default function NoteListItem({
         <div className="border-b-2 border-dashed border-border-subtle last:border-b-0">
             <div className="py-4 flex flex-col gap-2">
                 <div className="flex items-center gap-2">
-                    <Text variant="label" weight="medium" tone="tertiary">{updatedTimeSince}</Text>
-                    <Text variant="label" tone="placeholder">({createdAtText.toDateString()})</Text>
+                    <Text variant="label" weight="medium" tone="tertiary">
+                        {updatedTimeSince}
+                    </Text>
+                    <Text variant="label" tone="placeholder">
+                        ({createdAtText.toDateString()})
+                    </Text>
                 </div>
                 <Text as="div" variant="body" weight="bold" tracking="tight">
-                    <Link
-                        className="transition-colors hover:text-accent-primary"
-                        to={NOTE_ROUTE}
-                        params={{ id }}>
+                    <Link className="transition-colors hover:text-accent-primary" to={NOTE_ROUTE} params={{ id }}>
                         {title || 'Untitled'}
                     </Link>
                 </Text>
                 {tags && tags.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
-                        {tags.map(tag => (
-                            <Link
-                                key={tag.id}
-                                to={TAG_NOTES_ROUTE}
-                                params={{ id: tag.id }}
-                                search={{ page: 1 }}>
+                        {tags.map((tag) => (
+                            <Link key={tag.id} to={TAG_NOTES_ROUTE} params={{ id: tag.id }} search={{ page: 1 }}>
                                 <Badge name={tag.name} />
                             </Link>
                         ))}

@@ -1,6 +1,6 @@
 import { execFileSync } from 'child_process';
-import path from 'path';
 import { createRequire } from 'module';
+import path from 'path';
 import { fileURLToPath } from 'url';
 
 interface PrismaRuntimeDeps {
@@ -10,7 +10,7 @@ interface PrismaRuntimeDeps {
         options: {
             env: NodeJS.ProcessEnv;
             stdio: 'inherit';
-        }
+        },
     ) => void;
     resolvePrismaCliEntry: () => string;
 }
@@ -33,23 +33,18 @@ export const createPrismaRuntime = (deps: PrismaRuntimeDeps) => ({
     runMigrateDeploy: () => {
         deps.execFileSync(
             process.execPath,
-            [
-                deps.resolvePrismaCliEntry(),
-                'migrate',
-                'deploy',
-                `--schema=${resolvePrismaSchemaPath()}`
-            ],
+            [deps.resolvePrismaCliEntry(), 'migrate', 'deploy', `--schema=${resolvePrismaSchemaPath()}`],
             {
                 stdio: 'inherit',
-                env: { ...process.env }
-            }
+                env: { ...process.env },
+            },
         );
-    }
+    },
 });
 
 const defaultPrismaRuntime = createPrismaRuntime({
     execFileSync,
-    resolvePrismaCliEntry
+    resolvePrismaCliEntry,
 });
 
 export const runPrismaMigrateDeploy = () => {

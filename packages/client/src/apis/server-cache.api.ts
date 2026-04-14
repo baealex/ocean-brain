@@ -1,7 +1,4 @@
-import {
-    graphQuery,
-    type GraphQueryErrorResponse
-} from '~/modules/graph-query';
+import { type GraphQueryErrorResponse, graphQuery } from '~/modules/graph-query';
 
 type CacheName = 'heroBanner';
 
@@ -10,34 +7,33 @@ interface CacheItem {
 }
 
 const isCacheItem = (value: unknown): value is CacheItem => {
-    return typeof value === 'object'
-        && value !== null
-        && 'value' in value
-        && typeof value.value === 'string';
+    return typeof value === 'object' && value !== null && 'value' in value && typeof value.value === 'string';
 };
 
-const invalidResponseShape = (
-    field: string,
-    details: unknown
-): GraphQueryErrorResponse => ({
+const invalidResponseShape = (field: string, details: unknown): GraphQueryErrorResponse => ({
     type: 'error',
     category: 'graphql',
-    errors: [{
-        code: 'INVALID_RESPONSE_SHAPE',
-        message: `GraphQL response field "${field}" is missing or invalid`,
-        details
-    }]
+    errors: [
+        {
+            code: 'INVALID_RESPONSE_SHAPE',
+            message: `GraphQL response field "${field}" is missing or invalid`,
+            details,
+        },
+    ],
 });
 
 export const getServerCache = async (key: CacheName) => {
     try {
-        const response = await graphQuery<{ cache?: CacheItem }, { key: CacheName }>(`
+        const response = await graphQuery<{ cache?: CacheItem }, { key: CacheName }>(
+            `
         query GetServerCache($key: String!) {
             cache(key: $key) {
                 value
             }
         }
-    `, { key });
+    `,
+            { key },
+        );
 
         if (response.type === 'error') {
             throw response;
@@ -53,20 +49,20 @@ export const getServerCache = async (key: CacheName) => {
     }
 };
 
-export const setServerCache = async (
-    key: CacheName,
-    value: string
-) => {
-    const response = await graphQuery<{ setCache?: CacheItem }, { key: CacheName; value: string }>(`
+export const setServerCache = async (key: CacheName, value: string) => {
+    const response = await graphQuery<{ setCache?: CacheItem }, { key: CacheName; value: string }>(
+        `
         mutation SetServerCache($key: String!, $value: String!) {
             setCache(key: $key, value: $value) {
                 value
             }
         }
-    `, {
-        key,
-        value: encodeURIComponent(value)
-    });
+    `,
+        {
+            key,
+            value: encodeURIComponent(value),
+        },
+    );
 
     if (response.type === 'error') {
         return response;
@@ -78,14 +74,17 @@ export const setServerCache = async (
 
     return {
         ...response,
-        setCache: response.setCache
+        setCache: response.setCache,
     };
 };
 
 export const deleteServerCache = async (key: CacheName) => {
-    return graphQuery<{ deleteCache: boolean }, { key: CacheName }>(`
+    return graphQuery<{ deleteCache: boolean }, { key: CacheName }>(
+        `
         mutation DeleteServerCache($key: String!) {
             deleteCache(key: $key)
         }
-    `, { key });
+    `,
+        { key },
+    );
 };

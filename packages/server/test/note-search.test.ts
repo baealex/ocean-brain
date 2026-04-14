@@ -1,23 +1,22 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
-
+import test from 'node:test';
 import {
-    NOTE_SEARCH_EXTRACTOR_NODE_TYPES,
-    NOTE_SEARCH_IGNORED_NODE_TYPES,
-    NOTE_SEARCH_PASS_THROUGH_NODE_TYPES,
-    NOTE_SEARCH_TEXT_SCHEMA_VERSION,
+    OCEAN_BRAIN_CUSTOM_BLOCK_TYPES,
+    OCEAN_BRAIN_CUSTOM_INLINE_CONTENT_TYPES,
+} from '../../client/src/components/schema/custom-types.ts';
+import {
     buildNoteSearchProjection,
     buildNoteSearchText,
     extractVisibleSearchTextFromContent,
     getUnknownNoteSearchNodeTypeCounts,
     matchesNoteSearchQuery,
+    NOTE_SEARCH_EXTRACTOR_NODE_TYPES,
+    NOTE_SEARCH_IGNORED_NODE_TYPES,
+    NOTE_SEARCH_PASS_THROUGH_NODE_TYPES,
+    NOTE_SEARCH_TEXT_SCHEMA_VERSION,
     parseNoteSearchQuery,
-    resetUnknownNoteSearchNodeTypeCountsForTest
+    resetUnknownNoteSearchNodeTypeCountsForTest,
 } from '../src/modules/note-search.js';
-import {
-    OCEAN_BRAIN_CUSTOM_BLOCK_TYPES,
-    OCEAN_BRAIN_CUSTOM_INLINE_CONTENT_TYPES
-} from '../../client/src/components/schema/custom-types.ts';
 
 test('note search text schema version is explicit for future projection rebuilds', () => {
     assert.equal(NOTE_SEARCH_TEXT_SCHEMA_VERSION, 1);
@@ -26,22 +25,26 @@ test('note search text schema version is explicit for future projection rebuilds
 test('buildNoteSearchProjection stores normalized lowercase title and visible content', () => {
     const projection = buildNoteSearchProjection({
         title: 'Roadmap 123',
-        content: JSON.stringify([{
-            id: 'paragraph-1',
-            type: 'paragraph',
-            props: {},
-            content: [{
-                type: 'text',
-                text: 'Visible Content',
-                styles: {}
-            }],
-            children: []
-        }])
+        content: JSON.stringify([
+            {
+                id: 'paragraph-1',
+                type: 'paragraph',
+                props: {},
+                content: [
+                    {
+                        type: 'text',
+                        text: 'Visible Content',
+                        styles: {},
+                    },
+                ],
+                children: [],
+            },
+        ]),
     });
 
     assert.deepEqual(projection, {
         searchableText: 'roadmap 123 visible content',
-        searchableTextVersion: NOTE_SEARCH_TEXT_SCHEMA_VERSION
+        searchableTextVersion: NOTE_SEARCH_TEXT_SCHEMA_VERSION,
     });
 });
 
@@ -49,13 +52,10 @@ test('note search explicitly classifies every Ocean Brain custom BlockNote type'
     const knownTypes = new Set([
         ...NOTE_SEARCH_EXTRACTOR_NODE_TYPES,
         ...NOTE_SEARCH_PASS_THROUGH_NODE_TYPES,
-        ...NOTE_SEARCH_IGNORED_NODE_TYPES
+        ...NOTE_SEARCH_IGNORED_NODE_TYPES,
     ]);
 
-    for (const type of [
-        ...OCEAN_BRAIN_CUSTOM_INLINE_CONTENT_TYPES,
-        ...OCEAN_BRAIN_CUSTOM_BLOCK_TYPES
-    ]) {
+    for (const type of [...OCEAN_BRAIN_CUSTOM_INLINE_CONTENT_TYPES, ...OCEAN_BRAIN_CUSTOM_BLOCK_TYPES]) {
         assert.equal(knownTypes.has(type), true, `expected search handling for custom type "${type}"`);
     }
 });
@@ -67,40 +67,40 @@ test('extractVisibleSearchTextFromContent keeps visible inline and prop text whi
             type: 'paragraph',
             props: {
                 textAlignment: 'left',
-                backgroundColor: 'default'
+                backgroundColor: 'default',
             },
             content: [
                 {
                     type: 'text',
                     text: 'Visible roadmap',
-                    styles: {}
+                    styles: {},
                 },
                 {
                     type: 'text',
                     text: ' ',
-                    styles: {}
+                    styles: {},
                 },
                 {
                     type: 'reference',
                     props: {
                         id: '44',
-                        title: 'Reference 123'
-                    }
+                        title: 'Reference 123',
+                    },
                 },
                 {
                     type: 'text',
                     text: ' ',
-                    styles: {}
+                    styles: {},
                 },
                 {
                     type: 'tag',
                     props: {
                         id: '7',
-                        tag: '@project'
-                    }
-                }
+                        tag: '@project',
+                    },
+                },
             ],
-            children: []
+            children: [],
         },
         {
             id: 'image-9',
@@ -108,10 +108,10 @@ test('extractVisibleSearchTextFromContent keeps visible inline and prop text whi
             props: {
                 name: 'Architecture Diagram',
                 caption: 'Search preview',
-                url: 'https://example.com/image.png'
+                url: 'https://example.com/image.png',
             },
-            children: []
-        }
+            children: [],
+        },
     ]);
 
     const extracted = extractVisibleSearchTextFromContent(content);
@@ -135,25 +135,31 @@ test('extractVisibleSearchTextFromContent keeps nested text for unknown nodes wi
             type: 'futureWidget',
             props: {
                 internalId: 'widget-123',
-                rawPayload: 'do-not-index'
+                rawPayload: 'do-not-index',
             },
-            content: [{
-                type: 'text',
-                text: 'Visible widget text',
-                styles: {}
-            }],
-            children: [{
-                id: 'child-1',
-                type: 'paragraph',
-                props: {},
-                content: [{
+            content: [
+                {
                     type: 'text',
-                    text: 'Nested paragraph text',
-                    styles: {}
-                }],
-                children: []
-            }]
-        }
+                    text: 'Visible widget text',
+                    styles: {},
+                },
+            ],
+            children: [
+                {
+                    id: 'child-1',
+                    type: 'paragraph',
+                    props: {},
+                    content: [
+                        {
+                            type: 'text',
+                            text: 'Nested paragraph text',
+                            styles: {},
+                        },
+                    ],
+                    children: [],
+                },
+            ],
+        },
     ]);
 
     const extracted = extractVisibleSearchTextFromContent(content);
@@ -162,10 +168,7 @@ test('extractVisibleSearchTextFromContent keeps nested text for unknown nodes wi
     assert.match(extracted, /Nested paragraph text/);
     assert.doesNotMatch(extracted, /widget-123/);
     assert.doesNotMatch(extracted, /do-not-index/);
-    assert.deepEqual(
-        [...getUnknownNoteSearchNodeTypeCounts().entries()],
-        [['futureWidget', 1]]
-    );
+    assert.deepEqual([...getUnknownNoteSearchNodeTypeCounts().entries()], [['futureWidget', 1]]);
 });
 
 test('extractVisibleSearchTextFromContent keeps visible link text without indexing href metadata', () => {
@@ -174,17 +177,21 @@ test('extractVisibleSearchTextFromContent keeps visible link text without indexi
             id: 'paragraph-1',
             type: 'paragraph',
             props: {},
-            content: [{
-                type: 'link',
-                href: 'https://oceanbrain.example/docs',
-                content: [{
-                    type: 'text',
-                    text: 'Ocean Brain Docs',
-                    styles: {}
-                }]
-            }],
-            children: []
-        }
+            content: [
+                {
+                    type: 'link',
+                    href: 'https://oceanbrain.example/docs',
+                    content: [
+                        {
+                            type: 'text',
+                            text: 'Ocean Brain Docs',
+                            styles: {},
+                        },
+                    ],
+                },
+            ],
+            children: [],
+        },
     ]);
 
     const extracted = extractVisibleSearchTextFromContent(content);
@@ -201,32 +208,33 @@ test('extractVisibleSearchTextFromContent counts repeated unknown node types wit
             id: 'custom-1',
             type: 'futureWidget',
             props: {},
-            content: [{
-                type: 'text',
-                text: 'Alpha',
-                styles: {}
-            }]
+            content: [
+                {
+                    type: 'text',
+                    text: 'Alpha',
+                    styles: {},
+                },
+            ],
         },
         {
             id: 'custom-2',
             type: 'futureWidget',
             props: {},
-            content: [{
-                type: 'text',
-                text: 'Beta',
-                styles: {}
-            }]
-        }
+            content: [
+                {
+                    type: 'text',
+                    text: 'Beta',
+                    styles: {},
+                },
+            ],
+        },
     ]);
 
     const extracted = extractVisibleSearchTextFromContent(content);
 
     assert.match(extracted, /Alpha/);
     assert.match(extracted, /Beta/);
-    assert.deepEqual(
-        [...getUnknownNoteSearchNodeTypeCounts().entries()],
-        [['futureWidget', 2]]
-    );
+    assert.deepEqual([...getUnknownNoteSearchNodeTypeCounts().entries()], [['futureWidget', 2]]);
 });
 
 test('matchesNoteSearchQuery ignores internal id noise for numeric searches', () => {
@@ -237,14 +245,16 @@ test('matchesNoteSearchQuery ignores internal id noise for numeric searches', ()
                 id: 'paragraph-123',
                 type: 'paragraph',
                 props: {},
-                content: [{
-                    type: 'text',
-                    text: 'Visible content only',
-                    styles: {}
-                }],
-                children: []
-            }
-        ])
+                content: [
+                    {
+                        type: 'text',
+                        text: 'Visible content only',
+                        styles: {},
+                    },
+                ],
+                children: [],
+            },
+        ]),
     };
 
     assert.equal(matchesNoteSearchQuery(note, '123'), false);
@@ -262,22 +272,28 @@ test('matchesNoteSearchQuery keeps visible numeric matches from table cells, tag
                     type: 'tableContent',
                     columnWidths: [120],
                     headerRows: 1,
-                    rows: [{
-                        cells: [{
-                            type: 'tableCell',
-                            props: {
-                                colspan: 1,
-                                rowspan: 1
-                            },
-                            content: [{
-                                type: 'text',
-                                text: 'Task 123',
-                                styles: {}
-                            }]
-                        }]
-                    }]
+                    rows: [
+                        {
+                            cells: [
+                                {
+                                    type: 'tableCell',
+                                    props: {
+                                        colspan: 1,
+                                        rowspan: 1,
+                                    },
+                                    content: [
+                                        {
+                                            type: 'text',
+                                            text: 'Task 123',
+                                            styles: {},
+                                        },
+                                    ],
+                                },
+                            ],
+                        },
+                    ],
                 },
-                children: []
+                children: [],
             },
             {
                 id: 'paragraph-1',
@@ -288,25 +304,25 @@ test('matchesNoteSearchQuery keeps visible numeric matches from table cells, tag
                         type: 'tag',
                         props: {
                             id: '8',
-                            tag: '@release-123'
-                        }
+                            tag: '@release-123',
+                        },
                     },
                     {
                         type: 'text',
                         text: ' ',
-                        styles: {}
+                        styles: {},
                     },
                     {
                         type: 'reference',
                         props: {
                             id: '44',
-                            title: 'Reference 123'
-                        }
-                    }
+                            title: 'Reference 123',
+                        },
+                    },
                 ],
-                children: []
-            }
-        ])
+                children: [],
+            },
+        ]),
     };
 
     assert.equal(matchesNoteSearchQuery(note, '123'), true);
@@ -318,19 +334,23 @@ test('matchesNoteSearchQuery can use a precomputed searchable text field', () =>
         content: JSON.stringify([]),
         searchableText: buildNoteSearchText({
             title: 'Roadmap',
-            content: JSON.stringify([{
-                id: 'paragraph-1',
-                type: 'paragraph',
-                props: {},
-                content: [{
-                    type: 'text',
-                    text: 'Sprint 42',
-                    styles: {}
-                }],
-                children: []
-            }])
+            content: JSON.stringify([
+                {
+                    id: 'paragraph-1',
+                    type: 'paragraph',
+                    props: {},
+                    content: [
+                        {
+                            type: 'text',
+                            text: 'Sprint 42',
+                            styles: {},
+                        },
+                    ],
+                    children: [],
+                },
+            ]),
         }),
-        searchableTextVersion: NOTE_SEARCH_TEXT_SCHEMA_VERSION
+        searchableTextVersion: NOTE_SEARCH_TEXT_SCHEMA_VERSION,
     };
 
     assert.equal(matchesNoteSearchQuery(note, 'roadmap 42'), true);
@@ -345,14 +365,16 @@ test('matchesNoteSearchQuery applies excluded terms against visible text only', 
                 id: 'paragraph-123',
                 type: 'paragraph',
                 props: {},
-                content: [{
-                    type: 'text',
-                    text: 'Quarterly roadmap',
-                    styles: {}
-                }],
-                children: []
-            }
-        ])
+                content: [
+                    {
+                        type: 'text',
+                        text: 'Quarterly roadmap',
+                        styles: {},
+                    },
+                ],
+                children: [],
+            },
+        ]),
     };
 
     assert.equal(matchesNoteSearchQuery(note, 'roadmap -123'), true);
@@ -363,6 +385,6 @@ test('parseNoteSearchQuery splits included and excluded tokens', () => {
     assert.deepEqual(parseNoteSearchQuery(' alpha  beta  -gamma '), {
         included: ['alpha', 'beta'],
         excluded: ['gamma'],
-        hasFilters: true
+        hasFilters: true,
     });
 });

@@ -1,17 +1,12 @@
-import styles from './Reference.module.scss';
 import classNames from 'classnames/bind';
+import styles from './Reference.module.scss';
+
 const cx = classNames.bind(styles);
 
-import type {
-    CustomInlineContentConfig,
-    StyleSchema
-} from '@blocknote/core';
-import {
-    createReactInlineContentSpec,
-    type ReactCustomInlineContentRenderProps
-} from '@blocknote/react';
-import type { KeyboardEvent, MouseEvent } from 'react';
+import type { CustomInlineContentConfig, StyleSchema } from '@blocknote/core';
+import { createReactInlineContentSpec, type ReactCustomInlineContentRenderProps } from '@blocknote/react';
 import { useNavigate } from '@tanstack/react-router';
+import type { KeyboardEvent, MouseEvent } from 'react';
 
 import { NOTE_ROUTE } from '~/modules/url';
 
@@ -19,9 +14,9 @@ const referenceConfig = {
     type: 'reference',
     propSchema: {
         id: { default: '' },
-        title: { default: 'Unknown' }
+        title: { default: 'Unknown' },
     },
-    content: 'none'
+    content: 'none',
 } satisfies CustomInlineContentConfig;
 
 type ReferenceRenderProps = ReactCustomInlineContentRenderProps<typeof referenceConfig, StyleSchema>;
@@ -33,7 +28,7 @@ function ReferenceContent(props: ReferenceRenderProps) {
         props.editor.blur();
         void navigate({
             to: NOTE_ROUTE,
-            params: { id: props.inlineContent.props.id }
+            params: { id: props.inlineContent.props.id },
         });
     };
 
@@ -60,17 +55,13 @@ function ReferenceContent(props: ReferenceRenderProps) {
 
                 stopEditorInteraction(event);
                 navigateToReference();
-            }}>
-            <span>
-                [{props.inlineContent.props.title}]
-            </span>
+            }}
+        >
+            <span>[{props.inlineContent.props.title}]</span>
         </span>
     );
 }
 
-const Reference = createReactInlineContentSpec(
-    referenceConfig,
-    { render: (props) => <ReferenceContent {...props} /> }
-);
+const Reference = createReactInlineContentSpec(referenceConfig, { render: (props) => <ReferenceContent {...props} /> });
 
 export default Reference;

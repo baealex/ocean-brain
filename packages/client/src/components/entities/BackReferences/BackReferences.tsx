@@ -1,7 +1,7 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
+import { fetchBackReferences } from '~/apis/note.api';
 import type { Note } from '~/models/note.model';
 import { queryKeys } from '~/modules/query-key-factory';
-import { fetchBackReferences } from '~/apis/note.api';
 
 interface BackReferencesProps {
     noteId?: string;
@@ -17,7 +17,7 @@ const BackReferences = (props: BackReferencesProps) => {
                 throw response;
             }
             return response.backReferences;
-        }
+        },
     });
 
     return props.render(data);

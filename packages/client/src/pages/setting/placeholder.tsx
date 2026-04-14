@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
 import { useState } from 'react';
-
+import { createPlaceholder, deletePlaceholder, fetchPlaceholders } from '~/apis/placeholder.api';
+import * as Icon from '~/components/icon';
 import {
     Button,
     FallbackRender,
@@ -10,16 +11,12 @@ import {
     PageLayout,
     Pagination,
     Skeleton,
-    SurfaceCard
+    SurfaceCard,
 } from '~/components/shared';
 import { Input, Label, Text, useToast } from '~/components/ui';
-import * as Icon from '~/components/icon';
-
 import { getFixedPlaceholders, PLACEHOLDER_PREFIX, PLACEHOLDER_SUFFIX } from '~/modules/fixed-placeholder';
 import { queryKeys } from '~/modules/query-key-factory';
 import { SETTINGS_PLACEHOLDER_ROUTE } from '~/modules/url';
-
-import { createPlaceholder, deletePlaceholder, fetchPlaceholders } from '~/apis/placeholder.api';
 
 const Route = getRouteApi(SETTINGS_PLACEHOLDER_ROUTE);
 
@@ -35,13 +32,13 @@ const Placeholder = () => {
     const [form, setForm] = useState({
         name: '',
         template: '',
-        replacement: ''
+        replacement: '',
     });
 
     const limit = 25;
     const placeholderListKey = queryKeys.placeholders.list({
         limit,
-        offset: (page - 1) * limit
+        offset: (page - 1) * limit,
     });
 
     const [fixedPlaceholders] = useState(getFixedPlaceholders);
@@ -50,13 +47,13 @@ const Placeholder = () => {
         queryFn: async () => {
             const response = await fetchPlaceholders({
                 offset: (page - 1) * limit,
-                limit
+                limit,
             });
             if (response.type === 'error') {
                 throw response;
             }
             return response.allPlaceholders;
-        }
+        },
     });
 
     const addPlaceholder = useMutation({
@@ -67,13 +64,13 @@ const Placeholder = () => {
             setForm({
                 name: '',
                 template: '',
-                replacement: ''
+                replacement: '',
             });
             await queryClient.invalidateQueries({
                 queryKey: queryKeys.placeholders.listAll(),
-                exact: false
+                exact: false,
             });
-        }
+        },
     });
 
     const removePlaceholder = useMutation({
@@ -82,9 +79,9 @@ const Placeholder = () => {
             toast('Placeholder deleted successfully');
             await queryClient.invalidateQueries({
                 queryKey: queryKeys.placeholders.listAll(),
-                exact: false
+                exact: false,
             });
-        }
+        },
     });
 
     const fixedPlaceholderCount = fixedPlaceholders.length;
@@ -96,14 +93,15 @@ const Placeholder = () => {
     const valuePreviewClassName = 'leading-[1.2]';
     const cardBodyClassName = 'flex flex-col gap-px';
     const cardMetaGroupClassName = 'space-y-px';
-    const sectionToggleClassName = 'focus-ring-soft inline-flex items-center gap-2 rounded-[12px] border border-transparent px-2.5 py-1.5 text-fg-tertiary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default';
+    const sectionToggleClassName =
+        'focus-ring-soft inline-flex items-center gap-2 rounded-[12px] border border-transparent px-2.5 py-1.5 text-fg-tertiary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default';
     const customCardClassName = 'relative';
     const removePlaceholderButtonClassName = 'absolute right-2 top-2';
-    const addCardButtonClassName = 'focus-ring-soft surface-base group flex flex-col items-center justify-center gap-0.5 px-4 py-4 text-center text-fg-secondary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default';
-    const addCardIconClassName = 'inline-flex h-[34px] w-[34px] items-center justify-center rounded-full border border-border-subtle bg-surface text-current transition-colors group-hover:border-border-secondary/70';
-    const heading = customPlaceholderCount > 0
-        ? `Placeholders (${customPlaceholderCount})`
-        : undefined;
+    const addCardButtonClassName =
+        'focus-ring-soft surface-base group flex flex-col items-center justify-center gap-0.5 px-4 py-4 text-center text-fg-secondary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default';
+    const addCardIconClassName =
+        'inline-flex h-[34px] w-[34px] items-center justify-center rounded-full border border-border-subtle bg-surface text-current transition-colors group-hover:border-border-secondary/70';
+    const heading = customPlaceholderCount > 0 ? `Placeholders (${customPlaceholderCount})` : undefined;
     const description = 'Create tokens that get replaced with values when you clone a note';
 
     return (
@@ -111,7 +109,8 @@ const Placeholder = () => {
             title="Placeholders"
             variant="default"
             heading={isLoading ? <Skeleton width={244} height={24} className="rounded-full" /> : heading}
-            description={isLoading ? <Skeleton width={260} height={16} className="rounded-full" /> : description}>
+            description={isLoading ? <Skeleton width={260} height={16} className="rounded-full" /> : description}
+        >
             <div className="flex flex-col gap-5">
                 <section className="space-y-3 border-b border-border-subtle/80 pb-5">
                     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -126,7 +125,8 @@ const Placeholder = () => {
                         <button
                             type="button"
                             onClick={() => setIsFixedListOpen(!isFixedListOpen)}
-                            className={sectionToggleClassName}>
+                            className={sectionToggleClassName}
+                        >
                             <Text as="span" variant="meta" weight="medium" tone="secondary">
                                 {fixedPlaceholderCount} items
                             </Text>
@@ -139,7 +139,7 @@ const Placeholder = () => {
                     </div>
                     {isFixedListOpen && (
                         <div className="grid-auto-cards grid gap-5">
-                            {fixedPlaceholders.map(placeholder => (
+                            {fixedPlaceholders.map((placeholder) => (
                                 <SurfaceCard key={placeholder.name}>
                                     <div className={cardBodyClassName}>
                                         <Text as="div" variant="body" weight="medium" className={cardTitleClassName}>
@@ -151,15 +151,19 @@ const Placeholder = () => {
                                                 variant="meta"
                                                 weight="medium"
                                                 tone="secondary"
-                                                className={tokenPreviewClassName}>
-                                                {PLACEHOLDER_PREFIX}{placeholder.template}{PLACEHOLDER_SUFFIX}
+                                                className={tokenPreviewClassName}
+                                            >
+                                                {PLACEHOLDER_PREFIX}
+                                                {placeholder.template}
+                                                {PLACEHOLDER_SUFFIX}
                                             </Text>
                                             <Text
                                                 as="div"
                                                 variant="label"
                                                 weight="medium"
                                                 tone="tertiary"
-                                                className={valuePreviewClassName}>
+                                                className={valuePreviewClassName}
+                                            >
                                                 Current value: {placeholder.replacement}
                                             </Text>
                                         </div>
@@ -188,15 +192,14 @@ const Placeholder = () => {
                     </div>
                     {!isLoading && (
                         <div className="grid-auto-cards grid gap-5">
-                            {customPlaceholders.map(placeholder => (
-                                <SurfaceCard
-                                    key={placeholder.id}
-                                    className={customCardClassName}>
+                            {customPlaceholders.map((placeholder) => (
+                                <SurfaceCard key={placeholder.id} className={customCardClassName}>
                                     <Button
                                         variant="ghost"
                                         size="icon-sm"
                                         className={removePlaceholderButtonClassName}
-                                        onClick={() => removePlaceholder.mutate(placeholder.id.toString())}>
+                                        onClick={() => removePlaceholder.mutate(placeholder.id.toString())}
+                                    >
                                         <Icon.Close className="h-4 w-4" />
                                     </Button>
                                     <div className={cardBodyClassName}>
@@ -204,7 +207,8 @@ const Placeholder = () => {
                                             as="div"
                                             variant="body"
                                             weight="medium"
-                                            className={`min-w-0 pr-8 ${cardTitleClassName}`}>
+                                            className={`min-w-0 pr-8 ${cardTitleClassName}`}
+                                        >
                                             {placeholder.name}
                                         </Text>
                                         <div className={cardMetaGroupClassName}>
@@ -213,15 +217,19 @@ const Placeholder = () => {
                                                 variant="meta"
                                                 weight="medium"
                                                 tone="secondary"
-                                                className={tokenPreviewClassName}>
-                                                {PLACEHOLDER_PREFIX}{placeholder.template}{PLACEHOLDER_SUFFIX}
+                                                className={tokenPreviewClassName}
+                                            >
+                                                {PLACEHOLDER_PREFIX}
+                                                {placeholder.template}
+                                                {PLACEHOLDER_SUFFIX}
                                             </Text>
                                             <Text
                                                 as="div"
                                                 variant="label"
                                                 weight="medium"
                                                 tone="tertiary"
-                                                className={valuePreviewClassName}>
+                                                className={valuePreviewClassName}
+                                            >
                                                 Replaces with: {placeholder.replacement}
                                             </Text>
                                         </div>
@@ -231,16 +239,12 @@ const Placeholder = () => {
                             <button
                                 type="button"
                                 onClick={() => setIsModalOpen(true)}
-                                className={addCardButtonClassName}>
+                                className={addCardButtonClassName}
+                            >
                                 <span className={addCardIconClassName}>
                                     <Icon.Plus className="h-4.5 w-4.5" />
                                 </span>
-                                <Text
-                                    as="div"
-                                    variant="meta"
-                                    weight="medium"
-                                    tone="secondary"
-                                    className="text-current">
+                                <Text as="div" variant="meta" weight="medium" tone="secondary" className="text-current">
                                     New custom
                                 </Text>
                             </button>
@@ -256,15 +260,19 @@ const Placeholder = () => {
                     </Modal.Description>
                     <div className="flex flex-col gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="name" className={fieldLabelClassName}>Name</Label>
+                            <Label htmlFor="name" className={fieldLabelClassName}>
+                                Name
+                            </Label>
                             <Input
                                 id="name"
                                 type="text"
                                 value={form.name}
-                                onChange={(e) => setForm({
-                                    ...form,
-                                    name: e.target.value
-                                })}
+                                onChange={(e) =>
+                                    setForm({
+                                        ...form,
+                                        name: e.target.value,
+                                    })
+                                }
                                 placeholder="Description of this placeholder"
                             />
                             <Text as="p" variant="meta" tone="secondary">
@@ -272,15 +280,19 @@ const Placeholder = () => {
                             </Text>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="template" className={fieldLabelClassName}>Placeholder</Label>
+                            <Label htmlFor="template" className={fieldLabelClassName}>
+                                Placeholder
+                            </Label>
                             <Input
                                 id="template"
                                 type="text"
                                 value={form.template}
-                                onChange={(e) => setForm({
-                                    ...form,
-                                    template: e.target.value
-                                })}
+                                onChange={(e) =>
+                                    setForm({
+                                        ...form,
+                                        template: e.target.value,
+                                    })
+                                }
                                 placeholder="note_app"
                             />
                             <Text as="p" variant="meta" tone="secondary">
@@ -288,15 +300,19 @@ const Placeholder = () => {
                             </Text>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="replacement" className={fieldLabelClassName}>Replacement</Label>
+                            <Label htmlFor="replacement" className={fieldLabelClassName}>
+                                Replacement
+                            </Label>
                             <Input
                                 id="replacement"
                                 type="text"
                                 value={form.replacement}
-                                onChange={(e) => setForm({
-                                    ...form,
-                                    replacement: e.target.value
-                                })}
+                                onChange={(e) =>
+                                    setForm({
+                                        ...form,
+                                        replacement: e.target.value,
+                                    })
+                                }
                                 placeholder="Ocean Brain"
                             />
                             <Text as="p" variant="meta" tone="secondary">
@@ -307,7 +323,9 @@ const Placeholder = () => {
                 </Modal.Body>
                 <Modal.Footer>
                     <ModalActionRow>
-                        <Button variant="ghost" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+                        <Button variant="ghost" onClick={() => setIsModalOpen(false)}>
+                            Cancel
+                        </Button>
                         <Button
                             variant="primary"
                             isLoading={addPlaceholder.isPending}
@@ -319,9 +337,12 @@ const Placeholder = () => {
                                 addPlaceholder.mutate({
                                     name: form.name,
                                     template: form.template,
-                                    replacement: form.replacement
+                                    replacement: form.replacement,
                                 });
-                            }}>Add</Button>
+                            }}
+                        >
+                            Add
+                        </Button>
                     </ModalActionRow>
                 </Modal.Footer>
             </Modal>
@@ -332,10 +353,10 @@ const Placeholder = () => {
                         last={Math.ceil(placeholders.totalCount / limit)}
                         onChange={(page) => {
                             navigate({
-                                search: prev => ({
+                                search: (prev) => ({
                                     ...prev,
-                                    page
-                                })
+                                    page,
+                                }),
                             });
                         }}
                     />

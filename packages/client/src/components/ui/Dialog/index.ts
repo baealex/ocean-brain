@@ -1,15 +1,15 @@
 export {
     Dialog,
-    DialogPortal,
-    DialogOverlay,
-    DialogClose,
-    DialogTrigger,
-    DialogContent,
-    DialogHeader,
     DialogBody,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
     DialogFooter,
+    DialogHeader,
+    DialogOverlay,
+    DialogPortal,
     DialogTitle,
-    DialogDescription
+    DialogTrigger,
 } from './Dialog';
 
 export { Modal } from './Modal';

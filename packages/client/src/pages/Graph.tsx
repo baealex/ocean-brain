@@ -1,29 +1,18 @@
-import {
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState
-} from 'react';
-import { useNavigate } from '@tanstack/react-router';
 import { useSuspenseQuery } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 
 import { fetchNoteGraph, type GraphLink, type GraphNode } from '~/apis/note.api';
-import * as Icon from '~/components/icon';
 import { QueryBoundary, QueryErrorView } from '~/components/app';
+import * as Icon from '~/components/icon';
 import { Empty, PageLayout, Skeleton } from '~/components/shared';
 import { Text } from '~/components/ui';
 import { getHash } from '~/modules/hash';
 import { queryKeys } from '~/modules/query-key-factory';
 import { NOTE_ROUTE } from '~/modules/url';
 import { useTheme } from '~/store/theme';
-import {
-    getGraphLabelFont,
-    getGraphLinkColor,
-    getGraphNodeFill,
-    getGraphTheme
-} from './graph-theme';
+import { getGraphLabelFont, getGraphLinkColor, getGraphNodeFill, getGraphTheme } from './graph-theme';
 
 interface GraphData {
     nodes: GraphNode[];
@@ -43,9 +32,7 @@ function getNodeSize(connections: number) {
 }
 
 const graphPageFallback = (
-    <PageLayout
-        title="Knowledge Graph"
-        description={<Skeleton width={184} height={16} className="rounded-full" />}>
+    <PageLayout title="Knowledge Graph" description={<Skeleton width={184} height={16} className="rounded-full" />}>
         <div className="flex h-[600px] items-center justify-center">
             <Skeleton width="100%" height="100%" />
         </div>
@@ -58,11 +45,11 @@ function GraphContent() {
     const graphRef = useRef<ForceGraphInstance | null>(null);
     const [dimensions, setDimensions] = useState({
         width: 800,
-        height: 600
+        height: 600,
     });
     const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
-    const { theme } = useTheme(state => state);
+    const { theme } = useTheme((state) => state);
     const graphTheme = getGraphTheme(theme);
     const graphThemeRef = useRef(graphTheme);
     graphThemeRef.current = graphTheme;
@@ -75,7 +62,7 @@ function GraphContent() {
                 throw response;
             }
             return response.noteGraph;
-        }
+        },
     });
 
     const graphData: GraphData | null = useMemo(() => {
@@ -83,15 +70,15 @@ function GraphContent() {
             return null;
         }
 
-        const connectedNodes = data.nodes.filter(node => node.connections > 0);
+        const connectedNodes = data.nodes.filter((node) => node.connections > 0);
         if (connectedNodes.length === 0) {
             return null;
         }
 
-        const connectedIds = new Set(connectedNodes.map(node => node.id));
+        const connectedIds = new Set(connectedNodes.map((node) => node.id));
         return {
             nodes: connectedNodes,
-            links: data.links.filter(link => connectedIds.has(link.source) && connectedIds.has(link.target))
+            links: data.links.filter((link) => connectedIds.has(link.source) && connectedIds.has(link.target)),
         };
     }, [data]);
 
@@ -108,7 +95,7 @@ function GraphContent() {
             const rect = containerRef.current.getBoundingClientRect();
             setDimensions({
                 width: rect.width,
-                height: Math.max(600, window.innerHeight - 150)
+                height: Math.max(600, window.innerHeight - 150),
             });
         };
 
@@ -132,17 +119,20 @@ function GraphContent() {
     const selectedNodeIdRef = useRef(selectedNodeId);
     selectedNodeIdRef.current = selectedNodeId;
 
-    const handleNodeClick = useCallback((node: GraphNode) => {
-        if (selectedNodeIdRef.current === node.id) {
-            navigate({
-                to: NOTE_ROUTE,
-                params: { id: node.id }
-            });
-            return;
-        }
+    const handleNodeClick = useCallback(
+        (node: GraphNode) => {
+            if (selectedNodeIdRef.current === node.id) {
+                navigate({
+                    to: NOTE_ROUTE,
+                    params: { id: node.id },
+                });
+                return;
+            }
 
-        setSelectedNodeId(node.id);
-    }, [navigate]);
+            setSelectedNodeId(node.id);
+        },
+        [navigate],
+    );
 
     const handleBackgroundClick = useCallback(() => {
         setSelectedNodeId(null);
@@ -183,108 +173,97 @@ function GraphContent() {
     }, [graphData]);
     adjacencyMapRef.current = adjacencyMap;
 
-    const nodeCanvasObject = useCallback((
-        node: GraphNode & { x?: number; y?: number },
-        ctx: CanvasRenderingContext2D,
-        globalScale: number
-    ) => {
-        const palette = graphThemeRef.current;
-        const selectedId = selectedNodeId;
-        const adjacency = adjacencyMapRef.current;
-        const nodeSize = getNodeSize(node.connections);
-        const nx = node.x || 0;
-        const ny = node.y || 0;
+    const nodeCanvasObject = useCallback(
+        (node: GraphNode & { x?: number; y?: number }, ctx: CanvasRenderingContext2D, globalScale: number) => {
+            const palette = graphThemeRef.current;
+            const selectedId = selectedNodeId;
+            const adjacency = adjacencyMapRef.current;
+            const nodeSize = getNodeSize(node.connections);
+            const nx = node.x || 0;
+            const ny = node.y || 0;
 
-        const isSelected = selectedId === node.id;
-        const isConnected = selectedId ? adjacency.get(selectedId)?.has(node.id) ?? false : false;
-        const isDimmed = selectedId !== null && !isSelected && !isConnected;
-        const colorIndex = getHash(node.id);
+            const isSelected = selectedId === node.id;
+            const isConnected = selectedId ? (adjacency.get(selectedId)?.has(node.id) ?? false) : false;
+            const isDimmed = selectedId !== null && !isSelected && !isConnected;
+            const colorIndex = getHash(node.id);
 
-        ctx.beginPath();
-        ctx.arc(nx, ny, nodeSize, 0, Math.PI * 2);
-
-        ctx.fillStyle = getGraphNodeFill(theme, {
-            connections: node.connections,
-            colorIndex,
-            selectedNodeId: selectedId,
-            nodeId: node.id,
-            isConnected
-        });
-        ctx.fill();
-
-        if (isDimmed) {
-            return;
-        }
-
-        ctx.strokeStyle = palette.nodeStroke;
-        ctx.lineWidth = (isSelected ? 2 : 1) / globalScale;
-        ctx.stroke();
-
-        if (isSelected) {
             ctx.beginPath();
-            ctx.arc(nx, ny, nodeSize + 2 / globalScale, 0, Math.PI * 2);
-            ctx.strokeStyle = palette.nodeSelectedStroke;
-            ctx.lineWidth = 1.5 / globalScale;
-            ctx.stroke();
-        }
+            ctx.arc(nx, ny, nodeSize, 0, Math.PI * 2);
 
-        const isHubConnected = isConnected && node.connections >= 4;
-        if (isSelected || isHubConnected || globalScale > 2.5) {
-            const label = node.title || 'Untitled';
-            const fontSize = Math.max(10 / globalScale, 2.5);
-            ctx.font = getGraphLabelFont(theme, {
-                fontSize,
-                emphasize: isSelected
+            ctx.fillStyle = getGraphNodeFill(theme, {
+                connections: node.connections,
+                colorIndex,
+                selectedNodeId: selectedId,
+                nodeId: node.id,
+                isConnected,
             });
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'top';
+            ctx.fill();
 
-            const textWidth = ctx.measureText(label).width;
-            const padding = 2 / globalScale;
-            const labelY = ny + nodeSize + 3 / globalScale;
+            if (isDimmed) {
+                return;
+            }
 
-            ctx.fillStyle = palette.labelBackground;
-            ctx.fillRect(
-                nx - textWidth / 2 - padding,
-                labelY,
-                textWidth + padding * 2,
-                fontSize + padding * 2
-            );
+            ctx.strokeStyle = palette.nodeStroke;
+            ctx.lineWidth = (isSelected ? 2 : 1) / globalScale;
+            ctx.stroke();
 
-            ctx.fillStyle = palette.labelText;
-            ctx.fillText(label, nx, labelY + padding);
-        }
-    }, [selectedNodeId, theme]);
+            if (isSelected) {
+                ctx.beginPath();
+                ctx.arc(nx, ny, nodeSize + 2 / globalScale, 0, Math.PI * 2);
+                ctx.strokeStyle = palette.nodeSelectedStroke;
+                ctx.lineWidth = 1.5 / globalScale;
+                ctx.stroke();
+            }
 
-    const linkCanvasObject = useCallback((
-        link: GraphLink,
-        ctx: CanvasRenderingContext2D,
-        globalScale: number
-    ) => {
-        const selectedId = selectedNodeId;
-        const source = link.source as unknown as { x?: number; y?: number; id: string };
-        const target = link.target as unknown as { x?: number; y?: number; id: string };
-        const isConnected = selectedId
-            ? source.id === selectedId || target.id === selectedId
-            : false;
+            const isHubConnected = isConnected && node.connections >= 4;
+            if (isSelected || isHubConnected || globalScale > 2.5) {
+                const label = node.title || 'Untitled';
+                const fontSize = Math.max(10 / globalScale, 2.5);
+                ctx.font = getGraphLabelFont(theme, {
+                    fontSize,
+                    emphasize: isSelected,
+                });
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'top';
 
-        ctx.beginPath();
-        ctx.moveTo(source.x || 0, source.y || 0);
-        ctx.lineTo(target.x || 0, target.y || 0);
+                const textWidth = ctx.measureText(label).width;
+                const padding = 2 / globalScale;
+                const labelY = ny + nodeSize + 3 / globalScale;
 
-        ctx.strokeStyle = getGraphLinkColor(theme, {
-            selectedNodeId: selectedId,
-            isConnected
-        });
-        ctx.lineWidth = isConnected ? 2 / globalScale : 0.5 / globalScale;
-        ctx.stroke();
-    }, [selectedNodeId, theme]);
+                ctx.fillStyle = palette.labelBackground;
+                ctx.fillRect(nx - textWidth / 2 - padding, labelY, textWidth + padding * 2, fontSize + padding * 2);
+
+                ctx.fillStyle = palette.labelText;
+                ctx.fillText(label, nx, labelY + padding);
+            }
+        },
+        [selectedNodeId, theme],
+    );
+
+    const linkCanvasObject = useCallback(
+        (link: GraphLink, ctx: CanvasRenderingContext2D, globalScale: number) => {
+            const selectedId = selectedNodeId;
+            const source = link.source as unknown as { x?: number; y?: number; id: string };
+            const target = link.target as unknown as { x?: number; y?: number; id: string };
+            const isConnected = selectedId ? source.id === selectedId || target.id === selectedId : false;
+
+            ctx.beginPath();
+            ctx.moveTo(source.x || 0, source.y || 0);
+            ctx.lineTo(target.x || 0, target.y || 0);
+
+            ctx.strokeStyle = getGraphLinkColor(theme, {
+                selectedNodeId: selectedId,
+                isConnected,
+            });
+            ctx.lineWidth = isConnected ? 2 / globalScale : 0.5 / globalScale;
+            ctx.stroke();
+        },
+        [selectedNodeId, theme],
+    );
 
     if (!graphData) {
         return (
-            <PageLayout
-                title="Knowledge Graph"
-                description="0 linked notes, 0 connections">
+            <PageLayout title="Knowledge Graph" description="0 linked notes, 0 connections">
                 <Empty
                     title="No constellations yet"
                     description="Link your notes together and watch your own starry sky unfold"
@@ -296,40 +275,39 @@ function GraphContent() {
     return (
         <PageLayout
             title="Knowledge Graph"
-            description={`${graphData.nodes.length} linked notes, ${graphData.links.length} connections`}>
+            description={`${graphData.nodes.length} linked notes, ${graphData.links.length} connections`}
+        >
             <div
                 ref={containerRef}
                 className="surface-base graph-canvas relative overflow-hidden"
-                style={{ '--graph-bg': graphTheme.background } as React.CSSProperties}>
-                {selectedNodeId && (() => {
-                    const node = graphData.nodes.find(item => item.id === selectedNodeId);
-                    if (!node) {
-                        return null;
-                    }
+                style={{ '--graph-bg': graphTheme.background } as React.CSSProperties}
+            >
+                {selectedNodeId &&
+                    (() => {
+                        const node = graphData.nodes.find((item) => item.id === selectedNodeId);
+                        if (!node) {
+                            return null;
+                        }
 
-                    return (
-                        <div className="surface-floating absolute top-3 left-3 z-10 flex items-center gap-2 px-3 py-2">
-                            <Text
-                                as="span"
-                                variant="meta"
-                                weight="semibold"
-                                truncate
-                                className="max-w-48">
-                                {node.title}
-                            </Text>
-                            <Text as="span" variant="label" tone="tertiary">
-                                {node.connections} links
-                            </Text>
-                            <button
-                                type="button"
-                                onClick={() => setSelectedNodeId(null)}
-                                className="focus-ring-soft ml-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-[8px] text-fg-tertiary transition-colors hover:bg-hover-subtle hover:text-fg-default"
-                                aria-label="Deselect node">
-                                <Icon.Close className="h-3.5 w-3.5" />
-                            </button>
-                        </div>
-                    );
-                })()}
+                        return (
+                            <div className="surface-floating absolute top-3 left-3 z-10 flex items-center gap-2 px-3 py-2">
+                                <Text as="span" variant="meta" weight="semibold" truncate className="max-w-48">
+                                    {node.title}
+                                </Text>
+                                <Text as="span" variant="label" tone="tertiary">
+                                    {node.connections} links
+                                </Text>
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedNodeId(null)}
+                                    className="focus-ring-soft ml-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-[8px] text-fg-tertiary transition-colors hover:bg-hover-subtle hover:text-fg-default"
+                                    aria-label="Deselect node"
+                                >
+                                    <Icon.Close className="h-3.5 w-3.5" />
+                                </button>
+                            </div>
+                        );
+                    })()}
                 <div className="surface-floating absolute top-3 right-3 z-10 flex flex-col gap-1.5 px-3 py-2.5">
                     <div className="flex items-center gap-2">
                         <span
@@ -358,18 +336,14 @@ function GraphContent() {
                     nodeId="id"
                     nodeLabel=""
                     nodeCanvasObject={nodeCanvasObject}
-                    nodePointerAreaPaint={(
-                        node: GraphNode & { x?: number; y?: number },
-                        color,
-                        ctx
-                    ) => {
+                    nodePointerAreaPaint={(node: GraphNode & { x?: number; y?: number }, color, ctx) => {
                         ctx.beginPath();
                         ctx.arc(
                             node.x || 0,
                             node.y || 0,
                             Math.max(getNodeSize(node.connections) + 4, 10),
                             0,
-                            2 * Math.PI
+                            2 * Math.PI,
                         );
                         ctx.fillStyle = color;
                         ctx.fill();
@@ -411,7 +385,8 @@ export default function Graph() {
                         onRetry={retry}
                     />
                 </PageLayout>
-            )}>
+            )}
+        >
             <GraphContent />
         </QueryBoundary>
     );

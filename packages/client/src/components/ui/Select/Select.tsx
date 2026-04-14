@@ -1,8 +1,8 @@
-import { forwardRef } from 'react';
 import * as SelectPrimitive from '@radix-ui/react-select';
 import type { VariantProps } from 'class-variance-authority';
 import { cva } from 'class-variance-authority';
 import classNames from 'classnames';
+import { forwardRef } from 'react';
 import * as Icon from '~/components/icon';
 
 const selectTriggerVariants = cva(
@@ -22,31 +22,25 @@ const selectTriggerVariants = cva(
         'disabled:cursor-not-allowed',
         'disabled:opacity-50',
         'cursor-pointer',
-        'whitespace-nowrap'
+        'whitespace-nowrap',
     ],
     {
         variants: {
             variant: {
-                default: [
-                    'border-border-subtle'
-                ],
-                ghost: [
-                    'border-transparent',
-                    'bg-subtle',
-                    'hover:bg-hover-subtle'
-                ]
+                default: ['border-border-subtle'],
+                ghost: ['border-transparent', 'bg-subtle', 'hover:bg-hover-subtle'],
             },
             size: {
                 sm: 'h-8 px-3 text-sm rounded-[12px]',
                 md: 'h-9 px-3 text-sm rounded-[14px]',
-                lg: 'h-11 px-4 text-base rounded-[16px]'
-            }
+                lg: 'h-11 px-4 text-base rounded-[16px]',
+            },
         },
         defaultVariants: {
             variant: 'default',
-            size: 'md'
-        }
-    }
+            size: 'md',
+        },
+    },
 );
 
 export interface SelectProps extends VariantProps<typeof selectTriggerVariants> {
@@ -68,20 +62,22 @@ const Select = ({
     size,
     className,
     children,
-    disabled
+    disabled,
 }: SelectProps) => {
     return (
         <SelectPrimitive.Root
             value={value}
             defaultValue={defaultValue}
             onValueChange={onValueChange}
-            disabled={disabled}>
+            disabled={disabled}
+        >
             <SelectPrimitive.Trigger
                 className={selectTriggerVariants({
                     variant,
                     size,
-                    className
-                })}>
+                    className,
+                })}
+            >
                 <SelectPrimitive.Value placeholder={placeholder} />
                 <SelectPrimitive.Icon>
                     <Icon.ChevronDown className="w-3.5 h-3.5 opacity-60" />
@@ -89,9 +85,7 @@ const Select = ({
             </SelectPrimitive.Trigger>
             <SelectPrimitive.Portal>
                 <SelectContent>
-                    <SelectPrimitive.Viewport className="p-1">
-                        {children}
-                    </SelectPrimitive.Viewport>
+                    <SelectPrimitive.Viewport className="p-1">{children}</SelectPrimitive.Viewport>
                 </SelectContent>
             </SelectPrimitive.Portal>
         </SelectPrimitive.Root>
@@ -113,9 +107,10 @@ const SelectContent = forwardRef<
             'surface-floating',
             'data-[state=open]:animate-fade-in',
             'data-[state=open]:animate-zoom-in',
-            className
+            className,
         )}
-        {...props}>
+        {...props}
+    >
         {children}
     </SelectPrimitive.Content>
 ));
@@ -146,9 +141,10 @@ const SelectItem = forwardRef<
             'data-[highlighted]:text-fg-default',
             'data-[disabled]:pointer-events-none',
             'data-[disabled]:opacity-50',
-            className
+            className,
         )}
-        {...props}>
+        {...props}
+    >
         <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
     </SelectPrimitive.Item>
 ));

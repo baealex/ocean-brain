@@ -43,12 +43,7 @@ function renderDescription(description?: ReactNode) {
 
     if (typeof description === 'string' || typeof description === 'number') {
         return (
-            <Text
-                as="p"
-                variant="meta"
-                weight="medium"
-                tone="tertiary"
-                className="mt-1">
+            <Text as="p" variant="meta" weight="medium" tone="tertiary" className="mt-1">
                 {description}
             </Text>
         );
@@ -63,7 +58,7 @@ export default function PageLayout({
     variant = 'default',
     description,
     headerRight,
-    children
+    children,
 }: PageLayoutProps) {
     return (
         <>
@@ -72,7 +67,13 @@ export default function PageLayout({
             </Helmet>
             {variant === 'default' && (
                 <div className="mb-5 border-b border-border-subtle/80 pb-4">
-                    <div className={headerRight ? 'flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between' : undefined}>
+                    <div
+                        className={
+                            headerRight
+                                ? 'flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'
+                                : undefined
+                        }
+                    >
                         <div>
                             {renderHeading(title, heading)}
                             {renderDescription(description)}
@@ -83,7 +84,13 @@ export default function PageLayout({
             )}
             {variant === 'subtle' && (
                 <div className="mb-6">
-                    <div className={headerRight ? 'flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between' : undefined}>
+                    <div
+                        className={
+                            headerRight
+                                ? 'flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'
+                                : undefined
+                        }
+                    >
                         <div>
                             {renderHeading(title, heading)}
                             {renderDescription(description)}

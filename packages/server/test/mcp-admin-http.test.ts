@@ -1,29 +1,26 @@
-import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import type { AddressInfo } from 'node:net';
-
+import test, { type TestContext } from 'node:test';
+import { createAppWithMcpAuth } from '../src/app.js';
 import type { AuthConfig } from '../src/modules/auth-mode.js';
 import type { McpAdminService } from '../src/modules/mcp-admin.js';
-import { createAppWithMcpAuth } from '../src/app.js';
 
-const createStubMcpAdminService = (input: {
-    enabled?: boolean;
-    hasActiveToken?: boolean;
-} = {}): McpAdminService => {
+const createStubMcpAdminService = (input: { enabled?: boolean; hasActiveToken?: boolean } = {}): McpAdminService => {
     let enabled = input.enabled ?? true;
-    let activeToken = input.hasActiveToken === false
-        ? null
-        : {
-            id: '1',
-            createdAt: '2026-04-04T00:00:00.000Z',
-            lastUsedAt: null as string | null
-        };
+    let activeToken =
+        input.hasActiveToken === false
+            ? null
+            : {
+                  id: '1',
+                  createdAt: '2026-04-04T00:00:00.000Z',
+                  lastUsedAt: null as string | null,
+              };
 
     return {
         getStatus: async () => ({
             enabled,
             hasActiveToken: Boolean(activeToken),
-            token: activeToken
+            token: activeToken,
         }),
         setEnabled: async (nextEnabled) => {
             enabled = nextEnabled;
@@ -32,21 +29,21 @@ const createStubMcpAdminService = (input: {
             activeToken = {
                 id: activeToken ? String(Number(activeToken.id) + 1) : '1',
                 createdAt: new Date().toISOString(),
-                lastUsedAt: null
+                lastUsedAt: null,
             };
             return { token: 'issued-mcp-token' };
         },
         revokeActiveToken: async () => {
             activeToken = null;
         },
-        validatePresentedToken: async () => ({ ok: false, reason: 'forbidden' })
+        validatePresentedToken: async () => ({ ok: false, reason: 'forbidden' }),
     };
 };
 
 const startServer = async (
     t: TestContext,
     authConfig: AuthConfig,
-    mcpAdminService: McpAdminService = createStubMcpAdminService()
+    mcpAdminService: McpAdminService = createStubMcpAdminService(),
 ) => {
     const app = createAppWithMcpAuth(authConfig, mcpAdminService);
     const server = app.listen(0);
@@ -69,21 +66,21 @@ const jsonRequest = async (
     path: string,
     method: 'GET' | 'POST',
     body?: Record<string, unknown>,
-    cookie?: string
+    cookie?: string,
 ) => {
     const response = await fetch(`${baseUrl}${path}`, {
         method,
         headers: {
             ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}),
-            ...(cookie ? { Cookie: cookie } : {})
+            ...(cookie ? { Cookie: cookie } : {}),
         },
-        body: body ? JSON.stringify(body) : undefined
+        body: body ? JSON.stringify(body) : undefined,
     });
 
     return {
         status: response.status,
-        body: await response.json() as Record<string, unknown>,
-        cookie: response.headers.get('set-cookie') ?? undefined
+        body: (await response.json()) as Record<string, unknown>,
+        cookie: response.headers.get('set-cookie') ?? undefined,
     };
 };
 
@@ -99,7 +96,7 @@ test('GET /api/mcp-admin/status requires authenticated session in password mode'
         mode: 'password',
         password: 'secret',
         sessionSecret: 'session-secret',
-        source: 'override'
+        source: 'override',
     });
 
     const status = await jsonRequest(baseUrl, '/api/mcp-admin/status', 'GET');
@@ -114,9 +111,9 @@ test('POST /api/mcp-admin/token/rotate returns plaintext token once for authenti
             mode: 'password',
             password: 'secret',
             sessionSecret: 'session-secret',
-            source: 'override'
+            source: 'override',
         },
-        createStubMcpAdminService()
+        createStubMcpAdminService(),
     );
 
     const cookie = await login(baseUrl);
@@ -135,9 +132,9 @@ test('POST /api/mcp-admin/enabled toggles enabled state for authenticated sessio
             mode: 'password',
             password: 'secret',
             sessionSecret: 'session-secret',
-            source: 'override'
+            source: 'override',
         },
-        service
+        service,
     );
 
     const cookie = await login(baseUrl);
@@ -155,9 +152,9 @@ test('POST /api/mcp-admin/token/revoke revokes active token for authenticated se
             mode: 'password',
             password: 'secret',
             sessionSecret: 'session-secret',
-            source: 'override'
+            source: 'override',
         },
-        service
+        service,
     );
 
     const cookie = await login(baseUrl);

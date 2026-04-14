@@ -1,16 +1,10 @@
-import type { ReactNode } from 'react';
 import { render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
 
 import NoteListCard from './NoteListCard';
 
 vi.mock('@tanstack/react-router', () => ({
-    Link: ({
-        children,
-        ...props
-    }: {
-        children: ReactNode;
-        [key: string]: unknown;
-    }) => <a {...props}>{children}</a>
+    Link: ({ children, ...props }: { children: ReactNode; [key: string]: unknown }) => <a {...props}>{children}</a>,
 }));
 
 describe('<NoteListCard />', () => {
@@ -23,7 +17,7 @@ describe('<NoteListCard />', () => {
                 pinned
                 createdAt={Date.now()}
                 updatedAt={Date.now()}
-            />
+            />,
         );
 
         const titleLink = screen.getByText('Quiet capture').closest('a');
@@ -41,7 +35,7 @@ describe('<NoteListCard />', () => {
                 pinned={false}
                 createdAt={Date.now()}
                 updatedAt={Date.now()}
-            />
+            />,
         );
 
         expect(screen.getByRole('button', { name: 'Note actions' })).toBeInTheDocument();

@@ -10,7 +10,7 @@ describe('shared primitive controls', () => {
             <>
                 <Input placeholder="Search notes" />
                 <Select placeholder="Sort by" />
-            </>
+            </>,
         );
 
         expect(screen.getByPlaceholderText('Search notes')).toBeInTheDocument();
@@ -22,7 +22,7 @@ describe('shared primitive controls', () => {
             <ToggleGroup type="single" variant="pills" value="create">
                 <ToggleGroupItem value="create">Create date</ToggleGroupItem>
                 <ToggleGroupItem value="update">Update date</ToggleGroupItem>
-            </ToggleGroup>
+            </ToggleGroup>,
         );
 
         const group = screen.getByRole('group');

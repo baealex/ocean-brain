@@ -1,14 +1,7 @@
-import { graphQuery } from '~/modules/graph-query';
 import type { Placeholder } from '~/models/placeholder.model';
+import { graphQuery } from '~/modules/graph-query';
 
-const PLACEHOLDER_FIELDS = [
-    'id',
-    'name',
-    'template',
-    'replacement',
-    'createdAt',
-    'updatedAt'
-] as const;
+const PLACEHOLDER_FIELDS = ['id', 'name', 'template', 'replacement', 'createdAt', 'updatedAt'] as const;
 
 type PlaceholderField = (typeof PLACEHOLDER_FIELDS)[number];
 
@@ -29,15 +22,13 @@ __PLACEHOLDER_FIELDS__                }
         }`;
 
 const buildPlaceholderSelection = (fields?: (keyof Placeholder)[]) => {
-    const selectedFields = fields && fields.length > 0
-        ? fields.filter((field): field is PlaceholderField => PLACEHOLDER_FIELD_SET.has(field))
-        : PLACEHOLDER_FIELDS;
+    const selectedFields =
+        fields && fields.length > 0
+            ? fields.filter((field): field is PlaceholderField => PLACEHOLDER_FIELD_SET.has(field))
+            : PLACEHOLDER_FIELDS;
 
     const safeFields = Array.from(new Set(selectedFields));
-    return safeFields
-        .map((field) => '                    ' + field)
-        .join('\n')
-        + '\n';
+    return safeFields.map((field) => '                    ' + field).join('\n') + '\n';
 };
 
 export interface FetchPlaceholdersParams {
@@ -51,7 +42,7 @@ export const fetchPlaceholders = async ({
     limit = 25,
     offset = 0,
     query = '',
-    fields
+    fields,
 }: FetchPlaceholdersParams = {}) => {
     const placeholderSelection = buildPlaceholderSelection(fields);
     const graphqlQuery = FETCH_PLACEHOLDERS_QUERY.replace('__PLACEHOLDER_FIELDS__', placeholderSelection);
@@ -61,16 +52,13 @@ export const fetchPlaceholders = async ({
             totalCount: number;
             placeholders: Placeholder[];
         };
-    }>(
-        graphqlQuery,
-        {
-            searchFilter: { query },
-            pagination: {
-                limit,
-                offset
-            }
-        }
-    );
+    }>(graphqlQuery, {
+        searchFilter: { query },
+        pagination: {
+            limit,
+            offset,
+        },
+    });
 };
 
 export interface CreatePlaceholderRequest {
@@ -99,7 +87,7 @@ export const createPlaceholder = (placeholder: CreatePlaceholderRequest) => {
                 updatedAt
             }
         }`,
-        placeholder
+        placeholder,
     );
 };
 
@@ -128,7 +116,7 @@ export const updatePlaceholder = (params: UpdatePlaceholderParams) => {
                 name
             }
         }`,
-        params
+        params,
     );
 };
 
@@ -137,6 +125,6 @@ export const deletePlaceholder = (id: string) => {
         `mutation DeletePlaceholder($id: ID!) {
             deletePlaceholder(id: $id)
         }`,
-        { id }
+        { id },
     );
 };

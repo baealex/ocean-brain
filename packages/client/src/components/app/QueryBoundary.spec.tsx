@@ -1,5 +1,5 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
 import { useSuspenseQuery } from '@tanstack/react-query';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 
 import { createQueryClientWrapper } from '~/test/test-utils';
 
@@ -22,9 +22,10 @@ describe('QueryBoundary', () => {
         function PendingHarness() {
             const { data } = useSuspenseQuery({
                 queryKey: ['pending-boundary'],
-                queryFn: () => new Promise<string>((resolve) => {
-                    resolveQuery = resolve;
-                })
+                queryFn: () =>
+                    new Promise<string>((resolve) => {
+                        resolveQuery = resolve;
+                    }),
             });
 
             return <div>{data}</div>;
@@ -33,12 +34,10 @@ describe('QueryBoundary', () => {
         const { Wrapper } = createQueryClientWrapper();
 
         render(
-            <QueryBoundary
-                fallback={<div>Loading boundary</div>}
-                errorTitle="Failed to load pending data">
+            <QueryBoundary fallback={<div>Loading boundary</div>} errorTitle="Failed to load pending data">
                 <PendingHarness />
             </QueryBoundary>,
-            { wrapper: Wrapper }
+            { wrapper: Wrapper },
         );
 
         expect(screen.getByText('Loading boundary')).toBeInTheDocument();
@@ -62,7 +61,7 @@ describe('QueryBoundary', () => {
                     }
 
                     return 'Recovered data';
-                }
+                },
             });
 
             return <div>{data}</div>;
@@ -79,10 +78,11 @@ describe('QueryBoundary', () => {
                         <p>{error instanceof Error ? error.message : 'Unknown error'}</p>
                         <button onClick={retry}>Retry boundary</button>
                     </div>
-                )}>
+                )}
+            >
                 <RetriableHarness />
             </QueryBoundary>,
-            { wrapper: Wrapper }
+            { wrapper: Wrapper },
         );
 
         expect(await screen.findByText('Boundary failed')).toBeInTheDocument();

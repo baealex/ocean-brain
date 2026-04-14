@@ -1,5 +1,5 @@
-import { useState } from 'react';
 import { useNavigate, useRouter } from '@tanstack/react-router';
+import { useState } from 'react';
 
 import { PageLayout, Skeleton } from '~/components/shared';
 import { Button, Text } from '~/components/ui';
@@ -27,17 +27,14 @@ interface QueryErrorViewProps {
 const DEFAULT_ERROR_MESSAGE = 'An unexpected routing error occurred.';
 
 const isGraphQueryErrorResponse = (
-    error: unknown
+    error: unknown,
 ): error is {
     errors?: Array<{
         code?: string;
         message?: string;
     }>;
 } => {
-    return typeof error === 'object'
-        && error !== null
-        && 'errors' in error
-        && Array.isArray(error.errors);
+    return typeof error === 'object' && error !== null && 'errors' in error && Array.isArray(error.errors);
 };
 
 const getErrorMessage = (error: unknown) => {
@@ -66,7 +63,7 @@ export function QueryErrorView({
     description,
     onRetry,
     showBackAction = true,
-    showHomeAction = true
+    showHomeAction = true,
 }: QueryErrorViewProps) {
     const navigate = useNavigate();
     const router = useRouter();
@@ -99,15 +96,11 @@ export function QueryErrorView({
                 as="div"
                 variant="body"
                 tone="secondary"
-                className="mt-4 rounded-[14px] border border-border-subtle bg-subtle px-3 py-2">
+                className="mt-4 rounded-[14px] border border-border-subtle bg-subtle px-3 py-2"
+            >
                 {message}
                 {errorCode && (
-                    <Text
-                        as="span"
-                        variant="body"
-                        weight="bold"
-                        tone="tertiary"
-                        className="ml-2">
+                    <Text as="span" variant="body" weight="bold" tone="tertiary" className="ml-2">
                         [{errorCode}]
                     </Text>
                 )}
@@ -119,10 +112,7 @@ export function QueryErrorView({
                     </Button>
                 )}
                 {showBackAction && (
-                    <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => router.history.back()}>
+                    <Button size="sm" variant="ghost" onClick={() => router.history.back()}>
                         Go back
                     </Button>
                 )}
@@ -130,15 +120,18 @@ export function QueryErrorView({
                     <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => navigate({
-                            to: HOME_ROUTE,
-                            search: {
-                                page: 1,
-                                sortBy: 'updatedAt',
-                                sortOrder: 'desc',
-                                pinnedFirst: false
-                            }
-                        })}>
+                        onClick={() =>
+                            navigate({
+                                to: HOME_ROUTE,
+                                search: {
+                                    page: 1,
+                                    sortBy: 'updatedAt',
+                                    sortOrder: 'desc',
+                                    pinnedFirst: false,
+                                },
+                            })
+                        }
+                    >
                         Go home
                     </Button>
                 )}
@@ -146,8 +139,8 @@ export function QueryErrorView({
                     {copyState === 'copied'
                         ? 'Copied details'
                         : copyState === 'failed'
-                            ? 'Copy failed'
-                            : 'Copy details'}
+                          ? 'Copy failed'
+                          : 'Copy details'}
                 </Button>
             </div>
         </div>
@@ -156,7 +149,7 @@ export function QueryErrorView({
 
 export function RoutePendingView({
     title = 'Loading page',
-    description = 'Preparing route resources.'
+    description = 'Preparing route resources.',
 }: RoutePendingViewProps) {
     return (
         <PageLayout title={title} description={description} variant="none">

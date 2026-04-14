@@ -1,17 +1,6 @@
-import {
-    afterEach,
-    describe,
-    expect,
-    it,
-    vi
-} from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import {
-    applyThemeClass,
-    getStoredTheme,
-    initializeTheme,
-    resolveTheme
-} from './theme-dom';
+import { applyThemeClass, getStoredTheme, initializeTheme, resolveTheme } from './theme-dom';
 
 describe('theme-dom', () => {
     afterEach(() => {
@@ -34,7 +23,7 @@ describe('theme-dom', () => {
     it('falls back to system theme when storage is empty', () => {
         const theme = resolveTheme({
             storedTheme: null,
-            systemPrefersDark: true
+            systemPrefersDark: true,
         });
 
         expect(theme).toBe('dark');

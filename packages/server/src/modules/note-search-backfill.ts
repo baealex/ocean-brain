@@ -2,7 +2,7 @@ import models from '~/models.js';
 import {
     buildNoteSearchProjection,
     NOTE_SEARCH_TEXT_SCHEMA_VERSION,
-    type NoteSearchProjection
+    type NoteSearchProjection,
 } from './note-search.js';
 
 interface BackfillCandidate {
@@ -36,8 +36,8 @@ export const createNoteSearchBackfillService = (deps: NoteSearchBackfillDeps) =>
         await deps.updateNotes(
             staleNotes.map((note) => ({
                 id: note.id,
-                projection: buildNoteSearchProjection(note)
-            }))
+                projection: buildNoteSearchProjection(note),
+            })),
         );
 
         return staleNotes.length;
@@ -65,7 +65,7 @@ export const createNoteSearchBackfillService = (deps: NoteSearchBackfillDeps) =>
 
     return {
         backfillBatch,
-        backfillAll
+        backfillAll,
     };
 };
 
@@ -78,18 +78,20 @@ const defaultNoteSearchBackfillService = createNoteSearchBackfillService({
             select: {
                 id: true,
                 title: true,
-                content: true
-            }
+                content: true,
+            },
         });
     },
     updateNotes: async (updates) => {
         await models.$transaction(
-            updates.map(({ id, projection }) => models.note.update({
-                where: { id },
-                data: projection
-            }))
+            updates.map(({ id, projection }) =>
+                models.note.update({
+                    where: { id },
+                    data: projection,
+                }),
+            ),
         );
-    }
+    },
 });
 
 export const backfillStaleNoteSearchText = async (limit?: number) => {
@@ -101,11 +103,9 @@ export const runNoteSearchBackfillInBackground = (limit?: number) => {
         return activeNoteSearchBackfillPromise;
     }
 
-    activeNoteSearchBackfillPromise = defaultNoteSearchBackfillService
-        .backfillAll(limit)
-        .finally(() => {
-            activeNoteSearchBackfillPromise = null;
-        });
+    activeNoteSearchBackfillPromise = defaultNoteSearchBackfillService.backfillAll(limit).finally(() => {
+        activeNoteSearchBackfillPromise = null;
+    });
 
     return activeNoteSearchBackfillPromise;
 };

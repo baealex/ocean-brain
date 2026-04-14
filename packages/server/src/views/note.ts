@@ -1,13 +1,13 @@
-import type { Controller } from '~/types/index.js';
+import type { NoteLayout } from '~/models.js';
 import { createAppError } from '~/modules/error-handler.js';
 import {
     createNoteFromMarkdown,
     InvalidNoteAuthoringInputError,
-    updateNoteFromMarkdown
+    updateNoteFromMarkdown,
 } from '~/modules/note-authoring.js';
 import { deleteNoteById } from '~/modules/note-cleanup.js';
 import { MCP_SNAPSHOT_META } from '~/modules/note-snapshot.js';
-import type { NoteLayout } from '~/models.js';
+import type { Controller } from '~/types/index.js';
 
 const NOTE_LAYOUTS = new Set<NoteLayout>(['narrow', 'wide', 'full']);
 
@@ -23,9 +23,7 @@ const resolveNoteLayout = (value: unknown): NoteLayout | null | undefined => {
     return null;
 };
 
-export const createMcpCreateNoteHandler = (
-    createNote = createNoteFromMarkdown
-): Controller => {
+export const createMcpCreateNoteHandler = (createNote = createNoteFromMarkdown): Controller => {
     return async (req, res) => {
         const { title, markdown, layout } = req.body ?? {};
         const resolvedLayout = resolveNoteLayout(layout);
@@ -46,13 +44,15 @@ export const createMcpCreateNoteHandler = (
             const note = await createNote({
                 title,
                 ...(markdown !== undefined ? { markdown } : {}),
-                ...(resolvedLayout ? { layout: resolvedLayout } : {})
+                ...(resolvedLayout ? { layout: resolvedLayout } : {}),
             });
 
-            res.status(200).json({
-                created: true,
-                note
-            }).end();
+            res.status(200)
+                .json({
+                    created: true,
+                    note,
+                })
+                .end();
         } catch (error) {
             if (error instanceof InvalidNoteAuthoringInputError) {
                 throw createAppError(400, 'INVALID_NOTE_INPUT', error.message);
@@ -63,13 +63,9 @@ export const createMcpCreateNoteHandler = (
     };
 };
 
-export const createMcpUpdateNoteHandler = (
-    updateNote = updateNoteFromMarkdown
-): Controller => {
+export const createMcpUpdateNoteHandler = (updateNote = updateNoteFromMarkdown): Controller => {
     return async (req, res) => {
-        const {
-            id, title, markdown, layout, editSessionId
-        } = req.body ?? {};
+        const { id, title, markdown, layout, editSessionId } = req.body ?? {};
         const noteId = Number(id);
         const resolvedLayout = resolveNoteLayout(layout);
 
@@ -93,11 +89,7 @@ export const createMcpUpdateNoteHandler = (
             throw createAppError(400, 'INVALID_EDIT_SESSION_ID', 'Edit session id must be a string.');
         }
 
-        if (
-            title === undefined &&
-            markdown === undefined &&
-            layout === undefined
-        ) {
+        if (title === undefined && markdown === undefined && layout === undefined) {
             throw createAppError(400, 'INVALID_NOTE_INPUT', 'At least one note field must be provided for update.');
         }
 
@@ -108,17 +100,19 @@ export const createMcpUpdateNoteHandler = (
                 ...(markdown !== undefined ? { markdown } : {}),
                 ...(resolvedLayout ? { layout: resolvedLayout } : {}),
                 ...(editSessionId !== undefined ? { editSessionId } : {}),
-                snapshotMeta: MCP_SNAPSHOT_META
+                snapshotMeta: MCP_SNAPSHOT_META,
             });
 
             if (!note) {
                 throw createAppError(404, 'NOTE_NOT_FOUND', 'The requested note was not found.');
             }
 
-            res.status(200).json({
-                updated: true,
-                note
-            }).end();
+            res.status(200)
+                .json({
+                    updated: true,
+                    note,
+                })
+                .end();
         } catch (error) {
             if (error instanceof InvalidNoteAuthoringInputError) {
                 throw createAppError(400, 'INVALID_NOTE_INPUT', error.message);
@@ -129,9 +123,7 @@ export const createMcpUpdateNoteHandler = (
     };
 };
 
-export const createMcpDeleteNoteHandler = (
-    deleteNote = deleteNoteById
-): Controller => {
+export const createMcpDeleteNoteHandler = (deleteNote = deleteNoteById): Controller => {
     return async (req, res) => {
         const id = Number(req.body?.id);
 
@@ -145,9 +137,11 @@ export const createMcpDeleteNoteHandler = (
             throw createAppError(404, 'NOTE_NOT_FOUND', 'The requested note was not found.');
         }
 
-        res.status(200).json({
-            deleted: true,
-            note: deletedNote
-        }).end();
+        res.status(200)
+            .json({
+                deleted: true,
+                note: deletedNote,
+            })
+            .end();
     };
 };

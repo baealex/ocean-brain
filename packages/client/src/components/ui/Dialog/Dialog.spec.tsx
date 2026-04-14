@@ -1,8 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from './Dialog';
 import { Dropdown } from '../Dropdown';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from './Dialog';
 
 describe('<DialogContent />', () => {
     it('renders dialog content with its accessible title and description', () => {
@@ -12,7 +11,7 @@ describe('<DialogContent />', () => {
                     <DialogTitle>Title</DialogTitle>
                     <DialogDescription>Body</DialogDescription>
                 </DialogContent>
-            </Dialog>
+            </Dialog>,
         );
 
         expect(screen.getByRole('dialog')).toBeInTheDocument();
@@ -28,18 +27,21 @@ describe('<Dropdown />', () => {
 
         render(
             <Dropdown
-                button={(
+                button={
                     <button
                         type="button"
-                        className="focus-ring-soft rounded-[12px] border border-border-subtle px-3 py-2">
+                        className="focus-ring-soft rounded-[12px] border border-border-subtle px-3 py-2"
+                    >
                         Open menu
                     </button>
-                )}
-                items={[{
-                    name: 'Archive',
-                    onClick: handleArchive
-                }]}
-            />
+                }
+                items={[
+                    {
+                        name: 'Archive',
+                        onClick: handleArchive,
+                    },
+                ]}
+            />,
         );
 
         const trigger = screen.getByRole('button', { name: 'Open menu' });

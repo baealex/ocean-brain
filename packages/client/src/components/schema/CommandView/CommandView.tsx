@@ -1,11 +1,11 @@
 import { filterSuggestionItems } from '@blocknote/core/extensions';
-import { SuggestionMenuController, getDefaultReactSlashMenuItems } from '@blocknote/react';
+import { getDefaultReactSlashMenuItems, SuggestionMenuController } from '@blocknote/react';
 import * as Icon from '~/components/icon';
 
 import type schema from '../schema';
 
 interface CommandViewProps {
-    editor: typeof schema['BlockNoteEditor'];
+    editor: (typeof schema)['BlockNoteEditor'];
 }
 
 const CommandView = ({ editor }: CommandViewProps) => {
@@ -15,10 +15,8 @@ const CommandView = ({ editor }: CommandViewProps) => {
             getItems={async (query) =>
                 filterSuggestionItems(
                     [
-                        ...getDefaultReactSlashMenuItems(editor).filter((item) =>
-                            item.title !== 'Audio' &&
-                            item.title !== 'Video' &&
-                            item.title !== 'File'
+                        ...getDefaultReactSlashMenuItems(editor).filter(
+                            (item) => item.title !== 'Audio' && item.title !== 'Video' && item.title !== 'File',
                         ),
                         {
                             title: 'Table of Contents',
@@ -27,15 +25,15 @@ const CommandView = ({ editor }: CommandViewProps) => {
                                 editor.insertBlocks(
                                     [{ type: 'tableOfContents' }],
                                     editor.getTextCursorPosition().block,
-                                    'after'
+                                    'after',
                                 );
                             },
                             aliases: ['toc', 'table of contents', 'contents', 'outline', 'index'],
                             group: 'Other',
-                            icon: <Icon.List />
-                        }
+                            icon: <Icon.List />,
+                        },
                     ],
-                    query
+                    query,
                 )
             }
         />

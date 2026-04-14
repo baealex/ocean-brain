@@ -1,4 +1,4 @@
-import type { NextFunction, Request, Response, RequestHandler } from 'express';
+import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import type { ValidationRule } from 'graphql';
 import { GraphQLError } from 'graphql';
 
@@ -24,20 +24,16 @@ const readBearerToken = (authorizationHeader?: string) => {
     return authorizationHeader.slice('Bearer '.length).trim() || undefined;
 };
 
-export const createMcpAuthMiddleware = (
-    _authConfig: AuthConfig,
-    mcpAdminAuth: McpAdminAuthPort
-): RequestHandler => {
+export const createMcpAuthMiddleware = (_authConfig: AuthConfig, mcpAdminAuth: McpAdminAuthPort): RequestHandler => {
     return async (req: Request, res: Response, next: NextFunction) => {
         try {
             const status = await mcpAdminAuth.getStatus();
             if (!status.enabled) {
-                res
-                    .status(403)
+                res.status(403)
                     .set(JSON_HEADERS)
                     .json({
                         code: 'MCP_DISABLED',
-                        message: 'MCP access is disabled by admin.'
+                        message: 'MCP access is disabled by admin.',
                     })
                     .end();
                 return;
@@ -46,12 +42,11 @@ export const createMcpAuthMiddleware = (
             const bearerToken = readBearerToken(req.headers.authorization);
 
             if (!bearerToken) {
-                res
-                    .status(401)
+                res.status(401)
                     .set(JSON_HEADERS)
                     .json({
                         code: 'UNAUTHORIZED',
-                        message: 'A valid MCP bearer token is required.'
+                        message: 'A valid MCP bearer token is required.',
                     })
                     .end();
                 return;
@@ -60,24 +55,22 @@ export const createMcpAuthMiddleware = (
             const validation = await mcpAdminAuth.validatePresentedToken(bearerToken);
 
             if (!validation.ok && validation.reason === 'not_configured') {
-                res
-                    .status(503)
+                res.status(503)
                     .set(JSON_HEADERS)
                     .json({
                         code: 'MCP_AUTH_NOT_CONFIGURED',
-                        message: 'MCP bearer auth is not configured.'
+                        message: 'MCP bearer auth is not configured.',
                     })
                     .end();
                 return;
             }
 
             if (!validation.ok) {
-                res
-                    .status(403)
+                res.status(403)
                     .set(JSON_HEADERS)
                     .json({
                         code: 'FORBIDDEN',
-                        message: 'Invalid MCP bearer token.'
+                        message: 'Invalid MCP bearer token.',
                     })
                     .end();
                 return;
@@ -98,14 +91,13 @@ export const createReadOnlyMcpValidationRule = (): ValidationRule => {
                     return;
                 }
 
-                context.reportError(new GraphQLError(
-                    'MCP endpoint is read-only',
-                    {
+                context.reportError(
+                    new GraphQLError('MCP endpoint is read-only', {
                         nodes: [node],
-                        extensions: { code: 'FORBIDDEN' }
-                    }
-                ));
-            }
+                        extensions: { code: 'FORBIDDEN' },
+                    }),
+                );
+            },
         };
     };
 };

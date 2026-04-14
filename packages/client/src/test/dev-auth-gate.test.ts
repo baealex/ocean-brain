@@ -1,10 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-    buildDevAuthLoginRedirect,
-    createDevAuthGateMiddleware,
-    shouldBypassDevAuthGate
-} from '../dev-auth-gate';
+import { buildDevAuthLoginRedirect, createDevAuthGateMiddleware, shouldBypassDevAuthGate } from '../dev-auth-gate';
 
 describe('dev auth gate', () => {
     it('bypasses vite internals and proxied server paths', () => {
@@ -17,7 +13,7 @@ describe('dev auth gate', () => {
 
     it('builds a login redirect that preserves the original dev url', () => {
         expect(buildDevAuthLoginRedirect('http://localhost:5173/notes?tag=1')).toBe(
-            '/auth/login?next=http%3A%2F%2Flocalhost%3A5173%2Fnotes%3Ftag%3D1'
+            '/auth/login?next=http%3A%2F%2Flocalhost%3A5173%2Fnotes%3Ftag%3D1',
         );
     });
 
@@ -26,12 +22,12 @@ describe('dev auth gate', () => {
             ok: true,
             json: async () => ({
                 authRequired: true,
-                authenticated: false
-            })
+                authenticated: false,
+            }),
         });
         const middleware = createDevAuthGateMiddleware({
             backendOrigin: 'http://localhost:6683',
-            fetchImpl: fetchImpl as unknown as typeof fetch
+            fetchImpl: fetchImpl as unknown as typeof fetch,
         });
         const response = {
             statusCode: 200,
@@ -39,18 +35,22 @@ describe('dev auth gate', () => {
             setHeader(name: string, value: string) {
                 this.headers[name] = value;
             },
-            end: vi.fn()
+            end: vi.fn(),
         };
         const next = vi.fn();
 
-        await middleware({
-            method: 'GET',
-            originalUrl: '/notes',
-            headers: {
-                accept: 'text/html',
-                host: 'localhost:5173'
-            }
-        }, response, next);
+        await middleware(
+            {
+                method: 'GET',
+                originalUrl: '/notes',
+                headers: {
+                    accept: 'text/html',
+                    host: 'localhost:5173',
+                },
+            },
+            response,
+            next,
+        );
 
         expect(fetchImpl).toHaveBeenCalledWith('http://localhost:6683/api/auth/session', { headers: {} });
         expect(response.statusCode).toBe(303);
@@ -65,25 +65,29 @@ describe('dev auth gate', () => {
                 ok: true,
                 json: async () => ({
                     authRequired: true,
-                    authenticated: true
-                })
-            }) as unknown as typeof fetch
+                    authenticated: true,
+                }),
+            }) as unknown as typeof fetch,
         });
         const response = {
             statusCode: 200,
             setHeader: vi.fn(),
-            end: vi.fn()
+            end: vi.fn(),
         };
         const next = vi.fn();
 
-        await middleware({
-            method: 'GET',
-            originalUrl: '/notes',
-            headers: {
-                accept: 'text/html',
-                host: 'localhost:5173'
-            }
-        }, response, next);
+        await middleware(
+            {
+                method: 'GET',
+                originalUrl: '/notes',
+                headers: {
+                    accept: 'text/html',
+                    host: 'localhost:5173',
+                },
+            },
+            response,
+            next,
+        );
 
         expect(next).toHaveBeenCalledOnce();
         expect(response.end).not.toHaveBeenCalled();
@@ -93,23 +97,27 @@ describe('dev auth gate', () => {
         const fetchImpl = vi.fn().mockRejectedValue(new TypeError('fetch failed'));
         const middleware = createDevAuthGateMiddleware({
             backendOrigin: 'http://localhost:6683',
-            fetchImpl: fetchImpl as unknown as typeof fetch
+            fetchImpl: fetchImpl as unknown as typeof fetch,
         });
         const response = {
             statusCode: 200,
             setHeader: vi.fn(),
-            end: vi.fn()
+            end: vi.fn(),
         };
         const next = vi.fn();
 
-        await middleware({
-            method: 'GET',
-            originalUrl: '/notes',
-            headers: {
-                accept: 'text/html',
-                host: 'localhost:5173'
-            }
-        }, response, next);
+        await middleware(
+            {
+                method: 'GET',
+                originalUrl: '/notes',
+                headers: {
+                    accept: 'text/html',
+                    host: 'localhost:5173',
+                },
+            },
+            response,
+            next,
+        );
 
         expect(next).toHaveBeenCalledOnce();
         expect(response.end).not.toHaveBeenCalled();

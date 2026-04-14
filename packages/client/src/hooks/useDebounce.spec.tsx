@@ -67,9 +67,12 @@ describe('useDebounce', () => {
         const { result } = renderHook(() => useDebounce(1000));
 
         act(() => {
-            result.current[1](() => new Promise<void>((resolve) => {
-                resolveCallback = resolve;
-            }));
+            result.current[1](
+                () =>
+                    new Promise<void>((resolve) => {
+                        resolveCallback = resolve;
+                    }),
+            );
         });
 
         await act(async () => {

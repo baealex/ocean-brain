@@ -7,7 +7,7 @@ describe('<Providers />', () => {
         const { container, getByText } = render(
             <Providers>
                 <div>Provider Child</div>
-            </Providers>
+            </Providers>,
         );
 
         expect(container).toBeInTheDocument();

@@ -73,25 +73,18 @@ interface NoteCleanupPreviewInternal extends NoteCleanupPreview {
 const DEFAULT_CLEANUP_KEYWORDS = ['temp', 'temporary', 'tmp', 'draft', 'test', 'wip'];
 
 export const normalizeCleanupKeywords = (keywords?: string[], query?: string) => {
-    const queryKeywords = typeof query === 'string'
-        ? query.split(/[,\s]+/).map((keyword) => keyword.trim())
-        : [];
-    const source = (keywords && keywords.length > 0)
-        ? keywords
-        : (queryKeywords.length > 0 ? queryKeywords : DEFAULT_CLEANUP_KEYWORDS);
+    const queryKeywords = typeof query === 'string' ? query.split(/[,\s]+/).map((keyword) => keyword.trim()) : [];
+    const source =
+        keywords && keywords.length > 0
+            ? keywords
+            : queryKeywords.length > 0
+              ? queryKeywords
+              : DEFAULT_CLEANUP_KEYWORDS;
 
-    return Array.from(new Set(
-        source
-            .map((keyword) => keyword.trim().toLowerCase())
-            .filter(Boolean)
-    ));
+    return Array.from(new Set(source.map((keyword) => keyword.trim().toLowerCase()).filter(Boolean)));
 };
 
-const buildForceReasons = (input: {
-    pinned: boolean;
-    reminderCount: number;
-    backReferenceCount: number;
-}) => {
+const buildForceReasons = (input: { pinned: boolean; reminderCount: number; backReferenceCount: number }) => {
     const forceReasons: string[] = [];
 
     if (input.pinned) {
@@ -114,23 +107,25 @@ export const createNoteCleanupService = (deps: {
     countReminders: (noteId: number) => Promise<number>;
     deleteNoteAndPruneTags: (noteId: number, orphanTagIds: number[]) => Promise<void>;
     findBackReferences: (noteId: number) => Promise<Array<{ id: number; title: string }>>;
-    findCandidateNotes: (keywords: string[], skip: number, take: number, olderThanDays: number) => Promise<NoteRecord[]>;
+    findCandidateNotes: (
+        keywords: string[],
+        skip: number,
+        take: number,
+        olderThanDays: number,
+    ) => Promise<NoteRecord[]>;
     findNote: (id: number) => Promise<NoteRecord | null>;
     getTagNoteCounts: (tagIds: number[]) => Promise<Map<number, number>>;
 }): NoteCleanupService => {
-    const buildCandidate = async (
-        note: NoteRecord,
-        matchedTerms?: string[]
-    ): Promise<NoteCleanupCandidate> => {
+    const buildCandidate = async (note: NoteRecord, matchedTerms?: string[]): Promise<NoteCleanupCandidate> => {
         const [reminderCount, backReferences] = await Promise.all([
             deps.countReminders(note.id),
-            deps.findBackReferences(note.id)
+            deps.findBackReferences(note.id),
         ]);
         const normalizedMatchedTerms = matchedTerms ?? [];
         const forceReasons = buildForceReasons({
             pinned: note.pinned,
             reminderCount,
-            backReferenceCount: backReferences.length
+            backReferenceCount: backReferences.length,
         });
 
         return {
@@ -147,10 +142,10 @@ export const createNoteCleanupService = (deps: {
                 ...(note.pinned ? [] : ['not_pinned']),
                 ...(note.tags.length === 0 ? ['tagless'] : []),
                 ...(reminderCount === 0 ? ['no_reminders'] : []),
-                ...(backReferences.length === 0 ? ['no_back_references'] : [])
+                ...(backReferences.length === 0 ? ['no_back_references'] : []),
             ],
             requiresForce: forceReasons.length > 0,
-            forceReasons
+            forceReasons,
         };
     };
 
@@ -164,7 +159,7 @@ export const createNoteCleanupService = (deps: {
         const [candidate, backReferences, tagNoteCounts] = await Promise.all([
             buildCandidate(note),
             deps.findBackReferences(note.id),
-            deps.getTagNoteCounts(note.tags.map((tag) => tag.id))
+            deps.getTagNoteCounts(note.tags.map((tag) => tag.id)),
         ]);
 
         const orphanedTags = note.tags.filter((tag) => (tagNoteCounts.get(tag.id) ?? 0) <= 1);
@@ -178,15 +173,12 @@ export const createNoteCleanupService = (deps: {
             reminderCount: candidate.reminderCount,
             backReferences: backReferences.map((backReference) => ({
                 id: String(backReference.id),
-                title: backReference.title
+                title: backReference.title,
             })),
             orphanedTagNames: orphanedTags.map((tag) => tag.name),
             orphanedTagIds: orphanedTags.map((tag) => tag.id),
             requiresForce: candidate.requiresForce || orphanedTags.length > 0,
-            forceReasons: [
-                ...candidate.forceReasons,
-                ...(orphanedTags.length > 0 ? ['orphan_tags'] : [])
-            ]
+            forceReasons: [...candidate.forceReasons, ...(orphanedTags.length > 0 ? ['orphan_tags'] : [])],
         };
     };
 
@@ -211,14 +203,16 @@ export const createNoteCleanupService = (deps: {
 
             const [totalCount, notes] = await Promise.all([
                 deps.countCandidateNotes(keywords, olderThanDays),
-                deps.findCandidateNotes(keywords, offset, limit, olderThanDays)
+                deps.findCandidateNotes(keywords, offset, limit, olderThanDays),
             ]);
 
-            const candidates = await Promise.all(notes.map((note) => {
-                const haystack = `${note.title}\n${note.content}`.toLowerCase();
-                const matchedTerms = keywords.filter((keyword) => haystack.includes(keyword));
-                return buildCandidate(note, matchedTerms);
-            }));
+            const candidates = await Promise.all(
+                notes.map((note) => {
+                    const haystack = `${note.title}\n${note.content}`.toLowerCase();
+                    const matchedTerms = keywords.filter((keyword) => haystack.includes(keyword));
+                    return buildCandidate(note, matchedTerms);
+                }),
+            );
 
             return {
                 keywords,
@@ -226,7 +220,7 @@ export const createNoteCleanupService = (deps: {
                 offset,
                 olderThanDays,
                 notes: candidates,
-                totalCount
+                totalCount,
             };
         },
         getDeletePreview,
@@ -242,15 +236,12 @@ export const createNoteCleanupService = (deps: {
             const { orphanedTagIds, ...publicPreview } = preview;
             void orphanedTagIds;
             return publicPreview;
-        }
+        },
     };
 };
 
 const buildKeywordClauses = (keywords: string[]) => {
-    return keywords.flatMap((keyword) => ([
-        { title: { contains: keyword } },
-        { content: { contains: keyword } }
-    ]));
+    return keywords.flatMap((keyword) => [{ title: { contains: keyword } }, { content: { contains: keyword } }]);
 };
 
 const buildStaleWhere = (olderThanDays: number) => {
@@ -262,45 +253,46 @@ const buildStaleWhere = (olderThanDays: number) => {
 };
 
 const noteCleanupService = createNoteCleanupService({
-    countCandidateNotes: (keywords: string[], olderThanDays: number) => models.note.count({
-        where: {
-            ...buildStaleWhere(olderThanDays),
-            OR: buildKeywordClauses(keywords)
-        }
-    }),
+    countCandidateNotes: (keywords: string[], olderThanDays: number) =>
+        models.note.count({
+            where: {
+                ...buildStaleWhere(olderThanDays),
+                OR: buildKeywordClauses(keywords),
+            },
+        }),
     countReminders: (noteId: number) => models.reminder.count({ where: { noteId } }),
     deleteNoteAndPruneTags: async (noteId: number, orphanTagIds: number[]) => {
         void orphanTagIds;
         await moveNoteToTrashById(noteId);
     },
-    findBackReferences: (noteId: number) => models.note.findMany({
-        select: {
-            id: true,
-            title: true
-        },
-        where: {
-            content: { contains: `reference","props":{"id":"${noteId}"` },
-            NOT: { id: noteId }
-        },
-        orderBy: [
-            { pinned: 'desc' },
-            { updatedAt: 'desc' }
-        ]
-    }),
-    findCandidateNotes: (keywords: string[], skip: number, take: number, olderThanDays: number) => models.note.findMany({
-        include: { tags: true },
-        orderBy: { updatedAt: 'asc' },
-        skip,
-        take,
-        where: {
-            ...buildStaleWhere(olderThanDays),
-            OR: buildKeywordClauses(keywords)
-        }
-    }),
-    findNote: (id: number) => models.note.findUnique({
-        where: { id },
-        include: { tags: true }
-    }),
+    findBackReferences: (noteId: number) =>
+        models.note.findMany({
+            select: {
+                id: true,
+                title: true,
+            },
+            where: {
+                content: { contains: `reference","props":{"id":"${noteId}"` },
+                NOT: { id: noteId },
+            },
+            orderBy: [{ pinned: 'desc' }, { updatedAt: 'desc' }],
+        }),
+    findCandidateNotes: (keywords: string[], skip: number, take: number, olderThanDays: number) =>
+        models.note.findMany({
+            include: { tags: true },
+            orderBy: { updatedAt: 'asc' },
+            skip,
+            take,
+            where: {
+                ...buildStaleWhere(olderThanDays),
+                OR: buildKeywordClauses(keywords),
+            },
+        }),
+    findNote: (id: number) =>
+        models.note.findUnique({
+            where: { id },
+            include: { tags: true },
+        }),
     getTagNoteCounts: async (tagIds: number[]) => {
         if (tagIds.length === 0) {
             return new Map<number, number>();
@@ -308,11 +300,11 @@ const noteCleanupService = createNoteCleanupService({
 
         const tags = await models.tag.findMany({
             where: { id: { in: tagIds } },
-            include: { _count: { select: { notes: true } } }
+            include: { _count: { select: { notes: true } } },
         });
 
         return new Map(tags.map((tag) => [tag.id, tag._count.notes]));
-    }
+    },
 });
 
 export const listNoteCleanupCandidates = noteCleanupService.listCleanupCandidates;

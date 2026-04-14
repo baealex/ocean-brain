@@ -25,14 +25,14 @@ type DevGateNext = () => void;
 
 export const shouldBypassDevAuthGate = (pathname: string) => {
     return (
-        pathname.startsWith('/@')
-        || pathname.startsWith('/src/')
-        || pathname.startsWith('/node_modules/')
-        || pathname.startsWith('/api')
-        || pathname.startsWith('/graphql')
-        || pathname.startsWith('/assets')
-        || pathname.startsWith('/auth')
-        || pathname === '/favicon.ico'
+        pathname.startsWith('/@') ||
+        pathname.startsWith('/src/') ||
+        pathname.startsWith('/node_modules/') ||
+        pathname.startsWith('/api') ||
+        pathname.startsWith('/graphql') ||
+        pathname.startsWith('/assets') ||
+        pathname.startsWith('/auth') ||
+        pathname === '/favicon.ico'
     );
 };
 
@@ -40,10 +40,7 @@ export const buildDevAuthLoginRedirect = (requestUrl: string) => {
     return `/auth/login?next=${encodeURIComponent(requestUrl)}`;
 };
 
-export const createDevAuthGateMiddleware = (options: {
-    backendOrigin: string;
-    fetchImpl?: typeof fetch;
-}) => {
+export const createDevAuthGateMiddleware = (options: { backendOrigin: string; fetchImpl?: typeof fetch }) => {
     const fetchImpl = options.fetchImpl ?? fetch;
 
     return async (req: DevGateRequest, res: DevGateResponse, next: DevGateNext) => {
@@ -66,9 +63,7 @@ export const createDevAuthGateMiddleware = (options: {
             return;
         }
 
-        const authHeaders: Record<string, string> = req.headers.cookie
-            ? { Cookie: req.headers.cookie }
-            : {};
+        const authHeaders: Record<string, string> = req.headers.cookie ? { Cookie: req.headers.cookie } : {};
 
         let authResponse: Response;
 
@@ -85,7 +80,7 @@ export const createDevAuthGateMiddleware = (options: {
             return;
         }
 
-        const authState = await authResponse.json() as DevAuthSessionResponse;
+        const authState = (await authResponse.json()) as DevAuthSessionResponse;
 
         if (authState.authRequired && !authState.authenticated) {
             res.statusCode = 303;

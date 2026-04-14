@@ -1,10 +1,7 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 
-import {
-    createNoteAuthoringService,
-    InvalidNoteAuthoringInputError
-} from '../src/modules/note-authoring.js';
+import { createNoteAuthoringService, InvalidNoteAuthoringInputError } from '../src/modules/note-authoring.js';
 
 test('note authoring create converts markdown after placeholder replacement', async () => {
     const created: Array<{
@@ -22,65 +19,77 @@ test('note authoring create converts markdown after placeholder replacement', as
                 content: input.content,
                 layout: input.layout ?? 'wide',
                 createdAt: new Date('2026-03-31T00:00:00.000Z'),
-                updatedAt: new Date('2026-03-31T00:00:00.000Z')
+                updatedAt: new Date('2026-03-31T00:00:00.000Z'),
             };
         },
         findNoteById: async () => null,
-        findPlaceholders: async () => [{
-            template: 'today',
-            replacement: '2026-03-31'
-        }],
-        parseMarkdownToContentJson: async (markdown) => markdown === 'Body for 2026-03-31'
-            ? JSON.stringify([{
-                type: 'paragraph',
-                content: [{
-                    type: 'tag',
-                    props: {
-                        id: '5',
-                        tag: '@project'
-                    }
-                }]
-            }])
-            : JSON.stringify([{
-                type: 'paragraph',
-                markdown
-            }]),
-        extractTagIds: (contentJson) => JSON.parse(contentJson)[0]?.content?.[0]?.props?.id
-            ? [JSON.parse(contentJson)[0].content[0].props.id]
-            : [],
+        findPlaceholders: async () => [
+            {
+                template: 'today',
+                replacement: '2026-03-31',
+            },
+        ],
+        parseMarkdownToContentJson: async (markdown) =>
+            markdown === 'Body for 2026-03-31'
+                ? JSON.stringify([
+                      {
+                          type: 'paragraph',
+                          content: [
+                              {
+                                  type: 'tag',
+                                  props: {
+                                      id: '5',
+                                      tag: '@project',
+                                  },
+                              },
+                          ],
+                      },
+                  ])
+                : JSON.stringify([
+                      {
+                          type: 'paragraph',
+                          markdown,
+                      },
+                  ]),
+        extractTagIds: (contentJson) =>
+            JSON.parse(contentJson)[0]?.content?.[0]?.props?.id ? [JSON.parse(contentJson)[0].content[0].props.id] : [],
         captureBaseline: async () => undefined,
         updateNote: async () => {
             throw new Error('should not update');
-        }
+        },
     });
 
     const result = await service.createNote({
         title: 'Plan {%today%}',
         markdown: 'Body for {%today%}',
-        layout: 'full'
+        layout: 'full',
     });
 
     assert.deepEqual(created[0], {
         title: 'Plan 2026-03-31',
-        content: JSON.stringify([{
-            type: 'paragraph',
-            content: [{
-                type: 'tag',
-                props: {
-                    id: '5',
-                    tag: '@project'
-                }
-            }]
-        }]),
+        content: JSON.stringify([
+            {
+                type: 'paragraph',
+                content: [
+                    {
+                        type: 'tag',
+                        props: {
+                            id: '5',
+                            tag: '@project',
+                        },
+                    },
+                ],
+            },
+        ]),
         layout: 'full',
-        tagIds: ['5']
+        tagIds: ['5'],
     });
     assert.deepEqual(result, {
         id: '4',
         title: 'Plan 2026-03-31',
         layout: 'full',
         createdAt: '2026-03-31T00:00:00.000Z',
-        updatedAt: '2026-03-31T00:00:00.000Z'
+        updatedAt: '2026-03-31T00:00:00.000Z',
     });
 });
 
@@ -96,12 +105,12 @@ test('note authoring update returns null when the note does not exist', async ()
         captureBaseline: async () => undefined,
         updateNote: async () => {
             throw new Error('should not update');
-        }
+        },
     });
 
     const result = await service.updateNote({
         id: 9,
-        markdown: 'Updated body'
+        markdown: 'Updated body',
     });
 
     assert.equal(result, null);
@@ -118,7 +127,7 @@ test('note authoring update requires at least one change field', async () => {
             content: '[]',
             layout: 'wide',
             createdAt: new Date('2026-03-31T00:00:00.000Z'),
-            updatedAt: new Date('2026-03-31T00:00:00.000Z')
+            updatedAt: new Date('2026-03-31T00:00:00.000Z'),
         }),
         findPlaceholders: async () => [],
         parseMarkdownToContentJson: async () => '[]',
@@ -126,13 +135,10 @@ test('note authoring update requires at least one change field', async () => {
         captureBaseline: async () => undefined,
         updateNote: async () => {
             throw new Error('should not update');
-        }
+        },
     });
 
-    await assert.rejects(
-        () => service.updateNote({ id: 9 }),
-        InvalidNoteAuthoringInputError
-    );
+    await assert.rejects(() => service.updateNote({ id: 9 }), InvalidNoteAuthoringInputError);
 });
 
 test('note authoring update replaces provided fields only', async () => {
@@ -155,32 +161,38 @@ test('note authoring update replaces provided fields only', async () => {
             content: '[]',
             layout: 'wide',
             createdAt: new Date('2026-03-31T00:00:00.000Z'),
-            updatedAt: new Date('2026-03-31T00:00:00.000Z')
+            updatedAt: new Date('2026-03-31T00:00:00.000Z'),
         }),
         findPlaceholders: async () => [],
-        parseMarkdownToContentJson: async (markdown) => markdown === 'Updated body'
-            ? JSON.stringify([{
-                type: 'paragraph',
-                content: [{
-                    type: 'tag',
-                    props: {
-                        id: '9',
-                        tag: '@topic'
-                    }
-                }]
-            }])
-            : JSON.stringify([{
-                type: 'paragraph',
-                markdown
-            }]),
-        extractTagIds: (contentJson) => JSON.parse(contentJson)[0]?.content?.[0]?.props?.id
-            ? [JSON.parse(contentJson)[0].content[0].props.id]
-            : [],
+        parseMarkdownToContentJson: async (markdown) =>
+            markdown === 'Updated body'
+                ? JSON.stringify([
+                      {
+                          type: 'paragraph',
+                          content: [
+                              {
+                                  type: 'tag',
+                                  props: {
+                                      id: '9',
+                                      tag: '@topic',
+                                  },
+                              },
+                          ],
+                      },
+                  ])
+                : JSON.stringify([
+                      {
+                          type: 'paragraph',
+                          markdown,
+                      },
+                  ]),
+        extractTagIds: (contentJson) =>
+            JSON.parse(contentJson)[0]?.content?.[0]?.props?.id ? [JSON.parse(contentJson)[0].content[0].props.id] : [],
         captureBaseline: async () => undefined,
         updateNote: async (id, input) => {
             updated.push({
                 id,
-                input
+                input,
             });
             return {
                 id,
@@ -188,39 +200,43 @@ test('note authoring update replaces provided fields only', async () => {
                 content: input.content ?? '[]',
                 layout: input.layout ?? 'wide',
                 createdAt: new Date('2026-03-31T00:00:00.000Z'),
-                updatedAt: new Date('2026-04-01T00:00:00.000Z')
+                updatedAt: new Date('2026-04-01T00:00:00.000Z'),
             };
-        }
+        },
     });
 
     const result = await service.updateNote({
         id: 7,
         title: 'Renamed',
-        markdown: 'Updated body'
+        markdown: 'Updated body',
     });
 
     assert.deepEqual(updated[0], {
         id: 7,
         input: {
             title: 'Renamed',
-            content: JSON.stringify([{
-                type: 'paragraph',
-                content: [{
-                    type: 'tag',
-                    props: {
-                        id: '9',
-                        tag: '@topic'
-                    }
-                }]
-            }]),
-            tagIds: ['9']
-        }
+            content: JSON.stringify([
+                {
+                    type: 'paragraph',
+                    content: [
+                        {
+                            type: 'tag',
+                            props: {
+                                id: '9',
+                                tag: '@topic',
+                            },
+                        },
+                    ],
+                },
+            ]),
+            tagIds: ['9'],
+        },
     });
     assert.deepEqual(result, {
         id: '7',
         title: 'Renamed',
         layout: 'wide',
         createdAt: '2026-03-31T00:00:00.000Z',
-        updatedAt: '2026-04-01T00:00:00.000Z'
+        updatedAt: '2026-04-01T00:00:00.000Z',
     });
 });

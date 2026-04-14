@@ -17,7 +17,7 @@ export const CalendarDayView = ({
     isCurrentMonth,
     items,
     overflowCount,
-    onOpenOverflow
+    onOpenOverflow,
 }: CalendarDayViewProps) => {
     return (
         <div className={`min-h-[196px] rounded-[16px] border p-2.5 ${cellClassName}`.trim()}>
@@ -25,7 +25,8 @@ export const CalendarDayView = ({
                 <Text
                     as="span"
                     variant="label"
-                    className={`flex h-7 w-7 items-center justify-center rounded-[10px] ${dayNumberClassName}`.trim()}>
+                    className={`flex h-7 w-7 items-center justify-center rounded-[10px] ${dayNumberClassName}`.trim()}
+                >
                     {day}
                 </Text>
             </div>
@@ -37,7 +38,8 @@ export const CalendarDayView = ({
                         <button
                             type="button"
                             onClick={onOpenOverflow}
-                            className="focus-ring-soft w-full rounded-[10px] border border-dashed border-border-subtle/70 bg-subtle/70 py-1 text-center text-micro font-semibold text-fg-tertiary outline-none transition-colors hover:border-border-secondary/70 hover:bg-hover-subtle hover:text-fg-secondary">
+                            className="focus-ring-soft w-full rounded-[10px] border border-dashed border-border-subtle/70 bg-subtle/70 py-1 text-center text-micro font-semibold text-fg-tertiary outline-none transition-colors hover:border-border-secondary/70 hover:bg-hover-subtle hover:text-fg-secondary"
+                        >
                             +{overflowCount} more
                         </button>
                     ) : null}

@@ -13,7 +13,7 @@ const SidebarHeroBanner = () => {
         queryKey: queryKeys.ui.heroBanner(),
         async queryFn() {
             return getServerCache('heroBanner');
-        }
+        },
     });
 
     if (!heroBanner) {
@@ -36,10 +36,11 @@ const SidebarHeroBanner = () => {
 
                         await queryClient.invalidateQueries({
                             queryKey: queryKeys.ui.heroBanner(),
-                            exact: true
+                            exact: true,
                         });
                     }
-                }}>
+                }}
+            >
                 <img
                     alt="Studio atmosphere banner"
                     className="w-full object-cover transition duration-500 group-hover:scale-[1.01] group-hover:opacity-90 dark:brightness-[0.85] dark:saturate-[0.9]"
@@ -53,7 +54,8 @@ const SidebarHeroBanner = () => {
                         weight="semibold"
                         tracking="wider"
                         transform="uppercase"
-                        className="rounded-[12px] border border-white/14 bg-black/16 px-2.5 py-2 text-white/80 opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100">
+                        className="rounded-[12px] border border-white/14 bg-black/16 px-2.5 py-2 text-white/80 opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100"
+                    >
                         Remove
                     </Text>
                 </div>

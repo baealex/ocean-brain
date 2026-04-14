@@ -1,28 +1,21 @@
+import { useSuspenseQuery } from '@tanstack/react-query';
+import { getRouteApi, Link } from '@tanstack/react-router';
+import classNames from 'classnames';
 import dayjs from 'dayjs';
 import { useEffect, useRef, useState } from 'react';
-import { Link, getRouteApi } from '@tanstack/react-router';
-import { useSuspenseQuery } from '@tanstack/react-query';
-import classNames from 'classnames';
-
+import { fetchNote, updateNote } from '~/apis/note.api';
 import { QueryBoundary, QueryErrorView } from '~/components/app';
-import {
-    AuxiliaryPanelHeader,
-    Button,
-    Dropdown,
-    PageLayout,
-    Skeleton
-} from '~/components/shared';
-import * as Icon from '~/components/icon';
-import { Text, useToast } from '~/components/ui';
-import type { EditorRef } from '~/components/shared/Editor';
-import Editor from '~/components/shared/Editor';
 import { BackReferences } from '~/components/entities';
+import * as Icon from '~/components/icon';
 import { LayoutModal, RestoreSnapshotModal } from '~/components/note';
 import { ReminderPanel } from '~/components/reminder';
-import type { NoteLayout } from '~/models/note.model';
-import useDebounce from '~/hooks/useDebounce';
+import { AuxiliaryPanelHeader, Button, Dropdown, PageLayout, Skeleton } from '~/components/shared';
+import type { EditorRef } from '~/components/shared/Editor';
+import Editor from '~/components/shared/Editor';
+import { Text, useToast } from '~/components/ui';
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
-import { fetchNote, updateNote } from '~/apis/note.api';
+import useDebounce from '~/hooks/useDebounce';
+import type { NoteLayout } from '~/models/note.model';
 import { queryKeys } from '~/modules/query-key-factory';
 import { NOTE_ROUTE, SETTINGS_TRASH_ROUTE } from '~/modules/url';
 
@@ -41,7 +34,7 @@ const createEditSessionId = () => {
 const NOTE_LAYOUT_WIDTH: Record<NoteLayout, string> = {
     narrow: 'max-w-[640px]',
     wide: 'max-w-[896px]',
-    full: 'max-w-full px-4'
+    full: 'max-w-full px-4',
 };
 
 const notePageFallback = (
@@ -75,7 +68,7 @@ function NoteContent({ id }: NoteContentProps) {
             }
             return response.note;
         },
-        gcTime: 0
+        gcTime: 0,
     });
 
     const [title, setTitle] = useState(note.title);
@@ -97,16 +90,13 @@ function NoteContent({ id }: NoteContentProps) {
         editSessionIdRef.current = createEditSessionId();
     }, [id]);
 
-    const save = async ({
-        title: nextTitle = '',
-        content = ''
-    }) => {
+    const save = async ({ title: nextTitle = '', content = '' }) => {
         mountEvent(async () => {
             const response = await updateNote({
                 id,
                 title: nextTitle,
                 content,
-                editSessionId: editSessionIdRef.current
+                editSessionId: editSessionIdRef.current,
             });
 
             if (response.type === 'error') {
@@ -122,7 +112,7 @@ function NoteContent({ id }: NoteContentProps) {
     const handleChange = () => {
         save({
             title,
-            content: editorRef.current?.getContent()
+            content: editorRef.current?.getContent(),
         });
     };
 
@@ -130,7 +120,7 @@ function NoteContent({ id }: NoteContentProps) {
         setTitle(nextTitle);
         save({
             title: nextTitle,
-            content: editorRef.current?.getContent()
+            content: editorRef.current?.getContent(),
         });
     };
 
@@ -138,7 +128,7 @@ function NoteContent({ id }: NoteContentProps) {
         const response = await updateNote({
             id,
             layout: newLayout,
-            editSessionId: editSessionIdRef.current
+            editSessionId: editSessionIdRef.current,
         });
 
         if (response.type === 'error') {
@@ -150,17 +140,12 @@ function NoteContent({ id }: NoteContentProps) {
         toast('Layout has been updated.');
     };
 
-    const {
-        onCreate,
-        onDelete,
-        onPinned
-    } = useNoteMutate();
+    const { onCreate, onDelete, onPinned } = useNoteMutate();
 
     return (
         <PageLayout title={title} variant="none">
             <main className={classNames('mx-auto', NOTE_LAYOUT_WIDTH[layout])}>
-                <div
-                    className="surface-floating sticky top-20 z-[1001] mb-7 px-5 pt-4 pb-3.5">
+                <div className="surface-floating sticky top-20 z-[1001] mb-7 px-5 pt-4 pb-3.5">
                     <div className="flex flex-col gap-3.5">
                         <div className="flex items-start justify-between gap-5">
                             <div className="min-w-0 flex-1 pt-0.5">
@@ -171,7 +156,8 @@ function NoteContent({ id }: NoteContentProps) {
                                     tracking="widest"
                                     transform="uppercase"
                                     tone="tertiary"
-                                    className="mb-1.5">
+                                    className="mb-1.5"
+                                >
                                     Thought in progress
                                 </Text>
                                 <input
@@ -185,55 +171,55 @@ function NoteContent({ id }: NoteContentProps) {
                             </div>
                             <div className="flex shrink-0 items-center gap-2">
                                 <Dropdown
-                                    button={(
+                                    button={
                                         <button
                                             type="button"
-                                            className="focus-ring-soft inline-flex h-9 w-9 items-center justify-center rounded-[12px] border border-transparent bg-transparent text-fg-tertiary outline-none transition-colors hover:border-border-subtle hover:bg-hover-subtle hover:text-fg-default">
+                                            className="focus-ring-soft inline-flex h-9 w-9 items-center justify-center rounded-[12px] border border-transparent bg-transparent text-fg-tertiary outline-none transition-colors hover:border-border-subtle hover:bg-hover-subtle hover:text-fg-default"
+                                        >
                                             <Icon.VerticalDots className="h-5 w-5" />
                                             <span className="sr-only">Note actions</span>
                                         </button>
-                                    )}
+                                    }
                                     items={[
                                         {
                                             name: isPinned ? 'Unpin' : 'Pin',
-                                            onClick: () => onPinned(id, isPinned, () => {
-                                                setIsPinned(prev => !prev);
-                                            })
+                                            onClick: () =>
+                                                onPinned(id, isPinned, () => {
+                                                    setIsPinned((prev) => !prev);
+                                                }),
                                         },
                                         {
                                             name: 'Change layout',
-                                            onClick: () => setIsLayoutModalOpen(true)
+                                            onClick: () => setIsLayoutModalOpen(true),
                                         },
                                         { type: 'separator' },
                                         {
                                             name: 'Clone this note',
-                                            onClick: () => onCreate(
-                                                titleRef.current?.value || 'untitled',
-                                                editorRef.current?.getContent() || '',
-                                                layout
-                                            )
+                                            onClick: () =>
+                                                onCreate(
+                                                    titleRef.current?.value || 'untitled',
+                                                    editorRef.current?.getContent() || '',
+                                                    layout,
+                                                ),
                                         },
                                         {
                                             name: 'Restore previous version',
-                                            onClick: () => setIsRestoreModalOpen(true)
+                                            onClick: () => setIsRestoreModalOpen(true),
                                         },
                                         { type: 'separator' },
                                         {
                                             name: 'Delete',
-                                            onClick: () => onDelete(id, () => {
-                                                navigate({
-                                                    to: SETTINGS_TRASH_ROUTE,
-                                                    search: { page: 1 }
-                                                });
-                                            })
-                                        }
+                                            onClick: () =>
+                                                onDelete(id, () => {
+                                                    navigate({
+                                                        to: SETTINGS_TRASH_ROUTE,
+                                                        search: { page: 1 },
+                                                    });
+                                                }),
+                                        },
                                     ]}
                                 />
-                                <Button
-                                    size="sm"
-                                    variant="subtle"
-                                    isLoading={isMountedEvent}
-                                    onClick={handleChange}>
+                                <Button size="sm" variant="subtle" isLoading={isMountedEvent} onClick={handleChange}>
                                     Save
                                 </Button>
                             </div>
@@ -245,17 +231,14 @@ function NoteContent({ id }: NoteContentProps) {
                                     variant="label"
                                     weight="medium"
                                     tone="secondary"
-                                    className="inline-flex items-center gap-1.5">
+                                    className="inline-flex items-center gap-1.5"
+                                >
                                     <Icon.Pin className="h-3 w-3" weight="fill" />
                                     Pinned
                                 </Text>
                             )}
                             {isPinned && <span className="h-1 w-1 rounded-full bg-border-secondary" />}
-                            <Text
-                                as="span"
-                                variant="label"
-                                weight="medium"
-                                tone="secondary">
+                            <Text as="span" variant="label" weight="medium" tone="secondary">
                                 Last saved {lastSavedAt}
                             </Text>
                         </div>
@@ -282,7 +265,8 @@ function NoteContent({ id }: NoteContentProps) {
                             showBackAction={false}
                             showHomeAction={false}
                         />
-                    )}>
+                    )}
+                >
                     <ReminderPanel noteId={id} />
                 </QueryBoundary>
 
@@ -299,33 +283,43 @@ function NoteContent({ id }: NoteContentProps) {
                             showBackAction={false}
                             showHomeAction={false}
                         />
-                    )}>
+                    )}
+                >
                     <BackReferences
                         noteId={id}
-                        render={backReferences => backReferences && backReferences.length > 0 && (
-                            <div className="surface-base p-4">
-                                <AuxiliaryPanelHeader
-                                    icon={<Icon.LinkSimple className="h-3.5 w-3.5" />}
-                                    title="Back References"
-                                    className="mb-3 text-fg-tertiary"
-                                />
-                                <ul className="flex flex-col">
-                                    {backReferences.map((backLink) => (
-                                        <li key={backLink.id}>
-                                            <Link
-                                                to={NOTE_ROUTE}
-                                                params={{ id: backLink.id }}
-                                                className="flex items-center gap-2 rounded-[10px] px-2.5 py-1.5 text-fg-secondary transition-colors hover:bg-hover-subtle hover:text-fg-default">
-                                                <Icon.File className="h-3.5 w-3.5 shrink-0 text-fg-tertiary" />
-                                                <Text as="span" variant="body" weight="medium" className="text-current">
-                                                    {backLink.title}
-                                                </Text>
-                                            </Link>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        )}
+                        render={(backReferences) =>
+                            backReferences &&
+                            backReferences.length > 0 && (
+                                <div className="surface-base p-4">
+                                    <AuxiliaryPanelHeader
+                                        icon={<Icon.LinkSimple className="h-3.5 w-3.5" />}
+                                        title="Back References"
+                                        className="mb-3 text-fg-tertiary"
+                                    />
+                                    <ul className="flex flex-col">
+                                        {backReferences.map((backLink) => (
+                                            <li key={backLink.id}>
+                                                <Link
+                                                    to={NOTE_ROUTE}
+                                                    params={{ id: backLink.id }}
+                                                    className="flex items-center gap-2 rounded-[10px] px-2.5 py-1.5 text-fg-secondary transition-colors hover:bg-hover-subtle hover:text-fg-default"
+                                                >
+                                                    <Icon.File className="h-3.5 w-3.5 shrink-0 text-fg-tertiary" />
+                                                    <Text
+                                                        as="span"
+                                                        variant="body"
+                                                        weight="medium"
+                                                        className="text-current"
+                                                    >
+                                                        {backLink.title}
+                                                    </Text>
+                                                </Link>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )
+                        }
                     />
                 </QueryBoundary>
 
@@ -370,7 +364,8 @@ export default function Note() {
                         onRetry={retry}
                     />
                 </PageLayout>
-            )}>
+            )}
+        >
             <NoteContent key={id} id={id} />
         </QueryBoundary>
     );

@@ -15,7 +15,7 @@ export default function SelectionOptionCard({
     description,
     selected = false,
     onClick,
-    children
+    children,
 }: SelectionOptionCardProps) {
     return (
         <button
@@ -26,13 +26,10 @@ export default function SelectionOptionCard({
                     ? 'surface-floating bg-elevated'
                     : 'rounded-[14px] border border-border-subtle bg-transparent hover:border-border-secondary hover:bg-hover-subtle'
             }`}
-            onClick={onClick}>
+            onClick={onClick}
+        >
             <div className="min-w-0">
-                <Text
-                    as="div"
-                    variant="body"
-                    weight="semibold"
-                    tone={selected ? 'default' : 'secondary'}>
+                <Text as="div" variant="body" weight="semibold" tone={selected ? 'default' : 'secondary'}>
                     {title}
                 </Text>
                 <Text
@@ -40,7 +37,8 @@ export default function SelectionOptionCard({
                     variant="meta"
                     weight="medium"
                     tone={selected ? 'secondary' : 'tertiary'}
-                    className="mt-1">
+                    className="mt-1"
+                >
                     {description}
                 </Text>
             </div>

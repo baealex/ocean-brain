@@ -21,9 +21,7 @@ export const setMcpEnabled = async (enabled: boolean) => {
 };
 
 export const rotateMcpToken = async () => {
-    const { data } = await axios.post<{ token: string; message?: string }>(
-        '/api/mcp-admin/token/rotate'
-    );
+    const { data } = await axios.post<{ token: string; message?: string }>('/api/mcp-admin/token/rotate');
     return data;
 };
 

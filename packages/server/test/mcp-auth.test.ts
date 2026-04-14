@@ -1,16 +1,11 @@
-import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import type { AddressInfo } from 'node:net';
-
+import test, { type TestContext } from 'node:test';
+import { createAppWithMcpAuth } from '../src/app.js';
 import type { AuthConfig } from '../src/modules/auth-mode.js';
 import type { McpAdminService } from '../src/modules/mcp-admin.js';
-import { createAppWithMcpAuth } from '../src/app.js';
 
-const startServer = async (
-    t: TestContext,
-    authConfig: AuthConfig,
-    mcpAdminAuth: McpAdminService
-) => {
+const startServer = async (t: TestContext, authConfig: AuthConfig, mcpAdminAuth: McpAdminService) => {
     const app = createAppWithMcpAuth(authConfig, mcpAdminAuth);
     const server = app.listen(0);
 
@@ -28,104 +23,83 @@ const startServer = async (
     return { baseUrl: `http://127.0.0.1:${address.port}` };
 };
 
-const graphRequest = async (
-    baseUrl: string,
-    path: string,
-    query: string,
-    bearerToken?: string
-) => {
+const graphRequest = async (baseUrl: string, path: string, query: string, bearerToken?: string) => {
     const response = await fetch(`${baseUrl}${path}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            ...(bearerToken ? { Authorization: `Bearer ${bearerToken}` } : {})
+            ...(bearerToken ? { Authorization: `Bearer ${bearerToken}` } : {}),
         },
-        body: JSON.stringify({ query })
+        body: JSON.stringify({ query }),
     });
 
     return {
         status: response.status,
-        body: await response.json() as Record<string, unknown>
+        body: (await response.json()) as Record<string, unknown>,
     };
 };
 
-const deleteNoteRequest = async (
-    baseUrl: string,
-    noteId: string,
-    bearerToken?: string
-) => {
+const deleteNoteRequest = async (baseUrl: string, noteId: string, bearerToken?: string) => {
     const response = await fetch(`${baseUrl}/api/mcp/notes/delete`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            ...(bearerToken ? { Authorization: `Bearer ${bearerToken}` } : {})
+            ...(bearerToken ? { Authorization: `Bearer ${bearerToken}` } : {}),
         },
-        body: JSON.stringify({ id: noteId })
+        body: JSON.stringify({ id: noteId }),
     });
 
     return {
         status: response.status,
-        body: await response.json() as Record<string, unknown>
+        body: (await response.json()) as Record<string, unknown>,
     };
 };
 
-const createTagRequest = async (
-    baseUrl: string,
-    name: string,
-    bearerToken?: string
-) => {
+const createTagRequest = async (baseUrl: string, name: string, bearerToken?: string) => {
     const response = await fetch(`${baseUrl}/api/mcp/tags/create`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            ...(bearerToken ? { Authorization: `Bearer ${bearerToken}` } : {})
+            ...(bearerToken ? { Authorization: `Bearer ${bearerToken}` } : {}),
         },
-        body: JSON.stringify({ name })
+        body: JSON.stringify({ name }),
     });
 
     return {
         status: response.status,
-        body: await response.json() as Record<string, unknown>
+        body: (await response.json()) as Record<string, unknown>,
     };
 };
 
-const createNoteRequest = async (
-    baseUrl: string,
-    body: Record<string, unknown>,
-    bearerToken?: string
-) => {
+const createNoteRequest = async (baseUrl: string, body: Record<string, unknown>, bearerToken?: string) => {
     const response = await fetch(`${baseUrl}/api/mcp/notes/create`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            ...(bearerToken ? { Authorization: `Bearer ${bearerToken}` } : {})
+            ...(bearerToken ? { Authorization: `Bearer ${bearerToken}` } : {}),
         },
-        body: JSON.stringify(body)
+        body: JSON.stringify(body),
     });
 
     return {
         status: response.status,
-        body: await response.json() as Record<string, unknown>
+        body: (await response.json()) as Record<string, unknown>,
     };
 };
 
-const updateNoteRequest = async (
-    baseUrl: string,
-    body: Record<string, unknown>,
-    bearerToken?: string
-) => {
+const updateNoteRequest = async (baseUrl: string, body: Record<string, unknown>, bearerToken?: string) => {
     const response = await fetch(`${baseUrl}/api/mcp/notes/update`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            ...(bearerToken ? { Authorization: `Bearer ${bearerToken}` } : {})
+            ...(bearerToken ? { Authorization: `Bearer ${bearerToken}` } : {}),
         },
-        body: JSON.stringify(body)
+        body: JSON.stringify(body),
     });
 
     return {
         status: response.status,
-        body: await response.json() as Record<string, unknown>
+        body: (await response.json()) as Record<string, unknown>,
     };
 };
 
@@ -138,25 +112,25 @@ const createMcpAdminAuth = (options: {
     const configured = options.configured ?? true;
 
     return {
-        setEnabled: async () => {},
+        setEnabled: async () => undefined,
         rotateToken: async () => ({ token: 'issued-mcp-token' }),
-        revokeActiveToken: async () => {},
+        revokeActiveToken: async () => undefined,
         getStatus: async () => ({
             enabled: options.enabled,
             hasActiveToken: configured,
             token: configured
                 ? {
-                    id: '1',
-                    createdAt: '2026-04-04T00:00:00.000Z',
-                    lastUsedAt: null
-                }
-                : null
+                      id: '1',
+                      createdAt: '2026-04-04T00:00:00.000Z',
+                      lastUsedAt: null,
+                  }
+                : null,
         }),
         validatePresentedToken: async (token) => {
             if (!configured) {
                 return {
                     ok: false,
-                    reason: 'not_configured'
+                    reason: 'not_configured',
                 };
             }
 
@@ -166,19 +140,23 @@ const createMcpAdminAuth = (options: {
 
             return {
                 ok: false,
-                reason: 'forbidden'
+                reason: 'forbidden',
             };
-        }
+        },
     };
 };
 
 test('password mode requires a valid bearer token on the MCP graphql endpoint', async (t) => {
-    const { baseUrl } = await startServer(t, {
-        mode: 'password',
-        password: 'secret',
-        sessionSecret: 'session-secret',
-        source: 'override'
-    }, createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }));
+    const { baseUrl } = await startServer(
+        t,
+        {
+            mode: 'password',
+            password: 'secret',
+            sessionSecret: 'session-secret',
+            source: 'override',
+        },
+        createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }),
+    );
 
     const unauthorized = await graphRequest(baseUrl, '/graphql/mcp', 'query { __typename }');
     assert.equal(unauthorized.status, 401);
@@ -194,26 +172,31 @@ test('password mode requires a valid bearer token on the MCP graphql endpoint', 
 });
 
 test('password mode keeps the MCP graphql endpoint read-only even with a valid bearer token', async (t) => {
-    const { baseUrl } = await startServer(t, {
-        mode: 'password',
-        password: 'secret',
-        sessionSecret: 'session-secret',
-        source: 'override'
-    }, createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }));
+    const { baseUrl } = await startServer(
+        t,
+        {
+            mode: 'password',
+            password: 'secret',
+            sessionSecret: 'session-secret',
+            source: 'override',
+        },
+        createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }),
+    );
 
     const mutation = await graphRequest(baseUrl, '/graphql/mcp', 'mutation { __typename }', 'mcp-secret');
     assert.equal(mutation.status, 200);
-    assert.equal(
-        (mutation.body.errors as Array<{ extensions?: { code?: string } }>)[0]?.extensions?.code,
-        'FORBIDDEN'
-    );
+    assert.equal((mutation.body.errors as Array<{ extensions?: { code?: string } }>)[0]?.extensions?.code, 'FORBIDDEN');
 });
 
 test('mcp disabled state blocks MCP graphql access even with a valid token', async (t) => {
-    const { baseUrl } = await startServer(t, {
-        mode: 'disabled',
-        source: 'override'
-    }, createMcpAdminAuth({ enabled: false, expectedToken: 'mcp-secret' }));
+    const { baseUrl } = await startServer(
+        t,
+        {
+            mode: 'disabled',
+            source: 'override',
+        },
+        createMcpAdminAuth({ enabled: false, expectedToken: 'mcp-secret' }),
+    );
 
     const query = await graphRequest(baseUrl, '/graphql/mcp', 'query { __typename }', 'mcp-secret');
     assert.equal(query.status, 403);
@@ -221,10 +204,14 @@ test('mcp disabled state blocks MCP graphql access even with a valid token', asy
 });
 
 test('enabled state still requires a valid bearer token on the MCP note delete endpoint', async (t) => {
-    const { baseUrl } = await startServer(t, {
-        mode: 'disabled',
-        source: 'override'
-    }, createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }));
+    const { baseUrl } = await startServer(
+        t,
+        {
+            mode: 'disabled',
+            source: 'override',
+        },
+        createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }),
+    );
 
     const unauthorized = await deleteNoteRequest(baseUrl, '1');
     assert.equal(unauthorized.status, 401);
@@ -240,10 +227,14 @@ test('enabled state still requires a valid bearer token on the MCP note delete e
 });
 
 test('enabled state still requires a valid bearer token on the MCP note create endpoint', async (t) => {
-    const { baseUrl } = await startServer(t, {
-        mode: 'disabled',
-        source: 'override'
-    }, createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }));
+    const { baseUrl } = await startServer(
+        t,
+        {
+            mode: 'disabled',
+            source: 'override',
+        },
+        createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }),
+    );
 
     const unauthorized = await createNoteRequest(baseUrl, {});
     assert.equal(unauthorized.status, 401);
@@ -259,10 +250,14 @@ test('enabled state still requires a valid bearer token on the MCP note create e
 });
 
 test('enabled state still requires a valid bearer token on the MCP note update endpoint', async (t) => {
-    const { baseUrl } = await startServer(t, {
-        mode: 'disabled',
-        source: 'override'
-    }, createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }));
+    const { baseUrl } = await startServer(
+        t,
+        {
+            mode: 'disabled',
+            source: 'override',
+        },
+        createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }),
+    );
 
     const unauthorized = await updateNoteRequest(baseUrl, { id: 'abc' });
     assert.equal(unauthorized.status, 401);
@@ -278,10 +273,14 @@ test('enabled state still requires a valid bearer token on the MCP note update e
 });
 
 test('enabled state still requires a valid bearer token on the MCP tag create endpoint', async (t) => {
-    const { baseUrl } = await startServer(t, {
-        mode: 'disabled',
-        source: 'override'
-    }, createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }));
+    const { baseUrl } = await startServer(
+        t,
+        {
+            mode: 'disabled',
+            source: 'override',
+        },
+        createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }),
+    );
 
     const unauthorized = await createTagRequest(baseUrl, '');
     assert.equal(unauthorized.status, 401);
@@ -297,12 +296,16 @@ test('enabled state still requires a valid bearer token on the MCP tag create en
 });
 
 test('password mode returns configuration error on the MCP note delete endpoint when no bearer token is configured', async (t) => {
-    const { baseUrl } = await startServer(t, {
-        mode: 'password',
-        password: 'secret',
-        sessionSecret: 'session-secret',
-        source: 'override'
-    }, createMcpAdminAuth({ enabled: true, configured: false }));
+    const { baseUrl } = await startServer(
+        t,
+        {
+            mode: 'password',
+            password: 'secret',
+            sessionSecret: 'session-secret',
+            source: 'override',
+        },
+        createMcpAdminAuth({ enabled: true, configured: false }),
+    );
 
     const response = await deleteNoteRequest(baseUrl, '1', 'mcp-secret');
     assert.equal(response.status, 503);
@@ -310,12 +313,16 @@ test('password mode returns configuration error on the MCP note delete endpoint 
 });
 
 test('password mode returns configuration error on the MCP note create endpoint when no bearer token is configured', async (t) => {
-    const { baseUrl } = await startServer(t, {
-        mode: 'password',
-        password: 'secret',
-        sessionSecret: 'session-secret',
-        source: 'override'
-    }, createMcpAdminAuth({ enabled: true, configured: false }));
+    const { baseUrl } = await startServer(
+        t,
+        {
+            mode: 'password',
+            password: 'secret',
+            sessionSecret: 'session-secret',
+            source: 'override',
+        },
+        createMcpAdminAuth({ enabled: true, configured: false }),
+    );
 
     const response = await createNoteRequest(baseUrl, { title: 'Draft' }, 'mcp-secret');
     assert.equal(response.status, 503);
@@ -323,12 +330,16 @@ test('password mode returns configuration error on the MCP note create endpoint 
 });
 
 test('password mode returns configuration error on the MCP note update endpoint when no bearer token is configured', async (t) => {
-    const { baseUrl } = await startServer(t, {
-        mode: 'password',
-        password: 'secret',
-        sessionSecret: 'session-secret',
-        source: 'override'
-    }, createMcpAdminAuth({ enabled: true, configured: false }));
+    const { baseUrl } = await startServer(
+        t,
+        {
+            mode: 'password',
+            password: 'secret',
+            sessionSecret: 'session-secret',
+            source: 'override',
+        },
+        createMcpAdminAuth({ enabled: true, configured: false }),
+    );
 
     const response = await updateNoteRequest(baseUrl, { id: '1', title: 'Draft' }, 'mcp-secret');
     assert.equal(response.status, 503);
@@ -336,12 +347,16 @@ test('password mode returns configuration error on the MCP note update endpoint 
 });
 
 test('password mode returns configuration error on the MCP tag create endpoint when no bearer token is configured', async (t) => {
-    const { baseUrl } = await startServer(t, {
-        mode: 'password',
-        password: 'secret',
-        sessionSecret: 'session-secret',
-        source: 'override'
-    }, createMcpAdminAuth({ enabled: true, configured: false }));
+    const { baseUrl } = await startServer(
+        t,
+        {
+            mode: 'password',
+            password: 'secret',
+            sessionSecret: 'session-secret',
+            source: 'override',
+        },
+        createMcpAdminAuth({ enabled: true, configured: false }),
+    );
 
     const response = await createTagRequest(baseUrl, 'project', 'mcp-secret');
     assert.equal(response.status, 503);

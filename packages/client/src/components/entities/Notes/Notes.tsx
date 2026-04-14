@@ -1,14 +1,11 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
-import { fetchNotes, type FetchNotesParams } from '~/apis/note.api';
+import { type FetchNotesParams, fetchNotes } from '~/apis/note.api';
 import type { Note } from '~/models/note.model';
 import { queryKeys } from '~/modules/query-key-factory';
 
 interface NotesProps {
     searchParams: FetchNotesParams;
-    render: (data: {
-        notes: Note[];
-        totalCount: number;
-    }) => React.ReactNode;
+    render: (data: { notes: Note[]; totalCount: number }) => React.ReactNode;
 }
 
 const Notes = (props: NotesProps) => {
@@ -20,7 +17,7 @@ const Notes = (props: NotesProps) => {
                 throw response;
             }
             return response.allNotes;
-        }
+        },
     });
 
     return props.render(data);

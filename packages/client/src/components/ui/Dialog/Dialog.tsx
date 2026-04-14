@@ -1,9 +1,10 @@
 import * as DialogPrimitive from '@radix-ui/react-dialog';
-import { createContext, forwardRef, useContext } from 'react';
 import classNames from 'classnames';
+import { createContext, forwardRef, useContext } from 'react';
 
 import * as Icon from '~/components/icon';
 import {
+    type DialogVariant,
     dialogBodyVariants,
     dialogCloseButtonVariants,
     dialogContentVariants,
@@ -11,7 +12,6 @@ import {
     dialogFooterVariants,
     dialogHeaderVariants,
     dialogTitleVariants,
-    type DialogVariant
 } from './variants';
 
 const Dialog = DialogPrimitive.Root;
@@ -42,7 +42,7 @@ const DialogOverlay = forwardRef<
             'data-[state=closed]:animate-out',
             'data-[state=closed]:fade-out-0',
             'data-[state=open]:fade-in-0',
-            className
+            className,
         )}
         {...props}
     />
@@ -62,12 +62,11 @@ const DialogContent = forwardRef<
             data-dialog-variant={variant}
             className={dialogContentVariants({
                 variant,
-                className
+                className,
             })}
-            {...props}>
-            <DialogVariantContext.Provider value={variant}>
-                {children}
-            </DialogVariantContext.Provider>
+            {...props}
+        >
+            <DialogVariantContext.Provider value={variant}>{children}</DialogVariantContext.Provider>
         </DialogPrimitive.Content>
     </DialogPortal>
 ));
@@ -86,18 +85,20 @@ const DialogHeader = ({ title, onClose, className }: DialogHeaderProps) => {
         <div
             className={dialogHeaderVariants({
                 variant,
-                className
-            })}>
-            <DialogTitle>
-                {title}
-            </DialogTitle>
+                className,
+            })}
+        >
+            <DialogTitle>{title}</DialogTitle>
             {onClose && (
                 <DialogClose asChild>
-                    <button
-                        type="button"
-                        className={dialogCloseButtonVariants({ variant })}
-                        onClick={onClose}>
-                        <Icon.Close className={variant === 'compact' || variant === 'form' || variant === 'confirm' ? 'h-[18px] w-[18px]' : 'h-5 w-5'} />
+                    <button type="button" className={dialogCloseButtonVariants({ variant })} onClick={onClose}>
+                        <Icon.Close
+                            className={
+                                variant === 'compact' || variant === 'form' || variant === 'confirm'
+                                    ? 'h-[18px] w-[18px]'
+                                    : 'h-5 w-5'
+                            }
+                        />
                     </button>
                 </DialogClose>
             )}
@@ -106,22 +107,20 @@ const DialogHeader = ({ title, onClose, className }: DialogHeaderProps) => {
 };
 DialogHeader.displayName = 'DialogHeader';
 
-const DialogBody = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-    ({ className, ...props }, ref) => {
-        const variant = useDialogVariant();
+const DialogBody = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => {
+    const variant = useDialogVariant();
 
-        return (
-            <div
-                ref={ref}
-                className={dialogBodyVariants({
-                    variant,
-                    className
-                })}
-                {...props}
-            />
-        );
-    }
-);
+    return (
+        <div
+            ref={ref}
+            className={dialogBodyVariants({
+                variant,
+                className,
+            })}
+            {...props}
+        />
+    );
+});
 DialogBody.displayName = 'DialogBody';
 
 const DialogFooter = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
@@ -133,12 +132,12 @@ const DialogFooter = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElem
                 ref={ref}
                 className={dialogFooterVariants({
                     variant,
-                    className
+                    className,
                 })}
                 {...props}
             />
         );
-    }
+    },
 );
 DialogFooter.displayName = 'DialogFooter';
 
@@ -176,14 +175,14 @@ DialogDescription.displayName = DialogPrimitive.Description.displayName;
 
 export {
     Dialog,
-    DialogPortal,
-    DialogOverlay,
-    DialogClose,
-    DialogTrigger,
-    DialogContent,
-    DialogHeader,
     DialogBody,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
     DialogFooter,
+    DialogHeader,
+    DialogOverlay,
+    DialogPortal,
     DialogTitle,
-    DialogDescription
+    DialogTrigger,
 };

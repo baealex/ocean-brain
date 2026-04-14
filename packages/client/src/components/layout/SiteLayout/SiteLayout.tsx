@@ -13,14 +13,15 @@ interface SiteLayoutProps {
 const SiteLayout = ({ children }: SiteLayoutProps) => {
     return (
         <LayoutShell
-            sidebar={(
+            sidebar={
                 <>
                     <SidebarHeroBanner />
                     <SidebarSearch />
                     <SidebarPrimaryActions />
                 </>
-            )}
-            topNavigation={<TopNavigation />}>
+            }
+            topNavigation={<TopNavigation />}
+        >
             {children}
         </LayoutShell>
     );

@@ -1,26 +1,19 @@
-import type { Dispatch, ReactNode, SetStateAction } from 'react';
-import { useEffect, useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link, useLocation } from '@tanstack/react-router';
 import type { DragEndEvent } from '@dnd-kit/core';
-import classNames from 'classnames';
-import {
-    DndContext,
-    KeyboardSensor,
-    PointerSensor,
-    closestCenter,
-    useSensor,
-    useSensors
-} from '@dnd-kit/core';
+import { closestCenter, DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import {
-    SortableContext,
     arrayMove,
+    SortableContext,
     sortableKeyboardCoordinates,
     useSortable,
-    verticalListSortingStrategy
+    verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Link, useLocation } from '@tanstack/react-router';
+import classNames from 'classnames';
+import type { Dispatch, ReactNode, SetStateAction } from 'react';
+import { useEffect, useState } from 'react';
 
 import { reorderNotes } from '~/apis/note.api';
 import { QueryBoundary, QueryErrorView } from '~/components/app';
@@ -50,24 +43,20 @@ interface PinnedNotesListProps {
     sensors: ReturnType<typeof useSensors>;
 }
 
-const dragHandleBaseClassName = 'focus-ring-soft flex h-8 w-8 items-center justify-center rounded-[10px] text-fg-secondary outline-none transition-colors hover:text-fg-default active:cursor-grabbing touch-none';
-const pinnedLinkBaseClassName = 'focus-ring-soft block truncate rounded-[10px] px-1.5 py-1 outline-none transition-colors';
+const dragHandleBaseClassName =
+    'focus-ring-soft flex h-8 w-8 items-center justify-center rounded-[10px] text-fg-secondary outline-none transition-colors hover:text-fg-default active:cursor-grabbing touch-none';
+const pinnedLinkBaseClassName =
+    'focus-ring-soft block truncate rounded-[10px] px-1.5 py-1 outline-none transition-colors';
 
 function SortablePinnedNote({ id, title, isActive = false, children }: SortablePinnedNoteProps) {
-    const {
-        attributes,
-        listeners,
-        setNodeRef,
-        setActivatorNodeRef,
-        transform,
-        transition,
-        isDragging
-    } = useSortable({ id });
+    const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
+        id,
+    });
 
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
-        opacity: isDragging ? 0.5 : 1
+        opacity: isDragging ? 0.5 : 1,
     };
 
     return (
@@ -76,26 +65,20 @@ function SortablePinnedNote({ id, title, isActive = false, children }: SortableP
             style={style}
             className={classNames(
                 'group flex min-h-[40px] items-center gap-1.5 rounded-[12px] px-1.5 py-1 transition-colors',
-                isActive && 'bg-hover-subtle'
-            )}>
+                isActive && 'bg-hover-subtle',
+            )}
+        >
             <button
                 type="button"
                 ref={setActivatorNodeRef}
                 aria-label={`Reorder note ${title ?? 'Untitled'}`}
                 {...attributes}
                 {...listeners}
-                className={classNames(
-                    dragHandleBaseClassName,
-                    isDragging ? 'cursor-grabbing' : 'cursor-grab'
-                )}>
+                className={classNames(dragHandleBaseClassName, isDragging ? 'cursor-grabbing' : 'cursor-grab')}
+            >
                 <Icon.DragHandle className="size-3.5" />
             </button>
-            <Text
-                as="div"
-                truncate
-                variant="body"
-                weight="medium"
-                className="min-w-0 flex-1">
+            <Text as="div" truncate variant="body" weight="medium" className="min-w-0 flex-1">
                 {children}
             </Text>
         </div>
@@ -108,7 +91,7 @@ function PinnedNotesList({
     pinnedItems,
     setPinnedItems,
     handleDragEnd,
-    sensors
+    sensors,
 }: PinnedNotesListProps) {
     useEffect(() => {
         setPinnedItems(notes);
@@ -125,26 +108,27 @@ function PinnedNotesList({
             sensors={sensors}
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}
-            modifiers={[restrictToVerticalAxis]}>
-            <SortableContext
-                items={items.map((item) => item.id)}
-                strategy={verticalListSortingStrategy}>
+            modifiers={[restrictToVerticalAxis]}
+        >
+            <SortableContext items={items.map((item) => item.id)} strategy={verticalListSortingStrategy}>
                 {items.map((note) => (
                     <SortablePinnedNote
                         key={note.id}
                         id={note.id}
                         title={note.title || 'Untitled'}
-                        isActive={pathname === `/${note.id}`}>
+                        isActive={pathname === `/${note.id}`}
+                    >
                         <Link
                             aria-current={pathname === `/${note.id}` ? 'page' : undefined}
                             className={classNames(
                                 pinnedLinkBaseClassName,
                                 pathname === `/${note.id}`
                                     ? 'text-fg-default'
-                                    : 'text-fg-secondary hover:bg-hover-subtle hover:text-fg-default'
+                                    : 'text-fg-secondary hover:bg-hover-subtle hover:text-fg-default',
                             )}
                             to={NOTE_ROUTE}
-                            params={{ id: note.id }}>
+                            params={{ id: note.id }}
+                        >
                             {note.title || 'Untitled'}
                         </Link>
                     </SortablePinnedNote>
@@ -164,14 +148,14 @@ const PinnedNotesPanel = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({
                 queryKey: queryKeys.notes.pinned(),
-                exact: true
+                exact: true,
             });
-        }
+        },
     });
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
     );
 
     const handleDragEnd = (event: DragEndEvent) => {
@@ -183,10 +167,12 @@ const PinnedNotesPanel = () => {
                 const newIndex = items.findIndex((item) => item.id === over.id);
                 const nextItems = arrayMove(items, oldIndex, newIndex);
 
-                reorderMutation.mutate(nextItems.map((item, index) => ({
-                    id: item.id,
-                    order: index
-                })));
+                reorderMutation.mutate(
+                    nextItems.map((item, index) => ({
+                        id: item.id,
+                        order: index,
+                    })),
+                );
 
                 return nextItems;
             });
@@ -196,12 +182,12 @@ const PinnedNotesPanel = () => {
     return (
         <div className="flex flex-col gap-1">
             <QueryBoundary
-                fallback={(
+                fallback={
                     <div className="space-y-1">
                         <Skeleton height="40px" opacity={0.4} />
                         <Skeleton height="40px" opacity={0.4} />
                     </div>
-                )}
+                }
                 errorTitle="Failed to load pinned notes"
                 errorDescription="Retry loading the pinned note list."
                 renderError={({ error, retry }) => (
@@ -213,9 +199,10 @@ const PinnedNotesPanel = () => {
                         showBackAction={false}
                         showHomeAction={false}
                     />
-                )}>
+                )}
+            >
                 <PinnedNotes
-                    render={(notes) => (
+                    render={(notes) =>
                         notes.length > 0 ? (
                             <PinnedNotesList
                                 notes={notes}
@@ -230,7 +217,7 @@ const PinnedNotesPanel = () => {
                                 Pin a note to keep it in view while the rest of the workspace changes.
                             </Text>
                         )
-                    )}
+                    }
                 />
             </QueryBoundary>
         </div>

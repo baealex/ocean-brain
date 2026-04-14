@@ -1,9 +1,9 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 
 import { AppError } from '../src/modules/error-handler.js';
-import { createMcpCreateTagHandler } from '../src/views/tag.js';
 import { InvalidTagNameError } from '../src/modules/tag-organization.js';
+import { createMcpCreateTagHandler } from '../src/views/tag.js';
 
 const createResponse = () => {
     const response = {
@@ -19,7 +19,7 @@ const createResponse = () => {
         },
         end() {
             return this;
-        }
+        },
     };
 
     return response;
@@ -33,8 +33,8 @@ test('mcp create tag handler rejects missing tag names', async () => {
             id: '7',
             name: '@inbox',
             createdAt: '2026-03-31T00:00:00.000Z',
-            updatedAt: '2026-03-31T00:00:00.000Z'
-        }
+            updatedAt: '2026-03-31T00:00:00.000Z',
+        },
     }));
     await assert.rejects(
         () => handler({ body: {} } as never, createResponse() as never),
@@ -44,7 +44,7 @@ test('mcp create tag handler rejects missing tag names', async () => {
             assert.equal(error.code, 'INVALID_TAG_NAME');
             assert.equal(error.message, 'A tag name is required.');
             return true;
-        }
+        },
     );
 });
 
@@ -56,8 +56,8 @@ test('mcp create tag handler returns the created-or-existing tag payload', async
             id: '4',
             name: '@project',
             createdAt: '2026-03-31T00:00:00.000Z',
-            updatedAt: '2026-03-31T00:00:00.000Z'
-        }
+            updatedAt: '2026-03-31T00:00:00.000Z',
+        },
     }));
     const response = createResponse();
 
@@ -71,8 +71,8 @@ test('mcp create tag handler returns the created-or-existing tag payload', async
             id: '4',
             name: '@project',
             createdAt: '2026-03-31T00:00:00.000Z',
-            updatedAt: '2026-03-31T00:00:00.000Z'
-        }
+            updatedAt: '2026-03-31T00:00:00.000Z',
+        },
     });
 });
 
@@ -88,6 +88,6 @@ test('mcp create tag handler surfaces invalid normalized tag names', async () =>
             assert.equal(error.code, 'INVALID_TAG_NAME');
             assert.equal(error.message, 'Tag names must be a single token like @project.');
             return true;
-        }
+        },
     );
 });

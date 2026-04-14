@@ -1,24 +1,13 @@
-import { forwardRef } from 'react';
 import classNames from 'classnames';
+import { forwardRef } from 'react';
 
-export interface SwitchProps
-    extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'onChange'> {
+export interface SwitchProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'onChange'> {
     checked: boolean;
     onCheckedChange?: (checked: boolean) => void;
 }
 
 export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(
-    (
-        {
-            checked,
-            onCheckedChange,
-            onClick,
-            className,
-            disabled,
-            ...props
-        },
-        ref
-    ) => {
+    ({ checked, onCheckedChange, onClick, className, disabled, ...props }, ref) => {
         return (
             <button
                 ref={ref}
@@ -32,7 +21,7 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(
                         ? 'border-transparent bg-cta hover:bg-cta-hover active:bg-cta-hover'
                         : 'border-border bg-subtle hover:bg-hover active:bg-active',
                     disabled && 'cursor-not-allowed opacity-80',
-                    className
+                    className,
                 )}
                 onClick={(event) => {
                     onClick?.(event);
@@ -42,17 +31,18 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(
 
                     onCheckedChange?.(!checked);
                 }}
-                {...props}>
+                {...props}
+            >
                 <span
                     aria-hidden="true"
                     className={classNames(
                         'pointer-events-none inline-block h-5 w-5 rounded-full shadow-sm transition-transform duration-200',
-                        checked ? 'translate-x-5 bg-white' : 'translate-x-0 bg-fg-secondary'
+                        checked ? 'translate-x-5 bg-white' : 'translate-x-0 bg-fg-secondary',
                     )}
                 />
             </button>
         );
-    }
+    },
 );
 
 Switch.displayName = 'Switch';

@@ -26,17 +26,10 @@ interface Props {
 const renderItems = (items: CalendarItem[], type: CalendarDisplayType) =>
     items.map((calendarItem) =>
         calendarItem.type === 'note' ? (
-            <NoteCard
-                key={`note-${calendarItem.item.id}`}
-                note={calendarItem.item}
-                type={type}
-            />
+            <NoteCard key={`note-${calendarItem.item.id}`} note={calendarItem.item} type={type} />
         ) : (
-            <ReminderCard
-                key={`reminder-${calendarItem.item.id}`}
-                reminder={calendarItem.item}
-            />
-        )
+            <ReminderCard key={`reminder-${calendarItem.item.id}`} reminder={calendarItem.item} />
+        ),
     );
 
 const CalendarDayComponent = ({
@@ -49,34 +42,26 @@ const CalendarDayComponent = ({
     isPast,
     notes,
     reminders,
-    type
+    type,
 }: Props) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const sortedItems = useMemo<CalendarItem[]>(() => {
-        const noteItems: CalendarItem[] = notes.map(n => ({
+        const noteItems: CalendarItem[] = notes.map((n) => ({
             type: 'note',
-            item: n
+            item: n,
         }));
-        const reminderItems: CalendarItem[] = reminders.map(r => ({
+        const reminderItems: CalendarItem[] = reminders.map((r) => ({
             type: 'reminder',
-            item: r
+            item: r,
         }));
 
-        return isPast
-            ? [...noteItems, ...reminderItems]
-            : [...reminderItems, ...noteItems];
+        return isPast ? [...noteItems, ...reminderItems] : [...reminderItems, ...noteItems];
     }, [isPast, notes, reminders]);
 
     const hasOverflow = sortedItems.length > MAX_VISIBLE_ITEMS;
-    const visibleItems = useMemo(
-        () => renderItems(sortedItems.slice(0, MAX_VISIBLE_ITEMS), type),
-        [sortedItems, type]
-    );
-    const allItems = useMemo(
-        () => renderItems(sortedItems, type),
-        [sortedItems, type]
-    );
+    const visibleItems = useMemo(() => renderItems(sortedItems.slice(0, MAX_VISIBLE_ITEMS), type), [sortedItems, type]);
+    const allItems = useMemo(() => renderItems(sortedItems, type), [sortedItems, type]);
 
     const handleOpenModal = useCallback(() => setIsModalOpen(true), []);
     const handleCloseModal = useCallback(() => setIsModalOpen(false), []);
@@ -118,14 +103,15 @@ const CalendarDayComponent = ({
 
             {hasOverflow && (
                 <Modal isOpen={isModalOpen} onClose={handleCloseModal} variant="inspect">
-                    <Modal.Header title={`${year}/${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}`} onClose={handleCloseModal} />
+                    <Modal.Header
+                        title={`${year}/${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}`}
+                        onClose={handleCloseModal}
+                    />
                     <Modal.Body>
                         <Modal.Description className="sr-only">
                             View all notes and reminders scheduled for day {day}.
                         </Modal.Description>
-                        <div className="flex max-h-[60vh] flex-col gap-2 overflow-y-auto">
-                            {allItems}
-                        </div>
+                        <div className="flex max-h-[60vh] flex-col gap-2 overflow-y-auto">{allItems}</div>
                     </Modal.Body>
                 </Modal>
             )}

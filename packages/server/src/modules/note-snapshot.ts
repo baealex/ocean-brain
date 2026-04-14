@@ -1,11 +1,11 @@
 import models, { type NoteLayout } from '~/models.js';
+import { buildNoteSearchProjection } from './note-search.js';
 import {
     createRetentionCutoff,
     RECOVERY_CLEANUP_BATCH_LIMIT,
     SNAPSHOT_MAX_PER_NOTE,
-    SNAPSHOT_RETENTION_DAYS
+    SNAPSHOT_RETENTION_DAYS,
 } from './recovery-retention.js';
-import { buildNoteSearchProjection } from './note-search.js';
 
 interface NoteRecord {
     id: number;
@@ -41,13 +41,16 @@ interface NoteSnapshotDeps {
     findSnapshotById: (id: number) => Promise<NoteSnapshotRecord | null>;
     purgeExpiredSnapshots: (before: Date, limit: number) => Promise<number>;
     trimOverflowSnapshots: (noteId: number, keep: number, limit: number) => Promise<number>;
-    updateNote: (id: number, input: {
-        title: string;
-        content: string;
-        pinned: boolean;
-        order: number;
-        layout: NoteLayout;
-    }) => Promise<NoteRecord>;
+    updateNote: (
+        id: number,
+        input: {
+            title: string;
+            content: string;
+            pinned: boolean;
+            order: number;
+            layout: NoteLayout;
+        },
+    ) => Promise<NoteRecord>;
 }
 
 export interface NoteSnapshotMeta {
@@ -79,7 +82,7 @@ const parseMeta = (value?: string | null): NoteSnapshotMeta => {
         const parsed = JSON.parse(value) as NoteSnapshotMeta;
         return {
             ...(parsed.entrypoint ? { entrypoint: parsed.entrypoint } : {}),
-            ...(parsed.label ? { label: parsed.label } : {})
+            ...(parsed.label ? { label: parsed.label } : {}),
         };
     } catch {
         return {};
@@ -90,7 +93,7 @@ const serializeSnapshot = (snapshot: NoteSnapshotRecord): NoteSnapshotSummary =>
     id: String(snapshot.id),
     title: snapshot.title,
     createdAt: snapshot.createdAt.toISOString(),
-    meta: parseMeta(snapshot.meta)
+    meta: parseMeta(snapshot.meta),
 });
 
 const serializePayload = (note: NoteRecord): string => {
@@ -99,7 +102,7 @@ const serializePayload = (note: NoteRecord): string => {
         content: note.content,
         pinned: note.pinned,
         order: note.order,
-        layout: note.layout
+        layout: note.layout,
     };
 
     return JSON.stringify(payload);
@@ -127,13 +130,13 @@ export const createSnapshotMetaFromUserAgent = (userAgent?: string | null): stri
 
     return JSON.stringify({
         entrypoint: isMobile ? 'mobile' : 'web',
-        label: isMobile ? 'Mobile browser' : 'Web browser'
+        label: isMobile ? 'Mobile browser' : 'Web browser',
     } satisfies NoteSnapshotMeta);
 };
 
 export const MCP_SNAPSHOT_META = JSON.stringify({
     entrypoint: 'mcp',
-    label: 'MCP'
+    label: 'MCP',
 } satisfies NoteSnapshotMeta);
 
 const defaultPurgeExpiredSnapshots = async (before: Date, limit: number) => {
@@ -141,14 +144,16 @@ const defaultPurgeExpiredSnapshots = async (before: Date, limit: number) => {
         where: { createdAt: { lt: before } },
         orderBy: { createdAt: 'asc' },
         take: limit,
-        select: { id: true }
+        select: { id: true },
     });
 
     if (expiredSnapshots.length === 0) {
         return 0;
     }
 
-    const deleted = await models.noteSnapshot.deleteMany({ where: { id: { in: expiredSnapshots.map((snapshot) => snapshot.id) } } });
+    const deleted = await models.noteSnapshot.deleteMany({
+        where: { id: { in: expiredSnapshots.map((snapshot) => snapshot.id) } },
+    });
 
     return deleted.count;
 };
@@ -156,34 +161,26 @@ const defaultPurgeExpiredSnapshots = async (before: Date, limit: number) => {
 const defaultTrimOverflowSnapshots = async (noteId: number, keep: number, limit: number) => {
     const overflowSnapshots = await models.noteSnapshot.findMany({
         where: { noteId },
-        orderBy: [
-            { createdAt: 'desc' },
-            { id: 'desc' }
-        ],
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: keep,
         take: limit,
-        select: { id: true }
+        select: { id: true },
     });
 
     if (overflowSnapshots.length === 0) {
         return 0;
     }
 
-    const deleted = await models.noteSnapshot.deleteMany({ where: { id: { in: overflowSnapshots.map((snapshot) => snapshot.id) } } });
+    const deleted = await models.noteSnapshot.deleteMany({
+        where: { id: { in: overflowSnapshots.map((snapshot) => snapshot.id) } },
+    });
 
     return deleted.count;
 };
 
 export const createNoteSnapshotService = (deps: NoteSnapshotDeps) => ({
-    captureBaseline: async (input: {
-        noteId: number;
-        editSessionId?: string;
-        meta?: string;
-    }) => {
-        await deps.purgeExpiredSnapshots(
-            createRetentionCutoff(SNAPSHOT_RETENTION_DAYS),
-            RECOVERY_CLEANUP_BATCH_LIMIT
-        );
+    captureBaseline: async (input: { noteId: number; editSessionId?: string; meta?: string }) => {
+        await deps.purgeExpiredSnapshots(createRetentionCutoff(SNAPSHOT_RETENTION_DAYS), RECOVERY_CLEANUP_BATCH_LIMIT);
 
         const existing = input.editSessionId
             ? await deps.findSnapshotByEditSessionId(input.noteId, input.editSessionId)
@@ -204,37 +201,23 @@ export const createNoteSnapshotService = (deps: NoteSnapshotDeps) => ({
             title: note.title,
             payload: serializePayload(note),
             ...(input.editSessionId ? { editSessionId: input.editSessionId } : {}),
-            ...(input.meta ? { meta: input.meta } : {})
+            ...(input.meta ? { meta: input.meta } : {}),
         });
 
-        await deps.trimOverflowSnapshots(
-            note.id,
-            SNAPSHOT_MAX_PER_NOTE,
-            RECOVERY_CLEANUP_BATCH_LIMIT
-        );
+        await deps.trimOverflowSnapshots(note.id, SNAPSHOT_MAX_PER_NOTE, RECOVERY_CLEANUP_BATCH_LIMIT);
 
         return serializeSnapshot(snapshot);
     },
 
     listSnapshots: async (noteId: number, limit = 5) => {
-        await deps.purgeExpiredSnapshots(
-            createRetentionCutoff(SNAPSHOT_RETENTION_DAYS),
-            RECOVERY_CLEANUP_BATCH_LIMIT
-        );
-        await deps.trimOverflowSnapshots(
-            noteId,
-            SNAPSHOT_MAX_PER_NOTE,
-            RECOVERY_CLEANUP_BATCH_LIMIT
-        );
+        await deps.purgeExpiredSnapshots(createRetentionCutoff(SNAPSHOT_RETENTION_DAYS), RECOVERY_CLEANUP_BATCH_LIMIT);
+        await deps.trimOverflowSnapshots(noteId, SNAPSHOT_MAX_PER_NOTE, RECOVERY_CLEANUP_BATCH_LIMIT);
         const snapshots = await deps.listSnapshots(noteId, limit);
         return snapshots.map(serializeSnapshot);
     },
 
     restoreSnapshot: async (snapshotId: number, options?: { meta?: string }) => {
-        await deps.purgeExpiredSnapshots(
-            createRetentionCutoff(SNAPSHOT_RETENTION_DAYS),
-            RECOVERY_CLEANUP_BATCH_LIMIT
-        );
+        await deps.purgeExpiredSnapshots(createRetentionCutoff(SNAPSHOT_RETENTION_DAYS), RECOVERY_CLEANUP_BATCH_LIMIT);
 
         const snapshot = await deps.findSnapshotById(snapshotId);
 
@@ -252,19 +235,15 @@ export const createNoteSnapshotService = (deps: NoteSnapshotDeps) => ({
             noteId: note.id,
             title: note.title,
             payload: serializePayload(note),
-            ...(options?.meta ? { meta: options.meta } : {})
+            ...(options?.meta ? { meta: options.meta } : {}),
         });
 
-        await deps.trimOverflowSnapshots(
-            note.id,
-            SNAPSHOT_MAX_PER_NOTE,
-            RECOVERY_CLEANUP_BATCH_LIMIT
-        );
+        await deps.trimOverflowSnapshots(note.id, SNAPSHOT_MAX_PER_NOTE, RECOVERY_CLEANUP_BATCH_LIMIT);
 
         const payload = parsePayload(snapshot.payload);
 
         return deps.updateNote(snapshot.noteId, payload);
-    }
+    },
 });
 
 export const defaultNoteSnapshotService = createNoteSnapshotService({
@@ -275,8 +254,8 @@ export const defaultNoteSnapshotService = createNoteSnapshotService({
         return models.noteSnapshot.findFirst({
             where: {
                 noteId,
-                editSessionId
-            }
+                editSessionId,
+            },
         });
     },
     createSnapshot: async (input) => {
@@ -286,8 +265,8 @@ export const defaultNoteSnapshotService = createNoteSnapshotService({
                 title: input.title,
                 payload: input.payload,
                 ...(input.editSessionId ? { editSessionId: input.editSessionId } : {}),
-                ...(input.meta ? { meta: input.meta } : {})
-            }
+                ...(input.meta ? { meta: input.meta } : {}),
+            },
         });
     },
     purgeExpiredSnapshots: defaultPurgeExpiredSnapshots,
@@ -296,7 +275,7 @@ export const defaultNoteSnapshotService = createNoteSnapshotService({
         return models.noteSnapshot.findMany({
             where: { noteId },
             orderBy: { createdAt: 'desc' },
-            take: limit
+            take: limit,
         });
     },
     findSnapshotById: async (id) => {
@@ -309,18 +288,14 @@ export const defaultNoteSnapshotService = createNoteSnapshotService({
                 ...input,
                 ...buildNoteSearchProjection({
                     title: input.title,
-                    content: input.content
-                })
-            }
+                    content: input.content,
+                }),
+            },
         });
-    }
+    },
 });
 
-export const captureNoteBaseline = async (input: {
-    noteId: number;
-    editSessionId?: string;
-    meta?: string;
-}) => {
+export const captureNoteBaseline = async (input: { noteId: number; editSessionId?: string; meta?: string }) => {
     return defaultNoteSnapshotService.captureBaseline(input);
 };
 
@@ -333,8 +308,5 @@ export const restoreNoteSnapshot = async (snapshotId: number, options?: { meta?:
 };
 
 export const purgeExpiredNoteSnapshots = async () => {
-    return defaultPurgeExpiredSnapshots(
-        createRetentionCutoff(SNAPSHOT_RETENTION_DAYS),
-        RECOVERY_CLEANUP_BATCH_LIMIT
-    );
+    return defaultPurgeExpiredSnapshots(createRetentionCutoff(SNAPSHOT_RETENTION_DAYS), RECOVERY_CLEANUP_BATCH_LIMIT);
 };

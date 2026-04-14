@@ -1,34 +1,25 @@
 import type { IResolvers } from '@graphql-tools/utils';
 import type { Request } from 'express';
-
+import type { Note, Prisma } from '~/models.js';
 import models from '~/models.js';
+import { runDataMaintenanceInBackground } from '~/modules/data-maintenance.js';
 import { gql } from '~/modules/graphql.js';
-import {
-    getNoteCleanupPreview,
-    listNoteCleanupCandidates
-} from '~/modules/note-cleanup.js';
-import {
-    captureNoteBaseline,
-    createSnapshotMetaFromUserAgent,
-    listNoteSnapshots,
-    restoreNoteSnapshot
-} from '~/modules/note-snapshot.js';
-import {
-    listTrashedNotes,
-    restoreTrashedNoteById,
-    trashNoteById
-} from '~/modules/note-trash.js';
+import { getNoteCleanupPreview, listNoteCleanupCandidates } from '~/modules/note-cleanup.js';
 import {
     buildNoteSearchProjection,
     filterNotesBySearchQuery,
     NOTE_SEARCH_TEXT_SCHEMA_VERSION,
-    parseNoteSearchQuery
+    parseNoteSearchQuery,
 } from '~/modules/note-search.js';
-import { runDataMaintenanceInBackground } from '~/modules/data-maintenance.js';
-import { buildNoteTagNamesWhere, normalizeNoteTagNames, type NoteTagMatchMode } from '~/modules/note-tag-filter.js';
-
-import type { Note, Prisma } from '~/models.js';
-import type { Pagination, SearchFilter, NoteInput } from '~/types/index.js';
+import {
+    captureNoteBaseline,
+    createSnapshotMetaFromUserAgent,
+    listNoteSnapshots,
+    restoreNoteSnapshot,
+} from '~/modules/note-snapshot.js';
+import { buildNoteTagNamesWhere, type NoteTagMatchMode, normalizeNoteTagNames } from '~/modules/note-tag-filter.js';
+import { listTrashedNotes, restoreTrashedNoteById, trashNoteById } from '~/modules/note-trash.js';
+import type { NoteInput, Pagination, SearchFilter } from '~/types/index.js';
 
 export const noteType = gql`
     input PaginationInput {
@@ -282,8 +273,8 @@ const buildAllNotesSearchWhere = (searchFilter: SearchFilter) => {
         AND: [
             { searchableTextVersion: NOTE_SEARCH_TEXT_SCHEMA_VERSION },
             ...parsedQuery.included.map((keyword) => ({ searchableText: { contains: keyword } })),
-            ...parsedQuery.excluded.map((keyword) => ({ NOT: { searchableText: { contains: keyword } } }))
-        ]
+            ...parsedQuery.excluded.map((keyword) => ({ NOT: { searchableText: { contains: keyword } } })),
+        ],
     } satisfies Prisma.NoteWhereInput;
 };
 
@@ -294,12 +285,9 @@ const buildAllNotesStaleCandidateWhere = (searchFilter: SearchFilter) => {
         AND: [
             { searchableTextVersion: { not: NOTE_SEARCH_TEXT_SCHEMA_VERSION } },
             ...parsedQuery.included.map((keyword) => ({
-                OR: [
-                    { title: { contains: keyword } },
-                    { content: { contains: keyword } }
-                ]
-            }))
-        ]
+                OR: [{ title: { contains: keyword } }, { content: { contains: keyword } }],
+            })),
+        ],
     } satisfies Prisma.NoteWhereInput;
 };
 
@@ -310,20 +298,14 @@ const compareNotesForSearch = (left: Note, right: Note, searchFilter: SearchFilt
 
     const sortBy = searchFilter.sortBy || 'updatedAt';
     const sortOrder = searchFilter.sortOrder || 'desc';
-    const leftValue = sortBy === 'createdAt'
-        ? left.createdAt.getTime()
-        : left.updatedAt.getTime();
-    const rightValue = sortBy === 'createdAt'
-        ? right.createdAt.getTime()
-        : right.updatedAt.getTime();
+    const leftValue = sortBy === 'createdAt' ? left.createdAt.getTime() : left.updatedAt.getTime();
+    const rightValue = sortBy === 'createdAt' ? right.createdAt.getTime() : right.updatedAt.getTime();
 
     if (leftValue === rightValue) {
         return 0;
     }
 
-    return sortOrder === 'asc'
-        ? leftValue - rightValue
-        : rightValue - leftValue;
+    return sortOrder === 'asc' ? leftValue - rightValue : rightValue - leftValue;
 };
 
 const mergeSortedNotesForSearch = (left: Note[], right: Note[], searchFilter: SearchFilter) => {
@@ -357,24 +339,28 @@ const mergeSortedNotesForSearch = (left: Note[], right: Note[], searchFilter: Se
 export const createAllNotesQueryResolver = (
     deps: AllNotesResolverDeps = {
         countNotes: ({ where }) => models.note.count({ where }),
-        findNotes: ({ orderBy, where, take, skip }) => models.note.findMany({
-            orderBy,
-            where,
-            take,
-            skip
-        }),
+        findNotes: ({ orderBy, where, take, skip }) =>
+            models.note.findMany({
+                orderBy,
+                where,
+                take,
+                skip,
+            }),
         triggerSearchBackfill: () => {
             void runDataMaintenanceInBackground();
-        }
-    }
+        },
+    },
 ) => {
-    return async (_: unknown, {
-        searchFilter,
-        pagination
-    }: {
-        searchFilter: SearchFilter;
-        pagination: Pagination;
-    }) => {
+    return async (
+        _: unknown,
+        {
+            searchFilter,
+            pagination,
+        }: {
+            searchFilter: SearchFilter;
+            pagination: Pagination;
+        },
+    ) => {
         const orderBy = buildAllNotesOrderBy(searchFilter);
         const limit = Number(pagination.limit);
         const offset = Number(pagination.offset);
@@ -385,20 +371,20 @@ export const createAllNotesQueryResolver = (
                 deps.findNotes({
                     orderBy,
                     take: limit,
-                    skip: offset
+                    skip: offset,
                 }),
-                deps.countNotes({})
+                deps.countNotes({}),
             ]);
 
             return {
                 totalCount,
-                notes
+                notes,
             };
         }
 
         const staleCandidateNotes = await deps.findNotes({
             orderBy,
-            where: buildAllNotesStaleCandidateWhere(searchFilter)
+            where: buildAllNotesStaleCandidateWhere(searchFilter),
         });
 
         if (staleCandidateNotes.length === 0) {
@@ -407,14 +393,14 @@ export const createAllNotesQueryResolver = (
                     orderBy,
                     where,
                     take: limit,
-                    skip: offset
+                    skip: offset,
                 }),
-                deps.countNotes({ where })
+                deps.countNotes({ where }),
             ]);
 
             return {
                 totalCount,
-                notes
+                notes,
             };
         }
 
@@ -429,14 +415,14 @@ export const createAllNotesQueryResolver = (
                     orderBy,
                     where,
                     take: limit,
-                    skip: offset
+                    skip: offset,
                 }),
-                deps.countNotes({ where })
+                deps.countNotes({ where }),
             ]);
 
             return {
                 totalCount,
-                notes
+                notes,
             };
         }
 
@@ -444,15 +430,15 @@ export const createAllNotesQueryResolver = (
             deps.findNotes({
                 orderBy,
                 where,
-                take: offset + limit
+                take: offset + limit,
             }),
-            deps.countNotes({ where })
+            deps.countNotes({ where }),
         ]);
         const mergedNotes = mergeSortedNotesForSearch(freshNotesPrefix, staleNotes, searchFilter);
 
         return {
             totalCount: freshTotalCount + staleNotes.length,
-            notes: mergedNotes.slice(offset, offset + limit)
+            notes: mergedNotes.slice(offset, offset + limit),
         };
     };
 };
@@ -460,71 +446,82 @@ export const createAllNotesQueryResolver = (
 export const noteResolvers: IResolvers = {
     Query: {
         allNotes: createAllNotesQueryResolver(),
-        notesInDateRange: async (_, { dateRange }: {
-            dateRange: {
-                start: string;
-                end: string;
-            };
-        }) => {
+        notesInDateRange: async (
+            _,
+            {
+                dateRange,
+            }: {
+                dateRange: {
+                    start: string;
+                    end: string;
+                };
+            },
+        ) => {
             const where: Prisma.NoteWhereInput = {
                 OR: [
                     {
                         updatedAt: {
                             gte: new Date(dateRange.start),
-                            lte: new Date(dateRange.end)
-                        }
+                            lte: new Date(dateRange.end),
+                        },
                     },
                     {
                         createdAt: {
                             gte: new Date(dateRange.start),
-                            lte: new Date(dateRange.end)
-                        }
-                    }
-                ]
+                            lte: new Date(dateRange.end),
+                        },
+                    },
+                ],
             };
 
             const $notes = await models.note.findMany({
                 orderBy: { createdAt: 'asc' },
-                where
+                where,
             });
 
             return $notes;
         },
-        tagNotes: async (_, {
-            searchFilter,
-            pagination
-        }: {
-            searchFilter: SearchFilter;
-            pagination: Pagination;
-        }) => {
+        tagNotes: async (
+            _,
+            {
+                searchFilter,
+                pagination,
+            }: {
+                searchFilter: SearchFilter;
+                pagination: Pagination;
+            },
+        ) => {
             const where: Prisma.NoteWhereInput = { tags: { some: { id: Number(searchFilter.query) } } };
 
             const $notes = models.note.findMany({
                 orderBy: { updatedAt: 'desc' },
                 where,
                 take: Number(pagination.limit),
-                skip: Number(pagination.offset)
+                skip: Number(pagination.offset),
             });
             return {
                 totalCount: models.note.count({ where }),
-                notes: $notes
+                notes: $notes,
             };
         },
-        notesByTagNames: async (_, {
-            tagNames,
-            mode,
-            pagination
-        }: {
-            tagNames: string[];
-            mode: NoteTagMatchMode;
-            pagination: Pagination;
-        }) => {
+        notesByTagNames: async (
+            _,
+            {
+                tagNames,
+                mode,
+                pagination,
+            }: {
+                tagNames: string[];
+                mode: NoteTagMatchMode;
+                pagination: Pagination;
+            },
+        ) => {
             const normalizedTagNames = normalizeNoteTagNames(tagNames);
 
             if (normalizedTagNames.length === 0) {
                 return {
                     totalCount: 0,
-                    notes: []
+                    notes: [],
                 };
             }
 
@@ -534,32 +531,28 @@ export const noteResolvers: IResolvers = {
                 orderBy: { updatedAt: 'desc' },
                 where,
                 take: Number(pagination.limit),
-                skip: Number(pagination.offset)
+                skip: Number(pagination.offset),
             });
 
             return {
                 totalCount: models.note.count({ where }),
-                notes: $notes
+                notes: $notes,
             };
         },
-        pinnedNotes: async () => models.note.findMany({
-            orderBy: [
-                { order: 'asc' },
-                { updatedAt: 'desc' }
-            ],
-            where: { pinned: true }
-        }),
-        imageNotes: async (_, { src }) => models.note.findMany({
-            orderBy: { updatedAt: 'desc' },
-            where: { content: { contains: src } }
-        }),
+        pinnedNotes: async () =>
+            models.note.findMany({
+                orderBy: [{ order: 'asc' }, { updatedAt: 'desc' }],
+                where: { pinned: true },
+            }),
+        imageNotes: async (_, { src }) =>
+            models.note.findMany({
+                orderBy: { updatedAt: 'desc' },
+                where: { content: { contains: src } },
+            }),
         backReferences: async (_, { id }: Note) => {
             return models.note.findMany({
-                orderBy: [
-                    { pinned: 'desc' },
-                    { updatedAt: 'desc' }
-                ],
-                where: { content: { contains: `reference","props":{"id":"${id}"` } }
+                orderBy: [{ pinned: 'desc' }, { updatedAt: 'desc' }],
+                where: { content: { contains: `reference","props":{"id":"${id}"` } },
             });
         },
         note: async (_, { id }: Note) => {
@@ -573,14 +566,14 @@ export const noteResolvers: IResolvers = {
                     title: string;
                 }>('reference', JSON.parse($note.content));
                 if (blocks.length > 0) {
-                    const referenceIds = blocks.map(block => Number(block.props.id));
+                    const referenceIds = blocks.map((block) => Number(block.props.id));
                     const $references = await models.note.findMany({ where: { id: { in: referenceIds } } });
                     const newContent = $references.reduce<string>((acc: string, $reference: Note) => {
-                        const reference = blocks.find(block => Number(block.props.id) === $reference.id);
+                        const reference = blocks.find((block) => Number(block.props.id) === $reference.id);
                         if (reference && reference.props.title !== $reference.title) {
                             return acc.replace(
                                 `reference","props":{"id":"${reference.props.id}","title":"${reference.props.title}"`,
-                                `reference","props":{"id":"${$reference.id}","title":"${$reference.title}"`
+                                `reference","props":{"id":"${$reference.id}","title":"${$reference.title}"`,
                             );
                         }
                         return acc;
@@ -590,7 +583,7 @@ export const noteResolvers: IResolvers = {
                             JSON.parse(newContent);
                             return await models.note.update({
                                 where: { id: $note.id },
-                                data: { content: newContent }
+                                data: { content: newContent },
                             });
                         } catch {
                             // Keep the stored content unchanged if the synchronized payload becomes invalid.
@@ -600,22 +593,28 @@ export const noteResolvers: IResolvers = {
             }
             return $note;
         },
-        noteCleanupCandidates: async (_, {
-            query,
-            pagination = {
-                limit: 20,
-                offset: 0
-            }
-        }: {
-            query?: string;
-            pagination: Pagination;
-        }) => {
+        noteCleanupCandidates: async (
+            _,
+            {
+                query,
+                pagination = {
+                    limit: 20,
+                    offset: 0,
+                },
+            }: {
+                query?: string;
+                pagination: Pagination;
+            },
+        ) => {
             const result = await listNoteCleanupCandidates({
                 keywords: query
-                    ? query.split(/[,\s]+/).map((keyword) => keyword.trim()).filter(Boolean)
+                    ? query
+                          .split(/[,\s]+/)
+                          .map((keyword) => keyword.trim())
+                          .filter(Boolean)
                     : undefined,
                 limit: Number(pagination.limit),
-                offset: Number(pagination.offset)
+                offset: Number(pagination.offset),
             });
 
             return result.notes;
@@ -623,26 +622,32 @@ export const noteResolvers: IResolvers = {
         noteCleanupPreview: async (_, { id }: { id: string }) => {
             return getNoteCleanupPreview(Number(id));
         },
-        noteSnapshots: async (_, {
-            id,
-            limit = 5
-        }: {
-            id: string;
-            limit?: number;
-        }) => {
+        noteSnapshots: async (
+            _,
+            {
+                id,
+                limit = 5,
+            }: {
+                id: string;
+                limit?: number;
+            },
+        ) => {
             return listNoteSnapshots(Number(id), Number(limit));
         },
-        trashedNotes: async (_, {
-            pagination = {
-                limit: 25,
-                offset: 0
-            }
-        }: {
-            pagination: Pagination;
-        }) => {
+        trashedNotes: async (
+            _,
+            {
+                pagination = {
+                    limit: 25,
+                    offset: 0,
+                },
+            }: {
+                pagination: Pagination;
+            },
+        ) => {
             return listTrashedNotes({
                 limit: Number(pagination.limit),
-                offset: Number(pagination.offset)
+                offset: Number(pagination.offset),
             });
         },
         noteGraph: async () => {
@@ -650,8 +655,8 @@ export const noteResolvers: IResolvers = {
                 select: {
                     id: true,
                     title: true,
-                    content: true
-                }
+                    content: true,
+                },
             });
 
             const nodes: Array<{ id: string; title: string; connections: number }> = [];
@@ -674,7 +679,7 @@ export const noteResolvers: IResolvers = {
                                     linkSet.add(linkKey);
                                     links.push({
                                         source: String($note.id),
-                                        target: targetId
+                                        target: targetId,
                                     });
                                     // Count connections for both nodes
                                     connectionCount[String($note.id)] = (connectionCount[String($note.id)] || 0) + 1;
@@ -693,15 +698,15 @@ export const noteResolvers: IResolvers = {
                 nodes.push({
                     id: String($note.id),
                     title: $note.title || 'Untitled',
-                    connections: connectionCount[String($note.id)] || 0
+                    connections: connectionCount[String($note.id)] || 0,
                 });
             }
 
             return {
                 nodes,
-                links
+                links,
             };
-        }
+        },
     },
     Mutation: {
         createNote: async (_, { note }: { note: NoteInput }) => {
@@ -709,17 +714,22 @@ export const noteResolvers: IResolvers = {
             const PLACEHOLDER_SUFFIX = '%}';
 
             const replacePlaceholder = async (content: string) => {
-                const placeholders = content.matchAll(new RegExp(`${PLACEHOLDER_PREFIX}([^}]+)${PLACEHOLDER_SUFFIX}`, 'g'));
+                const placeholders = content.matchAll(
+                    new RegExp(`${PLACEHOLDER_PREFIX}([^}]+)${PLACEHOLDER_SUFFIX}`, 'g'),
+                );
                 const $placeholders = await models.placeholder.findMany({
                     select: {
                         template: true,
-                        replacement: true
+                        replacement: true,
                     },
-                    where: { template: { in: Array.from(new Set(Array.from(placeholders, p => p[1]))) } }
+                    where: { template: { in: Array.from(new Set(Array.from(placeholders, (p) => p[1]))) } },
                 });
 
                 for (const $placeholder of $placeholders) {
-                    content = content.replace(new RegExp(`${PLACEHOLDER_PREFIX}${$placeholder.template}${PLACEHOLDER_SUFFIX}`, 'g'), $placeholder.replacement);
+                    content = content.replace(
+                        new RegExp(`${PLACEHOLDER_PREFIX}${$placeholder.template}${PLACEHOLDER_SUFFIX}`, 'g'),
+                        $placeholder.replacement,
+                    );
                 }
                 return content;
             };
@@ -733,36 +743,37 @@ export const noteResolvers: IResolvers = {
                     content: replacedContent,
                     ...buildNoteSearchProjection({
                         title: replacedTitle,
-                        content: replacedContent
+                        content: replacedContent,
                     }),
-                    ...(note.layout && { layout: note.layout })
-                }
+                    ...(note.layout && { layout: note.layout }),
+                },
             });
             if (note.content) {
-                const blocks = extractBlocksByType<{ id: string }>(
-                    'tag',
-                    JSON.parse(note.content)
-                );
+                const blocks = extractBlocksByType<{ id: string }>('tag', JSON.parse(note.content));
 
                 return await models.note.update({
                     where: { id: $note.id },
-                    data: { tags: { set: blocks.map(block => ({ id: Number(block.props.id) })) } }
+                    data: { tags: { set: blocks.map((block) => ({ id: Number(block.props.id) })) } },
                 });
             }
 
             return $note;
         },
-        updateNote: async (_, {
-            id,
-            note,
-            editSessionId
-        }: {
-            id: number;
-            note: NoteInput;
-            editSessionId?: string;
-        }, context: {
-            req?: Request;
-        }) => {
+        updateNote: async (
+            _,
+            {
+                id,
+                note,
+                editSessionId,
+            }: {
+                id: number;
+                note: NoteInput;
+                editSessionId?: string;
+            },
+            context: {
+                req?: Request;
+            },
+        ) => {
             const userAgentHeader = context.req?.headers['user-agent'];
             const userAgent = Array.isArray(userAgentHeader) ? userAgentHeader[0] : userAgentHeader;
             let blocks: BlockNote<{ id: string }>[] = [];
@@ -770,8 +781,8 @@ export const noteResolvers: IResolvers = {
                 where: { id: Number(id) },
                 select: {
                     title: true,
-                    content: true
-                }
+                    content: true,
+                },
             });
 
             if (!existingNote) {
@@ -779,16 +790,13 @@ export const noteResolvers: IResolvers = {
             }
 
             if (note.content) {
-                blocks = extractBlocksByType<{ id: string }>(
-                    'tag',
-                    JSON.parse(note.content)
-                );
+                blocks = extractBlocksByType<{ id: string }>('tag', JSON.parse(note.content));
             }
 
             await captureNoteBaseline({
                 noteId: Number(id),
                 ...(editSessionId ? { editSessionId } : {}),
-                meta: createSnapshotMetaFromUserAgent(userAgent)
+                meta: createSnapshotMetaFromUserAgent(userAgent),
             });
 
             const nextTitle = note.title ?? existingNote.title;
@@ -800,10 +808,10 @@ export const noteResolvers: IResolvers = {
                     ...note,
                     ...buildNoteSearchProjection({
                         title: nextTitle,
-                        content: nextContent
+                        content: nextContent,
                     }),
-                    ...(note.content ? { tags: { set: blocks.map(block => ({ id: Number(block.props.id) })) } } : {})
-                }
+                    ...(note.content ? { tags: { set: blocks.map((block) => ({ id: Number(block.props.id) })) } } : {}),
+                },
             });
             return $note;
         },
@@ -816,9 +824,13 @@ export const noteResolvers: IResolvers = {
 
             return true;
         },
-        restoreNoteSnapshot: async (_, { id }: { id: string }, context: {
-            req?: Request;
-        }) => {
+        restoreNoteSnapshot: async (
+            _,
+            { id }: { id: string },
+            context: {
+                req?: Request;
+            },
+        ) => {
             const userAgentHeader = context.req?.headers['user-agent'];
             const userAgent = Array.isArray(userAgentHeader) ? userAgentHeader[0] : userAgentHeader;
             const note = await restoreNoteSnapshot(Number(id), { meta: createSnapshotMetaFromUserAgent(userAgent) });
@@ -838,25 +850,26 @@ export const noteResolvers: IResolvers = {
 
             return note;
         },
-        pinNote: (_, { id, pinned }: Note) => models.note.update({
-            where: { id: Number(id) },
-            data: { pinned: Boolean(pinned) }
-        }),
+        pinNote: (_, { id, pinned }: Note) =>
+            models.note.update({
+                where: { id: Number(id) },
+                data: { pinned: Boolean(pinned) },
+            }),
         reorderNotes: async (_, { notes }: { notes: Array<{ id: string; order: number }> }) => {
             const updatePromises = notes.map(({ id, order }) =>
                 models.note.update({
                     where: { id: Number(id) },
-                    data: { order }
-                })
+                    data: { order },
+                }),
             );
             return await Promise.all(updatePromises);
-        }
+        },
     },
     Note: {
         tags: async (note: Note) => await models.tag.findMany({ where: { notes: { some: { id: note.id } } } }),
         contentAsMarkdown: async (note: Note) => {
             const { blocksToMarkdown } = await import('~/modules/blocknote.js');
             return blocksToMarkdown(note.content);
-        }
-    }
+        },
+    },
 };

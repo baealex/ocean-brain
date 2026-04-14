@@ -1,6 +1,6 @@
-import { forwardRef } from 'react';
 import { Slot } from '@radix-ui/react-slot';
 import type { VariantProps } from 'class-variance-authority';
+import { forwardRef } from 'react';
 
 import { Spinner } from '~/components/icon';
 import { buttonVariants } from './variants';
@@ -13,19 +13,7 @@ export interface ButtonProps
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-    (
-        {
-            className,
-            variant,
-            size,
-            asChild = false,
-            isLoading,
-            children,
-            disabled,
-            ...props
-        },
-        ref
-    ) => {
+    ({ className, variant, size, asChild = false, isLoading, children, disabled, ...props }, ref) => {
         const Comp = asChild ? Slot : 'button';
 
         return (
@@ -34,10 +22,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
                 className={buttonVariants({
                     variant,
                     size,
-                    className
+                    className,
                 })}
                 disabled={disabled || isLoading}
-                {...props}>
+                {...props}
+            >
                 {isLoading ? (
                     <>
                         <Spinner className="animate-spin h-4 w-4" />
@@ -48,7 +37,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
                 )}
             </Comp>
         );
-    }
+    },
 );
 
 Button.displayName = 'Button';

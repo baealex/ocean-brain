@@ -30,6 +30,7 @@ interface NoteSnapshotRecord {
 interface NoteSnapshotDeps {
     findNoteById: (id: number) => Promise<NoteRecord | null>;
     findSnapshotByEditSessionId: (noteId: number, editSessionId: string) => Promise<NoteSnapshotRecord | null>;
+    findLatestSnapshot: (noteId: number) => Promise<NoteSnapshotRecord | null>;
     createSnapshot: (input: {
         noteId: number;
         title: string;
@@ -106,6 +107,10 @@ const serializePayload = (note: NoteRecord): string => {
     };
 
     return JSON.stringify(payload);
+};
+
+const hasSameSnapshotPayload = (snapshot: NoteSnapshotRecord | null, payload: string) => {
+    return snapshot?.payload === payload;
 };
 
 const parsePayload = (payload: string): NoteSnapshotPayload => {
@@ -196,10 +201,17 @@ export const createNoteSnapshotService = (deps: NoteSnapshotDeps) => ({
             return null;
         }
 
+        const payload = serializePayload(note);
+        const latestSnapshot = await deps.findLatestSnapshot(note.id);
+
+        if (latestSnapshot && hasSameSnapshotPayload(latestSnapshot, payload)) {
+            return serializeSnapshot(latestSnapshot);
+        }
+
         const snapshot = await deps.createSnapshot({
             noteId: note.id,
             title: note.title,
-            payload: serializePayload(note),
+            payload,
             ...(input.editSessionId ? { editSessionId: input.editSessionId } : {}),
             ...(input.meta ? { meta: input.meta } : {}),
         });
@@ -231,12 +243,17 @@ export const createNoteSnapshotService = (deps: NoteSnapshotDeps) => ({
             return null;
         }
 
-        await deps.createSnapshot({
-            noteId: note.id,
-            title: note.title,
-            payload: serializePayload(note),
-            ...(options?.meta ? { meta: options.meta } : {}),
-        });
+        const currentPayload = serializePayload(note);
+        const latestSnapshot = await deps.findLatestSnapshot(note.id);
+
+        if (!hasSameSnapshotPayload(latestSnapshot, currentPayload)) {
+            await deps.createSnapshot({
+                noteId: note.id,
+                title: note.title,
+                payload: currentPayload,
+                ...(options?.meta ? { meta: options.meta } : {}),
+            });
+        }
 
         await deps.trimOverflowSnapshots(note.id, SNAPSHOT_MAX_PER_NOTE, RECOVERY_CLEANUP_BATCH_LIMIT);
 
@@ -258,6 +275,12 @@ export const defaultNoteSnapshotService = createNoteSnapshotService({
             },
         });
     },
+    findLatestSnapshot: async (noteId) => {
+        return models.noteSnapshot.findFirst({
+            where: { noteId },
+            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        });
+    },
     createSnapshot: async (input) => {
         return models.noteSnapshot.create({
             data: {
@@ -274,7 +297,7 @@ export const defaultNoteSnapshotService = createNoteSnapshotService({
     listSnapshots: async (noteId, limit) => {
         return models.noteSnapshot.findMany({
             where: { noteId },
-            orderBy: { createdAt: 'desc' },
+            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
             take: limit,
         });
     },

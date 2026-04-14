@@ -9,7 +9,7 @@ interface TagRecord {
 
 interface TagOrganizationDeps {
     createTag: (name: string) => Promise<TagRecord>;
-    findTagsByName: (name: string) => Promise<TagRecord[]>;
+    findTagByName: (name: string) => Promise<TagRecord | null>;
 }
 
 export interface TagOrganizationResult {
@@ -55,21 +55,63 @@ const serializeTag = (tag: TagRecord) => ({
     updatedAt: tag.updatedAt.toISOString()
 });
 
+const isTagNameUniqueConflict = (error: unknown) => {
+    if (typeof error !== 'object' || error === null || !('code' in error)) {
+        return false;
+    }
+
+    if (error.code !== 'P2002') {
+        return false;
+    }
+
+    if (!('meta' in error) || typeof error.meta !== 'object' || error.meta === null) {
+        return true;
+    }
+
+    const rawTarget = 'target' in error.meta ? error.meta.target : null;
+    const targets = Array.isArray(rawTarget)
+        ? rawTarget.filter((value): value is string => typeof value === 'string')
+        : (typeof rawTarget === 'string' ? [rawTarget] : []);
+
+    return targets.length === 0 || targets.includes('name');
+};
+
 export const createTagOrganizationService = (deps: TagOrganizationDeps) => {
     return {
         ensureTag: async (name: string): Promise<TagOrganizationResult> => {
             const normalizedName = normalizeTagName(name);
-            const existingTags = await deps.findTagsByName(normalizedName);
+            const existingTag = await deps.findTagByName(normalizedName);
 
-            if (existingTags.length > 0) {
+            if (existingTag) {
                 return {
                     created: false,
                     normalizedName,
-                    tag: serializeTag(existingTags[0])
+                    tag: serializeTag(existingTag)
                 };
             }
 
-            const createdTag = await deps.createTag(normalizedName);
+            let createdTag: TagRecord;
+
+            try {
+                createdTag = await deps.createTag(normalizedName);
+            } catch (error) {
+                if (!isTagNameUniqueConflict(error)) {
+                    throw error;
+                }
+
+                const conflictedTag = await deps.findTagByName(normalizedName);
+
+                if (!conflictedTag) {
+                    throw error;
+                }
+
+                return {
+                    created: false,
+                    normalizedName,
+                    tag: serializeTag(conflictedTag)
+                };
+            }
+
             return {
                 created: true,
                 normalizedName,
@@ -83,8 +125,8 @@ const defaultTagOrganizationService = createTagOrganizationService({
     createTag: async (name) => {
         return models.tag.create({ data: { name } });
     },
-    findTagsByName: async (name) => {
-        return models.tag.findMany({
+    findTagByName: async (name) => {
+        return models.tag.findFirst({
             where: { name },
             orderBy: { createdAt: 'asc' }
         });

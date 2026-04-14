@@ -24,12 +24,12 @@ test('tag organization service returns an existing tag without creating a duplic
             createCalls += 1;
             throw new Error('should not create');
         },
-        findTagsByName: async () => [{
+        findTagByName: async () => ({
             id: 3,
             name: '@project',
             createdAt: new Date('2026-03-30T00:00:00.000Z'),
             updatedAt: new Date('2026-03-30T00:00:00.000Z')
-        }]
+        })
     });
 
     const result = await service.ensureTag('project');
@@ -55,7 +55,7 @@ test('tag organization service creates a tag when the normalized name is missing
             createdAt: new Date('2026-03-31T00:00:00.000Z'),
             updatedAt: new Date('2026-03-31T00:00:00.000Z')
         }),
-        findTagsByName: async () => []
+        findTagByName: async () => null
     });
 
     const result = await service.ensureTag('@inbox');
@@ -68,6 +68,48 @@ test('tag organization service creates a tag when the normalized name is missing
             name: '@inbox',
             createdAt: '2026-03-31T00:00:00.000Z',
             updatedAt: '2026-03-31T00:00:00.000Z'
+        }
+    });
+});
+
+test('tag organization service returns the canonical tag after a unique conflict race', async () => {
+    let findCalls = 0;
+    const service = createTagOrganizationService({
+        createTag: async () => {
+            throw {
+                code: 'P2002',
+                meta: {
+                    target: ['name']
+                }
+            };
+        },
+        findTagByName: async () => {
+            findCalls += 1;
+
+            if (findCalls === 1) {
+                return null;
+            }
+
+            return {
+                id: 7,
+                name: '@project',
+                createdAt: new Date('2026-04-13T00:00:00.000Z'),
+                updatedAt: new Date('2026-04-13T00:00:00.000Z')
+            };
+        }
+    });
+
+    const result = await service.ensureTag('project');
+
+    assert.equal(findCalls, 2);
+    assert.deepEqual(result, {
+        created: false,
+        normalizedName: '@project',
+        tag: {
+            id: '7',
+            name: '@project',
+            createdAt: '2026-04-13T00:00:00.000Z',
+            updatedAt: '2026-04-13T00:00:00.000Z'
         }
     });
 });

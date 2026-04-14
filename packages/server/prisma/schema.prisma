@@ -103,7 +103,7 @@ model Image {
 
 model Tag {
     id        Int      @id @default(autoincrement())
-    name      String
+    name      String   @unique
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
     notes     Note[]   @relation("NoteToTag")

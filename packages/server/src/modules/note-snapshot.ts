@@ -5,6 +5,7 @@ import {
     SNAPSHOT_MAX_PER_NOTE,
     SNAPSHOT_RETENTION_DAYS
 } from './recovery-retention.js';
+import { buildNoteSearchProjection } from './note-search.js';
 
 interface NoteRecord {
     id: number;
@@ -304,7 +305,13 @@ export const defaultNoteSnapshotService = createNoteSnapshotService({
     updateNote: async (id, input) => {
         return models.note.update({
             where: { id },
-            data: input
+            data: {
+                ...input,
+                ...buildNoteSearchProjection({
+                    title: input.title,
+                    content: input.content
+                })
+            }
         });
     }
 });

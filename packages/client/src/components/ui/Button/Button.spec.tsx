@@ -20,8 +20,10 @@ describe('<Button />', () => {
         render(
             <>
                 <Button disabled>Primary action</Button>
-                <Button variant="subtle" disabled>Quiet action</Button>
-            </>
+                <Button variant="subtle" disabled>
+                    Quiet action
+                </Button>
+            </>,
         );
 
         const primaryButton = screen.getByRole('button', { name: 'Primary action' });

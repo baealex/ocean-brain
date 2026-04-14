@@ -8,10 +8,7 @@ interface ImagesProps {
         offset: number;
         limit: number;
     };
-    render: (data: {
-        images: Image[];
-        totalCount: number;
-    }) => React.ReactNode;
+    render: (data: { images: Image[]; totalCount: number }) => React.ReactNode;
 }
 
 const Images = (props: ImagesProps) => {
@@ -20,13 +17,13 @@ const Images = (props: ImagesProps) => {
         async queryFn() {
             const response = await fetchImages({
                 offset: props.searchParams.offset,
-                limit: props.searchParams.limit
+                limit: props.searchParams.limit,
             });
             if (response.type === 'error') {
                 throw response;
             }
             return response.allImages;
-        }
+        },
     });
 
     return props.render(data);

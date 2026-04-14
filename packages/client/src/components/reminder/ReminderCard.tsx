@@ -14,11 +14,7 @@ interface ReminderCardProps {
     onDelete: (id: string, noteId: string) => void;
 }
 
-export default function ReminderCard({
-    reminder,
-    onUpdate,
-    onDelete
-}: ReminderCardProps) {
+export default function ReminderCard({ reminder, onUpdate, onDelete }: ReminderCardProps) {
     const formatReminderDate = (dateString: string) => {
         const date = dayjs(Number(dateString));
         const now = dayjs();
@@ -45,11 +41,7 @@ export default function ReminderCard({
 
     const isOverdue = getTimeRemaining(reminder.reminderDate) === 'Overdue';
     const priority = reminder.priority || 'low';
-    const priorityLabel = priority === 'high'
-        ? 'High'
-        : priority === 'medium'
-            ? 'Medium'
-            : 'Low';
+    const priorityLabel = priority === 'high' ? 'High' : priority === 'medium' ? 'Medium' : 'Low';
     const priorityToneClassName = priorityColors[priority];
     const noteId = reminder.noteId.toString();
     const detailToneClassName = isOverdue ? 'text-fg-error' : 'text-fg-tertiary';
@@ -72,7 +64,8 @@ export default function ReminderCard({
                         as="p"
                         variant="body"
                         weight="semibold"
-                        className={reminder.completed ? 'truncate line-through opacity-45' : 'truncate'}>
+                        className={reminder.completed ? 'truncate line-through opacity-45' : 'truncate'}
+                    >
                         {primaryText}
                     </Text>
                     {showNoteTitle && (
@@ -80,11 +73,13 @@ export default function ReminderCard({
                             as="div"
                             variant="meta"
                             tone="secondary"
-                            className={reminder.completed ? 'mt-0.5 truncate opacity-45' : 'mt-0.5 truncate'}>
+                            className={reminder.completed ? 'mt-0.5 truncate opacity-45' : 'mt-0.5 truncate'}
+                        >
                             <Link
                                 to={NOTE_ROUTE}
                                 params={{ id: String(reminder.note?.id ?? reminder.noteId) }}
-                                className="transition-colors hover:text-fg-default hover:underline">
+                                className="transition-colors hover:text-fg-default hover:underline"
+                            >
                                 {noteTitle}
                             </Link>
                         </Text>
@@ -103,7 +98,8 @@ export default function ReminderCard({
                     variant="meta"
                     weight="medium"
                     tone="secondary"
-                    className={reminder.completed ? 'opacity-45' : undefined}>
+                    className={reminder.completed ? 'opacity-45' : undefined}
+                >
                     {reminderDateText}
                 </Text>
                 <span className="h-1 w-1 rounded-full bg-border-secondary" />
@@ -111,26 +107,28 @@ export default function ReminderCard({
                     as="span"
                     variant="label"
                     weight="medium"
-                    className={reminder.completed ? 'opacity-45' : detailToneClassName}>
+                    className={reminder.completed ? 'opacity-45' : detailToneClassName}
+                >
                     {timeRemaining}
                 </Text>
             </div>
 
             <div className="flex items-center justify-end gap-1.5 sm:shrink-0">
                 <Dropdown
-                    button={(
+                    button={
                         <button
                             type="button"
-                            className="focus-ring-soft inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] border border-transparent bg-transparent text-fg-tertiary outline-none transition-colors hover:border-border-subtle hover:bg-hover-subtle hover:text-fg-default">
+                            className="focus-ring-soft inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] border border-transparent bg-transparent text-fg-tertiary outline-none transition-colors hover:border-border-subtle hover:bg-hover-subtle hover:text-fg-default"
+                        >
                             <Icon.VerticalDots className="h-5 w-5 text-current" />
                             <span className="sr-only">Reminder actions</span>
                         </button>
-                    )}
+                    }
                     items={[
                         {
                             name: 'Delete',
-                            onClick: () => onDelete(reminder.id, noteId)
-                        }
+                            onClick: () => onDelete(reminder.id, noteId),
+                        },
                     ]}
                 />
             </div>

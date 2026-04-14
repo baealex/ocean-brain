@@ -1,11 +1,7 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 
-import {
-    blocksToMarkdown,
-    extractTagIdsFromContentJson,
-    markdownToBlocksJson
-} from '../src/modules/blocknote.js';
+import { blocksToMarkdown, extractTagIdsFromContentJson, markdownToBlocksJson } from '../src/modules/blocknote.js';
 
 test('blocksToMarkdown preserves supported content when tableOfContents blocks are present', async () => {
     const content = JSON.stringify([
@@ -15,22 +11,22 @@ test('blocksToMarkdown preserves supported content when tableOfContents blocks a
             props: {
                 backgroundColor: 'default',
                 textColor: 'default',
-                textAlignment: 'left'
+                textAlignment: 'left',
             },
             content: [
                 {
                     type: 'text',
                     text: 'hello world',
-                    styles: {}
-                }
+                    styles: {},
+                },
             ],
-            children: []
+            children: [],
         },
         {
             id: 'toc-1',
             type: 'tableOfContents',
             props: {},
-            children: []
+            children: [],
         },
         {
             id: 'heading-1',
@@ -40,17 +36,17 @@ test('blocksToMarkdown preserves supported content when tableOfContents blocks a
                 textColor: 'default',
                 textAlignment: 'left',
                 level: 3,
-                isToggleable: false
+                isToggleable: false,
             },
             content: [
                 {
                     type: 'text',
                     text: 'weekly review',
-                    styles: {}
-                }
+                    styles: {},
+                },
             ],
-            children: []
-        }
+            children: [],
+        },
     ]);
 
     const markdown = await blocksToMarkdown(content);
@@ -69,22 +65,22 @@ test('blocksToMarkdown does not drop the whole note when table blocks are presen
                 textColor: 'default',
                 textAlignment: 'left',
                 level: 2,
-                isToggleable: false
+                isToggleable: false,
             },
             content: [
                 {
                     type: 'text',
                     text: 'Summary',
-                    styles: {}
-                }
+                    styles: {},
+                },
             ],
-            children: []
+            children: [],
         },
         {
             id: 'table-1',
             type: 'table',
             props: {
-                textColor: 'default'
+                textColor: 'default',
             },
             content: {
                 type: 'tableContent',
@@ -99,16 +95,16 @@ test('blocksToMarkdown does not drop the whole note when table blocks are presen
                                     {
                                         type: 'text',
                                         text: 'Name',
-                                        styles: {}
-                                    }
+                                        styles: {},
+                                    },
                                 ],
                                 props: {
                                     colspan: 1,
                                     rowspan: 1,
                                     backgroundColor: 'default',
                                     textColor: 'default',
-                                    textAlignment: 'left'
-                                }
+                                    textAlignment: 'left',
+                                },
                             },
                             {
                                 type: 'tableCell',
@@ -116,23 +112,23 @@ test('blocksToMarkdown does not drop the whole note when table blocks are presen
                                     {
                                         type: 'text',
                                         text: 'Value',
-                                        styles: {}
-                                    }
+                                        styles: {},
+                                    },
                                 ],
                                 props: {
                                     colspan: 1,
                                     rowspan: 1,
                                     backgroundColor: 'default',
                                     textColor: 'default',
-                                    textAlignment: 'left'
-                                }
-                            }
-                        ]
-                    }
-                ]
+                                    textAlignment: 'left',
+                                },
+                            },
+                        ],
+                    },
+                ],
             },
-            children: []
-        }
+            children: [],
+        },
     ]);
 
     const markdown = await blocksToMarkdown(content);
@@ -148,31 +144,31 @@ test('blocksToMarkdown serializes tags using explicit bracket syntax', async () 
             props: {
                 backgroundColor: 'default',
                 textColor: 'default',
-                textAlignment: 'left'
+                textAlignment: 'left',
             },
             content: [
                 {
                     type: 'tag',
                     props: {
                         id: '12',
-                        tag: '@project'
-                    }
+                        tag: '@project',
+                    },
                 },
                 {
                     type: 'text',
                     text: ' ',
-                    styles: {}
+                    styles: {},
                 },
                 {
                     type: 'reference',
                     props: {
                         id: '44',
-                        title: 'Reference Note'
-                    }
-                }
+                        title: 'Reference Note',
+                    },
+                },
             ],
-            children: []
-        }
+            children: [],
+        },
     ]);
 
     const markdown = await blocksToMarkdown(content);
@@ -187,7 +183,7 @@ test('blocksToMarkdown serializes custom inline content inside table cells', asy
             id: 'table-1',
             type: 'table',
             props: {
-                textColor: 'default'
+                textColor: 'default',
             },
             content: {
                 type: 'tableContent',
@@ -202,13 +198,13 @@ test('blocksToMarkdown serializes custom inline content inside table cells', asy
                                     {
                                         type: 'text',
                                         text: 'Name',
-                                        styles: {}
-                                    }
+                                        styles: {},
+                                    },
                                 ],
                                 props: {
                                     colspan: 1,
-                                    rowspan: 1
-                                }
+                                    rowspan: 1,
+                                },
                             },
                             {
                                 type: 'tableCell',
@@ -216,15 +212,15 @@ test('blocksToMarkdown serializes custom inline content inside table cells', asy
                                     {
                                         type: 'text',
                                         text: 'Value',
-                                        styles: {}
-                                    }
+                                        styles: {},
+                                    },
                                 ],
                                 props: {
                                     colspan: 1,
-                                    rowspan: 1
-                                }
-                            }
-                        ]
+                                    rowspan: 1,
+                                },
+                            },
+                        ],
                     },
                     {
                         cells: [
@@ -234,13 +230,13 @@ test('blocksToMarkdown serializes custom inline content inside table cells', asy
                                     {
                                         type: 'text',
                                         text: 'Project',
-                                        styles: {}
-                                    }
+                                        styles: {},
+                                    },
                                 ],
                                 props: {
                                     colspan: 1,
-                                    rowspan: 1
-                                }
+                                    rowspan: 1,
+                                },
                             },
                             {
                                 type: 'tableCell',
@@ -249,33 +245,33 @@ test('blocksToMarkdown serializes custom inline content inside table cells', asy
                                         type: 'tag',
                                         props: {
                                             id: '12',
-                                            tag: '@project'
-                                        }
+                                            tag: '@project',
+                                        },
                                     },
                                     {
                                         type: 'text',
                                         text: ' ',
-                                        styles: {}
+                                        styles: {},
                                     },
                                     {
                                         type: 'reference',
                                         props: {
                                             id: '44',
-                                            title: 'Reference Note'
-                                        }
-                                    }
+                                            title: 'Reference Note',
+                                        },
+                                    },
                                 ],
                                 props: {
                                     colspan: 1,
-                                    rowspan: 1
-                                }
-                            }
-                        ]
-                    }
-                ]
+                                    rowspan: 1,
+                                },
+                            },
+                        ],
+                    },
+                ],
             },
-            children: []
-        }
+            children: [],
+        },
     ]);
 
     const markdown = await blocksToMarkdown(content);
@@ -285,25 +281,24 @@ test('blocksToMarkdown serializes custom inline content inside table cells', asy
 });
 
 test('markdownToBlocksJson restores custom tag and reference inline content from explicit @ tags', async () => {
-    const contentJson = await markdownToBlocksJson(
-        '[@project] [[Reference Note]]',
-        {
-            ensureTag: async () => ({
-                id: '12',
-                name: '@project'
-            }),
-            findNotesByTitle: async (title) => {
-                if (title === 'Reference Note') {
-                    return [{
+    const contentJson = await markdownToBlocksJson('[@project] [[Reference Note]]', {
+        ensureTag: async () => ({
+            id: '12',
+            name: '@project',
+        }),
+        findNotesByTitle: async (title) => {
+            if (title === 'Reference Note') {
+                return [
+                    {
                         id: '44',
-                        title
-                    }];
-                }
-
-                return [];
+                        title,
+                    },
+                ];
             }
-        }
-    );
+
+            return [];
+        },
+    });
 
     const blocks = JSON.parse(contentJson);
 
@@ -312,44 +307,43 @@ test('markdownToBlocksJson restores custom tag and reference inline content from
             type: 'tag',
             props: {
                 id: '12',
-                tag: '@project'
-            }
+                tag: '@project',
+            },
         },
         {
             type: 'text',
             text: ' ',
-            styles: {}
+            styles: {},
         },
         {
             type: 'reference',
             props: {
                 id: '44',
-                title: 'Reference Note'
-            }
-        }
+                title: 'Reference Note',
+            },
+        },
     ]);
 });
 
 test('markdownToBlocksJson restores custom tag and reference inline content from explicit # tags', async () => {
-    const contentJson = await markdownToBlocksJson(
-        '[#project] [[Reference Note]]',
-        {
-            ensureTag: async () => ({
-                id: '12',
-                name: '@project'
-            }),
-            findNotesByTitle: async (title) => {
-                if (title === 'Reference Note') {
-                    return [{
+    const contentJson = await markdownToBlocksJson('[#project] [[Reference Note]]', {
+        ensureTag: async () => ({
+            id: '12',
+            name: '@project',
+        }),
+        findNotesByTitle: async (title) => {
+            if (title === 'Reference Note') {
+                return [
+                    {
                         id: '44',
-                        title
-                    }];
-                }
-
-                return [];
+                        title,
+                    },
+                ];
             }
-        }
-    );
+
+            return [];
+        },
+    });
 
     const blocks = JSON.parse(contentJson);
 
@@ -358,34 +352,31 @@ test('markdownToBlocksJson restores custom tag and reference inline content from
             type: 'tag',
             props: {
                 id: '12',
-                tag: '@project'
-            }
+                tag: '@project',
+            },
         },
         {
             type: 'text',
             text: ' ',
-            styles: {}
+            styles: {},
         },
         {
             type: 'reference',
             props: {
                 id: '44',
-                title: 'Reference Note'
-            }
-        }
+                title: 'Reference Note',
+            },
+        },
     ]);
 });
 
 test('markdownToBlocksJson leaves plain @ and # tokens as text to avoid accidental tag creation', async () => {
-    const contentJson = await markdownToBlocksJson(
-        'Use @layer and #111 as-is.',
-        {
-            ensureTag: async () => {
-                throw new Error('should not ensure tags');
-            },
-            findNotesByTitle: async () => []
-        }
-    );
+    const contentJson = await markdownToBlocksJson('Use @layer and #111 as-is.', {
+        ensureTag: async () => {
+            throw new Error('should not ensure tags');
+        },
+        findNotesByTitle: async () => [],
+    });
 
     const blocks = JSON.parse(contentJson);
 
@@ -393,24 +384,21 @@ test('markdownToBlocksJson leaves plain @ and # tokens as text to avoid accident
         {
             type: 'text',
             text: 'Use @layer and #111 as-is.',
-            styles: {}
-        }
+            styles: {},
+        },
     ]);
 });
 
 test('markdownToBlocksJson leaves ambiguous references as plain text', async () => {
-    const contentJson = await markdownToBlocksJson(
-        'See [[Shared Title]] later',
-        {
-            ensureTag: async () => {
-                throw new Error('should not ensure tags');
-            },
-            findNotesByTitle: async () => ([
-                { id: '8', title: 'Shared Title' },
-                { id: '9', title: 'Shared Title' }
-            ])
-        }
-    );
+    const contentJson = await markdownToBlocksJson('See [[Shared Title]] later', {
+        ensureTag: async () => {
+            throw new Error('should not ensure tags');
+        },
+        findNotesByTitle: async () => [
+            { id: '8', title: 'Shared Title' },
+            { id: '9', title: 'Shared Title' },
+        ],
+    });
 
     const blocks = JSON.parse(contentJson);
 
@@ -418,8 +406,8 @@ test('markdownToBlocksJson leaves ambiguous references as plain text', async () 
         {
             type: 'text',
             text: 'See [[Shared Title]] later',
-            styles: {}
-        }
+            styles: {},
+        },
     ]);
 });
 
@@ -429,19 +417,21 @@ test('markdownToBlocksJson restores custom inline content inside table cells', a
         {
             ensureTag: async () => ({
                 id: '12',
-                name: '@project'
+                name: '@project',
             }),
             findNotesByTitle: async (title) => {
                 if (title === 'Reference Note') {
-                    return [{
-                        id: '44',
-                        title
-                    }];
+                    return [
+                        {
+                            id: '44',
+                            title,
+                        },
+                    ];
                 }
 
                 return [];
-            }
-        }
+            },
+        },
     );
 
     const blocks = JSON.parse(contentJson);
@@ -453,72 +443,74 @@ test('markdownToBlocksJson restores custom inline content inside table cells', a
             type: 'tag',
             props: {
                 id: '12',
-                tag: '@project'
-            }
+                tag: '@project',
+            },
         },
         {
             type: 'text',
             text: ' ',
-            styles: {}
+            styles: {},
         },
         {
             type: 'reference',
             props: {
                 id: '44',
-                title: 'Reference Note'
-            }
-        }
+                title: 'Reference Note',
+            },
+        },
     ]);
 });
 
 test('extractTagIdsFromContentJson collects tags from table cells', () => {
-    const tagIds = extractTagIdsFromContentJson(JSON.stringify([
-        {
-            id: 'table-1',
-            type: 'table',
-            content: {
-                type: 'tableContent',
-                rows: [
-                    {
-                        cells: [
-                            {
-                                type: 'tableCell',
-                                content: [
-                                    {
-                                        type: 'tag',
-                                        props: {
-                                            id: '12',
-                                            tag: '@project'
-                                        }
-                                    }
-                                ]
-                            },
-                            {
-                                type: 'tableCell',
-                                content: [
-                                    {
-                                        type: 'tag',
-                                        props: {
-                                            id: '12',
-                                            tag: '@project'
-                                        }
-                                    },
-                                    {
-                                        type: 'tag',
-                                        props: {
-                                            id: '34',
-                                            tag: '@todo'
-                                        }
-                                    }
-                                ]
-                            }
-                        ]
-                    }
-                ]
+    const tagIds = extractTagIdsFromContentJson(
+        JSON.stringify([
+            {
+                id: 'table-1',
+                type: 'table',
+                content: {
+                    type: 'tableContent',
+                    rows: [
+                        {
+                            cells: [
+                                {
+                                    type: 'tableCell',
+                                    content: [
+                                        {
+                                            type: 'tag',
+                                            props: {
+                                                id: '12',
+                                                tag: '@project',
+                                            },
+                                        },
+                                    ],
+                                },
+                                {
+                                    type: 'tableCell',
+                                    content: [
+                                        {
+                                            type: 'tag',
+                                            props: {
+                                                id: '12',
+                                                tag: '@project',
+                                            },
+                                        },
+                                        {
+                                            type: 'tag',
+                                            props: {
+                                                id: '34',
+                                                tag: '@todo',
+                                            },
+                                        },
+                                    ],
+                                },
+                            ],
+                        },
+                    ],
+                },
+                children: [],
             },
-            children: []
-        }
-    ]));
+        ]),
+    );
 
     assert.deepEqual(tagIds.sort(), ['12', '34']);
 });

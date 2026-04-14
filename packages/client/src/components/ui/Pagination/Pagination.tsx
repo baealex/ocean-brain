@@ -8,9 +8,7 @@ export interface PaginationProps extends Omit<React.HTMLAttributes<HTMLElement>,
 }
 
 const Pagination = forwardRef<HTMLElement, PaginationProps>(
-    ({
-        page: pageProp, last: lastProp, onChange, className = '', ...props
-    }, ref) => {
+    ({ page: pageProp, last: lastProp, onChange, className = '', ...props }, ref) => {
         const page = Number(pageProp);
         const last = Number(lastProp);
 
@@ -35,16 +33,14 @@ const Pagination = forwardRef<HTMLElement, PaginationProps>(
         const isLastPage = page === last;
 
         return (
-            <nav
-                ref={ref}
-                className={`mt-8 flex justify-center items-center gap-1 ${className}`}
-                {...props}>
+            <nav ref={ref} className={`mt-8 flex justify-center items-center gap-1 ${className}`} {...props}>
                 {/* First Page */}
                 <PaginationItem
                     disabled={isFirstPage}
                     onClick={() => !isFirstPage && onChange(1)}
                     aria-label="First page"
-                    isSkip>
+                    isSkip
+                >
                     <Icon.ChevronLeft width={16} />
                     <Icon.ChevronLeft width={16} />
                 </PaginationItem>
@@ -53,7 +49,8 @@ const Pagination = forwardRef<HTMLElement, PaginationProps>(
                 <PaginationItem
                     disabled={isFirstPage}
                     onClick={() => !isFirstPage && onChange(page - 1)}
-                    aria-label="Previous page">
+                    aria-label="Previous page"
+                >
                     <Icon.ChevronLeft width={20} />
                 </PaginationItem>
 
@@ -64,7 +61,8 @@ const Pagination = forwardRef<HTMLElement, PaginationProps>(
                         active={page === item}
                         onClick={() => onChange(item)}
                         aria-label={`Page ${item}`}
-                        aria-current={page === item ? 'page' : undefined}>
+                        aria-current={page === item ? 'page' : undefined}
+                    >
                         {item}
                     </PaginationItem>
                 ))}
@@ -73,7 +71,8 @@ const Pagination = forwardRef<HTMLElement, PaginationProps>(
                 <PaginationItem
                     disabled={isLastPage}
                     onClick={() => !isLastPage && onChange(page + 1)}
-                    aria-label="Next page">
+                    aria-label="Next page"
+                >
                     <Icon.ChevronRight width={20} />
                 </PaginationItem>
 
@@ -82,13 +81,14 @@ const Pagination = forwardRef<HTMLElement, PaginationProps>(
                     disabled={isLastPage}
                     onClick={() => !isLastPage && onChange(last)}
                     aria-label="Last page"
-                    isSkip>
+                    isSkip
+                >
                     <Icon.ChevronRight width={16} />
                     <Icon.ChevronRight width={16} />
                 </PaginationItem>
             </nav>
         );
-    }
+    },
 );
 
 Pagination.displayName = 'Pagination';
@@ -99,9 +99,7 @@ interface PaginationItemProps extends React.ButtonHTMLAttributes<HTMLButtonEleme
 }
 
 const PaginationItem = forwardRef<HTMLButtonElement, PaginationItemProps>(
-    ({
-        active, disabled, isSkip, children, className = '', ...props
-    }, ref) => {
+    ({ active, disabled, isSkip, children, className = '', ...props }, ref) => {
         const baseStyles = `
             flex justify-center items-center
             leading-normal text-base font-medium
@@ -114,10 +112,12 @@ const PaginationItem = forwardRef<HTMLButtonElement, PaginationItemProps>(
         const stateStyles = active
             ? 'cursor-default bg-cta border-cta text-fg-on-filled'
             : disabled
-                ? 'cursor-default text-fg-disabled border-transparent'
-                : 'cursor-pointer text-fg-default hover:bg-hover hover:border-border-subtle';
+              ? 'cursor-default text-fg-disabled border-transparent'
+              : 'cursor-pointer text-fg-default hover:bg-hover hover:border-border-subtle';
 
-        const skipStyles = isSkip ? 'relative [&>svg]:absolute [&>svg:first-child]:-translate-x-[3px] [&>svg:last-child]:translate-x-[3px]' : '';
+        const skipStyles = isSkip
+            ? 'relative [&>svg]:absolute [&>svg:first-child]:-translate-x-[3px] [&>svg:last-child]:translate-x-[3px]'
+            : '';
 
         return (
             <button
@@ -125,11 +125,12 @@ const PaginationItem = forwardRef<HTMLButtonElement, PaginationItemProps>(
                 type="button"
                 disabled={disabled}
                 className={`${baseStyles} ${stateStyles} ${skipStyles} ${className}`}
-                {...props}>
+                {...props}
+            >
                 {children}
             </button>
         );
-    }
+    },
 );
 
 PaginationItem.displayName = 'PaginationItem';

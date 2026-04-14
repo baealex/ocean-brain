@@ -9,13 +9,13 @@ export const textVariants = cva('', {
             body: 'text-body',
             meta: 'text-meta',
             label: 'text-label',
-            micro: 'text-micro'
+            micro: 'text-micro',
         },
         weight: {
             regular: 'font-normal',
             medium: 'font-medium',
             semibold: 'font-semibold',
-            bold: 'font-bold'
+            bold: 'font-bold',
         },
         tone: {
             default: 'text-fg-default',
@@ -24,7 +24,7 @@ export const textVariants = cva('', {
             muted: 'text-fg-muted',
             placeholder: 'text-fg-placeholder',
             error: 'text-fg-error',
-            onFilled: 'text-fg-on-filled'
+            onFilled: 'text-fg-on-filled',
         },
         tracking: {
             normal: '',
@@ -32,16 +32,16 @@ export const textVariants = cva('', {
             tighter: 'tracking-[-0.02em]',
             wide: 'tracking-[0.08em]',
             wider: 'tracking-[0.12em]',
-            widest: 'tracking-[0.16em]'
+            widest: 'tracking-[0.16em]',
         },
         transform: {
             none: '',
-            uppercase: 'uppercase'
+            uppercase: 'uppercase',
         },
         truncate: {
             true: 'truncate',
-            false: ''
-        }
+            false: '',
+        },
     },
     defaultVariants: {
         variant: 'body',
@@ -49,6 +49,6 @@ export const textVariants = cva('', {
         tone: 'default',
         tracking: 'normal',
         transform: 'none',
-        truncate: false
-    }
+        truncate: false,
+    },
 });

@@ -43,12 +43,7 @@ const LIGHT_THEME: GraphTheme = {
     nodeSelected: '#111318',
     nodeConnected: '#636b76',
     nodeDefault: ['#d6dbe1', '#c8ced6', '#b7bec7', '#a7afb9'],
-    nodeDimmed: [
-        'rgba(214,219,225,0.28)',
-        'rgba(200,206,214,0.24)',
-        'rgba(183,190,199,0.24)',
-        'rgba(167,175,185,0.2)'
-    ],
+    nodeDimmed: ['rgba(214,219,225,0.28)', 'rgba(200,206,214,0.24)', 'rgba(183,190,199,0.24)', 'rgba(167,175,185,0.2)'],
     nodeHubDimmed: 'rgba(44,47,54,0.16)',
     nodeStroke: '#eef1f4',
     nodeSelectedStroke: '#a6b0bc',
@@ -58,7 +53,7 @@ const LIGHT_THEME: GraphTheme = {
     linkIdle: 'rgba(99, 107, 117, 0.34)',
     linkConnected: '#68717c',
     linkDimmed: 'rgba(127, 136, 146, 0.12)',
-    legendHub: '#2c2f36'
+    legendHub: '#2c2f36',
 };
 
 const DARK_THEME: GraphTheme = {
@@ -67,12 +62,7 @@ const DARK_THEME: GraphTheme = {
     nodeSelected: '#eef1f5',
     nodeConnected: '#9099a4',
     nodeDefault: ['#343a43', '#2d333c', '#262c35', '#20262f'],
-    nodeDimmed: [
-        'rgba(52,58,67,0.28)',
-        'rgba(45,51,60,0.24)',
-        'rgba(38,44,53,0.22)',
-        'rgba(32,38,47,0.2)'
-    ],
+    nodeDimmed: ['rgba(52,58,67,0.28)', 'rgba(45,51,60,0.24)', 'rgba(38,44,53,0.22)', 'rgba(32,38,47,0.2)'],
     nodeHubDimmed: 'rgba(214,220,227,0.16)',
     nodeStroke: '#171c23',
     nodeSelectedStroke: '#7f8a97',
@@ -82,7 +72,7 @@ const DARK_THEME: GraphTheme = {
     linkIdle: 'rgba(118, 127, 138, 0.42)',
     linkConnected: '#a2abb6',
     linkDimmed: 'rgba(118, 127, 138, 0.1)',
-    legendHub: '#d6dce3'
+    legendHub: '#d6dce3',
 };
 
 export function getGraphTheme(theme: Theme): GraphTheme {
@@ -91,21 +81,13 @@ export function getGraphTheme(theme: Theme): GraphTheme {
 
 export function getGraphNodeFill(theme: Theme, options: GraphNodeFillOptions): string {
     const palette = getGraphTheme(theme);
-    const {
-        connections,
-        colorIndex,
-        selectedNodeId,
-        nodeId,
-        isConnected
-    } = options;
+    const { connections, colorIndex, selectedNodeId, nodeId, isConnected } = options;
 
     const isSelected = selectedNodeId === nodeId;
     const isDimmed = selectedNodeId !== null && !isSelected && !isConnected;
 
     if (isDimmed) {
-        return connections > 3
-            ? palette.nodeHubDimmed
-            : palette.nodeDimmed[colorIndex % palette.nodeDimmed.length];
+        return connections > 3 ? palette.nodeHubDimmed : palette.nodeDimmed[colorIndex % palette.nodeDimmed.length];
     }
 
     if (isSelected) {

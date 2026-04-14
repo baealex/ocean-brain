@@ -1,5 +1,5 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 
 import { issueMcpToken, verifyMcpToken } from '../src/modules/mcp-token.js';
 

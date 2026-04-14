@@ -1,11 +1,4 @@
-import {
-    createContext,
-    useCallback,
-    useContext,
-    useEffect,
-    useRef,
-    useState
-} from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 
 interface Toast {
     id: number;
@@ -26,10 +19,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
     const toast = useCallback((message: string) => {
         const id = nextId++;
-        setToasts((prev) => [...prev, {
-            id,
-            message
-        }]);
+        setToasts((prev) => [
+            ...prev,
+            {
+                id,
+                message,
+            },
+        ]);
 
         const timer = setTimeout(() => {
             setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -54,7 +50,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                     {toasts.map((t) => (
                         <div
                             key={t.id}
-                            className="surface-floating whitespace-nowrap px-5 py-3 text-sm font-medium text-fg-secondary animate-slide-in-from-bottom">
+                            className="surface-floating whitespace-nowrap px-5 py-3 text-sm font-medium text-fg-secondary animate-slide-in-from-bottom"
+                        >
                             {t.message}
                         </div>
                     ))}
@@ -64,7 +61,6 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     );
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function useToast() {
     const context = useContext(ToastContext);
     if (!context) {

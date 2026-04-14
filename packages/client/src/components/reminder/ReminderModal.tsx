@@ -1,14 +1,7 @@
-import { useState, useEffect } from 'react';
 import dayjs from 'dayjs';
+import { useEffect, useState } from 'react';
 import { Button, Modal, ModalActionRow } from '~/components/shared';
-import {
-    Input,
-    Label,
-    Text,
-    Textarea,
-    ToggleGroup,
-    ToggleGroupItem
-} from '~/components/ui';
+import { Input, Label, Text, Textarea, ToggleGroup, ToggleGroupItem } from '~/components/ui';
 
 import type { Reminder } from '~/models/reminder.model';
 
@@ -25,25 +18,19 @@ interface ReminderModalProps {
 const priorityStyles: Record<Priority, { active: string; inactive: string }> = {
     low: {
         active: 'border-border-secondary bg-elevated text-fg-default',
-        inactive: 'border-transparent bg-transparent text-fg-muted hover:bg-hover-subtle'
+        inactive: 'border-transparent bg-transparent text-fg-muted hover:bg-hover-subtle',
     },
     medium: {
         active: 'border-border-secondary bg-elevated text-fg-default',
-        inactive: 'border-transparent bg-transparent text-fg-muted hover:bg-hover-subtle'
+        inactive: 'border-transparent bg-transparent text-fg-muted hover:bg-hover-subtle',
     },
     high: {
         active: 'border-border-secondary bg-elevated text-fg-default',
-        inactive: 'border-transparent bg-transparent text-fg-muted hover:bg-hover-subtle'
-    }
+        inactive: 'border-transparent bg-transparent text-fg-muted hover:bg-hover-subtle',
+    },
 };
 
-export default function ReminderModal({
-    isOpen,
-    onClose,
-    onSave,
-    reminder,
-    mode
-}: ReminderModalProps) {
+export default function ReminderModal({ isOpen, onClose, onSave, reminder, mode }: ReminderModalProps) {
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [reminderPriority, setReminderPriority] = useState<Priority>('medium');
     const [reminderContent, setReminderContent] = useState<string>('');
@@ -66,17 +53,12 @@ export default function ReminderModal({
     };
 
     const getPriorityClassName = (priority: Priority) => {
-        return reminderPriority === priority
-            ? priorityStyles[priority].active
-            : priorityStyles[priority].inactive;
+        return reminderPriority === priority ? priorityStyles[priority].active : priorityStyles[priority].inactive;
     };
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} variant="form">
-            <Modal.Header
-                title={mode === 'create' ? 'Create Reminder' : 'Edit Reminder'}
-                onClose={onClose}
-            />
+            <Modal.Header title={mode === 'create' ? 'Create Reminder' : 'Edit Reminder'} onClose={onClose} />
             <Modal.Body>
                 <div className="flex flex-col gap-3 sm:gap-4">
                     <div className="flex flex-col gap-2">
@@ -105,24 +87,28 @@ export default function ReminderModal({
                             type="single"
                             value={reminderPriority}
                             onValueChange={(value: string) => value && setReminderPriority(value as Priority)}
-                            className="gap-1.5 border-none rounded-[14px] bg-muted/70 p-1 sm:gap-2">
+                            className="gap-1.5 border-none rounded-[14px] bg-muted/70 p-1 sm:gap-2"
+                        >
                             <ToggleGroupItem
                                 value="low"
-                                className={`flex-1 rounded-[10px] border ${getPriorityClassName('low')}`}>
+                                className={`flex-1 rounded-[10px] border ${getPriorityClassName('low')}`}
+                            >
                                 <Text as="span" weight="medium" className="text-current">
                                     Low
                                 </Text>
                             </ToggleGroupItem>
                             <ToggleGroupItem
                                 value="medium"
-                                className={`flex-1 rounded-[10px] border ${getPriorityClassName('medium')}`}>
+                                className={`flex-1 rounded-[10px] border ${getPriorityClassName('medium')}`}
+                            >
                                 <Text as="span" weight="medium" className="text-current">
                                     Medium
                                 </Text>
                             </ToggleGroupItem>
                             <ToggleGroupItem
                                 value="high"
-                                className={`flex-1 rounded-[10px] border ${getPriorityClassName('high')}`}>
+                                className={`flex-1 rounded-[10px] border ${getPriorityClassName('high')}`}
+                            >
                                 <Text as="span" weight="medium" className="text-current">
                                     High
                                 </Text>

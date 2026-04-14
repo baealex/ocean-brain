@@ -10,7 +10,7 @@ const mockNavigate = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
     Link: ({ children }: { children: React.ReactNode }) => <a>{children}</a>,
-    useNavigate: () => mockNavigate
+    useNavigate: () => mockNavigate,
 }));
 
 vi.mock('~/apis/note.api', () => ({ fetchNotes: vi.fn() }));
@@ -22,20 +22,24 @@ describe('<SidebarSearch />', () => {
         vi.mocked(fetchNotes).mockResolvedValue({
             type: 'success',
             allNotes: {
-                notes: [{
-                    id: 'note-1',
-                    title: 'Alpha note'
-                }]
-            }
+                notes: [
+                    {
+                        id: 'note-1',
+                        title: 'Alpha note',
+                    },
+                ],
+            },
         } as never);
         vi.mocked(fetchTags).mockResolvedValue({
             type: 'success',
             allTags: {
-                tags: [{
-                    id: 'tag-1',
-                    name: 'alpha'
-                }]
-            }
+                tags: [
+                    {
+                        id: 'tag-1',
+                        name: 'alpha',
+                    },
+                ],
+            },
         } as never);
 
         render(<SidebarSearch />);
@@ -45,11 +49,11 @@ describe('<SidebarSearch />', () => {
         await waitFor(() => {
             expect(fetchNotes).toHaveBeenCalledWith({
                 query: 'alpha',
-                limit: 5
+                limit: 5,
             });
             expect(fetchTags).toHaveBeenCalledWith({
                 query: 'alpha',
-                limit: 5
+                limit: 5,
             });
         });
 
@@ -67,8 +71,8 @@ describe('<SidebarSearch />', () => {
             to: SEARCH_ROUTE,
             search: {
                 query: 'waves',
-                page: 1
-            }
+                page: 1,
+            },
         });
     });
 });

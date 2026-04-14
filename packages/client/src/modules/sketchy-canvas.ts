@@ -5,13 +5,7 @@ function seededRandom(seed: number) {
     return x - Math.floor(x);
 }
 
-export function drawSketchyCircle(
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    radius: number,
-    seed: number
-) {
+export function drawSketchyCircle(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, seed: number) {
     const segments = 24;
     const wobble = radius * 0.08;
 
@@ -37,7 +31,7 @@ export function drawSketchyLine(
     y1: number,
     x2: number,
     y2: number,
-    seed: number
+    seed: number,
 ) {
     const midX = (x1 + x2) / 2;
     const midY = (y1 + y2) / 2;
@@ -57,24 +51,24 @@ export function drawSketchyRect(
     y: number,
     w: number,
     h: number,
-    seed: number
+    seed: number,
 ) {
     const wobble = 1;
     const tl = {
         x: x + (seededRandom(seed) * 2 - 1) * wobble,
-        y: y + (seededRandom(seed + 1) * 2 - 1) * wobble
+        y: y + (seededRandom(seed + 1) * 2 - 1) * wobble,
     };
     const tr = {
         x: x + w + (seededRandom(seed + 2) * 2 - 1) * wobble,
-        y: y + (seededRandom(seed + 3) * 2 - 1) * wobble
+        y: y + (seededRandom(seed + 3) * 2 - 1) * wobble,
     };
     const br = {
         x: x + w + (seededRandom(seed + 4) * 2 - 1) * wobble,
-        y: y + h + (seededRandom(seed + 5) * 2 - 1) * wobble
+        y: y + h + (seededRandom(seed + 5) * 2 - 1) * wobble,
     };
     const bl = {
         x: x + (seededRandom(seed + 6) * 2 - 1) * wobble,
-        y: y + h + (seededRandom(seed + 7) * 2 - 1) * wobble
+        y: y + h + (seededRandom(seed + 7) * 2 - 1) * wobble,
     };
 
     ctx.beginPath();

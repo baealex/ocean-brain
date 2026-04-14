@@ -1,17 +1,12 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 
-import {
-    createNote,
-    deleteNote,
-    pinNote
-} from '~/apis/note.api';
+import { createNote, deleteNote, pinNote } from '~/apis/note.api';
 import { useConfirm, useToast } from '~/components/ui';
-import { queryKeys } from '~/modules/query-key-factory';
-import { replaceFixedPlaceholder } from '~/modules/fixed-placeholder';
-import { NOTE_ROUTE } from '~/modules/url';
-
 import type { NoteLayout } from '~/models/note.model';
+import { replaceFixedPlaceholder } from '~/modules/fixed-placeholder';
+import { queryKeys } from '~/modules/query-key-factory';
+import { NOTE_ROUTE } from '~/modules/url';
 
 const useNoteMutate = () => {
     const confirm = useConfirm();
@@ -26,14 +21,14 @@ const useNoteMutate = () => {
         const response = await createNote({
             title: replacedTitle,
             content: replacedContent,
-            ...(layout && { layout })
+            ...(layout && { layout }),
         });
         if (response.type === 'error') {
             return;
         }
         navigate({
             to: NOTE_ROUTE,
-            params: { id: response.createNote.id }
+            params: { id: response.createNote.id },
         });
     };
 
@@ -47,16 +42,16 @@ const useNoteMutate = () => {
             await Promise.all([
                 queryClient.invalidateQueries({
                     queryKey: queryKeys.notes.listAll(),
-                    exact: false
+                    exact: false,
                 }),
                 queryClient.invalidateQueries({
                     queryKey: queryKeys.notes.tagListAll(),
-                    exact: false
+                    exact: false,
                 }),
                 queryClient.invalidateQueries({
                     queryKey: queryKeys.notes.pinned(),
-                    exact: true
-                })
+                    exact: true,
+                }),
             ]);
             callback?.();
         } catch {
@@ -74,24 +69,24 @@ const useNoteMutate = () => {
             await Promise.all([
                 queryClient.invalidateQueries({
                     queryKey: queryKeys.notes.all(),
-                    exact: false
+                    exact: false,
                 }),
                 queryClient.invalidateQueries({
                     queryKey: queryKeys.tags.all(),
-                    exact: false
+                    exact: false,
                 }),
                 queryClient.invalidateQueries({
                     queryKey: queryKeys.reminders.all(),
-                    exact: false
+                    exact: false,
                 }),
                 queryClient.invalidateQueries({
                     queryKey: queryKeys.images.all(),
-                    exact: false
+                    exact: false,
                 }),
                 queryClient.invalidateQueries({
                     queryKey: ['calendar'],
-                    exact: false
-                })
+                    exact: false,
+                }),
             ]);
             toast('The note has been moved to trash.');
             callback?.();
@@ -101,7 +96,7 @@ const useNoteMutate = () => {
     return {
         onCreate,
         onPinned,
-        onDelete
+        onDelete,
     };
 };
 

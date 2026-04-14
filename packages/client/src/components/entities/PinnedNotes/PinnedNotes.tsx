@@ -26,7 +26,7 @@ const PinnedNotes = (props: PinnedNotesProps) => {
                 throw response;
             }
             return response.pinnedNotes;
-        }
+        },
     });
 
     return <>{props.render(pinnedNotes)}</>;

@@ -11,7 +11,7 @@ export const RECOVERY_CLEANUP_BATCH_LIMIT = RECOVERY_RETENTION_BATCH_LIMIT;
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
 export const resolveRetentionCutoff = (retentionDays: number, now = new Date()) => {
-    return new Date(now.getTime() - (retentionDays * DAY_IN_MS));
+    return new Date(now.getTime() - retentionDays * DAY_IN_MS);
 };
 
 export const createRetentionCutoff = resolveRetentionCutoff;

@@ -19,21 +19,22 @@ const ReferenceView = ({ onClick }: ReferenceViewProps) => {
             getItems={async (query) => {
                 const response = await fetchNotes({
                     query,
-                    limit: 5
+                    limit: 5,
                 });
                 if (response.type === 'error') {
                     return [];
                 }
                 const { notes } = response.allNotes;
-                return notes.map(note => ({
+                return notes.map((note) => ({
                     title: note.title,
-                    onItemClick: () => onClick({
-                        type: 'reference',
-                        props: {
-                            id: note.id,
-                            title: note.title
-                        }
-                    })
+                    onItemClick: () =>
+                        onClick({
+                            type: 'reference',
+                            props: {
+                                id: note.id,
+                                title: note.title,
+                            },
+                        }),
                 }));
             }}
         />

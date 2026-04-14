@@ -11,7 +11,5 @@ export default defineConfig({
     treeshake: false,
     minify: false,
     bundle: false,
-    external: [
-        /^[^./]|^\.[^./]|^\.\.[^/]/
-    ]
+    external: [/^[^./]|^\.[^./]|^\.\.[^/]/],
 });

@@ -19,27 +19,22 @@ export const CalendarEntryCard = ({
     header,
     title,
     meta,
-    titleClassName = ''
+    titleClassName = '',
 }: CalendarEntryCardProps) => {
     return (
-        <Link
-            to={NOTE_ROUTE}
-            params={params}
-            className="focus-ring-soft group block rounded-[8px] outline-none">
+        <Link to={NOTE_ROUTE} params={params} className="focus-ring-soft group block rounded-[8px] outline-none">
             <div
                 className={classNames(
                     'flex items-start gap-1.5 rounded-[8px] px-1.5 py-1 transition-colors group-hover:bg-hover-subtle',
-                    toneClassName
-                )}>
+                    toneClassName,
+                )}
+            >
                 {header ? (
                     <span className="mt-[2px] flex h-4 w-4 shrink-0 items-center justify-center text-fg-tertiary">
                         {header}
                     </span>
                 ) : (
-                    <span
-                        aria-hidden="true"
-                        className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-fg-placeholder"
-                    />
+                    <span aria-hidden="true" className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-fg-placeholder" />
                 )}
 
                 <div className="min-w-0 flex-1">
@@ -48,16 +43,12 @@ export const CalendarEntryCard = ({
                         variant="label"
                         weight="medium"
                         tone="secondary"
-                        className={classNames('line-clamp-1', titleClassName)}>
+                        className={classNames('line-clamp-1', titleClassName)}
+                    >
                         {title}
                     </Text>
                     {meta ? (
-                        <Text
-                            as="div"
-                            variant="micro"
-                            weight="medium"
-                            tone="tertiary"
-                            className="mt-0.5">
+                        <Text as="div" variant="micro" weight="medium" tone="tertiary" className="mt-0.5">
                             {meta}
                         </Text>
                     ) : null}

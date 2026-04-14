@@ -37,9 +37,7 @@ export const normalizeTagName = (name: string) => {
         throw new InvalidTagNameError('A tag name is required.');
     }
 
-    const normalizedName = trimmedName.startsWith('@')
-        ? trimmedName
-        : `@${trimmedName}`;
+    const normalizedName = trimmedName.startsWith('@') ? trimmedName : `@${trimmedName}`;
 
     if (normalizedName === '@' || /\s/.test(normalizedName.slice(1))) {
         throw new InvalidTagNameError('Tag names must be a single token like @project.');
@@ -52,7 +50,7 @@ const serializeTag = (tag: TagRecord) => ({
     id: String(tag.id),
     name: tag.name,
     createdAt: tag.createdAt.toISOString(),
-    updatedAt: tag.updatedAt.toISOString()
+    updatedAt: tag.updatedAt.toISOString(),
 });
 
 const isTagNameUniqueConflict = (error: unknown) => {
@@ -71,7 +69,9 @@ const isTagNameUniqueConflict = (error: unknown) => {
     const rawTarget = 'target' in error.meta ? error.meta.target : null;
     const targets = Array.isArray(rawTarget)
         ? rawTarget.filter((value): value is string => typeof value === 'string')
-        : (typeof rawTarget === 'string' ? [rawTarget] : []);
+        : typeof rawTarget === 'string'
+          ? [rawTarget]
+          : [];
 
     return targets.length === 0 || targets.includes('name');
 };
@@ -86,7 +86,7 @@ export const createTagOrganizationService = (deps: TagOrganizationDeps) => {
                 return {
                     created: false,
                     normalizedName,
-                    tag: serializeTag(existingTag)
+                    tag: serializeTag(existingTag),
                 };
             }
 
@@ -108,16 +108,16 @@ export const createTagOrganizationService = (deps: TagOrganizationDeps) => {
                 return {
                     created: false,
                     normalizedName,
-                    tag: serializeTag(conflictedTag)
+                    tag: serializeTag(conflictedTag),
                 };
             }
 
             return {
                 created: true,
                 normalizedName,
-                tag: serializeTag(createdTag)
+                tag: serializeTag(createdTag),
             };
-        }
+        },
     };
 };
 
@@ -128,9 +128,9 @@ const defaultTagOrganizationService = createTagOrganizationService({
     findTagByName: async (name) => {
         return models.tag.findFirst({
             where: { name },
-            orderBy: { createdAt: 'asc' }
+            orderBy: { createdAt: 'asc' },
         });
-    }
+    },
 });
 
 export const ensureTagByName = async (name: string) => {

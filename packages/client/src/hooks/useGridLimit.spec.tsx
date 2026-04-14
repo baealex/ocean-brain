@@ -34,19 +34,12 @@ class ResizeObserverMock implements ResizeObserverMockInstance {
     }
 
     trigger(target: Element) {
-        this.callback(
-            [{ target } as ResizeObserverEntry],
-            this as unknown as ResizeObserver
-        );
+        this.callback([{ target } as ResizeObserverEntry], this as unknown as ResizeObserver);
     }
 }
 
 function GridLimitHarness(props: GridLimitHarnessProps) {
-    const {
-        containerRef,
-        limit,
-        isAutoLimit
-    } = useGridLimit(props);
+    const { containerRef, limit, isAutoLimit } = useGridLimit(props);
 
     return (
         <>
@@ -60,14 +53,14 @@ function GridLimitHarness(props: GridLimitHarnessProps) {
 const setOffsetWidth = (element: HTMLElement, width: number) => {
     Object.defineProperty(element, 'offsetWidth', {
         configurable: true,
-        value: width
+        value: width,
     });
 };
 
 const flushAnimationFrame = () => {
     const callbacks = Array.from(animationFrameQueue.values());
     animationFrameQueue.clear();
-    callbacks.forEach(callback => callback(0));
+    callbacks.forEach((callback) => callback(0));
 };
 
 describe('useGridLimit', () => {
@@ -99,13 +92,7 @@ describe('useGridLimit', () => {
     });
 
     it('recalculates the limit when ResizeObserver reports a new width', () => {
-        render(
-            <GridLimitHarness
-                minItemWidth={100}
-                gap={20}
-                rows={3}
-            />
-        );
+        render(<GridLimitHarness minItemWidth={100} gap={20} rows={3} />);
 
         const grid = screen.getByTestId('grid');
         const observer = resizeObserverInstances[0];
@@ -127,13 +114,7 @@ describe('useGridLimit', () => {
     });
 
     it('keeps the current limit when the width jitters around a breakpoint', () => {
-        render(
-            <GridLimitHarness
-                minItemWidth={100}
-                gap={20}
-                rows={3}
-            />
-        );
+        render(<GridLimitHarness minItemWidth={100} gap={20} rows={3} />);
 
         const grid = screen.getByTestId('grid');
         const observer = resizeObserverInstances[0];
@@ -161,13 +142,7 @@ describe('useGridLimit', () => {
     });
 
     it('waits for the width to clear the breakpoint buffer before increasing the limit', () => {
-        render(
-            <GridLimitHarness
-                minItemWidth={100}
-                gap={20}
-                rows={3}
-            />
-        );
+        render(<GridLimitHarness minItemWidth={100} gap={20} rows={3} />);
 
         const grid = screen.getByTestId('grid');
         const observer = resizeObserverInstances[0];
@@ -195,14 +170,7 @@ describe('useGridLimit', () => {
     });
 
     it('keeps the override limit fixed and disables auto mode', () => {
-        render(
-            <GridLimitHarness
-                minItemWidth={100}
-                gap={20}
-                rows={3}
-                override={15}
-            />
-        );
+        render(<GridLimitHarness minItemWidth={100} gap={20} rows={3} override={15} />);
 
         expect(screen.getByTestId('limit')).toHaveTextContent('15');
         expect(screen.getByTestId('auto-mode')).toHaveTextContent('false');
@@ -210,13 +178,7 @@ describe('useGridLimit', () => {
     });
 
     it('disconnects the ResizeObserver on unmount', () => {
-        const { unmount } = render(
-            <GridLimitHarness
-                minItemWidth={100}
-                gap={20}
-                rows={3}
-            />
-        );
+        const { unmount } = render(<GridLimitHarness minItemWidth={100} gap={20} rows={3} />);
 
         const observer = resizeObserverInstances[0];
 
@@ -240,13 +202,7 @@ describe('useGridLimit', () => {
         const addEventListenerSpy = vi.spyOn(window, 'addEventListener');
         const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener');
 
-        const { unmount } = render(
-            <GridLimitHarness
-                minItemWidth={100}
-                gap={20}
-                rows={3}
-            />
-        );
+        const { unmount } = render(<GridLimitHarness minItemWidth={100} gap={20} rows={3} />);
 
         const grid = screen.getByTestId('grid');
         setOffsetWidth(grid, 460);

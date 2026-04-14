@@ -1,13 +1,8 @@
+import { getRouteApi } from '@tanstack/react-router';
 import dayjs from 'dayjs';
 import { useCallback, useMemo, useRef } from 'react';
-import { getRouteApi } from '@tanstack/react-router';
-
-import {
-    CalendarDay,
-    CalendarHeader,
-    useCalendarData
-} from '~/components/calendar';
 import type { CalendarDisplayType } from '~/components/calendar';
+import { CalendarDay, CalendarHeader, useCalendarData } from '~/components/calendar';
 import { Callout, PageLayout } from '~/components/shared';
 import { Skeleton, Text } from '~/components/ui';
 import type { Note } from '~/models/note.model';
@@ -36,11 +31,7 @@ const Route = getRouteApi(CALENDAR_ROUTE);
 
 export default function Calendar() {
     const navigate = Route.useNavigate();
-    const {
-        year,
-        month,
-        type
-    } = Route.useSearch();
+    const { year, month, type } = Route.useSearch();
 
     const gridScrollRef = useRef<HTMLDivElement>(null);
     const isDragging = useRef(false);
@@ -75,7 +66,7 @@ export default function Calendar() {
 
     const { notes, reminders, isLoading, isError } = useCalendarData({
         year,
-        month
+        month,
     });
 
     const calendarDayViews = useMemo(() => {
@@ -85,9 +76,7 @@ export default function Calendar() {
         // Build notes map
         const notesMap = new Map<string, Note[]>();
         for (const note of notes) {
-            const date = type === 'create'
-                ? dayjs(Number(note.createdAt))
-                : dayjs(Number(note.updatedAt));
+            const date = type === 'create' ? dayjs(Number(note.createdAt)) : dayjs(Number(note.updatedAt));
             const key = `${date.year()}-${date.month() + 1}-${date.date()}`;
             const existing = notesMap.get(key) || [];
             existing.push(note);
@@ -110,7 +99,12 @@ export default function Calendar() {
         const firstDayOfWeek = firstDay.getDay();
         const totalDays = lastDay.getDate();
 
-        interface DayEntry { day: number; isCurrentMonth: boolean; year: number; month: number }
+        interface DayEntry {
+            day: number;
+            isCurrentMonth: boolean;
+            year: number;
+            month: number;
+        }
         const days: DayEntry[] = [];
 
         const prevMonth = month === 1 ? 12 : month - 1;
@@ -122,7 +116,7 @@ export default function Calendar() {
                 day: prevMonthLastDay - i,
                 isCurrentMonth: false,
                 year: prevYear,
-                month: prevMonth
+                month: prevMonth,
             });
         }
         for (let d = 1; d <= totalDays; d++) {
@@ -130,7 +124,7 @@ export default function Calendar() {
                 day: d,
                 isCurrentMonth: true,
                 year,
-                month
+                month,
             });
         }
         const lastDayOfWeek = (firstDayOfWeek + totalDays) % 7;
@@ -142,7 +136,7 @@ export default function Calendar() {
                 day: i,
                 isCurrentMonth: false,
                 year: nextYear,
-                month: nextMonth
+                month: nextMonth,
             });
         }
 
@@ -160,7 +154,7 @@ export default function Calendar() {
                 isToday: key === todayKey,
                 isPast: dayDate.isBefore(today, 'day'),
                 notes: notesMap.get(key) || EMPTY_NOTES,
-                reminders: remindersMap.get(key) || EMPTY_REMINDERS
+                reminders: remindersMap.get(key) || EMPTY_REMINDERS,
             };
         });
     }, [year, month, notes, reminders, type]);
@@ -169,11 +163,11 @@ export default function Calendar() {
         const newMonth = month === 1 ? 12 : month - 1;
         const newYear = month === 1 ? year - 1 : year;
         navigate({
-            search: prev => ({
+            search: (prev) => ({
                 ...prev,
                 month: newMonth,
-                year: newYear
-            })
+                year: newYear,
+            }),
         });
     };
 
@@ -181,31 +175,31 @@ export default function Calendar() {
         const newMonth = month === 12 ? 1 : month + 1;
         const newYear = month === 12 ? year + 1 : year;
         navigate({
-            search: prev => ({
+            search: (prev) => ({
                 ...prev,
                 month: newMonth,
-                year: newYear
-            })
+                year: newYear,
+            }),
         });
     };
 
     const handleToday = () => {
         navigate({
-            search: prev => ({
+            search: (prev) => ({
                 ...prev,
                 month: dayjs().month() + 1,
-                year: dayjs().year()
-            })
+                year: dayjs().year(),
+            }),
         });
     };
 
     const handleTypeChange = (value: string) => {
         if (!value) return;
         navigate({
-            search: prev => ({
+            search: (prev) => ({
                 ...prev,
-                type: value as CalendarDisplayType
-            })
+                type: value as CalendarDisplayType,
+            }),
         });
     };
 
@@ -235,7 +229,8 @@ export default function Calendar() {
                         onMouseDown={handleMouseDown}
                         onMouseMove={handleMouseMove}
                         onMouseUp={handleMouseUp}
-                        onMouseLeave={handleMouseUp}>
+                        onMouseLeave={handleMouseUp}
+                    >
                         <div className="min-w-[1260px]">
                             <div className="mb-2.5 grid grid-cols-7 gap-1.5">
                                 {DAYS_OF_WEEK.map((day, index) => (
@@ -246,7 +241,8 @@ export default function Calendar() {
                                         weight="semibold"
                                         tracking="wider"
                                         transform="uppercase"
-                                        className={`py-2 text-center ${index === 0 ? 'text-fg-weekend' : 'text-fg-tertiary'}`}>
+                                        className={`py-2 text-center ${index === 0 ? 'text-fg-weekend' : 'text-fg-tertiary'}`}
+                                    >
                                         {day}
                                     </Text>
                                 ))}

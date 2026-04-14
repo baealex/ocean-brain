@@ -1,9 +1,8 @@
-import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import type { AddressInfo } from 'node:net';
-
-import type { AuthConfig } from '../src/modules/auth-mode.js';
+import test, { type TestContext } from 'node:test';
 import { createApp } from '../src/app.js';
+import type { AuthConfig } from '../src/modules/auth-mode.js';
 
 const startServer = async (t: TestContext, authConfig: AuthConfig) => {
     const app = createApp(authConfig);
@@ -28,14 +27,14 @@ const graphRequest = async (baseUrl: string, query: string, cookie?: string) => 
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            ...(cookie ? { Cookie: cookie } : {})
+            ...(cookie ? { Cookie: cookie } : {}),
         },
-        body: JSON.stringify({ query })
+        body: JSON.stringify({ query }),
     });
 
     return {
         status: response.status,
-        body: await response.json() as Record<string, unknown>
+        body: (await response.json()) as Record<string, unknown>,
     };
 };
 
@@ -44,21 +43,21 @@ const jsonRequest = async (
     path: string,
     method: 'GET' | 'POST',
     body?: Record<string, unknown>,
-    cookie?: string
+    cookie?: string,
 ) => {
     const response = await fetch(`${baseUrl}${path}`, {
         method,
         headers: {
             ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}),
-            ...(cookie ? { Cookie: cookie } : {})
+            ...(cookie ? { Cookie: cookie } : {}),
         },
-        body: body ? JSON.stringify(body) : undefined
+        body: body ? JSON.stringify(body) : undefined,
     });
 
     return {
         status: response.status,
-        body: await response.json() as Record<string, unknown>,
-        cookie: response.headers.get('set-cookie') ?? undefined
+        body: (await response.json()) as Record<string, unknown>,
+        cookie: response.headers.get('set-cookie') ?? undefined,
     };
 };
 
@@ -67,7 +66,7 @@ test('password mode protects write paths until login and unlocks them after sess
         mode: 'password',
         password: 'secret',
         sessionSecret: 'session-secret',
-        source: 'override'
+        source: 'override',
     });
 
     const anonymousSession = await jsonRequest(baseUrl, '/api/auth/session', 'GET');
@@ -75,7 +74,7 @@ test('password mode protects write paths until login and unlocks them after sess
     assert.deepEqual(anonymousSession.body, {
         mode: 'password',
         authRequired: true,
-        authenticated: false
+        authenticated: false,
     });
 
     const unauthorizedImageWrite = await jsonRequest(baseUrl, '/api/image', 'POST', {});
@@ -86,14 +85,14 @@ test('password mode protects write paths until login and unlocks them after sess
     assert.equal(unauthorizedMutation.status, 401);
     assert.equal(
         (unauthorizedMutation.body.errors as Array<{ extensions?: { code?: string } }>)[0]?.extensions?.code,
-        'UNAUTHORIZED'
+        'UNAUTHORIZED',
     );
 
     const publicQuery = await graphRequest(baseUrl, 'query { __typename }');
     assert.equal(publicQuery.status, 401);
     assert.equal(
         (publicQuery.body.errors as Array<{ extensions?: { code?: string } }>)[0]?.extensions?.code,
-        'UNAUTHORIZED'
+        'UNAUTHORIZED',
     );
 
     const wrongPassword = await jsonRequest(baseUrl, '/api/auth/login', 'POST', { password: 'wrong' });
@@ -106,7 +105,7 @@ test('password mode protects write paths until login and unlocks them after sess
     assert.deepEqual(login.body, {
         mode: 'password',
         authRequired: true,
-        authenticated: true
+        authenticated: true,
     });
 
     const authenticatedSession = await jsonRequest(baseUrl, '/api/auth/session', 'GET', undefined, login.cookie);
@@ -114,7 +113,7 @@ test('password mode protects write paths until login and unlocks them after sess
     assert.deepEqual(authenticatedSession.body, {
         mode: 'password',
         authRequired: true,
-        authenticated: true
+        authenticated: true,
     });
 
     const authenticatedImageWrite = await jsonRequest(baseUrl, '/api/image', 'POST', {}, login.cookie);
@@ -135,7 +134,7 @@ test('password mode protects write paths until login and unlocks them after sess
     assert.deepEqual(logout.body, {
         mode: 'password',
         authRequired: true,
-        authenticated: false
+        authenticated: false,
     });
 
     const postLogoutWrite = await jsonRequest(baseUrl, '/api/image', 'POST', {}, login.cookie);
@@ -146,7 +145,7 @@ test('password mode protects write paths until login and unlocks them after sess
 test('disabled mode keeps auth endpoints explicit and allows existing open write/query behavior', async (t) => {
     const { baseUrl } = await startServer(t, {
         mode: 'disabled',
-        source: 'override'
+        source: 'override',
     });
 
     const sessionStatus = await jsonRequest(baseUrl, '/api/auth/session', 'GET');
@@ -154,7 +153,7 @@ test('disabled mode keeps auth endpoints explicit and allows existing open write
     assert.deepEqual(sessionStatus.body, {
         mode: 'disabled',
         authRequired: false,
-        authenticated: false
+        authenticated: false,
     });
 
     const login = await jsonRequest(baseUrl, '/api/auth/login', 'POST', { password: 'secret' });

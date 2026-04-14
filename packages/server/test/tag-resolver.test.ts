@@ -1,5 +1,5 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 
 import { createTagMutationResolver } from '../src/schema/tag/index.js';
 
@@ -11,8 +11,8 @@ test('createTag mutation returns the canonical tag from the tag organization ser
             id: '12',
             name: '@project',
             createdAt: '2026-04-13T00:00:00.000Z',
-            updatedAt: '2026-04-13T00:00:00.000Z'
-        }
+            updatedAt: '2026-04-13T00:00:00.000Z',
+        },
     }));
 
     const result = await resolver(null, { name: ' project ' });
@@ -21,6 +21,6 @@ test('createTag mutation returns the canonical tag from the tag organization ser
         id: '12',
         name: '@project',
         createdAt: '2026-04-13T00:00:00.000Z',
-        updatedAt: '2026-04-13T00:00:00.000Z'
+        updatedAt: '2026-04-13T00:00:00.000Z',
     });
 });

@@ -3,12 +3,12 @@ import { createMcpAdminService, type McpAdminService } from '~/modules/mcp-admin
 import type { Controller } from '~/types/index.js';
 
 type McpAdminControllerService = Pick<
-McpAdminService,
-'getStatus' | 'setEnabled' | 'rotateToken' | 'revokeActiveToken'
+    McpAdminService,
+    'getStatus' | 'setEnabled' | 'rotateToken' | 'revokeActiveToken'
 >;
 
 export const createMcpAdminStatusHandler = (
-    service: McpAdminControllerService = createMcpAdminService()
+    service: McpAdminControllerService = createMcpAdminService(),
 ): Controller => {
     return async (_req, res) => {
         const status = await service.getStatus();
@@ -17,7 +17,7 @@ export const createMcpAdminStatusHandler = (
 };
 
 export const createMcpAdminSetEnabledHandler = (
-    service: McpAdminControllerService = createMcpAdminService()
+    service: McpAdminControllerService = createMcpAdminService(),
 ): Controller => {
     return async (req, res) => {
         const enabled = req.body?.enabled;
@@ -32,19 +32,21 @@ export const createMcpAdminSetEnabledHandler = (
 };
 
 export const createMcpAdminRotateTokenHandler = (
-    service: McpAdminControllerService = createMcpAdminService()
+    service: McpAdminControllerService = createMcpAdminService(),
 ): Controller => {
     return async (_req, res) => {
         const result = await service.rotateToken();
-        res.status(200).json({
-            token: result.token,
-            message: 'Save this token now. It is shown only once.'
-        }).end();
+        res.status(200)
+            .json({
+                token: result.token,
+                message: 'Save this token now. It is shown only once.',
+            })
+            .end();
     };
 };
 
 export const createMcpAdminRevokeTokenHandler = (
-    service: McpAdminControllerService = createMcpAdminService()
+    service: McpAdminControllerService = createMcpAdminService(),
 ): Controller => {
     return async (_req, res) => {
         await service.revokeActiveToken();

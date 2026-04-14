@@ -1,15 +1,13 @@
-import { useState } from 'react';
 import classNames from 'classnames';
 import dayjs from 'dayjs';
-import { AuxiliaryPanelHeader, Button, Dropdown } from '~/components/shared';
-import * as Icon from '~/components/icon';
-import { Checkbox, Text } from '~/components/ui';
-
+import { useState } from 'react';
 import { Reminders } from '~/components/entities';
+import * as Icon from '~/components/icon';
+import { AuxiliaryPanelHeader, Button, Dropdown } from '~/components/shared';
+import { Checkbox, Text } from '~/components/ui';
 import useReminderMutate from '~/hooks/resource/useReminderMutate';
-import ReminderModal from './ReminderModal';
-
 import type { Reminder } from '~/models/reminder.model';
+import ReminderModal from './ReminderModal';
 
 interface ReminderPanelProps {
     noteId: string;
@@ -36,17 +34,28 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
 
     const handleSaveReminder = (date: Date, priority: 'low' | 'medium' | 'high', content?: string) => {
         if (modalMode === 'create') {
-            onCreate(noteId, date, priority, () => {
-                setIsModalOpen(false);
-            }, content);
-        } else if (modalMode === 'edit' && editingReminder) {
-            onUpdate(editingReminder.id, noteId, {
-                reminderDate: date,
+            onCreate(
+                noteId,
+                date,
                 priority,
-                content
-            }, () => {
-                setIsModalOpen(false);
-            });
+                () => {
+                    setIsModalOpen(false);
+                },
+                content,
+            );
+        } else if (modalMode === 'edit' && editingReminder) {
+            onUpdate(
+                editingReminder.id,
+                noteId,
+                {
+                    reminderDate: date,
+                    priority,
+                    content,
+                },
+                () => {
+                    setIsModalOpen(false);
+                },
+            );
         }
     };
 
@@ -94,7 +103,8 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                 <button
                     type="button"
                     onClick={() => setIsCollapsed(!isCollapsed)}
-                    className="focus-ring-soft flex items-center gap-2 rounded-[10px] px-2 py-1.5 text-fg-tertiary transition-colors hover:bg-hover-subtle hover:text-fg-default">
+                    className="focus-ring-soft flex items-center gap-2 rounded-[10px] px-2 py-1.5 text-fg-tertiary transition-colors hover:bg-hover-subtle hover:text-fg-default"
+                >
                     <AuxiliaryPanelHeader
                         icon={isCollapsed ? <Icon.TriangleRight size={12} /> : <Icon.TriangleDown size={12} />}
                         title="Reminders"
@@ -103,7 +113,9 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                 {!isCollapsed && (
                     <Button size="sm" variant="ghost" onClick={handleOpenCreateModal}>
                         <Icon.Plus className="w-3 h-3" />
-                        <Text as="span" variant="label" className="hidden sm:inline">Add</Text>
+                        <Text as="span" variant="label" className="hidden sm:inline">
+                            Add
+                        </Text>
                     </Button>
                 )}
             </div>
@@ -113,7 +125,7 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                     noteId={noteId}
                     searchParams={{
                         offset: 0,
-                        limit: 9999
+                        limit: 9999,
                     }}
                     render={({ reminders, totalCount }) => {
                         return (
@@ -125,16 +137,16 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                                 ) : (
                                     <div className="flex flex-col">
                                         {reminders.map((reminder) => {
-                                            const urgency = reminder.priority || calculateUrgency(reminder.reminderDate);
+                                            const urgency =
+                                                reminder.priority || calculateUrgency(reminder.reminderDate);
                                             const timeRemaining = getTimeRemaining(reminder.reminderDate);
                                             const isOverdue = timeRemaining === 'Overdue';
 
                                             return (
                                                 <div
                                                     key={reminder.id}
-                                                    className={classNames(
-                                                        'flex items-center gap-2.5 px-2 py-1.5'
-                                                    )}>
+                                                    className={classNames('flex items-center gap-2.5 px-2 py-1.5')}
+                                                >
                                                     <Checkbox
                                                         checked={reminder.completed}
                                                         onChange={() => handleToggleComplete(reminder)}
@@ -146,15 +158,17 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                                                         weight="medium"
                                                         className={classNames(
                                                             'truncate flex-1 min-w-0',
-                                                            reminder.completed && 'line-through opacity-40'
-                                                        )}>
+                                                            reminder.completed && 'line-through opacity-40',
+                                                        )}
+                                                    >
                                                         {reminder.content || formatReminderDate(reminder.reminderDate)}
                                                     </Text>
                                                     <div
                                                         className={classNames(
                                                             'shrink-0 flex items-center gap-1',
-                                                            reminder.completed && 'opacity-40'
-                                                        )}>
+                                                            reminder.completed && 'opacity-40',
+                                                        )}
+                                                    >
                                                         {reminder.content && (
                                                             <Text as="span" variant="meta" tone="secondary">
                                                                 {formatReminderDate(reminder.reminderDate)}
@@ -165,32 +179,39 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                                                                 as="span"
                                                                 variant="label"
                                                                 weight="medium"
-                                                                tone={isOverdue || urgency === 'high' ? 'error' : 'tertiary'}
+                                                                tone={
+                                                                    isOverdue || urgency === 'high'
+                                                                        ? 'error'
+                                                                        : 'tertiary'
+                                                                }
                                                                 className={classNames(
-                                                                    reminder.content && 'before:content-["·"] before:mr-1'
-                                                                )}>
+                                                                    reminder.content &&
+                                                                        'before:content-["·"] before:mr-1',
+                                                                )}
+                                                            >
                                                                 {timeRemaining}
                                                             </Text>
                                                         )}
                                                     </div>
                                                     <Dropdown
-                                                        button={(
+                                                        button={
                                                             <button
                                                                 type="button"
-                                                                className="focus-ring-soft inline-flex h-8 w-8 items-center justify-center rounded-[10px] text-fg-secondary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default">
+                                                                className="focus-ring-soft inline-flex h-8 w-8 items-center justify-center rounded-[10px] text-fg-secondary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default"
+                                                            >
                                                                 <Icon.VerticalDots size={16} className="text-current" />
                                                                 <span className="sr-only">Reminder actions</span>
                                                             </button>
-                                                        )}
+                                                        }
                                                         items={[
                                                             {
                                                                 name: 'Edit',
-                                                                onClick: () => handleOpenEditModal(reminder)
+                                                                onClick: () => handleOpenEditModal(reminder),
                                                             },
                                                             {
                                                                 name: 'Delete',
-                                                                onClick: () => onDelete(reminder.id, noteId)
-                                                            }
+                                                                onClick: () => onDelete(reminder.id, noteId),
+                                                            },
                                                         ]}
                                                     />
                                                 </div>

@@ -1,14 +1,11 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
-import { fetchTagNotes, type FetchTagNotesParams } from '~/apis/note.api';
+import { type FetchTagNotesParams, fetchTagNotes } from '~/apis/note.api';
 import type { Note } from '~/models/note.model';
 import { queryKeys } from '~/modules/query-key-factory';
 
 interface TagNotesProps {
     searchParams: FetchTagNotesParams;
-    render: (data: {
-        notes: Note[];
-        totalCount: number;
-    }) => React.ReactNode;
+    render: (data: { notes: Note[]; totalCount: number }) => React.ReactNode;
 }
 
 const TagNotes = (props: TagNotesProps) => {
@@ -18,13 +15,13 @@ const TagNotes = (props: TagNotesProps) => {
             const response = await fetchTagNotes({
                 query: props.searchParams.query,
                 offset: props.searchParams.offset,
-                limit: props.searchParams.limit
+                limit: props.searchParams.limit,
             });
             if (response.type === 'error') {
                 throw response;
             }
             return response.tagNotes;
-        }
+        },
     });
 
     return props.render(data);

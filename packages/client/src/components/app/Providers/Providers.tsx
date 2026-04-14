@@ -1,5 +1,5 @@
-import React from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
+import type React from 'react';
 
 import { ConfirmProvider } from '~/components/ui/Confirm';
 import { ToastProvider } from '~/components/ui/Toast';
@@ -14,9 +14,7 @@ const Providers = ({ children }: ProvidersProps) => {
     return (
         <QueryClientProvider client={queryClient}>
             <ConfirmProvider>
-                <ToastProvider>
-                    {children}
-                </ToastProvider>
+                <ToastProvider>{children}</ToastProvider>
             </ConfirmProvider>
         </QueryClientProvider>
     );

@@ -1,14 +1,8 @@
-import { Link, getRouteApi } from '@tanstack/react-router';
+import { getRouteApi, Link } from '@tanstack/react-router';
 
 import { QueryBoundary } from '~/components/app';
-import {
-    Empty,
-    Highlight,
-    PageLayout,
-    Pagination,
-    Skeleton
-} from '~/components/shared';
 import { Notes } from '~/components/entities';
+import { Empty, Highlight, PageLayout, Pagination, Skeleton } from '~/components/shared';
 import { Text } from '~/components/ui';
 
 import { NOTE_ROUTE, SEARCH_ROUTE } from '~/modules/url';
@@ -35,10 +29,7 @@ const buildSearchExcerpt = (text: string, query: string) => {
     }
 
     const excerptStart = Math.max(0, matchIndex - 56);
-    const excerptEnd = Math.min(
-        normalizedText.length,
-        matchIndex + normalizedQuery.length + 84
-    );
+    const excerptEnd = Math.min(normalizedText.length, matchIndex + normalizedQuery.length + 84);
 
     let snippet = normalizedText.slice(excerptStart, excerptEnd).trim();
 
@@ -114,18 +105,18 @@ const collectPreviewBlocks = (nodes: unknown, blocks: SearchPreviewBlock[]) => {
             return;
         }
 
-        const type = typeof (node as { type?: unknown }).type === 'string'
-            ? (node as { type: string }).type
-            : undefined;
-        const props = typeof (node as { props?: unknown }).props === 'object' && (node as { props?: unknown }).props
-            ? (node as { props: Record<string, unknown> }).props
-            : undefined;
+        const type =
+            typeof (node as { type?: unknown }).type === 'string' ? (node as { type: string }).type : undefined;
+        const props =
+            typeof (node as { props?: unknown }).props === 'object' && (node as { props?: unknown }).props
+                ? (node as { props: Record<string, unknown> }).props
+                : undefined;
         const text = normalizeSearchText(getInlineText((node as { content?: unknown }).content));
 
         if (text) {
             blocks.push({
                 label: getBlockLabel(type, props),
-                text
+                text,
             });
         }
 
@@ -155,7 +146,7 @@ const getSearchPreviewBlocks = (content: string, query: string) => {
 
         return selectedBlocks.map((block) => ({
             ...block,
-            text: buildSearchExcerpt(block.text, query)
+            text: buildSearchExcerpt(block.text, query),
         }));
     } catch {
         return [];
@@ -171,7 +162,8 @@ const SearchResultsSkeleton = () => (
     <PageLayout
         title="Search"
         variant="default"
-        description={<Skeleton width={208} height={16} className="rounded-full" />}>
+        description={<Skeleton width={208} height={16} className="rounded-full" />}
+    >
         <main className="flex flex-col gap-3">
             {Array.from({ length: 2 }, (_, index) => (
                 <div key={index} className="surface-base flex flex-col gap-3 p-4">
@@ -197,10 +189,7 @@ const SearchResultsSkeleton = () => (
 
 export default function Search() {
     const navigate = Route.useNavigate();
-    const {
-        page,
-        query
-    } = Route.useSearch();
+    const { page, query } = Route.useSearch();
     const normalizedQuery = query.trim();
 
     const limit = 10;
@@ -210,7 +199,8 @@ export default function Search() {
             <PageLayout
                 title="Search"
                 description="Search note titles and matching sections across your workspace"
-                variant="default">
+                variant="default"
+            >
                 <main>
                     <Empty
                         title="Start searching"
@@ -226,19 +216,21 @@ export default function Search() {
             fallback={<SearchResultsSkeleton />}
             errorTitle="Failed to load search results"
             errorDescription={`Retry loading results for "${normalizedQuery}".`}
-            resetKeys={[normalizedQuery, page]}>
+            resetKeys={[normalizedQuery, page]}
+        >
             <Notes
                 searchParams={{
                     query: normalizedQuery,
                     limit,
                     offset: (page - 1) * limit,
-                    fields: ['content']
+                    fields: ['content'],
                 }}
                 render={({ notes, totalCount }) => (
                     <PageLayout
                         title="Search"
                         description={getSearchDescription(normalizedQuery, totalCount)}
-                        variant="default">
+                        variant="default"
+                    >
                         <main className="flex flex-col gap-4">
                             {notes.length > 0 ? (
                                 <div className="flex flex-col gap-3">
@@ -251,7 +243,8 @@ export default function Search() {
                                                     <Link
                                                         to={NOTE_ROUTE}
                                                         params={{ id: note.id }}
-                                                        className="transition-colors hover:text-fg-default/85">
+                                                        className="transition-colors hover:text-fg-default/85"
+                                                    >
                                                         <Highlight match={normalizedQuery}>
                                                             {note.title || 'Untitled'}
                                                         </Highlight>
@@ -263,21 +256,28 @@ export default function Search() {
                                                             {previewBlocks.map((block, index) => (
                                                                 <div
                                                                     key={`${note.id}:${block.label}:${index}`}
-                                                                    className={index > 0 ? 'border-t border-border-subtle pt-2' : undefined}>
+                                                                    className={
+                                                                        index > 0
+                                                                            ? 'border-t border-border-subtle pt-2'
+                                                                            : undefined
+                                                                    }
+                                                                >
                                                                     <Text
                                                                         as="div"
                                                                         variant="micro"
                                                                         weight="semibold"
                                                                         tracking="wider"
                                                                         transform="uppercase"
-                                                                        tone="tertiary">
+                                                                        tone="tertiary"
+                                                                    >
                                                                         {block.label}
                                                                     </Text>
                                                                     <Text
                                                                         as="p"
                                                                         variant="meta"
                                                                         tone="secondary"
-                                                                        className="mt-1 leading-[1.65]">
+                                                                        className="mt-1 leading-[1.65]"
+                                                                    >
                                                                         <Highlight match={normalizedQuery}>
                                                                             {block.text}
                                                                         </Highlight>
@@ -291,7 +291,8 @@ export default function Search() {
                                                         as="p"
                                                         variant="meta"
                                                         tone="secondary"
-                                                        className="leading-[1.65]">
+                                                        className="leading-[1.65]"
+                                                    >
                                                         {getSearchFallbackPreview()}
                                                     </Text>
                                                 )}
@@ -311,10 +312,10 @@ export default function Search() {
                                     last={Math.ceil(totalCount / limit)}
                                     onChange={(page) => {
                                         navigate({
-                                            search: prev => ({
+                                            search: (prev) => ({
                                                 ...prev,
-                                                page
-                                            })
+                                                page,
+                                            }),
                                         });
                                     }}
                                 />

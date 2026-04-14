@@ -75,11 +75,11 @@ export function initializeTheme(options: ThemeInitializerOptions = {}): Theme {
     const systemPrefersDark = options.matchMedia
         ? options.matchMedia(THEME_QUERY).matches
         : typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-            ? window.matchMedia(THEME_QUERY).matches
-            : false;
+          ? window.matchMedia(THEME_QUERY).matches
+          : false;
     const theme = resolveTheme({
         storedTheme: getStoredTheme(),
-        systemPrefersDark
+        systemPrefersDark,
     });
 
     syncThemeClass(theme);

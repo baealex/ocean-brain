@@ -1,5 +1,5 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 
 import { createNoteCleanupService } from '../src/modules/note-cleanup.js';
 
@@ -9,38 +9,42 @@ test('note cleanup service lists draft-like notes as cleanup candidates', async 
         countReminders: async () => 0,
         deleteNoteAndPruneTags: async () => undefined,
         findBackReferences: async () => [],
-        findCandidateNotes: async () => [{
-            id: 7,
-            title: 'draft: old idea',
-            content: 'temporary draft content',
-            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-            pinned: false,
-            tags: []
-        }],
+        findCandidateNotes: async () => [
+            {
+                id: 7,
+                title: 'draft: old idea',
+                content: 'temporary draft content',
+                updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+                pinned: false,
+                tags: [],
+            },
+        ],
         findNote: async () => null,
-        getTagNoteCounts: async () => new Map()
+        getTagNoteCounts: async () => new Map(),
     });
 
     const result = await service.listCleanupCandidates({
         keywords: ['draft', 'temp'],
         limit: 20,
-        offset: 0
+        offset: 0,
     });
 
     assert.equal(result.totalCount, 1);
-    assert.deepEqual(result.notes, [{
-        id: '7',
-        title: 'draft: old idea',
-        updatedAt: '2026-01-01T00:00:00.000Z',
-        pinned: false,
-        tagNames: [],
-        reminderCount: 0,
-        backReferenceCount: 0,
-        matchedTerms: ['draft', 'temp'],
-        reasons: ['matched_terms:draft,temp', 'not_pinned', 'tagless', 'no_reminders', 'no_back_references'],
-        requiresForce: false,
-        forceReasons: []
-    }]);
+    assert.deepEqual(result.notes, [
+        {
+            id: '7',
+            title: 'draft: old idea',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+            pinned: false,
+            tagNames: [],
+            reminderCount: 0,
+            backReferenceCount: 0,
+            matchedTerms: ['draft', 'temp'],
+            reasons: ['matched_terms:draft,temp', 'not_pinned', 'tagless', 'no_reminders', 'no_back_references'],
+            requiresForce: false,
+            forceReasons: [],
+        },
+    ]);
 });
 
 test('note cleanup preview exposes reminders, backlinks, and orphaned tags', async () => {
@@ -48,10 +52,12 @@ test('note cleanup preview exposes reminders, backlinks, and orphaned tags', asy
         countCandidateNotes: async () => 0,
         countReminders: async () => 2,
         deleteNoteAndPruneTags: async () => undefined,
-        findBackReferences: async () => [{
-            id: 11,
-            title: 'Backlink note'
-        }],
+        findBackReferences: async () => [
+            {
+                id: 11,
+                title: 'Backlink note',
+            },
+        ],
         findCandidateNotes: async () => [],
         findNote: async () => ({
             id: 3,
@@ -62,18 +68,19 @@ test('note cleanup preview exposes reminders, backlinks, and orphaned tags', asy
             tags: [
                 {
                     id: 1,
-                    name: 'project'
+                    name: 'project',
                 },
                 {
                     id: 2,
-                    name: 'temp'
-                }
-            ]
+                    name: 'temp',
+                },
+            ],
         }),
-        getTagNoteCounts: async () => new Map([
-            [1, 2],
-            [2, 1]
-        ])
+        getTagNoteCounts: async () =>
+            new Map([
+                [1, 2],
+                [2, 1],
+            ]),
     });
 
     const preview = await service.getDeletePreview(3);
@@ -85,13 +92,15 @@ test('note cleanup preview exposes reminders, backlinks, and orphaned tags', asy
         pinned: true,
         tagNames: ['project', 'temp'],
         reminderCount: 2,
-        backReferences: [{
-            id: '11',
-            title: 'Backlink note'
-        }],
+        backReferences: [
+            {
+                id: '11',
+                title: 'Backlink note',
+            },
+        ],
         orphanedTagNames: ['temp'],
         requiresForce: true,
-        forceReasons: ['note_is_pinned', 'has_reminders', 'has_back_references', 'orphan_tags']
+        forceReasons: ['note_is_pinned', 'has_reminders', 'has_back_references', 'orphan_tags'],
     });
 });
 
@@ -103,7 +112,7 @@ test('note cleanup delete removes the note and prunes orphan tags', async () => 
         deleteNoteAndPruneTags: async (noteId, orphanTagIds) => {
             deleted.push({
                 noteId,
-                orphanTagIds
+                orphanTagIds,
             });
         },
         findBackReferences: async () => [],
@@ -114,12 +123,14 @@ test('note cleanup delete removes the note and prunes orphan tags', async () => 
             content: 'content',
             updatedAt: new Date('2026-03-10T00:00:00.000Z'),
             pinned: false,
-            tags: [{
-                id: 5,
-                name: 'temp'
-            }]
+            tags: [
+                {
+                    id: 5,
+                    name: 'temp',
+                },
+            ],
         }),
-        getTagNoteCounts: async () => new Map([[5, 1]])
+        getTagNoteCounts: async () => new Map([[5, 1]]),
     });
 
     const deletedPreview = await service.deleteNoteById(9);
@@ -127,7 +138,7 @@ test('note cleanup delete removes the note and prunes orphan tags', async () => 
     assert.equal(deleted.length, 1);
     assert.deepEqual(deleted[0], {
         noteId: 9,
-        orphanTagIds: [5]
+        orphanTagIds: [5],
     });
     assert.deepEqual(deletedPreview, {
         id: '9',
@@ -139,6 +150,6 @@ test('note cleanup delete removes the note and prunes orphan tags', async () => 
         backReferences: [],
         orphanedTagNames: ['temp'],
         requiresForce: true,
-        forceReasons: ['orphan_tags']
+        forceReasons: ['orphan_tags'],
     });
 });

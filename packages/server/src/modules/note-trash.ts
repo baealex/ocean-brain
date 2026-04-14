@@ -1,9 +1,5 @@
 import models, { type NoteLayout, type ReminderPriority } from '~/models.js';
-import {
-    createRetentionCutoff,
-    RECOVERY_CLEANUP_BATCH_LIMIT,
-    TRASH_RETENTION_DAYS
-} from './recovery-retention.js';
+import { createRetentionCutoff, RECOVERY_CLEANUP_BATCH_LIMIT, TRASH_RETENTION_DAYS } from './recovery-retention.js';
 import { buildNoteSearchProjection } from './note-search.js';
 
 interface LiveTagRecord {
@@ -124,7 +120,7 @@ const serializeTrashedNote = (note: DeletedNoteRecord): TrashedNoteSummary => ({
     pinned: note.pinned,
     order: note.order,
     layout: note.layout,
-    tagNames: note.tags.map((tag) => tag.name)
+    tagNames: note.tags.map((tag) => tag.name),
 });
 
 const restoreTagIdsInContent = (content: string, tagIdByName: Map<string, number>) => {
@@ -136,9 +132,7 @@ const restoreTagIdsInContent = (content: string, tagIdByName: Map<string, number
                     return contentNode;
                 }
 
-                const tagName = typeof contentNode.props?.tag === 'string'
-                    ? contentNode.props.tag
-                    : null;
+                const tagName = typeof contentNode.props?.tag === 'string' ? contentNode.props.tag : null;
                 const restoredTagId = tagName ? tagIdByName.get(tagName) : null;
 
                 if (!restoredTagId) {
@@ -149,11 +143,11 @@ const restoreTagIdsInContent = (content: string, tagIdByName: Map<string, number
                     ...contentNode,
                     props: {
                         ...contentNode.props,
-                        id: String(restoredTagId)
-                    }
+                        id: String(restoredTagId),
+                    },
                 };
             }),
-            children: node.children ? rewriteNodes(node.children) : node.children
+            children: node.children ? rewriteNodes(node.children) : node.children,
         }));
     };
 
@@ -166,33 +160,21 @@ const restoreTagIdsInContent = (content: string, tagIdByName: Map<string, number
 };
 
 export const createNoteTrashService = (deps: NoteTrashServiceDeps) => ({
-    listTrashedNotes: async (input?: {
-        limit?: number;
-        offset?: number;
-    }): Promise<TrashedNotesResult> => {
-        await deps.purgeExpiredDeletedNotes(
-            createRetentionCutoff(TRASH_RETENTION_DAYS),
-            RECOVERY_CLEANUP_BATCH_LIMIT
-        );
+    listTrashedNotes: async (input?: { limit?: number; offset?: number }): Promise<TrashedNotesResult> => {
+        await deps.purgeExpiredDeletedNotes(createRetentionCutoff(TRASH_RETENTION_DAYS), RECOVERY_CLEANUP_BATCH_LIMIT);
 
         const limit = Math.max(1, Number(input?.limit ?? 25));
         const offset = Math.max(0, Number(input?.offset ?? 0));
-        const [totalCount, notes] = await Promise.all([
-            deps.countDeletedNotes(),
-            deps.listDeletedNotes(offset, limit)
-        ]);
+        const [totalCount, notes] = await Promise.all([deps.countDeletedNotes(), deps.listDeletedNotes(offset, limit)]);
 
         return {
             totalCount,
-            notes: notes.map(serializeTrashedNote)
+            notes: notes.map(serializeTrashedNote),
         };
     },
 
     trashNoteById: async (id: number): Promise<TrashedNoteSummary | null> => {
-        await deps.purgeExpiredDeletedNotes(
-            createRetentionCutoff(TRASH_RETENTION_DAYS),
-            RECOVERY_CLEANUP_BATCH_LIMIT
-        );
+        await deps.purgeExpiredDeletedNotes(createRetentionCutoff(TRASH_RETENTION_DAYS), RECOVERY_CLEANUP_BATCH_LIMIT);
 
         const note = await deps.findLiveNote(id);
 
@@ -205,10 +187,7 @@ export const createNoteTrashService = (deps: NoteTrashServiceDeps) => ({
     },
 
     restoreNoteById: async (id: number) => {
-        await deps.purgeExpiredDeletedNotes(
-            createRetentionCutoff(TRASH_RETENTION_DAYS),
-            RECOVERY_CLEANUP_BATCH_LIMIT
-        );
+        await deps.purgeExpiredDeletedNotes(createRetentionCutoff(TRASH_RETENTION_DAYS), RECOVERY_CLEANUP_BATCH_LIMIT);
 
         const deletedNote = await deps.findDeletedNote(id);
 
@@ -221,12 +200,12 @@ export const createNoteTrashService = (deps: NoteTrashServiceDeps) => ({
         }
 
         return deps.restoreDeletedNote(deletedNote);
-    }
+    },
 });
 
 const includeDeletedNote = {
     reminders: { orderBy: { reminderDate: 'asc' as const } },
-    tags: { orderBy: { name: 'asc' as const } }
+    tags: { orderBy: { name: 'asc' as const } },
 };
 
 const defaultPurgeExpiredDeletedNotes = async (before: Date, limit: number) => {
@@ -234,7 +213,7 @@ const defaultPurgeExpiredDeletedNotes = async (before: Date, limit: number) => {
         where: { deletedAt: { lt: before } },
         orderBy: { deletedAt: 'asc' },
         take: limit,
-        select: { id: true }
+        select: { id: true },
     });
 
     if (expiredNotes.length === 0) {
@@ -251,7 +230,7 @@ const noteTrashService = createNoteTrashService({
     findDeletedNote: async (id) => {
         return models.deletedNote.findUnique({
             where: { id },
-            include: includeDeletedNote
+            include: includeDeletedNote,
         });
     },
     findLiveNote: async (id) => {
@@ -259,8 +238,8 @@ const noteTrashService = createNoteTrashService({
             where: { id },
             include: {
                 reminders: { orderBy: { reminderDate: 'asc' } },
-                tags: { orderBy: { name: 'asc' } }
-            }
+                tags: { orderBy: { name: 'asc' } },
+            },
         });
     },
     listDeletedNotes: async (skip, take) => {
@@ -268,13 +247,13 @@ const noteTrashService = createNoteTrashService({
             skip,
             take,
             orderBy: { deletedAt: 'desc' },
-            include: includeDeletedNote
+            include: includeDeletedNote,
         });
     },
     liveNoteExists: async (id) => {
         const note = await models.note.findUnique({
             where: { id },
-            select: { id: true }
+            select: { id: true },
         });
         return Boolean(note);
     },
@@ -300,10 +279,10 @@ const noteTrashService = createNoteTrashService({
                             priority: reminder.priority,
                             content: reminder.content,
                             createdAt: reminder.createdAt,
-                            updatedAt: reminder.updatedAt
-                        }))
-                    }
-                }
+                            updatedAt: reminder.updatedAt,
+                        })),
+                    },
+                },
             });
 
             await tx.note.delete({ where: { id: note.id } });
@@ -312,14 +291,14 @@ const noteTrashService = createNoteTrashService({
                 await tx.tag.deleteMany({
                     where: {
                         id: { in: note.tags.map((tag) => tag.id) },
-                        notes: { none: {} }
-                    }
+                        notes: { none: {} },
+                    },
                 });
             }
 
             return tx.deletedNote.findUniqueOrThrow({
                 where: { id: note.id },
-                include: includeDeletedNote
+                include: includeDeletedNote,
             });
         });
     },
@@ -330,7 +309,7 @@ const noteTrashService = createNoteTrashService({
             if (tagNames.length > 0) {
                 const existingTags = await tx.tag.findMany({
                     where: { name: { in: tagNames } },
-                    select: { name: true }
+                    select: { name: true },
                 });
                 const existingTagNames = new Set(existingTags.map((tag) => tag.name));
                 const missingTagNames = tagNames.filter((tagName) => !existingTagNames.has(tagName));
@@ -340,22 +319,24 @@ const noteTrashService = createNoteTrashService({
                 }
             }
 
-            const restoreTagIds = tagNames.length > 0
-                ? await tx.tag.findMany({
-                    where: { name: { in: tagNames } },
-                    select: {
-                        id: true,
-                        name: true
-                    }
-                })
-                : [];
+            const restoreTagIds =
+                tagNames.length > 0
+                    ? await tx.tag.findMany({
+                          where: { name: { in: tagNames } },
+                          select: {
+                              id: true,
+                              name: true,
+                          },
+                      })
+                    : [];
 
-            const restoredContent = restoreTagIds.length > 0
-                ? restoreTagIdsInContent(
-                    deletedNote.content,
-                    new Map(restoreTagIds.map((tag) => [tag.name, tag.id]))
-                )
-                : deletedNote.content;
+            const restoredContent =
+                restoreTagIds.length > 0
+                    ? restoreTagIdsInContent(
+                          deletedNote.content,
+                          new Map(restoreTagIds.map((tag) => [tag.name, tag.id])),
+                      )
+                    : deletedNote.content;
 
             const note = await tx.note.create({
                 data: {
@@ -364,7 +345,7 @@ const noteTrashService = createNoteTrashService({
                     content: restoredContent,
                     ...buildNoteSearchProjection({
                         title: deletedNote.title,
-                        content: restoredContent
+                        content: restoredContent,
                     }),
                     createdAt: deletedNote.createdAt,
                     updatedAt: deletedNote.updatedAt,
@@ -376,34 +357,31 @@ const noteTrashService = createNoteTrashService({
                         : {}),
                     ...(deletedNote.reminders.length > 0
                         ? {
-                            reminders: {
-                                create: deletedNote.reminders.map((reminder) => ({
-                                    reminderDate: reminder.reminderDate,
-                                    completed: reminder.completed,
-                                    priority: reminder.priority,
-                                    content: reminder.content,
-                                    createdAt: reminder.createdAt,
-                                    updatedAt: reminder.updatedAt
-                                }))
-                            }
-                        }
-                        : {})
-                }
+                              reminders: {
+                                  create: deletedNote.reminders.map((reminder) => ({
+                                      reminderDate: reminder.reminderDate,
+                                      completed: reminder.completed,
+                                      priority: reminder.priority,
+                                      content: reminder.content,
+                                      createdAt: reminder.createdAt,
+                                      updatedAt: reminder.updatedAt,
+                                  })),
+                              },
+                          }
+                        : {}),
+                },
             });
 
             await tx.deletedNote.delete({ where: { id: deletedNote.id } });
 
             return note;
         });
-    }
+    },
 });
 
 export const listTrashedNotes = noteTrashService.listTrashedNotes;
 export const trashNoteById = noteTrashService.trashNoteById;
 export const restoreTrashedNoteById = noteTrashService.restoreNoteById;
 export const purgeExpiredTrashedNotes = async () => {
-    return defaultPurgeExpiredDeletedNotes(
-        createRetentionCutoff(TRASH_RETENTION_DAYS),
-        RECOVERY_CLEANUP_BATCH_LIMIT
-    );
+    return defaultPurgeExpiredDeletedNotes(createRetentionCutoff(TRASH_RETENTION_DAYS), RECOVERY_CLEANUP_BATCH_LIMIT);
 };

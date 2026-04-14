@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react';
-import { useEffect, useState } from 'react';
 import { useLocation } from '@tanstack/react-router';
 import classNames from 'classnames/bind';
+import type { ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 
 import * as Icon from '~/components/icon';
 import { RestoreParentScroll } from '~/components/shared';
@@ -34,7 +34,8 @@ const LayoutShell = ({ sidebar, topNavigation, children }: LayoutShellProps) => 
                     aria-label="Toggle sidebar"
                     aria-controls={sidebarId}
                     aria-expanded={isMenuOpen}
-                    onClick={() => setIsMenuOpen((prev) => !prev)}>
+                    onClick={() => setIsMenuOpen((prev) => !prev)}
+                >
                     <Icon.Menu className="h-6 w-6" />
                 </button>
             </div>
@@ -43,13 +44,9 @@ const LayoutShell = ({ sidebar, topNavigation, children }: LayoutShellProps) => 
             </aside>
             <main className={cx('center')}>
                 <div className={cx('top')}>
-                    <div className={cx('top-content')}>
-                        {topNavigation}
-                    </div>
+                    <div className={cx('top-content')}>{topNavigation}</div>
                 </div>
-                <div className={cx('content')}>
-                    {children}
-                </div>
+                <div className={cx('content')}>{children}</div>
                 <RestoreParentScroll />
             </main>
         </div>

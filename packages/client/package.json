@@ -6,7 +6,8 @@
     "scripts": {
         "dev": "vite",
         "build": "vite build",
-        "lint": "eslint . --report-unused-disable-directives",
+        "lint": "biome check .",
+        "format": "biome check --write .",
         "preview": "vite preview",
         "test": "vitest",
         "test:ci": "vitest run --coverage --maxWorkers 1",
@@ -47,8 +48,7 @@
     },
     "devDependencies": {
         "@babel/preset-env": "^7.29.0",
-        "@baejino/eslint-config": "^0.1.1",
-        "@baejino/eslint-config-react": "^0.1.1",
+        "@biomejs/biome": "2.4.11",
         "@tailwindcss/vite": "^4.1.18",
         "@testing-library/jest-dom": "^6.9.1",
         "@testing-library/react": "^16.3.2",
@@ -58,7 +58,6 @@
         "@types/react-helmet": "^6.1.11",
         "@vitejs/plugin-react": "^5.1.4",
         "@vitest/coverage-v8": "^4.0.18",
-        "eslint": "^9.39.2",
         "jsdom": "^25.0.1",
         "tailwindcss": "^4.1.18",
         "typescript": "^5.9.3",

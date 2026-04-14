@@ -1,5 +1,5 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 
 import { createMcpAdminService } from '../src/modules/mcp-admin.js';
 
@@ -29,13 +29,13 @@ const createFakeDb = () => {
                     value,
                     id: 1,
                     createdAt: new Date(),
-                    updatedAt: new Date()
+                    updatedAt: new Date(),
                 };
             },
             async upsert({
                 where,
                 create,
-                update
+                update,
             }: {
                 where: { key: string };
                 create: { key: string; value: string };
@@ -49,14 +49,14 @@ const createFakeDb = () => {
                     key: where.key,
                     value: nextValue,
                     createdAt: new Date(),
-                    updatedAt: new Date()
+                    updatedAt: new Date(),
                 };
-            }
+            },
         },
         mcpToken: {
             async findFirst({
                 where,
-                orderBy
+                orderBy,
             }: {
                 where: { revokedAt: Date | null };
                 orderBy: { createdAt: 'desc' | 'asc' };
@@ -72,13 +72,7 @@ const createFakeDb = () => {
 
                 return matches[0] ?? null;
             },
-            async updateMany({
-                where,
-                data
-            }: {
-                where: { revokedAt: Date | null };
-                data: { revokedAt: Date };
-            }) {
+            async updateMany({ where, data }: { where: { revokedAt: Date | null }; data: { revokedAt: Date } }) {
                 let count = 0;
                 for (const token of tokens) {
                     if (token.revokedAt === where.revokedAt) {
@@ -89,40 +83,30 @@ const createFakeDb = () => {
 
                 return { count };
             },
-            async create({
-                data
-            }: {
-                data: { tokenHash: string };
-            }) {
+            async create({ data }: { data: { tokenHash: string } }) {
                 const row: TokenRow = {
                     id: nextId,
                     tokenHash: data.tokenHash,
                     createdAt: new Date(),
                     lastUsedAt: null,
-                    revokedAt: null
+                    revokedAt: null,
                 };
                 nextId += 1;
                 tokens.push(row);
                 return row;
             },
-            async update({
-                where,
-                data
-            }: {
-                where: { id: number };
-                data: { lastUsedAt: Date };
-            }) {
+            async update({ where, data }: { where: { id: number }; data: { lastUsedAt: Date } }) {
                 const row = tokens.find((token) => token.id === where.id);
                 if (!row) {
                     throw new Error(`Missing token row ${where.id}`);
                 }
                 row.lastUsedAt = data.lastUsedAt;
                 return row;
-            }
+            },
         },
         async $transaction<T>(callback: (tx: typeof fakeDb) => Promise<T>) {
             return callback(fakeDb);
-        }
+        },
     };
 
     return { fakeDb, cacheStore, tokens };

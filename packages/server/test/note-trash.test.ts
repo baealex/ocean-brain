@@ -1,10 +1,7 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 
-import {
-    createNoteTrashService,
-    NoteRestoreConflictError
-} from '../src/modules/note-trash.js';
+import { createNoteTrashService, NoteRestoreConflictError } from '../src/modules/note-trash.js';
 
 test('note trash service moves a live note to trash and returns a summary', async () => {
     const movedIds: number[] = [];
@@ -23,14 +20,14 @@ test('note trash service moves a live note to trash and returns a summary', asyn
             tags: [
                 {
                     id: 1,
-                    name: 'temp'
+                    name: 'temp',
                 },
                 {
                     id: 2,
-                    name: 'cleanup'
-                }
+                    name: 'cleanup',
+                },
             ],
-            reminders: []
+            reminders: [],
         }),
         listDeletedNotes: async () => [],
         liveNoteExists: async () => false,
@@ -40,13 +37,13 @@ test('note trash service moves a live note to trash and returns a summary', asyn
                 ...note,
                 deletedAt: new Date('2026-03-31T01:00:00.000Z'),
                 tags: note.tags.map((tag) => ({ name: tag.name })),
-                reminders: []
+                reminders: [],
             };
         },
         purgeExpiredDeletedNotes: async () => 0,
         restoreDeletedNote: async () => {
             throw new Error('restore should not run');
-        }
+        },
     });
 
     const trashed = await service.trashNoteById(7);
@@ -61,7 +58,7 @@ test('note trash service moves a live note to trash and returns a summary', asyn
         pinned: false,
         order: 0,
         layout: 'wide',
-        tagNames: ['temp', 'cleanup']
+        tagNames: ['temp', 'cleanup'],
     });
 });
 
@@ -80,7 +77,7 @@ test('note trash service restores a deleted note', async () => {
             order: 2,
             layout: 'full',
             tags: [{ name: 'restored' }],
-            reminders: []
+            reminders: [],
         }),
         findLiveNote: async () => null,
         listDeletedNotes: async () => [],
@@ -99,9 +96,9 @@ test('note trash service restores a deleted note', async () => {
                 updatedAt: note.updatedAt,
                 pinned: note.pinned,
                 order: note.order,
-                layout: note.layout
+                layout: note.layout,
             };
-        }
+        },
     });
 
     const restored = await service.restoreNoteById(9);
@@ -126,7 +123,7 @@ test('note trash service rejects restore when the live note id already exists', 
             order: 0,
             layout: 'wide',
             tags: [],
-            reminders: []
+            reminders: [],
         }),
         findLiveNote: async () => null,
         listDeletedNotes: async () => [],
@@ -137,12 +134,12 @@ test('note trash service rejects restore when the live note id already exists', 
         purgeExpiredDeletedNotes: async () => 0,
         restoreDeletedNote: async () => {
             throw new Error('restore should not run');
-        }
+        },
     });
 
     await assert.rejects(
         () => service.restoreNoteById(11),
-        (error: unknown) => error instanceof NoteRestoreConflictError
+        (error: unknown) => error instanceof NoteRestoreConflictError,
     );
 });
 
@@ -152,19 +149,21 @@ test('listTrashedNotes runs retention cleanup before returning trash data', asyn
         countDeletedNotes: async () => 1,
         findDeletedNote: async () => null,
         findLiveNote: async () => null,
-        listDeletedNotes: async () => [{
-            id: 4,
-            title: 'Old deleted note',
-            content: 'content',
-            createdAt: new Date('2026-03-01T00:00:00.000Z'),
-            updatedAt: new Date('2026-03-10T12:00:00.000Z'),
-            deletedAt: new Date('2026-03-31T01:00:00.000Z'),
-            pinned: false,
-            order: 0,
-            layout: 'wide',
-            tags: [],
-            reminders: []
-        }],
+        listDeletedNotes: async () => [
+            {
+                id: 4,
+                title: 'Old deleted note',
+                content: 'content',
+                createdAt: new Date('2026-03-01T00:00:00.000Z'),
+                updatedAt: new Date('2026-03-10T12:00:00.000Z'),
+                deletedAt: new Date('2026-03-31T01:00:00.000Z'),
+                pinned: false,
+                order: 0,
+                layout: 'wide',
+                tags: [],
+                reminders: [],
+            },
+        ],
         liveNoteExists: async () => false,
         moveNoteToTrash: async () => {
             throw new Error('trash should not run');
@@ -175,12 +174,12 @@ test('listTrashedNotes runs retention cleanup before returning trash data', asyn
         },
         restoreDeletedNote: async () => {
             throw new Error('restore should not run');
-        }
+        },
     });
 
     const result = await service.listTrashedNotes({
         limit: 25,
-        offset: 0
+        offset: 0,
     });
 
     assert.deepEqual(calls, ['purge']);

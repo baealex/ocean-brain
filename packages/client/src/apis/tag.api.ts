@@ -7,11 +7,7 @@ export interface FetchTagsParams {
     offset?: number;
 }
 
-export function fetchTags({
-    query = '',
-    limit = 50,
-    offset = 0
-}: FetchTagsParams = {}) {
+export function fetchTags({ query = '', limit = 50, offset = 0 }: FetchTagsParams = {}) {
     return graphQuery<{
         allTags: {
             totalCount: number;
@@ -38,9 +34,9 @@ export function fetchTags({
             searchFilter: { query },
             pagination: {
                 limit,
-                offset
-            }
-        }
+                offset,
+            },
+        },
     );
 }
 
@@ -49,15 +45,18 @@ export interface CreateTagParams {
 }
 
 export function createTag({ name = '' }: CreateTagParams) {
-    return graphQuery<{
-        createTag: Pick<Tag, 'id' | 'name'>;
-    }, { name: string }>(
+    return graphQuery<
+        {
+            createTag: Pick<Tag, 'id' | 'name'>;
+        },
+        { name: string }
+    >(
         `mutation CreateTag($name: String!) {
             createTag(name: $name) {
                 id
                 name
             }
         }`,
-        { name }
+        { name },
     );
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal, ModalActionRow, SelectionOptionCard } from '~/components/shared';
 import { Button, Text } from '~/components/ui';
 
@@ -15,26 +15,21 @@ const LAYOUT_OPTIONS = [
     {
         value: 'narrow' as const,
         label: 'Narrow',
-        description: 'Optimized for reading long-form content'
+        description: 'Optimized for reading long-form content',
     },
     {
         value: 'wide' as const,
         label: 'Wide',
-        description: 'Balanced width suitable for most content'
+        description: 'Balanced width suitable for most content',
     },
     {
         value: 'full' as const,
         label: 'Full Width',
-        description: 'Maximize screen space utilization'
-    }
+        description: 'Maximize screen space utilization',
+    },
 ];
 
-export default function LayoutModal({
-    isOpen,
-    onClose,
-    onSave,
-    currentLayout = 'wide'
-}: LayoutModalProps) {
+export default function LayoutModal({ isOpen, onClose, onSave, currentLayout = 'wide' }: LayoutModalProps) {
     const [selectedLayout, setSelectedLayout] = useState<NoteLayout>(currentLayout);
 
     useEffect(() => {
@@ -50,10 +45,7 @@ export default function LayoutModal({
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} variant="compact">
-            <Modal.Header
-                title="Layout Settings"
-                onClose={onClose}
-            />
+            <Modal.Header title="Layout Settings" onClose={onClose} />
             <Modal.Body>
                 <div className="flex flex-col gap-3 sm:gap-4">
                     <div className="flex flex-col gap-2">

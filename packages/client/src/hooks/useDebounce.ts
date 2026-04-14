@@ -1,9 +1,4 @@
-import {
-    useCallback,
-    useEffect,
-    useRef,
-    useState
-} from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 type DebouncedEvent = () => void | Promise<void>;
 
@@ -29,40 +24,40 @@ const useDebounce = (delay: number) => {
         };
     }, [clearPendingTimer]);
 
-    const setEvent = useCallback((fn: DebouncedEvent) => {
-        invocationIdRef.current += 1;
-        const invocationId = invocationIdRef.current;
+    const setEvent = useCallback(
+        (fn: DebouncedEvent) => {
+            invocationIdRef.current += 1;
+            const invocationId = invocationIdRef.current;
 
-        clearPendingTimer();
+            clearPendingTimer();
 
-        if (mountedRef.current) {
-            setIsMounted(true);
-        }
+            if (mountedRef.current) {
+                setIsMounted(true);
+            }
 
-        timerRef.current = setTimeout(() => {
-            timerRef.current = null;
+            timerRef.current = setTimeout(() => {
+                timerRef.current = null;
 
-            void Promise.resolve()
-                .then(fn)
-                .catch(() => undefined)
-                .finally(() => {
-                    if (!mountedRef.current) {
-                        return;
-                    }
+                void Promise.resolve()
+                    .then(fn)
+                    .catch(() => undefined)
+                    .finally(() => {
+                        if (!mountedRef.current) {
+                            return;
+                        }
 
-                    if (invocationIdRef.current !== invocationId) {
-                        return;
-                    }
+                        if (invocationIdRef.current !== invocationId) {
+                            return;
+                        }
 
-                    setIsMounted(false);
-                });
-        }, delay);
-    }, [clearPendingTimer, delay]);
+                        setIsMounted(false);
+                    });
+            }, delay);
+        },
+        [clearPendingTimer, delay],
+    );
 
-    return [
-        isMounted,
-        setEvent
-    ] as const;
+    return [isMounted, setEvent] as const;
 };
 
 export default useDebounce;

@@ -18,14 +18,14 @@ type MockReminderRenderData = {
 
 let mockReminderData: MockReminderRenderData = {
     reminders: [],
-    totalCount: 0
+    totalCount: 0,
 };
 
 vi.mock('~/components/icon', () => ({
     TriangleRight: () => <span aria-hidden="true">TriangleRight</span>,
     TriangleDown: () => <span aria-hidden="true">TriangleDown</span>,
     Plus: () => <span aria-hidden="true">Plus</span>,
-    VerticalDots: () => <span aria-hidden="true">VerticalDots</span>
+    VerticalDots: () => <span aria-hidden="true">VerticalDots</span>,
 }));
 
 vi.mock('~/components/shared', async () => {
@@ -33,14 +33,12 @@ vi.mock('~/components/shared', async () => {
 
     return {
         ...actual,
-        Button: ({
-            children,
-            onClick
-        }: {
-            children: React.ReactNode;
-            onClick?: () => void;
-        }) => <button type="button" onClick={onClick}>{children}</button>,
-        Dropdown: ({ button }: { button: React.ReactNode }) => <div>{button}</div>
+        Button: ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => (
+            <button type="button" onClick={onClick}>
+                {children}
+            </button>
+        ),
+        Dropdown: ({ button }: { button: React.ReactNode }) => <div>{button}</div>,
     };
 });
 
@@ -48,22 +46,22 @@ vi.mock('~/components/ui', async () => {
     const actual = await vi.importActual<object>('~/components/ui');
     return {
         ...actual,
-        Checkbox: () => <button type="button" aria-label="reminder checkbox" />
+        Checkbox: () => <button type="button" aria-label="reminder checkbox" />,
     };
 });
 
 vi.mock('~/components/entities', () => ({
     Reminders: ({ render }: { render: (data: MockReminderRenderData) => React.ReactNode }) => (
         <>{render(mockReminderData)}</>
-    )
+    ),
 }));
 
 vi.mock('~/hooks/resource/useReminderMutate', () => ({
     default: () => ({
         onCreate: vi.fn(),
         onUpdate: vi.fn(),
-        onDelete: vi.fn()
-    })
+        onDelete: vi.fn(),
+    }),
 }));
 
 vi.mock('./ReminderModal', () => ({ default: () => null }));
@@ -72,7 +70,7 @@ describe('<ReminderPanel />', () => {
     beforeEach(() => {
         mockReminderData = {
             reminders: [],
-            totalCount: 0
+            totalCount: 0,
         };
     });
 
@@ -90,10 +88,10 @@ describe('<ReminderPanel />', () => {
                     noteId: 'note-1',
                     reminderDate: String(Date.now() + 60_000),
                     completed: false,
-                    content: 'Follow up'
-                }
+                    content: 'Follow up',
+                },
             ],
-            totalCount: 1
+            totalCount: 1,
         };
 
         render(<ReminderPanel noteId="note-1" />);

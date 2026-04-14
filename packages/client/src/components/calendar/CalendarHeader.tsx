@@ -1,16 +1,20 @@
 import * as Icon from '~/components/icon';
-import {
-    Button,
-    Select,
-    SelectItem,
-    Text
-} from '~/components/ui';
+import { Button, Select, SelectItem, Text } from '~/components/ui';
 import type { CalendarDisplayType } from './types';
 
 const MONTHS = [
-    'January', 'February', 'March', 'April',
-    'May', 'June', 'July', 'August',
-    'September', 'October', 'November', 'December'
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
 ];
 
 interface Props {
@@ -23,15 +27,7 @@ interface Props {
     onTypeChange: (type: CalendarDisplayType) => void;
 }
 
-export const CalendarHeader = ({
-    month,
-    year,
-    type,
-    onPrevMonth,
-    onNextMonth,
-    onToday,
-    onTypeChange
-}: Props) => {
+export const CalendarHeader = ({ month, year, type, onPrevMonth, onNextMonth, onToday, onTypeChange }: Props) => {
     const headerDescription = 'Track note activity and reminders across the month';
 
     return (
@@ -43,7 +39,8 @@ export const CalendarHeader = ({
                         variant="display"
                         weight="bold"
                         tracking="tighter"
-                        className="text-2xl leading-none sm:text-[2.15rem]">
+                        className="text-2xl leading-none sm:text-[2.15rem]"
+                    >
                         {MONTHS[month - 1]}
                     </Text>
                     <Text
@@ -52,15 +49,12 @@ export const CalendarHeader = ({
                         weight="medium"
                         tone="secondary"
                         tracking="tight"
-                        className="pb-0.5">
+                        className="pb-0.5"
+                    >
                         {year}
                     </Text>
                 </div>
-                <Text
-                    as="p"
-                    variant="meta"
-                    weight="medium"
-                    tone="secondary">
+                <Text as="p" variant="meta" weight="medium" tone="secondary">
                     {headerDescription}
                 </Text>
             </div>
@@ -76,7 +70,8 @@ export const CalendarHeader = ({
                             value={type}
                             onValueChange={(value) => onTypeChange(value as CalendarDisplayType)}
                             variant="ghost"
-                            size="sm">
+                            size="sm"
+                        >
                             <SelectItem value="create">Created</SelectItem>
                             <SelectItem value="update">Updated</SelectItem>
                         </Select>

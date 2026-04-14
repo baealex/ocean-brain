@@ -6,7 +6,9 @@ const mockCreate = vi.fn();
 
 vi.mock('~/hooks/resource/useNoteMutate', () => ({ default: () => ({ onCreate: mockCreate }) }));
 
-vi.mock('./PinnedNotesPanel', () => ({ default: () => <div data-testid="pinned-notes-panel">Pinned notes panel</div> }));
+vi.mock('./PinnedNotesPanel', () => ({
+    default: () => <div data-testid="pinned-notes-panel">Pinned notes panel</div>,
+}));
 
 describe('<SidebarPrimaryActions />', () => {
     it('triggers note creation from the capture action and renders the pinned panel', () => {

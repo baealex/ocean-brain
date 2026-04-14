@@ -4,23 +4,25 @@ import {
     validateCalendarSearch,
     validateHomeSearch,
     validatePaginationSearch,
-    validateSearchPageSearch
+    validateSearchPageSearch,
 } from './route-search';
 
 describe('route-search validators', () => {
     it('normalizes invalid home search input', () => {
-        expect(validateHomeSearch({
-            page: '0',
-            limit: 'foo',
-            sortBy: 'invalid',
-            sortOrder: 'up',
-            pinnedFirst: 'true'
-        })).toEqual({
+        expect(
+            validateHomeSearch({
+                page: '0',
+                limit: 'foo',
+                sortBy: 'invalid',
+                sortOrder: 'up',
+                pinnedFirst: 'true',
+            }),
+        ).toEqual({
             page: 1,
             limit: undefined,
             sortBy: 'updatedAt',
             sortOrder: 'desc',
-            pinnedFirst: true
+            pinnedFirst: true,
         });
     });
 
@@ -29,24 +31,28 @@ describe('route-search validators', () => {
     });
 
     it('reads search page query and page', () => {
-        expect(validateSearchPageSearch({
-            page: '3',
-            query: 'ocean'
-        })).toEqual({
+        expect(
+            validateSearchPageSearch({
+                page: '3',
+                query: 'ocean',
+            }),
+        ).toEqual({
             page: 3,
-            query: 'ocean'
+            query: 'ocean',
         });
     });
 
     it('bounds calendar search values', () => {
-        expect(validateCalendarSearch({
-            year: '10000',
-            month: '0',
-            type: 'invalid'
-        })).toEqual({
+        expect(
+            validateCalendarSearch({
+                year: '10000',
+                month: '0',
+                type: 'invalid',
+            }),
+        ).toEqual({
             year: dayjs().year(),
             month: dayjs().month() + 1,
-            type: 'create'
+            type: 'create',
         });
     });
 });

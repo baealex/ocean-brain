@@ -1,14 +1,13 @@
 import type { Request } from 'express';
-
-import type { Controller } from '~/types/index.js';
 import { compareSharedSecret } from '~/modules/auth.js';
 import type { AuthConfig } from '~/modules/auth-mode.js';
 import { createAppError } from '~/modules/error-handler.js';
+import type { Controller } from '~/types/index.js';
 
 const buildSessionResponse = (authConfig: AuthConfig, req: Request) => ({
     mode: authConfig.mode,
     authRequired: authConfig.mode === 'password',
-    authenticated: authConfig.mode === 'password' ? Boolean(req.session?.authenticated) : false
+    authenticated: authConfig.mode === 'password' ? Boolean(req.session?.authenticated) : false,
 });
 
 const regenerateSession = async (req: Request) => {
@@ -76,20 +75,15 @@ const sanitizeRedirectPath = (value: unknown) => {
     }
 };
 
-const escapeHtml = (value: string) => value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll('\'', '&#39;');
+const escapeHtml = (value: string) =>
+    value
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
 
-const renderLoginPage = ({
-    nextPath,
-    errorMessage
-}: {
-    nextPath: string;
-    errorMessage?: string;
-}) => {
+const renderLoginPage = ({ nextPath, errorMessage }: { nextPath: string; errorMessage?: string }) => {
     const escapedNextPath = escapeHtml(nextPath);
     const escapedErrorMessage = errorMessage ? escapeHtml(errorMessage) : '';
 
@@ -259,9 +253,7 @@ export const createLoginHandler = (authConfig: AuthConfig): Controller => {
             throw createAppError(409, 'AUTH_DISABLED', 'Login is unavailable while auth mode is disabled.');
         }
 
-        const password = typeof req.body?.password === 'string'
-            ? req.body.password
-            : '';
+        const password = typeof req.body?.password === 'string' ? req.body.password : '';
 
         if (!password || !compareSharedSecret(authConfig.password, password)) {
             throw createAppError(401, 'UNAUTHORIZED', 'Invalid password');
@@ -295,18 +287,17 @@ export const createLoginPageSubmitHandler = (authConfig: AuthConfig): Controller
             return;
         }
 
-        const password = typeof req.body?.password === 'string'
-            ? req.body.password
-            : '';
+        const password = typeof req.body?.password === 'string' ? req.body.password : '';
 
         if (!password || !compareSharedSecret(authConfig.password, password)) {
-            res
-                .status(401)
+            res.status(401)
                 .type('html')
-                .send(renderLoginPage({
-                    nextPath,
-                    errorMessage: 'Invalid password'
-                }))
+                .send(
+                    renderLoginPage({
+                        nextPath,
+                        errorMessage: 'Invalid password',
+                    }),
+                )
                 .end();
             return;
         }
@@ -336,11 +327,13 @@ export const createLogoutHandler = (authConfig: AuthConfig): Controller => {
             await destroySession(req);
         }
 
-        res.status(200).json({
-            mode: authConfig.mode,
-            authRequired: authConfig.mode === 'password',
-            authenticated: false
-        }).end();
+        res.status(200)
+            .json({
+                mode: authConfig.mode,
+                authRequired: authConfig.mode === 'password',
+                authenticated: false,
+            })
+            .end();
     };
 };
 

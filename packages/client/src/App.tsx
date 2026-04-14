@@ -1,11 +1,10 @@
 import { handyMediaQuery } from '@baejino/handy';
-import { useEffect } from 'react';
 import { RouterProvider } from '@tanstack/react-router';
+import { useEffect } from 'react';
 
 import { Providers } from '~/components/app';
-
-import { getStoredTheme } from '~/store/theme-dom';
 import { useTheme } from '~/store/theme';
+import { getStoredTheme } from '~/store/theme-dom';
 
 import { router } from './router';
 
@@ -20,14 +19,11 @@ function App() {
             setTheme(storedTheme);
         }
 
-        return handyMediaQuery.listenThemeChange(
-            (isDark) => {
-                if (!getStoredTheme()) {
-                    setSystemTheme(isDark ? 'dark' : 'light');
-                }
-            },
-            storedTheme == null
-        );
+        return handyMediaQuery.listenThemeChange((isDark) => {
+            if (!getStoredTheme()) {
+                setSystemTheme(isDark ? 'dark' : 'light');
+            }
+        }, storedTheme == null);
     }, [setSystemTheme, setTheme]);
 
     return (

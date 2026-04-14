@@ -7,12 +7,7 @@ interface ImageProps {
     className?: string;
 }
 
-export default function Image({
-    src,
-    alt,
-    loading = 'lazy',
-    className
-}: ImageProps) {
+export default function Image({ src, alt, loading = 'lazy', className }: ImageProps) {
     const ref = useRef<HTMLImageElement>(null);
 
     useEffect(() => {
@@ -38,11 +33,17 @@ export default function Image({
     return (
         <>
             {loading !== 'lazy' ? (
-                <img src={src} alt={alt} className={`${className ?? ''} dark:brightness-[0.85] dark:saturate-[0.9]`.trim()} />
+                <img
+                    src={src}
+                    alt={alt}
+                    className={`${className ?? ''} dark:brightness-[0.85] dark:saturate-[0.9]`.trim()}
+                />
             ) : (
                 <img
                     ref={ref}
-                    src={'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIW2O4evXqfwAIgQN/QHwrfwAAAABJRU5ErkJggg=='}
+                    src={
+                        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIW2O4evXqfwAIgQN/QHwrfwAAAABJRU5ErkJggg=='
+                    }
                     alt={alt}
                     data-src={src}
                     className={`${className ?? ''} dark:brightness-[0.85] dark:saturate-[0.9]`.trim()}

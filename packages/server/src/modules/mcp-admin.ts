@@ -38,10 +38,7 @@ interface McpAdminDb {
         }) => Promise<unknown>;
     };
     mcpToken: {
-        findFirst: (args: {
-            where: { revokedAt: Date | null };
-            orderBy: { createdAt: 'desc' | 'asc' };
-        }) => Promise<{
+        findFirst: (args: { where: { revokedAt: Date | null }; orderBy: { createdAt: 'desc' | 'asc' } }) => Promise<{
             id: number;
             tokenHash: string;
             createdAt: Date;
@@ -64,13 +61,13 @@ const toStatus = (
         id: number;
         createdAt: Date;
         lastUsedAt: Date | null;
-    } | null
+    } | null,
 ): McpAdminStatus => {
     if (!activeToken) {
         return {
             enabled,
             hasActiveToken: false,
-            token: null
+            token: null,
         };
     }
 
@@ -80,8 +77,8 @@ const toStatus = (
         token: {
             id: String(activeToken.id),
             createdAt: activeToken.createdAt.toISOString(),
-            lastUsedAt: activeToken.lastUsedAt ? activeToken.lastUsedAt.toISOString() : null
-        }
+            lastUsedAt: activeToken.lastUsedAt ? activeToken.lastUsedAt.toISOString() : null,
+        },
     };
 };
 
@@ -91,7 +88,7 @@ export const createMcpAdminService = (db: McpAdminDb = models as unknown as McpA
             const enabledCache = await db.cache.findUnique({ where: { key: MCP_ENABLED_CACHE_KEY } });
             const activeToken = await db.mcpToken.findFirst({
                 where: { revokedAt: null },
-                orderBy: { createdAt: 'desc' }
+                orderBy: { createdAt: 'desc' },
             });
 
             return toStatus(enabledCache?.value === 'true', activeToken);
@@ -102,8 +99,8 @@ export const createMcpAdminService = (db: McpAdminDb = models as unknown as McpA
                 update: { value: String(enabled) },
                 create: {
                     key: MCP_ENABLED_CACHE_KEY,
-                    value: String(enabled)
-                }
+                    value: String(enabled),
+                },
             });
         },
         async rotateToken() {
@@ -113,7 +110,7 @@ export const createMcpAdminService = (db: McpAdminDb = models as unknown as McpA
             await db.$transaction(async (transaction) => {
                 await transaction.mcpToken.updateMany({
                     where: { revokedAt: null },
-                    data: { revokedAt: now }
+                    data: { revokedAt: now },
                 });
                 await transaction.mcpToken.create({ data: { tokenHash: issued.hash } });
             });
@@ -123,35 +120,35 @@ export const createMcpAdminService = (db: McpAdminDb = models as unknown as McpA
         async revokeActiveToken() {
             await db.mcpToken.updateMany({
                 where: { revokedAt: null },
-                data: { revokedAt: new Date() }
+                data: { revokedAt: new Date() },
             });
         },
         async validatePresentedToken(token) {
             const activeToken = await db.mcpToken.findFirst({
                 where: { revokedAt: null },
-                orderBy: { createdAt: 'desc' }
+                orderBy: { createdAt: 'desc' },
             });
 
             if (!activeToken) {
                 return {
                     ok: false,
-                    reason: 'not_configured'
+                    reason: 'not_configured',
                 };
             }
 
             if (!verifyMcpToken(activeToken.tokenHash, token)) {
                 return {
                     ok: false,
-                    reason: 'forbidden'
+                    reason: 'forbidden',
                 };
             }
 
             await db.mcpToken.update({
                 where: { id: activeToken.id },
-                data: { lastUsedAt: new Date() }
+                data: { lastUsedAt: new Date() },
             });
 
             return { ok: true };
-        }
+        },
     };
 };

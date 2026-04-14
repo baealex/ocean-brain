@@ -1,62 +1,39 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-
+import { fetchMcpAdminStatus, revokeMcpToken, rotateMcpToken, setMcpEnabled } from '~/apis/mcp-admin.api';
 import { Button, PageLayout, SurfaceCard } from '~/components/shared';
-import {
-    Input,
-    Label,
-    Switch,
-    Text,
-    ToggleGroup,
-    ToggleGroupItem,
-    Textarea,
-    useToast
-} from '~/components/ui';
-import {
-    fetchMcpAdminStatus,
-    revokeMcpToken,
-    rotateMcpToken,
-    setMcpEnabled
-} from '~/apis/mcp-admin.api';
+import { Input, Label, Switch, Text, Textarea, ToggleGroup, ToggleGroupItem, useToast } from '~/components/ui';
 
 const mcpAdminStatusQueryKey = ['mcp-admin', 'status'] as const;
 
 const createTokenFileMcpJsonSnippet = (serverUrl: string) => {
-    return JSON.stringify({
-        mcpServers: {
-            'ocean-brain': {
-                command: 'npx',
-                args: [
-                    '-y',
-                    'ocean-brain',
-                    'mcp',
-                    '--server',
-                    serverUrl,
-                    '--token-file',
-                    '/path/to/token.txt'
-                ]
-            }
-        }
-    }, null, 2);
+    return JSON.stringify(
+        {
+            mcpServers: {
+                'ocean-brain': {
+                    command: 'npx',
+                    args: ['-y', 'ocean-brain', 'mcp', '--server', serverUrl, '--token-file', '/path/to/token.txt'],
+                },
+            },
+        },
+        null,
+        2,
+    );
 };
 
 const createInlineTokenMcpJsonSnippet = (serverUrl: string) => {
-    return JSON.stringify({
-        mcpServers: {
-            'ocean-brain': {
-                command: 'npx',
-                args: [
-                    '-y',
-                    'ocean-brain',
-                    'mcp',
-                    '--server',
-                    serverUrl,
-                    '--token',
-                    'your-token-here'
-                ]
-            }
-        }
-    }, null, 2);
+    return JSON.stringify(
+        {
+            mcpServers: {
+                'ocean-brain': {
+                    command: 'npx',
+                    args: ['-y', 'ocean-brain', 'mcp', '--server', serverUrl, '--token', 'your-token-here'],
+                },
+            },
+        },
+        null,
+        2,
+    );
 };
 
 const McpSetting = () => {
@@ -69,7 +46,7 @@ const McpSetting = () => {
 
     const { data: status, isLoading } = useQuery({
         queryKey: mcpAdminStatusQueryKey,
-        queryFn: fetchMcpAdminStatus
+        queryFn: fetchMcpAdminStatus,
     });
 
     const setEnabledMutation = useMutation({
@@ -77,7 +54,7 @@ const McpSetting = () => {
         onSuccess: (nextStatus) => {
             queryClient.setQueryData(mcpAdminStatusQueryKey, nextStatus);
             toast(nextStatus.enabled ? 'MCP access enabled.' : 'MCP access disabled.');
-        }
+        },
     });
 
     const rotateTokenMutation = useMutation({
@@ -86,7 +63,7 @@ const McpSetting = () => {
             setIssuedToken(token);
             toast('A new MCP token has been issued.');
             await queryClient.invalidateQueries({ queryKey: mcpAdminStatusQueryKey });
-        }
+        },
     });
 
     const revokeTokenMutation = useMutation({
@@ -95,7 +72,7 @@ const McpSetting = () => {
             setIssuedToken('');
             queryClient.setQueryData(mcpAdminStatusQueryKey, nextStatus);
             toast('The active MCP token has been revoked.');
-        }
+        },
     });
 
     const enabled = status?.enabled ?? false;
@@ -103,27 +80,30 @@ const McpSetting = () => {
     const canToggle = !isLoading && !setEnabledMutation.isPending;
     const headerTextClassName = 'space-y-1';
     const cardBodyClassName = 'space-y-4.5';
-    const statusToggleClassName = 'inline-flex items-center gap-3 rounded-[14px] border border-border-subtle bg-muted px-3 py-2';
+    const statusToggleClassName =
+        'inline-flex items-center gap-3 rounded-[14px] border border-border-subtle bg-muted px-3 py-2';
     const activeTokenBadgeClassName = 'rounded-full border border-border-subtle bg-hover-subtle px-2.5 py-1';
     const guidePanelClassName = 'space-y-3 rounded-[16px] border border-border-subtle bg-surface px-4 py-3';
-    const guideSnippetClassName = 'overflow-x-auto rounded-[14px] border border-border-subtle bg-surface px-4 py-3 text-xs text-fg-secondary';
+    const guideSnippetClassName =
+        'overflow-x-auto rounded-[14px] border border-border-subtle bg-surface px-4 py-3 text-xs text-fg-secondary';
     const cardTitleProps = {
         variant: 'subheading' as const,
         weight: 'medium' as const,
-        tracking: 'tight' as const
+        tracking: 'tight' as const,
     };
     const fieldLabelClassName = 'font-medium text-fg-tertiary';
-    const activeGuide = guideMode === 'token-file'
-        ? {
-            title: 'Token file',
-            description: 'Recommended. Keeps the token out of config.',
-            snippet: createTokenFileMcpJsonSnippet(serverUrl)
-        }
-        : {
-            title: 'Inline token',
-            description: 'Useful for quick local testing.',
-            snippet: createInlineTokenMcpJsonSnippet(serverUrl)
-        };
+    const activeGuide =
+        guideMode === 'token-file'
+            ? {
+                  title: 'Token file',
+                  description: 'Recommended. Keeps the token out of config.',
+                  snippet: createTokenFileMcpJsonSnippet(serverUrl),
+              }
+            : {
+                  title: 'Inline token',
+                  description: 'Useful for quick local testing.',
+                  snippet: createInlineTokenMcpJsonSnippet(serverUrl),
+              };
 
     return (
         <PageLayout title="MCP" variant="default" description="Manage MCP access, tokens, and connection details">
@@ -162,7 +142,8 @@ const McpSetting = () => {
                                     Token Management
                                 </Text>
                                 <Text as="p" variant="meta" tone="secondary" className="max-w-[64ch]">
-                                    Ocean Brain supports one active MCP token at a time. Rotating immediately invalidates the previous one.
+                                    Ocean Brain supports one active MCP token at a time. Rotating immediately
+                                    invalidates the previous one.
                                 </Text>
                             </div>
                             <Text
@@ -170,33 +151,33 @@ const McpSetting = () => {
                                 variant="meta"
                                 weight="medium"
                                 tone={hasActiveToken ? 'secondary' : 'tertiary'}
-                                className={activeTokenBadgeClassName}>
+                                className={activeTokenBadgeClassName}
+                            >
                                 {hasActiveToken ? '1 active token' : 'No active token'}
                             </Text>
                         </div>
                         <div className="flex flex-wrap gap-2.5">
                             <Button
                                 onClick={() => rotateTokenMutation.mutate(undefined)}
-                                isLoading={rotateTokenMutation.isPending}>
+                                isLoading={rotateTokenMutation.isPending}
+                            >
                                 Rotate token
                             </Button>
                             <Button
                                 variant="soft-danger"
                                 onClick={() => revokeTokenMutation.mutate()}
                                 isLoading={revokeTokenMutation.isPending}
-                                disabled={!hasActiveToken}>
+                                disabled={!hasActiveToken}
+                            >
                                 Revoke token
                             </Button>
                         </div>
                         {issuedToken && (
                             <div className="space-y-2.5">
-                                <Label htmlFor="issued-mcp-token" className={fieldLabelClassName}>Issued token</Label>
-                                <Textarea
-                                    id="issued-mcp-token"
-                                    rows={3}
-                                    readOnly
-                                    value={issuedToken}
-                                />
+                                <Label htmlFor="issued-mcp-token" className={fieldLabelClassName}>
+                                    Issued token
+                                </Label>
+                                <Textarea id="issued-mcp-token" rows={3} readOnly value={issuedToken} />
                             </div>
                         )}
                     </div>
@@ -213,7 +194,9 @@ const McpSetting = () => {
                             </Text>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="mcp-server-url" className={fieldLabelClassName}>Server URL</Label>
+                            <Label htmlFor="mcp-server-url" className={fieldLabelClassName}>
+                                Server URL
+                            </Label>
                             <Input
                                 id="mcp-server-url"
                                 value={serverUrl}
@@ -230,7 +213,8 @@ const McpSetting = () => {
                                     if (value === 'token-file' || value === 'inline-token') {
                                         setGuideMode(value);
                                     }
-                                }}>
+                                }}
+                            >
                                 <ToggleGroupItem value="token-file">Token file</ToggleGroupItem>
                                 <ToggleGroupItem value="inline-token">Inline token</ToggleGroupItem>
                             </ToggleGroup>
@@ -243,9 +227,7 @@ const McpSetting = () => {
                                         {activeGuide.description}
                                     </Text>
                                 </div>
-                                <pre className={guideSnippetClassName}>
-                                    {activeGuide.snippet}
-                                </pre>
+                                <pre className={guideSnippetClassName}>{activeGuide.snippet}</pre>
                             </div>
                         </div>
                     </div>

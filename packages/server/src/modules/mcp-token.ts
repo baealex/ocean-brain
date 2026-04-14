@@ -9,10 +9,7 @@ export interface IssuedMcpToken {
 }
 
 const toTokenHash = (token: string) => {
-    return crypto
-        .createHash(HASH_ALGORITHM)
-        .update(token, 'utf8')
-        .digest('hex');
+    return crypto.createHash(HASH_ALGORITHM).update(token, 'utf8').digest('hex');
 };
 
 export const issueMcpToken = (): IssuedMcpToken => {
@@ -21,7 +18,7 @@ export const issueMcpToken = (): IssuedMcpToken => {
 
     return {
         plaintext,
-        hash
+        hash,
     };
 };
 

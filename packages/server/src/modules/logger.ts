@@ -1,44 +1,26 @@
 import type { LoggerOptions } from 'express-winston';
 import expressWinston from 'express-winston';
-import winston from 'winston';
 import type { TransformableInfo } from 'logform';
+import winston from 'winston';
 
 export const loggerOptions: LoggerOptions = {
-    transports: [
-        new winston.transports.Console()
-    ],
+    transports: [new winston.transports.Console()],
     meta: true,
-    requestWhitelist: [
-        'httpVersion',
-        'method',
-        'originalUrl',
-        'url',
-        'query',
-        'params',
-        'ip',
-        'headers'
-    ],
-    responseWhitelist: [
-        'statusCode'
-    ],
-    headerBlacklist: [
-        'authorization',
-        'cookie',
-        'set-cookie',
-        'x-api-key'
-    ],
+    requestWhitelist: ['httpVersion', 'method', 'originalUrl', 'url', 'query', 'params', 'ip', 'headers'],
+    responseWhitelist: ['statusCode'],
+    headerBlacklist: ['authorization', 'cookie', 'set-cookie', 'x-api-key'],
     requestFilter: (
         req: { headers?: Record<string, string | string[] | undefined> } & Record<string, unknown>,
-        propName: string
+        propName: string,
     ): unknown => {
         if (propName === 'headers') {
             const h = req.headers || {};
             return {
                 'user-agent': h['user-agent'],
                 'content-type': h['content-type'],
-                'accept': h['accept'],
+                accept: h['accept'],
                 'x-forwarded-for': h['x-forwarded-for'],
-                'x-real-ip': h['x-real-ip']
+                'x-real-ip': h['x-real-ip'],
             };
         }
         return (req as Record<string, unknown>)[propName];
@@ -62,14 +44,15 @@ export const loggerOptions: LoggerOptions = {
             const fwd = headers['x-forwarded-for'];
             const fwdFirst = typeof fwd === 'string' ? fwd.split(',')[0].trim() : undefined;
             const realIp = fwdFirst || headers['x-real-ip'];
-            const socketIp = (req as unknown as { ip?: string; socket?: { remoteAddress?: string } }).ip
-                || (req as unknown as { socket?: { remoteAddress?: string } }).socket?.remoteAddress;
+            const socketIp =
+                (req as unknown as { ip?: string; socket?: { remoteAddress?: string } }).ip ||
+                (req as unknown as { socket?: { remoteAddress?: string } }).socket?.remoteAddress;
             const clientIp = fwdFirst || realIp || socketIp || '';
             return `${info.timestamp as string} ${info.level as string}: [${status ?? ''}] ${method || ''} ${url || ''} ${rt ?? ''}ms ip="${clientIp}" ua="${ua || ''}"`;
-        })
+        }),
     ),
     colorize: true,
-    expressFormat: false
+    expressFormat: false,
 };
 
 export default expressWinston.logger(loggerOptions);

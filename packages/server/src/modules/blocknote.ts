@@ -42,25 +42,25 @@ type BlockNoteContent = BlockNoteInline[] | BlockNoteTableContent;
 interface MarkdownImportDeps {
     ensureTag: (name: string) => Promise<
         | {
-            id: string;
-            name: string;
-        }
+              id: string;
+              name: string;
+          }
         | {
-            tag: {
-                id: string;
-                name: string;
-            };
-        }
+              tag: {
+                  id: string;
+                  name: string;
+              };
+          }
     >;
-    findNotesByTitle: (title: string) => Promise<Array<{
-        id: string;
-        title: string;
-    }>>;
+    findNotesByTitle: (title: string) => Promise<
+        Array<{
+            id: string;
+            title: string;
+        }>
+    >;
 }
 
-const UNSUPPORTED_MARKDOWN_BLOCK_TYPES = new Set([
-    'tableOfContents'
-]);
+const UNSUPPORTED_MARKDOWN_BLOCK_TYPES = new Set(['tableOfContents']);
 const TAG_PLACEHOLDER_PREFIX = 'OCEAN_BRAIN_TAG_';
 const TAG_PLACEHOLDER_SUFFIX = '_TOKEN';
 
@@ -70,18 +70,18 @@ const defaultMarkdownImportDeps: MarkdownImportDeps = {
         const notes = await models.note.findMany({
             select: {
                 id: true,
-                title: true
+                title: true,
             },
             where: { title },
             orderBy: { createdAt: 'asc' },
-            take: 2
+            take: 2,
         });
 
         return notes.map((note) => ({
             id: String(note.id),
-            title: note.title
+            title: note.title,
         }));
-    }
+    },
 };
 
 function stripUnsupportedMarkdownBlocks(blocks: BlockNote[]): BlockNote[] {
@@ -89,9 +89,7 @@ function stripUnsupportedMarkdownBlocks(blocks: BlockNote[]): BlockNote[] {
         .filter((block) => !UNSUPPORTED_MARKDOWN_BLOCK_TYPES.has(block.type))
         .map((block) => ({
             ...block,
-            children: block.children?.length
-                ? stripUnsupportedMarkdownBlocks(block.children)
-                : []
+            children: block.children?.length ? stripUnsupportedMarkdownBlocks(block.children) : [],
         }));
 }
 
@@ -105,7 +103,7 @@ function isTableContent(content: BlockNoteContent | undefined): content is Block
 
 function mapBlockContent(
     content: BlockNoteContent | undefined,
-    mapInline: (inline: BlockNoteInline) => BlockNoteInline
+    mapInline: (inline: BlockNoteInline) => BlockNoteInline,
 ): BlockNoteContent | undefined {
     if (Array.isArray(content)) {
         return content.map(mapInline);
@@ -121,15 +119,15 @@ function mapBlockContent(
             ...row,
             cells: row.cells?.map((cell) => ({
                 ...cell,
-                content: cell.content?.map(mapInline)
-            }))
-        }))
+                content: cell.content?.map(mapInline),
+            })),
+        })),
     };
 }
 
 async function mapBlockContentAsync(
     content: BlockNoteContent | undefined,
-    mapInline: (inline: BlockNoteInline) => Promise<BlockNoteInline[]>
+    mapInline: (inline: BlockNoteInline) => Promise<BlockNoteInline[]>,
 ): Promise<BlockNoteContent | undefined> {
     if (Array.isArray(content)) {
         return (await Promise.all(content.map(mapInline))).flat();
@@ -147,20 +145,15 @@ async function mapBlockContentAsync(
                 cells: await Promise.all(
                     (row.cells ?? []).map(async (cell) => ({
                         ...cell,
-                        content: cell.content
-                            ? (await Promise.all(cell.content.map(mapInline))).flat()
-                            : cell.content
-                    }))
-                )
-            }))
-        )
+                        content: cell.content ? (await Promise.all(cell.content.map(mapInline))).flat() : cell.content,
+                    })),
+                ),
+            })),
+        ),
     };
 }
 
-function visitBlockContent(
-    content: BlockNoteContent | undefined,
-    visitInline: (inline: BlockNoteInline) => void
-) {
+function visitBlockContent(content: BlockNoteContent | undefined, visitInline: (inline: BlockNoteInline) => void) {
     if (Array.isArray(content)) {
         for (const inline of content) {
             visitInline(inline);
@@ -183,45 +176,40 @@ function visitBlockContent(
 
 function mapBlocks(
     blocks: BlockNote[],
-    mapContent: (content: BlockNoteContent | undefined) => BlockNoteContent | undefined
+    mapContent: (content: BlockNoteContent | undefined) => BlockNoteContent | undefined,
 ): BlockNote[] {
     return blocks.map((block) => ({
         ...block,
         content: mapContent(block.content),
-        children: block.children?.length
-            ? mapBlocks(block.children, mapContent)
-            : []
+        children: block.children?.length ? mapBlocks(block.children, mapContent) : [],
     }));
 }
 
 async function mapBlocksAsync(
     blocks: BlockNote[],
-    mapContent: (content: BlockNoteContent | undefined) => Promise<BlockNoteContent | undefined>
+    mapContent: (content: BlockNoteContent | undefined) => Promise<BlockNoteContent | undefined>,
 ): Promise<BlockNote[]> {
     return Promise.all(
         blocks.map(async (block) => ({
             ...block,
             content: await mapContent(block.content),
-            children: block.children?.length
-                ? await mapBlocksAsync(block.children, mapContent)
-                : []
-        }))
+            children: block.children?.length ? await mapBlocksAsync(block.children, mapContent) : [],
+        })),
     );
 }
 
 function preprocessCustomInlineContent(
     blocks: BlockNote[],
     placeholderToTag: Map<string, string>,
-    nextPlaceholderIndex: { value: number }
+    nextPlaceholderIndex: { value: number },
 ): BlockNote[] {
-    return mapBlocks(
-        blocks,
-        (content) => mapBlockContent(content, (inline) => {
+    return mapBlocks(blocks, (content) =>
+        mapBlockContent(content, (inline) => {
             if (inline.type === 'reference') {
                 return {
                     type: 'text',
                     text: `[[${inline.props?.title || inline.props?.id || ''}]]`,
-                    styles: {}
+                    styles: {},
                 };
             }
             if (inline.type === 'tag') {
@@ -231,11 +219,11 @@ function preprocessCustomInlineContent(
                 return {
                     type: 'text',
                     text: placeholder,
-                    styles: {}
+                    styles: {},
                 };
             }
             return inline;
-        })
+        }),
     );
 }
 
@@ -260,20 +248,16 @@ function preprocessMarkdownExplicitTags(markdown: string) {
 
     return {
         markdown: preprocessedMarkdown,
-        placeholderToTag
+        placeholderToTag,
     };
 }
 
-function findTagPlaceholderAtCursor(
-    text: string,
-    cursor: number,
-    placeholderToTag: Map<string, string>
-) {
+function findTagPlaceholderAtCursor(text: string, cursor: number, placeholderToTag: Map<string, string>) {
     for (const [placeholder, tagToken] of placeholderToTag.entries()) {
         if (text.startsWith(placeholder, cursor)) {
             return {
                 placeholder,
-                tagToken
+                tagToken,
             };
         }
     }
@@ -281,13 +265,9 @@ function findTagPlaceholderAtCursor(
     return null;
 }
 
-function restoreRemainingTagPlaceholders(
-    blocks: BlockNote[],
-    placeholderToTag: Map<string, string>
-): BlockNote[] {
-    return mapBlocks(
-        blocks,
-        (content) => mapBlockContent(content, (inline) => {
+function restoreRemainingTagPlaceholders(blocks: BlockNote[], placeholderToTag: Map<string, string>): BlockNote[] {
+    return mapBlocks(blocks, (content) =>
+        mapBlockContent(content, (inline) => {
             if (inline.type !== 'text' || typeof inline.text !== 'string') {
                 return inline;
             }
@@ -300,9 +280,9 @@ function restoreRemainingTagPlaceholders(
 
             return {
                 ...inline,
-                text
+                text,
             };
-        })
+        }),
     );
 }
 
@@ -310,7 +290,7 @@ function createTextInline(text: string, styles: Record<string, unknown> = {}): B
     return {
         type: 'text',
         text,
-        styles
+        styles,
     };
 }
 
@@ -334,21 +314,19 @@ function appendInline(target: BlockNoteInline[], inline: BlockNoteInline) {
 async function restoreCustomInlineContent(
     blocks: BlockNote[],
     deps: MarkdownImportDeps,
-    placeholderToTag: Map<string, string>
+    placeholderToTag: Map<string, string>,
 ): Promise<BlockNote[]> {
     const tagCache = new Map<string, Promise<{ id: string; tag: string }>>();
     const noteCache = new Map<string, Promise<Array<{ id: string; title: string }>>>();
 
     const getTag = (token: string) => {
-        const normalizedToken = token.startsWith('#')
-            ? `@${token.slice(1)}`
-            : token;
+        const normalizedToken = token.startsWith('#') ? `@${token.slice(1)}` : token;
         let existing = tagCache.get(normalizedToken);
 
         if (!existing) {
             existing = deps.ensureTag(normalizedToken.slice(1)).then((result) => ({
                 id: 'tag' in result ? result.tag.id : result.id,
-                tag: 'tag' in result ? result.tag.name : result.name
+                tag: 'tag' in result ? result.tag.name : result.name,
             }));
             tagCache.set(normalizedToken, existing);
         }
@@ -368,12 +346,7 @@ async function restoreCustomInlineContent(
     };
 
     const restoreTextInline = async (inline: BlockNoteInline): Promise<BlockNoteInline[]> => {
-        if (
-            inline.type !== 'text' ||
-            typeof inline.text !== 'string' ||
-            !inline.text ||
-            inline.styles?.code === true
-        ) {
+        if (inline.type !== 'text' || typeof inline.text !== 'string' || !inline.text || inline.styles?.code === true) {
             return [inline];
         }
 
@@ -394,8 +367,8 @@ async function restoreCustomInlineContent(
                             type: 'reference',
                             props: {
                                 id: matchingNotes[0].id,
-                                title: matchingNotes[0].title
-                            }
+                                title: matchingNotes[0].title,
+                            },
                         });
                         cursor = closeIndex + 2;
                         continue;
@@ -409,7 +382,7 @@ async function restoreCustomInlineContent(
                 const tag = await getTag(tagPlaceholderMatch.tagToken);
                 appendInline(restored, {
                     type: 'tag',
-                    props: tag
+                    props: tag,
                 });
                 cursor += tagPlaceholderMatch.placeholder.length;
                 continue;
@@ -438,10 +411,7 @@ async function restoreCustomInlineContent(
         return restored;
     };
 
-    return mapBlocksAsync(
-        blocks,
-        (content) => mapBlockContentAsync(content, restoreTextInline)
-    );
+    return mapBlocksAsync(blocks, (content) => mapBlockContentAsync(content, restoreTextInline));
 }
 
 function collectTagIds(blocks: BlockNote[]): string[] {
@@ -479,14 +449,11 @@ export async function blocksToMarkdown(contentJson: string): Promise<string> {
         const blocks = JSON.parse(contentJson);
         const supportedBlocks = stripUnsupportedMarkdownBlocks(blocks);
         const placeholderToTag = new Map<string, string>();
-        const processed = preprocessCustomInlineContent(
-            supportedBlocks,
-            placeholderToTag,
-            { value: 0 }
-        );
+        const processed = preprocessCustomInlineContent(supportedBlocks, placeholderToTag, { value: 0 });
         const editor = getEditor();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const markdown = await editor.blocksToMarkdownLossy(processed as any);
+        const markdown = await editor.blocksToMarkdownLossy(
+            processed as Parameters<typeof editor.blocksToMarkdownLossy>[0],
+        );
         return restoreTagPlaceholdersInMarkdown(markdown, placeholderToTag);
     } catch {
         return '';
@@ -495,7 +462,7 @@ export async function blocksToMarkdown(contentJson: string): Promise<string> {
 
 export async function markdownToBlocksJson(
     markdown: string,
-    deps: MarkdownImportDeps = defaultMarkdownImportDeps
+    deps: MarkdownImportDeps = defaultMarkdownImportDeps,
 ): Promise<string> {
     const editor = getEditor();
     const preprocessedMarkdown = preprocessMarkdownExplicitTags(markdown);
@@ -503,11 +470,9 @@ export async function markdownToBlocksJson(
     const restoredBlocks = await restoreCustomInlineContent(
         blocks as BlockNote[],
         deps,
-        preprocessedMarkdown.placeholderToTag
+        preprocessedMarkdown.placeholderToTag,
     );
-    return JSON.stringify(
-        restoreRemainingTagPlaceholders(restoredBlocks, preprocessedMarkdown.placeholderToTag)
-    );
+    return JSON.stringify(restoreRemainingTagPlaceholders(restoredBlocks, preprocessedMarkdown.placeholderToTag));
 }
 
 export function extractTagIdsFromContentJson(contentJson: string): string[] {

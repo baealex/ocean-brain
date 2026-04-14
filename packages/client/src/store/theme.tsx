@@ -20,7 +20,7 @@ export const useTheme = create<ThemeState>((set) => ({
     setTheme: (theme: Theme) => {
         set({
             explicitTheme: theme,
-            theme
+            theme,
         });
     },
     setSystemTheme: (theme: Theme) => {
@@ -38,10 +38,10 @@ export const useTheme = create<ThemeState>((set) => ({
 
             return {
                 explicitTheme: theme,
-                theme
+                theme,
             };
         });
-    }
+    },
 }));
 
 useTheme.subscribe((state) => {

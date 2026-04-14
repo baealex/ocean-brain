@@ -1,11 +1,5 @@
 import * as Icon from '~/components/icon';
-import {
-    Checkbox,
-    Label,
-    Select,
-    SelectItem,
-    Text
-} from '~/components/ui';
+import { Checkbox, Label, Select, SelectItem, Text } from '~/components/ui';
 
 export type SortBy = 'updatedAt' | 'createdAt';
 export type SortOrder = 'asc' | 'desc';
@@ -31,7 +25,7 @@ export default function NoteFilters({
     sortOrder,
     onSortOrderChange,
     pinnedFirst,
-    onPinnedFirstChange
+    onPinnedFirstChange,
 }: Props) {
     return (
         <div className="flex justify-end">
@@ -48,7 +42,8 @@ export default function NoteFilters({
                             onItemsPerPageChange(Number(value));
                         }}
                         variant="ghost"
-                        size="sm">
+                        size="sm"
+                    >
                         {isAutoLimit && <SelectItem value="auto">Auto ({itemsPerPage})</SelectItem>}
                         <SelectItem value="25">25</SelectItem>
                         <SelectItem value="50">50</SelectItem>
@@ -67,7 +62,8 @@ export default function NoteFilters({
                         value={sortBy}
                         onValueChange={(value) => onSortByChange(value as SortBy)}
                         variant="ghost"
-                        size="sm">
+                        size="sm"
+                    >
                         <SelectItem value="updatedAt">Updated</SelectItem>
                         <SelectItem value="createdAt">Created</SelectItem>
                     </Select>
@@ -75,7 +71,8 @@ export default function NoteFilters({
                         value={sortOrder}
                         onValueChange={(value) => onSortOrderChange(value as SortOrder)}
                         variant="ghost"
-                        size="sm">
+                        size="sm"
+                    >
                         <SelectItem value="desc">Newest</SelectItem>
                         <SelectItem value="asc">Oldest</SelectItem>
                     </Select>

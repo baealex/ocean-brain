@@ -1,8 +1,7 @@
-import { createReactBlockSpec } from '@blocknote/react';
-import { useBlockNoteEditor } from '@blocknote/react';
 import type { Block } from '@blocknote/core';
-import { useEffect, useState } from 'react';
+import { createReactBlockSpec, useBlockNoteEditor } from '@blocknote/react';
 import classNames from 'classnames';
+import { useEffect, useState } from 'react';
 import * as Icon from '~/components/icon';
 import { AuxiliaryPanelHeader } from '~/components/shared';
 import { Text } from '~/components/ui';
@@ -37,7 +36,7 @@ const TableOfContentsComponent = () => {
         3: 'pl-[40px]',
         4: 'pl-[54px]',
         5: 'pl-[68px]',
-        6: 'pl-[82px]'
+        6: 'pl-[82px]',
     };
 
     useEffect(() => {
@@ -50,15 +49,13 @@ const TableOfContentsComponent = () => {
                     if (block.type === 'heading') {
                         const headingBlock = block as HeadingBlock;
                         const level = headingBlock.props.level || 1;
-                        const text = headingBlock.content
-                            ?.map((item) => item.text || '')
-                            .join('') || '';
+                        const text = headingBlock.content?.map((item) => item.text || '').join('') || '';
 
                         if (text.trim()) {
                             extractedHeadings.push({
                                 id: block.id,
                                 level,
-                                text
+                                text,
                             });
                         }
                     }
@@ -89,7 +86,7 @@ const TableOfContentsComponent = () => {
         if (element) {
             element.scrollIntoView({
                 behavior: 'smooth',
-                block: 'center'
+                block: 'center',
             });
         }
     };
@@ -138,21 +135,18 @@ const TableOfContentsComponent = () => {
                                 'text-left',
                                 'transition-colors',
                                 'hover:bg-hover-subtle',
-                                isTopLevel ? 'text-fg-default' : 'text-fg-secondary'
-                            )}>
-                            <Text
-                                as="span"
-                                variant="label"
-                                weight="medium"
-                                tone="tertiary"
-                                className="min-w-[1.5rem]">
+                                isTopLevel ? 'text-fg-default' : 'text-fg-secondary',
+                            )}
+                        >
+                            <Text as="span" variant="label" weight="medium" tone="tertiary" className="min-w-[1.5rem]">
                                 H{heading.level}
                             </Text>
                             <Text
                                 as="span"
                                 variant="body"
                                 weight={isTopLevel ? 'semibold' : 'medium'}
-                                className="line-clamp-2 text-current">
+                                className="line-clamp-2 text-current"
+                            >
                                 {heading.text}
                             </Text>
                         </button>
@@ -163,10 +157,13 @@ const TableOfContentsComponent = () => {
     );
 };
 
-const TableOfContents = createReactBlockSpec({
-    type: 'tableOfContents',
-    propSchema: {},
-    content: 'none'
-}, { render: () => <TableOfContentsComponent /> })();
+const TableOfContents = createReactBlockSpec(
+    {
+        type: 'tableOfContents',
+        propSchema: {},
+        content: 'none',
+    },
+    { render: () => <TableOfContentsComponent /> },
+)();
 
 export default TableOfContents;

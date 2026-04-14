@@ -24,6 +24,7 @@
         "build": "pnpm --filter @ocean-brain/client build && pnpm --filter @ocean-brain/server build",
         "build:client": "pnpm --filter @ocean-brain/client build",
         "build:server": "pnpm --filter @ocean-brain/server build",
+        "format": "pnpm --parallel -r run --if-present format",
         "start": "pnpm --filter @ocean-brain/server start",
         "lint": "pnpm --filter @ocean-brain/client lint && pnpm --filter @ocean-brain/server lint",
         "test": "pnpm --parallel -r run --if-present test",

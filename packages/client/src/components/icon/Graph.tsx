@@ -8,7 +8,8 @@ export function Graph(props: React.SVGProps<SVGSVGElement>) {
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            {...props}>
+            {...props}
+        >
             <circle cx="6" cy="6" r="3" />
             <circle cx="18" cy="6" r="3" />
             <circle cx="6" cy="18" r="3" />

@@ -55,38 +55,44 @@ export const reminderTypeDefs = `
 
 export const reminderResolvers: IResolvers = {
     Query: {
-        noteReminders: async (_, {
-            noteId,
-            pagination = {
-                limit: 10,
-                offset: 0
-            }
-        }: {
-            noteId: string;
-            pagination: Pagination;
-        }) => {
+        noteReminders: async (
+            _,
+            {
+                noteId,
+                pagination = {
+                    limit: 10,
+                    offset: 0,
+                },
+            }: {
+                noteId: string;
+                pagination: Pagination;
+            },
+        ) => {
             const where = { noteId: Number(noteId) };
 
             const $reminders = models.reminder.findMany({
                 where,
                 orderBy: { reminderDate: 'asc' },
                 take: Number(pagination.limit),
-                skip: Number(pagination.offset)
+                skip: Number(pagination.offset),
             });
 
             return {
                 totalCount: models.reminder.count({ where }),
-                reminders: $reminders
+                reminders: $reminders,
             };
         },
-        upcomingReminders: async (_, {
-            pagination = {
-                limit: 10,
-                offset: 0
-            }
-        }: {
-            pagination: Pagination;
-        }) => {
+        upcomingReminders: async (
+            _,
+            {
+                pagination = {
+                    limit: 10,
+                    offset: 0,
+                },
+            }: {
+                pagination: Pagination;
+            },
+        ) => {
             const where = { completed: false };
 
             const $reminders = models.reminder.findMany({
@@ -94,71 +100,82 @@ export const reminderResolvers: IResolvers = {
                 orderBy: { reminderDate: 'asc' },
                 take: Number(pagination.limit),
                 skip: Number(pagination.offset),
-                include: { note: true }
+                include: { note: true },
             });
 
             return {
                 totalCount: models.reminder.count({ where }),
-                reminders: $reminders
+                reminders: $reminders,
             };
         },
-        remindersInDateRange: async (_, { dateRange }: {
-            dateRange: {
-                start: string;
-                end: string;
-            };
-        }) => {
+        remindersInDateRange: async (
+            _,
+            {
+                dateRange,
+            }: {
+                dateRange: {
+                    start: string;
+                    end: string;
+                };
+            },
+        ) => {
             const where = {
                 reminderDate: {
                     gte: new Date(dateRange.start),
-                    lt: new Date(dateRange.end)
-                }
+                    lt: new Date(dateRange.end),
+                },
             };
 
             const $reminders = await models.reminder.findMany({
                 where,
                 orderBy: { reminderDate: 'asc' },
-                include: { note: true }
+                include: { note: true },
             });
 
             return $reminders;
-        }
+        },
     },
     Mutation: {
-        createReminder: async (_, {
-            noteId,
-            reminderDate,
-            priority,
-            content
-        }: {
-            noteId: string;
-            reminderDate: string;
-            priority?: 'low' | 'medium' | 'high';
-            content?: string;
-        }) => {
+        createReminder: async (
+            _,
+            {
+                noteId,
+                reminderDate,
+                priority,
+                content,
+            }: {
+                noteId: string;
+                reminderDate: string;
+                priority?: 'low' | 'medium' | 'high';
+                content?: string;
+            },
+        ) => {
             return models.reminder.create({
                 data: {
                     noteId: Number(noteId),
                     reminderDate: new Date(reminderDate),
                     completed: false,
                     priority: priority || 'medium',
-                    content
-                }
+                    content,
+                },
             });
         },
-        updateReminder: async (_, {
-            id,
-            reminderDate,
-            completed,
-            priority,
-            content
-        }: {
-            id: string;
-            reminderDate?: string;
-            completed?: boolean;
-            priority?: 'low' | 'medium' | 'high';
-            content?: string;
-        }) => {
+        updateReminder: async (
+            _,
+            {
+                id,
+                reminderDate,
+                completed,
+                priority,
+                content,
+            }: {
+                id: string;
+                reminderDate?: string;
+                completed?: boolean;
+                priority?: 'low' | 'medium' | 'high';
+                content?: string;
+            },
+        ) => {
             const data: Partial<Reminder> = {};
 
             if (reminderDate) {
@@ -179,17 +196,17 @@ export const reminderResolvers: IResolvers = {
 
             return models.reminder.update({
                 where: { id: Number(id) },
-                data
+                data,
             });
         },
         deleteReminder: async (_, { id }: { id: string }) => {
             await models.reminder.delete({ where: { id: Number(id) } });
             return true;
-        }
+        },
     },
     Reminder: {
         note: async (reminder) => {
             return models.note.findUnique({ where: { id: reminder.noteId } });
-        }
-    }
+        },
+    },
 };

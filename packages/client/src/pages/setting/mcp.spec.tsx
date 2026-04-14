@@ -1,17 +1,16 @@
+import { QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { QueryClientProvider } from '@tanstack/react-query';
-
-import { createTestQueryClient } from '~/test/test-utils';
-import { ToastProvider } from '~/components/ui';
 import * as mcpAdminApi from '~/apis/mcp-admin.api';
+import { ToastProvider } from '~/components/ui';
+import { createTestQueryClient } from '~/test/test-utils';
 import McpSetting from './mcp';
 
 vi.mock('~/apis/mcp-admin.api', () => ({
     fetchMcpAdminStatus: vi.fn(),
     setMcpEnabled: vi.fn(),
     rotateMcpToken: vi.fn(),
-    revokeMcpToken: vi.fn()
+    revokeMcpToken: vi.fn(),
 }));
 
 const renderPage = () => {
@@ -22,7 +21,7 @@ const renderPage = () => {
             <ToastProvider>
                 <McpSetting />
             </ToastProvider>
-        </QueryClientProvider>
+        </QueryClientProvider>,
     );
 };
 
@@ -35,7 +34,7 @@ describe('<McpSetting />', () => {
         vi.mocked(mcpAdminApi.fetchMcpAdminStatus).mockResolvedValue({
             enabled: false,
             hasActiveToken: false,
-            token: null
+            token: null,
         });
 
         renderPage();
@@ -51,12 +50,12 @@ describe('<McpSetting />', () => {
         vi.mocked(mcpAdminApi.fetchMcpAdminStatus).mockResolvedValue({
             enabled: false,
             hasActiveToken: false,
-            token: null
+            token: null,
         });
         vi.mocked(mcpAdminApi.setMcpEnabled).mockResolvedValue({
             enabled: true,
             hasActiveToken: false,
-            token: null
+            token: null,
         });
 
         renderPage();

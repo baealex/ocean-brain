@@ -46,22 +46,27 @@ export const imageTypeDefs = `
 
 export const imageResolvers: IResolvers = {
     Query: {
-        allImages: async (_, { pagination }: {
-            pagination: Pagination;
-        }) => {
+        allImages: async (
+            _,
+            {
+                pagination,
+            }: {
+                pagination: Pagination;
+            },
+        ) => {
             const $images = models.image.findMany({
                 skip: pagination.offset,
                 take: pagination.limit,
-                orderBy: { createdAt: 'desc' }
+                orderBy: { createdAt: 'desc' },
             });
             return {
                 totalCount: models.image.count(),
-                images: $images
+                images: $images,
             };
         },
         image: async (_, { id }) => {
             return models.image.findFirst({ where: { id: Number(id) } });
-        }
+        },
     },
     Mutation: {
         deleteImage: async (_, { id }) => {
@@ -81,14 +86,15 @@ export const imageResolvers: IResolvers = {
 
                 return true;
             } catch (error) {
-                console.log(error);
+                const message = error instanceof Error ? error.message : String(error);
+                process.stderr.write(`[image] Delete failed: ${message}\n`);
                 return false;
             }
-        }
+        },
     },
     Image: {
         referenceCount: async (image: Image) => {
             return models.note.count({ where: { content: { contains: image.url } } });
-        }
-    }
+        },
+    },
 };

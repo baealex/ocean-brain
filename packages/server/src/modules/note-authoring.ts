@@ -1,8 +1,5 @@
 import models, { type NoteLayout } from '~/models.js';
-import {
-    extractTagIdsFromContentJson,
-    markdownToBlocksJson
-} from './blocknote.js';
+import { extractTagIdsFromContentJson, markdownToBlocksJson } from './blocknote.js';
 import { buildNoteSearchProjection } from './note-search.js';
 import { captureNoteBaseline } from './note-snapshot.js';
 
@@ -31,17 +28,16 @@ interface NoteAuthoringDeps {
     findPlaceholders: (templates: string[]) => Promise<PlaceholderRecord[]>;
     parseMarkdownToContentJson: (markdown: string) => Promise<string>;
     extractTagIds: (contentJson: string) => string[];
-    captureBaseline: (input: {
-        noteId: number;
-        editSessionId?: string;
-        meta?: string;
-    }) => Promise<unknown>;
-    updateNote: (id: number, input: {
-        title?: string;
-        content?: string;
-        layout?: NoteLayout;
-        tagIds?: string[];
-    }) => Promise<NoteRecord>;
+    captureBaseline: (input: { noteId: number; editSessionId?: string; meta?: string }) => Promise<unknown>;
+    updateNote: (
+        id: number,
+        input: {
+            title?: string;
+            content?: string;
+            layout?: NoteLayout;
+            tagIds?: string[];
+        },
+    ) => Promise<NoteRecord>;
 }
 
 export interface CreateNoteAuthoringInput {
@@ -82,7 +78,7 @@ const serializeNote = (note: NoteRecord): AuthoredNoteSummary => ({
     title: note.title,
     layout: note.layout,
     createdAt: note.createdAt.toISOString(),
-    updatedAt: note.updatedAt.toISOString()
+    updatedAt: note.updatedAt.toISOString(),
 });
 
 const extractPlaceholderTemplates = (value: string) => {
@@ -90,9 +86,9 @@ const extractPlaceholderTemplates = (value: string) => {
         new Set(
             Array.from(
                 value.matchAll(new RegExp(`${PLACEHOLDER_PREFIX}([^}]+)${PLACEHOLDER_SUFFIX}`, 'g')),
-                (match) => match[1]
-            )
-        )
+                (match) => match[1],
+            ),
+        ),
     );
 };
 
@@ -110,7 +106,7 @@ export const createNoteAuthoringService = (deps: NoteAuthoringDeps) => {
         for (const placeholder of placeholders) {
             replacedValue = replacedValue.replace(
                 new RegExp(`${PLACEHOLDER_PREFIX}${placeholder.template}${PLACEHOLDER_SUFFIX}`, 'g'),
-                placeholder.replacement
+                placeholder.replacement,
             );
         }
 
@@ -133,18 +129,14 @@ export const createNoteAuthoringService = (deps: NoteAuthoringDeps) => {
                 title: replacedTitle,
                 content,
                 tagIds,
-                ...(input.layout ? { layout: input.layout } : {})
+                ...(input.layout ? { layout: input.layout } : {}),
             });
 
             return serializeNote(note);
         },
 
         updateNote: async (input: UpdateNoteAuthoringInput): Promise<AuthoredNoteSummary | null> => {
-            if (
-                input.title === undefined &&
-                input.markdown === undefined &&
-                input.layout === undefined
-            ) {
+            if (input.title === undefined && input.markdown === undefined && input.layout === undefined) {
                 throw new InvalidNoteAuthoringInputError('At least one note field must be provided for update.');
             }
 
@@ -184,12 +176,12 @@ export const createNoteAuthoringService = (deps: NoteAuthoringDeps) => {
             await deps.captureBaseline({
                 noteId: input.id,
                 ...(input.editSessionId ? { editSessionId: input.editSessionId } : {}),
-                ...(input.snapshotMeta ? { meta: input.snapshotMeta } : {})
+                ...(input.snapshotMeta ? { meta: input.snapshotMeta } : {}),
             });
 
             const updatedNote = await deps.updateNote(input.id, nextData);
             return serializeNote(updatedNote);
-        }
+        },
     };
 };
 
@@ -201,13 +193,11 @@ const defaultNoteAuthoringService = createNoteAuthoringService({
                 content: input.content,
                 ...buildNoteSearchProjection({
                     title: input.title,
-                    content: input.content
+                    content: input.content,
                 }),
                 ...(input.layout ? { layout: input.layout } : {}),
-                ...(input.tagIds
-                    ? { tags: { connect: input.tagIds.map((id) => ({ id: Number(id) })) } }
-                    : {})
-            }
+                ...(input.tagIds ? { tags: { connect: input.tagIds.map((id) => ({ id: Number(id) })) } } : {}),
+            },
         });
     },
     findNoteById: async (id) => {
@@ -221,9 +211,9 @@ const defaultNoteAuthoringService = createNoteAuthoringService({
         return models.placeholder.findMany({
             select: {
                 template: true,
-                replacement: true
+                replacement: true,
             },
-            where: { template: { in: templates } }
+            where: { template: { in: templates } },
         });
     },
     parseMarkdownToContentJson: markdownToBlocksJson,
@@ -234,8 +224,8 @@ const defaultNoteAuthoringService = createNoteAuthoringService({
             where: { id },
             select: {
                 title: true,
-                content: true
-            }
+                content: true,
+            },
         });
 
         if (!existingNote) {
@@ -253,14 +243,12 @@ const defaultNoteAuthoringService = createNoteAuthoringService({
                 layout: input.layout,
                 ...buildNoteSearchProjection({
                     title: nextTitle,
-                    content: nextContent
+                    content: nextContent,
                 }),
-                ...(input.tagIds
-                    ? { tags: { set: input.tagIds.map((tagId) => ({ id: Number(tagId) })) } }
-                    : {})
-            }
+                ...(input.tagIds ? { tags: { set: input.tagIds.map((tagId) => ({ id: Number(tagId) })) } } : {}),
+            },
         });
-    }
+    },
 });
 
 export const createNoteFromMarkdown = async (input: CreateNoteAuthoringInput) => {

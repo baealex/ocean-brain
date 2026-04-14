@@ -1,5 +1,5 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
 import { RouterProvider } from '@tanstack/react-router';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 
 import { createTestRouter } from '~/test/create-test-router';
 
@@ -11,13 +11,11 @@ describe('<LayoutShell />', () => {
             initialPath: '/',
             routePath: '/',
             rootComponent: () => (
-                <LayoutShell
-                    sidebar={<div>Sidebar</div>}
-                    topNavigation={<div>Top Navigation</div>}>
+                <LayoutShell sidebar={<div>Sidebar</div>} topNavigation={<div>Top Navigation</div>}>
                     <div>Page Content</div>
                 </LayoutShell>
             ),
-            routeComponent: () => null
+            routeComponent: () => null,
         });
 
         render(<RouterProvider router={router} />);
@@ -35,13 +33,11 @@ describe('<LayoutShell />', () => {
             initialPath: '/',
             routePath: '/',
             rootComponent: () => (
-                <LayoutShell
-                    sidebar={<div>Sidebar</div>}
-                    topNavigation={<div>Top Navigation</div>}>
+                <LayoutShell sidebar={<div>Sidebar</div>} topNavigation={<div>Top Navigation</div>}>
                     <div>Page Content</div>
                 </LayoutShell>
             ),
-            routeComponent: () => null
+            routeComponent: () => null,
         });
 
         render(<RouterProvider router={router} />);

@@ -39,10 +39,7 @@ interface DateRange {
 }
 
 const fetchNotesInRange = async (dateRange: DateRange): Promise<Note[]> => {
-    const response = await graphQuery<{ notesInDateRange: Note[] }>(
-        NOTES_QUERY,
-        { dateRange }
-    );
+    const response = await graphQuery<{ notesInDateRange: Note[] }>(NOTES_QUERY, { dateRange });
     if (response.type === 'error') {
         throw response;
     }
@@ -50,10 +47,7 @@ const fetchNotesInRange = async (dateRange: DateRange): Promise<Note[]> => {
 };
 
 const fetchRemindersInRange = async (dateRange: DateRange): Promise<Reminder[]> => {
-    const response = await graphQuery<{ remindersInDateRange: Reminder[] }>(
-        REMINDERS_QUERY,
-        { dateRange }
-    );
+    const response = await graphQuery<{ remindersInDateRange: Reminder[] }>(REMINDERS_QUERY, { dateRange });
     if (response.type === 'error') {
         throw response;
     }
@@ -73,23 +67,23 @@ export const useCalendarData = ({ year, month }: UseCalendarDataParams) => {
 
     const dateRange = {
         start: startDate,
-        end: endDate
+        end: endDate,
     };
 
     const notesQuery = useQuery({
         queryKey: queryKeys.calendar.notesInDateRange(year, month),
-        queryFn: () => fetchNotesInRange(dateRange)
+        queryFn: () => fetchNotesInRange(dateRange),
     });
 
     const remindersQuery = useQuery({
         queryKey: queryKeys.reminders.inDateRange(year, month),
-        queryFn: () => fetchRemindersInRange(dateRange)
+        queryFn: () => fetchRemindersInRange(dateRange),
     });
 
     return {
         notes: notesQuery.data ?? [],
         reminders: remindersQuery.data ?? [],
         isLoading: notesQuery.isLoading || remindersQuery.isLoading,
-        isError: notesQuery.isError || remindersQuery.isError
+        isError: notesQuery.isError || remindersQuery.isError,
     };
 };

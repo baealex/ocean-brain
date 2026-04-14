@@ -1,35 +1,32 @@
-import { act, render, screen } from '@testing-library/react';
-import { RouterProvider } from '@tanstack/react-router';
-import { createRootRoute, createRoute, createRouter } from '@tanstack/react-router';
 import { QueryClientProvider } from '@tanstack/react-query';
-
-import { createTestQueryClient } from '~/test/test-utils';
+import { createRootRoute, createRoute, createRouter, RouterProvider } from '@tanstack/react-router';
+import { act, render, screen } from '@testing-library/react';
 import { SETTINGS_MANAGE_IMAGE_ROUTE } from '~/modules/url';
+import { createTestQueryClient } from '~/test/test-utils';
 import ManageImage from './manage-image';
 
 vi.mock('~/components/app', () => ({ QueryBoundary: ({ children }: { children: React.ReactNode }) => children }));
 
 vi.mock('~/components/entities', () => ({
-    Images: ({ render }: {
-        render: (data: { images: never[]; totalCount: number }) => React.ReactNode;
-    }) => render({
-        images: [],
-        totalCount: 0
-    })
+    Images: ({ render }: { render: (data: { images: never[]; totalCount: number }) => React.ReactNode }) =>
+        render({
+            images: [],
+            totalCount: 0,
+        }),
 }));
 
 vi.mock('~/hooks/useGridLimit', () => ({
     useGridLimit: () => ({
         containerRef: { current: null },
-        limit: 12
-    })
+        limit: 12,
+    }),
 }));
 
 vi.mock('~/components/ui', async () => {
     const actual = await vi.importActual<object>('~/components/ui');
     return {
         ...actual,
-        useConfirm: () => vi.fn()
+        useConfirm: () => vi.fn(),
     };
 });
 
@@ -42,14 +39,14 @@ describe('<ManageImage />', () => {
         const route = createRoute({
             getParentRoute: () => rootRoute,
             path: SETTINGS_MANAGE_IMAGE_ROUTE,
-            component: () => null
+            component: () => null,
         });
         const router = createRouter({ routeTree: rootRoute.addChildren([route]) });
 
         render(
             <QueryClientProvider client={queryClient}>
                 <RouterProvider router={router} />
-            </QueryClientProvider>
+            </QueryClientProvider>,
         );
 
         await act(async () => {

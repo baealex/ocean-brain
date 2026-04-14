@@ -1,8 +1,8 @@
-import { defineConfig } from 'vitest/config';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import svgr from 'vite-plugin-svgr';
 import path from 'path';
+import svgr from 'vite-plugin-svgr';
+import { defineConfig } from 'vitest/config';
 
 import { createDevAuthGateMiddleware } from './src/dev-auth-gate';
 
@@ -18,8 +18,8 @@ export default defineConfig({
             name: 'ocean-brain-dev-auth-gate',
             configureServer(server) {
                 server.middlewares.use(createDevAuthGateMiddleware({ backendOrigin }));
-            }
-        }
+            },
+        },
     ],
     resolve: { alias: { '~': path.resolve(__dirname, './src') } },
     build: {
@@ -27,19 +27,12 @@ export default defineConfig({
         rollupOptions: {
             output: {
                 manualChunks: {
-                    'graph-vendor': [
-                        'react-force-graph-2d'
-                    ],
-                    'note-core': [
-                        '@blocknote/core'
-                    ],
-                    'note-vendor': [
-                        '@blocknote/react',
-                        '@blocknote/mantine'
-                    ]
-                }
-            }
-        }
+                    'graph-vendor': ['react-force-graph-2d'],
+                    'note-core': ['@blocknote/core'],
+                    'note-vendor': ['@blocknote/react', '@blocknote/mantine'],
+                },
+            },
+        },
     },
     server: {
         host: '0.0.0.0',
@@ -47,8 +40,8 @@ export default defineConfig({
             '/api': { target: 'http://localhost:6683' },
             '/auth': { target: 'http://localhost:6683' },
             '/graphql': { target: 'http://localhost:6683' },
-            '/assets/images': { target: 'http://localhost:6683' }
-        }
+            '/assets/images': { target: 'http://localhost:6683' },
+        },
     },
     test: {
         globals: true,
@@ -60,12 +53,7 @@ export default defineConfig({
             provider: 'v8',
             reporter: ['text', 'lcov'],
             include: ['src/**/*.{ts,tsx}'],
-            exclude: [
-                'src/**/*.d.ts',
-                'src/**/*.spec.ts',
-                'src/**/*.spec.tsx',
-                'src/test/**'
-            ]
-        }
-    }
+            exclude: ['src/**/*.d.ts', 'src/**/*.spec.ts', 'src/**/*.spec.tsx', 'src/test/**'],
+        },
+    },
 });

@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
 import { useLocation } from '@tanstack/react-router';
+import { useEffect, useRef } from 'react';
 
 const optimizeEvent = (fn: () => void) => {
     let ticking = false;

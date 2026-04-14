@@ -4,5 +4,5 @@ export {
     QueryErrorView,
     RouteErrorView,
     RouteNotFoundView,
-    RoutePendingView
+    RoutePendingView,
 } from './RouteFeedback';

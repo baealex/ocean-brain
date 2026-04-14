@@ -1,9 +1,5 @@
 import models from '~/models.js';
-import {
-    buildNoteSearchProjection,
-    NOTE_SEARCH_TEXT_SCHEMA_VERSION,
-    type NoteSearchProjection,
-} from './note-search.js';
+import { buildNoteSearchProjection, NOTE_SEARCH_TEXT_SCHEMA_VERSION, type NoteSearchProjection } from './search.js';
 
 interface BackfillCandidate {
     id: number;

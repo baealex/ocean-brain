@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { buildNoteTagNamesWhere, normalizeNoteTagNames } from '../src/modules/note-tag-filter.js';
+import { buildNoteTagNamesWhere, normalizeNoteTagNames } from './tag-filter.js';
 
 test('normalizeNoteTagNames trims blanks and deduplicates in order', () => {
     assert.deepEqual(normalizeNoteTagNames([' @OceanBrain ', '@todo', '', '@OceanBrain', '   ', '@todo']), [

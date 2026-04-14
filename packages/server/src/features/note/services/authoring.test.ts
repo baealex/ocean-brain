@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createNoteAuthoringService, InvalidNoteAuthoringInputError } from '../src/modules/note-authoring.js';
+import { createNoteAuthoringService, InvalidNoteAuthoringInputError } from './authoring.js';
 
 test('note authoring create converts markdown after placeholder replacement', async () => {
     const created: Array<{

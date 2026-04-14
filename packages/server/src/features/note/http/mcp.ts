@@ -1,12 +1,12 @@
-import type { NoteLayout } from '~/models.js';
-import { createAppError } from '~/modules/error-handler.js';
 import {
     createNoteFromMarkdown,
     InvalidNoteAuthoringInputError,
     updateNoteFromMarkdown,
-} from '~/modules/note-authoring.js';
-import { deleteNoteById } from '~/modules/note-cleanup.js';
-import { MCP_SNAPSHOT_META } from '~/modules/note-snapshot.js';
+} from '~/features/note/services/authoring.js';
+import { deleteNoteById } from '~/features/note/services/cleanup.js';
+import { MCP_SNAPSHOT_META } from '~/features/note/services/snapshot.js';
+import type { NoteLayout } from '~/models.js';
+import { createAppError } from '~/modules/error-handler.js';
 import { emitServerEvent, type ServerEventInput } from '~/modules/server-events.js';
 import type { Controller } from '~/types/index.js';
 

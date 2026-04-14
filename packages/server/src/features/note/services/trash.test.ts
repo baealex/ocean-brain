@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createNoteTrashService, NoteRestoreConflictError } from '../src/modules/note-trash.js';
+import { createNoteTrashService, NoteRestoreConflictError } from './trash.js';
 
 test('note trash service moves a live note to trash and returns a summary', async () => {
     const movedIds: number[] = [];

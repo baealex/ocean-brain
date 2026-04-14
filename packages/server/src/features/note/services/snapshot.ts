@@ -1,11 +1,11 @@
 import models, { type NoteLayout } from '~/models.js';
-import { buildNoteSearchProjection } from './note-search.js';
 import {
     createRetentionCutoff,
     RECOVERY_CLEANUP_BATCH_LIMIT,
     SNAPSHOT_MAX_PER_NOTE,
     SNAPSHOT_RETENTION_DAYS,
-} from './recovery-retention.js';
+} from '~/modules/recovery-retention.js';
+import { buildNoteSearchProjection } from './search.js';
 
 interface NoteRecord {
     id: number;

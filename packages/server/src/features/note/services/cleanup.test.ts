@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createNoteCleanupService } from '../src/modules/note-cleanup.js';
+import { createNoteCleanupService } from './cleanup.js';
 
 test('note cleanup service lists draft-like notes as cleanup candidates', async () => {
     const service = createNoteCleanupService({

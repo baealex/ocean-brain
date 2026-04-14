@@ -1,9 +1,8 @@
 import { BlockNoteSchema, defaultBlockSpecs, defaultInlineContentSpecs } from '@blocknote/core';
-
-import Reference from './Reference';
-import Tag from './Tag';
-import TableOfContents from './TableOfContents';
 import type { OceanBrainCustomBlockType, OceanBrainCustomInlineContentType } from './custom-types';
+import Reference from './Reference';
+import TableOfContents from './TableOfContents';
+import Tag from './Tag';
 
 const defineOceanBrainInlineContentSpecs = <T extends Record<OceanBrainCustomInlineContentType, unknown>>(
     specs: T & Record<Exclude<keyof T, OceanBrainCustomInlineContentType>, never>,

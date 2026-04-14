@@ -1,27 +1,25 @@
 import type { IResolvers } from '@graphql-tools/utils';
 import type { Request } from 'express';
-
+import type { Note, Prisma } from '~/models.js';
 import models from '~/models.js';
+import { runDataMaintenanceInBackground } from '~/modules/data-maintenance.js';
 import { gql } from '~/modules/graphql.js';
 import { getNoteCleanupPreview, listNoteCleanupCandidates } from '~/modules/note-cleanup.js';
-import {
-    captureNoteBaseline,
-    createSnapshotMetaFromUserAgent,
-    listNoteSnapshots,
-    restoreNoteSnapshot,
-} from '~/modules/note-snapshot.js';
-import { listTrashedNotes, restoreTrashedNoteById, trashNoteById } from '~/modules/note-trash.js';
 import {
     buildNoteSearchProjection,
     filterNotesBySearchQuery,
     NOTE_SEARCH_TEXT_SCHEMA_VERSION,
     parseNoteSearchQuery,
 } from '~/modules/note-search.js';
-import { runDataMaintenanceInBackground } from '~/modules/data-maintenance.js';
-import { buildNoteTagNamesWhere, normalizeNoteTagNames, type NoteTagMatchMode } from '~/modules/note-tag-filter.js';
-
-import type { Note, Prisma } from '~/models.js';
-import type { Pagination, SearchFilter, NoteInput } from '~/types/index.js';
+import {
+    captureNoteBaseline,
+    createSnapshotMetaFromUserAgent,
+    listNoteSnapshots,
+    restoreNoteSnapshot,
+} from '~/modules/note-snapshot.js';
+import { buildNoteTagNamesWhere, type NoteTagMatchMode, normalizeNoteTagNames } from '~/modules/note-tag-filter.js';
+import { listTrashedNotes, restoreTrashedNoteById, trashNoteById } from '~/modules/note-trash.js';
+import type { NoteInput, Pagination, SearchFilter } from '~/types/index.js';
 
 export const noteType = gql`
     input PaginationInput {

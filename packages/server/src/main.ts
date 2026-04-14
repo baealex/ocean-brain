@@ -24,7 +24,7 @@ try {
             onError: (error) => {
                 const message = error instanceof Error ? error.message : 'Unknown data maintenance error';
                 process.stderr.write(`[maintenance] Background run failed: ${message}\n`);
-            }
+            },
         });
     });
 } catch (error) {

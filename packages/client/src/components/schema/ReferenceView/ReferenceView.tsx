@@ -1,8 +1,10 @@
 import { SuggestionMenuController } from '@blocknote/react';
 
 import { fetchNotes } from '~/apis/note.api';
+import { filterReferenceSuggestionNotes } from './reference-suggestions';
 
 interface ReferenceViewProps {
+    currentNoteId?: string;
     onClick: (content: {
         type: 'reference';
         props: {
@@ -12,7 +14,7 @@ interface ReferenceViewProps {
     }) => void;
 }
 
-const ReferenceView = ({ onClick }: ReferenceViewProps) => {
+const ReferenceView = ({ currentNoteId, onClick }: ReferenceViewProps) => {
     return (
         <SuggestionMenuController
             triggerCharacter="["
@@ -24,7 +26,7 @@ const ReferenceView = ({ onClick }: ReferenceViewProps) => {
                 if (response.type === 'error') {
                     return [];
                 }
-                const { notes } = response.allNotes;
+                const notes = filterReferenceSuggestionNotes(response.allNotes.notes, currentNoteId);
                 return notes.map((note) => ({
                     title: note.title,
                     onItemClick: () =>

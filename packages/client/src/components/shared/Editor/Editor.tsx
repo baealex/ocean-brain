@@ -8,6 +8,7 @@ import { useTheme } from '~/store/theme';
 
 interface EditorProps {
     content?: string;
+    currentNoteId?: string;
     editable?: boolean;
     onChange?: () => void;
 }
@@ -16,7 +17,7 @@ export interface EditorRef {
     getContent: () => string;
 }
 
-const Editor = forwardRef<EditorRef, EditorProps>(({ content, editable, onChange }, ref) => {
+const Editor = forwardRef<EditorRef, EditorProps>(({ content, currentNoteId, editable, onChange }, ref) => {
     const { theme } = useTheme((state) => state);
 
     const editor = useCreateBlockNote(
@@ -40,6 +41,7 @@ const Editor = forwardRef<EditorRef, EditorProps>(({ content, editable, onChange
         <BlockNoteView slashMenu={false} theme={theme} editor={editor} editable={editable} onChange={onChange}>
             <CommandView editor={editor} />
             <ReferenceView
+                currentNoteId={currentNoteId}
                 onClick={(content) => {
                     editor.insertInlineContent([content, ' ']);
                 }}

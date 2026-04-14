@@ -249,6 +249,7 @@ function NoteContent({ id }: NoteContentProps) {
                     key={`${id}:${note.updatedAt}`}
                     ref={editorRef}
                     content={note.content}
+                    currentNoteId={id}
                     onChange={handleChange}
                 />
 

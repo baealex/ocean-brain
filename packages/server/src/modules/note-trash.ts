@@ -4,6 +4,7 @@ import {
     RECOVERY_CLEANUP_BATCH_LIMIT,
     TRASH_RETENTION_DAYS
 } from './recovery-retention.js';
+import { buildNoteSearchProjection } from './note-search.js';
 
 interface LiveTagRecord {
     id: number;
@@ -361,6 +362,10 @@ const noteTrashService = createNoteTrashService({
                     id: deletedNote.id,
                     title: deletedNote.title,
                     content: restoredContent,
+                    ...buildNoteSearchProjection({
+                        title: deletedNote.title,
+                        content: restoredContent
+                    }),
                     createdAt: deletedNote.createdAt,
                     updatedAt: deletedNote.updatedAt,
                     pinned: deletedNote.pinned,

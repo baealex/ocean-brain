@@ -18,6 +18,13 @@ import {
     restoreTrashedNoteById,
     trashNoteById
 } from '~/modules/note-trash.js';
+import {
+    buildNoteSearchProjection,
+    filterNotesBySearchQuery,
+    NOTE_SEARCH_TEXT_SCHEMA_VERSION,
+    parseNoteSearchQuery
+} from '~/modules/note-search.js';
+import { runDataMaintenanceInBackground } from '~/modules/data-maintenance.js';
 import { buildNoteTagNamesWhere, normalizeNoteTagNames, type NoteTagMatchMode } from '~/modules/note-tag-filter.js';
 
 import type { Note, Prisma } from '~/models.js';
@@ -234,70 +241,225 @@ const extractBlocksByType = <T>(type: string, dataArray: BlockNote[]): BlockNote
     return result as unknown as BlockNote<T>[];
 };
 
-export const noteResolvers: IResolvers = {
-    Query: {
-        allNotes: async (_, {
-            searchFilter,
-            pagination
-        }: {
-            searchFilter: SearchFilter;
-            pagination: Pagination;
-        }) => {
-            const queryItems = searchFilter.query.split(' ');
-            const included = queryItems
-                .filter((item: string) => !item.startsWith('-'))
-                .map((word: string) => `%${word}%`);
-            const excluded = queryItems
-                .filter((item: string) => item.startsWith('-'))
-                .map((item: string) => item.slice(1))
-                .map((word: string) => `%${word}%`);
+interface AllNotesResolverDeps {
+    countNotes: (args: { where?: Prisma.NoteWhereInput }) => Promise<number>;
+    findNotes: (args: {
+        orderBy: Prisma.NoteOrderByWithRelationInput[];
+        where?: Prisma.NoteWhereInput;
+        take?: number;
+        skip?: number;
+    }) => Promise<Note[]>;
+    triggerSearchBackfill: () => void;
+}
 
-            const where: Prisma.NoteWhereInput = {
-                AND: [
-                    ...included.map((keyword: string) => ({
-                        OR: [
-                            { title: { contains: keyword } },
-                            { content: { contains: keyword } }
-                        ]
-                    })),
-                    ...excluded.map((keyword: string) => ({
-                        NOT: {
-                            OR: [
-                                { title: { contains: keyword } },
-                                { content: { contains: keyword } }
-                            ]
-                        }
-                    }))
+const buildAllNotesOrderBy = (searchFilter: SearchFilter) => {
+    const sortBy = searchFilter.sortBy || 'updatedAt';
+    const sortOrder = searchFilter.sortOrder || 'desc';
+    const pinnedFirst = searchFilter.pinnedFirst || false;
+    const orderBy: Prisma.NoteOrderByWithRelationInput[] = [];
+
+    if (pinnedFirst) {
+        orderBy.push({ pinned: 'desc' });
+    }
+
+    if (sortBy === 'createdAt') {
+        orderBy.push({ createdAt: sortOrder as 'asc' | 'desc' });
+    } else {
+        orderBy.push({ updatedAt: sortOrder as 'asc' | 'desc' });
+    }
+
+    return orderBy;
+};
+
+const buildAllNotesSearchWhere = (searchFilter: SearchFilter) => {
+    const parsedQuery = parseNoteSearchQuery(searchFilter.query);
+
+    if (!parsedQuery.hasFilters) {
+        return undefined;
+    }
+
+    return {
+        AND: [
+            { searchableTextVersion: NOTE_SEARCH_TEXT_SCHEMA_VERSION },
+            ...parsedQuery.included.map((keyword) => ({ searchableText: { contains: keyword } })),
+            ...parsedQuery.excluded.map((keyword) => ({ NOT: { searchableText: { contains: keyword } } }))
+        ]
+    } satisfies Prisma.NoteWhereInput;
+};
+
+const buildAllNotesStaleCandidateWhere = (searchFilter: SearchFilter) => {
+    const parsedQuery = parseNoteSearchQuery(searchFilter.query);
+
+    return {
+        AND: [
+            { searchableTextVersion: { not: NOTE_SEARCH_TEXT_SCHEMA_VERSION } },
+            ...parsedQuery.included.map((keyword) => ({
+                OR: [
+                    { title: { contains: keyword } },
+                    { content: { contains: keyword } }
                 ]
+            }))
+        ]
+    } satisfies Prisma.NoteWhereInput;
+};
+
+const compareNotesForSearch = (left: Note, right: Note, searchFilter: SearchFilter) => {
+    if (searchFilter.pinnedFirst && left.pinned !== right.pinned) {
+        return left.pinned ? -1 : 1;
+    }
+
+    const sortBy = searchFilter.sortBy || 'updatedAt';
+    const sortOrder = searchFilter.sortOrder || 'desc';
+    const leftValue = sortBy === 'createdAt'
+        ? left.createdAt.getTime()
+        : left.updatedAt.getTime();
+    const rightValue = sortBy === 'createdAt'
+        ? right.createdAt.getTime()
+        : right.updatedAt.getTime();
+
+    if (leftValue === rightValue) {
+        return 0;
+    }
+
+    return sortOrder === 'asc'
+        ? leftValue - rightValue
+        : rightValue - leftValue;
+};
+
+const mergeSortedNotesForSearch = (left: Note[], right: Note[], searchFilter: SearchFilter) => {
+    const merged: Note[] = [];
+    let leftIndex = 0;
+    let rightIndex = 0;
+
+    while (leftIndex < left.length && rightIndex < right.length) {
+        if (compareNotesForSearch(left[leftIndex], right[rightIndex], searchFilter) <= 0) {
+            merged.push(left[leftIndex]);
+            leftIndex += 1;
+        } else {
+            merged.push(right[rightIndex]);
+            rightIndex += 1;
+        }
+    }
+
+    while (leftIndex < left.length) {
+        merged.push(left[leftIndex]);
+        leftIndex += 1;
+    }
+
+    while (rightIndex < right.length) {
+        merged.push(right[rightIndex]);
+        rightIndex += 1;
+    }
+
+    return merged;
+};
+
+export const createAllNotesQueryResolver = (
+    deps: AllNotesResolverDeps = {
+        countNotes: ({ where }) => models.note.count({ where }),
+        findNotes: ({ orderBy, where, take, skip }) => models.note.findMany({
+            orderBy,
+            where,
+            take,
+            skip
+        }),
+        triggerSearchBackfill: () => {
+            void runDataMaintenanceInBackground();
+        }
+    }
+) => {
+    return async (_: unknown, {
+        searchFilter,
+        pagination
+    }: {
+        searchFilter: SearchFilter;
+        pagination: Pagination;
+    }) => {
+        const orderBy = buildAllNotesOrderBy(searchFilter);
+        const limit = Number(pagination.limit);
+        const offset = Number(pagination.offset);
+        const where = buildAllNotesSearchWhere(searchFilter);
+
+        if (!where) {
+            const [notes, totalCount] = await Promise.all([
+                deps.findNotes({
+                    orderBy,
+                    take: limit,
+                    skip: offset
+                }),
+                deps.countNotes({})
+            ]);
+
+            return {
+                totalCount,
+                notes
             };
+        }
 
-            const sortBy = searchFilter.sortBy || 'updatedAt';
-            const sortOrder = searchFilter.sortOrder || 'desc';
-            const pinnedFirst = searchFilter.pinnedFirst || false;
+        const staleCandidateNotes = await deps.findNotes({
+            orderBy,
+            where: buildAllNotesStaleCandidateWhere(searchFilter)
+        });
 
-            const orderBy: Prisma.NoteOrderByWithRelationInput[] = [];
+        if (staleCandidateNotes.length === 0) {
+            const [notes, totalCount] = await Promise.all([
+                deps.findNotes({
+                    orderBy,
+                    where,
+                    take: limit,
+                    skip: offset
+                }),
+                deps.countNotes({ where })
+            ]);
 
-            if (pinnedFirst) {
-                orderBy.push({ pinned: 'desc' });
-            }
+            return {
+                totalCount,
+                notes
+            };
+        }
 
-            if (sortBy === 'createdAt') {
-                orderBy.push({ createdAt: sortOrder as 'asc' | 'desc' });
-            } else {
-                orderBy.push({ updatedAt: sortOrder as 'asc' | 'desc' });
-            }
+        deps.triggerSearchBackfill();
 
-            const $notes = models.note.findMany({
+        const parsedQuery = parseNoteSearchQuery(searchFilter.query);
+        const staleNotes = filterNotesBySearchQuery(staleCandidateNotes, parsedQuery);
+
+        if (staleNotes.length === 0) {
+            const [notes, totalCount] = await Promise.all([
+                deps.findNotes({
+                    orderBy,
+                    where,
+                    take: limit,
+                    skip: offset
+                }),
+                deps.countNotes({ where })
+            ]);
+
+            return {
+                totalCount,
+                notes
+            };
+        }
+
+        const [freshNotesPrefix, freshTotalCount] = await Promise.all([
+            deps.findNotes({
                 orderBy,
                 where,
-                take: Number(pagination.limit),
-                skip: Number(pagination.offset)
-            });
-            return {
-                totalCount: models.note.count({ where }),
-                notes: $notes
-            };
-        },
+                take: offset + limit
+            }),
+            deps.countNotes({ where })
+        ]);
+        const mergedNotes = mergeSortedNotesForSearch(freshNotesPrefix, staleNotes, searchFilter);
+
+        return {
+            totalCount: freshTotalCount + staleNotes.length,
+            notes: mergedNotes.slice(offset, offset + limit)
+        };
+    };
+};
+
+export const noteResolvers: IResolvers = {
+    Query: {
+        allNotes: createAllNotesQueryResolver(),
         notesInDateRange: async (_, { dateRange }: {
             dateRange: {
                 start: string;
@@ -569,6 +731,10 @@ export const noteResolvers: IResolvers = {
                 data: {
                     title: replacedTitle,
                     content: replacedContent,
+                    ...buildNoteSearchProjection({
+                        title: replacedTitle,
+                        content: replacedContent
+                    }),
                     ...(note.layout && { layout: note.layout })
                 }
             });
@@ -600,6 +766,17 @@ export const noteResolvers: IResolvers = {
             const userAgentHeader = context.req?.headers['user-agent'];
             const userAgent = Array.isArray(userAgentHeader) ? userAgentHeader[0] : userAgentHeader;
             let blocks: BlockNote<{ id: string }>[] = [];
+            const existingNote = await models.note.findUnique({
+                where: { id: Number(id) },
+                select: {
+                    title: true,
+                    content: true
+                }
+            });
+
+            if (!existingNote) {
+                throw 'NOT FOUND';
+            }
 
             if (note.content) {
                 blocks = extractBlocksByType<{ id: string }>(
@@ -614,10 +791,17 @@ export const noteResolvers: IResolvers = {
                 meta: createSnapshotMetaFromUserAgent(userAgent)
             });
 
+            const nextTitle = note.title ?? existingNote.title;
+            const nextContent = note.content ?? existingNote.content;
+
             const $note = await models.note.update({
                 where: { id: Number(id) },
                 data: {
                     ...note,
+                    ...buildNoteSearchProjection({
+                        title: nextTitle,
+                        content: nextContent
+                    }),
                     ...(note.content ? { tags: { set: blocks.map(block => ({ id: Number(block.props.id) })) } } : {})
                 }
             });

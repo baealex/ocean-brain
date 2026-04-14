@@ -26,17 +26,19 @@ model McpToken {
 }
 
 model Note {
-    id        Int        @id @default(autoincrement())
-    title     String
-    content   String
-    createdAt DateTime   @default(now())
-    updatedAt DateTime   @updatedAt
-    pinned    Boolean    @default(false)
-    order     Int        @default(0)
-    layout    NoteLayout @default(wide)
-    tags      Tag[]      @relation("NoteToTag")
-    reminders Reminder[] @relation("NoteToReminder")
-    snapshots NoteSnapshot[]
+    id                   Int        @id @default(autoincrement())
+    title                String
+    content              String
+    searchableText       String     @default("")
+    searchableTextVersion Int       @default(0)
+    createdAt            DateTime   @default(now())
+    updatedAt            DateTime   @updatedAt
+    pinned               Boolean    @default(false)
+    order                Int        @default(0)
+    layout               NoteLayout @default(wide)
+    tags                 Tag[]      @relation("NoteToTag")
+    reminders            Reminder[] @relation("NoteToReminder")
+    snapshots            NoteSnapshot[]
 }
 
 model NoteSnapshot {

@@ -1,0 +1,5 @@
+ALTER TABLE "Note"
+ADD COLUMN "searchableText" TEXT NOT NULL DEFAULT '';
+
+ALTER TABLE "Note"
+ADD COLUMN "searchableTextVersion" INTEGER NOT NULL DEFAULT 0;

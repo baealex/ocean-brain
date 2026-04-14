@@ -3,6 +3,7 @@ import {
     extractTagIdsFromContentJson,
     markdownToBlocksJson
 } from './blocknote.js';
+import { buildNoteSearchProjection } from './note-search.js';
 import { captureNoteBaseline } from './note-snapshot.js';
 
 interface PlaceholderRecord {
@@ -198,6 +199,10 @@ const defaultNoteAuthoringService = createNoteAuthoringService({
             data: {
                 title: input.title,
                 content: input.content,
+                ...buildNoteSearchProjection({
+                    title: input.title,
+                    content: input.content
+                }),
                 ...(input.layout ? { layout: input.layout } : {}),
                 ...(input.tagIds
                     ? { tags: { connect: input.tagIds.map((id) => ({ id: Number(id) })) } }
@@ -225,12 +230,31 @@ const defaultNoteAuthoringService = createNoteAuthoringService({
     extractTagIds: extractTagIdsFromContentJson,
     captureBaseline: captureNoteBaseline,
     updateNote: async (id, input) => {
+        const existingNote = await models.note.findUnique({
+            where: { id },
+            select: {
+                title: true,
+                content: true
+            }
+        });
+
+        if (!existingNote) {
+            throw new Error('NOTE_NOT_FOUND');
+        }
+
+        const nextTitle = input.title ?? existingNote.title;
+        const nextContent = input.content ?? existingNote.content;
+
         return models.note.update({
             where: { id },
             data: {
                 title: input.title,
                 content: input.content,
                 layout: input.layout,
+                ...buildNoteSearchProjection({
+                    title: nextTitle,
+                    content: nextContent
+                }),
                 ...(input.tagIds
                     ? { tags: { set: input.tagIds.map((tagId) => ({ id: Number(tagId) })) } }
                     : {})

@@ -1,7 +1,6 @@
 import { ServerBlockNoteEditor } from '@blocknote/server-util';
-
+import { ensureTagByName } from '~/features/tag/services/organization.js';
 import models from '~/models.js';
-import { ensureTagByName } from './tag-organization.js';
 
 interface BlockNote {
     id?: string;

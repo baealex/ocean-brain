@@ -1,11 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-    createTagOrganizationService,
-    InvalidTagNameError,
-    normalizeTagName,
-} from '../src/modules/tag-organization.js';
+import { createTagOrganizationService, InvalidTagNameError, normalizeTagName } from './organization.js';
 
 test('normalizeTagName trims input and prefixes Ocean Brain tags with @', () => {
     assert.equal(normalizeTagName('project'), '@project');

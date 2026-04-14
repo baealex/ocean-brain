@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { AppError } from '../src/modules/error-handler.js';
-import { InvalidTagNameError } from '../src/modules/tag-organization.js';
-import { createMcpCreateTagHandler } from '../src/views/tag.js';
+import { AppError } from '~/modules/error-handler.js';
+import { InvalidTagNameError } from '../services/organization.js';
+import { createMcpCreateTagHandler } from './mcp.js';
 
 const createResponse = () => {
     const response = {

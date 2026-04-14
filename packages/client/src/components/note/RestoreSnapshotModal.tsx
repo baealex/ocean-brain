@@ -107,8 +107,8 @@ export default function RestoreSnapshotModal({ isOpen, noteId, onClose, onRestor
                             tone="secondary"
                             className="rounded-[14px] border border-border-subtle bg-hover-subtle/50 px-4 py-3"
                         >
-                            A recovery snapshot will appear after the first edit in a session and older ones are cleaned
-                            up automatically.
+                            A recovery snapshot appears before the first edit in a session. Up to five recent snapshots
+                            are kept automatically, and identical versions are skipped.
                         </Text>
                     )}
                     {!snapshotQuery.isLoading && snapshotQuery.data && snapshotQuery.data.length > 0 && (

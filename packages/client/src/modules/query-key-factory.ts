@@ -70,6 +70,7 @@ export const queryKeys = {
                 },
             ] as const,
         pinned: () => ['notes', 'pinned'] as const,
+        backReferencesAll: () => ['notes', 'back-references'] as const,
         backReferences: (noteId: string) => ['notes', 'back-references', { noteId }] as const,
         graph: () => ['notes', 'graph'] as const,
     },
@@ -151,6 +152,7 @@ export const queryKeys = {
             ] as const,
     },
     calendar: {
+        all: () => ['calendar'] as const,
         notesInDateRange: (year: number, month: number) =>
             [
                 'calendar',

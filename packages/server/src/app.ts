@@ -1,7 +1,12 @@
 import express from 'express';
 import { createHandler } from 'graphql-http/lib/use/express';
 import path from 'path';
-import { createSessionMiddleware, isAuthenticatedRequest, requireSessionForGraphql } from './modules/auth-guard.js';
+import {
+    createSessionMiddleware,
+    isAuthenticatedRequest,
+    requireSessionForGraphql,
+    requireSessionForWrite,
+} from './modules/auth-guard.js';
 import type { AuthConfig } from './modules/auth-mode.js';
 import { createErrorHandler } from './modules/error-handler.js';
 import logger from './modules/logger.js';
@@ -15,6 +20,7 @@ import schema from './schema/index.js';
 import { createApiRouter } from './urls.js';
 import { createLoginPageHandler, createLoginPageSubmitHandler, createLogoutPageHandler } from './views/auth.js';
 import { createMcpCreateNoteHandler, createMcpDeleteNoteHandler, createMcpUpdateNoteHandler } from './views/note.js';
+import { createServerEventsHandler } from './views/server-events.js';
 import { createMcpCreateTagHandler } from './views/tag.js';
 
 const shouldBlockClientRoute = (authConfig: AuthConfig, requestPath: string, authenticated: boolean) => {
@@ -68,6 +74,7 @@ export const createAppWithMcpAuth = (authConfig: AuthConfig, mcpAdminService: Mc
             createMcpAuthMiddleware(authConfig, mcpAdminService),
             useAsync(createMcpDeleteNoteHandler()),
         )
+        .get('/api/events', requireSessionForWrite(authConfig), createServerEventsHandler())
         .use('/api', createApiRouter(authConfig, mcpAdminService))
         .get('/auth/login', createLoginPageHandler(authConfig))
         .post('/auth/login', createLoginPageSubmitHandler(authConfig))

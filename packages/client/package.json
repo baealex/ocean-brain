@@ -59,6 +59,7 @@
         "@vitejs/plugin-react": "^5.1.4",
         "@vitest/coverage-v8": "^4.0.18",
         "jsdom": "^25.0.1",
+        "react-grab": "^0.1.32",
         "tailwindcss": "^4.1.18",
         "typescript": "^5.9.3",
         "vite": "^7.3.2",

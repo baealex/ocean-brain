@@ -87,6 +87,14 @@ const createNoteRequest = async (baseUrl: string, body: Record<string, unknown>,
     };
 };
 
+const connectServerEvents = async (baseUrl: string) => {
+    return fetch(`${baseUrl}/api/events`, {
+        headers: {
+            Accept: 'text/event-stream',
+        },
+    });
+};
+
 const updateNoteRequest = async (baseUrl: string, body: Record<string, unknown>, bearerToken?: string) => {
     const response = await fetch(`${baseUrl}/api/mcp/notes/update`, {
         method: 'POST',
@@ -169,6 +177,44 @@ test('password mode requires a valid bearer token on the MCP graphql endpoint', 
     const authorized = await graphRequest(baseUrl, '/graphql/mcp', 'query { __typename }', 'mcp-secret');
     assert.equal(authorized.status, 200);
     assert.equal((authorized.body.data as { __typename?: string }).__typename, 'Query');
+});
+
+test('password mode requires a session on the server events endpoint', async (t) => {
+    const { baseUrl } = await startServer(
+        t,
+        {
+            mode: 'password',
+            password: 'secret',
+            sessionSecret: 'session-secret',
+            source: 'override',
+        },
+        createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }),
+    );
+
+    const response = await connectServerEvents(baseUrl);
+
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), {
+        code: 'UNAUTHORIZED',
+        message: 'Authentication required',
+    });
+});
+
+test('disabled mode exposes the server events endpoint as an event stream', async (t) => {
+    const { baseUrl } = await startServer(
+        t,
+        {
+            mode: 'disabled',
+            source: 'override',
+        },
+        createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }),
+    );
+
+    const response = await connectServerEvents(baseUrl);
+
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get('content-type') ?? '', /^text\/event-stream/);
+    await response.body?.cancel();
 });
 
 test('password mode keeps the MCP graphql endpoint read-only even with a valid bearer token', async (t) => {

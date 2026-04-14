@@ -9,7 +9,7 @@ import { BackReferences } from '~/components/entities';
 import * as Icon from '~/components/icon';
 import { LayoutModal, RestoreSnapshotModal } from '~/components/note';
 import { ReminderPanel } from '~/components/reminder';
-import { AuxiliaryPanelHeader, Button, Dropdown, PageLayout, Skeleton } from '~/components/shared';
+import { AuxiliaryPanelHeader, Button, Callout, Dropdown, PageLayout, Skeleton } from '~/components/shared';
 import type { EditorRef } from '~/components/shared/Editor';
 import Editor from '~/components/shared/Editor';
 import { Text, useToast } from '~/components/ui';
@@ -17,6 +17,7 @@ import useNoteMutate from '~/hooks/resource/useNoteMutate';
 import useDebounce from '~/hooks/useDebounce';
 import type { NoteLayout } from '~/models/note.model';
 import { queryKeys } from '~/modules/query-key-factory';
+import { subscribeServerEvent } from '~/modules/server-events';
 import { NOTE_ROUTE, SETTINGS_TRASH_ROUTE } from '~/modules/url';
 
 const Route = getRouteApi(NOTE_ROUTE);
@@ -52,6 +53,8 @@ interface NoteContentProps {
     id: string;
 }
 
+type ExternalNoteChange = { type: 'updated'; updatedAt: string } | { type: 'deleted' };
+
 function NoteContent({ id }: NoteContentProps) {
     const toast = useToast();
     const navigate = Route.useNavigate();
@@ -59,7 +62,7 @@ function NoteContent({ id }: NoteContentProps) {
     const titleRef = useRef<HTMLInputElement>(null);
     const editSessionIdRef = useRef<string>(createEditSessionId());
 
-    const { data: note } = useSuspenseQuery({
+    const noteQuery = useSuspenseQuery({
         queryKey: queryKeys.notes.detail(id),
         queryFn: async () => {
             const response = await fetchNote(id);
@@ -70,6 +73,7 @@ function NoteContent({ id }: NoteContentProps) {
         },
         gcTime: 0,
     });
+    const note = noteQuery.data;
 
     const [title, setTitle] = useState(note.title);
     const [lastSavedAt, setLastSavedAt] = useState(() => formatSavedAt(note.updatedAt));
@@ -77,6 +81,7 @@ function NoteContent({ id }: NoteContentProps) {
     const [layout, setLayout] = useState<NoteLayout>(note.layout || 'wide');
     const [isLayoutModalOpen, setIsLayoutModalOpen] = useState(false);
     const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
+    const [externalNoteChange, setExternalNoteChange] = useState<ExternalNoteChange | null>(null);
     const [isMountedEvent, mountEvent] = useDebounce(1000);
 
     useEffect(() => {
@@ -88,7 +93,42 @@ function NoteContent({ id }: NoteContentProps) {
 
     useEffect(() => {
         editSessionIdRef.current = createEditSessionId();
+        setExternalNoteChange(null);
     }, [id]);
+
+    useEffect(() => {
+        setExternalNoteChange((current) => {
+            if (current?.type === 'updated' && current.updatedAt === note.updatedAt) {
+                return null;
+            }
+
+            return current;
+        });
+    }, [note.updatedAt]);
+
+    useEffect(() => {
+        return subscribeServerEvent((event) => {
+            if (event.noteId !== id) {
+                return;
+            }
+
+            if (event.type === 'mcp.note.updated') {
+                if (event.updatedAt === note.updatedAt) {
+                    return;
+                }
+
+                setExternalNoteChange({
+                    type: 'updated',
+                    updatedAt: event.updatedAt,
+                });
+                return;
+            }
+
+            if (event.type === 'mcp.note.deleted') {
+                setExternalNoteChange({ type: 'deleted' });
+            }
+        });
+    }, [id, note.updatedAt]);
 
     const save = async ({ title: nextTitle = '', content = '' }) => {
         mountEvent(async () => {
@@ -138,6 +178,17 @@ function NoteContent({ id }: NoteContentProps) {
 
         setLayout(newLayout);
         toast('Layout has been updated.');
+    };
+
+    const handleReloadExternalChange = async () => {
+        const response = await noteQuery.refetch();
+
+        if (response.error || !response.data) {
+            toast('Failed to reload the latest note state.');
+            return;
+        }
+
+        setExternalNoteChange(null);
     };
 
     const { onCreate, onDelete, onPinned } = useNoteMutate();
@@ -244,6 +295,45 @@ function NoteContent({ id }: NoteContentProps) {
                         </div>
                     </div>
                 </div>
+
+                {externalNoteChange && (
+                    <Callout className="mb-6">
+                        <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <span>
+                                {externalNoteChange.type === 'updated'
+                                    ? 'This note changed in MCP. Reload to review the latest version.'
+                                    : 'This note was moved to trash from MCP. Open trash to review it.'}
+                            </span>
+                            {externalNoteChange.type === 'updated' ? (
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="subtle"
+                                    className="self-start"
+                                    isLoading={noteQuery.isRefetching}
+                                    onClick={handleReloadExternalChange}
+                                >
+                                    Reload
+                                </Button>
+                            ) : (
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="subtle"
+                                    className="self-start"
+                                    onClick={() =>
+                                        navigate({
+                                            to: SETTINGS_TRASH_ROUTE,
+                                            search: { page: 1 },
+                                        })
+                                    }
+                                >
+                                    Open trash
+                                </Button>
+                            )}
+                        </div>
+                    </Callout>
+                )}
 
                 <Editor
                     key={`${id}:${note.updatedAt}`}

@@ -78,6 +78,40 @@ test('mcp create note handler returns the created note payload', async () => {
     });
 });
 
+test('mcp create note handler emits a created server event', async () => {
+    const emittedEvents: unknown[] = [];
+    const handler = createMcpCreateNoteHandler(
+        async () => ({
+            id: '3',
+            title: 'Draft note',
+            layout: 'full',
+            createdAt: '2026-03-31T00:00:00.000Z',
+            updatedAt: '2026-03-31T00:00:00.000Z',
+        }),
+        (event) => {
+            emittedEvents.push(event);
+        },
+    );
+
+    await handler(
+        {
+            body: {
+                title: 'Draft note',
+            },
+        } as never,
+        createResponse() as never,
+    );
+
+    assert.deepEqual(emittedEvents, [
+        {
+            type: 'mcp.note.created',
+            source: 'mcp',
+            noteId: '3',
+            updatedAt: '2026-03-31T00:00:00.000Z',
+        },
+    ]);
+});
+
 test('mcp create note handler rejects invalid note layouts', async () => {
     const handler = createMcpCreateNoteHandler(async () => ({
         id: '1',
@@ -184,6 +218,41 @@ test('mcp update note handler returns the updated note payload', async () => {
             updatedAt: '2026-04-01T00:00:00.000Z',
         },
     });
+});
+
+test('mcp update note handler emits an updated server event', async () => {
+    const emittedEvents: unknown[] = [];
+    const handler = createMcpUpdateNoteHandler(
+        async () => ({
+            id: '7',
+            title: 'Renamed',
+            layout: 'wide',
+            createdAt: '2026-03-31T00:00:00.000Z',
+            updatedAt: '2026-04-01T00:00:00.000Z',
+        }),
+        (event) => {
+            emittedEvents.push(event);
+        },
+    );
+
+    await handler(
+        {
+            body: {
+                id: '7',
+                title: 'Renamed',
+            },
+        } as never,
+        createResponse() as never,
+    );
+
+    assert.deepEqual(emittedEvents, [
+        {
+            type: 'mcp.note.updated',
+            source: 'mcp',
+            noteId: '7',
+            updatedAt: '2026-04-01T00:00:00.000Z',
+        },
+    ]);
 });
 
 test('mcp update note handler rejects empty updates', async () => {

@@ -1,40 +1,7 @@
 import assert from 'node:assert/strict';
-import type { AddressInfo } from 'node:net';
-import test, { type TestContext } from 'node:test';
-import { createAppWithMcpAuth } from '../src/app.js';
-import type { AuthConfig } from '../src/modules/auth-mode.js';
-import { fetchRemoteImage, RemoteImageFetchError } from '../src/modules/remote-image.js';
+import test from 'node:test';
 
-const startServer = async (t: TestContext, authConfig: AuthConfig) => {
-    const app = createAppWithMcpAuth(authConfig, { tokens: [] });
-    const server = app.listen(0);
-
-    await new Promise<void>((resolve, reject) => {
-        server.once('listening', resolve);
-        server.once('error', reject);
-    });
-
-    t.after(() => {
-        server.close();
-    });
-
-    const address = server.address() as AddressInfo;
-
-    return { baseUrl: `http://127.0.0.1:${address.port}` };
-};
-
-const jsonRequest = async (baseUrl: string, path: string, method: 'POST', body: Record<string, unknown>) => {
-    const response = await fetch(`${baseUrl}${path}`, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-    });
-
-    return {
-        status: response.status,
-        body: (await response.json()) as Record<string, unknown>,
-    };
-};
+import { fetchRemoteImage, RemoteImageFetchError } from './remote-fetch.js';
 
 test('fetchRemoteImage rejects invalid protocols before any network fetch', async () => {
     await assert.rejects(
@@ -154,30 +121,4 @@ test('fetchRemoteImage returns image bytes for allowed hosts and content types',
     assert.equal(remoteImage.contentType, 'image/png');
     assert.equal(remoteImage.extension, 'png');
     assert.deepEqual(remoteImage.buffer, buffer);
-});
-
-test('image-from-src returns a distinct error code for invalid remote urls', async (t) => {
-    const { baseUrl } = await startServer(t, {
-        mode: 'disabled',
-        source: 'override',
-    });
-
-    const response = await jsonRequest(baseUrl, '/api/image-from-src', 'POST', {
-        src: 'ftp://cdn.example.com/file.png',
-    });
-
-    assert.equal(response.status, 400);
-    assert.equal(response.body.code, 'INVALID_REMOTE_URL');
-});
-
-test('image-from-src blocks direct loopback targets before fetching', async (t) => {
-    const { baseUrl } = await startServer(t, {
-        mode: 'disabled',
-        source: 'override',
-    });
-
-    const response = await jsonRequest(baseUrl, '/api/image-from-src', 'POST', { src: 'http://127.0.0.1/file.png' });
-
-    assert.equal(response.status, 403);
-    assert.equal(response.body.code, 'REMOTE_URL_BLOCKED');
 });

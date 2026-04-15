@@ -6,8 +6,9 @@ import { pathToFileURL } from 'node:url';
 
 export const resolveSchemaPath = (packageRoot, doesExist = existsSync) => {
     const candidates = [
-        path.join(packageRoot, 'server', 'prisma', 'schema.prisma'),
-        path.resolve(packageRoot, '..', 'server', 'prisma', 'schema.prisma')
+        // In the workspace, prefer the live server schema over the bundled CLI copy.
+        path.resolve(packageRoot, '..', 'server', 'prisma', 'schema.prisma'),
+        path.join(packageRoot, 'server', 'prisma', 'schema.prisma')
     ];
 
     const match = candidates.find((candidate) => doesExist(candidate));

@@ -37,7 +37,10 @@ interface FakeDb {
             where: { revokedAt: Date | null };
             orderBy: { createdAt: 'desc' | 'asc' };
         }) => Promise<TokenRow | null>;
-        updateMany: (args: { where: { revokedAt: Date | null }; data: { revokedAt: Date } }) => Promise<{ count: number }>;
+        updateMany: (args: {
+            where: { revokedAt: Date | null };
+            data: { revokedAt: Date };
+        }) => Promise<{ count: number }>;
         create: (args: { data: { tokenHash: string } }) => Promise<TokenRow>;
         update: (args: { where: { id: number }; data: { lastUsedAt: Date } }) => Promise<TokenRow>;
     };

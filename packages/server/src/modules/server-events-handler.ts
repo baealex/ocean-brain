@@ -1,5 +1,5 @@
-import { serializeServerEvent, subscribeServerEvents } from '~/modules/server-events.js';
 import type { Controller } from '~/types/index.js';
+import { serializeServerEvent, subscribeServerEvents } from './server-events.js';
 
 const KEEP_ALIVE_INTERVAL_MS = 30_000;
 

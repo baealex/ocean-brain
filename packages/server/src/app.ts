@@ -1,11 +1,11 @@
 import express from 'express';
+import { createMcpAdminService, type McpAdminService } from './features/mcp-admin/service.js';
 import { purgeExpiredNoteSnapshots } from './features/note/services/snapshot.js';
 import { purgeExpiredTrashedNotes } from './features/note/services/trash.js';
 import { createSessionMiddleware } from './modules/auth-guard.js';
 import type { AuthConfig } from './modules/auth-mode.js';
 import { createErrorHandler } from './modules/error-handler.js';
 import logger from './modules/logger.js';
-import { createMcpAdminService, type McpAdminService } from './modules/mcp-admin.js';
 import { createApiRouter, createAuthPagesRouter, createClientRouter, createGraphqlRouter } from './routes/index.js';
 
 export const createApp = (authConfig: AuthConfig) => {

@@ -1,8 +1,8 @@
 import { type Request, type Response, Router } from 'express';
 import { createHandler } from 'graphql-http/lib/use/express';
+import type { McpAdminService } from '../features/mcp-admin/service.js';
 import { isAuthenticatedRequest, requireSessionForGraphql } from '../modules/auth-guard.js';
 import type { AuthConfig } from '../modules/auth-mode.js';
-import type { McpAdminService } from '../modules/mcp-admin.js';
 import { createMcpAuthMiddleware, createReadOnlyMcpValidationRule } from '../modules/mcp-auth.js';
 import schema from '../schema/index.js';
 

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createMcpAdminService } from '../src/modules/mcp-admin.js';
+import { createMcpAdminService } from './service.js';
 
 interface TokenRow {
     id: number;
@@ -11,12 +11,48 @@ interface TokenRow {
     revokedAt: Date | null;
 }
 
+interface FakeDb {
+    cache: {
+        findUnique: (args: { where: { key: string } }) => Promise<{
+            key: string;
+            value: string;
+            id: number;
+            createdAt: Date;
+            updatedAt: Date;
+        } | null>;
+        upsert: (args: {
+            where: { key: string };
+            create: { key: string; value: string };
+            update: { value: string };
+        }) => Promise<{
+            id: number;
+            key: string;
+            value: string;
+            createdAt: Date;
+            updatedAt: Date;
+        }>;
+    };
+    mcpToken: {
+        findFirst: (args: {
+            where: { revokedAt: Date | null };
+            orderBy: { createdAt: 'desc' | 'asc' };
+        }) => Promise<TokenRow | null>;
+        updateMany: (args: {
+            where: { revokedAt: Date | null };
+            data: { revokedAt: Date };
+        }) => Promise<{ count: number }>;
+        create: (args: { data: { tokenHash: string } }) => Promise<TokenRow>;
+        update: (args: { where: { id: number }; data: { lastUsedAt: Date } }) => Promise<TokenRow>;
+    };
+    $transaction: <T>(callback: (tx: FakeDb) => Promise<T>) => Promise<T>;
+}
+
 const createFakeDb = () => {
     const cacheStore = new Map<string, string>();
     const tokens: TokenRow[] = [];
     let nextId = 1;
 
-    const fakeDb = {
+    const fakeDb: FakeDb = {
         cache: {
             async findUnique({ where }: { where: { key: string } }) {
                 const value = cacheStore.get(where.key);
@@ -104,7 +140,7 @@ const createFakeDb = () => {
                 return row;
             },
         },
-        async $transaction<T>(callback: (tx: typeof fakeDb) => Promise<T>) {
+        async $transaction<T>(callback: (tx: FakeDb) => Promise<T>) {
             return callback(fakeDb);
         },
     };
@@ -159,5 +195,5 @@ test('validatePresentedToken accepts the active token and updates lastUsedAt', a
 
     assert.deepEqual(accepted, { ok: true });
     assert.deepEqual(rejected, { ok: false, reason: 'forbidden' });
-    assert.ok(tokens[0].lastUsedAt instanceof Date);
+    assert.ok(tokens[0]?.lastUsedAt instanceof Date);
 });

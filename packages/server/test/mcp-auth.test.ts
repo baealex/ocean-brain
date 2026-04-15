@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import type { AddressInfo } from 'node:net';
 import test, { type TestContext } from 'node:test';
 import { createAppWithMcpAuth } from '../src/app.js';
+import type { McpAdminService } from '../src/features/mcp-admin/service.js';
 import type { AuthConfig } from '../src/modules/auth-mode.js';
-import type { McpAdminService } from '../src/modules/mcp-admin.js';
 
 const startServer = async (t: TestContext, authConfig: AuthConfig, mcpAdminAuth: McpAdminService) => {
     const app = createAppWithMcpAuth(authConfig, mcpAdminAuth);

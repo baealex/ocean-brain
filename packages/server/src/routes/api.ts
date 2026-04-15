@@ -10,8 +10,8 @@ import {
 import type { McpAdminService } from '../features/mcp-admin/service.js';
 import { requireSessionForWrite } from '../modules/auth-guard.js';
 import type { AuthConfig } from '../modules/auth-mode.js';
+import { createServerEventsHandler } from '../modules/server-events-handler.js';
 import useAsync from '../modules/use-async.js';
-import { createServerEventsHandler } from '../views/server-events.js';
 import { createMcpRouter } from './mcp.js';
 
 type McpAdminApiService = Pick<

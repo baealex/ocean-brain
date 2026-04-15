@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import type { AddressInfo } from 'node:net';
 import test, { type TestContext } from 'node:test';
-import { createAppWithMcpAuth } from '../src/app.js';
-import type { AuthConfig } from '../src/modules/auth-mode.js';
-import type { McpAdminService } from '../src/modules/mcp-admin.js';
+import { createAppWithMcpAuth } from '~/app.js';
+import type { AuthConfig } from '~/modules/auth-mode.js';
+import type { McpAdminService } from '../service.js';
 
 const createStubMcpAdminService = (input: { enabled?: boolean; hasActiveToken?: boolean } = {}): McpAdminService => {
     let enabled = input.enabled ?? true;

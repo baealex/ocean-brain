@@ -1,5 +1,5 @@
 import models from '~/models.js';
-import { issueMcpToken, verifyMcpToken } from './mcp-token.js';
+import { issueMcpToken, verifyMcpToken } from '~/modules/mcp-token.js';
 
 const MCP_ENABLED_CACHE_KEY = 'MCP_ENABLED';
 

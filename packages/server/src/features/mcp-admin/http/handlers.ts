@@ -1,6 +1,6 @@
 import { createAppError } from '~/modules/error-handler.js';
-import { createMcpAdminService, type McpAdminService } from '~/modules/mcp-admin.js';
 import type { Controller } from '~/types/index.js';
+import { createMcpAdminService, type McpAdminService } from '../service.js';
 
 type McpAdminControllerService = Pick<
     McpAdminService,

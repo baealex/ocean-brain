@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { McpAdminService } from '../features/mcp-admin/service.js';
 import {
     createMcpCreateNoteHandler,
     createMcpDeleteNoteHandler,
@@ -6,7 +7,6 @@ import {
 } from '../features/note/http/mcp.js';
 import { createMcpCreateTagHandler } from '../features/tag/http/mcp.js';
 import type { AuthConfig } from '../modules/auth-mode.js';
-import type { McpAdminService } from '../modules/mcp-admin.js';
 import { createMcpAuthMiddleware } from '../modules/mcp-auth.js';
 import useAsync from '../modules/use-async.js';
 

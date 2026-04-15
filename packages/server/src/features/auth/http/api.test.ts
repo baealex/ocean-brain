@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import type { AddressInfo } from 'node:net';
 import test, { type TestContext } from 'node:test';
-import { createApp } from '../src/app.js';
-import type { AuthConfig } from '../src/modules/auth-mode.js';
+import { createApp } from '~/app.js';
+import type { AuthConfig } from '~/modules/auth-mode.js';
 
 const startServer = async (t: TestContext, authConfig: AuthConfig) => {
     const app = createApp(authConfig);

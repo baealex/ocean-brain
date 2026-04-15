@@ -1,79 +1,6 @@
-import type { Request } from 'express';
-import { compareSharedSecret } from '~/modules/auth.js';
 import type { AuthConfig } from '~/modules/auth-mode.js';
-import { createAppError } from '~/modules/error-handler.js';
 import type { Controller } from '~/types/index.js';
-
-const buildSessionResponse = (authConfig: AuthConfig, req: Request) => ({
-    mode: authConfig.mode,
-    authRequired: authConfig.mode === 'password',
-    authenticated: authConfig.mode === 'password' ? Boolean(req.session?.authenticated) : false,
-});
-
-const regenerateSession = async (req: Request) => {
-    await new Promise<void>((resolve, reject) => {
-        req.session.regenerate((error) => {
-            if (error) {
-                reject(error);
-                return;
-            }
-
-            resolve();
-        });
-    });
-};
-
-const destroySession = async (req: Request) => {
-    if (!req.session) {
-        return;
-    }
-
-    await new Promise<void>((resolve, reject) => {
-        req.session.destroy((error) => {
-            if (error) {
-                reject(error);
-                return;
-            }
-
-            resolve();
-        });
-    });
-};
-
-const sanitizeRedirectPath = (value: unknown) => {
-    if (typeof value !== 'string' || value.length === 0) {
-        return '/';
-    }
-
-    if (value.startsWith('/')) {
-        if (value.startsWith('//') || value.startsWith('/auth/login')) {
-            return '/';
-        }
-
-        return value;
-    }
-
-    try {
-        const redirectUrl = new URL(value);
-        const hostname = redirectUrl.hostname.toLowerCase();
-
-        if (!['http:', 'https:'].includes(redirectUrl.protocol)) {
-            return '/';
-        }
-
-        if (!['localhost', '127.0.0.1', '::1', '[::1]'].includes(hostname)) {
-            return '/';
-        }
-
-        if (redirectUrl.pathname.startsWith('/auth/login')) {
-            return '/';
-        }
-
-        return `${redirectUrl.origin}${redirectUrl.pathname}${redirectUrl.search}${redirectUrl.hash}`;
-    } catch {
-        return '/';
-    }
-};
+import { compareSharedSecret, destroySession, regenerateSession, sanitizeRedirectPath } from '../service.js';
 
 const escapeHtml = (value: string) =>
     value
@@ -247,25 +174,6 @@ const renderLoginPage = ({ nextPath, errorMessage }: { nextPath: string; errorMe
 </html>`;
 };
 
-export const createLoginHandler = (authConfig: AuthConfig): Controller => {
-    return async (req, res) => {
-        if (authConfig.mode !== 'password' || !authConfig.password) {
-            throw createAppError(409, 'AUTH_DISABLED', 'Login is unavailable while auth mode is disabled.');
-        }
-
-        const password = typeof req.body?.password === 'string' ? req.body.password : '';
-
-        if (!password || !compareSharedSecret(authConfig.password, password)) {
-            throw createAppError(401, 'UNAUTHORIZED', 'Invalid password');
-        }
-
-        await regenerateSession(req);
-        req.session.authenticated = true;
-
-        res.status(200).json(buildSessionResponse(authConfig, req)).end();
-    };
-};
-
 export const createLoginPageHandler = (authConfig: AuthConfig): Controller => {
     return async (req, res) => {
         if (authConfig.mode !== 'password' || req.session?.authenticated) {
@@ -318,27 +226,5 @@ export const createLogoutPageHandler = (authConfig: AuthConfig): Controller => {
         }
 
         res.redirect(303, '/');
-    };
-};
-
-export const createLogoutHandler = (authConfig: AuthConfig): Controller => {
-    return async (req, res) => {
-        if (authConfig.mode === 'password') {
-            await destroySession(req);
-        }
-
-        res.status(200)
-            .json({
-                mode: authConfig.mode,
-                authRequired: authConfig.mode === 'password',
-                authenticated: false,
-            })
-            .end();
-    };
-};
-
-export const createSessionStatusHandler = (authConfig: AuthConfig): Controller => {
-    return async (req, res) => {
-        res.status(200).json(buildSessionResponse(authConfig, req)).end();
     };
 };

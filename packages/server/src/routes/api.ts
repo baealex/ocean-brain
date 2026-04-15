@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { createUploadImageFromSrcHandler, createUploadImageHandler } from '../features/image/http/upload.js';
 import { requireSessionForWrite } from '../modules/auth-guard.js';
 import type { AuthConfig } from '../modules/auth-mode.js';
 import type { McpAdminService } from '../modules/mcp-admin.js';
@@ -38,6 +39,6 @@ export const createApiRouter = (authConfig: AuthConfig, mcpAdminService: McpAdmi
             requireSessionForWrite(authConfig),
             useAsync(views.createMcpAdminRevokeTokenHandler(mcpAdminService)),
         )
-        .post('/image', requireSessionForWrite(authConfig), useAsync(views.uploadImage))
-        .post('/image-from-src', requireSessionForWrite(authConfig), useAsync(views.uploadImageFromSrc))
+        .post('/image', requireSessionForWrite(authConfig), useAsync(createUploadImageHandler()))
+        .post('/image-from-src', requireSessionForWrite(authConfig), useAsync(createUploadImageFromSrcHandler()))
         .get('/events', requireSessionForWrite(authConfig), createServerEventsHandler());

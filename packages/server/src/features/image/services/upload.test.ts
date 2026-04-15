@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createImageUploadService, hashImageBuffer } from '../src/modules/image-upload.js';
+import { createImageUploadService, hashImageBuffer } from './upload.js';
 
 test('hashImageBuffer hashes raw bytes consistently', () => {
     const buffer = Buffer.from('same-image-bytes');

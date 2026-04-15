@@ -5,6 +5,7 @@ import {
     validateHomeSearch,
     validatePaginationSearch,
     validateSearchPageSearch,
+    validateViewNotesSearch,
 } from './route-search';
 
 describe('route-search validators', () => {
@@ -53,6 +54,18 @@ describe('route-search validators', () => {
             year: dayjs().year(),
             month: dayjs().month() + 1,
             type: 'create',
+        });
+    });
+
+    it('normalizes view-notes search values', () => {
+        expect(
+            validateViewNotesSearch({
+                page: '0',
+                sectionId: '17',
+            }),
+        ).toEqual({
+            page: 1,
+            sectionId: '17',
         });
     });
 });

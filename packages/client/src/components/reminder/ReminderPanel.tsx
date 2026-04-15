@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Reminders } from '~/components/entities';
 import * as Icon from '~/components/icon';
 import { AuxiliaryPanelHeader, Button, Dropdown } from '~/components/shared';
-import { Checkbox, Text } from '~/components/ui';
+import { Checkbox, MoreButton, Text } from '~/components/ui';
 import useReminderMutate from '~/hooks/resource/useReminderMutate';
 import type { Reminder } from '~/models/reminder.model';
 import ReminderModal from './ReminderModal';
@@ -194,15 +194,7 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                                                         )}
                                                     </div>
                                                     <Dropdown
-                                                        button={
-                                                            <button
-                                                                type="button"
-                                                                className="focus-ring-soft inline-flex h-8 w-8 items-center justify-center rounded-[10px] text-fg-secondary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default"
-                                                            >
-                                                                <Icon.VerticalDots size={16} className="text-current" />
-                                                                <span className="sr-only">Reminder actions</span>
-                                                            </button>
-                                                        }
+                                                        button={<MoreButton label="Reminder actions" />}
                                                         items={[
                                                             {
                                                                 name: 'Edit',

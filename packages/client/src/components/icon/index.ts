@@ -25,7 +25,7 @@ export {
     Crosshair,
     Desktop,
     DeviceMobile as Mobile,
-    DotsSix as DragHandle,
+    DotsSixVertical as DragHandle,
     DotsThreeVertical as VerticalDots,
     Download,
     Eraser,

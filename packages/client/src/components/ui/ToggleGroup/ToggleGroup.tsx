@@ -6,7 +6,7 @@ import { createContext, forwardRef, useContext } from 'react';
 import { toggleGroupItemVariants, toggleGroupVariants } from './variants';
 
 type ToggleGroupContextValue = {
-    variant?: 'default' | 'outline' | 'pills';
+    variant?: 'default' | 'outline' | 'pills' | 'quiet';
     size?: 'sm' | 'md' | 'lg';
 };
 

@@ -12,7 +12,7 @@ import { ReminderPanel } from '~/components/reminder';
 import { AuxiliaryPanelHeader, Button, Callout, Dropdown, PageLayout, Skeleton } from '~/components/shared';
 import type { EditorRef } from '~/components/shared/Editor';
 import Editor from '~/components/shared/Editor';
-import { Text, useToast } from '~/components/ui';
+import { MoreButton, Text, useToast } from '~/components/ui';
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
 import useDebounce from '~/hooks/useDebounce';
 import type { NoteLayout } from '~/models/note.model';
@@ -222,15 +222,7 @@ function NoteContent({ id }: NoteContentProps) {
                             </div>
                             <div className="flex shrink-0 items-center gap-2">
                                 <Dropdown
-                                    button={
-                                        <button
-                                            type="button"
-                                            className="focus-ring-soft inline-flex h-9 w-9 items-center justify-center rounded-[12px] border border-transparent bg-transparent text-fg-tertiary outline-none transition-colors hover:border-border-subtle hover:bg-hover-subtle hover:text-fg-default"
-                                        >
-                                            <Icon.VerticalDots className="h-5 w-5" />
-                                            <span className="sr-only">Note actions</span>
-                                        </button>
-                                    }
+                                    button={<MoreButton label="Note actions" size="lg" />}
                                     items={[
                                         {
                                             name: isPinned ? 'Unpin' : 'Pin',

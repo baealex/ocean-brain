@@ -7,6 +7,7 @@ import {
     validateHomeSearch,
     validatePaginationSearch,
     validateSearchPageSearch,
+    validateViewNotesSearch,
 } from '~/modules/route-search';
 import {
     CALENDAR_ROUTE,
@@ -23,6 +24,8 @@ import {
     SETTINGS_TRASH_ROUTE,
     TAG_NOTES_ROUTE,
     TAG_ROUTE,
+    VIEW_NOTES_ROUTE,
+    VIEWS_ROUTE,
 } from '~/modules/url';
 import Home from '~/pages/Home';
 
@@ -51,6 +54,13 @@ const calendarRoute = createRoute({
         <RoutePendingView title="Loading calendar" description="Preparing note and reminder snapshots." />
     ),
     validateSearch: validateCalendarSearch,
+});
+
+const viewsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: VIEWS_ROUTE,
+    component: lazyRouteComponent(() => import('~/pages/Views')),
+    pendingComponent: () => <RoutePendingView title="Loading views" description="Preparing your saved dashboards." />,
 });
 
 const remindersRoute = createRoute({
@@ -105,6 +115,16 @@ const tagNotesRoute = createRoute({
         <RoutePendingView title="Loading tagged notes" description="Preparing notes for the selected tag." />
     ),
     validateSearch: validatePaginationSearch,
+});
+
+const viewNotesRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: VIEW_NOTES_ROUTE,
+    component: lazyRouteComponent(() => import('~/pages/ViewNotes')),
+    pendingComponent: () => (
+        <RoutePendingView title="Loading view notes" description="Preparing notes for this saved view section." />
+    ),
+    validateSearch: validateViewNotesSearch,
 });
 
 const settingsRoute = createRoute({
@@ -166,6 +186,7 @@ const placeholderRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
     homeRoute,
+    viewsRoute,
     calendarRoute,
     remindersRoute,
     graphRoute,
@@ -173,6 +194,7 @@ const routeTree = rootRoute.addChildren([
     tagRoute,
     noteRoute,
     tagNotesRoute,
+    viewNotesRoute,
     settingsRoute,
     mcpRoute,
     trashRoute,

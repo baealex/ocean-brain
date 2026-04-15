@@ -1,9 +1,8 @@
 import { Link } from '@tanstack/react-router';
 import dayjs from 'dayjs';
 
-import * as Icon from '~/components/icon';
 import { Dropdown } from '~/components/shared';
-import { Checkbox, Text } from '~/components/ui';
+import { Checkbox, MoreButton, Text } from '~/components/ui';
 import type { Reminder } from '~/models/reminder.model';
 import { priorityColors } from '~/modules/color';
 import { NOTE_ROUTE } from '~/modules/url';
@@ -115,15 +114,7 @@ export default function ReminderCard({ reminder, onUpdate, onDelete }: ReminderC
 
             <div className="flex items-center justify-end gap-1.5 sm:shrink-0">
                 <Dropdown
-                    button={
-                        <button
-                            type="button"
-                            className="focus-ring-soft inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] border border-transparent bg-transparent text-fg-tertiary outline-none transition-colors hover:border-border-subtle hover:bg-hover-subtle hover:text-fg-default"
-                        >
-                            <Icon.VerticalDots className="h-5 w-5 text-current" />
-                            <span className="sr-only">Reminder actions</span>
-                        </button>
-                    }
+                    button={<MoreButton label="Reminder actions" iconClassName="h-5 w-5 text-current" />}
                     items={[
                         {
                             name: 'Delete',

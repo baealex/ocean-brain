@@ -1,4 +1,6 @@
 export const HOME_ROUTE = '/' as const;
+export const VIEWS_ROUTE = '/views' as const;
+export const VIEW_NOTES_ROUTE = '/views/notes' as const;
 export const CALENDAR_ROUTE = '/calendar' as const;
 export const REMINDERS_ROUTE = '/reminders' as const;
 export const GRAPH_ROUTE = '/graph' as const;

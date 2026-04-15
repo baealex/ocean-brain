@@ -143,3 +143,55 @@ model Placeholder {
     createdAt   DateTime @default(now())
     updatedAt   DateTime @updatedAt
 }
+
+model ViewWorkspace {
+    id         Int      @id
+    activeTabId Int?
+    activeTab  ViewTab? @relation("ActiveViewTab", fields: [activeTabId], references: [id], onDelete: SetNull)
+    createdAt  DateTime @default(now())
+    updatedAt  DateTime @updatedAt
+}
+
+model ViewTab {
+    id               Int             @id @default(autoincrement())
+    title            String
+    order            Int             @default(0)
+    createdAt        DateTime        @default(now())
+    updatedAt        DateTime        @updatedAt
+    sections         ViewSection[]
+    activeWorkspaces ViewWorkspace[] @relation("ActiveViewTab")
+
+    @@index([order, createdAt])
+}
+
+model ViewSection {
+    id        Int              @id @default(autoincrement())
+    tabId     Int
+    tab       ViewTab          @relation(fields: [tabId], references: [id], onDelete: Cascade)
+    title     String
+    mode      ViewTagMatchMode @default(and)
+    limit     Int              @default(5)
+    order     Int              @default(0)
+    createdAt DateTime         @default(now())
+    updatedAt DateTime         @updatedAt
+    tags      ViewSectionTag[]
+
+    @@index([tabId, order, createdAt])
+}
+
+model ViewSectionTag {
+    id        Int         @id @default(autoincrement())
+    sectionId Int
+    section   ViewSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+    name      String
+    order     Int         @default(0)
+    createdAt DateTime    @default(now())
+    updatedAt DateTime    @updatedAt
+
+    @@index([sectionId, order, createdAt])
+}
+
+enum ViewTagMatchMode {
+    and
+    or
+}

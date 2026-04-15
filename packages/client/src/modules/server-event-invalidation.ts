@@ -16,6 +16,10 @@ export const invalidateQueriesForServerEvent = async (queryClient: QueryClient, 
                     exact: false,
                 }),
                 queryClient.invalidateQueries({
+                    queryKey: queryKeys.notes.tagNameListAll(),
+                    exact: false,
+                }),
+                queryClient.invalidateQueries({
                     queryKey: queryKeys.notes.pinned(),
                     exact: true,
                 }),
@@ -26,6 +30,10 @@ export const invalidateQueriesForServerEvent = async (queryClient: QueryClient, 
                 queryClient.invalidateQueries({
                     queryKey: queryKeys.notes.graph(),
                     exact: true,
+                }),
+                queryClient.invalidateQueries({
+                    queryKey: queryKeys.views.sectionNotesAll(),
+                    exact: false,
                 }),
                 queryClient.invalidateQueries({
                     queryKey: queryKeys.tags.all(),
@@ -44,6 +52,10 @@ export const invalidateQueriesForServerEvent = async (queryClient: QueryClient, 
                     exact: false,
                 }),
                 queryClient.invalidateQueries({
+                    queryKey: queryKeys.notes.tagNameListAll(),
+                    exact: false,
+                }),
+                queryClient.invalidateQueries({
                     queryKey: queryKeys.notes.trashAll(),
                     exact: false,
                 }),
@@ -58,6 +70,10 @@ export const invalidateQueriesForServerEvent = async (queryClient: QueryClient, 
                 queryClient.invalidateQueries({
                     queryKey: queryKeys.notes.graph(),
                     exact: true,
+                }),
+                queryClient.invalidateQueries({
+                    queryKey: queryKeys.views.sectionNotesAll(),
+                    exact: false,
                 }),
                 queryClient.invalidateQueries({
                     queryKey: queryKeys.tags.all(),

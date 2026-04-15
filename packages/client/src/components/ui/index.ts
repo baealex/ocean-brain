@@ -43,6 +43,7 @@ export type { InputProps } from './Input';
 export { Input, inputVariants } from './Input';
 export type { LabelProps } from './Label';
 export { Label } from './Label';
+export { MoreButton, moreButtonVariants } from './MoreButton';
 export type { PaginationProps } from './Pagination';
 export { Pagination } from './Pagination';
 export { Progress, progressBarVariants } from './Progress';

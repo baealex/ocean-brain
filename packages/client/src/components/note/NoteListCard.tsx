@@ -2,7 +2,7 @@ import { Link } from '@tanstack/react-router';
 import classNames from 'classnames';
 import * as Icon from '~/components/icon';
 import { Dropdown } from '~/components/shared';
-import { Text } from '~/components/ui';
+import { MoreButton, Text } from '~/components/ui';
 
 import type { Note } from '~/models/note.model';
 
@@ -38,15 +38,7 @@ export default function NoteListCard({ id, title, tags, pinned, updatedAt, onPin
                         </Text>
                     </div>
                     <Dropdown
-                        button={
-                            <button
-                                type="button"
-                                className="focus-ring-soft inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] border border-transparent bg-transparent text-fg-tertiary outline-none transition-colors hover:border-border-subtle hover:bg-hover-subtle hover:text-fg-default"
-                            >
-                                <Icon.VerticalDots className="h-4 w-4" />
-                                <span className="sr-only">Note actions</span>
-                            </button>
-                        }
+                        button={<MoreButton label="Note actions" size="sm" />}
                         items={[
                             {
                                 name: pinned ? 'Unpin' : 'Pin',

@@ -44,7 +44,7 @@ interface PinnedNotesListProps {
 }
 
 const dragHandleBaseClassName =
-    'focus-ring-soft flex h-8 w-8 items-center justify-center rounded-[10px] text-fg-secondary outline-none transition-colors hover:text-fg-default active:cursor-grabbing touch-none';
+    'focus-ring-soft flex h-8 w-8 items-center justify-center rounded-[10px] text-fg-default/70 outline-none transition-colors hover:text-fg-default active:cursor-grabbing touch-none';
 const pinnedLinkBaseClassName =
     'focus-ring-soft block truncate rounded-[10px] px-1.5 py-1 outline-none transition-colors';
 
@@ -76,7 +76,7 @@ function SortablePinnedNote({ id, title, isActive = false, children }: SortableP
                 {...listeners}
                 className={classNames(dragHandleBaseClassName, isDragging ? 'cursor-grabbing' : 'cursor-grab')}
             >
-                <Icon.DragHandle className="size-3.5" />
+                <Icon.DragHandle className="size-4" />
             </button>
             <Text as="div" truncate variant="body" weight="medium" className="min-w-0 flex-1">
                 {children}

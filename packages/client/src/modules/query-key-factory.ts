@@ -1,5 +1,5 @@
 import type { FetchImagesParams } from '~/apis/image.api';
-import type { FetchNotesParams, FetchTagNotesParams } from '~/apis/note.api';
+import type { FetchNotesByTagNamesParams, FetchNotesParams, FetchTagNotesParams } from '~/apis/note.api';
 import type { FetchPlaceholdersParams } from '~/apis/placeholder.api';
 import type { ReminderPaginationParams } from '~/apis/reminder.api';
 import type { FetchTagsParams } from '~/apis/tag.api';
@@ -10,6 +10,14 @@ const normalizeFields = (fields?: FetchNotesParams['fields']) => {
     }
 
     return [...new Set(fields)].sort();
+};
+
+const normalizeTagNames = (tagNames?: FetchNotesByTagNamesParams['tagNames']) => {
+    if (!tagNames || tagNames.length === 0) {
+        return [];
+    }
+
+    return [...new Set(tagNames.map((tagName) => tagName.trim()).filter(Boolean))].sort();
 };
 
 const normalizePlaceholderFields = (fields?: FetchPlaceholdersParams['fields']) => {
@@ -47,6 +55,18 @@ export const queryKeys = {
                     limit: params.limit ?? 25,
                     offset: params.offset ?? 0,
                     query: params.query ?? '',
+                },
+            ] as const,
+        tagNameListAll: () => ['notes', 'tag-name-list'] as const,
+        tagNameList: (params: FetchNotesByTagNamesParams) =>
+            [
+                'notes',
+                'tag-name-list',
+                {
+                    limit: params.limit ?? 25,
+                    offset: params.offset ?? 0,
+                    mode: params.mode ?? 'and',
+                    tagNames: normalizeTagNames(params.tagNames),
                 },
             ] as const,
         detail: (id: string) => ['notes', 'detail', { id }] as const,
@@ -160,6 +180,22 @@ export const queryKeys = {
                 {
                     year,
                     month,
+                },
+            ] as const,
+    },
+    views: {
+        all: () => ['views'] as const,
+        workspace: () => ['views', 'workspace'] as const,
+        section: (id: string) => ['views', 'section', { id }] as const,
+        sectionNotesAll: () => ['views', 'section-notes'] as const,
+        sectionNotes: (id: string, params: { limit?: number; offset?: number } = {}) =>
+            [
+                'views',
+                'section-notes',
+                {
+                    id,
+                    limit: params.limit ?? 25,
+                    offset: params.offset ?? 0,
                 },
             ] as const,
     },

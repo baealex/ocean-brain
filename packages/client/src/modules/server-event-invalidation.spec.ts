@@ -29,6 +29,10 @@ describe('server-event-invalidation', () => {
             exact: false,
         });
         expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+            queryKey: queryKeys.notes.tagNameListAll(),
+            exact: false,
+        });
+        expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
             queryKey: queryKeys.notes.pinned(),
             exact: true,
         });
@@ -39,6 +43,10 @@ describe('server-event-invalidation', () => {
         expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
             queryKey: queryKeys.notes.graph(),
             exact: true,
+        });
+        expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+            queryKey: queryKeys.views.sectionNotesAll(),
+            exact: false,
         });
         expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
             queryKey: queryKeys.tags.all(),
@@ -57,6 +65,14 @@ describe('server-event-invalidation', () => {
 
         expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
             queryKey: queryKeys.notes.trashAll(),
+            exact: false,
+        });
+        expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+            queryKey: queryKeys.notes.tagNameListAll(),
+            exact: false,
+        });
+        expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+            queryKey: queryKeys.views.sectionNotesAll(),
             exact: false,
         });
         expect(queryClient.invalidateQueries).toHaveBeenCalledWith({

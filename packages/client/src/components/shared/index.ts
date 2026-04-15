@@ -1,4 +1,4 @@
-export { Button, Dropdown, Empty, Modal, Pagination, Progress, Skeleton } from '~/components/ui';
+export { Button, Dropdown, Empty, Modal, MoreButton, Pagination, Progress, Skeleton } from '~/components/ui';
 export { default as AuxiliaryPanelHeader } from './AuxiliaryPanelHeader';
 export { default as Badge } from './Badge';
 export { default as Callout } from './Callout';

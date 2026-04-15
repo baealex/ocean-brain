@@ -7,7 +7,6 @@ type SearchRecord = Record<string, unknown>;
 const HOME_SORT_BY = ['updatedAt', 'createdAt'] as const satisfies readonly SortBy[];
 const SORT_ORDER = ['asc', 'desc'] as const satisfies readonly SortOrder[];
 const CALENDAR_TYPES = ['create', 'update'] as const;
-
 const getFirstValue = (value: unknown) => (Array.isArray(value) ? value[0] : value);
 
 const parsePositiveInt = (
@@ -88,6 +87,10 @@ export interface CalendarRouteSearch {
     type: 'create' | 'update';
 }
 
+export interface ViewNotesRouteSearch extends PaginationRouteSearch {
+    sectionId: string;
+}
+
 export const validateHomeSearch = (search: SearchRecord): HomeRouteSearch => ({
     page: parsePositiveInt(search.page, 1),
     limit: parseOptionalPositiveInt(search.limit),
@@ -115,4 +118,9 @@ export const validateCalendarSearch = (search: SearchRecord): CalendarRouteSearc
         max: 12,
     }),
     type: parseEnum(search.type, CALENDAR_TYPES, 'create'),
+});
+
+export const validateViewNotesSearch = (search: SearchRecord): ViewNotesRouteSearch => ({
+    page: parsePositiveInt(search.page, 1),
+    sectionId: parseString(search.sectionId, ''),
 });

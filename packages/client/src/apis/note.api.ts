@@ -134,6 +134,55 @@ export function fetchTagNotes({ query = '', limit = 25, offset = 0 }: FetchTagNo
     );
 }
 
+export interface FetchNotesByTagNamesParams {
+    tagNames: string[];
+    mode?: 'and' | 'or';
+    limit?: number;
+    offset?: number;
+}
+
+export function fetchNotesByTagNames({ tagNames, mode = 'and', limit = 25, offset = 0 }: FetchNotesByTagNamesParams) {
+    return graphQuery<{
+        notesByTagNames: {
+            totalCount: number;
+            notes: Note[];
+        };
+    }>(
+        `query FetchNotesByTagNames(
+            $tagNames: [String!]!,
+            $mode: TagMatchMode!,
+            $pagination: PaginationInput
+        ) {
+            notesByTagNames(
+                tagNames: $tagNames,
+                mode: $mode,
+                pagination: $pagination
+            ) {
+                totalCount
+                notes {
+                    id
+                    title
+                    pinned
+                    tags {
+                        id
+                        name
+                    }
+                    createdAt
+                    updatedAt
+                }
+            }
+        }`,
+        {
+            tagNames,
+            mode,
+            pagination: {
+                limit,
+                offset,
+            },
+        },
+    );
+}
+
 export function fetchNote(id: string) {
     return graphQuery<
         {

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { createLoginHandler, createLogoutHandler, createSessionStatusHandler } from '../features/auth/http/api.js';
 import { createUploadImageFromSrcHandler, createUploadImageHandler } from '../features/image/http/upload.js';
 import {
     createMcpAdminRevokeTokenHandler,
@@ -10,7 +11,6 @@ import type { McpAdminService } from '../features/mcp-admin/service.js';
 import { requireSessionForWrite } from '../modules/auth-guard.js';
 import type { AuthConfig } from '../modules/auth-mode.js';
 import useAsync from '../modules/use-async.js';
-import * as views from '../views/index.js';
 import { createServerEventsHandler } from '../views/server-events.js';
 import { createMcpRouter } from './mcp.js';
 
@@ -22,9 +22,9 @@ type McpAdminApiService = Pick<
 export const createApiRouter = (authConfig: AuthConfig, mcpAdminService: McpAdminApiService) =>
     Router()
         .use('/mcp', createMcpRouter(authConfig, mcpAdminService))
-        .post('/auth/login', useAsync(views.createLoginHandler(authConfig)))
-        .post('/auth/logout', useAsync(views.createLogoutHandler(authConfig)))
-        .get('/auth/session', useAsync(views.createSessionStatusHandler(authConfig)))
+        .post('/auth/login', useAsync(createLoginHandler(authConfig)))
+        .post('/auth/logout', useAsync(createLogoutHandler(authConfig)))
+        .get('/auth/session', useAsync(createSessionStatusHandler(authConfig)))
         .get(
             '/mcp-admin/status',
             requireSessionForWrite(authConfig),

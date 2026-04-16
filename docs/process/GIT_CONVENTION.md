@@ -56,7 +56,14 @@ Updated: 2026-03-06
 - `docs/<short-topic>`
 
 ### 3-3. Required PR Body Sections
-Use the template headings exactly:
+Use Markdown H2 headings exactly:
+- `## :dart: Goal`
+- `## :hammer_and_wrench: Core Changes`
+- `## :brain: Key Decisions`
+- `## :test_tube: Verification Guide`
+- `## :white_check_mark: Checklist`
+
+Use these shortcode labels exactly:
 - `:dart: Goal`
 - `:hammer_and_wrench: Core Changes`
 - `:brain: Key Decisions`

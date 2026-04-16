@@ -27,7 +27,8 @@ Updated: 2026-03-06
 3. Document script/env/doc changes in PR body.
 4. Validate PR metadata against template before sharing PR link:
    - Title: `<emoji> <subject>` (Unicode emoji only)
-   - Body sections: `:dart: Goal`, `:hammer_and_wrench: Core Changes`, `:brain: Key Decisions`, `:test_tube: Verification Guide`, `:white_check_mark: Checklist` (shortcode only)
+   - Body sections: write each section as a Markdown H2 heading using the exact shortcode labels, for example `## :dart: Goal`
+   - Required section labels: `:dart: Goal`, `:hammer_and_wrench: Core Changes`, `:brain: Key Decisions`, `:test_tube: Verification Guide`, `:white_check_mark: Checklist` (shortcode only)
    - Commit format: `<emoji> <subject>` (Unicode emoji only)
 
 ## 5. Server and Release Linked Rules

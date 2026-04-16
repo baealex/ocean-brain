@@ -204,6 +204,53 @@ html.dark .bn-mantine .bn-suggestion-menu {
     max-width: 100%;
 }
 
+/* BlockNote body typography hierarchy */
+.bn-default-styles {
+    h1 {
+        font-size: 1.125rem;
+        font-weight: 700;
+        line-height: 1.35;
+        letter-spacing: -0.01em;
+
+        @media (min-width: 640px) {
+            font-size: 1.25rem;
+        }
+    }
+
+    h2 {
+        font-size: 1rem;
+        font-weight: 600;
+        line-height: 1.4;
+        letter-spacing: -0.005em;
+
+        @media (min-width: 640px) {
+            font-size: 1.125rem;
+        }
+    }
+
+    h3 {
+        font-size: 1rem;
+        font-weight: 600;
+        line-height: 1.5;
+    }
+
+    h4,
+    h5,
+    h6 {
+        font-size: 1rem;
+        font-weight: 500;
+        line-height: 1.5;
+    }
+
+    p {
+        line-height: 1.7;
+    }
+
+    li {
+        line-height: 1.65;
+    }
+}
+
 .bn-block-outer:not([data-prev-type])>.bn-block>.bn-block-content[data-content-type='numberedListItem']::before {
     content: var(--index) ".";
     white-space: nowrap;

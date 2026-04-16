@@ -1,4 +1,6 @@
 import { BlockNoteSchema, defaultBlockSpecs, defaultInlineContentSpecs } from '@blocknote/core';
+import { createReactBlockSpec } from '@blocknote/react';
+import { CodeBlock } from './CodeBlock';
 import type { OceanBrainCustomBlockType, OceanBrainCustomInlineContentType } from './custom-types';
 import Reference from './Reference';
 import TableOfContents from './TableOfContents';
@@ -19,6 +21,26 @@ const oceanBrainInlineContentSpecs = defineOceanBrainInlineContentSpecs({
 
 const oceanBrainBlockSpecs = defineOceanBrainBlockSpecs({ tableOfContents: TableOfContents });
 
+type CodeBlockSpec = typeof defaultBlockSpecs.codeBlock;
+
+const defaultCodeBlock = defaultBlockSpecs.codeBlock;
+const reactCodeBlockWithCopyButton = createReactBlockSpec(defaultCodeBlock.config, {
+    meta: defaultCodeBlock.implementation.meta,
+    parse: defaultCodeBlock.implementation.parse,
+    parseContent: defaultCodeBlock.implementation.parseContent,
+    runsBefore: defaultCodeBlock.implementation.runsBefore,
+    render: CodeBlock,
+})();
+
+const codeBlockWithCopyButton: CodeBlockSpec = {
+    ...reactCodeBlockWithCopyButton,
+    extensions: defaultCodeBlock.extensions,
+    implementation: {
+        ...reactCodeBlockWithCopyButton.implementation,
+        toExternalHTML: defaultCodeBlock.implementation.toExternalHTML,
+    },
+};
+
 const schema = BlockNoteSchema.create({
     inlineContentSpecs: {
         ...defaultInlineContentSpecs,
@@ -26,6 +48,7 @@ const schema = BlockNoteSchema.create({
     },
     blockSpecs: {
         ...defaultBlockSpecs,
+        codeBlock: codeBlockWithCopyButton,
         ...oceanBrainBlockSpecs,
     },
 });

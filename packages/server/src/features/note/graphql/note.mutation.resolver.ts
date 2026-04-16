@@ -6,7 +6,7 @@ import {
     createSnapshotMetaFromUserAgent,
     restoreNoteSnapshot,
 } from '~/features/note/services/snapshot.js';
-import { restoreTrashedNoteById, trashNoteById } from '~/features/note/services/trash.js';
+import { purgeTrashedNoteById, restoreTrashedNoteById, trashNoteById } from '~/features/note/services/trash.js';
 import models from '~/models.js';
 import type { NoteInput } from '~/types/index.js';
 import { extractBlocksByType } from './note.graphql.shared.js';
@@ -154,6 +154,15 @@ export const noteMutationResolvers: NoteMutationResolvers = {
         }
 
         return note;
+    },
+    purgeTrashedNote: async (_, { id }: { id: string }) => {
+        const purgedNote = await purgeTrashedNoteById(Number(id));
+
+        if (!purgedNote) {
+            throw 'NOT FOUND';
+        }
+
+        return true;
     },
     pinNote: (_, { id, pinned }: { id: string; pinned: boolean }) =>
         models.note.update({

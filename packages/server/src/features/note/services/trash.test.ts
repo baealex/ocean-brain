@@ -40,6 +40,9 @@ test('note trash service moves a live note to trash and returns a summary', asyn
                 reminders: [],
             };
         },
+        purgeDeletedNote: async () => {
+            throw new Error('purge should not run');
+        },
         purgeExpiredDeletedNotes: async () => 0,
         restoreDeletedNote: async () => {
             throw new Error('restore should not run');
@@ -84,6 +87,9 @@ test('note trash service restores a deleted note', async () => {
         liveNoteExists: async () => false,
         moveNoteToTrash: async () => {
             throw new Error('trash should not run');
+        },
+        purgeDeletedNote: async () => {
+            throw new Error('purge should not run');
         },
         purgeExpiredDeletedNotes: async () => 0,
         restoreDeletedNote: async (note) => {
@@ -131,6 +137,9 @@ test('note trash service rejects restore when the live note id already exists', 
         moveNoteToTrash: async () => {
             throw new Error('trash should not run');
         },
+        purgeDeletedNote: async () => {
+            throw new Error('purge should not run');
+        },
         purgeExpiredDeletedNotes: async () => 0,
         restoreDeletedNote: async () => {
             throw new Error('restore should not run');
@@ -168,6 +177,9 @@ test('listTrashedNotes runs retention cleanup before returning trash data', asyn
         moveNoteToTrash: async () => {
             throw new Error('trash should not run');
         },
+        purgeDeletedNote: async () => {
+            throw new Error('purge should not run');
+        },
         purgeExpiredDeletedNotes: async () => {
             calls.push('purge');
             return 1;
@@ -185,4 +197,84 @@ test('listTrashedNotes runs retention cleanup before returning trash data', asyn
     assert.deepEqual(calls, ['purge']);
     assert.equal(result.totalCount, 1);
     assert.equal(result.notes[0]?.title, 'Old deleted note');
+});
+
+test('note trash service permanently deletes a trashed note', async () => {
+    const calls: string[] = [];
+    const service = createNoteTrashService({
+        countDeletedNotes: async () => 0,
+        findDeletedNote: async (id) => ({
+            id,
+            title: 'Disposable note',
+            content: 'content',
+            createdAt: new Date('2026-03-01T00:00:00.000Z'),
+            updatedAt: new Date('2026-03-10T12:00:00.000Z'),
+            deletedAt: new Date('2026-03-31T01:00:00.000Z'),
+            pinned: false,
+            order: 0,
+            layout: 'wide',
+            tags: [{ name: 'trash' }],
+            reminders: [],
+        }),
+        findLiveNote: async () => null,
+        listDeletedNotes: async () => [],
+        liveNoteExists: async () => false,
+        moveNoteToTrash: async () => {
+            throw new Error('trash should not run');
+        },
+        purgeDeletedNote: async (note) => {
+            calls.push(`purge:${note.id}`);
+        },
+        purgeExpiredDeletedNotes: async () => {
+            calls.push('retention');
+            return 0;
+        },
+        restoreDeletedNote: async () => {
+            throw new Error('restore should not run');
+        },
+    });
+
+    const purged = await service.purgeNoteById(12);
+
+    assert.deepEqual(calls, ['retention', 'purge:12']);
+    assert.deepEqual(purged, {
+        id: '12',
+        title: 'Disposable note',
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-10T12:00:00.000Z',
+        deletedAt: '2026-03-31T01:00:00.000Z',
+        pinned: false,
+        order: 0,
+        layout: 'wide',
+        tagNames: ['trash'],
+    });
+});
+
+test('note trash service returns null when purging a missing trashed note', async () => {
+    const calls: string[] = [];
+    const service = createNoteTrashService({
+        countDeletedNotes: async () => 0,
+        findDeletedNote: async () => null,
+        findLiveNote: async () => null,
+        listDeletedNotes: async () => [],
+        liveNoteExists: async () => false,
+        moveNoteToTrash: async () => {
+            throw new Error('trash should not run');
+        },
+        purgeDeletedNote: async () => {
+            throw new Error('purge should not run');
+        },
+        purgeExpiredDeletedNotes: async () => {
+            calls.push('retention');
+            return 0;
+        },
+        restoreDeletedNote: async () => {
+            throw new Error('restore should not run');
+        },
+    });
+
+    const purged = await service.purgeNoteById(404);
+
+    assert.deepEqual(calls, ['retention']);
+    assert.equal(purged, null);
 });

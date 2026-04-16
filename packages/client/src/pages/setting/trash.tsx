@@ -1,11 +1,11 @@
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
 import dayjs from 'dayjs';
-import { fetchTrashedNotes, restoreTrashedNote } from '~/apis/note.api';
+import { fetchTrashedNotes, purgeTrashedNote, restoreTrashedNote } from '~/apis/note.api';
 import { QueryBoundary } from '~/components/app';
 import * as Icon from '~/components/icon';
 import { Button, Empty, PageLayout, Pagination, Skeleton, SurfaceCard } from '~/components/shared';
-import { Text, useToast } from '~/components/ui';
+import { Text, useConfirm, useToast } from '~/components/ui';
 import { queryKeys } from '~/modules/query-key-factory';
 import { NOTE_ROUTE, SETTINGS_TRASH_ROUTE } from '~/modules/url';
 
@@ -51,6 +51,7 @@ const TrashContent = () => {
     const navigate = Route.useNavigate();
     const queryClient = useQueryClient();
     const toast = useToast();
+    const confirm = useConfirm();
 
     const { data } = useSuspenseQuery({
         queryKey: queryKeys.notes.trash({
@@ -96,7 +97,7 @@ const TrashContent = () => {
                     exact: false,
                 }),
                 queryClient.invalidateQueries({
-                    queryKey: ['calendar'],
+                    queryKey: queryKeys.calendar.all(),
                     exact: false,
                 }),
             ]);
@@ -111,6 +112,31 @@ const TrashContent = () => {
             toast('Failed to restore the note.');
         },
     });
+
+    const purgeMutation = useMutation({
+        mutationFn: purgeTrashedNote,
+        onSuccess: async (response) => {
+            if (response.type === 'error') {
+                throw response;
+            }
+
+            await queryClient.invalidateQueries({
+                queryKey: queryKeys.notes.trashAll(),
+                exact: false,
+            });
+
+            toast('The note has been permanently deleted.');
+        },
+        onError: () => {
+            toast('Failed to permanently delete the note.');
+        },
+    });
+
+    const handlePurge = async (id: string) => {
+        if (await confirm('Permanently delete this note? This cannot be undone.')) {
+            purgeMutation.mutate(id);
+        }
+    };
 
     const heading = data.totalCount > 0 ? `Trash (${data.totalCount})` : undefined;
 
@@ -173,15 +199,24 @@ const TrashContent = () => {
                                         </div>
                                     )}
                                 </div>
-                                <Button
-                                    variant="subtle"
-                                    size="sm"
-                                    className="self-start"
-                                    isLoading={restoreMutation.isPending && restoreMutation.variables === note.id}
-                                    onClick={() => restoreMutation.mutate(note.id)}
-                                >
-                                    Restore
-                                </Button>
+                                <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
+                                    <Button
+                                        variant="subtle"
+                                        size="sm"
+                                        isLoading={restoreMutation.isPending && restoreMutation.variables === note.id}
+                                        onClick={() => restoreMutation.mutate(note.id)}
+                                    >
+                                        Restore
+                                    </Button>
+                                    <Button
+                                        variant="soft-danger"
+                                        size="sm"
+                                        isLoading={purgeMutation.isPending && purgeMutation.variables === note.id}
+                                        onClick={() => handlePurge(note.id)}
+                                    >
+                                        Delete now
+                                    </Button>
+                                </div>
                             </div>
                         </SurfaceCard>
                     ))}

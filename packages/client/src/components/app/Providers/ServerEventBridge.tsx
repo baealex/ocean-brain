@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
+import { redirectToLoginIfSessionExpired } from '~/modules/auth-redirect';
 import { invalidateQueriesForServerEvent } from '~/modules/server-event-invalidation';
 import {
     MCP_NOTE_SERVER_EVENT_TYPES,
@@ -37,6 +38,9 @@ const ServerEventBridge = () => {
         }
 
         const eventSource = new EventSource('/api/events');
+        const authErrorListener = () => {
+            void redirectToLoginIfSessionExpired();
+        };
         const cleanupListeners = MCP_NOTE_SERVER_EVENT_TYPES.map((eventType) => {
             const listener = createServerEventListener(queryClient, eventType);
 
@@ -47,10 +51,13 @@ const ServerEventBridge = () => {
             };
         });
 
+        eventSource.addEventListener('error', authErrorListener);
+
         return () => {
             cleanupListeners.forEach((cleanup) => {
                 cleanup();
             });
+            eventSource.removeEventListener('error', authErrorListener);
             eventSource.close();
         };
     }, [queryClient]);

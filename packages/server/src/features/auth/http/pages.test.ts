@@ -58,7 +58,10 @@ test('password mode blocks client routes until the server-side login form succee
     const loginPageHtml = await loginPage.text();
 
     assert.equal(loginPage.status, 200);
-    assert.match(loginPageHtml, /Protected Workspace/);
+    assert.match(loginPageHtml, /Ocean Brain/);
+    assert.match(loginPageHtml, /Enter the workspace password to continue/);
+    assert.match(loginPageHtml, /color-scheme: light dark/);
+    assert.match(loginPageHtml, /prefers-color-scheme: dark/);
     assert.match(loginPageHtml, /name="next" value="\/notes"/);
 
     const invalidLogin = await formRequest(baseUrl, '/auth/login', {

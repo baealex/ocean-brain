@@ -1,0 +1,257 @@
+.ProseMirror {
+    a {
+        color: var(--fg-muted);
+        cursor: pointer;
+        text-decoration: underline;
+        text-decoration-color: var(--border-secondary);
+        text-underline-offset: 2px;
+        transition: color 0.15s ease, text-decoration-color 0.15s ease;
+
+        &:hover {
+            color: var(--fg-default);
+            text-decoration-color: var(--fg-muted);
+        }
+    }
+}
+
+.bn-editor {
+    background: transparent !important;
+    padding-inline: 54px 0 !important;
+    overflow-wrap: anywhere !important;
+}
+
+.bn-container {
+    --bn-font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+    font-family: var(--bn-font-family) !important;
+}
+
+.bn-mantine .bn-suggestion-menu {
+    width: min(368px, calc(100vw - 32px));
+    max-height: min(424px, calc(100vh - 96px));
+    padding: 6px;
+    background: var(--elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: 14px;
+    box-shadow:
+        0 18px 36px -28px rgba(23, 29, 38, 0.34),
+        0 1px 2px rgba(23, 29, 38, 0.06);
+    color: var(--fg-default);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-secondary) transparent;
+}
+
+html.dark .bn-mantine .bn-suggestion-menu {
+    box-shadow:
+        0 20px 42px -30px rgba(0, 0, 0, 0.72),
+        0 1px 2px rgba(0, 0, 0, 0.32);
+}
+
+.bn-mantine .bn-suggestion-menu-label {
+    padding: 8px 10px 5px;
+    color: var(--fg-tertiary);
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.bn-mantine .bn-suggestion-menu-label:not(:first-child) {
+    margin-top: 4px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-subtle);
+}
+
+.bn-mantine .bn-suggestion-menu-item {
+    min-height: 52px;
+    height: auto;
+    padding: 8px 10px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    color: var(--fg-default);
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.bn-mantine .bn-suggestion-menu-item:hover,
+.bn-mantine .bn-suggestion-menu-item[aria-selected="true"] {
+    background: var(--hover-subtle);
+    border-color: var(--border-subtle);
+}
+
+.bn-mantine .bn-suggestion-menu-item-small {
+    min-height: 34px;
+    padding: 7px 10px;
+}
+
+.bn-mantine .bn-suggestion-menu .bn-mt-suggestion-menu-item-body {
+    min-width: 0;
+    padding-right: 10px;
+}
+
+.bn-mantine .bn-suggestion-menu .bn-mt-suggestion-menu-item-section[data-position="left"] {
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    margin-inline-end: 10px;
+    padding: 0;
+    background: var(--muted);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    color: var(--fg-secondary);
+}
+
+.bn-mantine .bn-suggestion-menu .bn-mt-suggestion-menu-item-section[data-position="left"] svg {
+    width: 16px;
+    height: 16px;
+}
+
+.bn-mantine .bn-suggestion-menu-item:hover .bn-mt-suggestion-menu-item-section[data-position="left"],
+.bn-mantine .bn-suggestion-menu-item[aria-selected="true"] .bn-mt-suggestion-menu-item-section[data-position="left"] {
+    background: var(--surface);
+    border-color: var(--border-secondary);
+    color: var(--fg-default);
+}
+
+.bn-mantine .bn-suggestion-menu .bn-mt-suggestion-menu-item-section[data-position="right"] {
+    flex: 0 0 auto;
+    margin-inline-start: 8px;
+    color: var(--fg-tertiary);
+}
+
+.bn-mantine .bn-suggestion-menu .bn-mt-suggestion-menu-item-section[data-position="right"] .mantine-Badge-root {
+    height: 20px;
+    padding: 0 6px;
+    background: var(--muted);
+    border: 1px solid var(--border-subtle);
+    border-radius: 7px;
+    color: var(--fg-tertiary);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 18px;
+    letter-spacing: 0;
+    text-transform: none;
+    white-space: nowrap;
+}
+
+.bn-mantine .bn-suggestion-menu .bn-mt-suggestion-menu-item-title,
+.bn-mantine .bn-suggestion-menu .bn-mt-suggestion-menu-item-subtitle {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bn-mantine .bn-suggestion-menu .bn-mt-suggestion-menu-item-title {
+    color: var(--fg-default);
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.bn-mantine .bn-suggestion-menu-item-small .bn-mt-suggestion-menu-item-title {
+    font-size: 0.8125rem;
+}
+
+.bn-mantine .bn-suggestion-menu .bn-mt-suggestion-menu-item-subtitle {
+    color: var(--fg-tertiary);
+    font-size: 0.75rem;
+    line-height: 1.35;
+}
+
+@media (max-width: 640px) {
+    .bn-mantine .bn-suggestion-menu {
+        width: calc(100vw - 24px);
+        max-height: min(360px, calc(100vh - 80px));
+    }
+
+    .bn-mantine .bn-suggestion-menu .bn-mt-suggestion-menu-item-section[data-position="right"] .mantine-Badge-root {
+        max-width: 84px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+}
+
+.bn-default-styles,
+.bn-default-styles p,
+.bn-default-styles li,
+.bn-default-styles h1,
+.bn-default-styles h2,
+.bn-default-styles h3,
+.bn-default-styles h4,
+.bn-default-styles h5,
+.bn-default-styles h6,
+.bn-container button,
+.bn-container input,
+.bn-container select,
+.bn-container textarea {
+    font-family: var(--bn-font-family) !important;
+}
+
+.bn-inline-content code {
+    color: var(--fg-default);
+    background: var(--highlight);
+    border: 1px solid transparent;
+    border-radius: 8px;
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+    font-size: 0.92em;
+    letter-spacing: -0.01em;
+    padding: 0.14em 0.42em;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+}
+
+.bn-file-block-content-wrapper {
+    max-width: 100%;
+}
+
+/* BlockNote body typography hierarchy */
+.bn-default-styles {
+    h1 {
+        font-size: 1.125rem;
+        font-weight: 700;
+        line-height: 1.35;
+        letter-spacing: -0.01em;
+
+        @media (min-width: 640px) {
+            font-size: 1.25rem;
+        }
+    }
+
+    h2 {
+        font-size: 1rem;
+        font-weight: 600;
+        line-height: 1.4;
+        letter-spacing: -0.005em;
+
+        @media (min-width: 640px) {
+            font-size: 1.125rem;
+        }
+    }
+
+    h3 {
+        font-size: 1rem;
+        font-weight: 600;
+        line-height: 1.5;
+    }
+
+    h4,
+    h5,
+    h6 {
+        font-size: 1rem;
+        font-weight: 500;
+        line-height: 1.5;
+    }
+
+    p {
+        line-height: 1.7;
+    }
+
+    li {
+        line-height: 1.65;
+    }
+}
+
+.bn-block-outer:not([data-prev-type])>.bn-block>.bn-block-content[data-content-type='numberedListItem']::before {
+    content: var(--index) ".";
+    white-space: nowrap;
+}

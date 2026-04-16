@@ -47,6 +47,52 @@ html.dark .bn-mantine .bn-suggestion-menu {
         0 1px 2px rgba(0, 0, 0, 0.32);
 }
 
+.bn-mantine .mantine-Menu-dropdown,
+.bn-mantine .bn-menu-dropdown {
+    min-width: 148px;
+    padding: 5px;
+    background: var(--elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    box-shadow:
+        0 14px 28px -24px rgba(23, 29, 38, 0.3),
+        0 1px 2px rgba(23, 29, 38, 0.06);
+    color: var(--fg-default);
+}
+
+html.dark .bn-mantine .mantine-Menu-dropdown,
+html.dark .bn-mantine .bn-menu-dropdown {
+    box-shadow:
+        0 18px 34px -28px rgba(0, 0, 0, 0.68),
+        0 1px 2px rgba(0, 0, 0, 0.32);
+}
+
+.bn-mantine .mantine-Menu-item {
+    min-height: 32px;
+    height: auto;
+    padding: 7px 10px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    color: var(--fg-secondary);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.35;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.bn-mantine .mantine-Menu-item[aria-selected="true"],
+.bn-mantine .mantine-Menu-item:hover,
+.bn-mantine .mantine-Menu-item:focus-visible {
+    background: var(--hover-subtle);
+    border-color: var(--border-subtle);
+    color: var(--fg-default);
+}
+
+.bn-mantine .mantine-Menu-itemLabel {
+    color: inherit;
+}
+
 .bn-mantine .bn-suggestion-menu-label {
     padding: 8px 10px 5px;
     color: var(--fg-tertiary);
@@ -188,20 +234,117 @@ html.dark .bn-mantine .bn-suggestion-menu {
 }
 
 .bn-inline-content code {
-    color: var(--fg-default);
-    background: var(--highlight);
-    border: 1px solid transparent;
-    border-radius: 8px;
+    color: var(--fg-muted);
+    background: color-mix(in srgb, var(--highlight) 72%, transparent);
+    border: 1px solid color-mix(in srgb, var(--border-subtle) 72%, transparent);
+    border-radius: 6px;
     font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
-    font-size: 0.92em;
-    letter-spacing: -0.01em;
-    padding: 0.14em 0.42em;
+    font-size: 0.9em;
+    letter-spacing: 0;
+    padding: 0.08em 0.34em;
     box-decoration-break: clone;
     -webkit-box-decoration-break: clone;
 }
 
 .bn-file-block-content-wrapper {
     max-width: 100%;
+}
+
+.bn-block-content[data-content-type="codeBlock"] {
+    background-color: #181b20;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+}
+
+.bn-block-content[data-content-type="codeBlock"] > pre {
+    color: rgba(255, 255, 255, 0.84);
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+    font-size: 1rem;
+    line-height: 1.65;
+}
+
+.bn-block-content[data-content-type="codeBlock"] > div > select {
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.72);
+}
+
+.bn-editor [data-content-type="table"] .tableWrapper {
+    --default-cell-min-width: 112px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-secondary) transparent;
+}
+
+.bn-editor [data-content-type="table"] table {
+    overflow: hidden;
+    background: var(--elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.bn-editor [data-content-type="table"] th,
+.bn-editor [data-content-type="table"] td {
+    min-width: 112px;
+    padding: 8px 10px;
+    background: var(--elevated);
+    border: 0;
+    border-right: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--fg-default);
+    vertical-align: top;
+}
+
+.bn-editor [data-content-type="table"] th {
+    background: var(--muted);
+    color: var(--fg-muted);
+    font-weight: 600;
+}
+
+.bn-editor [data-content-type="table"] tr > :last-child {
+    border-right: 0;
+}
+
+.bn-editor [data-content-type="table"] tr:last-child > * {
+    border-bottom: 0;
+}
+
+.bn-editor [data-content-type="table"] th:hover,
+.bn-editor [data-content-type="table"] td:hover {
+    background: var(--hover-subtle);
+}
+
+.ProseMirror .selectedCell::after {
+    background: color-mix(in srgb, var(--accent-soft-primary) 58%, transparent);
+    box-shadow: inset 0 0 0 1px var(--border-focus);
+    pointer-events: none;
+}
+
+.ProseMirror .column-resize-handle,
+.bn-table-drop-cursor {
+    background: var(--accent-primary);
+}
+
+.bn-mantine .bn-table-handle,
+.bn-mantine .bn-extend-button,
+.bn-mantine .bn-table-cell-handle {
+    background: var(--elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: 7px;
+    box-shadow: 0 8px 18px -16px rgba(23, 29, 38, 0.22);
+    color: var(--fg-tertiary);
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.bn-mantine .bn-table-handle:hover,
+.bn-mantine .bn-table-handle-dragging,
+.bn-mantine .bn-extend-button:hover,
+.bn-mantine .bn-extend-button-editing,
+.bn-mantine .bn-table-cell-handle:hover {
+    background: var(--hover-subtle);
+    border-color: var(--border-secondary);
+    color: var(--fg-default);
 }
 
 /* BlockNote body typography hierarchy */

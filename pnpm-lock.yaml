@@ -58,9 +58,6 @@ importers:
       '@baejino/handy':
         specifier: ^0.2.3
         version: 0.2.3
-      '@baejino/style':
-        specifier: ^0.2.2
-        version: 0.2.2
       '@blocknote/core':
         specifier: ^0.46.2
         version: 0.46.2(@types/hast@3.0.4)
@@ -787,9 +784,6 @@ packages:
 
   '@baejino/handy@0.2.3':
     resolution: {integrity: sha512-znE97aBZ4BaZPf7/oqDtpA7aWO1zXX9LGtfd80wSl7jUnii7rHddQt7Kx5tPbXK47DKxkbQLXe5UGNiZHRMlAg==}
-
-  '@baejino/style@0.2.2':
-    resolution: {integrity: sha512-+tLSBglpmdwS6Ji9aB+QRsmBsNmgpiLqEnjwTvyyG1YF7OtfgxGG1qBLMXnNXBhJ1Csg+E1ID7Zd2RHpUaDpbw==}
 
   '@bcoe/v8-coverage@1.0.2':
     resolution: {integrity: sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA==}
@@ -5992,8 +5986,6 @@ snapshots:
       '@babel/helper-validator-identifier': 7.28.5
 
   '@baejino/handy@0.2.3': {}
-
-  '@baejino/style@0.2.2': {}
 
   '@bcoe/v8-coverage@1.0.2': {}
 

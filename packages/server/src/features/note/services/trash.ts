@@ -111,6 +111,7 @@ interface NoteTrashServiceDeps {
     listDeletedNotes: (skip: number, take: number) => Promise<DeletedNoteRecord[]>;
     liveNoteExists: (id: number) => Promise<boolean>;
     moveNoteToTrash: (note: LiveNoteRecord) => Promise<DeletedNoteRecord>;
+    purgeDeletedNote: (note: DeletedNoteRecord) => Promise<void>;
     purgeExpiredDeletedNotes: (before: Date, limit: number) => Promise<number>;
     restoreDeletedNote: (note: DeletedNoteRecord) => Promise<RestoredNoteRecord>;
 }
@@ -205,6 +206,20 @@ export const createNoteTrashService = (deps: NoteTrashServiceDeps) => ({
 
         return deps.restoreDeletedNote(deletedNote);
     },
+
+    purgeNoteById: async (id: number): Promise<TrashedNoteSummary | null> => {
+        await deps.purgeExpiredDeletedNotes(createRetentionCutoff(TRASH_RETENTION_DAYS), RECOVERY_CLEANUP_BATCH_LIMIT);
+
+        const deletedNote = await deps.findDeletedNote(id);
+
+        if (!deletedNote) {
+            return null;
+        }
+
+        const summary = serializeTrashedNote(deletedNote);
+        await deps.purgeDeletedNote(deletedNote);
+        return summary;
+    },
 });
 
 const includeDeletedNote = {
@@ -262,6 +277,9 @@ const noteTrashService = createNoteTrashService({
         return Boolean(note);
     },
     purgeExpiredDeletedNotes: defaultPurgeExpiredDeletedNotes,
+    purgeDeletedNote: async (deletedNote) => {
+        await models.deletedNote.delete({ where: { id: deletedNote.id } });
+    },
     moveNoteToTrash: async (note) => {
         return models.$transaction(async (tx) => {
             await tx.deletedNote.create({
@@ -386,6 +404,7 @@ const noteTrashService = createNoteTrashService({
 export const listTrashedNotes = noteTrashService.listTrashedNotes;
 export const trashNoteById = noteTrashService.trashNoteById;
 export const restoreTrashedNoteById = noteTrashService.restoreNoteById;
+export const purgeTrashedNoteById = noteTrashService.purgeNoteById;
 export const purgeExpiredTrashedNotes = async () => {
     return defaultPurgeExpiredDeletedNotes(createRetentionCutoff(TRASH_RETENTION_DAYS), RECOVERY_CLEANUP_BATCH_LIMIT);
 };

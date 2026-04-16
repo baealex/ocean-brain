@@ -168,6 +168,7 @@ export const noteMutation = gql`
         deleteNote(id: ID!): Boolean!
         restoreNoteSnapshot(id: ID!): Note!
         restoreTrashedNote(id: ID!): Note!
+        purgeTrashedNote(id: ID!): Boolean!
         pinNote(id: ID!, pinned: Boolean!): Note!
         reorderNotes(notes: [NoteOrderInput!]!): [Note!]!
     }

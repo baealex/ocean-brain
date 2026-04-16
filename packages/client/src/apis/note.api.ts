@@ -428,6 +428,20 @@ export function restoreTrashedNote(id: string) {
     );
 }
 
+export function purgeTrashedNote(id: string) {
+    return graphQuery<
+        {
+            purgeTrashedNote: boolean;
+        },
+        { id: string }
+    >(
+        `mutation PurgeTrashedNote($id: ID!) {
+            purgeTrashedNote(id: $id)
+        }`,
+        { id },
+    );
+}
+
 export function pinNote(id: string, pinned: boolean) {
     return graphQuery<
         {

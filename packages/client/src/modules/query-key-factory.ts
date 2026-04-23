@@ -89,6 +89,7 @@ export const queryKeys = {
                     offset: params.offset ?? 0,
                 },
             ] as const,
+        trashDetail: (id: string) => ['notes', 'trash', 'detail', { id }] as const,
         pinned: () => ['notes', 'pinned'] as const,
         backReferencesAll: () => ['notes', 'back-references'] as const,
         backReferences: (noteId: string) => ['notes', 'back-references', { noteId }] as const,

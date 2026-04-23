@@ -11,7 +11,7 @@ import {
     type NoteTagMatchMode,
     normalizeNoteTagNames,
 } from '~/features/note/services/tag-filter.js';
-import { listTrashedNotes } from '~/features/note/services/trash.js';
+import { getTrashedNoteById, listTrashedNotes } from '~/features/note/services/trash.js';
 import type { Note, Prisma } from '~/models.js';
 import models from '~/models.js';
 import { runDataMaintenanceInBackground } from '~/modules/data-maintenance.js';
@@ -431,6 +431,9 @@ export const noteQueryResolvers: NoteQueryResolvers = {
         },
     ) => {
         return listNoteSnapshots(Number(id), Number(limit));
+    },
+    trashedNote: async (_, { id }: { id: string }) => {
+        return getTrashedNoteById(Number(id));
     },
     trashedNotes: async (
         _,

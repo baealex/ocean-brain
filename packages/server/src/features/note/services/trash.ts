@@ -4,7 +4,9 @@ import {
     RECOVERY_CLEANUP_BATCH_LIMIT,
     TRASH_RETENTION_DAYS,
 } from '~/modules/recovery-retention.js';
-import { buildNoteSearchProjection } from './search.js';
+import { buildNoteSearchProjection, extractVisibleSearchTextFromContent } from './search.js';
+
+const TRASHED_NOTE_CONTENT_PREVIEW_MAX_LENGTH = 240;
 
 interface LiveTagRecord {
     id: number;
@@ -86,6 +88,7 @@ export interface TrashedNoteSummary {
     createdAt: string;
     updatedAt: string;
     deletedAt: string;
+    contentPreview: string;
     pinned: boolean;
     order: number;
     layout: NoteLayout;
@@ -95,6 +98,10 @@ export interface TrashedNoteSummary {
 export interface TrashedNotesResult {
     totalCount: number;
     notes: TrashedNoteSummary[];
+}
+
+export interface TrashedNoteDetail extends TrashedNoteSummary {
+    contentAsMarkdown: string;
 }
 
 export class NoteRestoreConflictError extends Error {
@@ -116,17 +123,30 @@ interface NoteTrashServiceDeps {
     restoreDeletedNote: (note: DeletedNoteRecord) => Promise<RestoredNoteRecord>;
 }
 
-const serializeTrashedNote = (note: DeletedNoteRecord): TrashedNoteSummary => ({
-    id: String(note.id),
-    title: note.title,
-    createdAt: note.createdAt.toISOString(),
-    updatedAt: note.updatedAt.toISOString(),
-    deletedAt: note.deletedAt.toISOString(),
-    pinned: note.pinned,
-    order: note.order,
-    layout: note.layout,
-    tagNames: note.tags.map((tag) => tag.name),
-});
+const buildTrashedNoteContentPreview = (content: string) => {
+    const text = extractVisibleSearchTextFromContent(content);
+
+    if (text.length <= TRASHED_NOTE_CONTENT_PREVIEW_MAX_LENGTH) {
+        return text;
+    }
+
+    return `${text.slice(0, TRASHED_NOTE_CONTENT_PREVIEW_MAX_LENGTH).trimEnd()}…`;
+};
+
+const serializeTrashedNote = (note: DeletedNoteRecord): TrashedNoteSummary => {
+    return {
+        id: String(note.id),
+        title: note.title,
+        createdAt: note.createdAt.toISOString(),
+        updatedAt: note.updatedAt.toISOString(),
+        deletedAt: note.deletedAt.toISOString(),
+        contentPreview: buildTrashedNoteContentPreview(note.content),
+        pinned: note.pinned,
+        order: note.order,
+        layout: note.layout,
+        tagNames: note.tags.map((tag) => tag.name),
+    };
+};
 
 const restoreTagIdsInContent = (content: string, tagIdByName: Map<string, number>) => {
     const rewriteNodes = (nodes: BlockNoteNode[]): BlockNoteNode[] => {
@@ -189,6 +209,23 @@ export const createNoteTrashService = (deps: NoteTrashServiceDeps) => ({
 
         const trashedNote = await deps.moveNoteToTrash(note);
         return serializeTrashedNote(trashedNote);
+    },
+
+    getNoteById: async (id: number): Promise<TrashedNoteDetail | null> => {
+        await deps.purgeExpiredDeletedNotes(createRetentionCutoff(TRASH_RETENTION_DAYS), RECOVERY_CLEANUP_BATCH_LIMIT);
+
+        const deletedNote = await deps.findDeletedNote(id);
+
+        if (!deletedNote) {
+            return null;
+        }
+
+        const { blocksToMarkdown } = await import('~/modules/blocknote.js');
+
+        return {
+            ...serializeTrashedNote(deletedNote),
+            contentAsMarkdown: await blocksToMarkdown(deletedNote.content),
+        };
     },
 
     restoreNoteById: async (id: number) => {
@@ -402,6 +439,7 @@ const noteTrashService = createNoteTrashService({
 });
 
 export const listTrashedNotes = noteTrashService.listTrashedNotes;
+export const getTrashedNoteById = noteTrashService.getNoteById;
 export const trashNoteById = noteTrashService.trashNoteById;
 export const restoreTrashedNoteById = noteTrashService.restoreNoteById;
 export const purgeTrashedNoteById = noteTrashService.purgeNoteById;

@@ -35,7 +35,7 @@ const DialogOverlay = forwardRef<
         className={classNames(
             'fixed',
             'inset-0',
-            'z-[1100]',
+            'z-[1090]',
             'bg-overlay',
             'backdrop-blur-[2px]',
             'data-[state=open]:animate-in',
@@ -57,17 +57,19 @@ const DialogContent = forwardRef<
 >(({ className, children, variant = 'default', ...props }, ref) => (
     <DialogPortal>
         <DialogOverlay />
-        <DialogPrimitive.Content
-            ref={ref}
-            data-dialog-variant={variant}
-            className={dialogContentVariants({
-                variant,
-                className,
-            })}
-            {...props}
-        >
-            <DialogVariantContext.Provider value={variant}>{children}</DialogVariantContext.Provider>
-        </DialogPrimitive.Content>
+        <div className="pointer-events-none fixed inset-0 z-[1100] flex items-center justify-center p-4">
+            <DialogPrimitive.Content
+                ref={ref}
+                data-dialog-variant={variant}
+                className={dialogContentVariants({
+                    variant,
+                    className,
+                })}
+                {...props}
+            >
+                <DialogVariantContext.Provider value={variant}>{children}</DialogVariantContext.Provider>
+            </DialogPrimitive.Content>
+        </div>
     </DialogPortal>
 ));
 DialogContent.displayName = DialogPrimitive.Content.displayName;

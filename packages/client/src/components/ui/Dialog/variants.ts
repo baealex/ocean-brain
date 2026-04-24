@@ -2,14 +2,10 @@ import { cva, type VariantProps } from 'class-variance-authority';
 
 export const dialogContentVariants = cva(
     [
-        'fixed',
-        'left-1/2',
-        'top-1/2',
-        'z-[1100]',
-        '-translate-x-1/2',
-        '-translate-y-1/2',
-        'w-[calc(100vw-2rem)]',
-        'max-h-[calc(100vh-2rem)]',
+        'relative',
+        'pointer-events-auto',
+        'w-full',
+        'max-h-[calc(100dvh-2rem)]',
         'overflow-y-auto',
         'border',
         'border-border-subtle',

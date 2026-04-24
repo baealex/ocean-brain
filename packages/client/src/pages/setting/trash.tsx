@@ -3,11 +3,19 @@ import { getRouteApi } from '@tanstack/react-router';
 import dayjs from 'dayjs';
 import { useState } from 'react';
 import type { TrashedNote } from '~/apis/note.api';
-import { fetchTrashedNote, fetchTrashedNotes, purgeTrashedNote, restoreTrashedNote } from '~/apis/note.api';
+import {
+    fetchBackReferences,
+    fetchTrashedNote,
+    fetchTrashedNotes,
+    purgeTrashedNote,
+    restoreTrashedNote,
+} from '~/apis/note.api';
 import { QueryBoundary } from '~/components/app';
 import * as Icon from '~/components/icon';
+import { NoteReferenceWarningModal } from '~/components/note';
 import { Button, Empty, Modal, PageLayout, Pagination, Skeleton, SurfaceCard } from '~/components/shared';
 import { Text, useConfirm, useToast } from '~/components/ui';
+import type { Note } from '~/models/note.model';
 import { queryKeys } from '~/modules/query-key-factory';
 import { NOTE_ROUTE, SETTINGS_TRASH_ROUTE } from '~/modules/url';
 
@@ -15,6 +23,18 @@ const PAGE_SIZE = 25;
 const Route = getRouteApi(SETTINGS_TRASH_ROUTE);
 const TRASH_RETENTION_DAYS = 30;
 const PAGE_DESCRIPTION = `Deleted notes stay here for ${TRASH_RETENTION_DAYS} days before permanent removal`;
+const PERMANENT_DELETE_REFERENCE_WARNING = {
+    title: 'Permanently delete note?',
+    description:
+        'This note is referenced by the notes below. If you permanently delete it, those links will stay broken. Other notes will not be edited automatically.',
+    confirmLabel: 'Delete now',
+    confirmVariant: 'danger' as const,
+};
+
+interface PurgeWarningState {
+    id: string;
+    backReferences: Pick<Note, 'id' | 'title'>[];
+}
 
 const formatDate = (value: string) => dayjs(value).format('YYYY-MM-DD HH:mm');
 
@@ -128,6 +148,7 @@ const TrashContent = () => {
     const toast = useToast();
     const confirm = useConfirm();
     const [selectedContentNoteId, setSelectedContentNoteId] = useState<string | null>(null);
+    const [purgeWarningState, setPurgeWarningState] = useState<PurgeWarningState | null>(null);
 
     const { data } = useSuspenseQuery({
         queryKey: queryKeys.notes.trash({
@@ -208,7 +229,34 @@ const TrashContent = () => {
         },
     });
 
+    const handlePurgeWarningConfirm = () => {
+        if (!purgeWarningState) {
+            return;
+        }
+
+        const { id } = purgeWarningState;
+        setPurgeWarningState(null);
+        purgeMutation.mutate(id);
+    };
+
     const handlePurge = async (id: string) => {
+        const backReferencesResponse = await fetchBackReferences(id);
+
+        if (backReferencesResponse.type === 'error') {
+            toast('Failed to check linked notes before permanently deleting this note.');
+            return;
+        }
+
+        queryClient.setQueryData(queryKeys.notes.backReferences(id), backReferencesResponse.backReferences);
+
+        if (backReferencesResponse.backReferences.length > 0) {
+            setPurgeWarningState({
+                id,
+                backReferences: backReferencesResponse.backReferences,
+            });
+            return;
+        }
+
         if (await confirm('Permanently delete this note? This cannot be undone.')) {
             purgeMutation.mutate(id);
         }
@@ -333,6 +381,16 @@ const TrashContent = () => {
                 )}
             </div>
             <TrashedNoteContentModal note={selectedContentNote} onClose={() => setSelectedContentNoteId(null)} />
+            <NoteReferenceWarningModal
+                isOpen={Boolean(purgeWarningState)}
+                title={PERMANENT_DELETE_REFERENCE_WARNING.title}
+                description={PERMANENT_DELETE_REFERENCE_WARNING.description}
+                references={purgeWarningState?.backReferences ?? []}
+                confirmLabel={PERMANENT_DELETE_REFERENCE_WARNING.confirmLabel}
+                confirmVariant={PERMANENT_DELETE_REFERENCE_WARNING.confirmVariant}
+                onClose={() => setPurgeWarningState(null)}
+                onConfirm={handlePurgeWarningConfirm}
+            />
         </PageLayout>
     );
 };

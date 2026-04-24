@@ -16,7 +16,7 @@ const Route = getRouteApi(VIEW_NOTES_ROUTE);
 function ViewNotesContent() {
     const navigate = Route.useNavigate();
     const { page, sectionId } = Route.useSearch();
-    const { onDelete, onPinned } = useNoteMutate();
+    const { onDelete, onPinned, deleteWarningDialog } = useNoteMutate();
     const limit = 25;
 
     const { data: sectionData } = useQuery({
@@ -116,6 +116,7 @@ function ViewNotesContent() {
                     </div>
                 )}
             </FallbackRender>
+            {deleteWarningDialog}
         </PageLayout>
     );
 }

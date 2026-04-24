@@ -25,7 +25,7 @@ export default function Home() {
         override: urlLimit ?? null,
     });
 
-    const { onDelete, onPinned } = useNoteMutate();
+    const { onDelete, onPinned, deleteWarningDialog } = useNoteMutate();
 
     const updateSearchParams = (updates: Partial<HomeRouteSearch>) => {
         navigate({
@@ -129,6 +129,7 @@ export default function Home() {
                     />
                 </QueryBoundary>
             </div>
+            {deleteWarningDialog}
         </PageLayout>
     );
 }

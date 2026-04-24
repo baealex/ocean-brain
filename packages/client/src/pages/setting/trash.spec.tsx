@@ -1,7 +1,14 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { fetchTrashedNote, fetchTrashedNotes, purgeTrashedNote, restoreTrashedNote } from '~/apis/note.api';
+import type { ReactNode } from 'react';
+import {
+    fetchBackReferences,
+    fetchTrashedNote,
+    fetchTrashedNotes,
+    purgeTrashedNote,
+    restoreTrashedNote,
+} from '~/apis/note.api';
 import { ConfirmProvider, ToastProvider } from '~/components/ui';
 import { queryKeys } from '~/modules/query-key-factory';
 import { createTestQueryClient } from '~/test/test-utils';
@@ -16,9 +23,25 @@ vi.mock('@tanstack/react-router', () => ({
         useSearch: () => ({ page: 1 }),
         useNavigate: () => mockNavigate,
     }),
+    Link: ({
+        children,
+        to,
+        params: _params,
+        ...props
+    }: {
+        children: ReactNode;
+        to?: string;
+        params?: unknown;
+        [key: string]: unknown;
+    }) => (
+        <a href={typeof to === 'string' ? to : '#'} {...props}>
+            {children}
+        </a>
+    ),
 }));
 
 vi.mock('~/apis/note.api', () => ({
+    fetchBackReferences: vi.fn(),
     fetchTrashedNote: vi.fn(),
     fetchTrashedNotes: vi.fn(),
     purgeTrashedNote: vi.fn(),
@@ -65,6 +88,17 @@ describe('<Trash />', () => {
                 notes: [trashedNote],
             },
         } as never);
+        vi.mocked(fetchTrashedNote).mockResolvedValue({
+            type: 'success',
+            trashedNote: {
+                ...trashedNote,
+                contentAsMarkdown: 'Full deleted body\n\nSecond line',
+            },
+        } as never);
+        vi.mocked(fetchBackReferences).mockResolvedValue({
+            type: 'success',
+            backReferences: [],
+        } as never);
         vi.mocked(restoreTrashedNote).mockResolvedValue({
             type: 'success',
             restoreTrashedNote: {
@@ -74,13 +108,6 @@ describe('<Trash />', () => {
                 layout: 'wide',
                 pinned: false,
                 content: 'content',
-            },
-        } as never);
-        vi.mocked(fetchTrashedNote).mockResolvedValue({
-            type: 'success',
-            trashedNote: {
-                ...trashedNote,
-                contentAsMarkdown: 'Full deleted body\n\nSecond line',
             },
         } as never);
     });
@@ -103,7 +130,7 @@ describe('<Trash />', () => {
         expect(screen.getByText(/Second line/)).toBeInTheDocument();
     });
 
-    it('permanently deletes a trashed note after confirmation', async () => {
+    it('permanently deletes a trashed note after basic confirmation when there are no back references', async () => {
         vi.mocked(purgeTrashedNote).mockResolvedValue({
             type: 'success',
             purgeTrashedNote: true,
@@ -112,9 +139,51 @@ describe('<Trash />', () => {
         const { invalidateSpy } = renderPage();
 
         await userEvent.click(await screen.findByRole('button', { name: /delete now/i }));
+        expect(fetchBackReferences).toHaveBeenCalledWith('7');
         expect(purgeTrashedNote).not.toHaveBeenCalled();
 
         await userEvent.click(screen.getByRole('button', { name: /ok/i }));
+
+        await waitFor(() => {
+            expect(vi.mocked(purgeTrashedNote).mock.calls[0]?.[0]).toBe('7');
+            expect(invalidateSpy).toHaveBeenCalledWith({
+                queryKey: queryKeys.notes.trashAll(),
+                exact: false,
+            });
+        });
+    });
+
+    it('shows a permanent warning modal when the trashed note is still referenced', async () => {
+        vi.mocked(fetchBackReferences).mockResolvedValue({
+            type: 'success',
+            backReferences: [
+                {
+                    id: 'linked-note-1',
+                    title: 'Linked note',
+                },
+            ],
+        } as never);
+        vi.mocked(purgeTrashedNote).mockResolvedValue({
+            type: 'success',
+            purgeTrashedNote: true,
+        } as never);
+
+        const { invalidateSpy } = renderPage();
+
+        await userEvent.click(await screen.findByRole('button', { name: /delete now/i }));
+
+        expect(purgeTrashedNote).not.toHaveBeenCalled();
+        const dialog = await screen.findByRole('dialog');
+        expect(within(dialog).getByText('Permanently delete note?')).toBeInTheDocument();
+        expect(
+            within(dialog).getByText(
+                /If you permanently delete it, those links will stay broken\. Other notes will not be edited automatically\./i,
+            ),
+        ).toBeInTheDocument();
+        expect(within(dialog).getByText('Linked note')).toBeInTheDocument();
+        expect(within(dialog).getByRole('link', { name: /open note/i })).toBeInTheDocument();
+
+        await userEvent.click(within(dialog).getByRole('button', { name: /delete now/i }));
 
         await waitFor(() => {
             expect(vi.mocked(purgeTrashedNote).mock.calls[0]?.[0]).toBe('7');

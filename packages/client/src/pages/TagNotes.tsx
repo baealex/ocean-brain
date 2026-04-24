@@ -16,7 +16,7 @@ export default function TagNotes() {
 
     const limit = 25;
 
-    const { onDelete, onPinned } = useNoteMutate();
+    const { onDelete, onPinned, deleteWarningDialog } = useNoteMutate();
 
     return (
         <QueryBoundary
@@ -99,6 +99,7 @@ export default function TagNotes() {
                     );
                 }}
             />
+            {deleteWarningDialog}
         </QueryBoundary>
     );
 }

@@ -191,7 +191,7 @@ function NoteContent({ id }: NoteContentProps) {
         setExternalNoteChange(null);
     };
 
-    const { onCreate, onDelete, onPinned } = useNoteMutate();
+    const { onCreate, onDelete, onPinned, deleteWarningDialog } = useNoteMutate();
 
     return (
         <PageLayout title={title} variant="none">
@@ -420,6 +420,7 @@ function NoteContent({ id }: NoteContentProps) {
                         editSessionIdRef.current = createEditSessionId();
                     }}
                 />
+                {deleteWarningDialog}
             </main>
         </PageLayout>
     );

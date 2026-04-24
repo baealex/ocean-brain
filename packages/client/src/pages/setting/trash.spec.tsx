@@ -61,6 +61,19 @@ const trashedNote = {
     tagNames: ['trash'],
 };
 
+const anotherTrashedNote = {
+    id: '8',
+    title: 'Archived draft',
+    createdAt: '2026-03-05T00:00:00.000Z',
+    updatedAt: '2026-03-11T12:00:00.000Z',
+    deletedAt: '2026-04-01T01:00:00.000Z',
+    contentPreview: 'Second deleted body preview.',
+    pinned: false,
+    order: 1,
+    layout: 'wide' as const,
+    tagNames: ['archive'],
+};
+
 const renderPage = () => {
     const queryClient = createTestQueryClient();
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined);
@@ -192,5 +205,89 @@ describe('<Trash />', () => {
                 exact: false,
             });
         });
+    });
+
+    it('bulk deletes selected trashed notes after confirmation', async () => {
+        vi.mocked(fetchTrashedNotes).mockResolvedValue({
+            type: 'success',
+            trashedNotes: {
+                totalCount: 2,
+                notes: [trashedNote, anotherTrashedNote],
+            },
+        } as never);
+        vi.mocked(purgeTrashedNote).mockResolvedValue({
+            type: 'success',
+            purgeTrashedNote: true,
+        } as never);
+
+        const { invalidateSpy } = renderPage();
+
+        await userEvent.click(await screen.findByRole('checkbox', { name: /select disposable note/i }));
+        await userEvent.click(screen.getByRole('checkbox', { name: /select archived draft/i }));
+        expect(screen.getByText('Selected 2 notes')).toBeInTheDocument();
+
+        await userEvent.click(screen.getByRole('button', { name: /delete selected/i }));
+
+        await waitFor(() => {
+            expect(fetchBackReferences).toHaveBeenCalledWith('7');
+            expect(fetchBackReferences).toHaveBeenCalledWith('8');
+        });
+
+        const dialog = await screen.findByRole('dialog');
+        expect(within(dialog).getByText('Permanently delete selected notes?')).toBeInTheDocument();
+        expect(within(dialog).getByText('Disposable note')).toBeInTheDocument();
+        expect(within(dialog).getByText('Archived draft')).toBeInTheDocument();
+
+        await userEvent.click(within(dialog).getByRole('button', { name: /delete selected/i }));
+
+        await waitFor(() => {
+            expect(purgeTrashedNote).toHaveBeenCalledTimes(2);
+            expect(invalidateSpy).toHaveBeenCalledWith({
+                queryKey: queryKeys.notes.trashAll(),
+                exact: false,
+            });
+        });
+    });
+
+    it('shows referenced note counts in the bulk delete modal', async () => {
+        vi.mocked(fetchTrashedNotes).mockResolvedValue({
+            type: 'success',
+            trashedNotes: {
+                totalCount: 2,
+                notes: [trashedNote, anotherTrashedNote],
+            },
+        } as never);
+        vi.mocked(fetchBackReferences).mockImplementation(async (id: string) => {
+            if (id === '7') {
+                return {
+                    type: 'success',
+                    backReferences: [
+                        {
+                            id: 'linked-note-1',
+                            title: 'Linked note',
+                        },
+                    ],
+                } as never;
+            }
+
+            return {
+                type: 'success',
+                backReferences: [],
+            } as never;
+        });
+
+        renderPage();
+
+        await userEvent.click(await screen.findByRole('checkbox', { name: /select disposable note/i }));
+        await userEvent.click(screen.getByRole('checkbox', { name: /select archived draft/i }));
+        await userEvent.click(screen.getByRole('button', { name: /delete selected/i }));
+
+        const dialog = await screen.findByRole('dialog');
+        expect(
+            within(dialog).getByText(
+                /1 note is still referenced by other notes, so those links will stay broken\. Other notes will not be edited automatically\./i,
+            ),
+        ).toBeInTheDocument();
+        expect(within(dialog).getByText('Referenced by 1 note')).toBeInTheDocument();
     });
 });

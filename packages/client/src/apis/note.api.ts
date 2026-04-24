@@ -287,10 +287,15 @@ export interface TrashedNote {
     createdAt: string;
     updatedAt: string;
     deletedAt: string;
+    contentPreview: string;
     pinned: boolean;
     order: number;
     layout: Note['layout'];
     tagNames: string[];
+}
+
+export interface TrashedNoteDetail extends TrashedNote {
+    contentAsMarkdown: string;
 }
 
 export const updateNote = ({ id, editSessionId, ...note }: UpdateNoteRequestData) => {
@@ -391,6 +396,7 @@ export function fetchTrashedNotes({ limit = 25, offset = 0 }: Pick<FetchNotesPar
                     createdAt
                     updatedAt
                     deletedAt
+                    contentPreview
                     pinned
                     order
                     layout
@@ -404,6 +410,32 @@ export function fetchTrashedNotes({ limit = 25, offset = 0 }: Pick<FetchNotesPar
                 offset,
             },
         },
+    );
+}
+
+export function fetchTrashedNote(id: string) {
+    return graphQuery<
+        {
+            trashedNote: TrashedNoteDetail | null;
+        },
+        { id: string }
+    >(
+        `query FetchTrashedNote($id: ID!) {
+            trashedNote(id: $id) {
+                id
+                title
+                createdAt
+                updatedAt
+                deletedAt
+                contentPreview
+                contentAsMarkdown
+                pinned
+                order
+                layout
+                tagNames
+            }
+        }`,
+        { id },
     );
 }
 

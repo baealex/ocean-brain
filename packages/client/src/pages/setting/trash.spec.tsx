@@ -1,7 +1,7 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { fetchTrashedNotes, purgeTrashedNote, restoreTrashedNote } from '~/apis/note.api';
+import { fetchTrashedNote, fetchTrashedNotes, purgeTrashedNote, restoreTrashedNote } from '~/apis/note.api';
 import { ConfirmProvider, ToastProvider } from '~/components/ui';
 import { queryKeys } from '~/modules/query-key-factory';
 import { createTestQueryClient } from '~/test/test-utils';
@@ -19,6 +19,7 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 
 vi.mock('~/apis/note.api', () => ({
+    fetchTrashedNote: vi.fn(),
     fetchTrashedNotes: vi.fn(),
     purgeTrashedNote: vi.fn(),
     restoreTrashedNote: vi.fn(),
@@ -30,6 +31,7 @@ const trashedNote = {
     createdAt: '2026-03-01T00:00:00.000Z',
     updatedAt: '2026-03-10T12:00:00.000Z',
     deletedAt: '2026-03-31T01:00:00.000Z',
+    contentPreview: 'This is a deleted body preview.',
     pinned: false,
     order: 0,
     layout: 'wide' as const,
@@ -74,6 +76,31 @@ describe('<Trash />', () => {
                 content: 'content',
             },
         } as never);
+        vi.mocked(fetchTrashedNote).mockResolvedValue({
+            type: 'success',
+            trashedNote: {
+                ...trashedNote,
+                contentAsMarkdown: 'Full deleted body\n\nSecond line',
+            },
+        } as never);
+    });
+
+    it('shows a readable preview for trashed note content', async () => {
+        renderPage();
+
+        expect(await screen.findByText('This is a deleted body preview.')).toBeInTheDocument();
+    });
+
+    it('opens a modal with the full trashed note body', async () => {
+        renderPage();
+
+        await userEvent.click(await screen.findByRole('button', { name: /view content/i }));
+
+        await waitFor(() => {
+            expect(fetchTrashedNote).toHaveBeenCalledWith('7');
+        });
+        expect(await screen.findByText(/Full deleted body/)).toBeInTheDocument();
+        expect(screen.getByText(/Second line/)).toBeInTheDocument();
     });
 
     it('permanently deletes a trashed note after confirmation', async () => {

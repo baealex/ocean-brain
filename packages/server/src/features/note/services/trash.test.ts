@@ -5,13 +5,28 @@ import { createNoteTrashService, NoteRestoreConflictError } from './trash.js';
 
 test('note trash service moves a live note to trash and returns a summary', async () => {
     const movedIds: number[] = [];
+    const content = JSON.stringify([
+        {
+            id: 'paragraph-1',
+            type: 'paragraph',
+            props: {},
+            content: [
+                {
+                    type: 'text',
+                    text: 'Visible trash body',
+                    styles: {},
+                },
+            ],
+            children: [],
+        },
+    ]);
     const service = createNoteTrashService({
         countDeletedNotes: async () => 1,
         findDeletedNote: async () => null,
         findLiveNote: async (id) => ({
             id,
             title: 'Temp note',
-            content: 'content',
+            content,
             createdAt: new Date('2026-03-01T00:00:00.000Z'),
             updatedAt: new Date('2026-03-10T12:00:00.000Z'),
             pinned: false,
@@ -58,6 +73,7 @@ test('note trash service moves a live note to trash and returns a summary', asyn
         createdAt: '2026-03-01T00:00:00.000Z',
         updatedAt: '2026-03-10T12:00:00.000Z',
         deletedAt: '2026-03-31T01:00:00.000Z',
+        contentPreview: 'Visible trash body',
         pinned: false,
         order: 0,
         layout: 'wide',
@@ -162,7 +178,21 @@ test('listTrashedNotes runs retention cleanup before returning trash data', asyn
             {
                 id: 4,
                 title: 'Old deleted note',
-                content: 'content',
+                content: JSON.stringify([
+                    {
+                        id: 'paragraph-1',
+                        type: 'paragraph',
+                        props: {},
+                        content: [
+                            {
+                                type: 'text',
+                                text: 'Retention list preview',
+                                styles: {},
+                            },
+                        ],
+                        children: [],
+                    },
+                ]),
                 createdAt: new Date('2026-03-01T00:00:00.000Z'),
                 updatedAt: new Date('2026-03-10T12:00:00.000Z'),
                 deletedAt: new Date('2026-03-31T01:00:00.000Z'),
@@ -197,6 +227,58 @@ test('listTrashedNotes runs retention cleanup before returning trash data', asyn
     assert.deepEqual(calls, ['purge']);
     assert.equal(result.totalCount, 1);
     assert.equal(result.notes[0]?.title, 'Old deleted note');
+    assert.equal(result.notes[0]?.contentPreview, 'Retention list preview');
+});
+
+test('note trash service returns full markdown content for a trashed note', async () => {
+    const service = createNoteTrashService({
+        countDeletedNotes: async () => 0,
+        findDeletedNote: async (id) => ({
+            id,
+            title: 'Full body note',
+            content: JSON.stringify([
+                {
+                    id: 'paragraph-1',
+                    type: 'paragraph',
+                    props: {},
+                    content: [
+                        {
+                            type: 'text',
+                            text: 'Full deleted body',
+                            styles: {},
+                        },
+                    ],
+                    children: [],
+                },
+            ]),
+            createdAt: new Date('2026-03-01T00:00:00.000Z'),
+            updatedAt: new Date('2026-03-10T12:00:00.000Z'),
+            deletedAt: new Date('2026-03-31T01:00:00.000Z'),
+            pinned: false,
+            order: 0,
+            layout: 'wide',
+            tags: [],
+            reminders: [],
+        }),
+        findLiveNote: async () => null,
+        listDeletedNotes: async () => [],
+        liveNoteExists: async () => false,
+        moveNoteToTrash: async () => {
+            throw new Error('trash should not run');
+        },
+        purgeDeletedNote: async () => {
+            throw new Error('purge should not run');
+        },
+        purgeExpiredDeletedNotes: async () => 0,
+        restoreDeletedNote: async () => {
+            throw new Error('restore should not run');
+        },
+    });
+
+    const note = await service.getNoteById(14);
+
+    assert.equal(note?.id, '14');
+    assert.match(note?.contentAsMarkdown ?? '', /Full deleted body/);
 });
 
 test('note trash service permanently deletes a trashed note', async () => {
@@ -243,6 +325,7 @@ test('note trash service permanently deletes a trashed note', async () => {
         createdAt: '2026-03-01T00:00:00.000Z',
         updatedAt: '2026-03-10T12:00:00.000Z',
         deletedAt: '2026-03-31T01:00:00.000Z',
+        contentPreview: '',
         pinned: false,
         order: 0,
         layout: 'wide',

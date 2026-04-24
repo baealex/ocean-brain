@@ -1,10 +1,12 @@
-import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
 import dayjs from 'dayjs';
-import { fetchTrashedNotes, purgeTrashedNote, restoreTrashedNote } from '~/apis/note.api';
+import { useState } from 'react';
+import type { TrashedNote } from '~/apis/note.api';
+import { fetchTrashedNote, fetchTrashedNotes, purgeTrashedNote, restoreTrashedNote } from '~/apis/note.api';
 import { QueryBoundary } from '~/components/app';
 import * as Icon from '~/components/icon';
-import { Button, Empty, PageLayout, Pagination, Skeleton, SurfaceCard } from '~/components/shared';
+import { Button, Empty, Modal, PageLayout, Pagination, Skeleton, SurfaceCard } from '~/components/shared';
 import { Text, useConfirm, useToast } from '~/components/ui';
 import { queryKeys } from '~/modules/query-key-factory';
 import { NOTE_ROUTE, SETTINGS_TRASH_ROUTE } from '~/modules/url';
@@ -15,6 +17,79 @@ const TRASH_RETENTION_DAYS = 30;
 const PAGE_DESCRIPTION = `Deleted notes stay here for ${TRASH_RETENTION_DAYS} days before permanent removal`;
 
 const formatDate = (value: string) => dayjs(value).format('YYYY-MM-DD HH:mm');
+
+interface TrashedNoteContentModalProps {
+    note: TrashedNote | null;
+    onClose: () => void;
+}
+
+const TrashedNoteContentModal = ({ note, onClose }: TrashedNoteContentModalProps) => {
+    const noteId = note?.id ?? '';
+    const title = note?.title || 'Untitled note';
+    const noteQuery = useQuery({
+        queryKey: queryKeys.notes.trashDetail(noteId),
+        enabled: Boolean(note),
+        queryFn: async () => {
+            const response = await fetchTrashedNote(noteId);
+
+            if (response.type === 'error') {
+                throw response;
+            }
+
+            if (!response.trashedNote) {
+                throw new Error('Trashed note not found');
+            }
+
+            return response.trashedNote;
+        },
+    });
+    const content = noteQuery.data?.contentAsMarkdown.trim() ?? '';
+
+    return (
+        <Modal isOpen={Boolean(note)} onClose={onClose} variant="inspect">
+            <Modal.Header title={title} onClose={onClose} />
+            <Modal.Body>
+                <div className="flex flex-col gap-3">
+                    {note && (
+                        <Text as="p" variant="meta" tone="secondary">
+                            Deleted {formatDate(note.deletedAt)}
+                        </Text>
+                    )}
+                    {noteQuery.isLoading && (
+                        <Text as="p" variant="meta" tone="secondary">
+                            Loading deleted note content...
+                        </Text>
+                    )}
+                    {noteQuery.isError && (
+                        <Text as="p" variant="meta" tone="error">
+                            Failed to load deleted note content.
+                        </Text>
+                    )}
+                    {!noteQuery.isLoading && !noteQuery.isError && content && (
+                        <pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap break-words rounded-[14px] border border-border-subtle bg-hover-subtle/50 px-4 py-3 text-sm leading-6 text-fg-secondary">
+                            {content}
+                        </pre>
+                    )}
+                    {!noteQuery.isLoading && !noteQuery.isError && !content && (
+                        <Text
+                            as="p"
+                            variant="meta"
+                            tone="secondary"
+                            className="rounded-[14px] border border-border-subtle bg-hover-subtle/50 px-4 py-3"
+                        >
+                            No readable content was found for this deleted note.
+                        </Text>
+                    )}
+                </div>
+            </Modal.Body>
+            <Modal.Footer>
+                <Button variant="ghost" size="sm" onClick={onClose}>
+                    Close
+                </Button>
+            </Modal.Footer>
+        </Modal>
+    );
+};
 
 const TrashSkeleton = () => (
     <PageLayout
@@ -52,6 +127,7 @@ const TrashContent = () => {
     const queryClient = useQueryClient();
     const toast = useToast();
     const confirm = useConfirm();
+    const [selectedContentNoteId, setSelectedContentNoteId] = useState<string | null>(null);
 
     const { data } = useSuspenseQuery({
         queryKey: queryKeys.notes.trash({
@@ -139,6 +215,7 @@ const TrashContent = () => {
     };
 
     const heading = data.totalCount > 0 ? `Trash (${data.totalCount})` : undefined;
+    const selectedContentNote = data.notes.find((note) => note.id === selectedContentNoteId) ?? null;
 
     if (data.notes.length === 0) {
         return (
@@ -198,8 +275,27 @@ const TrashContent = () => {
                                             ))}
                                         </div>
                                     )}
+                                    {note.contentPreview && (
+                                        <div className="mt-3 rounded-[14px] border border-border-subtle bg-hover-subtle/50 px-3 py-2">
+                                            <Text
+                                                as="p"
+                                                variant="meta"
+                                                tone="secondary"
+                                                className="line-clamp-3 whitespace-pre-wrap break-words"
+                                            >
+                                                {note.contentPreview}
+                                            </Text>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
+                                    <Button
+                                        variant="subtle"
+                                        size="sm"
+                                        onClick={() => setSelectedContentNoteId(note.id)}
+                                    >
+                                        View content
+                                    </Button>
                                     <Button
                                         variant="subtle"
                                         size="sm"
@@ -236,6 +332,7 @@ const TrashContent = () => {
                     />
                 )}
             </div>
+            <TrashedNoteContentModal note={selectedContentNote} onClose={() => setSelectedContentNoteId(null)} />
         </PageLayout>
     );
 };

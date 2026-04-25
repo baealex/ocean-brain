@@ -50,7 +50,7 @@ export const createLogoutPageHandler = (authConfig: AuthConfig): Controller => {
     return async (req, res) => {
         if (authConfig.mode === 'password') {
             await destroySession(req);
-            res.redirect(303, '/auth/login');
+            res.redirect(303, '/login');
             return;
         }
 

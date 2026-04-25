@@ -76,7 +76,17 @@ export const sanitizeRedirectPath = (value: unknown) => {
     }
 
     if (value.startsWith('/')) {
-        if (value.startsWith('//') || value.startsWith('/auth/login')) {
+        if (
+            value.startsWith('//') ||
+            value === '/login' ||
+            value.startsWith('/login?') ||
+            value === '/logout' ||
+            value.startsWith('/logout?') ||
+            value === '/auth/login' ||
+            value.startsWith('/auth/login?') ||
+            value === '/auth/logout' ||
+            value.startsWith('/auth/logout?')
+        ) {
             return '/';
         }
 
@@ -95,7 +105,12 @@ export const sanitizeRedirectPath = (value: unknown) => {
             return '/';
         }
 
-        if (redirectUrl.pathname.startsWith('/auth/login')) {
+        if (
+            redirectUrl.pathname === '/login' ||
+            redirectUrl.pathname === '/logout' ||
+            redirectUrl.pathname === '/auth/login' ||
+            redirectUrl.pathname === '/auth/logout'
+        ) {
             return '/';
         }
 

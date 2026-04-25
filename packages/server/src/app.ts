@@ -27,7 +27,7 @@ export const createAppWithMcpAuth = (authConfig: AuthConfig, mcpAdminService: Mc
         .use(express.urlencoded({ extended: false }))
         .use(express.json({ limit: '50mb' }))
         .use('/api', createApiRouter(authConfig, mcpAdminService))
-        .use('/auth', createAuthPagesRouter(authConfig))
+        .use(createAuthPagesRouter(authConfig))
         .use('/graphql', createGraphqlRouter(authConfig, mcpAdminService))
         .use(createClientRouter(authConfig))
         .use(createErrorHandler());

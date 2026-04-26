@@ -52,9 +52,9 @@ test('password mode blocks client routes until the server-side login form succee
     const blockedHome = await fetch(`${baseUrl}/`, { redirect: 'manual' });
 
     assert.equal(blockedHome.status, 303);
-    assert.equal(blockedHome.headers.get('location'), '/auth/login?next=%2F');
+    assert.equal(blockedHome.headers.get('location'), '/login?next=%2F');
 
-    const loginPage = await fetch(`${baseUrl}/auth/login?next=%2Fnotes`);
+    const loginPage = await fetch(`${baseUrl}/login?next=%2Fnotes`);
     const loginPageHtml = await loginPage.text();
 
     assert.equal(loginPage.status, 200);
@@ -62,9 +62,10 @@ test('password mode blocks client routes until the server-side login form succee
     assert.match(loginPageHtml, /Enter the workspace password to continue/);
     assert.match(loginPageHtml, /color-scheme: light dark/);
     assert.match(loginPageHtml, /prefers-color-scheme: dark/);
+    assert.match(loginPageHtml, /<form method="post" action="\/login">/);
     assert.match(loginPageHtml, /name="next" value="\/notes"/);
 
-    const invalidLogin = await formRequest(baseUrl, '/auth/login', {
+    const invalidLogin = await formRequest(baseUrl, '/login', {
         next: '/notes',
         password: 'wrong',
     });
@@ -72,7 +73,7 @@ test('password mode blocks client routes until the server-side login form succee
     assert.equal(invalidLogin.status, 401);
     assert.match(invalidLogin.text, /Invalid password/);
 
-    const validLogin = await formRequest(baseUrl, '/auth/login', {
+    const validLogin = await formRequest(baseUrl, '/login', {
         next: '/notes',
         password: 'secret',
     });
@@ -90,7 +91,7 @@ test('password mode blocks client routes until the server-side login form succee
         authenticated: true,
     });
 
-    const logout = await formRequest(baseUrl, '/auth/logout', {}, validLogin.cookie);
+    const logout = await formRequest(baseUrl, '/logout', {}, validLogin.cookie);
     assert.equal(logout.status, 303);
-    assert.equal(logout.location, '/auth/login');
+    assert.equal(logout.location, '/login');
 });

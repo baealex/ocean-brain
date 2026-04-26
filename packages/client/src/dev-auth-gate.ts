@@ -31,13 +31,14 @@ export const shouldBypassDevAuthGate = (pathname: string) => {
         pathname.startsWith('/api') ||
         pathname.startsWith('/graphql') ||
         pathname.startsWith('/assets') ||
-        pathname.startsWith('/auth') ||
+        pathname === '/login' ||
+        pathname === '/logout' ||
         pathname === '/favicon.ico'
     );
 };
 
 export const buildDevAuthLoginRedirect = (requestUrl: string) => {
-    return `/auth/login?next=${encodeURIComponent(requestUrl)}`;
+    return `/login?next=${encodeURIComponent(requestUrl)}`;
 };
 
 export const createDevAuthGateMiddleware = (options: { backendOrigin: string; fetchImpl?: typeof fetch }) => {

@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const LOGIN_PATH = '/auth/login';
+const LOGIN_PATH = '/login';
+const AUTH_API_PATH_PREFIX = '/api/auth/';
 
 interface AuthSessionResponse {
     authRequired?: boolean;
@@ -25,7 +26,7 @@ export const shouldRedirectToLogin = (error: unknown) => {
 
     const requestUrl = error.config?.url ?? '';
 
-    return !requestUrl.startsWith('/auth/');
+    return !requestUrl.startsWith(AUTH_API_PATH_PREFIX) && requestUrl !== LOGIN_PATH;
 };
 
 export const isExpiredAuthSession = (session: AuthSessionResponse) => {

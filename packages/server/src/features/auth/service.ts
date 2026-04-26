@@ -76,7 +76,13 @@ export const sanitizeRedirectPath = (value: unknown) => {
     }
 
     if (value.startsWith('/')) {
-        if (value.startsWith('//') || value.startsWith('/auth/login')) {
+        if (
+            value.startsWith('//') ||
+            value === '/login' ||
+            value.startsWith('/login?') ||
+            value === '/logout' ||
+            value.startsWith('/logout?')
+        ) {
             return '/';
         }
 
@@ -95,7 +101,7 @@ export const sanitizeRedirectPath = (value: unknown) => {
             return '/';
         }
 
-        if (redirectUrl.pathname.startsWith('/auth/login')) {
+        if (redirectUrl.pathname === '/login' || redirectUrl.pathname === '/logout') {
             return '/';
         }
 

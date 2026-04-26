@@ -8,12 +8,13 @@ describe('dev auth gate', () => {
         expect(shouldBypassDevAuthGate('/src/main.tsx')).toBe(true);
         expect(shouldBypassDevAuthGate('/api/auth/session')).toBe(true);
         expect(shouldBypassDevAuthGate('/graphql')).toBe(true);
+        expect(shouldBypassDevAuthGate('/login')).toBe(true);
         expect(shouldBypassDevAuthGate('/notes')).toBe(false);
     });
 
     it('builds a login redirect that preserves the original dev url', () => {
         expect(buildDevAuthLoginRedirect('http://localhost:5173/notes?tag=1')).toBe(
-            '/auth/login?next=http%3A%2F%2Flocalhost%3A5173%2Fnotes%3Ftag%3D1',
+            '/login?next=http%3A%2F%2Flocalhost%3A5173%2Fnotes%3Ftag%3D1',
         );
     });
 
@@ -54,7 +55,7 @@ describe('dev auth gate', () => {
 
         expect(fetchImpl).toHaveBeenCalledWith('http://localhost:6683/api/auth/session', { headers: {} });
         expect(response.statusCode).toBe(303);
-        expect(response.headers.Location).toBe('/auth/login?next=http%3A%2F%2Flocalhost%3A5173%2Fnotes');
+        expect(response.headers.Location).toBe('/login?next=http%3A%2F%2Flocalhost%3A5173%2Fnotes');
         expect(next).not.toHaveBeenCalled();
     });
 

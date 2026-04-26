@@ -9,7 +9,12 @@ const shouldBlockClientRoute = (authConfig: AuthConfig, requestPath: string, aut
         return false;
     }
 
-    if (requestPath.startsWith('/api') || requestPath.startsWith('/graphql') || requestPath.startsWith('/auth')) {
+    if (
+        requestPath.startsWith('/api') ||
+        requestPath.startsWith('/graphql') ||
+        requestPath === '/login' ||
+        requestPath === '/logout'
+    ) {
         return false;
     }
 
@@ -22,7 +27,7 @@ export const createClientRouter = (authConfig: AuthConfig) =>
         .use((req, res, next) => {
             if (shouldBlockClientRoute(authConfig, req.path, isAuthenticatedRequest(req))) {
                 const redirectPath = encodeURIComponent(req.originalUrl || '/');
-                res.redirect(303, `/auth/login?next=${redirectPath}`);
+                res.redirect(303, `/login?next=${redirectPath}`);
                 return;
             }
 

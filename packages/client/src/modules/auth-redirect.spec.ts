@@ -16,7 +16,7 @@ describe('auth-redirect', () => {
                 search: '?tab=edit',
                 hash: '#title',
             }),
-        ).toBe('/auth/login?next=%2Fnotes%2F123%3Ftab%3Dedit%23title');
+        ).toBe('/login?next=%2Fnotes%2F123%3Ftab%3Dedit%23title');
     });
 
     it('redirects API and GraphQL 401 responses to login', () => {
@@ -28,7 +28,8 @@ describe('auth-redirect', () => {
     });
 
     it('does not redirect auth route failures', () => {
-        expect(shouldRedirectToLogin(createAxiosError(401, '/auth/login'))).toBe(false);
+        expect(shouldRedirectToLogin(createAxiosError(401, '/api/auth/login'))).toBe(false);
+        expect(shouldRedirectToLogin(createAxiosError(401, '/login'))).toBe(false);
     });
 
     it('detects expired password sessions', () => {

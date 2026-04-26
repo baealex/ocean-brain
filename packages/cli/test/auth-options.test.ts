@@ -22,15 +22,16 @@ test('resolveServeAuthEnvironment validates password mode requirements when pass
     );
 });
 
-test('resolveServeAuthEnvironment skips password requirements when insecure flag is enabled', () => {
-    const authEnv = resolveServeAuthEnvironment(
-        { allowInsecureNoAuth: true },
-        {
-            OCEAN_BRAIN_PASSWORD: 'secret'
-        }
+test('resolveServeAuthEnvironment fails closed when insecure flag and password env are both set', () => {
+    assert.throws(
+        () => resolveServeAuthEnvironment(
+            { allowInsecureNoAuth: true },
+            {
+                OCEAN_BRAIN_PASSWORD: 'secret'
+            }
+        ),
+        /Conflicting auth config/
     );
-
-    assert.equal(authEnv.OCEAN_BRAIN_ALLOW_INSECURE_NO_AUTH, 'true');
 });
 
 test('resolveServeAuthEnvironment validates explicit insecure flag from existing env', () => {

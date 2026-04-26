@@ -1,11 +1,18 @@
-import { useContext } from 'react';
-
-import { ConfirmContext } from './ConfirmContext';
+import { useModal } from '@baejino/react-ui/modal';
+import { useCallback } from 'react';
 
 export function useConfirm() {
-    const context = useContext(ConfirmContext);
-    if (!context) {
-        throw new Error('useConfirm must be used within a ConfirmProvider');
-    }
-    return context.confirm;
+    const { confirm } = useModal();
+
+    return useCallback(
+        (message: string) =>
+            confirm({
+                title: 'Confirm',
+                description: message,
+                confirmLabel: 'OK',
+                cancelLabel: 'Cancel',
+                tone: 'danger',
+            }),
+        [confirm],
+    );
 }

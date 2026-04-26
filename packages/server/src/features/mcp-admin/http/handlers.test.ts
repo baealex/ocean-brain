@@ -2,8 +2,16 @@ import assert from 'node:assert/strict';
 import type { AddressInfo } from 'node:net';
 import test, { type TestContext } from 'node:test';
 import { createAppWithMcpAuth } from '~/app.js';
-import type { AuthConfig } from '~/modules/auth-mode.js';
+import { AUTH_SESSION_COOKIE_NAME, type AuthConfig } from '~/modules/auth-mode.js';
 import type { McpAdminService } from '../service.js';
+
+const createPasswordAuthConfig = (): AuthConfig => ({
+    mode: 'password',
+    password: 'secret',
+    sessionSecret: 'session-secret',
+    cookieName: AUTH_SESSION_COOKIE_NAME,
+    source: 'password',
+});
 
 const createStubMcpAdminService = (input: { enabled?: boolean; hasActiveToken?: boolean } = {}): McpAdminService => {
     let enabled = input.enabled ?? true;
@@ -92,12 +100,7 @@ const login = async (baseUrl: string) => {
 };
 
 test('GET /api/mcp-admin/status requires authenticated session in password mode', async (t) => {
-    const { baseUrl } = await startServer(t, {
-        mode: 'password',
-        password: 'secret',
-        sessionSecret: 'session-secret',
-        source: 'override',
-    });
+    const { baseUrl } = await startServer(t, createPasswordAuthConfig());
 
     const status = await jsonRequest(baseUrl, '/api/mcp-admin/status', 'GET');
     assert.equal(status.status, 401);
@@ -105,16 +108,7 @@ test('GET /api/mcp-admin/status requires authenticated session in password mode'
 });
 
 test('POST /api/mcp-admin/token/rotate returns plaintext token once for authenticated session', async (t) => {
-    const { baseUrl } = await startServer(
-        t,
-        {
-            mode: 'password',
-            password: 'secret',
-            sessionSecret: 'session-secret',
-            source: 'override',
-        },
-        createStubMcpAdminService(),
-    );
+    const { baseUrl } = await startServer(t, createPasswordAuthConfig(), createStubMcpAdminService());
 
     const cookie = await login(baseUrl);
 
@@ -126,16 +120,7 @@ test('POST /api/mcp-admin/token/rotate returns plaintext token once for authenti
 
 test('POST /api/mcp-admin/enabled toggles enabled state for authenticated session', async (t) => {
     const service = createStubMcpAdminService({ enabled: false });
-    const { baseUrl } = await startServer(
-        t,
-        {
-            mode: 'password',
-            password: 'secret',
-            sessionSecret: 'session-secret',
-            source: 'override',
-        },
-        service,
-    );
+    const { baseUrl } = await startServer(t, createPasswordAuthConfig(), service);
 
     const cookie = await login(baseUrl);
     const enabled = await jsonRequest(baseUrl, '/api/mcp-admin/enabled', 'POST', { enabled: true }, cookie);
@@ -146,16 +131,7 @@ test('POST /api/mcp-admin/enabled toggles enabled state for authenticated sessio
 
 test('POST /api/mcp-admin/token/revoke revokes active token for authenticated session', async (t) => {
     const service = createStubMcpAdminService({ enabled: true, hasActiveToken: true });
-    const { baseUrl } = await startServer(
-        t,
-        {
-            mode: 'password',
-            password: 'secret',
-            sessionSecret: 'session-secret',
-            source: 'override',
-        },
-        service,
-    );
+    const { baseUrl } = await startServer(t, createPasswordAuthConfig(), service);
 
     const cookie = await login(baseUrl);
     const revoked = await jsonRequest(baseUrl, '/api/mcp-admin/token/revoke', 'POST', {}, cookie);

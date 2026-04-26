@@ -1,12 +1,8 @@
+import type { AuthSessionResponse } from '@baejino/auth';
 import axios from 'axios';
 
 const LOGIN_PATH = '/login';
 const AUTH_API_PATH_PREFIX = '/api/auth/';
-
-interface AuthSessionResponse {
-    authRequired?: boolean;
-    authenticated?: boolean;
-}
 
 type RedirectLocation = Pick<Location, 'assign' | 'hash' | 'pathname' | 'search'>;
 

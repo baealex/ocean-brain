@@ -3,7 +3,21 @@ import type { AddressInfo } from 'node:net';
 import test, { type TestContext } from 'node:test';
 import { createAppWithMcpAuth } from '../src/app.js';
 import type { McpAdminService } from '../src/features/mcp-admin/service.js';
-import type { AuthConfig } from '../src/modules/auth-mode.js';
+import { AUTH_SESSION_COOKIE_NAME, type AuthConfig } from '../src/modules/auth-mode.js';
+
+const createPasswordAuthConfig = (): AuthConfig => ({
+    mode: 'password',
+    password: 'secret',
+    sessionSecret: 'session-secret',
+    cookieName: AUTH_SESSION_COOKIE_NAME,
+    source: 'password',
+});
+
+const createOpenAuthConfig = (): AuthConfig => ({
+    mode: 'open',
+    cookieName: AUTH_SESSION_COOKIE_NAME,
+    source: 'explicit-open',
+});
 
 const startServer = async (t: TestContext, authConfig: AuthConfig, mcpAdminAuth: McpAdminService) => {
     const app = createAppWithMcpAuth(authConfig, mcpAdminAuth);
@@ -157,12 +171,7 @@ const createMcpAdminAuth = (options: {
 test('password mode requires a valid bearer token on the MCP graphql endpoint', async (t) => {
     const { baseUrl } = await startServer(
         t,
-        {
-            mode: 'password',
-            password: 'secret',
-            sessionSecret: 'session-secret',
-            source: 'override',
-        },
+        createPasswordAuthConfig(),
         createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }),
     );
 
@@ -182,12 +191,7 @@ test('password mode requires a valid bearer token on the MCP graphql endpoint', 
 test('password mode requires a session on the server events endpoint', async (t) => {
     const { baseUrl } = await startServer(
         t,
-        {
-            mode: 'password',
-            password: 'secret',
-            sessionSecret: 'session-secret',
-            source: 'override',
-        },
+        createPasswordAuthConfig(),
         createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }),
     );
 
@@ -200,13 +204,10 @@ test('password mode requires a session on the server events endpoint', async (t)
     });
 });
 
-test('disabled mode exposes the server events endpoint as an event stream', async (t) => {
+test('open mode exposes the server events endpoint as an event stream', async (t) => {
     const { baseUrl } = await startServer(
         t,
-        {
-            mode: 'disabled',
-            source: 'override',
-        },
+        createOpenAuthConfig(),
         createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }),
     );
 
@@ -220,12 +221,7 @@ test('disabled mode exposes the server events endpoint as an event stream', asyn
 test('password mode keeps the MCP graphql endpoint read-only even with a valid bearer token', async (t) => {
     const { baseUrl } = await startServer(
         t,
-        {
-            mode: 'password',
-            password: 'secret',
-            sessionSecret: 'session-secret',
-            source: 'override',
-        },
+        createPasswordAuthConfig(),
         createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }),
     );
 
@@ -237,10 +233,7 @@ test('password mode keeps the MCP graphql endpoint read-only even with a valid b
 test('mcp disabled state blocks MCP graphql access even with a valid token', async (t) => {
     const { baseUrl } = await startServer(
         t,
-        {
-            mode: 'disabled',
-            source: 'override',
-        },
+        createOpenAuthConfig(),
         createMcpAdminAuth({ enabled: false, expectedToken: 'mcp-secret' }),
     );
 
@@ -252,10 +245,7 @@ test('mcp disabled state blocks MCP graphql access even with a valid token', asy
 test('enabled state still requires a valid bearer token on the MCP note delete endpoint', async (t) => {
     const { baseUrl } = await startServer(
         t,
-        {
-            mode: 'disabled',
-            source: 'override',
-        },
+        createOpenAuthConfig(),
         createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }),
     );
 
@@ -275,10 +265,7 @@ test('enabled state still requires a valid bearer token on the MCP note delete e
 test('enabled state still requires a valid bearer token on the MCP note create endpoint', async (t) => {
     const { baseUrl } = await startServer(
         t,
-        {
-            mode: 'disabled',
-            source: 'override',
-        },
+        createOpenAuthConfig(),
         createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }),
     );
 
@@ -298,10 +285,7 @@ test('enabled state still requires a valid bearer token on the MCP note create e
 test('enabled state still requires a valid bearer token on the MCP note update endpoint', async (t) => {
     const { baseUrl } = await startServer(
         t,
-        {
-            mode: 'disabled',
-            source: 'override',
-        },
+        createOpenAuthConfig(),
         createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }),
     );
 
@@ -321,10 +305,7 @@ test('enabled state still requires a valid bearer token on the MCP note update e
 test('enabled state still requires a valid bearer token on the MCP tag create endpoint', async (t) => {
     const { baseUrl } = await startServer(
         t,
-        {
-            mode: 'disabled',
-            source: 'override',
-        },
+        createOpenAuthConfig(),
         createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }),
     );
 
@@ -344,12 +325,7 @@ test('enabled state still requires a valid bearer token on the MCP tag create en
 test('password mode returns configuration error on the MCP note delete endpoint when no bearer token is configured', async (t) => {
     const { baseUrl } = await startServer(
         t,
-        {
-            mode: 'password',
-            password: 'secret',
-            sessionSecret: 'session-secret',
-            source: 'override',
-        },
+        createPasswordAuthConfig(),
         createMcpAdminAuth({ enabled: true, configured: false }),
     );
 
@@ -361,12 +337,7 @@ test('password mode returns configuration error on the MCP note delete endpoint 
 test('password mode returns configuration error on the MCP note create endpoint when no bearer token is configured', async (t) => {
     const { baseUrl } = await startServer(
         t,
-        {
-            mode: 'password',
-            password: 'secret',
-            sessionSecret: 'session-secret',
-            source: 'override',
-        },
+        createPasswordAuthConfig(),
         createMcpAdminAuth({ enabled: true, configured: false }),
     );
 
@@ -378,12 +349,7 @@ test('password mode returns configuration error on the MCP note create endpoint 
 test('password mode returns configuration error on the MCP note update endpoint when no bearer token is configured', async (t) => {
     const { baseUrl } = await startServer(
         t,
-        {
-            mode: 'password',
-            password: 'secret',
-            sessionSecret: 'session-secret',
-            source: 'override',
-        },
+        createPasswordAuthConfig(),
         createMcpAdminAuth({ enabled: true, configured: false }),
     );
 
@@ -395,12 +361,7 @@ test('password mode returns configuration error on the MCP note update endpoint 
 test('password mode returns configuration error on the MCP tag create endpoint when no bearer token is configured', async (t) => {
     const { baseUrl } = await startServer(
         t,
-        {
-            mode: 'password',
-            password: 'secret',
-            sessionSecret: 'session-secret',
-            source: 'override',
-        },
+        createPasswordAuthConfig(),
         createMcpAdminAuth({ enabled: true, configured: false }),
     );
 

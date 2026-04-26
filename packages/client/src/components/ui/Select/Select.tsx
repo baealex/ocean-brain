@@ -1,4 +1,4 @@
-import * as SelectPrimitive from '@radix-ui/react-select';
+import * as SelectPrimitive from '@baejino/react-ui/select';
 import type { VariantProps } from 'class-variance-authority';
 import { cva } from 'class-variance-authority';
 import classNames from 'classnames';

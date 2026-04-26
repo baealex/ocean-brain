@@ -1,70 +1,27 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { ToastProvider as BaseToastProvider, createToast } from '@baejino/react-ui/toast';
 
-interface Toast {
-    id: number;
-    message: string;
-}
-
-interface ToastContextValue {
-    toast: (message: string) => void;
-}
-
-const ToastContext = createContext<ToastContextValue | null>(null);
-
-let nextId = 0;
+const toast = createToast({ duration: 3000 });
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
-    const [toasts, setToasts] = useState<Toast[]>([]);
-    const timersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
-
-    const toast = useCallback((message: string) => {
-        const id = nextId++;
-        setToasts((prev) => [
-            ...prev,
-            {
-                id,
-                message,
-            },
-        ]);
-
-        const timer = setTimeout(() => {
-            setToasts((prev) => prev.filter((t) => t.id !== id));
-            timersRef.current.delete(id);
-        }, 3000);
-
-        timersRef.current.set(id, timer);
-    }, []);
-
-    useEffect(() => {
-        const timers = timersRef.current;
-        return () => {
-            timers.forEach((timer) => clearTimeout(timer));
-        };
-    }, []);
-
     return (
-        <ToastContext.Provider value={{ toast }}>
+        <>
             {children}
-            {toasts.length > 0 && (
-                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[1200] flex flex-col gap-2 items-center">
-                    {toasts.map((t) => (
-                        <div
-                            key={t.id}
-                            className="surface-floating whitespace-nowrap px-5 py-3 text-sm font-medium text-fg-secondary animate-slide-in-from-bottom"
-                        >
-                            {t.message}
-                        </div>
-                    ))}
-                </div>
-            )}
-        </ToastContext.Provider>
+            <BaseToastProvider
+                position="bottom-center"
+                expand={false}
+                visibleToasts={3}
+                toastOptions={{
+                    duration: 3000,
+                    classNames: {
+                        toast: 'surface-floating whitespace-nowrap px-5 py-3 text-sm font-medium text-fg-secondary shadow-sm',
+                        title: 'text-sm font-medium text-fg-secondary',
+                    },
+                }}
+            />
+        </>
     );
 }
 
 export function useToast() {
-    const context = useContext(ToastContext);
-    if (!context) {
-        throw new Error('useToast must be used within a ToastProvider');
-    }
-    return context.toast;
+    return toast;
 }

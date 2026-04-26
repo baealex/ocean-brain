@@ -1,4 +1,4 @@
-import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
+import * as DropdownMenuPrimitive from '@baejino/react-ui/dropdown-menu';
 import classNames from 'classnames';
 import { forwardRef } from 'react';
 

@@ -1,3 +1,5 @@
+import { buildAuthSessionResponse, sanitizeRedirectPath as sanitizeCommonRedirectPath } from '@baejino/auth';
+import { compareSharedSecret as compareCommonSharedSecret } from '@baejino/auth/crypto';
 import crypto from 'crypto';
 import type { Request } from 'express';
 import type { AuthConfig } from '~/modules/auth-mode.js';
@@ -15,26 +17,14 @@ export const comparePassword = async (password: string, storedHash: string) => {
     return hash === newHash;
 };
 
-export const compareSharedSecret = (expected: string, received: string) => {
-    const expectedBuffer = Buffer.from(expected, 'utf8');
-    const receivedBuffer = Buffer.from(received, 'utf8');
+export const compareSharedSecret = compareCommonSharedSecret;
 
-    if (expectedBuffer.length !== receivedBuffer.length) {
-        return false;
-    }
-
-    return crypto.timingSafeEqual(expectedBuffer, receivedBuffer);
-};
-
-export const buildSessionResponse = (authConfig: AuthConfig, req: Request) => ({
-    mode: authConfig.mode,
-    authRequired: authConfig.mode === 'password',
-    authenticated: authConfig.mode === 'password' ? Boolean(req.session?.authenticated) : false,
-});
+export const buildSessionResponse = (authConfig: AuthConfig, req: Request) =>
+    buildAuthSessionResponse(authConfig, Boolean(req.session?.authenticated));
 
 export const assertPasswordLoginAvailable = (authConfig: AuthConfig) => {
-    if (authConfig.mode !== 'password' || !authConfig.password) {
-        throw createAppError(409, 'AUTH_DISABLED', 'Login is unavailable while auth mode is disabled.');
+    if (authConfig.mode !== 'password') {
+        throw createAppError(409, 'AUTH_OPEN_MODE', 'Login is unavailable while auth mode is open.');
     }
 
     return authConfig.password;
@@ -70,43 +60,9 @@ export const destroySession = async (req: Request) => {
     });
 };
 
-export const sanitizeRedirectPath = (value: unknown) => {
-    if (typeof value !== 'string' || value.length === 0) {
-        return '/';
-    }
-
-    if (value.startsWith('/')) {
-        if (
-            value.startsWith('//') ||
-            value === '/login' ||
-            value.startsWith('/login?') ||
-            value === '/logout' ||
-            value.startsWith('/logout?')
-        ) {
-            return '/';
-        }
-
-        return value;
-    }
-
-    try {
-        const redirectUrl = new URL(value);
-        const hostname = redirectUrl.hostname.toLowerCase();
-
-        if (!['http:', 'https:'].includes(redirectUrl.protocol)) {
-            return '/';
-        }
-
-        if (!['localhost', '127.0.0.1', '::1', '[::1]'].includes(hostname)) {
-            return '/';
-        }
-
-        if (redirectUrl.pathname === '/login' || redirectUrl.pathname === '/logout') {
-            return '/';
-        }
-
-        return `${redirectUrl.origin}${redirectUrl.pathname}${redirectUrl.search}${redirectUrl.hash}`;
-    } catch {
-        return '/';
-    }
-};
+export const sanitizeRedirectPath = (value: unknown) =>
+    sanitizeCommonRedirectPath(value, {
+        fallbackPath: '/',
+        loginPath: '/login',
+        allowedAbsoluteHosts: ['localhost', '127.0.0.1', '::1'],
+    });

@@ -1,4 +1,4 @@
-import * as ToggleGroupPrimitive from '@radix-ui/react-toggle-group';
+import * as ToggleGroupPrimitive from '@baejino/react-ui/toggle-group';
 import type { VariantProps } from 'class-variance-authority';
 import classNames from 'classnames';
 import { createContext, forwardRef, useContext } from 'react';

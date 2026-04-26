@@ -1,4 +1,4 @@
-import * as DialogPrimitive from '@radix-ui/react-dialog';
+import * as DialogPrimitive from '@baejino/react-ui/modal/dialog';
 import classNames from 'classnames';
 import { createContext, forwardRef, useContext } from 'react';
 

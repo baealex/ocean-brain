@@ -2,7 +2,21 @@ import assert from 'node:assert/strict';
 import type { AddressInfo } from 'node:net';
 import test, { type TestContext } from 'node:test';
 import { createApp } from '~/app.js';
-import type { AuthConfig } from '~/modules/auth-mode.js';
+import { AUTH_SESSION_COOKIE_NAME, type AuthConfig } from '~/modules/auth-mode.js';
+
+const createPasswordAuthConfig = (): AuthConfig => ({
+    mode: 'password',
+    password: 'secret',
+    sessionSecret: 'session-secret',
+    cookieName: AUTH_SESSION_COOKIE_NAME,
+    source: 'password',
+});
+
+const createOpenAuthConfig = (): AuthConfig => ({
+    mode: 'open',
+    cookieName: AUTH_SESSION_COOKIE_NAME,
+    source: 'explicit-open',
+});
 
 const startServer = async (t: TestContext, authConfig: AuthConfig) => {
     const app = createApp(authConfig);
@@ -62,12 +76,7 @@ const jsonRequest = async (
 };
 
 test('password mode protects write paths until login and unlocks them after session auth', async (t) => {
-    const { baseUrl } = await startServer(t, {
-        mode: 'password',
-        password: 'secret',
-        sessionSecret: 'session-secret',
-        source: 'override',
-    });
+    const { baseUrl } = await startServer(t, createPasswordAuthConfig());
 
     const anonymousSession = await jsonRequest(baseUrl, '/api/auth/session', 'GET');
     assert.equal(anonymousSession.status, 200);
@@ -142,23 +151,20 @@ test('password mode protects write paths until login and unlocks them after sess
     assert.equal(postLogoutWrite.body.code, 'UNAUTHORIZED');
 });
 
-test('disabled mode keeps auth endpoints explicit and allows existing open write/query behavior', async (t) => {
-    const { baseUrl } = await startServer(t, {
-        mode: 'disabled',
-        source: 'override',
-    });
+test('open mode keeps auth endpoints explicit and allows existing open write/query behavior', async (t) => {
+    const { baseUrl } = await startServer(t, createOpenAuthConfig());
 
     const sessionStatus = await jsonRequest(baseUrl, '/api/auth/session', 'GET');
     assert.equal(sessionStatus.status, 200);
     assert.deepEqual(sessionStatus.body, {
-        mode: 'disabled',
+        mode: 'open',
         authRequired: false,
         authenticated: false,
     });
 
     const login = await jsonRequest(baseUrl, '/api/auth/login', 'POST', { password: 'secret' });
     assert.equal(login.status, 409);
-    assert.equal(login.body.code, 'AUTH_DISABLED');
+    assert.equal(login.body.code, 'AUTH_OPEN_MODE');
 
     const imageWrite = await jsonRequest(baseUrl, '/api/image', 'POST', {});
     assert.equal(imageWrite.status, 400);

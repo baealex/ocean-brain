@@ -1,4 +1,4 @@
-import * as TooltipPrimitive from '@radix-ui/react-tooltip';
+import * as TooltipPrimitive from '@baejino/react-ui/tooltip';
 import classNames from 'classnames';
 import { forwardRef } from 'react';
 

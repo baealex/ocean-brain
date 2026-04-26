@@ -1,3 +1,4 @@
+import { buildAuthSessionResponse } from '@baejino/auth';
 import type { AuthConfig } from '~/modules/auth-mode.js';
 import { createAppError } from '~/modules/error-handler.js';
 import type { Controller } from '~/types/index.js';
@@ -31,13 +32,7 @@ export const createLogoutHandler = (authConfig: AuthConfig): Controller => {
             await destroySession(req);
         }
 
-        res.status(200)
-            .json({
-                mode: authConfig.mode,
-                authRequired: authConfig.mode === 'password',
-                authenticated: false,
-            })
-            .end();
+        res.status(200).json(buildAuthSessionResponse(authConfig, false)).end();
     };
 };
 

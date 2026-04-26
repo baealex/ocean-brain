@@ -1,3 +1,4 @@
+import { buildUnauthorizedGraphqlPayload, buildUnauthorizedPayload } from '@baejino/auth';
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import session from 'express-session';
 import type { ValidationRule } from 'graphql';
@@ -7,42 +8,30 @@ import type { AuthConfig } from './auth-mode.js';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
-const buildUnauthorizedPayload = () => ({
-    code: 'UNAUTHORIZED',
-    message: 'Authentication required',
-});
-
-const buildUnauthorizedGraphqlPayload = () => ({
-    errors: [
-        {
-            message: 'Authentication required',
-            extensions: { code: 'UNAUTHORIZED' },
-        },
-    ],
-});
-
 export const isAuthenticatedRequest = (req: Request) => Boolean(req.session?.authenticated);
 
 export const createSessionMiddleware = (authConfig: AuthConfig): RequestHandler => {
-    if (authConfig.mode !== 'password' || !authConfig.sessionSecret) {
+    if (authConfig.mode !== 'password') {
         return (_req, _res, next) => next();
     }
 
     return session({
         secret: authConfig.sessionSecret,
-        name: 'ocean-brain.sid',
+        name: authConfig.cookieName,
         resave: false,
         saveUninitialized: false,
         cookie: {
             httpOnly: true,
             sameSite: 'lax',
+            secure: process.env.NODE_ENV === 'production',
+            path: '/',
         },
     });
 };
 
 export const requireSessionForWrite = (authConfig: AuthConfig): RequestHandler => {
     return (req: Request, res: Response, next: NextFunction) => {
-        if (authConfig.mode === 'disabled' || isAuthenticatedRequest(req)) {
+        if (authConfig.mode === 'open' || isAuthenticatedRequest(req)) {
             next();
             return;
         }
@@ -53,7 +42,7 @@ export const requireSessionForWrite = (authConfig: AuthConfig): RequestHandler =
 
 export const requireSessionForGraphql = (authConfig: AuthConfig): RequestHandler => {
     return (req: Request, res: Response, next: NextFunction) => {
-        if (authConfig.mode === 'disabled' || isAuthenticatedRequest(req)) {
+        if (authConfig.mode === 'open' || isAuthenticatedRequest(req)) {
             next();
             return;
         }
@@ -70,10 +59,14 @@ export const createMutationAuthValidationRule = (): ValidationRule => {
                     return;
                 }
 
+                const unauthorizedError = buildUnauthorizedGraphqlPayload().errors[0];
+
                 context.reportError(
-                    new GraphQLError('Authentication required', {
+                    new GraphQLError(unauthorizedError.message, {
                         nodes: [node],
-                        extensions: { code: 'UNAUTHORIZED' },
+                        extensions: {
+                            code: unauthorizedError.extensions.code,
+                        },
                     }),
                 );
             },

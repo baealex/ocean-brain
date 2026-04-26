@@ -1,56 +1,133 @@
-import { useCallback, useRef, useState } from 'react';
+import {
+    type AlertComponentProps,
+    ModalProvider as BaseModalProvider,
+    type ConfirmComponentProps,
+} from '@baejino/react-ui/modal';
+import * as AlertDialogPrimitive from '@baejino/react-ui/modal/alert-dialog';
+import classNames from 'classnames';
 
 import { Button } from '../Button';
-import { Modal } from '../Dialog/Modal';
+import {
+    dialogBodyVariants,
+    dialogContentVariants,
+    dialogDescriptionVariants,
+    dialogFooterVariants,
+    dialogTitleVariants,
+} from '../Dialog/variants';
 import { Text } from '../Text';
-import { ConfirmContext } from './ConfirmContext';
+
+const alertDialogOverlayClassName = classNames(
+    'fixed',
+    'inset-0',
+    'z-[1090]',
+    'bg-overlay',
+    'backdrop-blur-[2px]',
+    'data-[state=open]:animate-in',
+    'data-[state=closed]:animate-out',
+    'data-[state=closed]:fade-out-0',
+    'data-[state=open]:fade-in-0',
+);
+
+const AlertModal = ({ open, options, onClose }: AlertComponentProps) => {
+    return (
+        <AlertDialogPrimitive.Root
+            open={open}
+            onOpenChange={(nextOpen) => {
+                if (!nextOpen && options.dismissible) {
+                    onClose();
+                }
+            }}
+        >
+            <AlertDialogPrimitive.Portal>
+                <AlertDialogPrimitive.Overlay className={alertDialogOverlayClassName} />
+                <div className="pointer-events-none fixed inset-0 z-[1100] flex items-center justify-center p-4">
+                    <AlertDialogPrimitive.Content className={dialogContentVariants({ variant: 'confirm' })}>
+                        <div className={dialogBodyVariants({ variant: 'confirm' })}>
+                            <AlertDialogPrimitive.Title className={dialogTitleVariants({ variant: 'confirm' })}>
+                                {options.title}
+                            </AlertDialogPrimitive.Title>
+                            {options.description ? (
+                                <AlertDialogPrimitive.Description
+                                    className={dialogDescriptionVariants({ variant: 'confirm' })}
+                                >
+                                    {options.description}
+                                </AlertDialogPrimitive.Description>
+                            ) : null}
+                        </div>
+                        <div className={dialogFooterVariants({ variant: 'confirm' })}>
+                            <AlertDialogPrimitive.Action asChild>
+                                <Button size="sm" onClick={onClose}>
+                                    {options.confirmLabel}
+                                </Button>
+                            </AlertDialogPrimitive.Action>
+                        </div>
+                    </AlertDialogPrimitive.Content>
+                </div>
+            </AlertDialogPrimitive.Portal>
+        </AlertDialogPrimitive.Root>
+    );
+};
+
+const ConfirmModal = ({ open, options, onCancel, onConfirm }: ConfirmComponentProps) => {
+    return (
+        <AlertDialogPrimitive.Root
+            open={open}
+            onOpenChange={(nextOpen) => {
+                if (!nextOpen && options.dismissible) {
+                    onCancel();
+                }
+            }}
+        >
+            <AlertDialogPrimitive.Portal>
+                <AlertDialogPrimitive.Overlay className={alertDialogOverlayClassName} />
+                <div className="pointer-events-none fixed inset-0 z-[1100] flex items-center justify-center p-4">
+                    <AlertDialogPrimitive.Content className={dialogContentVariants({ variant: 'confirm' })}>
+                        <div className={dialogBodyVariants({ variant: 'confirm' })}>
+                            <AlertDialogPrimitive.Title className={dialogTitleVariants({ variant: 'confirm' })}>
+                                {options.title}
+                            </AlertDialogPrimitive.Title>
+                            {options.description ? (
+                                <AlertDialogPrimitive.Description
+                                    className={dialogDescriptionVariants({ variant: 'confirm' })}
+                                >
+                                    <Text as="span" variant="meta" tone="secondary">
+                                        {options.description}
+                                    </Text>
+                                </AlertDialogPrimitive.Description>
+                            ) : null}
+                        </div>
+                        <div className={dialogFooterVariants({ variant: 'confirm' })}>
+                            <AlertDialogPrimitive.Cancel asChild>
+                                <Button variant="ghost" size="sm" onClick={onCancel}>
+                                    {options.cancelLabel}
+                                </Button>
+                            </AlertDialogPrimitive.Cancel>
+                            <AlertDialogPrimitive.Action asChild>
+                                <Button
+                                    variant={options.tone === 'danger' ? 'danger' : 'primary'}
+                                    size="sm"
+                                    onClick={onConfirm}
+                                >
+                                    {options.confirmLabel}
+                                </Button>
+                            </AlertDialogPrimitive.Action>
+                        </div>
+                    </AlertDialogPrimitive.Content>
+                </div>
+            </AlertDialogPrimitive.Portal>
+        </AlertDialogPrimitive.Root>
+    );
+};
 
 export function ConfirmProvider({ children }: { children: React.ReactNode }) {
-    const [isOpen, setIsOpen] = useState(false);
-    const [message, setMessage] = useState('');
-    const resolveRef = useRef<((value: boolean) => void) | null>(null);
-
-    const confirm = useCallback((message: string): Promise<boolean> => {
-        setMessage(message);
-        setIsOpen(true);
-        return new Promise<boolean>((resolve) => {
-            resolveRef.current = resolve;
-        });
-    }, []);
-
-    const handleConfirm = () => {
-        resolveRef.current?.(true);
-        resolveRef.current = null;
-        setIsOpen(false);
-    };
-
-    const handleCancel = () => {
-        resolveRef.current?.(false);
-        resolveRef.current = null;
-        setIsOpen(false);
-    };
-
     return (
-        <ConfirmContext.Provider value={{ confirm }}>
+        <BaseModalProvider
+            components={{
+                Alert: AlertModal,
+                Confirm: ConfirmModal,
+            }}
+        >
             {children}
-            <Modal isOpen={isOpen} onClose={handleCancel} variant="confirm">
-                <Modal.Body>
-                    <Text as="p" variant="subheading" weight="semibold" tracking="tight">
-                        Confirm
-                    </Text>
-                    <Text as="p" variant="meta" tone="secondary">
-                        {message}
-                    </Text>
-                </Modal.Body>
-                <Modal.Footer>
-                    <Button variant="ghost" size="sm" onClick={handleCancel}>
-                        Cancel
-                    </Button>
-                    <Button variant="danger" size="sm" onClick={handleConfirm}>
-                        OK
-                    </Button>
-                </Modal.Footer>
-            </Modal>
-        </ConfirmContext.Provider>
+        </BaseModalProvider>
     );
 }

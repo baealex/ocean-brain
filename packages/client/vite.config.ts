@@ -38,7 +38,8 @@ export default defineConfig({
         host: '0.0.0.0',
         proxy: {
             '/api': { target: 'http://localhost:6683' },
-            '/auth': { target: 'http://localhost:6683' },
+            '/login': { target: 'http://localhost:6683' },
+            '/logout': { target: 'http://localhost:6683' },
             '/graphql': { target: 'http://localhost:6683' },
             '/assets/images': { target: 'http://localhost:6683' },
         },

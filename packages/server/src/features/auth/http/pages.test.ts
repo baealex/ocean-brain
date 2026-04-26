@@ -2,7 +2,15 @@ import assert from 'node:assert/strict';
 import type { AddressInfo } from 'node:net';
 import test, { type TestContext } from 'node:test';
 import { createApp } from '~/app.js';
-import type { AuthConfig } from '~/modules/auth-mode.js';
+import { AUTH_SESSION_COOKIE_NAME, type AuthConfig } from '~/modules/auth-mode.js';
+
+const createPasswordAuthConfig = (): AuthConfig => ({
+    mode: 'password',
+    password: 'secret',
+    sessionSecret: 'session-secret',
+    cookieName: AUTH_SESSION_COOKIE_NAME,
+    source: 'password',
+});
 
 const startServer = async (t: TestContext, authConfig: AuthConfig) => {
     const app = createApp(authConfig);
@@ -42,12 +50,7 @@ const formRequest = async (baseUrl: string, path: string, body: Record<string, s
 };
 
 test('password mode blocks client routes until the server-side login form succeeds', async (t) => {
-    const { baseUrl } = await startServer(t, {
-        mode: 'password',
-        password: 'secret',
-        sessionSecret: 'session-secret',
-        source: 'override',
-    });
+    const { baseUrl } = await startServer(t, createPasswordAuthConfig());
 
     const blockedHome = await fetch(`${baseUrl}/`, { redirect: 'manual' });
 

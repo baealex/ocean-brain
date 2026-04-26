@@ -37,6 +37,12 @@ export const resolveServeAuthEnvironment = (
 ) => {
     const allowInsecureNoAuth = options.allowInsecureNoAuth || isTruthy(env.OCEAN_BRAIN_ALLOW_INSECURE_NO_AUTH);
 
+    if (allowInsecureNoAuth && env.OCEAN_BRAIN_PASSWORD) {
+        throw new Error(
+            'Conflicting auth config. OCEAN_BRAIN_ALLOW_INSECURE_NO_AUTH enables open mode while OCEAN_BRAIN_PASSWORD is also set.'
+        );
+    }
+
     if (!allowInsecureNoAuth && env.OCEAN_BRAIN_PASSWORD) {
         ensurePasswordModeRequirements(env);
     }

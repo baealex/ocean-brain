@@ -15,6 +15,7 @@
         "type-check": "tsc --noEmit"
     },
     "dependencies": {
+        "@baejino/auth": "0.1.1",
         "@blocknote/server-util": "^0.46.2",
         "@graphql-tools/schema": "^10.0.31",
         "@graphql-tools/utils": "^11.0.0",

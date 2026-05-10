@@ -3,6 +3,11 @@ import { useCreateBlockNote } from '@blocknote/react';
 import { forwardRef, useImperativeHandle } from 'react';
 import { uploadImage } from '~/apis/image.api';
 import schema, { CommandView, ReferenceView, TagView } from '~/components/schema';
+import {
+    type MarkdownBlock,
+    prepareBlocksForMarkdown,
+    restoreTagPlaceholdersInMarkdown,
+} from '~/modules/blocknote-markdown';
 import { fileToBase64 } from '~/modules/file';
 import { useTheme } from '~/store/theme';
 
@@ -15,6 +20,8 @@ interface EditorProps {
 
 export interface EditorRef {
     getContent: () => string;
+    getMarkdown: () => string;
+    getHtml: () => string;
 }
 
 const Editor = forwardRef<EditorRef, EditorProps>(({ content, currentNoteId, editable, onChange }, ref) => {
@@ -33,6 +40,17 @@ const Editor = forwardRef<EditorRef, EditorProps>(({ content, currentNoteId, edi
         return {
             getContent: () => {
                 return JSON.stringify(editor.document);
+            },
+            getMarkdown: () => {
+                const prepared = prepareBlocksForMarkdown(editor.document as unknown as MarkdownBlock[]);
+                const markdown = editor.blocksToMarkdownLossy(
+                    prepared.blocks as Parameters<typeof editor.blocksToMarkdownLossy>[0],
+                );
+
+                return restoreTagPlaceholdersInMarkdown(markdown, prepared.placeholderToTag);
+            },
+            getHtml: () => {
+                return editor.blocksToHTMLLossy(editor.document);
             },
         };
     });

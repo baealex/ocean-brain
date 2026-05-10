@@ -9,13 +9,30 @@ import { BackReferences } from '~/components/entities';
 import * as Icon from '~/components/icon';
 import { LayoutModal, RestoreSnapshotModal } from '~/components/note';
 import { ReminderPanel } from '~/components/reminder';
-import { AuxiliaryPanelHeader, Button, Callout, Dropdown, PageLayout, Skeleton } from '~/components/shared';
+import {
+    AuxiliaryPanelHeader,
+    Button,
+    Callout,
+    Dropdown,
+    Modal,
+    ModalActionRow,
+    PageLayout,
+    SelectionOptionCard,
+    Skeleton,
+} from '~/components/shared';
 import type { EditorRef } from '~/components/shared/Editor';
 import Editor from '~/components/shared/Editor';
-import { MoreButton, Text, useToast } from '~/components/ui';
+import { Checkbox, MoreButton, Text, useToast } from '~/components/ui';
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
 import useDebounce from '~/hooks/useDebounce';
 import type { NoteLayout } from '~/models/note.model';
+import {
+    createHtmlExport,
+    createMarkdownExport,
+    downloadTextFile,
+    getNoteExportFilename,
+    type HtmlExportMode,
+} from '~/modules/note-export';
 import { queryKeys } from '~/modules/query-key-factory';
 import { subscribeServerEvent } from '~/modules/server-events';
 import { NOTE_ROUTE, SETTINGS_TRASH_ROUTE } from '~/modules/url';
@@ -81,6 +98,10 @@ function NoteContent({ id }: NoteContentProps) {
     const [layout, setLayout] = useState<NoteLayout>(note.layout || 'wide');
     const [isLayoutModalOpen, setIsLayoutModalOpen] = useState(false);
     const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
+    const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+    const [exportFormat, setExportFormat] = useState<'markdown' | 'html'>('markdown');
+    const [includeMetadata, setIncludeMetadata] = useState(false);
+    const [htmlExportMode, setHtmlExportMode] = useState<HtmlExportMode>('fragment');
     const [externalNoteChange, setExternalNoteChange] = useState<ExternalNoteChange | null>(null);
     const [isMountedEvent, mountEvent] = useDebounce(1000);
 
@@ -180,6 +201,84 @@ function NoteContent({ id }: NoteContentProps) {
         toast('Layout has been updated.');
     };
 
+    const getExportMetadata = () => ({
+        id,
+        title,
+        createdAt: note.createdAt,
+        updatedAt: note.updatedAt,
+    });
+
+    const handleCopyMarkdown = async () => {
+        const markdown = editorRef.current?.getMarkdown();
+
+        if (markdown === undefined) {
+            toast('Markdown is not ready yet.');
+            return;
+        }
+
+        try {
+            await navigator.clipboard.writeText(markdown);
+            toast('Copied note as Markdown.');
+        } catch {
+            toast('Failed to copy Markdown.');
+        }
+    };
+
+    const handleDownloadMarkdown = () => {
+        const markdown = editorRef.current?.getMarkdown();
+
+        if (markdown === undefined) {
+            toast('Markdown is not ready yet.');
+            return;
+        }
+
+        try {
+            downloadTextFile(markdown, getNoteExportFilename(title, 'md'), 'text/markdown;charset=utf-8');
+            toast('Downloaded note as Markdown.');
+        } catch {
+            toast('Failed to download Markdown.');
+        }
+    };
+
+    const handleDownloadOtherFormat = () => {
+        const metadata = getExportMetadata();
+
+        try {
+            if (exportFormat === 'markdown') {
+                const markdown = editorRef.current?.getMarkdown();
+
+                if (markdown === undefined) {
+                    toast('Markdown is not ready yet.');
+                    return;
+                }
+
+                downloadTextFile(
+                    createMarkdownExport(markdown, metadata, includeMetadata),
+                    getNoteExportFilename(title, 'md'),
+                    'text/markdown;charset=utf-8',
+                );
+            } else {
+                const html = editorRef.current?.getHtml();
+
+                if (html === undefined) {
+                    toast('HTML is not ready yet.');
+                    return;
+                }
+
+                downloadTextFile(
+                    createHtmlExport(html, metadata, { includeMetadata, mode: htmlExportMode }),
+                    getNoteExportFilename(title, 'html'),
+                    'text/html;charset=utf-8',
+                );
+            }
+
+            setIsExportModalOpen(false);
+            toast('Downloaded note.');
+        } catch {
+            toast('Failed to download note.');
+        }
+    };
+
     const handleReloadExternalChange = async () => {
         const response = await noteQuery.refetch();
 
@@ -224,6 +323,19 @@ function NoteContent({ id }: NoteContentProps) {
                                 <Dropdown
                                     button={<MoreButton label="Note actions" size="lg" />}
                                     items={[
+                                        {
+                                            name: 'Copy Markdown',
+                                            onClick: handleCopyMarkdown,
+                                        },
+                                        {
+                                            name: 'Download Markdown',
+                                            onClick: handleDownloadMarkdown,
+                                        },
+                                        {
+                                            name: 'Download in another format',
+                                            onClick: () => setIsExportModalOpen(true),
+                                        },
+                                        { type: 'separator', key: 'export-separator' },
                                         {
                                             name: isPinned ? 'Unpin' : 'Pin',
                                             onClick: () =>
@@ -412,6 +524,82 @@ function NoteContent({ id }: NoteContentProps) {
                     onSave={handleLayoutSave}
                     currentLayout={layout}
                 />
+                <Modal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} variant="compact">
+                    <Modal.Header title="Download in another format" onClose={() => setIsExportModalOpen(false)} />
+                    <Modal.Body>
+                        <div className="flex flex-col gap-4">
+                            <div className="flex flex-col gap-2">
+                                <Text as="div" variant="body" weight="semibold" tone="secondary">
+                                    Format
+                                </Text>
+                                <div className="grid gap-2 sm:grid-cols-2">
+                                    <SelectionOptionCard
+                                        title="Markdown"
+                                        description="Good for GitHub, static blogs, and other note apps."
+                                        selected={exportFormat === 'markdown'}
+                                        onClick={() => setExportFormat('markdown')}
+                                    />
+                                    <SelectionOptionCard
+                                        title="HTML"
+                                        description="Good for web documents or CMS editors."
+                                        selected={exportFormat === 'html'}
+                                        onClick={() => setExportFormat('html')}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex items-start gap-3 rounded-[14px] border border-border-subtle bg-subtle/60 p-3">
+                                <Checkbox
+                                    size="sm"
+                                    checked={includeMetadata}
+                                    onChange={(event) => setIncludeMetadata(event.target.checked)}
+                                    className="mt-0.5"
+                                    aria-label="Include metadata"
+                                />
+                                <div className="flex flex-col gap-1">
+                                    <Text as="span" variant="body" weight="semibold">
+                                        Include metadata
+                                    </Text>
+                                    <Text as="span" variant="label" tone="tertiary">
+                                        Add the title, note id, timestamps, and Ocean Brain source information.
+                                    </Text>
+                                </div>
+                            </div>
+
+                            {exportFormat === 'html' && (
+                                <div className="flex flex-col gap-2">
+                                    <Text as="div" variant="body" weight="semibold" tone="secondary">
+                                        HTML style
+                                    </Text>
+                                    <div className="grid gap-2 sm:grid-cols-2">
+                                        <SelectionOptionCard
+                                            title="Content only"
+                                            description="Save only the note body HTML."
+                                            selected={htmlExportMode === 'fragment'}
+                                            onClick={() => setHtmlExportMode('fragment')}
+                                        />
+                                        <SelectionOptionCard
+                                            title="Full HTML document"
+                                            description="Save a complete HTML file that opens in a browser."
+                                            selected={htmlExportMode === 'standalone'}
+                                            onClick={() => setHtmlExportMode('standalone')}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </Modal.Body>
+                    <Modal.Footer>
+                        <ModalActionRow>
+                            <Button variant="ghost" size="sm" onClick={() => setIsExportModalOpen(false)}>
+                                Cancel
+                            </Button>
+                            <Button variant="primary" size="sm" onClick={handleDownloadOtherFormat}>
+                                Download
+                            </Button>
+                        </ModalActionRow>
+                    </Modal.Footer>
+                </Modal>
                 <RestoreSnapshotModal
                     isOpen={isRestoreModalOpen}
                     noteId={id}

@@ -217,16 +217,16 @@ async function stopProcess(child) {
     }
 }
 
-export async function expectAuthFailure(child, getStderr) {
+export async function expectAuthFailure(child, getStderr, timeoutMs = 15000) {
     if (child.exitCode === null && child.signalCode === null) {
         await Promise.race([
             new Promise(resolve => child.once('exit', resolve)),
-            sleep(15000)
+            sleep(timeoutMs)
         ]);
     }
 
     if (child.exitCode === null && child.signalCode === null) {
-        throw new Error('CLI process did not fail within 15000ms for missing-auth scenario');
+        throw new Error(`CLI process did not fail within ${timeoutMs}ms for missing-auth scenario`);
     }
 
     const stderrBuffer = getStderr();
@@ -245,7 +245,7 @@ async function runScenario(scenario) {
 
     try {
         if (scenario.name === 'missing-auth') {
-            await expectAuthFailure(child, getStderr);
+            await expectAuthFailure(child, getStderr, readyTimeoutMs);
             console.log(`CLI smoke scenario passed: ${scenario.name}`);
             return;
         }

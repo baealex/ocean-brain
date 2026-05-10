@@ -186,7 +186,7 @@ export function fetchNotesByTagNames({ tagNames, mode = 'and', limit = 25, offse
 export function fetchNote(id: string) {
     return graphQuery<
         {
-            note: Pick<Note, 'title' | 'content' | 'pinned' | 'layout' | 'updatedAt'>;
+            note: Pick<Note, 'title' | 'content' | 'pinned' | 'layout' | 'createdAt' | 'updatedAt'>;
         },
         { id: string }
     >(
@@ -196,6 +196,7 @@ export function fetchNote(id: string) {
                 pinned
                 layout
                 content
+                createdAt
                 updatedAt
             }
         }`,

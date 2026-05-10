@@ -19,5 +19,14 @@
         "release:bump": "node scripts/release/bump-version.mjs",
         "prepublish": "node scripts/release/prepublish.mjs"
     },
-    "devDependencies": {}
+    "devDependencies": {},
+    "pnpm": {
+        "overrides": {
+            "express-rate-limit": "8.5.1",
+            "fast-uri": "3.1.2",
+            "hono": "4.12.18",
+            "ip-address": "10.1.1",
+            "postcss": "8.5.10"
+        }
+    }
 }

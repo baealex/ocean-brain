@@ -21,6 +21,7 @@
         "@graphql-tools/utils": "^11.0.0",
         "@prisma/client": "^6.19.3",
         "express": "^5.2.1",
+        "express-rate-limit": "8.5.1",
         "express-session": "^1.19.0",
         "express-winston": "^4.2.0",
         "graphql-http": "^1.22.4",

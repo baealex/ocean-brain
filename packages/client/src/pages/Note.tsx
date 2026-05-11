@@ -2,6 +2,7 @@ import { useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi, Link } from '@tanstack/react-router';
 import classNames from 'classnames';
 import dayjs from 'dayjs';
+import { nanoid } from 'nanoid';
 import { useEffect, useRef, useState } from 'react';
 import { fetchNote, updateNote } from '~/apis/note.api';
 import { QueryBoundary, QueryErrorView } from '~/components/app';
@@ -41,13 +42,7 @@ const Route = getRouteApi(NOTE_ROUTE);
 
 const formatSavedAt = (updatedAt: string) => dayjs(Number(updatedAt)).format('YYYY-MM-DD HH:mm:ss');
 
-const createEditSessionId = () => {
-    if (typeof globalThis.crypto?.randomUUID === 'function') {
-        return globalThis.crypto.randomUUID();
-    }
-
-    return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-};
+const createEditSessionId = () => nanoid();
 
 const NOTE_LAYOUT_WIDTH: Record<NoteLayout, string> = {
     narrow: 'max-w-[640px]',

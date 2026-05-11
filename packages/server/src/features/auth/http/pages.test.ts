@@ -98,3 +98,25 @@ test('password mode blocks client routes until the server-side login form succee
     assert.equal(logout.status, 303);
     assert.equal(logout.location, '/login');
 });
+
+test('password login page rate limits repeated failed attempts', async (t) => {
+    const { baseUrl } = await startServer(t, createPasswordAuthConfig());
+
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+        const response = await formRequest(baseUrl, '/login', {
+            next: '/notes',
+            password: 'wrong',
+        });
+
+        assert.equal(response.status, 401);
+        assert.match(response.text, /Invalid password/);
+    }
+
+    const rateLimited = await formRequest(baseUrl, '/login', {
+        next: '/notes',
+        password: 'wrong',
+    });
+
+    assert.equal(rateLimited.status, 429);
+    assert.match(rateLimited.text, /AUTH_RATE_LIMITED/);
+});

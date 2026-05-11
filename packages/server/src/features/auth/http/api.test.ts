@@ -151,6 +151,21 @@ test('password mode protects write paths until login and unlocks them after sess
     assert.equal(postLogoutWrite.body.code, 'UNAUTHORIZED');
 });
 
+test('password login API rate limits repeated failed attempts', async (t) => {
+    const { baseUrl } = await startServer(t, createPasswordAuthConfig());
+
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+        const response = await jsonRequest(baseUrl, '/api/auth/login', 'POST', { password: 'wrong' });
+        assert.equal(response.status, 401);
+        assert.equal(response.body.code, 'UNAUTHORIZED');
+    }
+
+    const rateLimited = await jsonRequest(baseUrl, '/api/auth/login', 'POST', { password: 'wrong' });
+
+    assert.equal(rateLimited.status, 429);
+    assert.equal(rateLimited.body.code, 'AUTH_RATE_LIMITED');
+});
+
 test('open mode keeps auth endpoints explicit and allows existing open write/query behavior', async (t) => {
     const { baseUrl } = await startServer(t, createOpenAuthConfig());
 

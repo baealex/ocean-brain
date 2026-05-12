@@ -19,6 +19,27 @@ const readyTimeoutMs = Number(
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+const getSetCookies = (headers) => {
+    if (typeof headers.getSetCookie === 'function') {
+        return headers.getSetCookie();
+    }
+
+    const setCookie = headers.get('set-cookie');
+    return setCookie ? [setCookie] : [];
+};
+
+const toCookieHeader = (setCookies) => setCookies.map(cookie => cookie.split(';')[0]).join('; ');
+
+const extractCsrfToken = (cookie) => {
+    const token = cookie
+        ?.split(';')
+        .map(part => part.trim())
+        .find(part => part.startsWith('XSRF-TOKEN='))
+        ?.slice('XSRF-TOKEN='.length);
+
+    return token ? decodeURIComponent(token) : undefined;
+};
+
 export function extractLocalAssetPaths(html) {
     return [...html.matchAll(/\b(?:href|src)="([^"]+)"/g)]
         .map(match => match[1])
@@ -244,11 +265,18 @@ async function assertAuthSession(expected) {
 }
 
 async function assertGraphqlUnauthorized() {
+    const sessionResponse = await fetch(`${rootUrl}${AUTH_SESSION_PATH}`, {
+        signal: AbortSignal.timeout(5000)
+    });
+    const cookie = toCookieHeader(getSetCookies(sessionResponse.headers));
+    const csrfToken = extractCsrfToken(cookie);
     const response = await fetch(`${rootUrl}/graphql`, {
         method: 'POST',
         signal: AbortSignal.timeout(5000),
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...(cookie ? { Cookie: cookie } : {}),
+            ...(csrfToken ? { 'X-XSRF-TOKEN': csrfToken } : {})
         },
         body: JSON.stringify({
             query: '{ allImages(pagination: {limit: 1, offset: 0}) { totalCount } }'
@@ -403,8 +431,12 @@ async function main() {
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
-    main().catch(error => {
-        console.error(error);
-        process.exit(1);
-    });
+    main()
+        .then(() => {
+            process.exit(0);
+        })
+        .catch(error => {
+            console.error(error);
+            process.exit(1);
+        });
 }

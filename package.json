@@ -21,7 +21,8 @@
         "prepublish": "node scripts/release/prepublish.mjs"
     },
     "devDependencies": {
-        "@playwright/test": "^1.59.1"
+        "@playwright/test": "^1.59.1",
+        "@types/lusca": "^1.7.5"
     },
     "pnpm": {
         "overrides": {

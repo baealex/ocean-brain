@@ -11,7 +11,10 @@ export const createLoginPageHandler = (authConfig: AuthConfig): Controller => {
         }
 
         const nextPath = sanitizeRedirectPath(req.query.next);
-        res.status(200).type('html').send(renderLoginPage({ nextPath })).end();
+        res.status(200)
+            .type('html')
+            .send(renderLoginPage({ nextPath, csrfToken: res.locals._csrf }))
+            .end();
     };
 };
 
@@ -33,6 +36,7 @@ export const createLoginPageSubmitHandler = (authConfig: AuthConfig): Controller
                     renderLoginPage({
                         nextPath,
                         errorMessage: 'Invalid password',
+                        csrfToken: res.locals._csrf,
                     }),
                 )
                 .end();

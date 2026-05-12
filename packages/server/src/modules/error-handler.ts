@@ -33,6 +33,16 @@ export const createErrorHandler = (): ErrorRequestHandler => {
             return;
         }
 
+        if (error instanceof Error && error.message.startsWith('CSRF token ')) {
+            res.status(403)
+                .json({
+                    code: 'CSRF_TOKEN_INVALID',
+                    message: error.message,
+                })
+                .end();
+            return;
+        }
+
         const message = error instanceof Error ? error.stack || error.message : String(error);
         process.stderr.write(`[error] ${message}\n`);
 

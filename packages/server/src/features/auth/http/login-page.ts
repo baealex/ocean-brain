@@ -26,6 +26,7 @@ const escapeHtml = (value: string) =>
 interface LoginPageParams {
     nextPath: string;
     errorMessage?: string;
+    csrfToken?: string;
 }
 
 const renderLoginError = (errorMessage?: string) => {
@@ -36,12 +37,23 @@ const renderLoginError = (errorMessage?: string) => {
     return `<div class="error" role="alert">${escapeHtml(errorMessage)}</div>`;
 };
 
-const renderLoginTemplate = (values: { errorBlock: string; nextPath: string }) => {
-    return LOGIN_PAGE_TEMPLATE.replace(LOGIN_ERROR_TOKEN, values.errorBlock).replace(NEXT_PATH_TOKEN, values.nextPath);
+const renderCsrfInput = (csrfToken?: string) => {
+    if (!csrfToken) {
+        return '';
+    }
+
+    return `<input type="hidden" name="_csrf" value="${escapeHtml(csrfToken)}" />`;
 };
 
-export const renderLoginPage = ({ nextPath, errorMessage }: LoginPageParams) =>
+const renderLoginTemplate = (values: { errorBlock: string; nextPath: string; csrfInput: string }) => {
+    return LOGIN_PAGE_TEMPLATE.replace(LOGIN_ERROR_TOKEN, values.errorBlock)
+        .replace(NEXT_PATH_TOKEN, values.nextPath)
+        .replace('<!-- OCEAN_BRAIN_CSRF_INPUT -->', values.csrfInput);
+};
+
+export const renderLoginPage = ({ nextPath, errorMessage, csrfToken }: LoginPageParams) =>
     renderLoginTemplate({
         errorBlock: renderLoginError(errorMessage),
         nextPath: escapeHtml(nextPath),
+        csrfInput: renderCsrfInput(csrfToken),
     });

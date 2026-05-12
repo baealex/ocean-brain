@@ -30,13 +30,57 @@ const startServer = async (t: TestContext, authConfig: AuthConfig) => {
     return { baseUrl: `http://127.0.0.1:${address.port}` };
 };
 
+const getSetCookies = (headers: Headers) => {
+    const getSetCookie = (headers as Headers & { getSetCookie?: () => string[] }).getSetCookie;
+    if (typeof getSetCookie === 'function') {
+        return getSetCookie.call(headers);
+    }
+
+    const setCookie = headers.get('set-cookie');
+    return setCookie ? [setCookie] : [];
+};
+
+const toCookieHeader = (setCookies: string[]) => setCookies.map((cookie) => cookie.split(';')[0]).join('; ');
+
+const mergeCookieHeaders = (...cookieHeaders: (string | undefined)[]) => {
+    const cookies = new Map<string, string>();
+
+    for (const cookieHeader of cookieHeaders) {
+        for (const cookie of cookieHeader?.split('; ') ?? []) {
+            const separatorIndex = cookie.indexOf('=');
+            if (separatorIndex <= 0) continue;
+
+            cookies.set(cookie.slice(0, separatorIndex), cookie);
+        }
+    }
+
+    return Array.from(cookies.values()).join('; ');
+};
+
+const extractCsrfTokenFromHtml = (html: string) => {
+    const match = html.match(/name="_csrf" value="([^"]+)"/);
+    return match?.[1];
+};
+
+const extractCsrfTokenFromCookie = (cookie?: string) => {
+    const token = cookie
+        ?.split(';')
+        .map((part) => part.trim())
+        .find((part) => part.startsWith('XSRF-TOKEN='))
+        ?.slice('XSRF-TOKEN='.length);
+
+    return token ? decodeURIComponent(token) : undefined;
+};
+
 const formRequest = async (baseUrl: string, path: string, body: Record<string, string>, cookie?: string) => {
+    const csrfToken = extractCsrfTokenFromCookie(cookie);
     const response = await fetch(`${baseUrl}${path}`, {
         method: 'POST',
         redirect: 'manual',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
             ...(cookie ? { Cookie: cookie } : {}),
+            ...(csrfToken ? { 'X-XSRF-TOKEN': csrfToken } : {}),
         },
         body: new URLSearchParams(body).toString(),
     });
@@ -45,7 +89,7 @@ const formRequest = async (baseUrl: string, path: string, body: Record<string, s
         status: response.status,
         text: await response.text(),
         location: response.headers.get('location') ?? undefined,
-        cookie: response.headers.get('set-cookie') ?? undefined,
+        cookie: mergeCookieHeaders(cookie, toCookieHeader(getSetCookies(response.headers))) || undefined,
     };
 };
 
@@ -59,6 +103,8 @@ test('password mode blocks client routes until the server-side login form succee
 
     const loginPage = await fetch(`${baseUrl}/login?next=%2Fnotes`);
     const loginPageHtml = await loginPage.text();
+    const loginCookie = toCookieHeader(getSetCookies(loginPage.headers));
+    const csrfToken = extractCsrfTokenFromHtml(loginPageHtml);
 
     assert.equal(loginPage.status, 200);
     assert.match(loginPageHtml, /Ocean Brain/);
@@ -66,26 +112,41 @@ test('password mode blocks client routes until the server-side login form succee
     assert.match(loginPageHtml, /color-scheme: light dark/);
     assert.match(loginPageHtml, /prefers-color-scheme: dark/);
     assert.match(loginPageHtml, /<form method="post" action="\/login">/);
+    assert.match(loginPageHtml, /name="_csrf"/);
     assert.match(loginPageHtml, /name="next" value="\/notes"/);
+    assert.ok(csrfToken);
 
-    const invalidLogin = await formRequest(baseUrl, '/login', {
-        next: '/notes',
-        password: 'wrong',
-    });
+    const invalidLogin = await formRequest(
+        baseUrl,
+        '/login',
+        {
+            next: '/notes',
+            password: 'wrong',
+            _csrf: csrfToken,
+        },
+        loginCookie,
+    );
 
     assert.equal(invalidLogin.status, 401);
     assert.match(invalidLogin.text, /Invalid password/);
 
-    const validLogin = await formRequest(baseUrl, '/login', {
-        next: '/notes',
-        password: 'secret',
-    });
+    const validLogin = await formRequest(
+        baseUrl,
+        '/login',
+        {
+            next: '/notes',
+            password: 'secret',
+            _csrf: csrfToken,
+        },
+        invalidLogin.cookie,
+    );
 
     assert.equal(validLogin.status, 303);
     assert.equal(validLogin.location, '/notes');
     assert.ok(validLogin.cookie);
 
     const sessionStatus = await fetch(`${baseUrl}/api/auth/session`, { headers: { Cookie: validLogin.cookie } });
+    const sessionCookie = mergeCookieHeaders(validLogin.cookie, toCookieHeader(getSetCookies(sessionStatus.headers)));
 
     assert.equal(sessionStatus.status, 200);
     assert.deepEqual(await sessionStatus.json(), {
@@ -94,7 +155,46 @@ test('password mode blocks client routes until the server-side login form succee
         authenticated: true,
     });
 
-    const logout = await formRequest(baseUrl, '/logout', {}, validLogin.cookie);
+    const logout = await formRequest(baseUrl, '/logout', {}, sessionCookie);
     assert.equal(logout.status, 303);
     assert.equal(logout.location, '/login');
+});
+
+test('password login page rate limits repeated failed attempts', async (t) => {
+    const { baseUrl } = await startServer(t, createPasswordAuthConfig());
+    const loginPage = await fetch(`${baseUrl}/login?next=%2Fnotes`);
+    const csrfToken = extractCsrfTokenFromHtml(await loginPage.text());
+    const loginCookie = toCookieHeader(getSetCookies(loginPage.headers));
+
+    assert.ok(csrfToken);
+
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+        const response = await formRequest(
+            baseUrl,
+            '/login',
+            {
+                next: '/notes',
+                password: 'wrong',
+                _csrf: csrfToken,
+            },
+            loginCookie,
+        );
+
+        assert.equal(response.status, 401);
+        assert.match(response.text, /Invalid password/);
+    }
+
+    const rateLimited = await formRequest(
+        baseUrl,
+        '/login',
+        {
+            next: '/notes',
+            password: 'wrong',
+            _csrf: csrfToken,
+        },
+        loginCookie,
+    );
+
+    assert.equal(rateLimited.status, 429);
+    assert.match(rateLimited.text, /AUTH_RATE_LIMITED/);
 });

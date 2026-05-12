@@ -36,12 +36,61 @@ const startServer = async (t: TestContext, authConfig: AuthConfig) => {
     return { baseUrl: `http://127.0.0.1:${address.port}` };
 };
 
+const getSetCookies = (headers: Headers) => {
+    const getSetCookie = (headers as Headers & { getSetCookie?: () => string[] }).getSetCookie;
+    if (typeof getSetCookie === 'function') {
+        return getSetCookie.call(headers);
+    }
+
+    const setCookie = headers.get('set-cookie');
+    return setCookie ? [setCookie] : [];
+};
+
+const toCookieHeader = (setCookies: string[]) => setCookies.map((cookie) => cookie.split(';')[0]).join('; ');
+
+const mergeCookieHeaders = (...cookieHeaders: (string | undefined)[]) => {
+    const cookies = new Map<string, string>();
+
+    for (const cookieHeader of cookieHeaders) {
+        for (const cookie of cookieHeader?.split('; ') ?? []) {
+            const separatorIndex = cookie.indexOf('=');
+            if (separatorIndex <= 0) continue;
+
+            cookies.set(cookie.slice(0, separatorIndex), cookie);
+        }
+    }
+
+    return Array.from(cookies.values()).join('; ');
+};
+
+const extractCsrfToken = (cookie?: string) => {
+    const token = cookie
+        ?.split(';')
+        .map((part) => part.trim())
+        .find((part) => part.startsWith('XSRF-TOKEN='))
+        ?.slice('XSRF-TOKEN='.length);
+
+    return token ? decodeURIComponent(token) : undefined;
+};
+
+const fetchCsrfCookie = async (baseUrl: string, cookie?: string) => {
+    const response = await fetch(`${baseUrl}/api/auth/session`, {
+        headers: cookie ? { Cookie: cookie } : undefined,
+    });
+    const setCookieHeader = toCookieHeader(getSetCookies(response.headers));
+
+    return mergeCookieHeaders(cookie, setCookieHeader);
+};
+
 const graphRequest = async (baseUrl: string, query: string, cookie?: string) => {
+    const requestCookie = await fetchCsrfCookie(baseUrl, cookie);
+    const csrfToken = extractCsrfToken(requestCookie);
     const response = await fetch(`${baseUrl}/graphql`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            ...(cookie ? { Cookie: cookie } : {}),
+            ...(requestCookie ? { Cookie: requestCookie } : {}),
+            ...(csrfToken ? { 'X-XSRF-TOKEN': csrfToken } : {}),
         },
         body: JSON.stringify({ query }),
     });
@@ -59,11 +108,14 @@ const jsonRequest = async (
     body?: Record<string, unknown>,
     cookie?: string,
 ) => {
+    const requestCookie = method === 'POST' ? await fetchCsrfCookie(baseUrl, cookie) : cookie;
+    const csrfToken = extractCsrfToken(requestCookie);
     const response = await fetch(`${baseUrl}${path}`, {
         method,
         headers: {
             ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}),
-            ...(cookie ? { Cookie: cookie } : {}),
+            ...(requestCookie ? { Cookie: requestCookie } : {}),
+            ...(csrfToken ? { 'X-XSRF-TOKEN': csrfToken } : {}),
         },
         body: body ? JSON.stringify(body) : undefined,
     });
@@ -71,7 +123,7 @@ const jsonRequest = async (
     return {
         status: response.status,
         body: (await response.json()) as Record<string, unknown>,
-        cookie: response.headers.get('set-cookie') ?? undefined,
+        cookie: mergeCookieHeaders(requestCookie, toCookieHeader(getSetCookies(response.headers))) || undefined,
     };
 };
 
@@ -149,6 +201,41 @@ test('password mode protects write paths until login and unlocks them after sess
     const postLogoutWrite = await jsonRequest(baseUrl, '/api/image', 'POST', {}, login.cookie);
     assert.equal(postLogoutWrite.status, 401);
     assert.equal(postLogoutWrite.body.code, 'UNAUTHORIZED');
+});
+
+test('password login API rate limits repeated failed attempts', async (t) => {
+    const { baseUrl } = await startServer(t, createPasswordAuthConfig());
+
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+        const response = await jsonRequest(baseUrl, '/api/auth/login', 'POST', { password: 'wrong' });
+        assert.equal(response.status, 401);
+        assert.equal(response.body.code, 'UNAUTHORIZED');
+    }
+
+    const rateLimited = await jsonRequest(baseUrl, '/api/auth/login', 'POST', { password: 'wrong' });
+
+    assert.equal(rateLimited.status, 429);
+    assert.equal(rateLimited.body.code, 'AUTH_RATE_LIMITED');
+});
+
+test('password mode rejects unsafe API requests without a CSRF token', async (t) => {
+    const { baseUrl } = await startServer(t, createPasswordAuthConfig());
+    const login = await jsonRequest(baseUrl, '/api/auth/login', 'POST', { password: 'secret' });
+    assert.equal(login.status, 200);
+    assert.ok(login.cookie);
+
+    const response = await fetch(`${baseUrl}/api/image`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Cookie: login.cookie,
+        },
+        body: JSON.stringify({}),
+    });
+    const body = (await response.json()) as Record<string, unknown>;
+
+    assert.equal(response.status, 403);
+    assert.equal(body.code, 'CSRF_TOKEN_INVALID');
 });
 
 test('open mode keeps auth endpoints explicit and allows existing open write/query behavior', async (t) => {

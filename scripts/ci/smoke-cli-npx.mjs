@@ -19,6 +19,33 @@ const readyTimeoutMs = Number(
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+const getSetCookies = (headers) => {
+    if (typeof headers.getSetCookie === 'function') {
+        return headers.getSetCookie();
+    }
+
+    const setCookie = headers.get('set-cookie');
+    return setCookie ? [setCookie] : [];
+};
+
+const toCookieHeader = (setCookies) => setCookies.map(cookie => cookie.split(';')[0]).join('; ');
+
+const extractCsrfToken = (cookie) => {
+    const token = cookie
+        ?.split(';')
+        .map(part => part.trim())
+        .find(part => part.startsWith('XSRF-TOKEN='))
+        ?.slice('XSRF-TOKEN='.length);
+
+    return token ? decodeURIComponent(token) : undefined;
+};
+
+export function extractLocalAssetPaths(html) {
+    return [...html.matchAll(/\b(?:href|src)="([^"]+)"/g)]
+        .map(match => match[1])
+        .filter(assetPath => assetPath.startsWith('/assets/'));
+}
+
 export function buildSmokeScenarios(resolvedTarballPath) {
     const baseArgs = [
         '--yes',
@@ -141,6 +168,85 @@ async function assertGraphql() {
     }
 }
 
+async function assertClientShellLoads(pathname) {
+    const response = await fetch(`${rootUrl}${pathname}`, {
+        redirect: 'manual',
+        signal: AbortSignal.timeout(5000)
+    });
+
+    if (response.status !== 200) {
+        throw new Error(`${pathname} returned HTTP ${response.status} instead of 200`);
+    }
+
+    const contentType = response.headers.get('content-type') ?? '';
+    if (!contentType.includes('text/html')) {
+        throw new Error(`${pathname} returned unexpected content-type: ${contentType}`);
+    }
+
+    const html = await response.text();
+    if (!html.includes('id="root"')) {
+        throw new Error(`${pathname} did not return the SPA root element`);
+    }
+
+    const assetPaths = extractLocalAssetPaths(html);
+    if (assetPaths.length === 0) {
+        throw new Error(`${pathname} did not include any local client assets`);
+    }
+
+    for (const assetPath of assetPaths) {
+        const assetResponse = await fetch(`${rootUrl}${assetPath}`, {
+            signal: AbortSignal.timeout(5000)
+        });
+
+        if (assetResponse.status !== 200) {
+            throw new Error(`${assetPath} returned HTTP ${assetResponse.status}`);
+        }
+
+        const assetBody = await assetResponse.text();
+        if (assetBody.length === 0) {
+            throw new Error(`${assetPath} returned an empty response`);
+        }
+    }
+}
+
+async function assertProtectedHomeRedirectsToLogin() {
+    const response = await fetch(`${rootUrl}/`, {
+        redirect: 'manual',
+        signal: AbortSignal.timeout(5000)
+    });
+
+    if (response.status !== 303) {
+        throw new Error(`/ returned HTTP ${response.status} instead of 303 in password mode`);
+    }
+
+    const location = response.headers.get('location');
+    if (location !== '/login?next=%2F') {
+        throw new Error(`/ redirected to unexpected location in password mode: ${location}`);
+    }
+}
+
+async function assertLoginPageLoads() {
+    const response = await fetch(`${rootUrl}/login?next=%2F`, {
+        redirect: 'manual',
+        signal: AbortSignal.timeout(5000)
+    });
+
+    if (response.status !== 200) {
+        throw new Error(`/login returned HTTP ${response.status} instead of 200`);
+    }
+
+    const html = await response.text();
+    for (const expectedText of [
+        'Ocean Brain',
+        'Enter the workspace password to continue',
+        '<form method="post" action="/login">'
+    ]) {
+        if (!html.includes(expectedText)) {
+            throw new Error(`/login response missing expected content: ${expectedText}`);
+        }
+    }
+}
+
 async function assertAuthSession(expected) {
     const response = await fetch(`${rootUrl}${AUTH_SESSION_PATH}`, {
         signal: AbortSignal.timeout(5000)
@@ -159,11 +265,18 @@ async function assertAuthSession(expected) {
 }
 
 async function assertGraphqlUnauthorized() {
+    const sessionResponse = await fetch(`${rootUrl}${AUTH_SESSION_PATH}`, {
+        signal: AbortSignal.timeout(5000)
+    });
+    const cookie = toCookieHeader(getSetCookies(sessionResponse.headers));
+    const csrfToken = extractCsrfToken(cookie);
     const response = await fetch(`${rootUrl}/graphql`, {
         method: 'POST',
         signal: AbortSignal.timeout(5000),
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...(cookie ? { Cookie: cookie } : {}),
+            ...(csrfToken ? { 'X-XSRF-TOKEN': csrfToken } : {})
         },
         body: JSON.stringify({
             query: '{ allImages(pagination: {limit: 1, offset: 0}) { totalCount } }'
@@ -252,6 +365,7 @@ async function runScenario(scenario) {
 
         await waitForReady(child, readyTimeoutMs);
         if (scenario.expectation === 'graphql-open') {
+            await assertClientShellLoads('/');
             await assertAuthSession({
                 mode: 'open',
                 authRequired: false,
@@ -261,6 +375,8 @@ async function runScenario(scenario) {
         }
 
         if (scenario.expectation === 'password-auth') {
+            await assertProtectedHomeRedirectsToLogin();
+            await assertLoginPageLoads();
             await assertAuthSession({
                 mode: 'password',
                 authRequired: true,
@@ -315,8 +431,12 @@ async function main() {
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
-    main().catch(error => {
-        console.error(error);
-        process.exit(1);
-    });
+    main()
+        .then(() => {
+            process.exit(0);
+        })
+        .catch(error => {
+            console.error(error);
+            process.exit(1);
+        });
 }

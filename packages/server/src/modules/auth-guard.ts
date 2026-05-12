@@ -3,6 +3,7 @@ import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import session from 'express-session';
 import type { ValidationRule } from 'graphql';
 import { GraphQLError } from 'graphql';
+import lusca from 'lusca';
 
 import type { AuthConfig } from './auth-mode.js';
 
@@ -26,6 +27,24 @@ export const createSessionMiddleware = (authConfig: AuthConfig): RequestHandler 
             secure: process.env.NODE_ENV === 'production',
             path: '/',
         },
+    });
+};
+
+export const createCsrfProtection = (authConfig: AuthConfig): RequestHandler => {
+    if (authConfig.mode !== 'password') {
+        return (_req, _res, next) => next();
+    }
+
+    return lusca.csrf({
+        angular: true,
+        cookie: {
+            options: {
+                path: '/',
+                sameSite: 'lax',
+                secure: process.env.NODE_ENV === 'production',
+            },
+        },
+        blocklist: ['/api/mcp', '/graphql/mcp'],
     });
 };
 

@@ -6,6 +6,7 @@ import {
     AUTH_SESSION_PATH,
     buildSmokeScenarios,
     expectAuthFailure,
+    extractLocalAssetPaths,
     isExpectedAuthFailure
 } from './smoke-cli-npx.mjs';
 
@@ -62,6 +63,18 @@ test('isExpectedAuthFailure matches the documented startup failure message', () 
 
 test('smoke checks auth session status through the mounted API router path', () => {
     assert.equal(AUTH_SESSION_PATH, '/api/auth/session');
+});
+
+test('extractLocalAssetPaths returns only local Vite assets from the client shell', () => {
+    assert.deepEqual(
+        extractLocalAssetPaths(`
+            <link rel="stylesheet" href="/assets/index.css">
+            <script type="module" src="/assets/index.js"></script>
+            <img src="https://example.com/remote.png">
+            <link href="/favicon.ico">
+        `),
+        ['/assets/index.css', '/assets/index.js']
+    );
 });
 
 test('expectAuthFailure reads the latest stderr through the provided getter', async () => {

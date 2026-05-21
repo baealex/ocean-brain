@@ -44,6 +44,9 @@ Open `http://localhost:6683` after startup.
 
 ### Docker
 
+The examples below use Docker's default floating tag (`latest`) for quick trials.
+For production, pin an exact image tag such as `baealex/ocean-brain:<version>`.
+
 No auth (local/trusted only):
 
 ```bash

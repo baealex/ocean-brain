@@ -48,8 +48,8 @@ body {
     overflow-wrap: anywhere;
 }
 
-div:focus {
-    outline: none !important;
+div:focus:not(:focus-visible) {
+    outline: none;
 }
 
 .window-modal__container {

@@ -2,6 +2,7 @@ version: "2.1"
 
 services:
   app:
+    # Quick-start sample uses latest. Pin baealex/ocean-brain:<exact-version> for production.
     image: baealex/ocean-brain:latest
     # build:
     #   context: .

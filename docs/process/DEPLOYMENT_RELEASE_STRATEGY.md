@@ -72,6 +72,7 @@ git push origin v0.3.1
 ## 6. Manual Release Runbook
 1. Verify release package
 - Required: latest `CLI_SMOKE` workflow is green for the release target PR or commit.
+- Required before tagging: confirm the release commit on `main` has already passed the required PR CI (`lint`, `type-check`, `build`). The tag-triggered `RELEASE` workflow publishes artifacts; it is not a replacement for main-branch quality validation.
 
 2. Collect unreleased changes before version bump
 - Commit list:

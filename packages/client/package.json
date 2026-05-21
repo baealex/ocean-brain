@@ -55,7 +55,7 @@
         "@types/react-helmet": "^6.1.11",
         "@vitejs/plugin-react": "^5.1.4",
         "@vitest/coverage-v8": "^4.1.4",
-        "jsdom": "^25.0.1",
+        "jsdom": "^29.1.1",
         "react-grab": "^0.1.32",
         "tailwindcss": "^4.1.18",
         "typescript": "^5.9.3",

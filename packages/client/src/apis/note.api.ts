@@ -268,6 +268,7 @@ export interface UpdateNoteRequestData {
     content?: string;
     layout?: string;
     editSessionId?: string;
+    expectedUpdatedAt?: string;
 }
 
 export interface NoteSnapshotMeta {
@@ -299,32 +300,35 @@ export interface TrashedNoteDetail extends TrashedNote {
     contentAsMarkdown: string;
 }
 
-export const updateNote = ({ id, editSessionId, ...note }: UpdateNoteRequestData) => {
+export const updateNote = ({ id, editSessionId, expectedUpdatedAt, ...note }: UpdateNoteRequestData) => {
     return graphQuery<
         {
-            updateNote: Pick<Note, 'id' | 'title'>;
+            updateNote: Pick<Note, 'id' | 'title' | 'updatedAt'>;
         },
         {
             id: string;
-            note: Omit<UpdateNoteRequestData, 'id' | 'editSessionId'>;
+            note: Omit<UpdateNoteRequestData, 'id' | 'editSessionId' | 'expectedUpdatedAt'>;
             editSessionId?: string;
+            expectedUpdatedAt?: string;
         }
     >(
-        `mutation UpdateNote($id: ID!, $note: NoteInput!, $editSessionId: String) {
-            updateNote(id: $id, note: $note, editSessionId: $editSessionId) {
+        `mutation UpdateNote($id: ID!, $note: NoteInput!, $editSessionId: String, $expectedUpdatedAt: String) {
+            updateNote(id: $id, note: $note, editSessionId: $editSessionId, expectedUpdatedAt: $expectedUpdatedAt) {
                 id
                 title
+                updatedAt
             }
         }`,
         {
             id,
             note,
             ...(editSessionId ? { editSessionId } : {}),
+            ...(expectedUpdatedAt ? { expectedUpdatedAt } : {}),
         },
     );
 };
 
-export function fetchNoteSnapshots(id: string, limit = 5) {
+export function fetchNoteSnapshots(id: string, limit = 20) {
     return graphQuery<
         {
             noteSnapshots: NoteSnapshot[];

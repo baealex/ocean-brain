@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { GraphQLError } from 'graphql';
+import { NOTE_UPDATE_CONFLICT_CODE } from '~/features/note/services/write-conflict.js';
 import { AppError } from '~/modules/error-handler.js';
 import { createMcpCreateNoteHandler, createMcpUpdateNoteHandler } from './mcp.js';
 
@@ -253,6 +255,68 @@ test('mcp update note handler emits an updated server event', async () => {
             updatedAt: '2026-04-01T00:00:00.000Z',
         },
     ]);
+});
+
+test('mcp update note handler forwards optional expected note versions', async () => {
+    let receivedInput: unknown;
+    const handler = createMcpUpdateNoteHandler(async (input) => {
+        receivedInput = input;
+        return {
+            id: '7',
+            title: 'Renamed',
+            layout: 'wide',
+            createdAt: '2026-03-31T00:00:00.000Z',
+            updatedAt: '2026-04-01T00:00:00.000Z',
+        };
+    });
+
+    await handler(
+        {
+            body: {
+                id: '7',
+                title: 'Renamed',
+                expectedUpdatedAt: '1770000000000',
+            },
+        } as never,
+        createResponse() as never,
+    );
+
+    assert.deepEqual(receivedInput, {
+        id: 7,
+        title: 'Renamed',
+        expectedUpdatedAt: '1770000000000',
+        snapshotMeta: '{"entrypoint":"mcp","label":"MCP"}',
+    });
+});
+
+test('mcp update note handler maps version conflicts to 409 responses', async () => {
+    const handler = createMcpUpdateNoteHandler(async () => {
+        throw new GraphQLError('This note changed elsewhere. Reload the latest version before saving.', {
+            extensions: {
+                code: NOTE_UPDATE_CONFLICT_CODE,
+            },
+        });
+    });
+
+    await assert.rejects(
+        () =>
+            handler(
+                {
+                    body: {
+                        id: '7',
+                        title: 'Renamed',
+                        expectedUpdatedAt: '1770000000000',
+                    },
+                } as never,
+                createResponse() as never,
+            ),
+        (error: unknown) => {
+            assert.ok(error instanceof AppError);
+            assert.equal(error.status, 409);
+            assert.equal(error.code, NOTE_UPDATE_CONFLICT_CODE);
+            return true;
+        },
+    );
 });
 
 test('mcp update note handler rejects empty updates', async () => {

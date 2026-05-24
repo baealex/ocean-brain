@@ -5,6 +5,7 @@ import {
 } from '~/features/note/services/authoring.js';
 import { deleteNoteById } from '~/features/note/services/cleanup.js';
 import { MCP_SNAPSHOT_META } from '~/features/note/services/snapshot.js';
+import { NOTE_UPDATE_CONFLICT_CODE } from '~/features/note/services/write-conflict.js';
 import type { NoteLayout } from '~/models.js';
 import { createAppError } from '~/modules/error-handler.js';
 import { emitServerEvent, type ServerEventInput } from '~/modules/server-events.js';
@@ -25,6 +26,15 @@ const resolveNoteLayout = (value: unknown): NoteLayout | null | undefined => {
 };
 
 type EmitServerEvent = (event: ServerEventInput) => unknown;
+
+const isNoteUpdateConflictError = (error: unknown) => {
+    if (typeof error !== 'object' || error === null) {
+        return false;
+    }
+
+    const extensions = (error as { extensions?: { code?: unknown } }).extensions;
+    return extensions?.code === NOTE_UPDATE_CONFLICT_CODE;
+};
 
 export const createMcpCreateNoteHandler = (
     createNote = createNoteFromMarkdown,
@@ -81,7 +91,7 @@ export const createMcpUpdateNoteHandler = (
     emitEvent: EmitServerEvent = emitServerEvent,
 ): Controller => {
     return async (req, res) => {
-        const { id, title, markdown, layout, editSessionId } = req.body ?? {};
+        const { id, title, markdown, layout, editSessionId, expectedUpdatedAt } = req.body ?? {};
         const noteId = Number(id);
         const resolvedLayout = resolveNoteLayout(layout);
 
@@ -105,6 +115,10 @@ export const createMcpUpdateNoteHandler = (
             throw createAppError(400, 'INVALID_EDIT_SESSION_ID', 'Edit session id must be a string.');
         }
 
+        if (expectedUpdatedAt !== undefined && typeof expectedUpdatedAt !== 'string') {
+            throw createAppError(400, 'INVALID_NOTE_VERSION', 'Expected note update time must be a string.');
+        }
+
         if (title === undefined && markdown === undefined && layout === undefined) {
             throw createAppError(400, 'INVALID_NOTE_INPUT', 'At least one note field must be provided for update.');
         }
@@ -116,6 +130,7 @@ export const createMcpUpdateNoteHandler = (
                 ...(markdown !== undefined ? { markdown } : {}),
                 ...(resolvedLayout ? { layout: resolvedLayout } : {}),
                 ...(editSessionId !== undefined ? { editSessionId } : {}),
+                ...(expectedUpdatedAt !== undefined ? { expectedUpdatedAt } : {}),
                 snapshotMeta: MCP_SNAPSHOT_META,
             });
 
@@ -139,6 +154,14 @@ export const createMcpUpdateNoteHandler = (
         } catch (error) {
             if (error instanceof InvalidNoteAuthoringInputError) {
                 throw createAppError(400, 'INVALID_NOTE_INPUT', error.message);
+            }
+
+            if (isNoteUpdateConflictError(error)) {
+                throw createAppError(
+                    409,
+                    NOTE_UPDATE_CONFLICT_CODE,
+                    error instanceof Error ? error.message : 'This note changed elsewhere.',
+                );
             }
 
             throw error;

@@ -2,6 +2,7 @@ import models, { type NoteLayout } from '~/models.js';
 import { extractTagIdsFromContentJson, markdownToBlocksJson } from '~/modules/blocknote.js';
 import { buildNoteSearchProjection } from './search.js';
 import { captureNoteBaseline } from './snapshot.js';
+import { assertExpectedNoteVersion } from './write-conflict.js';
 
 interface PlaceholderRecord {
     template: string;
@@ -52,6 +53,7 @@ export interface UpdateNoteAuthoringInput {
     markdown?: string;
     layout?: NoteLayout;
     editSessionId?: string;
+    expectedUpdatedAt?: string;
     snapshotMeta?: string;
 }
 
@@ -145,6 +147,11 @@ export const createNoteAuthoringService = (deps: NoteAuthoringDeps) => {
             if (!existingNote) {
                 return null;
             }
+
+            assertExpectedNoteVersion({
+                expectedUpdatedAt: input.expectedUpdatedAt,
+                currentUpdatedAt: existingNote.updatedAt,
+            });
 
             const nextData: {
                 title?: string;

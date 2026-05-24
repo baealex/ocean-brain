@@ -7,9 +7,10 @@ import {
     restoreNoteSnapshot,
 } from '~/features/note/services/snapshot.js';
 import { purgeTrashedNoteById, restoreTrashedNoteById, trashNoteById } from '~/features/note/services/trash.js';
+import { assertExpectedNoteVersion } from '~/features/note/services/write-conflict.js';
 import models from '~/models.js';
 import type { NoteInput } from '~/types/index.js';
-import { extractBlocksByType } from './note.graphql.shared.js';
+import { extractBlocksByType, parseNoteContent } from './note.graphql.shared.js';
 
 const PLACEHOLDER_PREFIX = '{%';
 const PLACEHOLDER_SUFFIX = '%}';
@@ -41,10 +42,20 @@ const getRequestUserAgent = (req?: Request) => {
     return Array.isArray(userAgentHeader) ? userAgentHeader[0] : userAgentHeader;
 };
 
+const toTagConnections = (blocks: Array<{ props?: { id?: string | number } }>) => {
+    return blocks
+        .map((block) => block.props?.id)
+        .filter((id) => id !== undefined && id !== null && String(id).trim() !== '')
+        .map((id) => Number(id))
+        .filter(Number.isFinite)
+        .map((id) => ({ id }));
+};
+
 type NoteMutationResolvers = NonNullable<IResolvers['Mutation']>;
+type CreateNoteInput = Required<Pick<NoteInput, 'title' | 'content'>> & Pick<NoteInput, 'layout'>;
 
 export const noteMutationResolvers: NoteMutationResolvers = {
-    createNote: async (_, { note }: { note: NoteInput }) => {
+    createNote: async (_, { note }: { note: CreateNoteInput }) => {
         const replacedTitle = await replacePlaceholders(note.title);
         const replacedContent = await replacePlaceholders(note.content);
         const createdNote = await models.note.create({
@@ -67,7 +78,7 @@ export const noteMutationResolvers: NoteMutationResolvers = {
 
         return models.note.update({
             where: { id: createdNote.id },
-            data: { tags: { set: blocks.map((block) => ({ id: Number(block.props.id) })) } },
+            data: { tags: { set: toTagConnections(blocks) } },
         });
     },
     updateNote: async (
@@ -76,10 +87,12 @@ export const noteMutationResolvers: NoteMutationResolvers = {
             id,
             note,
             editSessionId,
+            expectedUpdatedAt,
         }: {
             id: number;
             note: NoteInput;
             editSessionId?: string;
+            expectedUpdatedAt?: string;
         },
         context: {
             req?: Request;
@@ -90,6 +103,7 @@ export const noteMutationResolvers: NoteMutationResolvers = {
             select: {
                 title: true,
                 content: true,
+                updatedAt: true,
             },
         });
 
@@ -97,7 +111,13 @@ export const noteMutationResolvers: NoteMutationResolvers = {
             throw 'NOT FOUND';
         }
 
-        const blocks = note.content ? extractBlocksByType<{ id: string }>('tag', JSON.parse(note.content)) : [];
+        assertExpectedNoteVersion({
+            expectedUpdatedAt,
+            currentUpdatedAt: existingNote.updatedAt,
+        });
+
+        const parsedContent = note.content ? parseNoteContent(note.content) : null;
+        const blocks = parsedContent ? extractBlocksByType<{ id: string }>('tag', parsedContent) : [];
 
         await captureNoteBaseline({
             noteId: Number(id),
@@ -111,12 +131,14 @@ export const noteMutationResolvers: NoteMutationResolvers = {
         return models.note.update({
             where: { id: Number(id) },
             data: {
-                ...note,
+                ...(note.title !== undefined ? { title: note.title } : {}),
+                ...(note.content !== undefined ? { content: note.content } : {}),
+                ...(note.layout !== undefined ? { layout: note.layout } : {}),
                 ...buildNoteSearchProjection({
                     title: nextTitle,
                     content: nextContent,
                 }),
-                ...(note.content ? { tags: { set: blocks.map((block) => ({ id: Number(block.props.id) })) } } : {}),
+                ...(note.content ? { tags: { set: toTagConnections(blocks) } } : {}),
             },
         });
     },

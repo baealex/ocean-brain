@@ -331,7 +331,10 @@ function NoteContent({ id }: NoteContentProps) {
 
             isSaveConflictRef.current = false;
             serverUpdatedAtRef.current = response.updateNote.updatedAt;
-            clearLocalDraft(id);
+
+            if (!pendingDraftRef.current) {
+                clearLocalDraft(id);
+            }
 
             if (!silent && isAliveRef.current) {
                 setLastSavedAt(formatSavedAt(response.updateNote.updatedAt));

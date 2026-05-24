@@ -1,6 +1,13 @@
 import type { IResolvers } from '@graphql-tools/utils';
 import { getNoteCleanupPreview, listNoteCleanupCandidates } from '~/features/note/services/cleanup.js';
 import {
+    buildNoteGraph,
+    contentReferencesNote,
+    extractReferenceBlocksFromContent,
+    syncReferenceTitlesInContent,
+} from '~/features/note/services/content-blocks.js';
+import {
+    buildNoteSearchProjection,
     filterNotesBySearchQuery,
     NOTE_SEARCH_TEXT_SCHEMA_VERSION,
     parseNoteSearchQuery,
@@ -16,11 +23,6 @@ import type { Note, Prisma } from '~/models.js';
 import models from '~/models.js';
 import { runDataMaintenanceInBackground } from '~/modules/data-maintenance.js';
 import type { Pagination, SearchFilter } from '~/types/index.js';
-import {
-    contentReferencesNote,
-    extractReferenceBlocksFromContent,
-    syncReferenceTitlesInContent,
-} from './note.graphql.shared.js';
 
 interface AllNotesResolverDeps {
     countNotes: (args: { where?: Prisma.NoteWhereInput }) => Promise<number>;
@@ -124,6 +126,12 @@ const mergeSortedNotesForSearch = (left: Note[], right: Note[], searchFilter: Se
     }
 
     return merged;
+};
+
+const isRecordNotFoundError = (error: unknown) => {
+    return (
+        typeof error === 'object' && error !== null && 'code' in error && (error as { code?: unknown }).code === 'P2025'
+    );
 };
 
 export const createAllNotesQueryResolver = (
@@ -375,10 +383,27 @@ export const noteQueryResolvers: NoteQueryResolvers = {
             return note;
         }
 
-        return models.note.update({
-            where: { id: note.id },
-            data: { content: newContent },
-        });
+        try {
+            return await models.note.update({
+                where: {
+                    id: note.id,
+                    updatedAt: note.updatedAt,
+                },
+                data: {
+                    content: newContent,
+                    ...buildNoteSearchProjection({
+                        title: note.title,
+                        content: newContent,
+                    }),
+                },
+            });
+        } catch (error) {
+            if (isRecordNotFoundError(error)) {
+                return note;
+            }
+
+            throw error;
+        }
     },
     noteCleanupCandidates: async (
         _,
@@ -449,49 +474,6 @@ export const noteQueryResolvers: NoteQueryResolvers = {
             },
         });
 
-        const nodes: Array<{ id: string; title: string; connections: number }> = [];
-        const links: Array<{ source: string; target: string }> = [];
-        const connectionCount: Record<string, number> = {};
-        const linkSet = new Set<string>();
-
-        for (const note of notes) {
-            if (!note.content) {
-                continue;
-            }
-
-            const blocks = extractReferenceBlocksFromContent(note.content);
-
-            for (const block of blocks) {
-                const targetId = block.props?.id ? String(block.props.id) : '';
-
-                if (targetId && String(note.id) !== targetId) {
-                    const linkKey = `${note.id}-${targetId}`;
-                    const reverseLinkKey = `${targetId}-${note.id}`;
-
-                    if (!linkSet.has(linkKey) && !linkSet.has(reverseLinkKey)) {
-                        linkSet.add(linkKey);
-                        links.push({
-                            source: String(note.id),
-                            target: targetId,
-                        });
-                        connectionCount[String(note.id)] = (connectionCount[String(note.id)] || 0) + 1;
-                        connectionCount[targetId] = (connectionCount[targetId] || 0) + 1;
-                    }
-                }
-            }
-        }
-
-        for (const note of notes) {
-            nodes.push({
-                id: String(note.id),
-                title: note.title || 'Untitled',
-                connections: connectionCount[String(note.id)] || 0,
-            });
-        }
-
-        return {
-            nodes,
-            links,
-        };
+        return buildNoteGraph(notes);
     },
 };

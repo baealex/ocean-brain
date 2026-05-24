@@ -5,7 +5,11 @@ import {
 } from '~/features/note/services/authoring.js';
 import { deleteNoteById } from '~/features/note/services/cleanup.js';
 import { MCP_SNAPSHOT_META } from '~/features/note/services/snapshot.js';
-import { NOTE_UPDATE_CONFLICT_CODE } from '~/features/note/services/write-conflict.js';
+import {
+    isInvalidNoteVersionError,
+    isNoteVersionConflictError,
+    NOTE_UPDATE_CONFLICT_CODE,
+} from '~/features/note/services/write-conflict.js';
 import type { NoteLayout } from '~/models.js';
 import { createAppError } from '~/modules/error-handler.js';
 import { emitServerEvent, type ServerEventInput } from '~/modules/server-events.js';
@@ -26,15 +30,6 @@ const resolveNoteLayout = (value: unknown): NoteLayout | null | undefined => {
 };
 
 type EmitServerEvent = (event: ServerEventInput) => unknown;
-
-const isNoteUpdateConflictError = (error: unknown) => {
-    if (typeof error !== 'object' || error === null) {
-        return false;
-    }
-
-    const extensions = (error as { extensions?: { code?: unknown } }).extensions;
-    return extensions?.code === NOTE_UPDATE_CONFLICT_CODE;
-};
 
 export const createMcpCreateNoteHandler = (
     createNote = createNoteFromMarkdown,
@@ -156,12 +151,12 @@ export const createMcpUpdateNoteHandler = (
                 throw createAppError(400, 'INVALID_NOTE_INPUT', error.message);
             }
 
-            if (isNoteUpdateConflictError(error)) {
-                throw createAppError(
-                    409,
-                    NOTE_UPDATE_CONFLICT_CODE,
-                    error instanceof Error ? error.message : 'This note changed elsewhere.',
-                );
+            if (isNoteVersionConflictError(error)) {
+                throw createAppError(409, NOTE_UPDATE_CONFLICT_CODE, error.message);
+            }
+
+            if (isInvalidNoteVersionError(error)) {
+                throw createAppError(400, error.code, error.message);
             }
 
             throw error;

@@ -1,3 +1,5 @@
+import { isBlockNoteTreeNode, walkBlockNoteTree } from '~/modules/blocknote-tree.js';
+
 export interface NoteSearchQuery {
     included: string[];
     excluded: string[];
@@ -115,10 +117,6 @@ const normalizeSearchText = (value: string) => value.replace(/\s+/g, ' ').trim()
 
 const normalizeSearchToken = (value: string) => normalizeSearchText(value).toLowerCase();
 
-const isRecord = (value: unknown): value is SearchableJsonNode => {
-    return typeof value === 'object' && value !== null;
-};
-
 const pushVisibleSegment = (context: SearchProjectionContext, value: unknown) => {
     if (typeof value !== 'string') {
         return;
@@ -134,7 +132,7 @@ const pushVisibleSegment = (context: SearchProjectionContext, value: unknown) =>
 };
 
 const pushVisibleProps = (context: SearchProjectionContext, props: unknown, keys: readonly string[]) => {
-    if (!isRecord(props)) {
+    if (!isBlockNoteTreeNode(props)) {
         return;
     }
 
@@ -144,40 +142,17 @@ const pushVisibleProps = (context: SearchProjectionContext, props: unknown, keys
 };
 
 const collectVisibleSearchSegments = (node: unknown, context: SearchProjectionContext) => {
-    if (Array.isArray(node)) {
-        node.forEach((item) => collectVisibleSearchSegments(item, context));
-        return;
-    }
+    walkBlockNoteTree(node, (item) => {
+        const type = typeof item.type === 'string' ? item.type : undefined;
 
-    if (!isRecord(node)) {
-        return;
-    }
+        if (type) {
+            if (isSearchExtractorNodeType(type)) {
+                SEARCH_NODE_EXTRACTORS[type](item, context);
+            }
 
-    const type = typeof node.type === 'string' ? node.type : undefined;
-
-    if (type) {
-        if (isSearchExtractorNodeType(type)) {
-            SEARCH_NODE_EXTRACTORS[type](node, context);
+            recordUnknownNoteSearchNodeType(type);
         }
-
-        recordUnknownNoteSearchNodeType(type);
-    }
-
-    if ('content' in node) {
-        collectVisibleSearchSegments(node.content, context);
-    }
-
-    if ('children' in node) {
-        collectVisibleSearchSegments(node.children, context);
-    }
-
-    if ('rows' in node) {
-        collectVisibleSearchSegments(node.rows, context);
-    }
-
-    if ('cells' in node) {
-        collectVisibleSearchSegments(node.cells, context);
-    }
+    });
 };
 
 export const buildNoteSearchText = (note: Pick<SearchableNoteLike, 'title' | 'content'>) => {

@@ -1,4 +1,5 @@
 import models from '~/models.js';
+import { contentReferencesNote } from './content-blocks.js';
 import { trashNoteById as moveNoteToTrashById } from './trash.js';
 
 export interface NoteCleanupBackReference {
@@ -266,17 +267,19 @@ const noteCleanupService = createNoteCleanupService({
         await moveNoteToTrashById(noteId);
     },
     findBackReferences: (noteId: number) =>
-        models.note.findMany({
-            select: {
-                id: true,
-                title: true,
-            },
-            where: {
-                content: { contains: `reference","props":{"id":"${noteId}"` },
-                NOT: { id: noteId },
-            },
-            orderBy: [{ pinned: 'desc' }, { updatedAt: 'desc' }],
-        }),
+        models.note
+            .findMany({
+                select: {
+                    id: true,
+                    title: true,
+                    content: true,
+                },
+                where: {
+                    NOT: { id: noteId },
+                },
+                orderBy: [{ pinned: 'desc' }, { updatedAt: 'desc' }],
+            })
+            .then((notes) => notes.filter((note) => contentReferencesNote(note.content, noteId))),
     findCandidateNotes: (keywords: string[], skip: number, take: number, olderThanDays: number) =>
         models.note.findMany({
             include: { tags: true },

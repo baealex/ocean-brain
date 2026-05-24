@@ -1,8 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { GraphQLError } from 'graphql';
-import { NOTE_UPDATE_CONFLICT_CODE } from '~/features/note/services/write-conflict.js';
+import { NOTE_UPDATE_CONFLICT_CODE, NoteVersionConflictError } from '~/features/note/services/write-conflict.js';
 import { AppError } from '~/modules/error-handler.js';
 import { createMcpCreateNoteHandler, createMcpUpdateNoteHandler } from './mcp.js';
 
@@ -291,10 +290,9 @@ test('mcp update note handler forwards optional expected note versions', async (
 
 test('mcp update note handler maps version conflicts to 409 responses', async () => {
     const handler = createMcpUpdateNoteHandler(async () => {
-        throw new GraphQLError('This note changed elsewhere. Reload the latest version before saving.', {
-            extensions: {
-                code: NOTE_UPDATE_CONFLICT_CODE,
-            },
+        throw new NoteVersionConflictError({
+            expectedUpdatedAt: '1770000000000',
+            currentUpdatedAt: '1770000001000',
         });
     });
 

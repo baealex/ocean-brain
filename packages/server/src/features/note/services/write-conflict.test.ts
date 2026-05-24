@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { GraphQLError } from 'graphql';
-import { assertExpectedNoteVersion, NOTE_UPDATE_CONFLICT_CODE, parseNoteVersion } from './write-conflict.js';
+import {
+    assertExpectedNoteVersion,
+    isNoteVersionConflictError,
+    NOTE_UPDATE_CONFLICT_CODE,
+    parseNoteVersion,
+} from './write-conflict.js';
 
 test('parseNoteVersion accepts epoch and ISO timestamps', () => {
     assert.equal(parseNoteVersion('1770000000000'), 1770000000000);
@@ -18,9 +22,9 @@ test('assertExpectedNoteVersion rejects stale writes with a GraphQL conflict cod
                 currentUpdatedAt: new Date(1770000001000),
             }),
         (error) => {
-            assert.equal(error instanceof GraphQLError, true);
-            assert.equal((error as GraphQLError).extensions.code, NOTE_UPDATE_CONFLICT_CODE);
-            assert.equal((error as GraphQLError).extensions.currentUpdatedAt, '1770000001000');
+            assert.equal(isNoteVersionConflictError(error), true);
+            assert.equal(isNoteVersionConflictError(error) ? error.code : '', NOTE_UPDATE_CONFLICT_CODE);
+            assert.equal(isNoteVersionConflictError(error) ? error.currentUpdatedAt : '', '1770000001000');
             return true;
         },
     );

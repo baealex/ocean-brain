@@ -1,8 +1,7 @@
 import models, { type NoteLayout } from '~/models.js';
 import { extractTagIdsFromContentJson, markdownToBlocksJson } from '~/modules/blocknote.js';
 import { buildNoteSearchProjection } from './search.js';
-import { captureNoteBaseline } from './snapshot.js';
-import { assertExpectedNoteVersion } from './write-conflict.js';
+import { updateNoteWithVersionGuard } from './write.js';
 
 interface PlaceholderRecord {
     template: string;
@@ -29,7 +28,6 @@ interface NoteAuthoringDeps {
     findPlaceholders: (templates: string[]) => Promise<PlaceholderRecord[]>;
     parseMarkdownToContentJson: (markdown: string) => Promise<string>;
     extractTagIds: (contentJson: string) => string[];
-    captureBaseline: (input: { noteId: number; editSessionId?: string; meta?: string }) => Promise<unknown>;
     updateNote: (
         id: number,
         input: {
@@ -38,7 +36,12 @@ interface NoteAuthoringDeps {
             layout?: NoteLayout;
             tagIds?: string[];
         },
-    ) => Promise<NoteRecord>;
+        options?: {
+            editSessionId?: string;
+            expectedUpdatedAt?: string;
+            snapshotMeta?: string;
+        },
+    ) => Promise<NoteRecord | null>;
 }
 
 export interface CreateNoteAuthoringInput {
@@ -148,11 +151,6 @@ export const createNoteAuthoringService = (deps: NoteAuthoringDeps) => {
                 return null;
             }
 
-            assertExpectedNoteVersion({
-                expectedUpdatedAt: input.expectedUpdatedAt,
-                currentUpdatedAt: existingNote.updatedAt,
-            });
-
             const nextData: {
                 title?: string;
                 content?: string;
@@ -180,13 +178,16 @@ export const createNoteAuthoringService = (deps: NoteAuthoringDeps) => {
                 nextData.layout = input.layout;
             }
 
-            await deps.captureBaseline({
-                noteId: input.id,
+            const updatedNote = await deps.updateNote(input.id, nextData, {
                 ...(input.editSessionId ? { editSessionId: input.editSessionId } : {}),
-                ...(input.snapshotMeta ? { meta: input.snapshotMeta } : {}),
+                ...(input.expectedUpdatedAt ? { expectedUpdatedAt: input.expectedUpdatedAt } : {}),
+                ...(input.snapshotMeta ? { snapshotMeta: input.snapshotMeta } : {}),
             });
 
-            const updatedNote = await deps.updateNote(input.id, nextData);
+            if (!updatedNote) {
+                return null;
+            }
+
             return serializeNote(updatedNote);
         },
     };
@@ -225,35 +226,18 @@ const defaultNoteAuthoringService = createNoteAuthoringService({
     },
     parseMarkdownToContentJson: markdownToBlocksJson,
     extractTagIds: extractTagIdsFromContentJson,
-    captureBaseline: captureNoteBaseline,
-    updateNote: async (id, input) => {
-        const existingNote = await models.note.findUnique({
-            where: { id },
-            select: {
-                title: true,
-                content: true,
-            },
-        });
-
-        if (!existingNote) {
-            throw new Error('NOTE_NOT_FOUND');
-        }
-
-        const nextTitle = input.title ?? existingNote.title;
-        const nextContent = input.content ?? existingNote.content;
-
-        return models.note.update({
-            where: { id },
+    updateNote: async (id, input, options) => {
+        return updateNoteWithVersionGuard({
+            id,
             data: {
-                title: input.title,
-                content: input.content,
-                layout: input.layout,
-                ...buildNoteSearchProjection({
-                    title: nextTitle,
-                    content: nextContent,
-                }),
-                ...(input.tagIds ? { tags: { set: input.tagIds.map((tagId) => ({ id: Number(tagId) })) } } : {}),
+                ...(input.title !== undefined ? { title: input.title } : {}),
+                ...(input.content !== undefined ? { content: input.content } : {}),
+                ...(input.layout !== undefined ? { layout: input.layout } : {}),
+                ...(input.tagIds ? { tagIds: input.tagIds.map((tagId) => Number(tagId)).filter(Number.isFinite) } : {}),
             },
+            ...(options?.editSessionId ? { editSessionId: options.editSessionId } : {}),
+            ...(options?.expectedUpdatedAt ? { expectedUpdatedAt: options.expectedUpdatedAt } : {}),
+            ...(options?.snapshotMeta ? { snapshotMeta: options.snapshotMeta } : {}),
         });
     },
 });

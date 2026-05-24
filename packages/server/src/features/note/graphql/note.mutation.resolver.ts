@@ -1,16 +1,14 @@
 import type { IResolvers } from '@graphql-tools/utils';
 import type { Request } from 'express';
+import { GraphQLError } from 'graphql';
+import { extractBlocksByType, parseNoteContent } from '~/features/note/services/content-blocks.js';
 import { buildNoteSearchProjection } from '~/features/note/services/search.js';
-import {
-    captureNoteBaseline,
-    createSnapshotMetaFromUserAgent,
-    restoreNoteSnapshot,
-} from '~/features/note/services/snapshot.js';
+import { createSnapshotMetaFromUserAgent, restoreNoteSnapshot } from '~/features/note/services/snapshot.js';
 import { purgeTrashedNoteById, restoreTrashedNoteById, trashNoteById } from '~/features/note/services/trash.js';
-import { assertExpectedNoteVersion } from '~/features/note/services/write-conflict.js';
+import { updateNoteWithVersionGuard } from '~/features/note/services/write.js';
+import { isInvalidNoteVersionError, isNoteVersionConflictError } from '~/features/note/services/write-conflict.js';
 import models from '~/models.js';
 import type { NoteInput } from '~/types/index.js';
-import { extractBlocksByType, parseNoteContent } from './note.graphql.shared.js';
 
 const PLACEHOLDER_PREFIX = '{%';
 const PLACEHOLDER_SUFFIX = '%}';
@@ -74,7 +72,8 @@ export const noteMutationResolvers: NoteMutationResolvers = {
             return createdNote;
         }
 
-        const blocks = extractBlocksByType<{ id: string }>('tag', JSON.parse(replacedContent));
+        const parsedContent = parseNoteContent(replacedContent);
+        const blocks = parsedContent ? extractBlocksByType<{ id: string }>('tag', parsedContent) : [];
 
         return models.note.update({
             where: { id: createdNote.id },
@@ -98,49 +97,48 @@ export const noteMutationResolvers: NoteMutationResolvers = {
             req?: Request;
         },
     ) => {
-        const existingNote = await models.note.findUnique({
-            where: { id: Number(id) },
-            select: {
-                title: true,
-                content: true,
-                updatedAt: true,
-            },
-        });
-
-        if (!existingNote) {
-            throw 'NOT FOUND';
-        }
-
-        assertExpectedNoteVersion({
-            expectedUpdatedAt,
-            currentUpdatedAt: existingNote.updatedAt,
-        });
-
         const parsedContent = note.content ? parseNoteContent(note.content) : null;
         const blocks = parsedContent ? extractBlocksByType<{ id: string }>('tag', parsedContent) : [];
+        try {
+            const updatedNote = await updateNoteWithVersionGuard({
+                id: Number(id),
+                data: {
+                    ...(note.title !== undefined ? { title: note.title } : {}),
+                    ...(note.content !== undefined ? { content: note.content } : {}),
+                    ...(note.layout !== undefined ? { layout: note.layout } : {}),
+                    ...(note.content !== undefined ? { tagIds: toTagConnections(blocks).map((tag) => tag.id) } : {}),
+                },
+                ...(editSessionId ? { editSessionId } : {}),
+                ...(expectedUpdatedAt ? { expectedUpdatedAt } : {}),
+                snapshotMeta: createSnapshotMetaFromUserAgent(getRequestUserAgent(context.req)),
+            });
 
-        await captureNoteBaseline({
-            noteId: Number(id),
-            ...(editSessionId ? { editSessionId } : {}),
-            meta: createSnapshotMetaFromUserAgent(getRequestUserAgent(context.req)),
-        });
+            if (!updatedNote) {
+                throw 'NOT FOUND';
+            }
 
-        const nextTitle = note.title ?? existingNote.title;
-        const nextContent = note.content ?? existingNote.content;
+            return updatedNote;
+        } catch (error) {
+            if (isNoteVersionConflictError(error)) {
+                throw new GraphQLError(error.message, {
+                    extensions: {
+                        code: error.code,
+                        currentUpdatedAt: error.currentUpdatedAt,
+                        expectedUpdatedAt: error.expectedUpdatedAt,
+                    },
+                });
+            }
 
-        return models.note.update({
-            where: { id: Number(id) },
-            data: {
-                ...(note.title !== undefined ? { title: note.title } : {}),
-                ...(note.content !== undefined ? { content: note.content } : {}),
-                ...(note.layout !== undefined ? { layout: note.layout } : {}),
-                ...buildNoteSearchProjection({
-                    title: nextTitle,
-                    content: nextContent,
-                }),
-                ...(note.content ? { tags: { set: toTagConnections(blocks) } } : {}),
-            },
-        });
+            if (isInvalidNoteVersionError(error)) {
+                throw new GraphQLError(error.message, {
+                    extensions: {
+                        code: error.code,
+                    },
+                });
+            }
+
+            throw error;
+        }
     },
     deleteNote: async (_, { id }: { id: string }) => {
         const trashedNote = await trashNoteById(Number(id));

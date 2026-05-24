@@ -1,6 +1,27 @@
-import { GraphQLError } from 'graphql';
-
 export const NOTE_UPDATE_CONFLICT_CODE = 'NOTE_UPDATE_CONFLICT';
+export const INVALID_NOTE_VERSION_CODE = 'INVALID_NOTE_VERSION';
+
+export class InvalidNoteVersionError extends Error {
+    code = INVALID_NOTE_VERSION_CODE;
+
+    constructor() {
+        super('Invalid note version.');
+        this.name = 'InvalidNoteVersionError';
+    }
+}
+
+export class NoteVersionConflictError extends Error {
+    code = NOTE_UPDATE_CONFLICT_CODE;
+    currentUpdatedAt: string;
+    expectedUpdatedAt: string;
+
+    constructor(input: { currentUpdatedAt: string | number; expectedUpdatedAt: string | number }) {
+        super('This note changed elsewhere. Reload the latest version before saving.');
+        this.name = 'NoteVersionConflictError';
+        this.currentUpdatedAt = String(input.currentUpdatedAt);
+        this.expectedUpdatedAt = String(input.expectedUpdatedAt);
+    }
+}
 
 export const parseNoteVersion = (value?: string | null) => {
     if (value === undefined || value === null || value === '') {
@@ -10,14 +31,23 @@ export const parseNoteVersion = (value?: string | null) => {
     const timestamp = /^\d+$/.test(value) ? Number(value) : Date.parse(value);
 
     if (!Number.isFinite(timestamp)) {
-        throw new GraphQLError('Invalid note version.', {
-            extensions: {
-                code: 'BAD_USER_INPUT',
-            },
-        });
+        throw new InvalidNoteVersionError();
     }
 
     return timestamp;
+};
+
+export const createNoteVersionConflictError = ({
+    expectedUpdatedAt,
+    currentUpdatedAt,
+}: {
+    expectedUpdatedAt: string | number;
+    currentUpdatedAt: string | number;
+}) => {
+    return new NoteVersionConflictError({
+        expectedUpdatedAt,
+        currentUpdatedAt,
+    });
 };
 
 export const assertExpectedNoteVersion = ({
@@ -36,12 +66,17 @@ export const assertExpectedNoteVersion = ({
     const currentTimestamp = currentUpdatedAt.getTime();
 
     if (expectedTimestamp !== currentTimestamp) {
-        throw new GraphQLError('This note changed elsewhere. Reload the latest version before saving.', {
-            extensions: {
-                code: NOTE_UPDATE_CONFLICT_CODE,
-                currentUpdatedAt: String(currentTimestamp),
-                expectedUpdatedAt: String(expectedTimestamp),
-            },
+        throw createNoteVersionConflictError({
+            expectedUpdatedAt: expectedTimestamp,
+            currentUpdatedAt: currentTimestamp,
         });
     }
+};
+
+export const isNoteVersionConflictError = (error: unknown): error is NoteVersionConflictError => {
+    return error instanceof NoteVersionConflictError;
+};
+
+export const isInvalidNoteVersionError = (error: unknown): error is InvalidNoteVersionError => {
+    return error instanceof InvalidNoteVersionError;
 };

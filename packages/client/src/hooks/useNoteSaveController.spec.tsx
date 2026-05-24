@@ -3,14 +3,15 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { updateNote } from '~/apis/note.api';
 import { getDraftStorageKey, type NoteSaveDraft } from '~/modules/note-draft-storage';
+import { queryKeys } from '~/modules/query-key-factory';
 import { useNoteSaveController } from './useNoteSaveController';
 
 vi.mock('~/apis/note.api', () => ({
     updateNote: vi.fn(),
 }));
 
-const createWrapper = () => {
-    const queryClient = new QueryClient({
+const createQueryClient = () =>
+    new QueryClient({
         defaultOptions: {
             queries: {
                 retry: false,
@@ -18,6 +19,7 @@ const createWrapper = () => {
         },
     });
 
+const createWrapper = (queryClient = createQueryClient()) => {
     return ({ children }: { children: ReactNode }) => (
         <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     );
@@ -126,6 +128,15 @@ describe('useNoteSaveController', () => {
     });
 
     it('saves queued layout changes with the draft payload', async () => {
+        const queryClient = createQueryClient();
+        queryClient.setQueryData(queryKeys.notes.detail('7'), {
+            title: 'Initial',
+            content: 'initial',
+            pinned: false,
+            layout: 'wide',
+            createdAt: '1769999999000',
+            updatedAt: '1770000000000',
+        });
         vi.mocked(updateNote).mockResolvedValue({
             type: 'success',
             updateNote: {
@@ -147,7 +158,7 @@ describe('useNoteSaveController', () => {
                     onConflict: vi.fn(),
                     onError: vi.fn(),
                 }),
-            { wrapper: createWrapper() },
+            { wrapper: createWrapper(queryClient) },
         );
 
         await act(async () => {
@@ -165,6 +176,15 @@ describe('useNoteSaveController', () => {
                 editSessionId: 'session-1',
                 expectedUpdatedAt: '1770000000000',
             });
+        });
+
+        expect(queryClient.getQueryData(queryKeys.notes.detail('7'))).toEqual({
+            title: 'Draft with layout',
+            content: 'content',
+            pinned: false,
+            layout: 'full',
+            createdAt: '1769999999000',
+            updatedAt: '1770000001000',
         });
     });
 

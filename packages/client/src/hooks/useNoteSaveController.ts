@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { MutableRefObject } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { updateNote } from '~/apis/note.api';
+import type { Note } from '~/models/note.model';
 import {
     clearLocalNoteDraft,
     type NoteSaveDraft,
@@ -29,6 +30,8 @@ interface UseNoteSaveControllerParams {
 interface BuildNoteDraftOptions {
     layout?: NoteSaveDraft['layout'];
 }
+
+type NoteDetailCache = Pick<Note, 'title' | 'content' | 'pinned' | 'layout' | 'createdAt' | 'updatedAt'>;
 
 export function useNoteSaveController({
     noteId,
@@ -163,6 +166,19 @@ export function useNoteSaveController({
 
             isSaveConflictRef.current = false;
             serverUpdatedAtRef.current = response.updateNote.updatedAt;
+            queryClient.setQueryData<NoteDetailCache>(queryKeys.notes.detail(noteId), (current) => {
+                if (!current) {
+                    return current;
+                }
+
+                return {
+                    ...current,
+                    title: response.updateNote.title,
+                    content: draft.content,
+                    ...(draft.layout ? { layout: draft.layout } : {}),
+                    updatedAt: response.updateNote.updatedAt,
+                };
+            });
             const nextPendingDraft = pendingDraftRef.current as NoteSaveDraft | null;
 
             if (nextPendingDraft?.baseUpdatedAt === draft.baseUpdatedAt) {

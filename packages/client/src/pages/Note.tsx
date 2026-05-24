@@ -1,4 +1,4 @@
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi, Link } from '@tanstack/react-router';
 import classNames from 'classnames';
 import dayjs from 'dayjs';
@@ -26,7 +26,7 @@ import Editor from '~/components/shared/Editor';
 import { Checkbox, MoreButton, Text, useToast } from '~/components/ui';
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
 import { useNoteSaveController } from '~/hooks/useNoteSaveController';
-import type { NoteLayout } from '~/models/note.model';
+import type { Note, NoteLayout } from '~/models/note.model';
 import {
     createHtmlExport,
     createMarkdownExport,
@@ -67,10 +67,12 @@ interface NoteContentProps {
 }
 
 type ExternalNoteChange = { type: 'updated'; updatedAt: string } | { type: 'deleted' };
+type NoteDetailCache = Pick<Note, 'title' | 'content' | 'pinned' | 'layout' | 'createdAt' | 'updatedAt'>;
 
 function NoteContent({ id }: NoteContentProps) {
     const toast = useToast();
     const navigate = Route.useNavigate();
+    const queryClient = useQueryClient();
     const editorRef = useRef<EditorRef>(null);
     const titleRef = useRef<HTMLInputElement>(null);
     const editSessionIdRef = useRef<string>(createEditSessionId());
@@ -254,6 +256,17 @@ function NoteContent({ id }: NoteContentProps) {
         }
 
         setServerUpdatedAt(response.updateNote.updatedAt);
+        queryClient.setQueryData<NoteDetailCache>(queryKeys.notes.detail(id), (current) => {
+            if (!current) {
+                return current;
+            }
+
+            return {
+                ...current,
+                layout: newLayout,
+                updatedAt: response.updateNote.updatedAt,
+            };
+        });
         setLastSavedAt(formatSavedAt(response.updateNote.updatedAt));
         setLayout(newLayout);
         toast('Layout has been updated.');
@@ -556,8 +569,8 @@ function NoteContent({ id }: NoteContentProps) {
                                 {isConflictedExternalUpdate
                                     ? 'This note changed elsewhere before your draft saved. Reload latest, overwrite it, or clone your draft.'
                                     : externalNoteChange.type === 'updated'
-                                      ? 'This note changed in MCP. Reload to review the latest version.'
-                                      : 'This note was moved to trash from MCP. Open trash to review it.'}
+                                      ? 'This note changed outside this editor. Reload to review the latest version.'
+                                      : 'This note was moved to trash outside this editor. Open trash to review it.'}
                             </span>
                             {externalNoteChange.type === 'updated' ? (
                                 <div className="flex flex-wrap gap-2">

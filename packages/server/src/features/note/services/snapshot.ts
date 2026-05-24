@@ -221,7 +221,7 @@ export const createNoteSnapshotService = (deps: NoteSnapshotDeps) => ({
         return serializeSnapshot(snapshot);
     },
 
-    listSnapshots: async (noteId: number, limit = 5) => {
+    listSnapshots: async (noteId: number, limit = SNAPSHOT_MAX_PER_NOTE) => {
         await deps.purgeExpiredSnapshots(createRetentionCutoff(SNAPSHOT_RETENTION_DAYS), RECOVERY_CLEANUP_BATCH_LIMIT);
         await deps.trimOverflowSnapshots(noteId, SNAPSHOT_MAX_PER_NOTE, RECOVERY_CLEANUP_BATCH_LIMIT);
         const snapshots = await deps.listSnapshots(noteId, limit);

@@ -198,7 +198,7 @@ test('captureBaseline creates a new snapshot when the payload changed in a new s
 
     assert.equal(snapshot?.id, '2');
     assert.equal(snapshots.length, 2);
-    assert.deepEqual(trimCalls, [{ noteId: 7, keep: 5, limit: 100 }]);
+    assert.deepEqual(trimCalls, [{ noteId: 7, keep: 20, limit: 100 }]);
 });
 
 test('restoreSnapshot reapplies payload and stores the current state first', async () => {
@@ -425,7 +425,7 @@ test('listSnapshots runs retention cleanup before returning recent snapshots', a
 
     const snapshots = await service.listSnapshots(7, 5);
 
-    assert.deepEqual(calls, ['purge', 'trim:5']);
+    assert.deepEqual(calls, ['purge', 'trim:20']);
     assert.equal(snapshots.length, 1);
     assert.equal(snapshots[0]?.title, 'Current baseline');
 });

@@ -16,7 +16,11 @@ import type { Note, Prisma } from '~/models.js';
 import models from '~/models.js';
 import { runDataMaintenanceInBackground } from '~/modules/data-maintenance.js';
 import type { Pagination, SearchFilter } from '~/types/index.js';
-import { extractBlocksByType } from './note.graphql.shared.js';
+import {
+    contentReferencesNote,
+    extractReferenceBlocksFromContent,
+    syncReferenceTitlesInContent,
+} from './note.graphql.shared.js';
 
 interface AllNotesResolverDeps {
     countNotes: (args: { where?: Prisma.NoteWhereInput }) => Promise<number>;
@@ -335,10 +339,11 @@ export const noteQueryResolvers: NoteQueryResolvers = {
             where: { content: { contains: src } },
         }),
     backReferences: async (_, { id }: { id: string }) => {
-        return models.note.findMany({
+        const notes = await models.note.findMany({
             orderBy: [{ pinned: 'desc' }, { updatedAt: 'desc' }],
-            where: { content: { contains: `reference","props":{"id":"${id}"` } },
         });
+
+        return notes.filter((note) => note.id !== Number(id) && contentReferencesNote(note.content, id));
     },
     note: async (_, { id }: { id: string }) => {
         const note = await models.note.findUnique({ where: { id: Number(id) } });
@@ -351,45 +356,29 @@ export const noteQueryResolvers: NoteQueryResolvers = {
             return note;
         }
 
-        const blocks = extractBlocksByType<{
-            id: string;
-            title: string;
-        }>('reference', JSON.parse(note.content));
+        const blocks = extractReferenceBlocksFromContent(note.content);
 
         if (blocks.length === 0) {
             return note;
         }
 
-        const referenceIds = blocks.map((block) => Number(block.props.id));
+        const referenceIds = Array.from(
+            new Set(blocks.map((block) => Number(block.props?.id)).filter(Number.isFinite)),
+        );
         const references = await models.note.findMany({ where: { id: { in: referenceIds } } });
-        const newContent = references.reduce<string>((content, referenceNote: Note) => {
-            const reference = blocks.find((block) => Number(block.props.id) === referenceNote.id);
+        const titlesById = new Map(
+            references.map((referenceNote: Note) => [String(referenceNote.id), referenceNote.title]),
+        );
+        const newContent = syncReferenceTitlesInContent(note.content, titlesById);
 
-            if (reference && reference.props.title !== referenceNote.title) {
-                return content.replace(
-                    `reference","props":{"id":"${reference.props.id}","title":"${reference.props.title}"`,
-                    `reference","props":{"id":"${referenceNote.id}","title":"${referenceNote.title}"`,
-                );
-            }
-
-            return content;
-        }, note.content);
-
-        if (newContent === note.content) {
+        if (!newContent || newContent === note.content) {
             return note;
         }
 
-        try {
-            JSON.parse(newContent);
-
-            return await models.note.update({
-                where: { id: note.id },
-                data: { content: newContent },
-            });
-        } catch {
-            // Keep the stored content unchanged if the synchronized payload becomes invalid.
-            return note;
-        }
+        return models.note.update({
+            where: { id: note.id },
+            data: { content: newContent },
+        });
     },
     noteCleanupCandidates: async (
         _,
@@ -424,7 +413,7 @@ export const noteQueryResolvers: NoteQueryResolvers = {
         _,
         {
             id,
-            limit = 5,
+            limit = 20,
         }: {
             id: string;
             limit?: number;
@@ -470,29 +459,25 @@ export const noteQueryResolvers: NoteQueryResolvers = {
                 continue;
             }
 
-            try {
-                const blocks = extractBlocksByType<{ id: string }>('reference', JSON.parse(note.content));
+            const blocks = extractReferenceBlocksFromContent(note.content);
 
-                for (const block of blocks) {
-                    const targetId = block.props.id;
+            for (const block of blocks) {
+                const targetId = block.props?.id ? String(block.props.id) : '';
 
-                    if (targetId && String(note.id) !== targetId) {
-                        const linkKey = `${note.id}-${targetId}`;
-                        const reverseLinkKey = `${targetId}-${note.id}`;
+                if (targetId && String(note.id) !== targetId) {
+                    const linkKey = `${note.id}-${targetId}`;
+                    const reverseLinkKey = `${targetId}-${note.id}`;
 
-                        if (!linkSet.has(linkKey) && !linkSet.has(reverseLinkKey)) {
-                            linkSet.add(linkKey);
-                            links.push({
-                                source: String(note.id),
-                                target: targetId,
-                            });
-                            connectionCount[String(note.id)] = (connectionCount[String(note.id)] || 0) + 1;
-                            connectionCount[targetId] = (connectionCount[targetId] || 0) + 1;
-                        }
+                    if (!linkSet.has(linkKey) && !linkSet.has(reverseLinkKey)) {
+                        linkSet.add(linkKey);
+                        links.push({
+                            source: String(note.id),
+                            target: targetId,
+                        });
+                        connectionCount[String(note.id)] = (connectionCount[String(note.id)] || 0) + 1;
+                        connectionCount[targetId] = (connectionCount[targetId] || 0) + 1;
                     }
                 }
-            } catch {
-                // Skip notes with invalid JSON content
             }
         }
 

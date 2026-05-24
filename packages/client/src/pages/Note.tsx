@@ -1,9 +1,9 @@
-import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
+import { useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi, Link } from '@tanstack/react-router';
 import classNames from 'classnames';
 import dayjs from 'dayjs';
 import { nanoid } from 'nanoid';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { fetchNote, updateNote } from '~/apis/note.api';
 import { QueryBoundary, QueryErrorView } from '~/components/app';
 import { BackReferences } from '~/components/entities';
@@ -25,6 +25,7 @@ import type { EditorRef } from '~/components/shared/Editor';
 import Editor from '~/components/shared/Editor';
 import { Checkbox, MoreButton, Text, useToast } from '~/components/ui';
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
+import { useNoteSaveController } from '~/hooks/useNoteSaveController';
 import type { NoteLayout } from '~/models/note.model';
 import {
     createHtmlExport,
@@ -42,70 +43,7 @@ const Route = getRouteApi(NOTE_ROUTE);
 const formatSavedAt = (updatedAt: string) => dayjs(Number(updatedAt)).format('YYYY-MM-DD HH:mm:ss');
 
 const createEditSessionId = () => nanoid();
-const NOTE_AUTOSAVE_DELAY_MS = 1000;
 const NOTE_UPDATE_CONFLICT_CODE = 'NOTE_UPDATE_CONFLICT';
-
-type SaveStatus = 'saved' | 'pending' | 'saving' | 'error' | 'conflict';
-
-interface NoteSaveDraft {
-    title: string;
-    content: string;
-    createdAt: number;
-}
-
-const getDraftStorageKey = (id: string) => `ocean-brain.note-draft.${id}`;
-
-const readLocalDraft = (id: string): NoteSaveDraft | null => {
-    if (typeof window === 'undefined') {
-        return null;
-    }
-
-    try {
-        const rawDraft = window.localStorage.getItem(getDraftStorageKey(id));
-
-        if (!rawDraft) {
-            return null;
-        }
-
-        const draft = JSON.parse(rawDraft) as Partial<NoteSaveDraft>;
-
-        if (typeof draft.title !== 'string' || typeof draft.content !== 'string') {
-            return null;
-        }
-
-        return {
-            title: draft.title,
-            content: draft.content,
-            createdAt: typeof draft.createdAt === 'number' ? draft.createdAt : Date.now(),
-        };
-    } catch {
-        return null;
-    }
-};
-
-const writeLocalDraft = (id: string, draft: NoteSaveDraft) => {
-    if (typeof window === 'undefined') {
-        return;
-    }
-
-    try {
-        window.localStorage.setItem(getDraftStorageKey(id), JSON.stringify(draft));
-    } catch {
-        // Saving to the server remains the source of truth if local recovery storage is unavailable.
-    }
-};
-
-const clearLocalDraft = (id: string) => {
-    if (typeof window === 'undefined') {
-        return;
-    }
-
-    try {
-        window.localStorage.removeItem(getDraftStorageKey(id));
-    } catch {
-        // Ignore storage failures while clearing optional recovery state.
-    }
-};
 
 const NOTE_LAYOUT_WIDTH: Record<NoteLayout, string> = {
     narrow: 'max-w-[640px]',
@@ -132,18 +70,10 @@ type ExternalNoteChange = { type: 'updated'; updatedAt: string } | { type: 'dele
 
 function NoteContent({ id }: NoteContentProps) {
     const toast = useToast();
-    const queryClient = useQueryClient();
     const navigate = Route.useNavigate();
     const editorRef = useRef<EditorRef>(null);
     const titleRef = useRef<HTMLInputElement>(null);
     const editSessionIdRef = useRef<string>(createEditSessionId());
-    const saveTimerRef = useRef<number | null>(null);
-    const pendingDraftRef = useRef<NoteSaveDraft | null>(null);
-    const inFlightSaveRef = useRef(false);
-    const flushAfterInFlightRef = useRef(false);
-    const serverUpdatedAtRef = useRef<string>('');
-    const isSaveConflictRef = useRef(false);
-    const isAliveRef = useRef(true);
 
     const noteQuery = useSuspenseQuery({
         queryKey: queryKeys.notes.detail(id),
@@ -157,11 +87,9 @@ function NoteContent({ id }: NoteContentProps) {
         gcTime: 0,
     });
     const note = noteQuery.data;
-    serverUpdatedAtRef.current ||= note.updatedAt;
 
     const [title, setTitle] = useState(note.title);
     const [lastSavedAt, setLastSavedAt] = useState(() => formatSavedAt(note.updatedAt));
-    const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved');
     const [isPinned, setIsPinned] = useState(note.pinned);
     const [layout, setLayout] = useState<NoteLayout>(note.layout || 'wide');
     const [isLayoutModalOpen, setIsLayoutModalOpen] = useState(false);
@@ -171,40 +99,58 @@ function NoteContent({ id }: NoteContentProps) {
     const [includeMetadata, setIncludeMetadata] = useState(false);
     const [htmlExportMode, setHtmlExportMode] = useState<HtmlExportMode>('fragment');
     const [externalNoteChange, setExternalNoteChange] = useState<ExternalNoteChange | null>(null);
-    const [localDraft, setLocalDraft] = useState<NoteSaveDraft | null>(null);
     const [editorContentOverride, setEditorContentOverride] = useState<string | null>(null);
     const [editorRevision, setEditorRevision] = useState(0);
+    const saveController = useNoteSaveController({
+        noteId: id,
+        initialContent: note.content,
+        initialUpdatedAt: note.updatedAt,
+        editSessionIdRef,
+        getContent: () => editorRef.current?.getContent(),
+        onSaved: (updatedAt) => {
+            setLastSavedAt(formatSavedAt(updatedAt));
+        },
+        onConflict: (updatedAt) => {
+            setExternalNoteChange({
+                type: 'updated',
+                updatedAt,
+            });
+            toast('This note changed elsewhere. Choose how to resolve the draft.');
+        },
+        onError: toast,
+    });
+    const {
+        saveStatus,
+        localDraft,
+        serverUpdatedAtRef,
+        hasUnsavedChanges,
+        buildDraft,
+        queueSave,
+        flushPendingSave,
+        restoreLocalDraft,
+        discardLocalDraft,
+        clearDrafts,
+        pauseForConflict,
+        getPendingDraft,
+        setServerUpdatedAt,
+    } = saveController;
 
     useEffect(() => {
-        return () => {
-            isAliveRef.current = false;
-        };
-    }, []);
-
-    useEffect(() => {
-        serverUpdatedAtRef.current = note.updatedAt;
+        setServerUpdatedAt(note.updatedAt);
         setIsPinned(note.pinned);
         setLayout(note.layout || 'wide');
 
-        if (!pendingDraftRef.current && !inFlightSaveRef.current && !isSaveConflictRef.current) {
+        if (!hasUnsavedChanges) {
             setTitle(note.title);
             setLastSavedAt(formatSavedAt(note.updatedAt));
-            setSaveStatus('saved');
         }
-    }, [note.layout, note.pinned, note.title, note.updatedAt]);
+    }, [hasUnsavedChanges, note.layout, note.pinned, note.title, note.updatedAt, setServerUpdatedAt]);
 
     useEffect(() => {
         editSessionIdRef.current = createEditSessionId();
-        pendingDraftRef.current = null;
-        inFlightSaveRef.current = false;
-        flushAfterInFlightRef.current = false;
-        isSaveConflictRef.current = false;
-        serverUpdatedAtRef.current = note.updatedAt;
         setExternalNoteChange(null);
-        setLocalDraft(readLocalDraft(id));
         setEditorContentOverride(null);
         setEditorRevision((current) => current + 1);
-        setSaveStatus('saved');
     }, [id, note.updatedAt]);
 
     useEffect(() => {
@@ -228,6 +174,11 @@ function NoteContent({ id }: NoteContentProps) {
                     return;
                 }
 
+                if (hasUnsavedChanges) {
+                    pauseForConflict(event.updatedAt);
+                    return;
+                }
+
                 setExternalNoteChange({
                     type: 'updated',
                     updatedAt: event.updatedAt,
@@ -239,172 +190,21 @@ function NoteContent({ id }: NoteContentProps) {
                 setExternalNoteChange({ type: 'deleted' });
             }
         });
-    }, [id, note.updatedAt]);
+    }, [hasUnsavedChanges, id, note.updatedAt, pauseForConflict]);
 
     const { onCreate, onDelete, onPinned, deleteWarningDialog } = useNoteMutate();
 
-    const clearSaveTimer = useCallback(() => {
-        if (saveTimerRef.current !== null) {
-            window.clearTimeout(saveTimerRef.current);
-            saveTimerRef.current = null;
-        }
-    }, []);
-
-    const setMountedSaveStatus = useCallback((status: SaveStatus) => {
-        if (isAliveRef.current) {
-            setSaveStatus(status);
-        }
-    }, []);
-
-    const getCurrentDraft = useCallback(
-        (nextTitle = title): NoteSaveDraft => ({
-            title: nextTitle,
-            content: editorRef.current?.getContent() ?? note.content,
-            createdAt: Date.now(),
-        }),
-        [note.content, title],
-    );
-
-    const flushPendingSave = useCallback(
-        async ({ ignoreConflict = false, silent = false }: { ignoreConflict?: boolean; silent?: boolean } = {}) => {
-            if (inFlightSaveRef.current) {
-                flushAfterInFlightRef.current = true;
-                return;
-            }
-
-            const draft = pendingDraftRef.current;
-
-            if (!draft) {
-                return;
-            }
-
-            pendingDraftRef.current = null;
-            flushAfterInFlightRef.current = false;
-            clearSaveTimer();
-            inFlightSaveRef.current = true;
-
-            if (!silent) {
-                setMountedSaveStatus('saving');
-            }
-
-            const response = await updateNote({
-                id,
-                title: draft.title,
-                content: draft.content,
-                editSessionId: editSessionIdRef.current,
-                ...(ignoreConflict ? {} : { expectedUpdatedAt: serverUpdatedAtRef.current }),
-            });
-
-            inFlightSaveRef.current = false;
-
-            if (response.type === 'error') {
-                pendingDraftRef.current = draft;
-                writeLocalDraft(id, draft);
-
-                const error = response.errors[0];
-
-                if (error.code === NOTE_UPDATE_CONFLICT_CODE && !ignoreConflict) {
-                    const currentUpdatedAt = (error.details as { extensions?: { currentUpdatedAt?: string } })
-                        ?.extensions?.currentUpdatedAt;
-
-                    isSaveConflictRef.current = true;
-
-                    if (!silent && isAliveRef.current) {
-                        setExternalNoteChange({
-                            type: 'updated',
-                            updatedAt: currentUpdatedAt ?? serverUpdatedAtRef.current,
-                        });
-                        setMountedSaveStatus('conflict');
-                        toast('This note changed elsewhere. Choose how to resolve the draft.');
-                    }
-
-                    return;
-                }
-
-                if (!silent && isAliveRef.current) {
-                    setMountedSaveStatus('error');
-                    toast(error.message);
-                }
-
-                return;
-            }
-
-            isSaveConflictRef.current = false;
-            serverUpdatedAtRef.current = response.updateNote.updatedAt;
-
-            if (!pendingDraftRef.current) {
-                clearLocalDraft(id);
-            }
-
-            if (!silent && isAliveRef.current) {
-                setLastSavedAt(formatSavedAt(response.updateNote.updatedAt));
-
-                if (pendingDraftRef.current) {
-                    setSaveStatus('pending');
-                } else {
-                    setSaveStatus('saved');
-                    void queryClient.invalidateQueries({
-                        queryKey: queryKeys.notes.listAll(),
-                        exact: false,
-                    });
-                    void queryClient.invalidateQueries({
-                        queryKey: queryKeys.notes.tagListAll(),
-                        exact: false,
-                    });
-                    void queryClient.invalidateQueries({
-                        queryKey: queryKeys.notes.backReferencesAll(),
-                        exact: false,
-                    });
-                    void queryClient.invalidateQueries({
-                        queryKey: queryKeys.notes.graph(),
-                        exact: true,
-                    });
-                }
-            }
-
-            if (pendingDraftRef.current || flushAfterInFlightRef.current) {
-                void flushPendingSave({ silent });
-            }
-        },
-        [clearSaveTimer, id, queryClient, setMountedSaveStatus, toast],
-    );
-
-    const queueSave = useCallback(
-        (draft: NoteSaveDraft, options: { immediate?: boolean } = {}) => {
-            pendingDraftRef.current = draft;
-            writeLocalDraft(id, draft);
-
-            if (isSaveConflictRef.current) {
-                setMountedSaveStatus('conflict');
-                return;
-            }
-
-            setMountedSaveStatus('pending');
-            clearSaveTimer();
-
-            if (options.immediate) {
-                void flushPendingSave();
-                return;
-            }
-
-            saveTimerRef.current = window.setTimeout(() => {
-                void flushPendingSave();
-            }, NOTE_AUTOSAVE_DELAY_MS);
-        },
-        [clearSaveTimer, flushPendingSave, id, setMountedSaveStatus],
-    );
-
     const handleChange = () => {
-        queueSave(getCurrentDraft());
+        queueSave(buildDraft(title));
     };
 
     const handleTitleChange = (nextTitle: string) => {
         setTitle(nextTitle);
-        queueSave(getCurrentDraft(nextTitle));
+        queueSave(buildDraft(nextTitle));
     };
 
     const handleManualSave = () => {
-        queueSave(getCurrentDraft(), { immediate: true });
+        queueSave(buildDraft(title), { immediate: true });
     };
 
     const handleLayoutSave = async (newLayout: NoteLayout) => {
@@ -417,19 +217,14 @@ function NoteContent({ id }: NoteContentProps) {
 
         if (response.type === 'error') {
             if (response.errors[0].code === NOTE_UPDATE_CONFLICT_CODE) {
-                isSaveConflictRef.current = true;
-                setExternalNoteChange({
-                    type: 'updated',
-                    updatedAt: serverUpdatedAtRef.current,
-                });
-                setSaveStatus('conflict');
+                pauseForConflict(serverUpdatedAtRef.current);
             }
 
             toast(response.errors[0].message);
             return;
         }
 
-        serverUpdatedAtRef.current = response.updateNote.updatedAt;
+        setServerUpdatedAt(response.updateNote.updatedAt);
         setLastSavedAt(formatSavedAt(response.updateNote.updatedAt));
         setLayout(newLayout);
         toast('Layout has been updated.');
@@ -514,8 +309,6 @@ function NoteContent({ id }: NoteContentProps) {
     };
 
     const handleReloadExternalChange = async () => {
-        clearSaveTimer();
-
         const response = await noteQuery.refetch();
 
         if (response.error || !response.data) {
@@ -523,13 +316,8 @@ function NoteContent({ id }: NoteContentProps) {
             return;
         }
 
-        pendingDraftRef.current = null;
-        flushAfterInFlightRef.current = false;
-        isSaveConflictRef.current = false;
-        clearLocalDraft(id);
-        setLocalDraft(null);
-        setSaveStatus('saved');
-        serverUpdatedAtRef.current = response.data.updatedAt;
+        clearDrafts();
+        setServerUpdatedAt(response.data.updatedAt);
         setTitle(response.data.title);
         setLayout(response.data.layout || 'wide');
         setLastSavedAt(formatSavedAt(response.data.updatedAt));
@@ -539,20 +327,17 @@ function NoteContent({ id }: NoteContentProps) {
     };
 
     const handleOverwriteConflict = async () => {
-        isSaveConflictRef.current = false;
         setExternalNoteChange(null);
         await flushPendingSave({ ignoreConflict: true });
     };
 
     const handleClonePendingDraft = async () => {
-        const draft = pendingDraftRef.current ?? getCurrentDraft();
-        clearSaveTimer();
-        pendingDraftRef.current = null;
-        flushAfterInFlightRef.current = false;
-        isSaveConflictRef.current = false;
-        clearLocalDraft(id);
-        setSaveStatus('saved');
-        await onCreate(draft.title || 'untitled', draft.content, layout);
+        const draft = getPendingDraft() ?? buildDraft(title);
+        const createdId = await onCreate(draft.title || 'untitled', draft.content, layout);
+
+        if (createdId) {
+            clearDrafts();
+        }
     };
 
     const handleRestoreLocalDraft = () => {
@@ -563,41 +348,12 @@ function NoteContent({ id }: NoteContentProps) {
         setTitle(localDraft.title);
         setEditorContentOverride(localDraft.content);
         setEditorRevision((current) => current + 1);
-        queueSave(localDraft);
-        setLocalDraft(null);
+        restoreLocalDraft(localDraft);
     };
 
     const handleDiscardLocalDraft = () => {
-        clearLocalDraft(id);
-        setLocalDraft(null);
+        discardLocalDraft();
     };
-
-    useEffect(() => {
-        const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-            if (!pendingDraftRef.current && !inFlightSaveRef.current && !isSaveConflictRef.current) {
-                return;
-            }
-
-            event.preventDefault();
-            event.returnValue = '';
-        };
-
-        window.addEventListener('beforeunload', handleBeforeUnload);
-
-        return () => {
-            window.removeEventListener('beforeunload', handleBeforeUnload);
-        };
-    }, []);
-
-    useEffect(() => {
-        return () => {
-            clearSaveTimer();
-
-            if (pendingDraftRef.current && !isSaveConflictRef.current) {
-                void flushPendingSave({ silent: true });
-            }
-        };
-    }, [clearSaveTimer, flushPendingSave]);
 
     const saveStatusText =
         saveStatus === 'pending'
@@ -993,12 +749,9 @@ function NoteContent({ id }: NoteContentProps) {
                     onClose={() => setIsRestoreModalOpen(false)}
                     onRestored={(restoredNote) => {
                         editSessionIdRef.current = createEditSessionId();
-                        serverUpdatedAtRef.current = restoredNote.updatedAt;
-                        clearLocalDraft(id);
-                        pendingDraftRef.current = null;
-                        isSaveConflictRef.current = false;
+                        clearDrafts();
+                        setServerUpdatedAt(restoredNote.updatedAt);
                         setLastSavedAt(formatSavedAt(restoredNote.updatedAt));
-                        setSaveStatus('saved');
                     }}
                 />
                 {deleteWarningDialog}

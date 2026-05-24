@@ -1,7 +1,7 @@
 import models, { type NoteLayout } from '~/models.js';
 import { extractTagIdsFromContentJson, markdownToBlocksJson } from '~/modules/blocknote.js';
 import { buildNoteSearchProjection } from './search.js';
-import { updateNoteWithVersionGuard } from './write.js';
+import { captureNoteBaseline } from './snapshot.js';
 
 interface PlaceholderRecord {
     template: string;
@@ -28,6 +28,7 @@ interface NoteAuthoringDeps {
     findPlaceholders: (templates: string[]) => Promise<PlaceholderRecord[]>;
     parseMarkdownToContentJson: (markdown: string) => Promise<string>;
     extractTagIds: (contentJson: string) => string[];
+    captureBaseline: (input: { noteId: number; editSessionId?: string; meta?: string }) => Promise<unknown>;
     updateNote: (
         id: number,
         input: {
@@ -36,13 +37,7 @@ interface NoteAuthoringDeps {
             layout?: NoteLayout;
             tagIds?: string[];
         },
-        options?: {
-            editSessionId?: string;
-            expectedUpdatedAt?: string;
-            snapshotMeta?: string;
-            force?: boolean;
-        },
-    ) => Promise<NoteRecord | null>;
+    ) => Promise<NoteRecord>;
 }
 
 export interface CreateNoteAuthoringInput {
@@ -57,9 +52,7 @@ export interface UpdateNoteAuthoringInput {
     markdown?: string;
     layout?: NoteLayout;
     editSessionId?: string;
-    expectedUpdatedAt?: string;
     snapshotMeta?: string;
-    force?: boolean;
 }
 
 export interface AuthoredNoteSummary {
@@ -180,17 +173,13 @@ export const createNoteAuthoringService = (deps: NoteAuthoringDeps) => {
                 nextData.layout = input.layout;
             }
 
-            const updatedNote = await deps.updateNote(input.id, nextData, {
+            await deps.captureBaseline({
+                noteId: input.id,
                 ...(input.editSessionId ? { editSessionId: input.editSessionId } : {}),
-                ...(input.expectedUpdatedAt ? { expectedUpdatedAt: input.expectedUpdatedAt } : {}),
-                ...(input.snapshotMeta ? { snapshotMeta: input.snapshotMeta } : {}),
-                ...(input.force ? { force: true } : {}),
+                ...(input.snapshotMeta ? { meta: input.snapshotMeta } : {}),
             });
 
-            if (!updatedNote) {
-                return null;
-            }
-
+            const updatedNote = await deps.updateNote(input.id, nextData);
             return serializeNote(updatedNote);
         },
     };
@@ -229,19 +218,35 @@ const defaultNoteAuthoringService = createNoteAuthoringService({
     },
     parseMarkdownToContentJson: markdownToBlocksJson,
     extractTagIds: extractTagIdsFromContentJson,
-    updateNote: async (id, input, options) => {
-        return updateNoteWithVersionGuard({
-            id,
-            data: {
-                ...(input.title !== undefined ? { title: input.title } : {}),
-                ...(input.content !== undefined ? { content: input.content } : {}),
-                ...(input.layout !== undefined ? { layout: input.layout } : {}),
-                ...(input.tagIds ? { tagIds: input.tagIds.map((tagId) => Number(tagId)).filter(Number.isFinite) } : {}),
+    captureBaseline: captureNoteBaseline,
+    updateNote: async (id, input) => {
+        const existingNote = await models.note.findUnique({
+            where: { id },
+            select: {
+                title: true,
+                content: true,
             },
-            ...(options?.editSessionId ? { editSessionId: options.editSessionId } : {}),
-            ...(options?.expectedUpdatedAt ? { expectedUpdatedAt: options.expectedUpdatedAt } : {}),
-            ...(options?.snapshotMeta ? { snapshotMeta: options.snapshotMeta } : {}),
-            ...(options?.force ? { force: true } : {}),
+        });
+
+        if (!existingNote) {
+            throw new Error('NOTE_NOT_FOUND');
+        }
+
+        const nextTitle = input.title ?? existingNote.title;
+        const nextContent = input.content ?? existingNote.content;
+
+        return models.note.update({
+            where: { id },
+            data: {
+                title: input.title,
+                content: input.content,
+                layout: input.layout,
+                ...buildNoteSearchProjection({
+                    title: nextTitle,
+                    content: nextContent,
+                }),
+                ...(input.tagIds ? { tags: { set: input.tagIds.map((tagId) => ({ id: Number(tagId) })) } } : {}),
+            },
         });
     },
 });

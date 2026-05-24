@@ -5,13 +5,6 @@ import {
 } from '~/features/note/services/authoring.js';
 import { deleteNoteById } from '~/features/note/services/cleanup.js';
 import { MCP_SNAPSHOT_META } from '~/features/note/services/snapshot.js';
-import {
-    isInvalidNoteVersionError,
-    isMissingNoteVersionError,
-    isNoteVersionConflictError,
-    MISSING_NOTE_VERSION_CODE,
-    NOTE_UPDATE_CONFLICT_CODE,
-} from '~/features/note/services/write-conflict.js';
 import type { NoteLayout } from '~/models.js';
 import { createAppError } from '~/modules/error-handler.js';
 import { emitServerEvent, type ServerEventInput } from '~/modules/server-events.js';
@@ -88,7 +81,7 @@ export const createMcpUpdateNoteHandler = (
     emitEvent: EmitServerEvent = emitServerEvent,
 ): Controller => {
     return async (req, res) => {
-        const { id, title, markdown, layout, editSessionId, expectedUpdatedAt, force } = req.body ?? {};
+        const { id, title, markdown, layout, editSessionId } = req.body ?? {};
         const noteId = Number(id);
         const resolvedLayout = resolveNoteLayout(layout);
 
@@ -112,24 +105,8 @@ export const createMcpUpdateNoteHandler = (
             throw createAppError(400, 'INVALID_EDIT_SESSION_ID', 'Edit session id must be a string.');
         }
 
-        if (expectedUpdatedAt !== undefined && typeof expectedUpdatedAt !== 'string') {
-            throw createAppError(400, 'INVALID_NOTE_VERSION', 'Expected note update time must be a string.');
-        }
-
-        if (force !== undefined && typeof force !== 'boolean') {
-            throw createAppError(400, 'INVALID_FORCE_FLAG', 'Force must be a boolean.');
-        }
-
         if (title === undefined && markdown === undefined && layout === undefined) {
             throw createAppError(400, 'INVALID_NOTE_INPUT', 'At least one note field must be provided for update.');
-        }
-
-        if (expectedUpdatedAt === undefined && force !== true) {
-            throw createAppError(
-                400,
-                MISSING_NOTE_VERSION_CODE,
-                'Expected note update time is required for this write.',
-            );
         }
 
         try {
@@ -139,8 +116,6 @@ export const createMcpUpdateNoteHandler = (
                 ...(markdown !== undefined ? { markdown } : {}),
                 ...(resolvedLayout ? { layout: resolvedLayout } : {}),
                 ...(editSessionId !== undefined ? { editSessionId } : {}),
-                ...(expectedUpdatedAt !== undefined ? { expectedUpdatedAt } : {}),
-                ...(force === true ? { force: true } : {}),
                 snapshotMeta: MCP_SNAPSHOT_META,
             });
 
@@ -164,21 +139,6 @@ export const createMcpUpdateNoteHandler = (
         } catch (error) {
             if (error instanceof InvalidNoteAuthoringInputError) {
                 throw createAppError(400, 'INVALID_NOTE_INPUT', error.message);
-            }
-
-            if (isNoteVersionConflictError(error)) {
-                throw createAppError(409, NOTE_UPDATE_CONFLICT_CODE, error.message, {
-                    currentUpdatedAt: error.currentUpdatedAt,
-                    expectedUpdatedAt: error.expectedUpdatedAt,
-                });
-            }
-
-            if (isInvalidNoteVersionError(error)) {
-                throw createAppError(400, error.code, error.message);
-            }
-
-            if (isMissingNoteVersionError(error)) {
-                throw createAppError(400, error.code, error.message);
             }
 
             throw error;

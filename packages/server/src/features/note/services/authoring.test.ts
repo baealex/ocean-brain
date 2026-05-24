@@ -53,6 +53,7 @@ test('note authoring create converts markdown after placeholder replacement', as
                   ]),
         extractTagIds: (contentJson) =>
             JSON.parse(contentJson)[0]?.content?.[0]?.props?.id ? [JSON.parse(contentJson)[0].content[0].props.id] : [],
+        captureBaseline: async () => undefined,
         updateNote: async () => {
             throw new Error('should not update');
         },
@@ -101,6 +102,7 @@ test('note authoring update returns null when the note does not exist', async ()
         findPlaceholders: async () => [],
         parseMarkdownToContentJson: async () => '[]',
         extractTagIds: () => [],
+        captureBaseline: async () => undefined,
         updateNote: async () => {
             throw new Error('should not update');
         },
@@ -130,6 +132,7 @@ test('note authoring update requires at least one change field', async () => {
         findPlaceholders: async () => [],
         parseMarkdownToContentJson: async () => '[]',
         extractTagIds: () => [],
+        captureBaseline: async () => undefined,
         updateNote: async () => {
             throw new Error('should not update');
         },
@@ -185,6 +188,7 @@ test('note authoring update replaces provided fields only', async () => {
                   ]),
         extractTagIds: (contentJson) =>
             JSON.parse(contentJson)[0]?.content?.[0]?.props?.id ? [JSON.parse(contentJson)[0].content[0].props.id] : [],
+        captureBaseline: async () => undefined,
         updateNote: async (id, input) => {
             updated.push({
                 id,

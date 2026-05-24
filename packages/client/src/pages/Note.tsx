@@ -1,9 +1,9 @@
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi, Link } from '@tanstack/react-router';
 import classNames from 'classnames';
 import dayjs from 'dayjs';
 import { nanoid } from 'nanoid';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchNote, updateNote } from '~/apis/note.api';
 import { QueryBoundary, QueryErrorView } from '~/components/app';
 import { BackReferences } from '~/components/entities';
@@ -25,7 +25,6 @@ import type { EditorRef } from '~/components/shared/Editor';
 import Editor from '~/components/shared/Editor';
 import { Checkbox, MoreButton, Text, useToast } from '~/components/ui';
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
-import useDebounce from '~/hooks/useDebounce';
 import type { NoteLayout } from '~/models/note.model';
 import {
     createHtmlExport,
@@ -43,6 +42,70 @@ const Route = getRouteApi(NOTE_ROUTE);
 const formatSavedAt = (updatedAt: string) => dayjs(Number(updatedAt)).format('YYYY-MM-DD HH:mm:ss');
 
 const createEditSessionId = () => nanoid();
+const NOTE_AUTOSAVE_DELAY_MS = 1000;
+const NOTE_UPDATE_CONFLICT_CODE = 'NOTE_UPDATE_CONFLICT';
+
+type SaveStatus = 'saved' | 'pending' | 'saving' | 'error' | 'conflict';
+
+interface NoteSaveDraft {
+    title: string;
+    content: string;
+    createdAt: number;
+}
+
+const getDraftStorageKey = (id: string) => `ocean-brain.note-draft.${id}`;
+
+const readLocalDraft = (id: string): NoteSaveDraft | null => {
+    if (typeof window === 'undefined') {
+        return null;
+    }
+
+    try {
+        const rawDraft = window.localStorage.getItem(getDraftStorageKey(id));
+
+        if (!rawDraft) {
+            return null;
+        }
+
+        const draft = JSON.parse(rawDraft) as Partial<NoteSaveDraft>;
+
+        if (typeof draft.title !== 'string' || typeof draft.content !== 'string') {
+            return null;
+        }
+
+        return {
+            title: draft.title,
+            content: draft.content,
+            createdAt: typeof draft.createdAt === 'number' ? draft.createdAt : Date.now(),
+        };
+    } catch {
+        return null;
+    }
+};
+
+const writeLocalDraft = (id: string, draft: NoteSaveDraft) => {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    try {
+        window.localStorage.setItem(getDraftStorageKey(id), JSON.stringify(draft));
+    } catch {
+        // Saving to the server remains the source of truth if local recovery storage is unavailable.
+    }
+};
+
+const clearLocalDraft = (id: string) => {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    try {
+        window.localStorage.removeItem(getDraftStorageKey(id));
+    } catch {
+        // Ignore storage failures while clearing optional recovery state.
+    }
+};
 
 const NOTE_LAYOUT_WIDTH: Record<NoteLayout, string> = {
     narrow: 'max-w-[640px]',
@@ -69,10 +132,18 @@ type ExternalNoteChange = { type: 'updated'; updatedAt: string } | { type: 'dele
 
 function NoteContent({ id }: NoteContentProps) {
     const toast = useToast();
+    const queryClient = useQueryClient();
     const navigate = Route.useNavigate();
     const editorRef = useRef<EditorRef>(null);
     const titleRef = useRef<HTMLInputElement>(null);
     const editSessionIdRef = useRef<string>(createEditSessionId());
+    const saveTimerRef = useRef<number | null>(null);
+    const pendingDraftRef = useRef<NoteSaveDraft | null>(null);
+    const inFlightSaveRef = useRef(false);
+    const flushAfterInFlightRef = useRef(false);
+    const serverUpdatedAtRef = useRef<string>('');
+    const isSaveConflictRef = useRef(false);
+    const isAliveRef = useRef(true);
 
     const noteQuery = useSuspenseQuery({
         queryKey: queryKeys.notes.detail(id),
@@ -86,9 +157,11 @@ function NoteContent({ id }: NoteContentProps) {
         gcTime: 0,
     });
     const note = noteQuery.data;
+    serverUpdatedAtRef.current ||= note.updatedAt;
 
     const [title, setTitle] = useState(note.title);
     const [lastSavedAt, setLastSavedAt] = useState(() => formatSavedAt(note.updatedAt));
+    const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved');
     const [isPinned, setIsPinned] = useState(note.pinned);
     const [layout, setLayout] = useState<NoteLayout>(note.layout || 'wide');
     const [isLayoutModalOpen, setIsLayoutModalOpen] = useState(false);
@@ -98,19 +171,41 @@ function NoteContent({ id }: NoteContentProps) {
     const [includeMetadata, setIncludeMetadata] = useState(false);
     const [htmlExportMode, setHtmlExportMode] = useState<HtmlExportMode>('fragment');
     const [externalNoteChange, setExternalNoteChange] = useState<ExternalNoteChange | null>(null);
-    const [isMountedEvent, mountEvent] = useDebounce(1000);
+    const [localDraft, setLocalDraft] = useState<NoteSaveDraft | null>(null);
+    const [editorContentOverride, setEditorContentOverride] = useState<string | null>(null);
+    const [editorRevision, setEditorRevision] = useState(0);
 
     useEffect(() => {
-        setTitle(note.title);
+        return () => {
+            isAliveRef.current = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        serverUpdatedAtRef.current = note.updatedAt;
         setIsPinned(note.pinned);
         setLayout(note.layout || 'wide');
-        setLastSavedAt(formatSavedAt(note.updatedAt));
+
+        if (!pendingDraftRef.current && !inFlightSaveRef.current && !isSaveConflictRef.current) {
+            setTitle(note.title);
+            setLastSavedAt(formatSavedAt(note.updatedAt));
+            setSaveStatus('saved');
+        }
     }, [note.layout, note.pinned, note.title, note.updatedAt]);
 
     useEffect(() => {
         editSessionIdRef.current = createEditSessionId();
+        pendingDraftRef.current = null;
+        inFlightSaveRef.current = false;
+        flushAfterInFlightRef.current = false;
+        isSaveConflictRef.current = false;
+        serverUpdatedAtRef.current = note.updatedAt;
         setExternalNoteChange(null);
-    }, [id]);
+        setLocalDraft(readLocalDraft(id));
+        setEditorContentOverride(null);
+        setEditorRevision((current) => current + 1);
+        setSaveStatus('saved');
+    }, [id, note.updatedAt]);
 
     useEffect(() => {
         setExternalNoteChange((current) => {
@@ -146,38 +241,167 @@ function NoteContent({ id }: NoteContentProps) {
         });
     }, [id, note.updatedAt]);
 
-    const save = async ({ title: nextTitle = '', content = '' }) => {
-        mountEvent(async () => {
-            const response = await updateNote({
-                id,
-                title: nextTitle,
-                content,
-                editSessionId: editSessionIdRef.current,
-            });
+    const { onCreate, onDelete, onPinned, deleteWarningDialog } = useNoteMutate();
 
-            if (response.type === 'error') {
-                toast(response.errors[0].message);
+    const clearSaveTimer = useCallback(() => {
+        if (saveTimerRef.current !== null) {
+            window.clearTimeout(saveTimerRef.current);
+            saveTimerRef.current = null;
+        }
+    }, []);
+
+    const setMountedSaveStatus = useCallback((status: SaveStatus) => {
+        if (isAliveRef.current) {
+            setSaveStatus(status);
+        }
+    }, []);
+
+    const getCurrentDraft = useCallback(
+        (nextTitle = title): NoteSaveDraft => ({
+            title: nextTitle,
+            content: editorRef.current?.getContent() ?? note.content,
+            createdAt: Date.now(),
+        }),
+        [note.content, title],
+    );
+
+    const flushPendingSave = useCallback(
+        async ({ ignoreConflict = false, silent = false }: { ignoreConflict?: boolean; silent?: boolean } = {}) => {
+            if (inFlightSaveRef.current) {
+                flushAfterInFlightRef.current = true;
                 return;
             }
 
-            setTitle(nextTitle);
-            setLastSavedAt(dayjs().format('YYYY-MM-DD HH:mm:ss'));
-        });
-    };
+            const draft = pendingDraftRef.current;
+
+            if (!draft) {
+                return;
+            }
+
+            pendingDraftRef.current = null;
+            flushAfterInFlightRef.current = false;
+            clearSaveTimer();
+            inFlightSaveRef.current = true;
+
+            if (!silent) {
+                setMountedSaveStatus('saving');
+            }
+
+            const response = await updateNote({
+                id,
+                title: draft.title,
+                content: draft.content,
+                editSessionId: editSessionIdRef.current,
+                ...(ignoreConflict ? {} : { expectedUpdatedAt: serverUpdatedAtRef.current }),
+            });
+
+            inFlightSaveRef.current = false;
+
+            if (response.type === 'error') {
+                pendingDraftRef.current = draft;
+                writeLocalDraft(id, draft);
+
+                const error = response.errors[0];
+
+                if (error.code === NOTE_UPDATE_CONFLICT_CODE && !ignoreConflict) {
+                    const currentUpdatedAt = (error.details as { extensions?: { currentUpdatedAt?: string } })
+                        ?.extensions?.currentUpdatedAt;
+
+                    isSaveConflictRef.current = true;
+
+                    if (!silent && isAliveRef.current) {
+                        setExternalNoteChange({
+                            type: 'updated',
+                            updatedAt: currentUpdatedAt ?? serverUpdatedAtRef.current,
+                        });
+                        setMountedSaveStatus('conflict');
+                        toast('This note changed elsewhere. Choose how to resolve the draft.');
+                    }
+
+                    return;
+                }
+
+                if (!silent && isAliveRef.current) {
+                    setMountedSaveStatus('error');
+                    toast(error.message);
+                }
+
+                return;
+            }
+
+            isSaveConflictRef.current = false;
+            serverUpdatedAtRef.current = response.updateNote.updatedAt;
+            clearLocalDraft(id);
+
+            if (!silent && isAliveRef.current) {
+                setLastSavedAt(formatSavedAt(response.updateNote.updatedAt));
+
+                if (pendingDraftRef.current) {
+                    setSaveStatus('pending');
+                } else {
+                    setSaveStatus('saved');
+                    void queryClient.invalidateQueries({
+                        queryKey: queryKeys.notes.listAll(),
+                        exact: false,
+                    });
+                    void queryClient.invalidateQueries({
+                        queryKey: queryKeys.notes.tagListAll(),
+                        exact: false,
+                    });
+                    void queryClient.invalidateQueries({
+                        queryKey: queryKeys.notes.backReferencesAll(),
+                        exact: false,
+                    });
+                    void queryClient.invalidateQueries({
+                        queryKey: queryKeys.notes.graph(),
+                        exact: true,
+                    });
+                }
+            }
+
+            if (pendingDraftRef.current || flushAfterInFlightRef.current) {
+                void flushPendingSave({ silent });
+            }
+        },
+        [clearSaveTimer, id, queryClient, setMountedSaveStatus, toast],
+    );
+
+    const queueSave = useCallback(
+        (draft: NoteSaveDraft, options: { immediate?: boolean } = {}) => {
+            pendingDraftRef.current = draft;
+            writeLocalDraft(id, draft);
+
+            if (isSaveConflictRef.current) {
+                setMountedSaveStatus('conflict');
+                return;
+            }
+
+            setMountedSaveStatus('pending');
+            clearSaveTimer();
+
+            if (options.immediate) {
+                void flushPendingSave();
+                return;
+            }
+
+            saveTimerRef.current = window.setTimeout(() => {
+                void flushPendingSave();
+            }, NOTE_AUTOSAVE_DELAY_MS);
+        },
+        [clearSaveTimer, flushPendingSave, id, setMountedSaveStatus],
+    );
 
     const handleChange = () => {
-        save({
-            title,
-            content: editorRef.current?.getContent(),
-        });
+        queueSave(getCurrentDraft());
     };
 
     const handleTitleChange = (nextTitle: string) => {
         setTitle(nextTitle);
-        save({
-            title: nextTitle,
-            content: editorRef.current?.getContent(),
-        });
+        queueSave(getCurrentDraft(nextTitle));
+    };
+
+    const handleManualSave = () => {
+        queueSave(getCurrentDraft(), { immediate: true });
     };
 
     const handleLayoutSave = async (newLayout: NoteLayout) => {
@@ -185,13 +409,25 @@ function NoteContent({ id }: NoteContentProps) {
             id,
             layout: newLayout,
             editSessionId: editSessionIdRef.current,
+            expectedUpdatedAt: serverUpdatedAtRef.current,
         });
 
         if (response.type === 'error') {
+            if (response.errors[0].code === NOTE_UPDATE_CONFLICT_CODE) {
+                isSaveConflictRef.current = true;
+                setExternalNoteChange({
+                    type: 'updated',
+                    updatedAt: serverUpdatedAtRef.current,
+                });
+                setSaveStatus('conflict');
+            }
+
             toast(response.errors[0].message);
             return;
         }
 
+        serverUpdatedAtRef.current = response.updateNote.updatedAt;
+        setLastSavedAt(formatSavedAt(response.updateNote.updatedAt));
         setLayout(newLayout);
         toast('Layout has been updated.');
     };
@@ -200,7 +436,7 @@ function NoteContent({ id }: NoteContentProps) {
         id,
         title,
         createdAt: note.createdAt,
-        updatedAt: note.updatedAt,
+        updatedAt: serverUpdatedAtRef.current || note.updatedAt,
     });
 
     const handleCopyMarkdown = async () => {
@@ -275,6 +511,8 @@ function NoteContent({ id }: NoteContentProps) {
     };
 
     const handleReloadExternalChange = async () => {
+        clearSaveTimer();
+
         const response = await noteQuery.refetch();
 
         if (response.error || !response.data) {
@@ -282,10 +520,93 @@ function NoteContent({ id }: NoteContentProps) {
             return;
         }
 
+        pendingDraftRef.current = null;
+        flushAfterInFlightRef.current = false;
+        isSaveConflictRef.current = false;
+        clearLocalDraft(id);
+        setLocalDraft(null);
+        setSaveStatus('saved');
+        serverUpdatedAtRef.current = response.data.updatedAt;
+        setTitle(response.data.title);
+        setLayout(response.data.layout || 'wide');
+        setLastSavedAt(formatSavedAt(response.data.updatedAt));
+        setEditorContentOverride(null);
+        setEditorRevision((current) => current + 1);
         setExternalNoteChange(null);
     };
 
-    const { onCreate, onDelete, onPinned, deleteWarningDialog } = useNoteMutate();
+    const handleOverwriteConflict = async () => {
+        isSaveConflictRef.current = false;
+        setExternalNoteChange(null);
+        await flushPendingSave({ ignoreConflict: true });
+    };
+
+    const handleClonePendingDraft = async () => {
+        const draft = pendingDraftRef.current ?? getCurrentDraft();
+        clearSaveTimer();
+        pendingDraftRef.current = null;
+        flushAfterInFlightRef.current = false;
+        isSaveConflictRef.current = false;
+        clearLocalDraft(id);
+        setSaveStatus('saved');
+        await onCreate(draft.title || 'untitled', draft.content, layout);
+    };
+
+    const handleRestoreLocalDraft = () => {
+        if (!localDraft) {
+            return;
+        }
+
+        setTitle(localDraft.title);
+        setEditorContentOverride(localDraft.content);
+        setEditorRevision((current) => current + 1);
+        queueSave(localDraft);
+        setLocalDraft(null);
+    };
+
+    const handleDiscardLocalDraft = () => {
+        clearLocalDraft(id);
+        setLocalDraft(null);
+    };
+
+    useEffect(() => {
+        const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+            if (!pendingDraftRef.current && !inFlightSaveRef.current && !isSaveConflictRef.current) {
+                return;
+            }
+
+            event.preventDefault();
+            event.returnValue = '';
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            clearSaveTimer();
+
+            if (pendingDraftRef.current && !isSaveConflictRef.current) {
+                void flushPendingSave({ silent: true });
+            }
+        };
+    }, [clearSaveTimer, flushPendingSave]);
+
+    const saveStatusText =
+        saveStatus === 'pending'
+            ? 'Unsaved changes'
+            : saveStatus === 'saving'
+              ? 'Saving...'
+              : saveStatus === 'error'
+                ? 'Save failed. Try again.'
+                : saveStatus === 'conflict'
+                  ? 'Save paused: changed elsewhere'
+                  : `Last saved ${lastSavedAt}`;
+    const isConflictedExternalUpdate = saveStatus === 'conflict' && externalNoteChange?.type === 'updated';
 
     return (
         <PageLayout title={title} variant="none">
@@ -369,7 +690,13 @@ function NoteContent({ id }: NoteContentProps) {
                                         },
                                     ]}
                                 />
-                                <Button size="sm" variant="subtle" isLoading={isMountedEvent} onClick={handleChange}>
+                                <Button
+                                    size="sm"
+                                    variant="subtle"
+                                    isLoading={saveStatus === 'saving'}
+                                    disabled={saveStatus === 'conflict'}
+                                    onClick={handleManualSave}
+                                >
                                     Save
                                 </Button>
                             </div>
@@ -388,32 +715,94 @@ function NoteContent({ id }: NoteContentProps) {
                                 </Text>
                             )}
                             {isPinned && <span className="h-1 w-1 rounded-full bg-border-secondary" />}
-                            <Text as="span" variant="label" weight="medium" tone="secondary">
-                                Last saved {lastSavedAt}
+                            <Text
+                                as="span"
+                                variant="label"
+                                weight="medium"
+                                tone={saveStatus === 'error' || saveStatus === 'conflict' ? 'error' : 'secondary'}
+                            >
+                                {saveStatusText}
                             </Text>
                         </div>
                     </div>
                 </div>
 
-                {externalNoteChange && (
+                {localDraft && (
                     <Callout className="mb-6">
                         <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <span>
-                                {externalNoteChange.type === 'updated'
-                                    ? 'This note changed in MCP. Reload to review the latest version.'
-                                    : 'This note was moved to trash from MCP. Open trash to review it.'}
+                                An unsaved local draft from {dayjs(localDraft.createdAt).format('YYYY-MM-DD HH:mm:ss')}{' '}
+                                is available.
                             </span>
-                            {externalNoteChange.type === 'updated' ? (
+                            <div className="flex flex-wrap gap-2">
                                 <Button
                                     type="button"
                                     size="sm"
                                     variant="subtle"
                                     className="self-start"
-                                    isLoading={noteQuery.isRefetching}
-                                    onClick={handleReloadExternalChange}
+                                    onClick={handleRestoreLocalDraft}
                                 >
-                                    Reload
+                                    Restore draft
                                 </Button>
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    className="self-start"
+                                    onClick={handleDiscardLocalDraft}
+                                >
+                                    Discard
+                                </Button>
+                            </div>
+                        </div>
+                    </Callout>
+                )}
+
+                {externalNoteChange && (
+                    <Callout className="mb-6">
+                        <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <span>
+                                {isConflictedExternalUpdate
+                                    ? 'This note changed elsewhere before your draft saved. Reload latest, overwrite it, or clone your draft.'
+                                    : externalNoteChange.type === 'updated'
+                                      ? 'This note changed in MCP. Reload to review the latest version.'
+                                      : 'This note was moved to trash from MCP. Open trash to review it.'}
+                            </span>
+                            {externalNoteChange.type === 'updated' ? (
+                                <div className="flex flex-wrap gap-2">
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="subtle"
+                                        className="self-start"
+                                        isLoading={noteQuery.isRefetching}
+                                        onClick={handleReloadExternalChange}
+                                    >
+                                        Reload
+                                    </Button>
+                                    {isConflictedExternalUpdate && (
+                                        <>
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                variant="primary"
+                                                className="self-start"
+                                                onClick={() => void handleOverwriteConflict()}
+                                            >
+                                                Overwrite
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                variant="ghost"
+                                                className="self-start"
+                                                onClick={() => void handleClonePendingDraft()}
+                                            >
+                                                Clone draft
+                                            </Button>
+                                        </>
+                                    )}
+                                </div>
                             ) : (
                                 <Button
                                     type="button"
@@ -435,9 +824,9 @@ function NoteContent({ id }: NoteContentProps) {
                 )}
 
                 <Editor
-                    key={`${id}:${note.updatedAt}`}
+                    key={`${id}:${note.updatedAt}:${editorRevision}`}
                     ref={editorRef}
-                    content={note.content}
+                    content={editorContentOverride ?? note.content}
                     currentNoteId={id}
                     onChange={handleChange}
                 />
@@ -599,8 +988,14 @@ function NoteContent({ id }: NoteContentProps) {
                     isOpen={isRestoreModalOpen}
                     noteId={id}
                     onClose={() => setIsRestoreModalOpen(false)}
-                    onRestored={() => {
+                    onRestored={(restoredNote) => {
                         editSessionIdRef.current = createEditSessionId();
+                        serverUpdatedAtRef.current = restoredNote.updatedAt;
+                        clearLocalDraft(id);
+                        pendingDraftRef.current = null;
+                        isSaveConflictRef.current = false;
+                        setLastSavedAt(formatSavedAt(restoredNote.updatedAt));
+                        setSaveStatus('saved');
                     }}
                 />
                 {deleteWarningDialog}

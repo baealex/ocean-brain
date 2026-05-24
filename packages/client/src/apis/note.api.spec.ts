@@ -125,6 +125,31 @@ describe('note.api', () => {
         });
     });
 
+    it('sends explicit force flags through GraphQL variables', async () => {
+        vi.mocked(graphQuery).mockResolvedValue({
+            type: 'success',
+            updateNote: {
+                id: '7',
+                title: 'Updated note',
+                updatedAt: '1770000000000',
+            },
+        } as never);
+
+        await updateNote({
+            id: '7',
+            title: 'Updated note',
+            force: true,
+        });
+
+        expect(graphQuery).toHaveBeenCalledWith(expect.stringContaining('$force: Boolean'), {
+            id: '7',
+            note: {
+                title: 'Updated note',
+            },
+            force: true,
+        });
+    });
+
     it('requests twenty note snapshots by default', async () => {
         vi.mocked(graphQuery).mockResolvedValue({
             type: 'success',

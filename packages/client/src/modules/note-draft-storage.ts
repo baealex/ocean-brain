@@ -1,8 +1,11 @@
+import type { NoteLayout } from '~/models/note.model';
+
 export interface NoteSaveDraft {
     title: string;
     content: string;
     createdAt: number;
     baseUpdatedAt: string;
+    layout?: NoteLayout;
 }
 
 export const getDraftStorageKey = (id: string) => `ocean-brain.note-draft.${id}`;
@@ -34,6 +37,9 @@ export const readLocalNoteDraft = (id: string): NoteSaveDraft | null => {
             content: draft.content,
             baseUpdatedAt: draft.baseUpdatedAt,
             createdAt: typeof draft.createdAt === 'number' ? draft.createdAt : Date.now(),
+            ...(draft.layout === 'narrow' || draft.layout === 'wide' || draft.layout === 'full'
+                ? { layout: draft.layout }
+                : {}),
         };
     } catch {
         return null;

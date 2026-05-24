@@ -101,6 +101,7 @@ function NoteContent({ id }: NoteContentProps) {
     const [externalNoteChange, setExternalNoteChange] = useState<ExternalNoteChange | null>(null);
     const [editorContentOverride, setEditorContentOverride] = useState<string | null>(null);
     const [editorRevision, setEditorRevision] = useState(0);
+    const appliedNoteVersionRef = useRef(note.updatedAt);
     const saveController = useNoteSaveController({
         noteId: id,
         initialContent: note.content,
@@ -136,22 +137,43 @@ function NoteContent({ id }: NoteContentProps) {
     } = saveController;
 
     useEffect(() => {
-        setServerUpdatedAt(note.updatedAt);
+        if (hasUnsavedChanges) {
+            if (note.updatedAt !== serverUpdatedAtRef.current) {
+                pauseForConflict(note.updatedAt);
+            }
+
+            return;
+        }
+
         setIsPinned(note.pinned);
         setLayout(note.layout || 'wide');
+        setServerUpdatedAt(note.updatedAt);
+        setTitle(note.title);
+        setLastSavedAt(formatSavedAt(note.updatedAt));
 
-        if (!hasUnsavedChanges) {
-            setTitle(note.title);
-            setLastSavedAt(formatSavedAt(note.updatedAt));
+        if (appliedNoteVersionRef.current !== note.updatedAt) {
+            appliedNoteVersionRef.current = note.updatedAt;
+            setEditorContentOverride(null);
+            setEditorRevision((current) => current + 1);
         }
-    }, [hasUnsavedChanges, note.layout, note.pinned, note.title, note.updatedAt, setServerUpdatedAt]);
+    }, [
+        hasUnsavedChanges,
+        note.layout,
+        note.pinned,
+        note.title,
+        note.updatedAt,
+        pauseForConflict,
+        serverUpdatedAtRef,
+        setServerUpdatedAt,
+    ]);
 
     useEffect(() => {
         editSessionIdRef.current = createEditSessionId();
+        appliedNoteVersionRef.current = note.updatedAt;
         setExternalNoteChange(null);
         setEditorContentOverride(null);
         setEditorRevision((current) => current + 1);
-    }, [id, note.updatedAt]);
+    }, [id]);
 
     useEffect(() => {
         setExternalNoteChange((current) => {
@@ -208,6 +230,13 @@ function NoteContent({ id }: NoteContentProps) {
     };
 
     const handleLayoutSave = async (newLayout: NoteLayout) => {
+        if (hasUnsavedChanges) {
+            setLayout(newLayout);
+            queueSave(buildDraft(title, { layout: newLayout }), { immediate: true });
+            toast('Layout will be saved with your draft.');
+            return;
+        }
+
         const response = await updateNote({
             id,
             layout: newLayout,
@@ -346,6 +375,9 @@ function NoteContent({ id }: NoteContentProps) {
         }
 
         setTitle(localDraft.title);
+        if (localDraft.layout) {
+            setLayout(localDraft.layout);
+        }
         setEditorContentOverride(localDraft.content);
         setEditorRevision((current) => current + 1);
         restoreLocalDraft(localDraft);
@@ -583,7 +615,7 @@ function NoteContent({ id }: NoteContentProps) {
                 )}
 
                 <Editor
-                    key={`${id}:${note.updatedAt}:${editorRevision}`}
+                    key={`${id}:${editorRevision}`}
                     ref={editorRef}
                     content={editorContentOverride ?? note.content}
                     currentNoteId={id}

@@ -1,5 +1,6 @@
 export const NOTE_UPDATE_CONFLICT_CODE = 'NOTE_UPDATE_CONFLICT';
 export const INVALID_NOTE_VERSION_CODE = 'INVALID_NOTE_VERSION';
+export const MISSING_NOTE_VERSION_CODE = 'MISSING_NOTE_VERSION';
 
 export class InvalidNoteVersionError extends Error {
     code = INVALID_NOTE_VERSION_CODE;
@@ -7,6 +8,15 @@ export class InvalidNoteVersionError extends Error {
     constructor() {
         super('Invalid note version.');
         this.name = 'InvalidNoteVersionError';
+    }
+}
+
+export class MissingNoteVersionError extends Error {
+    code = MISSING_NOTE_VERSION_CODE;
+
+    constructor() {
+        super('Expected note update time is required for this write.');
+        this.name = 'MissingNoteVersionError';
     }
 }
 
@@ -79,4 +89,8 @@ export const isNoteVersionConflictError = (error: unknown): error is NoteVersion
 
 export const isInvalidNoteVersionError = (error: unknown): error is InvalidNoteVersionError => {
     return error instanceof InvalidNoteVersionError;
+};
+
+export const isMissingNoteVersionError = (error: unknown): error is MissingNoteVersionError => {
+    return error instanceof MissingNoteVersionError;
 };

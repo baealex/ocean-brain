@@ -40,6 +40,7 @@ interface NoteAuthoringDeps {
             editSessionId?: string;
             expectedUpdatedAt?: string;
             snapshotMeta?: string;
+            force?: boolean;
         },
     ) => Promise<NoteRecord | null>;
 }
@@ -58,6 +59,7 @@ export interface UpdateNoteAuthoringInput {
     editSessionId?: string;
     expectedUpdatedAt?: string;
     snapshotMeta?: string;
+    force?: boolean;
 }
 
 export interface AuthoredNoteSummary {
@@ -182,6 +184,7 @@ export const createNoteAuthoringService = (deps: NoteAuthoringDeps) => {
                 ...(input.editSessionId ? { editSessionId: input.editSessionId } : {}),
                 ...(input.expectedUpdatedAt ? { expectedUpdatedAt: input.expectedUpdatedAt } : {}),
                 ...(input.snapshotMeta ? { snapshotMeta: input.snapshotMeta } : {}),
+                ...(input.force ? { force: true } : {}),
             });
 
             if (!updatedNote) {
@@ -238,6 +241,7 @@ const defaultNoteAuthoringService = createNoteAuthoringService({
             ...(options?.editSessionId ? { editSessionId: options.editSessionId } : {}),
             ...(options?.expectedUpdatedAt ? { expectedUpdatedAt: options.expectedUpdatedAt } : {}),
             ...(options?.snapshotMeta ? { snapshotMeta: options.snapshotMeta } : {}),
+            ...(options?.force ? { force: true } : {}),
         });
     },
 });

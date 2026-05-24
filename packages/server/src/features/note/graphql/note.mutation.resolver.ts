@@ -6,7 +6,11 @@ import { buildNoteSearchProjection } from '~/features/note/services/search.js';
 import { createSnapshotMetaFromUserAgent, restoreNoteSnapshot } from '~/features/note/services/snapshot.js';
 import { purgeTrashedNoteById, restoreTrashedNoteById, trashNoteById } from '~/features/note/services/trash.js';
 import { updateNoteWithVersionGuard } from '~/features/note/services/write.js';
-import { isInvalidNoteVersionError, isNoteVersionConflictError } from '~/features/note/services/write-conflict.js';
+import {
+    isInvalidNoteVersionError,
+    isMissingNoteVersionError,
+    isNoteVersionConflictError,
+} from '~/features/note/services/write-conflict.js';
 import models from '~/models.js';
 import type { NoteInput } from '~/types/index.js';
 
@@ -49,6 +53,20 @@ const toTagConnections = (blocks: Array<{ props?: { id?: string | number } }>) =
         .map((id) => ({ id }));
 };
 
+const parseRequiredNoteContent = (content: string) => {
+    const parsedContent = parseNoteContent(content);
+
+    if (!parsedContent) {
+        throw new GraphQLError('Note content must be valid BlockNote JSON.', {
+            extensions: {
+                code: 'INVALID_NOTE_CONTENT',
+            },
+        });
+    }
+
+    return parsedContent;
+};
+
 type NoteMutationResolvers = NonNullable<IResolvers['Mutation']>;
 type CreateNoteInput = Required<Pick<NoteInput, 'title' | 'content'>> & Pick<NoteInput, 'layout'>;
 
@@ -56,6 +74,8 @@ export const noteMutationResolvers: NoteMutationResolvers = {
     createNote: async (_, { note }: { note: CreateNoteInput }) => {
         const replacedTitle = await replacePlaceholders(note.title);
         const replacedContent = await replacePlaceholders(note.content);
+        const parsedContent = replacedContent ? parseRequiredNoteContent(replacedContent) : null;
+        const blocks = parsedContent ? extractBlocksByType<{ id: string }>('tag', parsedContent) : [];
         const createdNote = await models.note.create({
             data: {
                 title: replacedTitle,
@@ -72,9 +92,6 @@ export const noteMutationResolvers: NoteMutationResolvers = {
             return createdNote;
         }
 
-        const parsedContent = parseNoteContent(replacedContent);
-        const blocks = parsedContent ? extractBlocksByType<{ id: string }>('tag', parsedContent) : [];
-
         return models.note.update({
             where: { id: createdNote.id },
             data: { tags: { set: toTagConnections(blocks) } },
@@ -87,17 +104,19 @@ export const noteMutationResolvers: NoteMutationResolvers = {
             note,
             editSessionId,
             expectedUpdatedAt,
+            force,
         }: {
             id: number;
             note: NoteInput;
             editSessionId?: string;
             expectedUpdatedAt?: string;
+            force?: boolean;
         },
         context: {
             req?: Request;
         },
     ) => {
-        const parsedContent = note.content ? parseNoteContent(note.content) : null;
+        const parsedContent = note.content ? parseRequiredNoteContent(note.content) : null;
         const blocks = parsedContent ? extractBlocksByType<{ id: string }>('tag', parsedContent) : [];
         try {
             const updatedNote = await updateNoteWithVersionGuard({
@@ -110,6 +129,7 @@ export const noteMutationResolvers: NoteMutationResolvers = {
                 },
                 ...(editSessionId ? { editSessionId } : {}),
                 ...(expectedUpdatedAt ? { expectedUpdatedAt } : {}),
+                ...(force ? { force: true } : {}),
                 snapshotMeta: createSnapshotMetaFromUserAgent(getRequestUserAgent(context.req)),
             });
 
@@ -130,6 +150,14 @@ export const noteMutationResolvers: NoteMutationResolvers = {
             }
 
             if (isInvalidNoteVersionError(error)) {
+                throw new GraphQLError(error.message, {
+                    extensions: {
+                        code: error.code,
+                    },
+                });
+            }
+
+            if (isMissingNoteVersionError(error)) {
                 throw new GraphQLError(error.message, {
                     extensions: {
                         code: error.code,

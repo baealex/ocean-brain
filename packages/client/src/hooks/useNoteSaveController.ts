@@ -26,6 +26,10 @@ interface UseNoteSaveControllerParams {
     onError: (message: string) => void;
 }
 
+interface BuildNoteDraftOptions {
+    layout?: NoteSaveDraft['layout'];
+}
+
 export function useNoteSaveController({
     noteId,
     initialContent,
@@ -69,11 +73,12 @@ export function useNoteSaveController({
     }, []);
 
     const buildDraft = useCallback(
-        (title: string): NoteSaveDraft => ({
+        (title: string, options: BuildNoteDraftOptions = {}): NoteSaveDraft => ({
             title,
             content: getContent() ?? initialContent,
             createdAt: Date.now(),
             baseUpdatedAt: serverUpdatedAtRef.current,
+            ...(options.layout ? { layout: options.layout } : {}),
         }),
         [getContent, initialContent],
     );
@@ -119,8 +124,9 @@ export function useNoteSaveController({
                 id: noteId,
                 title: draft.title,
                 content: draft.content,
+                ...(draft.layout ? { layout: draft.layout } : {}),
                 editSessionId: editSessionIdRef.current,
-                ...(ignoreConflict ? {} : { expectedUpdatedAt: draft.baseUpdatedAt }),
+                ...(ignoreConflict ? { force: true } : { expectedUpdatedAt: draft.baseUpdatedAt }),
             });
 
             inFlightSaveRef.current = false;
@@ -283,11 +289,12 @@ export function useNoteSaveController({
     }, []);
 
     useEffect(() => {
-        serverUpdatedAtRef.current = initialUpdatedAt;
-
-        if (!pendingDraftRef.current && !inFlightSaveRef.current && !isSaveConflictRef.current) {
-            setSaveStatus('saved');
+        if (pendingDraftRef.current || inFlightSaveRef.current || isSaveConflictRef.current) {
+            return;
         }
+
+        serverUpdatedAtRef.current = initialUpdatedAt;
+        setSaveStatus('saved');
     }, [initialUpdatedAt]);
 
     useEffect(() => {

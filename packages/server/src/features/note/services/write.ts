@@ -1,7 +1,7 @@
 import models, { type NoteLayout, Prisma } from '~/models.js';
 import { buildNoteSearchProjection } from './search.js';
 import { captureNoteBaseline } from './snapshot.js';
-import { createNoteVersionConflictError, parseNoteVersion } from './write-conflict.js';
+import { createNoteVersionConflictError, MissingNoteVersionError, parseNoteVersion } from './write-conflict.js';
 
 interface NoteWriteRecord {
     id: number;
@@ -27,12 +27,21 @@ interface UpdateNoteWithVersionGuardInput {
     editSessionId?: string;
     expectedUpdatedAt?: string;
     snapshotMeta?: string;
+    force?: boolean;
 }
 
 interface NoteWriteDeps {
-    findNoteForWrite: (id: number) => Promise<Pick<NoteWriteRecord, 'title' | 'content' | 'updatedAt'> | null>;
+    findNoteForWrite: (
+        id: number,
+    ) => Promise<Pick<NoteWriteRecord, 'title' | 'content' | 'updatedAt' | 'pinned' | 'order' | 'layout'> | null>;
     findNoteVersion: (id: number) => Promise<Pick<NoteWriteRecord, 'updatedAt'> | null>;
-    captureBaseline: (input: { noteId: number; editSessionId?: string; meta?: string }) => Promise<unknown>;
+    captureBaseline: (input: {
+        noteId: number;
+        editSessionId?: string;
+        meta?: string;
+        baseline: Pick<NoteWriteRecord, 'id' | 'title' | 'content' | 'pinned' | 'order' | 'layout'>;
+        force?: boolean;
+    }) => Promise<unknown>;
     updateNote: (input: {
         where: {
             id: number;
@@ -63,6 +72,7 @@ export const createNoteWriteService = (deps: NoteWriteDeps) => ({
         editSessionId,
         expectedUpdatedAt,
         snapshotMeta,
+        force = false,
     }: UpdateNoteWithVersionGuardInput): Promise<NoteWriteRecord | null> => {
         const existingNote = await deps.findNoteForWrite(id);
 
@@ -72,18 +82,18 @@ export const createNoteWriteService = (deps: NoteWriteDeps) => ({
 
         const expectedTimestamp = parseNoteVersion(expectedUpdatedAt);
 
-        await deps.captureBaseline({
-            noteId: id,
-            ...(editSessionId ? { editSessionId } : {}),
-            ...(snapshotMeta ? { meta: snapshotMeta } : {}),
-        });
+        if (expectedTimestamp === null && !force) {
+            throw new MissingNoteVersionError();
+        }
 
         const nextTitle = data.title ?? existingNote.title;
         const nextContent = data.content ?? existingNote.content;
-        const where = expectedTimestamp === null ? { id } : { id, updatedAt: new Date(expectedTimestamp) };
+        const where = force
+            ? { id }
+            : { id, updatedAt: new Date(expectedTimestamp ?? existingNote.updatedAt.getTime()) };
 
         try {
-            return await deps.updateNote({
+            const updatedNote = await deps.updateNote({
                 where,
                 data: {
                     ...(data.title !== undefined ? { title: data.title } : {}),
@@ -96,13 +106,38 @@ export const createNoteWriteService = (deps: NoteWriteDeps) => ({
                     ...(data.tagIds ? { tags: { set: data.tagIds.map((tagId) => ({ id: tagId })) } } : {}),
                 },
             });
+
+            await deps.captureBaseline({
+                noteId: id,
+                baseline: {
+                    id,
+                    title: existingNote.title,
+                    content: existingNote.content,
+                    pinned: existingNote.pinned,
+                    order: existingNote.order,
+                    layout: existingNote.layout,
+                },
+                ...(editSessionId && !force ? { editSessionId } : {}),
+                ...(snapshotMeta ? { meta: snapshotMeta } : {}),
+                ...(force ? { force: true } : {}),
+            });
+
+            return updatedNote;
         } catch (error) {
-            if (expectedTimestamp !== null && deps.isRecordNotFoundError(error)) {
+            if (deps.isRecordNotFoundError(error)) {
                 const currentNote = await deps.findNoteVersion(id);
+
+                if (!currentNote) {
+                    return null;
+                }
+
+                if (expectedTimestamp === null || currentNote.updatedAt.getTime() === expectedTimestamp) {
+                    throw error;
+                }
 
                 throw createNoteVersionConflictError({
                     expectedUpdatedAt: expectedTimestamp,
-                    currentUpdatedAt: currentNote?.updatedAt.getTime() ?? existingNote.updatedAt.getTime(),
+                    currentUpdatedAt: currentNote.updatedAt.getTime(),
                 });
             }
 
@@ -119,6 +154,9 @@ const defaultNoteWriteService = createNoteWriteService({
                 title: true,
                 content: true,
                 updatedAt: true,
+                pinned: true,
+                order: true,
+                layout: true,
             },
         }),
     findNoteVersion: (id) =>

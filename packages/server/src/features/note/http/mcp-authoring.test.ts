@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { NOTE_UPDATE_CONFLICT_CODE, NoteVersionConflictError } from '~/features/note/services/write-conflict.js';
+import {
+    MISSING_NOTE_VERSION_CODE,
+    NOTE_UPDATE_CONFLICT_CODE,
+    NoteVersionConflictError,
+} from '~/features/note/services/write-conflict.js';
 import { AppError } from '~/modules/error-handler.js';
 import { createMcpCreateNoteHandler, createMcpUpdateNoteHandler } from './mcp.js';
 
@@ -174,6 +178,7 @@ test('mcp update note handler returns not found when the note is missing', async
                     body: {
                         id: '7',
                         markdown: 'Updated',
+                        expectedUpdatedAt: '1770000000000',
                     },
                 } as never,
                 createResponse() as never,
@@ -203,6 +208,7 @@ test('mcp update note handler returns the updated note payload', async () => {
             body: {
                 id: '7',
                 title: 'Renamed',
+                expectedUpdatedAt: '1770000000000',
             },
         } as never,
         response as never,
@@ -241,6 +247,7 @@ test('mcp update note handler emits an updated server event', async () => {
             body: {
                 id: '7',
                 title: 'Renamed',
+                expectedUpdatedAt: '1770000000000',
             },
         } as never,
         createResponse() as never,
@@ -254,6 +261,63 @@ test('mcp update note handler emits an updated server event', async () => {
             updatedAt: '2026-04-01T00:00:00.000Z',
         },
     ]);
+});
+
+test('mcp update note handler requires a note version unless forced', async () => {
+    const handler = createMcpUpdateNoteHandler(async () => {
+        throw new Error('should not update');
+    });
+
+    await assert.rejects(
+        () =>
+            handler(
+                {
+                    body: {
+                        id: '7',
+                        title: 'Renamed',
+                    },
+                } as never,
+                createResponse() as never,
+            ),
+        (error: unknown) => {
+            assert.ok(error instanceof AppError);
+            assert.equal(error.status, 400);
+            assert.equal(error.code, MISSING_NOTE_VERSION_CODE);
+            return true;
+        },
+    );
+});
+
+test('mcp update note handler allows explicit forced overwrites', async () => {
+    let receivedInput: unknown;
+    const handler = createMcpUpdateNoteHandler(async (input) => {
+        receivedInput = input;
+        return {
+            id: '7',
+            title: 'Renamed',
+            layout: 'wide',
+            createdAt: '2026-03-31T00:00:00.000Z',
+            updatedAt: '2026-04-01T00:00:00.000Z',
+        };
+    });
+
+    await handler(
+        {
+            body: {
+                id: '7',
+                title: 'Renamed',
+                force: true,
+            },
+        } as never,
+        createResponse() as never,
+    );
+
+    assert.deepEqual(receivedInput, {
+        id: 7,
+        title: 'Renamed',
+        force: true,
+        snapshotMeta: '{"entrypoint":"mcp","label":"MCP"}',
+    });
 });
 
 test('mcp update note handler forwards optional expected note versions', async () => {
@@ -312,6 +376,10 @@ test('mcp update note handler maps version conflicts to 409 responses', async ()
             assert.ok(error instanceof AppError);
             assert.equal(error.status, 409);
             assert.equal(error.code, NOTE_UPDATE_CONFLICT_CODE);
+            assert.deepEqual(error.details, {
+                currentUpdatedAt: '1770000001000',
+                expectedUpdatedAt: '1770000000000',
+            });
             return true;
         },
     );

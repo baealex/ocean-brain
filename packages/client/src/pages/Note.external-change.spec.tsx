@@ -2,9 +2,10 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { StrictMode, Suspense } from 'react';
-import { fetchNote, updateNote } from '~/apis/note.api';
+import { createNote as createNoteApi, fetchNote, updateNote } from '~/apis/note.api';
 import { ToastProvider } from '~/components/ui';
 import type { Note } from '~/models/note.model';
+import { getDraftStorageKey, type NoteSaveDraft } from '~/modules/note-draft-storage';
 import { queryKeys } from '~/modules/query-key-factory';
 import { publishServerEvent } from '~/modules/server-events';
 import { createTestQueryClient } from '~/test/test-utils';
@@ -33,6 +34,7 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 
 vi.mock('~/apis/note.api', () => ({
+    createNote: vi.fn(),
     fetchNote: vi.fn(),
     updateNote: vi.fn(),
     fetchNoteSnapshot: vi.fn(),
@@ -170,6 +172,7 @@ describe('<NoteContent /> external change handling', () => {
         mockUseNoteMutate.onDelete.mockReset();
         mockUseNoteMutate.onPinned.mockReset();
         mockUseBlocker.mockReset();
+        window.localStorage.clear();
         editorMountCount = 0;
     });
 
@@ -450,5 +453,142 @@ describe('<NoteContent /> external change handling', () => {
 
         expect(shouldBlock).toBe(true);
         expect(await screen.findByText('Save failed. Try again.')).toBeInTheDocument();
+    });
+
+    it('shows recovery actions after a save failure and retries the local draft', async () => {
+        const user = userEvent.setup();
+        const initialNote = createNote({
+            title: 'Initial title',
+            updatedAt: '1779700001000',
+        });
+        const savedNote = createNote({
+            title: 'Recovered title',
+            updatedAt: String(Date.now()),
+        });
+
+        vi.mocked(updateNote)
+            .mockResolvedValueOnce({
+                type: 'error',
+                category: 'network',
+                errors: [
+                    {
+                        code: 'NETWORK_ERROR',
+                        message: 'Network request failed',
+                    },
+                ],
+            })
+            .mockResolvedValueOnce({
+                type: 'success',
+                updateNote: savedNote,
+            });
+
+        renderNote(initialNote);
+
+        const titleInput = await screen.findByPlaceholderText('Title');
+        await user.clear(titleInput);
+        await user.type(titleInput, 'Recovered title');
+        await user.click(screen.getByRole('button', { name: 'Save' }));
+
+        expect(await screen.findByText(/Save failed. Your latest draft is still available here/)).toBeInTheDocument();
+
+        const storedDraft = JSON.parse(
+            window.localStorage.getItem(getDraftStorageKey(initialNote.id)) ?? '{}',
+        ) as NoteSaveDraft;
+
+        expect(storedDraft.title).toBe('Recovered title');
+
+        await user.click(screen.getByRole('button', { name: 'Retry save' }));
+
+        await waitFor(() => expect(updateNote).toHaveBeenCalledTimes(2));
+        await waitFor(() => {
+            expect(
+                screen.queryByText(/Save failed. Your latest draft is still available here/),
+            ).not.toBeInTheDocument();
+        });
+        expect(window.localStorage.getItem(getDraftStorageKey(initialNote.id))).toBeNull();
+        expect(screen.getByRole('status')).toHaveTextContent('Saved just now');
+    });
+
+    it('saves a failed draft as a new note without retrying the failed original save', async () => {
+        const user = userEvent.setup();
+        const initialNote = createNote({
+            title: 'Initial title',
+            content: createContent('Initial body'),
+            updatedAt: '1779700001000',
+        });
+
+        vi.mocked(updateNote).mockResolvedValue({
+            type: 'error',
+            category: 'network',
+            errors: [
+                {
+                    code: 'NETWORK_ERROR',
+                    message: 'Network request failed',
+                },
+            ],
+        });
+        vi.mocked(createNoteApi).mockResolvedValue({
+            type: 'success',
+            createNote: {
+                id: 'new-note-id',
+            },
+        });
+
+        renderNote(initialNote);
+
+        const titleInput = await screen.findByPlaceholderText('Title');
+        await user.clear(titleInput);
+        await user.type(titleInput, 'Recovered title');
+        await user.click(screen.getByRole('button', { name: 'Save' }));
+
+        expect(await screen.findByText(/Save failed. Your latest draft is still available here/)).toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: 'Save as new note' }));
+
+        expect(createNoteApi).toHaveBeenCalledWith({
+            title: 'Recovered title',
+            content: initialNote.content,
+            layout: 'wide',
+        });
+        expect(updateNote).toHaveBeenCalledTimes(1);
+        expect(window.localStorage.getItem(getDraftStorageKey(initialNote.id))).toBeNull();
+        expect(mockNavigate).toHaveBeenCalledWith({
+            to: '/$id',
+            params: { id: 'new-note-id' },
+        });
+    });
+
+    it('restores a saved browser draft into the editor', async () => {
+        const user = userEvent.setup();
+        const initialNote = createNote({
+            title: 'Initial title',
+            content: createContent('Initial body'),
+            updatedAt: '1779700001000',
+        });
+        const localDraft: NoteSaveDraft = {
+            title: 'Browser draft title',
+            content: 'Browser draft body',
+            createdAt: 1779700002000,
+            baseUpdatedAt: initialNote.updatedAt,
+        };
+
+        vi.mocked(updateNote).mockResolvedValue({
+            type: 'success',
+            updateNote: createNote({
+                title: localDraft.title,
+                updatedAt: '1779700003000',
+            }),
+        });
+
+        window.localStorage.setItem(getDraftStorageKey(initialNote.id), JSON.stringify(localDraft));
+
+        renderNote(initialNote);
+
+        expect(await screen.findByText(/A draft from/)).toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: 'Restore draft' }));
+
+        expect(screen.getByPlaceholderText('Title')).toHaveValue('Browser draft title');
+        expect(screen.getByLabelText('Editor')).toHaveValue('Browser draft body');
     });
 });

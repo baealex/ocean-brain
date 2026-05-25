@@ -119,8 +119,8 @@ gh run list --workflow RELEASE.yml --limit 5
 
 9. Finalize GitHub Release note
 - Open the created release page after `RELEASE` creates it.
-- Treat auto-generated notes as a draft only.
-- Replace the body with the final note before sharing the release externally.
+- For patch releases, start from GitHub generated notes and preserve the PR-linked bullet format.
+- For minor and major releases, treat auto-generated notes as a draft and replace the body with the final note before sharing the release externally.
 
 ## 7. Recovery Guide
 Use this section when the version bump PR is merged but the release did not start cleanly.
@@ -179,7 +179,11 @@ gh release view v<version> --json tagName,url,publishedAt
   use `What's New`
 
 4. Patch release rule
-- Keep `What's Changed` short and user-facing.
+- Use GitHub generated notes as the default final format so each change keeps its PR link and author.
+- Keep the generated `What's Changed` heading and `Full Changelog` link.
+- Keep the bullet format consistent:
+  `* <PR title> by @<author> in <PR URL>`
+- Only rewrite generated bullets when the original PR title is unclear or the patch requires user action.
 - Do not add migration/setup guidance unless the patch requires user action.
 
 5. Minor release rule

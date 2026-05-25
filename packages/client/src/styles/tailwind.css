@@ -2,6 +2,21 @@
 
 @custom-variant dark (&:where(html.dark *));
 
+@property --save-progress {
+    syntax: "<percentage>";
+    initial-value: 0%;
+    inherits: false;
+}
+
+@keyframes save-ring-progress {
+    from {
+        --save-progress: 0%;
+    }
+    to {
+        --save-progress: 92%;
+    }
+}
+
 :root {
     color-scheme: light;
     --surface: #f7f8fa;
@@ -385,6 +400,28 @@ html.dark .surface-base {
 /* Progress bar */
 .progress-fill {
     width: var(--progress-width);
+}
+
+.save-progress-ring {
+    --save-progress: 100%;
+    --save-ring-color: var(--border-secondary);
+    background: conic-gradient(from -90deg, var(--save-ring-color) var(--save-progress), var(--hover-subtle) 0);
+}
+
+.save-progress-ring-active {
+    --save-progress: 0%;
+    --save-ring-color: var(--accent-primary);
+    animation: save-ring-progress 1200ms linear forwards;
+}
+
+.save-progress-ring-complete {
+    --save-progress: 100%;
+    --save-ring-color: var(--accent-success);
+}
+
+.save-progress-ring-error {
+    --save-progress: 100%;
+    --save-ring-color: var(--accent-danger);
 }
 
 /* Skeleton sizing */

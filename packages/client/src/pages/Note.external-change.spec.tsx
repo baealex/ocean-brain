@@ -1,7 +1,7 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Suspense } from 'react';
+import { StrictMode, Suspense } from 'react';
 import { fetchNote, updateNote } from '~/apis/note.api';
 import { ToastProvider } from '~/components/ui';
 import type { Note } from '~/models/note.model';
@@ -11,6 +11,7 @@ import { createTestQueryClient } from '~/test/test-utils';
 import { NoteContent } from './Note';
 
 const mockNavigate = vi.hoisted(() => vi.fn());
+const mockUseBlocker = vi.hoisted(() => vi.fn());
 const mockUseNoteMutate = vi.hoisted(() => ({
     onCreate: vi.fn(),
     onDelete: vi.fn(),
@@ -28,6 +29,7 @@ vi.mock('@tanstack/react-router', () => ({
             {children}
         </a>
     ),
+    useBlocker: mockUseBlocker,
 }));
 
 vi.mock('~/apis/note.api', () => ({
@@ -148,9 +150,11 @@ const renderNote = (note: Note) => {
     render(
         <QueryClientProvider client={queryClient}>
             <ToastProvider>
-                <Suspense fallback={<div>Loading</div>}>
-                    <NoteContent id={note.id} />
-                </Suspense>
+                <StrictMode>
+                    <Suspense fallback={<div>Loading</div>}>
+                        <NoteContent id={note.id} />
+                    </Suspense>
+                </StrictMode>
             </ToastProvider>
         </QueryClientProvider>,
     );
@@ -165,6 +169,7 @@ describe('<NoteContent /> external change handling', () => {
         mockUseNoteMutate.onCreate.mockReset();
         mockUseNoteMutate.onDelete.mockReset();
         mockUseNoteMutate.onPinned.mockReset();
+        mockUseBlocker.mockReset();
         editorMountCount = 0;
     });
 
@@ -346,7 +351,7 @@ describe('<NoteContent /> external change handling', () => {
         renderNote(initialNote);
 
         const editor = await screen.findByLabelText('Editor');
-        expect(editorMountCount).toBe(1);
+        const mountCountAfterInitialRender = editorMountCount;
 
         vi.mocked(updateNote).mockResolvedValue({
             type: 'success',
@@ -358,7 +363,92 @@ describe('<NoteContent /> external change handling', () => {
         await user.click(screen.getByRole('button', { name: 'Save' }));
 
         await waitFor(() => expect(updateNote).toHaveBeenCalledTimes(1));
-        expect(editorMountCount).toBe(1);
+        expect(editorMountCount).toBe(mountCountAfterInitialRender);
         expect(screen.getByLabelText('Editor')).toHaveValue('Local body');
+    });
+
+    it('flushes pending changes before allowing in-app navigation', async () => {
+        const user = userEvent.setup();
+        const initialNote = createNote({
+            title: 'Initial title',
+            content: createContent('Initial body'),
+            updatedAt: '1779700001000',
+        });
+        const savedNote = createNote({
+            title: 'Route-safe title',
+            updatedAt: '1779700002000',
+        });
+
+        renderNote(initialNote);
+
+        const titleInput = await screen.findByPlaceholderText('Title');
+        await user.clear(titleInput);
+        await user.type(titleInput, 'Route-safe title');
+
+        expect(screen.getByRole('status')).toHaveTextContent('Saving...');
+
+        vi.mocked(updateNote).mockResolvedValue({
+            type: 'success',
+            updateNote: savedNote,
+        });
+
+        const blockerOptions = mockUseBlocker.mock.calls.at(-1)?.[0] as
+            | { disabled: boolean; shouldBlockFn: () => Promise<boolean> }
+            | undefined;
+
+        expect(blockerOptions?.disabled).toBe(false);
+
+        let shouldBlock = true;
+
+        await act(async () => {
+            shouldBlock = (await blockerOptions?.shouldBlockFn()) ?? true;
+        });
+
+        expect(shouldBlock).toBe(false);
+        expect(updateNote).toHaveBeenCalledWith({
+            id: initialNote.id,
+            title: 'Route-safe title',
+            content: initialNote.content,
+            editSessionId: expect.any(String),
+            expectedUpdatedAt: initialNote.updatedAt,
+        });
+    });
+
+    it('blocks in-app navigation when the pending save fails', async () => {
+        const user = userEvent.setup();
+        const initialNote = createNote({
+            title: 'Initial title',
+            updatedAt: '1779700001000',
+        });
+
+        renderNote(initialNote);
+
+        const titleInput = await screen.findByPlaceholderText('Title');
+        await user.clear(titleInput);
+        await user.type(titleInput, 'Unsaved title');
+
+        vi.mocked(updateNote).mockResolvedValue({
+            type: 'error',
+            category: 'network',
+            errors: [
+                {
+                    code: 'NETWORK_ERROR',
+                    message: 'Network request failed',
+                },
+            ],
+        });
+
+        const blockerOptions = mockUseBlocker.mock.calls.at(-1)?.[0] as
+            | { disabled: boolean; shouldBlockFn: () => Promise<boolean> }
+            | undefined;
+
+        let shouldBlock = false;
+
+        await act(async () => {
+            shouldBlock = (await blockerOptions?.shouldBlockFn()) ?? false;
+        });
+
+        expect(shouldBlock).toBe(true);
+        expect(await screen.findByText('Save failed. Try again.')).toBeInTheDocument();
     });
 });

@@ -25,6 +25,15 @@ const createWrapper = (queryClient = createQueryClient()) => {
     );
 };
 
+const createDeferred = <T,>() => {
+    let resolve!: (value: T) => void;
+    const promise = new Promise<T>((nextResolve) => {
+        resolve = nextResolve;
+    });
+
+    return { promise, resolve };
+};
+
 describe('useNoteSaveController', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -288,5 +297,109 @@ describe('useNoteSaveController', () => {
         });
 
         expect(result.current.buildDraft('Next draft').baseUpdatedAt).toBe('1770000000000');
+    });
+
+    it('returns after an in-flight save flushes the newer queued draft', async () => {
+        const firstSave = createDeferred<Awaited<ReturnType<typeof updateNote>>>();
+        const secondSave = createDeferred<Awaited<ReturnType<typeof updateNote>>>();
+        vi.mocked(updateNote).mockReturnValueOnce(firstSave.promise).mockReturnValueOnce(secondSave.promise);
+        let content = 'content-a';
+        const { result } = renderHook(
+            () =>
+                useNoteSaveController({
+                    noteId: '7',
+                    initialContent: 'initial',
+                    initialUpdatedAt: '1770000000000',
+                    editSessionIdRef: { current: 'session-1' },
+                    getContent: () => content,
+                    onSaved: vi.fn(),
+                    onConflict: vi.fn(),
+                    onError: vi.fn(),
+                }),
+            { wrapper: createWrapper() },
+        );
+
+        await act(async () => {
+            result.current.queueSave(result.current.buildDraft('Draft A'), { immediate: true });
+        });
+
+        act(() => {
+            content = 'content-b';
+            result.current.queueSave(result.current.buildDraft('Draft B'));
+        });
+
+        let flushResult: Awaited<ReturnType<typeof result.current.flushPendingSave>> | undefined;
+        const flushPromise = result.current.flushPendingSave().then((result) => {
+            flushResult = result;
+        });
+
+        await act(async () => {
+            firstSave.resolve({
+                type: 'success',
+                updateNote: {
+                    id: '7',
+                    title: 'Draft A',
+                    updatedAt: '1770000001000',
+                },
+            } as never);
+            await firstSave.promise;
+        });
+
+        await waitFor(() => expect(updateNote).toHaveBeenCalledTimes(2));
+
+        await act(async () => {
+            secondSave.resolve({
+                type: 'success',
+                updateNote: {
+                    id: '7',
+                    title: 'Draft B',
+                    updatedAt: '1770000002000',
+                },
+            } as never);
+            await secondSave.promise;
+            await flushPromise;
+        });
+
+        expect(flushResult).toBe('saved');
+        expect(updateNote).toHaveBeenLastCalledWith({
+            id: '7',
+            title: 'Draft B',
+            content: 'content-b',
+            editSessionId: 'session-1',
+            expectedUpdatedAt: '1770000001000',
+        });
+    });
+
+    it('keeps the draft recoverable when the save request rejects', async () => {
+        const onError = vi.fn();
+        vi.mocked(updateNote).mockRejectedValue(new Error('offline'));
+        const { result } = renderHook(
+            () =>
+                useNoteSaveController({
+                    noteId: '7',
+                    initialContent: 'initial',
+                    initialUpdatedAt: '1770000000000',
+                    editSessionIdRef: { current: 'session-1' },
+                    getContent: () => 'content',
+                    onSaved: vi.fn(),
+                    onConflict: vi.fn(),
+                    onError,
+                }),
+            { wrapper: createWrapper() },
+        );
+
+        let flushResult: Awaited<ReturnType<typeof result.current.flushPendingSave>> | undefined;
+
+        await act(async () => {
+            result.current.queueSave(result.current.buildDraft('Rejected draft'));
+            flushResult = await result.current.flushPendingSave();
+        });
+
+        const storedDraft = JSON.parse(window.localStorage.getItem(getDraftStorageKey('7')) ?? '{}') as NoteSaveDraft;
+
+        expect(flushResult).toBe('error');
+        expect(result.current.saveStatus).toBe('error');
+        expect(onError).toHaveBeenCalledWith('Failed to save note.');
+        expect(storedDraft.title).toBe('Rejected draft');
     });
 });

@@ -184,18 +184,25 @@ const defaultTrimOverflowSnapshots = async (noteId: number, keep: number, limit:
 };
 
 export const createNoteSnapshotService = (deps: NoteSnapshotDeps) => ({
-    captureBaseline: async (input: { noteId: number; editSessionId?: string; meta?: string }) => {
+    captureBaseline: async (input: {
+        noteId: number;
+        editSessionId?: string;
+        meta?: string;
+        baseline?: NoteRecord;
+        force?: boolean;
+    }) => {
         await deps.purgeExpiredSnapshots(createRetentionCutoff(SNAPSHOT_RETENTION_DAYS), RECOVERY_CLEANUP_BATCH_LIMIT);
 
-        const existing = input.editSessionId
-            ? await deps.findSnapshotByEditSessionId(input.noteId, input.editSessionId)
-            : null;
+        const existing =
+            input.editSessionId && !input.force
+                ? await deps.findSnapshotByEditSessionId(input.noteId, input.editSessionId)
+                : null;
 
         if (existing) {
             return serializeSnapshot(existing);
         }
 
-        const note = await deps.findNoteById(input.noteId);
+        const note = input.baseline ?? (await deps.findNoteById(input.noteId));
 
         if (!note) {
             return null;
@@ -212,7 +219,7 @@ export const createNoteSnapshotService = (deps: NoteSnapshotDeps) => ({
             noteId: note.id,
             title: note.title,
             payload,
-            ...(input.editSessionId ? { editSessionId: input.editSessionId } : {}),
+            ...(input.editSessionId && !input.force ? { editSessionId: input.editSessionId } : {}),
             ...(input.meta ? { meta: input.meta } : {}),
         });
 
@@ -221,7 +228,7 @@ export const createNoteSnapshotService = (deps: NoteSnapshotDeps) => ({
         return serializeSnapshot(snapshot);
     },
 
-    listSnapshots: async (noteId: number, limit = 5) => {
+    listSnapshots: async (noteId: number, limit = SNAPSHOT_MAX_PER_NOTE) => {
         await deps.purgeExpiredSnapshots(createRetentionCutoff(SNAPSHOT_RETENTION_DAYS), RECOVERY_CLEANUP_BATCH_LIMIT);
         await deps.trimOverflowSnapshots(noteId, SNAPSHOT_MAX_PER_NOTE, RECOVERY_CLEANUP_BATCH_LIMIT);
         const snapshots = await deps.listSnapshots(noteId, limit);
@@ -318,7 +325,13 @@ export const defaultNoteSnapshotService = createNoteSnapshotService({
     },
 });
 
-export const captureNoteBaseline = async (input: { noteId: number; editSessionId?: string; meta?: string }) => {
+export const captureNoteBaseline = async (input: {
+    noteId: number;
+    editSessionId?: string;
+    meta?: string;
+    baseline?: NoteRecord;
+    force?: boolean;
+}) => {
     return defaultNoteSnapshotService.captureBaseline(input);
 };
 

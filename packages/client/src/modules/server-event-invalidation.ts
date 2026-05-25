@@ -6,6 +6,7 @@ export const invalidateQueriesForServerEvent = async (queryClient: QueryClient, 
     switch (event.type) {
         case 'mcp.note.created':
         case 'mcp.note.updated':
+        case 'web.note.updated':
             await Promise.all([
                 queryClient.invalidateQueries({
                     queryKey: queryKeys.notes.listAll(),

@@ -3,17 +3,19 @@ import type { ErrorRequestHandler } from 'express';
 export class AppError extends Error {
     code: string;
     status: number;
+    details?: unknown;
 
-    constructor(status: number, code: string, message: string) {
+    constructor(status: number, code: string, message: string, details?: unknown) {
         super(message);
         this.name = 'AppError';
         this.status = status;
         this.code = code;
+        this.details = details;
     }
 }
 
-export const createAppError = (status: number, code: string, message: string) => {
-    return new AppError(status, code, message);
+export const createAppError = (status: number, code: string, message: string, details?: unknown) => {
+    return new AppError(status, code, message, details);
 };
 
 export const createErrorHandler = (): ErrorRequestHandler => {
@@ -28,6 +30,7 @@ export const createErrorHandler = (): ErrorRequestHandler => {
                 .json({
                     code: error.code,
                     message: error.message,
+                    ...(error.details ? { details: error.details } : {}),
                 })
                 .end();
             return;

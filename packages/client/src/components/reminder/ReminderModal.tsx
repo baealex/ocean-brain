@@ -85,6 +85,7 @@ export default function ReminderModal({ isOpen, onClose, onSave, reminder, mode 
                         <Label>Priority</Label>
                         <ToggleGroup
                             type="single"
+                            variant="quiet"
                             value={reminderPriority}
                             onValueChange={(value: string) => value && setReminderPriority(value as Priority)}
                             className="gap-1.5 border-none rounded-[14px] bg-muted/70 p-1 sm:gap-2"

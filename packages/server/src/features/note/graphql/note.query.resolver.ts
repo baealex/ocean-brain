@@ -1,6 +1,14 @@
 import type { IResolvers } from '@graphql-tools/utils';
 import { getNoteCleanupPreview, listNoteCleanupCandidates } from '~/features/note/services/cleanup.js';
 import {
+    buildNoteGraph,
+    contentReferencesNote,
+    extractReferenceBlocksFromContent,
+    NOTE_REFERENCE_CONTENT_PREFILTER,
+    syncReferenceTitlesInContent,
+} from '~/features/note/services/content-blocks.js';
+import {
+    buildNoteSearchProjection,
     filterNotesBySearchQuery,
     NOTE_SEARCH_TEXT_SCHEMA_VERSION,
     parseNoteSearchQuery,
@@ -16,7 +24,6 @@ import type { Note, Prisma } from '~/models.js';
 import models from '~/models.js';
 import { runDataMaintenanceInBackground } from '~/modules/data-maintenance.js';
 import type { Pagination, SearchFilter } from '~/types/index.js';
-import { extractBlocksByType } from './note.graphql.shared.js';
 
 interface AllNotesResolverDeps {
     countNotes: (args: { where?: Prisma.NoteWhereInput }) => Promise<number>;
@@ -120,6 +127,12 @@ const mergeSortedNotesForSearch = (left: Note[], right: Note[], searchFilter: Se
     }
 
     return merged;
+};
+
+const isRecordNotFoundError = (error: unknown) => {
+    return (
+        typeof error === 'object' && error !== null && 'code' in error && (error as { code?: unknown }).code === 'P2025'
+    );
 };
 
 export const createAllNotesQueryResolver = (
@@ -335,10 +348,15 @@ export const noteQueryResolvers: NoteQueryResolvers = {
             where: { content: { contains: src } },
         }),
     backReferences: async (_, { id }: { id: string }) => {
-        return models.note.findMany({
+        const notes = await models.note.findMany({
             orderBy: [{ pinned: 'desc' }, { updatedAt: 'desc' }],
-            where: { content: { contains: `reference","props":{"id":"${id}"` } },
+            where: {
+                content: { contains: NOTE_REFERENCE_CONTENT_PREFILTER },
+                NOT: { id: Number(id) },
+            },
         });
+
+        return notes.filter((note) => contentReferencesNote(note.content, id));
     },
     note: async (_, { id }: { id: string }) => {
         const note = await models.note.findUnique({ where: { id: Number(id) } });
@@ -351,44 +369,45 @@ export const noteQueryResolvers: NoteQueryResolvers = {
             return note;
         }
 
-        const blocks = extractBlocksByType<{
-            id: string;
-            title: string;
-        }>('reference', JSON.parse(note.content));
+        const blocks = extractReferenceBlocksFromContent(note.content);
 
         if (blocks.length === 0) {
             return note;
         }
 
-        const referenceIds = blocks.map((block) => Number(block.props.id));
+        const referenceIds = Array.from(
+            new Set(blocks.map((block) => Number(block.props?.id)).filter(Number.isFinite)),
+        );
         const references = await models.note.findMany({ where: { id: { in: referenceIds } } });
-        const newContent = references.reduce<string>((content, referenceNote: Note) => {
-            const reference = blocks.find((block) => Number(block.props.id) === referenceNote.id);
+        const titlesById = new Map(
+            references.map((referenceNote: Note) => [String(referenceNote.id), referenceNote.title]),
+        );
+        const newContent = syncReferenceTitlesInContent(note.content, titlesById);
 
-            if (reference && reference.props.title !== referenceNote.title) {
-                return content.replace(
-                    `reference","props":{"id":"${reference.props.id}","title":"${reference.props.title}"`,
-                    `reference","props":{"id":"${referenceNote.id}","title":"${referenceNote.title}"`,
-                );
-            }
-
-            return content;
-        }, note.content);
-
-        if (newContent === note.content) {
+        if (!newContent || newContent === note.content) {
             return note;
         }
 
         try {
-            JSON.parse(newContent);
-
             return await models.note.update({
-                where: { id: note.id },
-                data: { content: newContent },
+                where: {
+                    id: note.id,
+                    updatedAt: note.updatedAt,
+                },
+                data: {
+                    content: newContent,
+                    ...buildNoteSearchProjection({
+                        title: note.title,
+                        content: newContent,
+                    }),
+                },
             });
-        } catch {
-            // Keep the stored content unchanged if the synchronized payload becomes invalid.
-            return note;
+        } catch (error) {
+            if (isRecordNotFoundError(error)) {
+                return note;
+            }
+
+            throw error;
         }
     },
     noteCleanupCandidates: async (
@@ -424,7 +443,7 @@ export const noteQueryResolvers: NoteQueryResolvers = {
         _,
         {
             id,
-            limit = 5,
+            limit = 20,
         }: {
             id: string;
             limit?: number;
@@ -460,53 +479,6 @@ export const noteQueryResolvers: NoteQueryResolvers = {
             },
         });
 
-        const nodes: Array<{ id: string; title: string; connections: number }> = [];
-        const links: Array<{ source: string; target: string }> = [];
-        const connectionCount: Record<string, number> = {};
-        const linkSet = new Set<string>();
-
-        for (const note of notes) {
-            if (!note.content) {
-                continue;
-            }
-
-            try {
-                const blocks = extractBlocksByType<{ id: string }>('reference', JSON.parse(note.content));
-
-                for (const block of blocks) {
-                    const targetId = block.props.id;
-
-                    if (targetId && String(note.id) !== targetId) {
-                        const linkKey = `${note.id}-${targetId}`;
-                        const reverseLinkKey = `${targetId}-${note.id}`;
-
-                        if (!linkSet.has(linkKey) && !linkSet.has(reverseLinkKey)) {
-                            linkSet.add(linkKey);
-                            links.push({
-                                source: String(note.id),
-                                target: targetId,
-                            });
-                            connectionCount[String(note.id)] = (connectionCount[String(note.id)] || 0) + 1;
-                            connectionCount[targetId] = (connectionCount[targetId] || 0) + 1;
-                        }
-                    }
-                }
-            } catch {
-                // Skip notes with invalid JSON content
-            }
-        }
-
-        for (const note of notes) {
-            nodes.push({
-                id: String(note.id),
-                title: note.title || 'Untitled',
-                connections: connectionCount[String(note.id)] || 0,
-            });
-        }
-
-        return {
-            nodes,
-            links,
-        };
+        return buildNoteGraph(notes);
     },
 };

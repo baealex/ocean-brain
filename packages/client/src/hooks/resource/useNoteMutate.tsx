@@ -40,12 +40,14 @@ const useNoteMutate = () => {
             ...(layout && { layout }),
         });
         if (response.type === 'error') {
-            return;
+            toast(response.errors[0].message);
+            return null;
         }
         navigate({
             to: NOTE_ROUTE,
             params: { id: response.createNote.id },
         });
+        return response.createNote.id;
     };
 
     const onPinned = async (id: string, isPinned: boolean, callback?: () => void) => {

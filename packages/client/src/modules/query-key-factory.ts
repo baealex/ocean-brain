@@ -70,7 +70,7 @@ export const queryKeys = {
                 },
             ] as const,
         detail: (id: string) => ['notes', 'detail', { id }] as const,
-        snapshots: (id: string, limit = 5) =>
+        snapshots: (id: string, limit = 20) =>
             [
                 'notes',
                 'snapshots',

@@ -54,6 +54,27 @@ describe('server-event-invalidation', () => {
         });
     });
 
+    it('invalidates note collection queries for web note updates', async () => {
+        const queryClient = createQueryClientMock();
+
+        await invalidateQueriesForServerEvent(queryClient, {
+            type: 'web.note.updated',
+            source: 'web',
+            noteId: '7',
+            updatedAt: '1779700304864',
+            editSessionId: 'editor-a',
+        });
+
+        expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+            queryKey: queryKeys.notes.listAll(),
+            exact: false,
+        });
+        expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+            queryKey: queryKeys.views.sectionNotesAll(),
+            exact: false,
+        });
+    });
+
     it('invalidates trash-related queries for MCP note deletes', async () => {
         const queryClient = createQueryClientMock();
 

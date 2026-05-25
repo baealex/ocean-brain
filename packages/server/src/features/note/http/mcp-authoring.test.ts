@@ -255,6 +255,36 @@ test('mcp update note handler emits an updated server event', async () => {
     ]);
 });
 
+test('mcp update note handler forwards MCP snapshot metadata without requiring a note version', async () => {
+    let receivedInput: unknown;
+    const handler = createMcpUpdateNoteHandler(async (input) => {
+        receivedInput = input;
+        return {
+            id: '7',
+            title: 'Renamed',
+            layout: 'wide',
+            createdAt: '2026-03-31T00:00:00.000Z',
+            updatedAt: '2026-04-01T00:00:00.000Z',
+        };
+    });
+
+    await handler(
+        {
+            body: {
+                id: '7',
+                title: 'Renamed',
+            },
+        } as never,
+        createResponse() as never,
+    );
+
+    assert.deepEqual(receivedInput, {
+        id: 7,
+        title: 'Renamed',
+        snapshotMeta: '{"entrypoint":"mcp","label":"MCP"}',
+    });
+});
+
 test('mcp update note handler rejects empty updates', async () => {
     const handler = createMcpUpdateNoteHandler(async () => {
         throw new Error('should not update');

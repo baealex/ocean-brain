@@ -167,7 +167,7 @@ export const noteQuery = gql`
 export const noteMutation = gql`
     type Mutation {
         createNote(note: NoteInput!): Note!
-        updateNote(id: ID!, note: NoteInput!, editSessionId: String): Note!
+        updateNote(id: ID!, note: NoteInput!, editSessionId: String, expectedUpdatedAt: String, force: Boolean): Note!
         deleteNote(id: ID!): Boolean!
         restoreNoteSnapshot(id: ID!): Note!
         restoreTrashedNote(id: ID!): Note!

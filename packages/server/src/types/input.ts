@@ -13,7 +13,7 @@ export interface SearchFilter {
 }
 
 export interface NoteInput {
-    title: string;
-    content: string;
+    title?: string;
+    content?: string;
     layout?: NoteLayout;
 }

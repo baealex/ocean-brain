@@ -1,4 +1,4 @@
-import { fetchTrashedNote, fetchTrashedNotes, purgeTrashedNote } from '~/apis/note.api';
+import { fetchNoteSnapshots, fetchTrashedNote, fetchTrashedNotes, purgeTrashedNote, updateNote } from '~/apis/note.api';
 import { graphQuery } from '~/modules/graph-query';
 
 vi.mock('~/modules/graph-query', () => ({ graphQuery: vi.fn() }));
@@ -85,6 +85,107 @@ describe('note.api', () => {
                 layout: 'wide',
                 tagNames: [],
             },
+        });
+    });
+
+    it('sends conditional update versions through GraphQL variables', async () => {
+        vi.mocked(graphQuery).mockResolvedValue({
+            type: 'success',
+            updateNote: {
+                id: '7',
+                title: 'Updated note',
+                updatedAt: '1770000000000',
+            },
+        } as never);
+
+        const response = await updateNote({
+            id: '7',
+            title: 'Updated note',
+            content: '[]',
+            editSessionId: 'session-1',
+            expectedUpdatedAt: '1769999999999',
+        });
+
+        expect(graphQuery).toHaveBeenCalledWith(expect.stringContaining('expectedUpdatedAt'), {
+            id: '7',
+            note: {
+                title: 'Updated note',
+                content: '[]',
+            },
+            editSessionId: 'session-1',
+            expectedUpdatedAt: '1769999999999',
+        });
+        expect(response).toEqual({
+            type: 'success',
+            updateNote: {
+                id: '7',
+                title: 'Updated note',
+                updatedAt: '1770000000000',
+            },
+        });
+    });
+
+    it('sends explicit force flags through GraphQL variables', async () => {
+        vi.mocked(graphQuery).mockResolvedValue({
+            type: 'success',
+            updateNote: {
+                id: '7',
+                title: 'Updated note',
+                updatedAt: '1770000000000',
+            },
+        } as never);
+
+        await updateNote({
+            id: '7',
+            title: 'Updated note',
+            force: true,
+        });
+
+        expect(graphQuery).toHaveBeenCalledWith(expect.stringContaining('$force: Boolean'), {
+            id: '7',
+            note: {
+                title: 'Updated note',
+            },
+            force: true,
+        });
+    });
+
+    it('sends layout-only forced updates without stale title or content', async () => {
+        vi.mocked(graphQuery).mockResolvedValue({
+            type: 'success',
+            updateNote: {
+                id: '7',
+                title: 'Updated note',
+                updatedAt: '1770000000000',
+            },
+        } as never);
+
+        await updateNote({
+            id: '7',
+            layout: 'full',
+            force: true,
+        });
+
+        expect(graphQuery).toHaveBeenCalledWith(expect.stringContaining('$force: Boolean'), {
+            id: '7',
+            note: {
+                layout: 'full',
+            },
+            force: true,
+        });
+    });
+
+    it('requests twenty note snapshots by default', async () => {
+        vi.mocked(graphQuery).mockResolvedValue({
+            type: 'success',
+            noteSnapshots: [],
+        } as never);
+
+        await fetchNoteSnapshots('7');
+
+        expect(graphQuery).toHaveBeenCalledWith(expect.stringContaining('query FetchNoteSnapshots'), {
+            id: '7',
+            limit: 20,
         });
     });
 });

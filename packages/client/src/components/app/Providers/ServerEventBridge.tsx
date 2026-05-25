@@ -3,16 +3,14 @@ import { useEffect } from 'react';
 import { redirectToLoginIfSessionExpired } from '~/modules/auth-redirect';
 import { invalidateQueriesForServerEvent } from '~/modules/server-event-invalidation';
 import {
-    MCP_NOTE_SERVER_EVENT_TYPES,
-    type McpNoteServerEventType,
+    NOTE_SERVER_EVENT_TYPES,
+    type NoteServerEventType,
     parseServerEvent,
     publishServerEvent,
+    subscribeServerEvent,
 } from '~/modules/server-events';
 
-const createServerEventListener = (
-    queryClient: ReturnType<typeof useQueryClient>,
-    expectedType: McpNoteServerEventType,
-): EventListener => {
+const createServerEventListener = (expectedType: NoteServerEventType): EventListener => {
     return (event) => {
         if (!(event instanceof MessageEvent) || typeof event.data !== 'string') {
             return;
@@ -25,12 +23,17 @@ const createServerEventListener = (
         }
 
         publishServerEvent(serverEvent);
-        void invalidateQueriesForServerEvent(queryClient, serverEvent);
     };
 };
 
 const ServerEventBridge = () => {
     const queryClient = useQueryClient();
+
+    useEffect(() => {
+        return subscribeServerEvent((event) => {
+            void invalidateQueriesForServerEvent(queryClient, event);
+        });
+    }, [queryClient]);
 
     useEffect(() => {
         if (typeof EventSource === 'undefined') {
@@ -41,8 +44,8 @@ const ServerEventBridge = () => {
         const authErrorListener = () => {
             void redirectToLoginIfSessionExpired();
         };
-        const cleanupListeners = MCP_NOTE_SERVER_EVENT_TYPES.map((eventType) => {
-            const listener = createServerEventListener(queryClient, eventType);
+        const cleanupListeners = NOTE_SERVER_EVENT_TYPES.map((eventType) => {
+            const listener = createServerEventListener(eventType);
 
             eventSource.addEventListener(eventType, listener);
 
@@ -60,7 +63,7 @@ const ServerEventBridge = () => {
             eventSource.removeEventListener('error', authErrorListener);
             eventSource.close();
         };
-    }, [queryClient]);
+    }, []);
 
     return null;
 };

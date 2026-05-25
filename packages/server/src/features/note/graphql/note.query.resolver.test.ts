@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createAllNotesQueryResolver } from './note.query.resolver.js';
+import {
+    createAllNotesQueryResolver,
+    createBackReferencesQueryResolver,
+    createNoteGraphQueryResolver,
+} from './note.query.resolver.js';
 
 test('allNotes resolver uses stored searchable text with DB pagination when no stale notes exist', async () => {
     const findCalls: unknown[] = [];
@@ -225,4 +229,125 @@ test('allNotes resolver leaves unfiltered queries on the fast default path', asy
     });
     assert.equal(result.totalCount, 3);
     assert.deepEqual(result.notes, []);
+});
+
+test('backReferences resolver finds structurally valid references in formatted note JSON', async () => {
+    const resolver = createBackReferencesQueryResolver({
+        findCandidateNotes: async (noteId) => {
+            assert.equal(noteId, 7);
+
+            return [
+                {
+                    id: 8,
+                    title: 'Source note',
+                    content: JSON.stringify(
+                        [
+                            {
+                                id: 'paragraph-1',
+                                type: 'paragraph',
+                                props: {},
+                                content: [
+                                    {
+                                        type: 'reference',
+                                        props: {
+                                            id: '7',
+                                            title: 'Target note',
+                                        },
+                                    },
+                                ],
+                                children: [],
+                            },
+                        ],
+                        null,
+                        2,
+                    ),
+                    searchableText: '',
+                    searchableTextVersion: 1,
+                    createdAt: new Date('2026-04-01T00:00:00.000Z'),
+                    updatedAt: new Date('2026-04-02T00:00:00.000Z'),
+                    pinned: false,
+                    order: 0,
+                    layout: 'wide',
+                },
+                {
+                    id: 9,
+                    title: 'Non-reference note',
+                    content: JSON.stringify([
+                        {
+                            id: 'paragraph-1',
+                            type: 'paragraph',
+                            props: {},
+                            content: [
+                                {
+                                    type: 'text',
+                                    text: 'The word reference alone is not a link.',
+                                    styles: {},
+                                },
+                            ],
+                            children: [],
+                        },
+                    ]),
+                    searchableText: '',
+                    searchableTextVersion: 1,
+                    createdAt: new Date('2026-04-01T00:00:00.000Z'),
+                    updatedAt: new Date('2026-04-03T00:00:00.000Z'),
+                    pinned: false,
+                    order: 0,
+                    layout: 'wide',
+                },
+            ] as never;
+        },
+    });
+
+    const result = await resolver(null, { id: '7' });
+
+    assert.deepEqual(
+        result.map((note) => note.id),
+        [8],
+    );
+});
+
+test('noteGraph resolver uses the shared structural reference parser', async () => {
+    const resolver = createNoteGraphQueryResolver({
+        findNotes: async () => [
+            {
+                id: 1,
+                title: 'Source',
+                content: JSON.stringify(
+                    [
+                        {
+                            id: 'paragraph-1',
+                            type: 'paragraph',
+                            props: {},
+                            content: [
+                                {
+                                    type: 'reference',
+                                    props: {
+                                        id: '2',
+                                        title: 'Target',
+                                    },
+                                },
+                            ],
+                            children: [],
+                        },
+                    ],
+                    null,
+                    2,
+                ),
+            },
+            {
+                id: 2,
+                title: 'Target',
+                content: JSON.stringify([]),
+            },
+        ],
+    });
+
+    assert.deepEqual(await resolver(), {
+        nodes: [
+            { id: '1', title: 'Source', connections: 1 },
+            { id: '2', title: 'Target', connections: 1 },
+        ],
+        links: [{ source: '1', target: '2' }],
+    });
 });

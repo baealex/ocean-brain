@@ -4,7 +4,7 @@ import {
     buildNoteGraph,
     contentReferencesNote,
     extractReferenceBlocksFromContent,
-    NOTE_REFERENCE_CONTENT_PREFILTER,
+    normalizeReferenceId,
     syncReferenceTitlesInContent,
 } from '~/features/note/services/content-blocks.js';
 import {
@@ -245,6 +245,51 @@ export const createAllNotesQueryResolver = (
 
 type NoteQueryResolvers = NonNullable<IResolvers['Query']>;
 
+interface BackReferencesQueryResolverDeps {
+    findCandidateNotes: (noteId: number) => Promise<Note[]>;
+}
+
+export const createBackReferencesQueryResolver = (
+    deps: BackReferencesQueryResolverDeps = {
+        findCandidateNotes: (noteId) =>
+            models.note.findMany({
+                orderBy: [{ pinned: 'desc' }, { updatedAt: 'desc' }],
+                where: {
+                    NOT: { id: noteId },
+                },
+            }),
+    },
+) => {
+    return async (_: unknown, { id }: { id: string }) => {
+        const notes = await deps.findCandidateNotes(Number(id));
+
+        return notes.filter((note) => contentReferencesNote(note.content, id));
+    };
+};
+
+interface NoteGraphQueryResolverDeps {
+    findNotes: () => Promise<Array<Pick<Note, 'id' | 'title' | 'content'>>>;
+}
+
+export const createNoteGraphQueryResolver = (
+    deps: NoteGraphQueryResolverDeps = {
+        findNotes: () =>
+            models.note.findMany({
+                select: {
+                    id: true,
+                    title: true,
+                    content: true,
+                },
+            }),
+    },
+) => {
+    return async () => {
+        const notes = await deps.findNotes();
+
+        return buildNoteGraph(notes);
+    };
+};
+
 export const noteQueryResolvers: NoteQueryResolvers = {
     allNotes: createAllNotesQueryResolver(),
     notesInDateRange: async (
@@ -347,17 +392,7 @@ export const noteQueryResolvers: NoteQueryResolvers = {
             orderBy: { updatedAt: 'desc' },
             where: { content: { contains: src } },
         }),
-    backReferences: async (_, { id }: { id: string }) => {
-        const notes = await models.note.findMany({
-            orderBy: [{ pinned: 'desc' }, { updatedAt: 'desc' }],
-            where: {
-                content: { contains: NOTE_REFERENCE_CONTENT_PREFILTER },
-                NOT: { id: Number(id) },
-            },
-        });
-
-        return notes.filter((note) => contentReferencesNote(note.content, id));
-    },
+    backReferences: createBackReferencesQueryResolver(),
     note: async (_, { id }: { id: string }) => {
         const note = await models.note.findUnique({ where: { id: Number(id) } });
 
@@ -376,7 +411,13 @@ export const noteQueryResolvers: NoteQueryResolvers = {
         }
 
         const referenceIds = Array.from(
-            new Set(blocks.map((block) => Number(block.props?.id)).filter(Number.isFinite)),
+            new Set(
+                blocks
+                    .map((block) => normalizeReferenceId(block.props?.id))
+                    .filter((referenceId): referenceId is string => referenceId !== null)
+                    .map(Number)
+                    .filter(Number.isFinite),
+            ),
         );
         const references = await models.note.findMany({ where: { id: { in: referenceIds } } });
         const titlesById = new Map(
@@ -470,15 +511,5 @@ export const noteQueryResolvers: NoteQueryResolvers = {
             offset: Number(pagination.offset),
         });
     },
-    noteGraph: async () => {
-        const notes = await models.note.findMany({
-            select: {
-                id: true,
-                title: true,
-                content: true,
-            },
-        });
-
-        return buildNoteGraph(notes);
-    },
+    noteGraph: createNoteGraphQueryResolver(),
 };

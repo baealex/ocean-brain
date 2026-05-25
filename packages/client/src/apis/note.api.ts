@@ -280,8 +280,13 @@ export interface NoteSnapshotMeta {
 export interface NoteSnapshot {
     id: string;
     title: string;
+    contentPreview: string;
     createdAt: string;
     meta: NoteSnapshotMeta;
+}
+
+export interface NoteSnapshotDetail extends NoteSnapshot {
+    contentAsMarkdown: string;
 }
 
 export interface TrashedNote {
@@ -331,7 +336,7 @@ export const updateNote = ({ id, editSessionId, expectedUpdatedAt, force, ...not
     );
 };
 
-export function fetchNoteSnapshots(id: string, limit = 20) {
+export function fetchNoteSnapshots(id: string, limit = 10) {
     return graphQuery<
         {
             noteSnapshots: NoteSnapshot[];
@@ -345,6 +350,7 @@ export function fetchNoteSnapshots(id: string, limit = 20) {
             noteSnapshots(id: $id, limit: $limit) {
                 id
                 title
+                contentPreview
                 createdAt
                 meta {
                     entrypoint
@@ -356,6 +362,30 @@ export function fetchNoteSnapshots(id: string, limit = 20) {
             id,
             limit,
         },
+    );
+}
+
+export function fetchNoteSnapshot(id: string) {
+    return graphQuery<
+        {
+            noteSnapshot: NoteSnapshotDetail | null;
+        },
+        { id: string }
+    >(
+        `query FetchNoteSnapshot($id: ID!) {
+            noteSnapshot(id: $id) {
+                id
+                title
+                contentPreview
+                contentAsMarkdown
+                createdAt
+                meta {
+                    entrypoint
+                    label
+                }
+            }
+        }`,
+        { id },
     );
 }
 

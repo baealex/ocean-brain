@@ -13,7 +13,7 @@ import {
     NOTE_SEARCH_TEXT_SCHEMA_VERSION,
     parseNoteSearchQuery,
 } from '~/features/note/services/search.js';
-import { listNoteSnapshots } from '~/features/note/services/snapshot.js';
+import { getNoteSnapshot, listNoteSnapshots } from '~/features/note/services/snapshot.js';
 import {
     buildNoteTagNamesWhere,
     type NoteTagMatchMode,
@@ -484,13 +484,16 @@ export const noteQueryResolvers: NoteQueryResolvers = {
         _,
         {
             id,
-            limit = 20,
+            limit = 10,
         }: {
             id: string;
             limit?: number;
         },
     ) => {
         return listNoteSnapshots(Number(id), Number(limit));
+    },
+    noteSnapshot: async (_, { id }: { id: string }) => {
+        return getNoteSnapshot(Number(id));
     },
     trashedNote: async (_, { id }: { id: string }) => {
         return getTrashedNoteById(Number(id));

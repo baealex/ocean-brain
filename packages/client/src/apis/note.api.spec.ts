@@ -1,4 +1,11 @@
-import { fetchNoteSnapshots, fetchTrashedNote, fetchTrashedNotes, purgeTrashedNote, updateNote } from '~/apis/note.api';
+import {
+    fetchNoteSnapshot,
+    fetchNoteSnapshots,
+    fetchTrashedNote,
+    fetchTrashedNotes,
+    purgeTrashedNote,
+    updateNote,
+} from '~/apis/note.api';
 import { graphQuery } from '~/modules/graph-query';
 
 vi.mock('~/modules/graph-query', () => ({ graphQuery: vi.fn() }));
@@ -175,7 +182,7 @@ describe('note.api', () => {
         });
     });
 
-    it('requests twenty note snapshots by default', async () => {
+    it('requests ten note snapshot previews by default', async () => {
         vi.mocked(graphQuery).mockResolvedValue({
             type: 'success',
             noteSnapshots: [],
@@ -183,9 +190,49 @@ describe('note.api', () => {
 
         await fetchNoteSnapshots('7');
 
+        const query = vi.mocked(graphQuery).mock.calls[0]?.[0] as string;
+        expect(query).toContain('contentPreview');
+        expect(query).not.toContain('contentAsMarkdown');
         expect(graphQuery).toHaveBeenCalledWith(expect.stringContaining('query FetchNoteSnapshots'), {
             id: '7',
-            limit: 20,
+            limit: 10,
+        });
+    });
+
+    it('requests one note snapshot with full markdown content', async () => {
+        vi.mocked(graphQuery).mockResolvedValue({
+            type: 'success',
+            noteSnapshot: {
+                id: 'snapshot-1',
+                title: 'Snapshot title',
+                contentPreview: 'Preview',
+                contentAsMarkdown: 'Full snapshot body',
+                createdAt: '2026-03-31T01:00:00.000Z',
+                meta: {
+                    entrypoint: 'web',
+                    label: 'Web browser',
+                },
+            },
+        } as never);
+
+        const response = await fetchNoteSnapshot('snapshot-1');
+
+        expect(graphQuery).toHaveBeenCalledWith(expect.stringContaining('query FetchNoteSnapshot'), {
+            id: 'snapshot-1',
+        });
+        expect(response).toEqual({
+            type: 'success',
+            noteSnapshot: {
+                id: 'snapshot-1',
+                title: 'Snapshot title',
+                contentPreview: 'Preview',
+                contentAsMarkdown: 'Full snapshot body',
+                createdAt: '2026-03-31T01:00:00.000Z',
+                meta: {
+                    entrypoint: 'web',
+                    label: 'Web browser',
+                },
+            },
         });
     });
 });

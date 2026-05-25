@@ -57,6 +57,78 @@ test('extractReferenceBlocksFromContent reads nested inline references', () => {
     assert.equal(contentReferencesNote(content, 43), true);
 });
 
+test('contentReferencesNote compares normalized reference ids', () => {
+    const content = JSON.stringify([
+        {
+            id: 'paragraph-1',
+            type: 'paragraph',
+            props: {},
+            content: [
+                {
+                    type: 'reference',
+                    props: {
+                        title: 'Linked note',
+                        id: ' 42 ',
+                    },
+                },
+            ],
+            children: [],
+        },
+    ]);
+
+    assert.equal(contentReferencesNote(content, 42), true);
+    assert.equal(contentReferencesNote(content, '42'), true);
+});
+
+test('extractReferenceBlocksFromContent reads references inside deeply nested list items', () => {
+    const content = JSON.stringify([
+        {
+            id: 'list-1',
+            type: 'bulletListItem',
+            props: {},
+            content: [{ type: 'text', text: 'Level 1', styles: {} }],
+            children: [
+                {
+                    id: 'list-2',
+                    type: 'bulletListItem',
+                    props: {},
+                    content: [{ type: 'text', text: 'Level 2', styles: {} }],
+                    children: [
+                        {
+                            id: 'list-3',
+                            type: 'bulletListItem',
+                            props: {},
+                            content: [
+                                {
+                                    type: 'text',
+                                    text: 'Level 3 ',
+                                    styles: {},
+                                },
+                                {
+                                    type: 'reference',
+                                    props: {
+                                        id: '99',
+                                        title: 'Deep reference',
+                                    },
+                                },
+                            ],
+                            children: [],
+                        },
+                    ],
+                },
+            ],
+        },
+    ]);
+
+    const references = extractReferenceBlocksFromContent(content);
+
+    assert.deepEqual(
+        references.map((reference) => reference.props?.id),
+        ['99'],
+    );
+    assert.equal(contentReferencesNote(content, 99), true);
+});
+
 test('extractReferenceBlocksFromContent reads references inside table cells', () => {
     const content = JSON.stringify([
         {
@@ -94,6 +166,31 @@ test('syncReferenceTitlesInContent updates reference props structurally', () => 
                     props: {
                         title: 'Old title',
                         id: '7',
+                    },
+                },
+            ],
+            children: [],
+        },
+    ]);
+
+    const syncedContent = syncReferenceTitlesInContent(content, new Map([['7', 'Current title']]));
+
+    assert.ok(syncedContent);
+    assert.equal(JSON.parse(syncedContent)[0].content[0].props.title, 'Current title');
+});
+
+test('syncReferenceTitlesInContent matches normalized reference ids', () => {
+    const content = JSON.stringify([
+        {
+            id: 'paragraph-1',
+            type: 'paragraph',
+            props: {},
+            content: [
+                {
+                    type: 'reference',
+                    props: {
+                        title: 'Old title',
+                        id: ' 7 ',
                     },
                 },
             ],

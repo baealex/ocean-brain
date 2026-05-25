@@ -24,10 +24,22 @@ export interface NoteGraphResult {
     links: Array<{ source: string; target: string }>;
 }
 
-export const NOTE_REFERENCE_CONTENT_PREFILTER = '"type":"reference"';
-
 export const parseNoteContent = (content: string): unknown[] | null => {
     return parseBlockNoteContent(content);
+};
+
+export const normalizeReferenceId = (id: unknown) => {
+    if (typeof id === 'number') {
+        return Number.isFinite(id) ? String(id) : null;
+    }
+
+    if (typeof id !== 'string') {
+        return null;
+    }
+
+    const normalizedId = id.trim();
+
+    return normalizedId.length > 0 ? normalizedId : null;
 };
 
 export const extractBlocksByType = <T>(type: string, dataArray: unknown): BlockNote<T>[] => {
@@ -44,7 +56,7 @@ export const extractBlocksByType = <T>(type: string, dataArray: unknown): BlockN
 
 export const extractReferenceBlocks = (dataArray: unknown) => {
     return extractBlocksByType<ReferenceProps>('reference', dataArray).filter((block) => {
-        return block.props?.id !== undefined && block.props.id !== null && String(block.props.id).trim() !== '';
+        return normalizeReferenceId(block.props?.id) !== null;
     });
 };
 
@@ -54,8 +66,15 @@ export const extractReferenceBlocksFromContent = (content: string) => {
 };
 
 export const contentReferencesNote = (content: string, noteId: string | number) => {
-    const targetId = String(noteId);
-    return extractReferenceBlocksFromContent(content).some((block) => String(block.props?.id) === targetId);
+    const targetId = normalizeReferenceId(noteId);
+
+    if (!targetId) {
+        return false;
+    }
+
+    return extractReferenceBlocksFromContent(content).some(
+        (block) => normalizeReferenceId(block.props?.id) === targetId,
+    );
 };
 
 export const syncReferenceTitlesInContent = (content: string, titlesById: Map<string, string>) => {
@@ -69,13 +88,13 @@ export const syncReferenceTitlesInContent = (content: string, titlesById: Map<st
 
     for (const block of extractReferenceBlocks(parsed)) {
         const props = block.props;
-        const id = props?.id;
+        const id = normalizeReferenceId(props?.id);
 
-        if (!props || id === undefined || id === null) {
+        if (!props || id === null) {
             continue;
         }
 
-        const title = titlesById.get(String(id));
+        const title = titlesById.get(id);
 
         if (title !== undefined && props.title !== title) {
             block.props = {
@@ -99,7 +118,7 @@ export const buildNoteGraph = (notes: NoteGraphInput[]): NoteGraphResult => {
         const sourceId = String(note.id);
 
         for (const block of extractReferenceBlocksFromContent(note.content)) {
-            const targetId = block.props?.id ? String(block.props.id) : '';
+            const targetId = normalizeReferenceId(block.props?.id);
 
             if (!targetId || sourceId === targetId || !existingNoteIds.has(targetId)) {
                 continue;

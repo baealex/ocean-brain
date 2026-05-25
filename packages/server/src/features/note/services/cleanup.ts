@@ -1,5 +1,5 @@
 import models from '~/models.js';
-import { contentReferencesNote, NOTE_REFERENCE_CONTENT_PREFILTER } from './content-blocks.js';
+import { contentReferencesNote } from './content-blocks.js';
 import { trashNoteById as moveNoteToTrashById } from './trash.js';
 
 export interface NoteCleanupBackReference {
@@ -275,7 +275,6 @@ const noteCleanupService = createNoteCleanupService({
                     content: true,
                 },
                 where: {
-                    content: { contains: NOTE_REFERENCE_CONTENT_PREFILTER },
                     NOT: { id: noteId },
                 },
                 orderBy: [{ pinned: 'desc' }, { updatedAt: 'desc' }],

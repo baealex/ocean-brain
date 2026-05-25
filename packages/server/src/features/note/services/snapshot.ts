@@ -1,11 +1,16 @@
+import { ensureTagByName } from '~/features/tag/services/organization.js';
 import models, { type NoteLayout } from '~/models.js';
+import { blocksToMarkdown, extractTagIdsFromContentJson } from '~/modules/blocknote.js';
+import { type BlockNoteTreeNode, parseBlockNoteContent, walkBlockNoteTree } from '~/modules/blocknote-tree.js';
 import {
     createRetentionCutoff,
     RECOVERY_CLEANUP_BATCH_LIMIT,
     SNAPSHOT_MAX_PER_NOTE,
     SNAPSHOT_RETENTION_DAYS,
 } from '~/modules/recovery-retention.js';
-import { buildNoteSearchProjection } from './search.js';
+import { buildNoteSearchProjection, extractVisibleSearchTextFromContent } from './search.js';
+
+const SNAPSHOT_CONTENT_PREVIEW_MAX_LENGTH = 240;
 
 interface NoteRecord {
     id: number;
@@ -42,6 +47,7 @@ interface NoteSnapshotDeps {
     findSnapshotById: (id: number) => Promise<NoteSnapshotRecord | null>;
     purgeExpiredSnapshots: (before: Date, limit: number) => Promise<number>;
     trimOverflowSnapshots: (noteId: number, keep: number, limit: number) => Promise<number>;
+    resolveRestoredTags?: (content: string) => Promise<ResolvedRestoredSnapshotTags | null>;
     updateNote: (
         id: number,
         input: {
@@ -50,6 +56,7 @@ interface NoteSnapshotDeps {
             pinned: boolean;
             order: number;
             layout: NoteLayout;
+            tagIds?: number[];
         },
     ) => Promise<NoteRecord>;
 }
@@ -67,11 +74,29 @@ interface NoteSnapshotPayload {
     layout: NoteLayout;
 }
 
+interface TagRecord {
+    id: number;
+    name: string;
+}
+
+interface ResolvedRestoredSnapshotTags {
+    content: string;
+    tagIds: number[];
+}
+
+interface ResolveRestoredSnapshotTagsDeps {
+    ensureTagByName: (name: string) => Promise<TagRecord>;
+    findTagsByIds: (ids: number[]) => Promise<TagRecord[]>;
+}
+
 export interface NoteSnapshotSummary {
     id: string;
     title: string;
     createdAt: string;
     meta: NoteSnapshotMeta;
+    contentPreview: string;
+    contentAsMarkdown?: string;
+    payload?: string;
 }
 
 const parseMeta = (value?: string | null): NoteSnapshotMeta => {
@@ -90,11 +115,31 @@ const parseMeta = (value?: string | null): NoteSnapshotMeta => {
     }
 };
 
+const readSnapshotContent = (payload: string) => {
+    try {
+        return parsePayload(payload).content;
+    } catch {
+        return '';
+    }
+};
+
+const buildSnapshotContentPreview = (content: string) => {
+    const preview = extractVisibleSearchTextFromContent(content);
+
+    if (preview.length <= SNAPSHOT_CONTENT_PREVIEW_MAX_LENGTH) {
+        return preview;
+    }
+
+    return `${preview.slice(0, SNAPSHOT_CONTENT_PREVIEW_MAX_LENGTH).trimEnd()}...`;
+};
+
 const serializeSnapshot = (snapshot: NoteSnapshotRecord): NoteSnapshotSummary => ({
     id: String(snapshot.id),
     title: snapshot.title,
+    contentPreview: buildSnapshotContentPreview(readSnapshotContent(snapshot.payload)),
     createdAt: snapshot.createdAt.toISOString(),
     meta: parseMeta(snapshot.meta),
+    payload: snapshot.payload,
 });
 
 const serializePayload = (note: NoteRecord): string => {
@@ -127,6 +172,132 @@ const parsePayload = (payload: string): NoteSnapshotPayload => {
     }
 
     return parsed as NoteSnapshotPayload;
+};
+
+const extractRestoredTagIds = (content: string): number[] | null => {
+    try {
+        return extractTagIdsFromContentJson(content)
+            .map(normalizeRestoredTagId)
+            .filter((id): id is number => id !== null);
+    } catch {
+        return null;
+    }
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+    return typeof value === 'object' && value !== null;
+};
+
+const normalizeRestoredTagId = (value: unknown) => {
+    if (value === undefined || value === null) {
+        return null;
+    }
+
+    const normalized = typeof value === 'string' ? value.trim() : value;
+
+    if (normalized === '') {
+        return null;
+    }
+
+    const numericId = Number(normalized);
+    return Number.isSafeInteger(numericId) && numericId > 0 ? numericId : null;
+};
+
+const normalizeRestoredTagName = (value: unknown) => {
+    if (typeof value !== 'string') {
+        return null;
+    }
+
+    const normalized = value.trim();
+    return normalized ? normalized : null;
+};
+
+export const resolveRestoredSnapshotTags = async (
+    content: string,
+    deps: ResolveRestoredSnapshotTagsDeps,
+): Promise<ResolvedRestoredSnapshotTags | null> => {
+    const parsed = parseBlockNoteContent(content);
+
+    if (!parsed) {
+        return null;
+    }
+
+    const tagRefs: Array<{
+        id: number | null;
+        name: string | null;
+        node: BlockNoteTreeNode;
+        props: Record<string, unknown>;
+    }> = [];
+
+    walkBlockNoteTree(parsed, (node) => {
+        if (node.type !== 'tag' || !isRecord(node.props)) {
+            return;
+        }
+
+        tagRefs.push({
+            id: normalizeRestoredTagId(node.props.id),
+            name: normalizeRestoredTagName(node.props.tag),
+            node,
+            props: node.props,
+        });
+    });
+
+    if (tagRefs.length === 0) {
+        return { content, tagIds: [] };
+    }
+
+    const candidateIds = Array.from(new Set(tagRefs.map((tag) => tag.id).filter((id): id is number => id !== null)));
+    const existingTags = candidateIds.length > 0 ? await deps.findTagsByIds(candidateIds) : [];
+    const existingTagIds = new Set(existingTags.map((tag) => tag.id));
+    const tagIds = new Set<number>();
+    let contentChanged = false;
+
+    for (const tagRef of tagRefs) {
+        if (tagRef.id !== null && existingTagIds.has(tagRef.id)) {
+            tagIds.add(tagRef.id);
+            continue;
+        }
+
+        if (!tagRef.name) {
+            continue;
+        }
+
+        try {
+            const resolvedTag = await deps.ensureTagByName(tagRef.name);
+            tagRef.node.props = {
+                ...tagRef.props,
+                id: String(resolvedTag.id),
+                tag: resolvedTag.name,
+            };
+            tagIds.add(resolvedTag.id);
+            contentChanged = true;
+        } catch {
+            continue;
+        }
+    }
+
+    return {
+        content: contentChanged ? JSON.stringify(parsed) : content,
+        tagIds: [...tagIds],
+    };
+};
+
+export const renderNoteSnapshotContentAsMarkdown = async (payload: string) => {
+    try {
+        const snapshotPayload = parsePayload(payload);
+        return blocksToMarkdown(snapshotPayload.content);
+    } catch {
+        return '';
+    }
+};
+
+const serializeSnapshotWithContent = async (snapshot: NoteSnapshotRecord): Promise<NoteSnapshotSummary> => {
+    const contentAsMarkdown = await renderNoteSnapshotContentAsMarkdown(snapshot.payload);
+
+    return {
+        ...serializeSnapshot(snapshot),
+        contentAsMarkdown,
+    };
 };
 
 export const createSnapshotMetaFromUserAgent = (userAgent?: string | null): string | undefined => {
@@ -235,6 +406,17 @@ export const createNoteSnapshotService = (deps: NoteSnapshotDeps) => ({
         return snapshots.map(serializeSnapshot);
     },
 
+    getSnapshot: async (snapshotId: number) => {
+        await deps.purgeExpiredSnapshots(createRetentionCutoff(SNAPSHOT_RETENTION_DAYS), RECOVERY_CLEANUP_BATCH_LIMIT);
+        const snapshot = await deps.findSnapshotById(snapshotId);
+
+        if (!snapshot) {
+            return null;
+        }
+
+        return serializeSnapshotWithContent(snapshot);
+    },
+
     restoreSnapshot: async (snapshotId: number, options?: { meta?: string }) => {
         await deps.purgeExpiredSnapshots(createRetentionCutoff(SNAPSHOT_RETENTION_DAYS), RECOVERY_CLEANUP_BATCH_LIMIT);
 
@@ -250,6 +432,19 @@ export const createNoteSnapshotService = (deps: NoteSnapshotDeps) => ({
             return null;
         }
 
+        const payload = parsePayload(snapshot.payload);
+        const resolvedTags = deps.resolveRestoredTags
+            ? await deps.resolveRestoredTags(payload.content)
+            : extractRestoredTagIds(payload.content);
+        const restoredPayload =
+            resolvedTags && !Array.isArray(resolvedTags)
+                ? {
+                      ...payload,
+                      content: resolvedTags.content,
+                  }
+                : payload;
+        const restoredTagIds = Array.isArray(resolvedTags) ? resolvedTags : resolvedTags?.tagIds;
+
         const currentPayload = serializePayload(note);
         const latestSnapshot = await deps.findLatestSnapshot(note.id);
 
@@ -262,11 +457,14 @@ export const createNoteSnapshotService = (deps: NoteSnapshotDeps) => ({
             });
         }
 
+        const restoredNote = await deps.updateNote(snapshot.noteId, {
+            ...restoredPayload,
+            ...(restoredTagIds !== undefined ? { tagIds: restoredTagIds } : {}),
+        });
+
         await deps.trimOverflowSnapshots(note.id, SNAPSHOT_MAX_PER_NOTE, RECOVERY_CLEANUP_BATCH_LIMIT);
 
-        const payload = parsePayload(snapshot.payload);
-
-        return deps.updateNote(snapshot.noteId, payload);
+        return restoredNote;
     },
 });
 
@@ -301,6 +499,26 @@ export const defaultNoteSnapshotService = createNoteSnapshotService({
     },
     purgeExpiredSnapshots: defaultPurgeExpiredSnapshots,
     trimOverflowSnapshots: defaultTrimOverflowSnapshots,
+    resolveRestoredTags: async (content) => {
+        return resolveRestoredSnapshotTags(content, {
+            ensureTagByName: async (name) => {
+                const result = await ensureTagByName(name);
+                return {
+                    id: Number(result.tag.id),
+                    name: result.tag.name,
+                };
+            },
+            findTagsByIds: async (ids) => {
+                return models.tag.findMany({
+                    where: { id: { in: ids } },
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                });
+            },
+        });
+    },
     listSnapshots: async (noteId, limit) => {
         return models.noteSnapshot.findMany({
             where: { noteId },
@@ -312,14 +530,17 @@ export const defaultNoteSnapshotService = createNoteSnapshotService({
         return models.noteSnapshot.findUnique({ where: { id } });
     },
     updateNote: async (id, input) => {
+        const { tagIds, ...noteInput } = input;
+
         return models.note.update({
             where: { id },
             data: {
-                ...input,
+                ...noteInput,
                 ...buildNoteSearchProjection({
-                    title: input.title,
-                    content: input.content,
+                    title: noteInput.title,
+                    content: noteInput.content,
                 }),
+                ...(tagIds !== undefined ? { tags: { set: tagIds.map((tagId) => ({ id: tagId })) } } : {}),
             },
         });
     },
@@ -337,6 +558,10 @@ export const captureNoteBaseline = async (input: {
 
 export const listNoteSnapshots = async (noteId: number, limit?: number) => {
     return defaultNoteSnapshotService.listSnapshots(noteId, limit);
+};
+
+export const getNoteSnapshot = async (snapshotId: number) => {
+    return defaultNoteSnapshotService.getSnapshot(snapshotId);
 };
 
 export const restoreNoteSnapshot = async (snapshotId: number, options?: { meta?: string }) => {

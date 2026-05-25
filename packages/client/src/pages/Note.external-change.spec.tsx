@@ -33,6 +33,7 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('~/apis/note.api', () => ({
     fetchNote: vi.fn(),
     updateNote: vi.fn(),
+    fetchNoteSnapshot: vi.fn(),
     fetchNoteSnapshots: vi.fn(),
     restoreNoteSnapshot: vi.fn(),
 }));

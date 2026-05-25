@@ -70,7 +70,7 @@ export const queryKeys = {
                 },
             ] as const,
         detail: (id: string) => ['notes', 'detail', { id }] as const,
-        snapshots: (id: string, limit = 20) =>
+        snapshots: (id: string, limit = 10) =>
             [
                 'notes',
                 'snapshots',
@@ -79,6 +79,7 @@ export const queryKeys = {
                     limit,
                 },
             ] as const,
+        snapshotDetail: (id: string) => ['notes', 'snapshot-detail', { id }] as const,
         trashAll: () => ['notes', 'trash'] as const,
         trash: (params: Pick<FetchNotesParams, 'limit' | 'offset'> = {}) =>
             [

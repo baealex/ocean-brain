@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createNoteSnapshotService } from './snapshot.js';
+import { createNoteSnapshotService, resolveRestoredSnapshotTags } from './snapshot.js';
 
 test('captureBaseline stores one snapshot per note edit session', async () => {
     const snapshots: Array<{
@@ -198,10 +198,11 @@ test('captureBaseline creates a new snapshot when the payload changed in a new s
 
     assert.equal(snapshot?.id, '2');
     assert.equal(snapshots.length, 2);
-    assert.deepEqual(trimCalls, [{ noteId: 7, keep: 20, limit: 100 }]);
+    assert.deepEqual(trimCalls, [{ noteId: 7, keep: 10, limit: 100 }]);
 });
 
 test('restoreSnapshot reapplies payload and stores the current state first', async () => {
+    const calls: string[] = [];
     const createdSnapshots: Array<{
         id: number;
         noteId: number;
@@ -234,6 +235,7 @@ test('restoreSnapshot reapplies payload and stores the current state first', asy
         findSnapshotByEditSessionId: async () => null,
         findLatestSnapshot: async () => null,
         createSnapshot: async (input) => {
+            calls.push('createSnapshot');
             const snapshot = {
                 id: createdSnapshots.length + 10,
                 noteId: input.noteId,
@@ -247,7 +249,10 @@ test('restoreSnapshot reapplies payload and stores the current state first', asy
             return snapshot;
         },
         purgeExpiredSnapshots: async () => 0,
-        trimOverflowSnapshots: async () => 0,
+        trimOverflowSnapshots: async () => {
+            calls.push('trimOverflowSnapshots');
+            return 0;
+        },
         listSnapshots: async () => [],
         findSnapshotById: async () => ({
             id: 3,
@@ -265,6 +270,7 @@ test('restoreSnapshot reapplies payload and stores the current state first', asy
             createdAt: new Date('2026-03-30T00:00:00.000Z'),
         }),
         updateNote: async (id, input) => {
+            calls.push('updateNote');
             updated.push({
                 id,
                 input,
@@ -284,6 +290,7 @@ test('restoreSnapshot reapplies payload and stores the current state first', asy
 
     assert.equal(createdSnapshots.length, 1);
     assert.equal(createdSnapshots[0]?.title, 'Current title');
+    assert.deepEqual(calls, ['createSnapshot', 'updateNote', 'trimOverflowSnapshots']);
     assert.deepEqual(updated, [
         {
             id: 7,
@@ -389,6 +396,255 @@ test('restoreSnapshot skips saving a safety snapshot when the latest snapshot al
     assert.equal(restored?.title, 'Previous title');
 });
 
+test('restoreSnapshot keeps existing snapshots when note update fails', async () => {
+    let trimCallCount = 0;
+    const service = createNoteSnapshotService({
+        findNoteById: async () => ({
+            id: 7,
+            title: 'Current title',
+            content: '{"type":"current"}',
+            pinned: false,
+            order: 0,
+            layout: 'wide',
+        }),
+        findSnapshotByEditSessionId: async () => null,
+        findLatestSnapshot: async () => null,
+        createSnapshot: async (input) => ({
+            id: 10,
+            noteId: input.noteId,
+            title: input.title,
+            payload: input.payload,
+            editSessionId: input.editSessionId ?? null,
+            meta: input.meta ?? null,
+            createdAt: new Date('2026-03-31T00:00:00.000Z'),
+        }),
+        purgeExpiredSnapshots: async () => 0,
+        trimOverflowSnapshots: async () => {
+            trimCallCount += 1;
+            return 0;
+        },
+        listSnapshots: async () => [],
+        findSnapshotById: async () => ({
+            id: 3,
+            noteId: 7,
+            title: 'Previous title',
+            payload: JSON.stringify({
+                title: 'Previous title',
+                content: '{"type":"previous"}',
+                pinned: false,
+                order: 0,
+                layout: 'wide',
+            }),
+            editSessionId: 'session-1',
+            meta: '{"label":"Web browser"}',
+            createdAt: new Date('2026-03-30T00:00:00.000Z'),
+        }),
+        updateNote: async () => {
+            throw new Error('UPDATE_FAILED');
+        },
+    });
+
+    await assert.rejects(() => service.restoreSnapshot(3), /UPDATE_FAILED/);
+    assert.equal(trimCallCount, 0);
+});
+
+test('restoreSnapshot syncs tag relations from restored content', async () => {
+    const restoredContent = JSON.stringify([
+        {
+            type: 'paragraph',
+            content: [
+                { type: 'tag', props: { id: '5', tag: '@restored' } },
+                { type: 'text', text: ' and ', styles: {} },
+                { type: 'tag', props: { id: '7', tag: '@second' } },
+            ],
+        },
+    ]);
+    const updated: Array<{
+        id: number;
+        input: {
+            title: string;
+            content: string;
+            pinned: boolean;
+            order: number;
+            layout: 'narrow' | 'wide' | 'full';
+            tagIds?: number[];
+        };
+    }> = [];
+
+    const service = createNoteSnapshotService({
+        findNoteById: async () => ({
+            id: 7,
+            title: 'Current title',
+            content: JSON.stringify([{ type: 'paragraph', content: [{ type: 'text', text: 'Current', styles: {} }] }]),
+            pinned: false,
+            order: 0,
+            layout: 'wide',
+        }),
+        findSnapshotByEditSessionId: async () => null,
+        findLatestSnapshot: async () => null,
+        createSnapshot: async (input) => ({
+            id: 10,
+            noteId: input.noteId,
+            title: input.title,
+            payload: input.payload,
+            editSessionId: input.editSessionId ?? null,
+            meta: input.meta ?? null,
+            createdAt: new Date('2026-03-31T00:00:00.000Z'),
+        }),
+        purgeExpiredSnapshots: async () => 0,
+        trimOverflowSnapshots: async () => 0,
+        listSnapshots: async () => [],
+        findSnapshotById: async () => ({
+            id: 3,
+            noteId: 7,
+            title: 'Tagged title',
+            payload: JSON.stringify({
+                title: 'Tagged title',
+                content: restoredContent,
+                pinned: false,
+                order: 0,
+                layout: 'wide',
+            }),
+            editSessionId: 'session-1',
+            meta: '{"label":"Web browser"}',
+            createdAt: new Date('2026-03-30T00:00:00.000Z'),
+        }),
+        updateNote: async (id, input) => {
+            updated.push({ id, input });
+            return {
+                id,
+                title: input.title,
+                content: input.content,
+                pinned: input.pinned,
+                order: input.order,
+                layout: input.layout,
+            };
+        },
+    });
+
+    await service.restoreSnapshot(3, { meta: '{"label":"Web browser"}' });
+
+    assert.deepEqual(updated, [
+        {
+            id: 7,
+            input: {
+                title: 'Tagged title',
+                content: restoredContent,
+                pinned: false,
+                order: 0,
+                layout: 'wide',
+                tagIds: [5, 7],
+            },
+        },
+    ]);
+});
+
+test('restoreSnapshot clears tag relations when restored content has no tags', async () => {
+    const restoredContent = JSON.stringify([
+        {
+            type: 'paragraph',
+            content: [{ type: 'text', text: 'No tags here', styles: {} }],
+        },
+    ]);
+    const updated: Array<{
+        id: number;
+        input: {
+            title: string;
+            content: string;
+            pinned: boolean;
+            order: number;
+            layout: 'narrow' | 'wide' | 'full';
+            tagIds?: number[];
+        };
+    }> = [];
+
+    const service = createNoteSnapshotService({
+        findNoteById: async () => ({
+            id: 7,
+            title: 'Current title',
+            content: JSON.stringify([
+                {
+                    type: 'paragraph',
+                    content: [{ type: 'tag', props: { id: '5', tag: '@current' } }],
+                },
+            ]),
+            pinned: false,
+            order: 0,
+            layout: 'wide',
+        }),
+        findSnapshotByEditSessionId: async () => null,
+        findLatestSnapshot: async () => null,
+        createSnapshot: async (input) => ({
+            id: 10,
+            noteId: input.noteId,
+            title: input.title,
+            payload: input.payload,
+            editSessionId: input.editSessionId ?? null,
+            meta: input.meta ?? null,
+            createdAt: new Date('2026-03-31T00:00:00.000Z'),
+        }),
+        purgeExpiredSnapshots: async () => 0,
+        trimOverflowSnapshots: async () => 0,
+        listSnapshots: async () => [],
+        findSnapshotById: async () => ({
+            id: 3,
+            noteId: 7,
+            title: 'Untagged title',
+            payload: JSON.stringify({
+                title: 'Untagged title',
+                content: restoredContent,
+                pinned: false,
+                order: 0,
+                layout: 'wide',
+            }),
+            editSessionId: 'session-1',
+            meta: '{"label":"Web browser"}',
+            createdAt: new Date('2026-03-30T00:00:00.000Z'),
+        }),
+        updateNote: async (id, input) => {
+            updated.push({ id, input });
+            return {
+                id,
+                title: input.title,
+                content: input.content,
+                pinned: input.pinned,
+                order: input.order,
+                layout: input.layout,
+            };
+        },
+    });
+
+    await service.restoreSnapshot(3, { meta: '{"label":"Web browser"}' });
+
+    assert.deepEqual(updated[0]?.input.tagIds, []);
+});
+
+test('resolveRestoredSnapshotTags ignores blank ids and restores missing tags by name', async () => {
+    const content = JSON.stringify([
+        {
+            type: 'paragraph',
+            content: [
+                { type: 'tag', props: { id: '', tag: '@restored' } },
+                { type: 'tag', props: { id: '0', tag: '@ignored-zero' } },
+                { type: 'tag', props: { id: '7', tag: '@existing' } },
+                { type: 'tag', props: { id: '404', tag: '@missing-id' } },
+            ],
+        },
+    ]);
+
+    const resolved = await resolveRestoredSnapshotTags(content, {
+        findTagsByIds: async (ids) => ids.filter((id) => id === 7).map((id) => ({ id, name: '@existing' })),
+        ensureTagByName: async (name) => ({
+            id: name === '@restored' ? 5 : 6,
+            name,
+        }),
+    });
+
+    assert.deepEqual(resolved?.tagIds, [5, 6, 7]);
+    assert.match(resolved?.content ?? '', /"id":"5"/);
+    assert.match(resolved?.content ?? '', /"id":"6"/);
+});
+
 test('listSnapshots runs retention cleanup before returning recent snapshots', async () => {
     const calls: string[] = [];
     const service = createNoteSnapshotService({
@@ -425,7 +681,97 @@ test('listSnapshots runs retention cleanup before returning recent snapshots', a
 
     const snapshots = await service.listSnapshots(7, 5);
 
-    assert.deepEqual(calls, ['purge', 'trim:20']);
+    assert.deepEqual(calls, ['purge', 'trim:10']);
     assert.equal(snapshots.length, 1);
     assert.equal(snapshots[0]?.title, 'Current baseline');
+});
+
+test('listSnapshots returns lightweight readable content previews', async () => {
+    const content = JSON.stringify([
+        {
+            type: 'paragraph',
+            content: [{ type: 'text', text: 'Visible snapshot body', styles: {} }],
+        },
+    ]);
+    const service = createNoteSnapshotService({
+        findNoteById: async () => null,
+        findSnapshotByEditSessionId: async () => null,
+        findLatestSnapshot: async () => null,
+        createSnapshot: async () => {
+            throw new Error('should not create');
+        },
+        purgeExpiredSnapshots: async () => 0,
+        trimOverflowSnapshots: async () => 0,
+        listSnapshots: async () => [
+            {
+                id: 9,
+                noteId: 7,
+                title: 'Readable baseline',
+                payload: JSON.stringify({
+                    title: 'Readable baseline',
+                    content,
+                    pinned: false,
+                    order: 0,
+                    layout: 'wide',
+                }),
+                editSessionId: null,
+                meta: '{"label":"Web browser"}',
+                createdAt: new Date('2026-03-31T00:00:00.000Z'),
+            },
+        ],
+        findSnapshotById: async () => null,
+        updateNote: async () => {
+            throw new Error('should not update');
+        },
+    });
+
+    const snapshots = await service.listSnapshots(7, 5);
+
+    assert.match(snapshots[0]?.contentPreview ?? '', /Visible snapshot body/);
+    assert.equal(snapshots[0]?.contentAsMarkdown, undefined);
+});
+
+test('getSnapshot returns full markdown content for one snapshot', async () => {
+    const content = JSON.stringify([
+        {
+            type: 'paragraph',
+            content: [{ type: 'text', text: 'Full snapshot body', styles: {} }],
+        },
+    ]);
+    const service = createNoteSnapshotService({
+        findNoteById: async () => null,
+        findSnapshotByEditSessionId: async () => null,
+        findLatestSnapshot: async () => null,
+        createSnapshot: async () => {
+            throw new Error('should not create');
+        },
+        purgeExpiredSnapshots: async () => 0,
+        trimOverflowSnapshots: async () => 0,
+        listSnapshots: async () => {
+            throw new Error('should not list');
+        },
+        findSnapshotById: async () => ({
+            id: 9,
+            noteId: 7,
+            title: 'Readable baseline',
+            payload: JSON.stringify({
+                title: 'Readable baseline',
+                content,
+                pinned: false,
+                order: 0,
+                layout: 'wide',
+            }),
+            editSessionId: null,
+            meta: '{"label":"Web browser"}',
+            createdAt: new Date('2026-03-31T00:00:00.000Z'),
+        }),
+        updateNote: async () => {
+            throw new Error('should not update');
+        },
+    });
+
+    const snapshot = await service.getSnapshot(9);
+
+    assert.match(snapshot?.contentAsMarkdown ?? '', /Full snapshot body/);
+    assert.match(snapshot?.contentPreview ?? '', /Full snapshot body/);
 });

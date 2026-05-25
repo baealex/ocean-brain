@@ -105,6 +105,8 @@ export const noteType = gql`
     type NoteSnapshot {
         id: ID!
         title: String!
+        contentPreview: String!
+        contentAsMarkdown: String!
         createdAt: String!
         meta: NoteSnapshotMeta!
     }
@@ -158,6 +160,7 @@ export const noteQuery = gql`
         noteCleanupCandidates(query: String, pagination: PaginationInput): [NoteCleanupCandidate!]!
         noteCleanupPreview(id: ID!): NoteCleanupPreview
         noteSnapshots(id: ID!, limit: Int): [NoteSnapshot!]!
+        noteSnapshot(id: ID!): NoteSnapshot
         trashedNote(id: ID!): DeletedNote
         trashedNotes(pagination: PaginationInput): DeletedNotes!
         noteGraph: NoteGraph!

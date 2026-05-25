@@ -4,7 +4,7 @@ import classNames from 'classnames';
 import dayjs from 'dayjs';
 import { nanoid } from 'nanoid';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { fetchNote, updateNote } from '~/apis/note.api';
+import { createNote, fetchNote, updateNote } from '~/apis/note.api';
 import { QueryBoundary, QueryErrorView } from '~/components/app';
 import { BackReferences } from '~/components/entities';
 import * as Icon from '~/components/icon';
@@ -27,6 +27,7 @@ import { Checkbox, MoreButton, Text, useToast } from '~/components/ui';
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
 import { useNoteSaveController } from '~/hooks/useNoteSaveController';
 import type { Note, NoteLayout } from '~/models/note.model';
+import { replaceFixedPlaceholder } from '~/modules/fixed-placeholder';
 import {
     createHtmlExport,
     createMarkdownExport,
@@ -143,6 +144,7 @@ export function NoteContent({ id }: NoteContentProps) {
     const appliedNoteVersionRef = useRef(note.updatedAt);
     const activeNoteIdRef = useRef(id);
     const layoutConflictRef = useRef<NoteLayout | null>(null);
+    const allowNextNavigationRef = useRef(false);
     const updateLastSavedAt = useCallback((updatedAt: string) => {
         setLastSavedAt(formatSavedAt(updatedAt));
         setLastSavedVersion(updatedAt);
@@ -188,6 +190,11 @@ export function NoteContent({ id }: NoteContentProps) {
     } = saveController;
 
     const shouldBlockNoteNavigation = useCallback(async () => {
+        if (allowNextNavigationRef.current) {
+            allowNextNavigationRef.current = false;
+            return false;
+        }
+
         if (saveStatus === 'conflict') {
             toast('Resolve the note conflict before leaving.');
             return true;
@@ -584,11 +591,30 @@ export function NoteContent({ id }: NoteContentProps) {
             return;
         }
 
-        const createdId = await onCreate(draft.title || 'untitled', draft.content, draft.layout ?? layout);
+        const response = await createNote({
+            title: replaceFixedPlaceholder(draft.title || 'untitled'),
+            content: replaceFixedPlaceholder(draft.content),
+            layout: draft.layout ?? layout,
+        });
 
-        if (createdId) {
-            clearDrafts();
+        if (response.type === 'error') {
+            toast(response.errors[0].message);
+            return;
         }
+
+        allowNextNavigationRef.current = true;
+        layoutConflictRef.current = null;
+        setExternalNoteChange(null);
+        clearDrafts();
+
+        void Promise.resolve(
+            navigate({
+                to: NOTE_ROUTE,
+                params: { id: response.createNote.id },
+            }),
+        ).finally(() => {
+            allowNextNavigationRef.current = false;
+        });
     };
 
     const handleRestoreLocalDraft = () => {
@@ -609,6 +635,7 @@ export function NoteContent({ id }: NoteContentProps) {
         discardLocalDraft();
     };
 
+    const recoveredDraftCreatedAt = localDraft ? dayjs(localDraft.createdAt).format('YYYY-MM-DD HH:mm:ss') : null;
     const isRecentSaveVisible = saveStatus === 'saved' && showSavedConfirmation;
     const savedAgoText = formatSavedAgo(lastSavedVersion, relativeNow);
     const createdAtText = formatSavedAt(note.createdAt);
@@ -792,12 +819,9 @@ export function NoteContent({ id }: NoteContentProps) {
                 </div>
 
                 {localDraft && (
-                    <Callout className="mb-6">
+                    <Callout tone="danger" className="mb-6">
                         <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <span>
-                                An unsaved local draft from {dayjs(localDraft.createdAt).format('YYYY-MM-DD HH:mm:ss')}{' '}
-                                is available.
-                            </span>
+                            <span>A draft from {recoveredDraftCreatedAt} is saved only in this browser.</span>
                             <div className="flex flex-wrap gap-2">
                                 <Button
                                     type="button"
@@ -816,6 +840,36 @@ export function NoteContent({ id }: NoteContentProps) {
                                     onClick={handleDiscardLocalDraft}
                                 >
                                     Discard
+                                </Button>
+                            </div>
+                        </div>
+                    </Callout>
+                )}
+
+                {saveStatus === 'error' && (
+                    <Callout tone="danger" className="mb-6">
+                        <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <span>
+                                Save failed. Your latest draft is still available here. Retry before leaving this note.
+                            </span>
+                            <div className="flex flex-wrap gap-2">
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="subtle"
+                                    className="self-start"
+                                    onClick={handleManualSave}
+                                >
+                                    Retry save
+                                </Button>
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    className="self-start"
+                                    onClick={() => void handleClonePendingDraft()}
+                                >
+                                    Save as new note
                                 </Button>
                             </div>
                         </div>

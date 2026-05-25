@@ -24,6 +24,8 @@ export interface NoteGraphResult {
     links: Array<{ source: string; target: string }>;
 }
 
+export const NOTE_REFERENCE_CONTENT_PREFILTER = '"type":"reference"';
+
 export const parseNoteContent = (content: string): unknown[] | null => {
     return parseBlockNoteContent(content);
 };

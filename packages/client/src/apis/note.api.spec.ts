@@ -150,6 +150,31 @@ describe('note.api', () => {
         });
     });
 
+    it('sends layout-only forced updates without stale title or content', async () => {
+        vi.mocked(graphQuery).mockResolvedValue({
+            type: 'success',
+            updateNote: {
+                id: '7',
+                title: 'Updated note',
+                updatedAt: '1770000000000',
+            },
+        } as never);
+
+        await updateNote({
+            id: '7',
+            layout: 'full',
+            force: true,
+        });
+
+        expect(graphQuery).toHaveBeenCalledWith(expect.stringContaining('$force: Boolean'), {
+            id: '7',
+            note: {
+                layout: 'full',
+            },
+            force: true,
+        });
+    });
+
     it('requests twenty note snapshots by default', async () => {
         vi.mocked(graphQuery).mockResolvedValue({
             type: 'success',

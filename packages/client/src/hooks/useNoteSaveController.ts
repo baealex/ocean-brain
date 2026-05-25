@@ -10,6 +10,7 @@ import {
     writeLocalNoteDraft,
 } from '~/modules/note-draft-storage';
 import { queryKeys } from '~/modules/query-key-factory';
+import { publishClientNoteUpdatedEvent } from '~/modules/server-events';
 
 const NOTE_AUTOSAVE_DELAY_MS = 1000;
 const NOTE_UPDATE_CONFLICT_CODE = 'NOTE_UPDATE_CONFLICT';
@@ -166,7 +167,19 @@ export function useNoteSaveController({
 
             isSaveConflictRef.current = false;
             serverUpdatedAtRef.current = response.updateNote.updatedAt;
-            queryClient.setQueryData<NoteDetailCache>(queryKeys.notes.detail(noteId), (current) => {
+            const shouldNotifySave = !silent && isAliveRef.current;
+            const noteDetailQueryKey = queryKeys.notes.detail(noteId);
+
+            await queryClient.cancelQueries({
+                queryKey: noteDetailQueryKey,
+                exact: true,
+            });
+
+            if (shouldNotifySave) {
+                onSavedRef.current(response.updateNote.updatedAt);
+            }
+
+            queryClient.setQueryData<NoteDetailCache>(noteDetailQueryKey, (current) => {
                 if (!current) {
                     return current;
                 }
@@ -178,6 +191,11 @@ export function useNoteSaveController({
                     ...(draft.layout ? { layout: draft.layout } : {}),
                     updatedAt: response.updateNote.updatedAt,
                 };
+            });
+            publishClientNoteUpdatedEvent({
+                noteId,
+                updatedAt: response.updateNote.updatedAt,
+                editSessionId: editSessionIdRef.current,
             });
             const nextPendingDraft = pendingDraftRef.current as NoteSaveDraft | null;
 
@@ -191,9 +209,7 @@ export function useNoteSaveController({
                 clearLocalNoteDraft(noteId);
             }
 
-            if (!silent && isAliveRef.current) {
-                onSavedRef.current(response.updateNote.updatedAt);
-
+            if (shouldNotifySave) {
                 if (pendingDraftRef.current) {
                     setSaveStatus('pending');
                 } else {
@@ -274,6 +290,13 @@ export function useNoteSaveController({
         setLocalDraft(null);
         setSaveStatus('saved');
     }, [clearSaveTimer, noteId]);
+
+    const resolveConflict = useCallback(() => {
+        clearSaveTimer();
+        flushAfterInFlightRef.current = false;
+        isSaveConflictRef.current = false;
+        setMountedSaveStatus(pendingDraftRef.current ? 'pending' : 'saved');
+    }, [clearSaveTimer, setMountedSaveStatus]);
 
     const discardLocalDraft = useCallback(() => {
         clearLocalNoteDraft(noteId);
@@ -361,6 +384,7 @@ export function useNoteSaveController({
         restoreLocalDraft,
         discardLocalDraft,
         clearDrafts,
+        resolveConflict,
         pauseForConflict,
         getPendingDraft,
         setServerUpdatedAt,

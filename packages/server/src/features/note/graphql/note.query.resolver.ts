@@ -4,6 +4,7 @@ import {
     buildNoteGraph,
     contentReferencesNote,
     extractReferenceBlocksFromContent,
+    NOTE_REFERENCE_CONTENT_PREFILTER,
     syncReferenceTitlesInContent,
 } from '~/features/note/services/content-blocks.js';
 import {
@@ -349,9 +350,13 @@ export const noteQueryResolvers: NoteQueryResolvers = {
     backReferences: async (_, { id }: { id: string }) => {
         const notes = await models.note.findMany({
             orderBy: [{ pinned: 'desc' }, { updatedAt: 'desc' }],
+            where: {
+                content: { contains: NOTE_REFERENCE_CONTENT_PREFILTER },
+                NOT: { id: Number(id) },
+            },
         });
 
-        return notes.filter((note) => note.id !== Number(id) && contentReferencesNote(note.content, id));
+        return notes.filter((note) => contentReferencesNote(note.content, id));
     },
     note: async (_, { id }: { id: string }) => {
         const note = await models.note.findUnique({ where: { id: Number(id) } });

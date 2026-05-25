@@ -127,6 +127,35 @@ describe('useNoteSaveController', () => {
         });
     });
 
+    it('resolves conflict state without requiring a pending draft', () => {
+        const { result } = renderHook(
+            () =>
+                useNoteSaveController({
+                    noteId: '7',
+                    initialContent: 'initial',
+                    initialUpdatedAt: '1770000000000',
+                    editSessionIdRef: { current: 'session-1' },
+                    getContent: () => 'content',
+                    onSaved: vi.fn(),
+                    onConflict: vi.fn(),
+                    onError: vi.fn(),
+                }),
+            { wrapper: createWrapper() },
+        );
+
+        act(() => {
+            result.current.pauseForConflict('1770000001000');
+        });
+
+        expect(result.current.saveStatus).toBe('conflict');
+
+        act(() => {
+            result.current.resolveConflict();
+        });
+
+        expect(result.current.saveStatus).toBe('saved');
+    });
+
     it('saves queued layout changes with the draft payload', async () => {
         const queryClient = createQueryClient();
         queryClient.setQueryData(queryKeys.notes.detail('7'), {

@@ -1,0 +1,363 @@
+import { QueryClientProvider } from '@tanstack/react-query';
+import { act, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { Suspense } from 'react';
+import { fetchNote, updateNote } from '~/apis/note.api';
+import { ToastProvider } from '~/components/ui';
+import type { Note } from '~/models/note.model';
+import { queryKeys } from '~/modules/query-key-factory';
+import { publishServerEvent } from '~/modules/server-events';
+import { createTestQueryClient } from '~/test/test-utils';
+import { NoteContent } from './Note';
+
+const mockNavigate = vi.hoisted(() => vi.fn());
+const mockUseNoteMutate = vi.hoisted(() => ({
+    onCreate: vi.fn(),
+    onDelete: vi.fn(),
+    onPinned: vi.fn(),
+}));
+let editorMountCount = 0;
+
+vi.mock('@tanstack/react-router', () => ({
+    getRouteApi: () => ({
+        useNavigate: () => mockNavigate,
+        useParams: () => ({ id: '1' }),
+    }),
+    Link: ({ children, ...props }: { children: React.ReactNode; [key: string]: unknown }) => (
+        <a href="/" {...props}>
+            {children}
+        </a>
+    ),
+}));
+
+vi.mock('~/apis/note.api', () => ({
+    fetchNote: vi.fn(),
+    updateNote: vi.fn(),
+    fetchNoteSnapshots: vi.fn(),
+    restoreNoteSnapshot: vi.fn(),
+}));
+
+vi.mock('~/components/entities', () => ({
+    BackReferences: ({ render }: { render: (backReferences: unknown[]) => React.ReactNode }) => <>{render([])}</>,
+}));
+
+vi.mock('~/components/reminder', () => ({
+    ReminderPanel: () => null,
+}));
+
+vi.mock('~/components/shared/Editor', async () => {
+    const React = await import('react');
+
+    const MockEditor = React.forwardRef<
+        {
+            getContent: () => string;
+            getMarkdown: () => string;
+            getHtml: () => string;
+        },
+        {
+            content: string;
+            onChange: () => void;
+        }
+    >(({ content, onChange }, ref) => {
+        const [value, setValue] = React.useState(content);
+        const contentRef = React.useRef(content);
+
+        React.useEffect(() => {
+            setValue(content);
+            contentRef.current = content;
+        }, [content]);
+
+        React.useEffect(() => {
+            editorMountCount += 1;
+        }, []);
+
+        React.useImperativeHandle(ref, () => ({
+            getContent: () => contentRef.current,
+            getMarkdown: () => contentRef.current,
+            getHtml: () => contentRef.current,
+        }));
+
+        return (
+            <textarea
+                aria-label="Editor"
+                value={value}
+                onChange={(event) => {
+                    const nextContent = event.target.value;
+
+                    setValue(nextContent);
+                    contentRef.current = nextContent;
+                    onChange();
+                }}
+            />
+        );
+    });
+
+    MockEditor.displayName = 'MockEditor';
+
+    return { default: MockEditor };
+});
+
+vi.mock('~/hooks/resource/useNoteMutate', () => ({
+    default: () => ({
+        ...mockUseNoteMutate,
+        deleteWarningDialog: null,
+    }),
+}));
+
+const createContent = (text: string) =>
+    JSON.stringify([
+        {
+            id: 'paragraph-1',
+            type: 'paragraph',
+            props: {},
+            content: [{ type: 'text', text, styles: {} }],
+            children: [],
+        },
+    ]);
+
+const createNote = (overrides: Partial<Note> = {}): Note => ({
+    id: '1',
+    title: 'Initial title',
+    content: createContent('Initial body'),
+    pinned: false,
+    layout: 'wide',
+    createdAt: '1779700000000',
+    updatedAt: '1779700000000',
+    tags: [],
+    ...overrides,
+});
+
+const createDeferred = <T,>() => {
+    let resolve!: (value: T) => void;
+    const promise = new Promise<T>((nextResolve) => {
+        resolve = nextResolve;
+    });
+
+    return { promise, resolve };
+};
+
+const renderNote = (note: Note) => {
+    const queryClient = createTestQueryClient();
+
+    vi.mocked(fetchNote).mockResolvedValue({
+        type: 'success',
+        note,
+    });
+
+    render(
+        <QueryClientProvider client={queryClient}>
+            <ToastProvider>
+                <Suspense fallback={<div>Loading</div>}>
+                    <NoteContent id={note.id} />
+                </Suspense>
+            </ToastProvider>
+        </QueryClientProvider>,
+    );
+
+    return queryClient;
+};
+
+describe('<NoteContent /> external change handling', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockNavigate.mockClear();
+        mockUseNoteMutate.onCreate.mockReset();
+        mockUseNoteMutate.onDelete.mockReset();
+        mockUseNoteMutate.onPinned.mockReset();
+        editorMountCount = 0;
+    });
+
+    it('does not reopen the external-change modal when a stale detail refetch resolves after a local save', async () => {
+        const user = userEvent.setup();
+        const initialNote = createNote({
+            title: 'Accepted remote title',
+            updatedAt: '1779700002000',
+        });
+        const queryClient = renderNote(initialNote);
+
+        expect(await screen.findByPlaceholderText('Title')).toHaveValue('Accepted remote title');
+
+        const staleRefetch = createDeferred<Awaited<ReturnType<typeof fetchNote>>>();
+        vi.mocked(fetchNote).mockReturnValueOnce(staleRefetch.promise);
+
+        void queryClient.refetchQueries({
+            queryKey: queryKeys.notes.detail(initialNote.id),
+            exact: true,
+        });
+
+        await waitFor(() => expect(fetchNote).toHaveBeenCalledTimes(2));
+
+        const savedNote = createNote({
+            title: 'Local title',
+            updatedAt: '1779700003000',
+        });
+        vi.mocked(updateNote).mockResolvedValue({
+            type: 'success',
+            updateNote: savedNote,
+        });
+
+        const titleInput = screen.getByPlaceholderText('Title');
+        await user.clear(titleInput);
+        await user.type(titleInput, 'Local title');
+        await user.click(screen.getByRole('button', { name: 'Save' }));
+
+        await waitFor(() => expect(updateNote).toHaveBeenCalledTimes(1));
+
+        await act(async () => {
+            staleRefetch.resolve({
+                type: 'success',
+                note: initialNote,
+            });
+            await staleRefetch.promise;
+        });
+
+        await waitFor(() => {
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        });
+        expect(screen.getByPlaceholderText('Title')).toHaveValue('Local title');
+    });
+
+    it('ignores an older note value after reloading latest and saving a newer local edit', async () => {
+        const user = userEvent.setup();
+        const remoteNote = createNote({
+            title: 'Remote title',
+            updatedAt: '1779700002000',
+        });
+        const savedNote = createNote({
+            title: 'Local title',
+            updatedAt: '1779700003000',
+        });
+        const queryClient = renderNote(remoteNote);
+
+        expect(await screen.findByPlaceholderText('Title')).toHaveValue('Remote title');
+
+        vi.mocked(updateNote).mockResolvedValue({
+            type: 'success',
+            updateNote: savedNote,
+        });
+
+        const titleInput = screen.getByPlaceholderText('Title');
+        await user.clear(titleInput);
+        await user.type(titleInput, 'Local title');
+        await user.click(screen.getByRole('button', { name: 'Save' }));
+
+        await waitFor(() => expect(updateNote).toHaveBeenCalledTimes(1));
+
+        act(() => {
+            queryClient.setQueryData(queryKeys.notes.detail(remoteNote.id), remoteNote);
+        });
+
+        await waitFor(() => {
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        });
+        expect(screen.getByPlaceholderText('Title')).toHaveValue('Local title');
+    });
+
+    it('does not block editing once an external update is already loaded', async () => {
+        const user = userEvent.setup();
+        const initialNote = createNote({
+            title: 'Initial title',
+            updatedAt: '1779700001000',
+        });
+        const remoteNote = createNote({
+            title: 'Remote title',
+            updatedAt: '1779700002000',
+        });
+        const savedNote = createNote({
+            title: 'Local title',
+            updatedAt: '1779700003000',
+        });
+        const queryClient = renderNote(initialNote);
+
+        expect(await screen.findByPlaceholderText('Title')).toHaveValue('Initial title');
+
+        act(() => {
+            publishServerEvent({
+                type: 'web.note.updated',
+                source: 'web',
+                noteId: initialNote.id,
+                updatedAt: remoteNote.updatedAt,
+                editSessionId: 'other-editor',
+                eventId: 'external-loaded-test',
+            });
+        });
+
+        expect(await screen.findByRole('dialog', { name: 'This note changed in another tab' })).toBeInTheDocument();
+
+        act(() => {
+            queryClient.setQueryData(queryKeys.notes.detail(initialNote.id), remoteNote);
+        });
+
+        await waitFor(() => {
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        });
+        expect(screen.getByPlaceholderText('Title')).toHaveValue('Remote title');
+
+        vi.mocked(updateNote).mockResolvedValue({
+            type: 'success',
+            updateNote: savedNote,
+        });
+
+        const titleInput = screen.getByPlaceholderText('Title');
+        await user.clear(titleInput);
+        await user.type(titleInput, 'Local title');
+        await user.click(screen.getByRole('button', { name: 'Save' }));
+
+        await waitFor(() => expect(updateNote).toHaveBeenCalledTimes(1));
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        expect(screen.getByPlaceholderText('Title')).toHaveValue('Local title');
+    });
+
+    it('shows MCP as the source for MCP note updates', async () => {
+        const initialNote = createNote({
+            title: 'Initial title',
+            updatedAt: '1779700001000',
+        });
+
+        renderNote(initialNote);
+
+        expect(await screen.findByPlaceholderText('Title')).toHaveValue('Initial title');
+
+        act(() => {
+            publishServerEvent({
+                type: 'mcp.note.updated',
+                source: 'mcp',
+                noteId: initialNote.id,
+                updatedAt: '1779700002000',
+            });
+        });
+
+        expect(await screen.findByRole('dialog', { name: 'This note changed through MCP' })).toBeInTheDocument();
+        expect(screen.getByText(/An MCP client changed this note while it was open here/)).toBeInTheDocument();
+    });
+
+    it('keeps the editor mounted after saving local content edits', async () => {
+        const user = userEvent.setup();
+        const initialNote = createNote({
+            content: createContent('Initial body'),
+            updatedAt: '1779700001000',
+        });
+        const savedNote = createNote({
+            content: 'Local body',
+            updatedAt: '1779700002000',
+        });
+
+        renderNote(initialNote);
+
+        const editor = await screen.findByLabelText('Editor');
+        expect(editorMountCount).toBe(1);
+
+        vi.mocked(updateNote).mockResolvedValue({
+            type: 'success',
+            updateNote: savedNote,
+        });
+
+        await user.clear(editor);
+        await user.type(editor, 'Local body');
+        await user.click(screen.getByRole('button', { name: 'Save' }));
+
+        await waitFor(() => expect(updateNote).toHaveBeenCalledTimes(1));
+        expect(editorMountCount).toBe(1);
+        expect(screen.getByLabelText('Editor')).toHaveValue('Local body');
+    });
+});

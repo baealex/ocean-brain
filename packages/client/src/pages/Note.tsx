@@ -1,9 +1,9 @@
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
-import { getRouteApi, Link } from '@tanstack/react-router';
+import { getRouteApi, Link, useBlocker } from '@tanstack/react-router';
 import classNames from 'classnames';
 import dayjs from 'dayjs';
 import { nanoid } from 'nanoid';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchNote, updateNote } from '~/apis/note.api';
 import { QueryBoundary, QueryErrorView } from '~/components/app';
 import { BackReferences } from '~/components/entities';
@@ -36,23 +36,33 @@ import {
 } from '~/modules/note-export';
 import { queryKeys } from '~/modules/query-key-factory';
 import { publishClientNoteUpdatedEvent, subscribeServerEvent } from '~/modules/server-events';
+import { getRecentTimeSinceRefreshDelay, recentTimeSince } from '~/modules/time';
 import { NOTE_ROUTE, SETTINGS_TRASH_ROUTE } from '~/modules/url';
 
 const Route = getRouteApi(NOTE_ROUTE);
-
-const formatSavedAt = (updatedAt: string) => dayjs(Number(updatedAt)).format('YYYY-MM-DD HH:mm:ss');
-
-const createEditSessionId = () => nanoid();
-const NOTE_UPDATE_CONFLICT_CODE = 'NOTE_UPDATE_CONFLICT';
-
-const getConflictUpdatedAt = (details: unknown) => {
-    return (details as { extensions?: { currentUpdatedAt?: string } })?.extensions?.currentUpdatedAt;
-};
 
 const toNoteVersionTime = (updatedAt: string) => {
     const timestamp = /^\d+$/.test(updatedAt) ? Number(updatedAt) : Date.parse(updatedAt);
 
     return Number.isFinite(timestamp) ? timestamp : null;
+};
+
+const formatSavedAt = (updatedAt: string) => {
+    const timestamp = toNoteVersionTime(updatedAt);
+
+    return dayjs(timestamp ?? Number(updatedAt)).format('YYYY-MM-DD HH:mm:ss');
+};
+
+const formatSavedAgo = (updatedAt: string, now: number) => {
+    return recentTimeSince(toNoteVersionTime(updatedAt), now);
+};
+
+const createEditSessionId = () => nanoid();
+const NOTE_UPDATE_CONFLICT_CODE = 'NOTE_UPDATE_CONFLICT';
+const SAVE_CONFIRMATION_DURATION_MS = 2200;
+
+const getConflictUpdatedAt = (details: unknown) => {
+    return (details as { extensions?: { currentUpdatedAt?: string } })?.extensions?.currentUpdatedAt;
 };
 
 const compareNoteVersions = (left: string, right: string) => {
@@ -116,6 +126,8 @@ export function NoteContent({ id }: NoteContentProps) {
 
     const [title, setTitle] = useState(note.title);
     const [lastSavedAt, setLastSavedAt] = useState(() => formatSavedAt(note.updatedAt));
+    const [lastSavedVersion, setLastSavedVersion] = useState(note.updatedAt);
+    const [relativeNow, setRelativeNow] = useState(() => Date.now());
     const [isPinned, setIsPinned] = useState(note.pinned);
     const [layout, setLayout] = useState<NoteLayout>(note.layout || 'wide');
     const [isLayoutModalOpen, setIsLayoutModalOpen] = useState(false);
@@ -127,9 +139,15 @@ export function NoteContent({ id }: NoteContentProps) {
     const [externalNoteChange, setExternalNoteChange] = useState<ExternalNoteChange | null>(null);
     const [editorContentOverride, setEditorContentOverride] = useState<string | null>(null);
     const [editorRevision, setEditorRevision] = useState(0);
+    const [showSavedConfirmation, setShowSavedConfirmation] = useState(false);
     const appliedNoteVersionRef = useRef(note.updatedAt);
     const activeNoteIdRef = useRef(id);
     const layoutConflictRef = useRef<NoteLayout | null>(null);
+    const updateLastSavedAt = useCallback((updatedAt: string) => {
+        setLastSavedAt(formatSavedAt(updatedAt));
+        setLastSavedVersion(updatedAt);
+        setRelativeNow(Date.now());
+    }, []);
     const saveController = useNoteSaveController({
         noteId: id,
         initialContent: note.content,
@@ -139,7 +157,8 @@ export function NoteContent({ id }: NoteContentProps) {
         onSaved: (updatedAt) => {
             layoutConflictRef.current = null;
             appliedNoteVersionRef.current = updatedAt;
-            setLastSavedAt(formatSavedAt(updatedAt));
+            updateLastSavedAt(updatedAt);
+            setShowSavedConfirmation(true);
         },
         onConflict: (updatedAt) => {
             setExternalNoteChange({
@@ -168,6 +187,28 @@ export function NoteContent({ id }: NoteContentProps) {
         setServerUpdatedAt,
     } = saveController;
 
+    const shouldBlockNoteNavigation = useCallback(async () => {
+        if (saveStatus === 'conflict') {
+            toast('Resolve the note conflict before leaving.');
+            return true;
+        }
+
+        const result = await flushPendingSave();
+
+        if (result === 'error') {
+            toast('Save failed. Stay on this note and try again.');
+            return true;
+        }
+
+        return result === 'conflict';
+    }, [flushPendingSave, saveStatus, toast]);
+
+    useBlocker({
+        disabled: saveStatus === 'saved',
+        enableBeforeUnload: false,
+        shouldBlockFn: shouldBlockNoteNavigation,
+    });
+
     useEffect(() => {
         if (hasUnsavedChanges) {
             if (
@@ -190,7 +231,7 @@ export function NoteContent({ id }: NoteContentProps) {
         setLayout(note.layout || 'wide');
         setServerUpdatedAt(note.updatedAt);
         setTitle(note.title);
-        setLastSavedAt(formatSavedAt(note.updatedAt));
+        updateLastSavedAt(note.updatedAt);
 
         if (appliedNoteVersion !== note.updatedAt) {
             const currentEditorContent = editorRef.current?.getContent();
@@ -211,6 +252,7 @@ export function NoteContent({ id }: NoteContentProps) {
         pauseForConflict,
         serverUpdatedAtRef,
         setServerUpdatedAt,
+        updateLastSavedAt,
     ]);
 
     useEffect(() => {
@@ -225,7 +267,35 @@ export function NoteContent({ id }: NoteContentProps) {
         setExternalNoteChange(null);
         setEditorContentOverride(null);
         setEditorRevision((current) => current + 1);
+        setShowSavedConfirmation(false);
     }, [id, note.updatedAt]);
+
+    useEffect(() => {
+        if (saveStatus !== 'saved') {
+            return;
+        }
+
+        const timer = window.setTimeout(
+            () => {
+                setRelativeNow(Date.now());
+            },
+            getRecentTimeSinceRefreshDelay(toNoteVersionTime(lastSavedVersion), relativeNow),
+        );
+
+        return () => window.clearTimeout(timer);
+    }, [lastSavedVersion, relativeNow, saveStatus]);
+
+    useEffect(() => {
+        if (!showSavedConfirmation) {
+            return;
+        }
+
+        const timer = window.setTimeout(() => {
+            setShowSavedConfirmation(false);
+        }, SAVE_CONFIRMATION_DURATION_MS);
+
+        return () => window.clearTimeout(timer);
+    }, [showSavedConfirmation]);
 
     useEffect(() => {
         if (
@@ -238,9 +308,9 @@ export function NoteContent({ id }: NoteContentProps) {
 
         appliedNoteVersionRef.current = note.updatedAt;
         setServerUpdatedAt(note.updatedAt);
-        setLastSavedAt(formatSavedAt(note.updatedAt));
+        updateLastSavedAt(note.updatedAt);
         setExternalNoteChange(null);
-    }, [externalNoteChange, note.updatedAt, saveStatus, setServerUpdatedAt]);
+    }, [externalNoteChange, note.updatedAt, saveStatus, setServerUpdatedAt, updateLastSavedAt]);
 
     useEffect(() => {
         return subscribeServerEvent((event) => {
@@ -345,7 +415,7 @@ export function NoteContent({ id }: NoteContentProps) {
             updatedAt: response.updateNote.updatedAt,
             editSessionId: editSessionIdRef.current,
         });
-        setLastSavedAt(formatSavedAt(response.updateNote.updatedAt));
+        updateLastSavedAt(response.updateNote.updatedAt);
         setLayout(newLayout);
         toast('Layout has been updated.');
     };
@@ -442,7 +512,7 @@ export function NoteContent({ id }: NoteContentProps) {
         setServerUpdatedAt(response.data.updatedAt);
         setTitle(response.data.title);
         setLayout(response.data.layout || 'wide');
-        setLastSavedAt(formatSavedAt(response.data.updatedAt));
+        updateLastSavedAt(response.data.updatedAt);
         setEditorContentOverride(null);
         setEditorRevision((current) => current + 1);
         setExternalNoteChange(null);
@@ -498,7 +568,7 @@ export function NoteContent({ id }: NoteContentProps) {
                 updatedAt: response.updateNote.updatedAt,
                 editSessionId: editSessionIdRef.current,
             });
-            setLastSavedAt(formatSavedAt(response.updateNote.updatedAt));
+            updateLastSavedAt(response.updateNote.updatedAt);
             setLayout(layoutConflict);
             return;
         }
@@ -539,16 +609,62 @@ export function NoteContent({ id }: NoteContentProps) {
         discardLocalDraft();
     };
 
+    const isRecentSaveVisible = saveStatus === 'saved' && showSavedConfirmation;
+    const savedAgoText = formatSavedAgo(lastSavedVersion, relativeNow);
+    const createdAtText = formatSavedAt(note.createdAt);
     const saveStatusText =
         saveStatus === 'pending'
-            ? 'Unsaved changes'
+            ? 'Saving...'
             : saveStatus === 'saving'
-              ? 'Saving...'
+              ? 'Saving now...'
               : saveStatus === 'error'
                 ? 'Save failed. Try again.'
                 : saveStatus === 'conflict'
                   ? 'Save paused: changed elsewhere'
-                  : `Last saved ${lastSavedAt}`;
+                  : `Saved ${savedAgoText}`;
+    const saveStatusIndicatorClassName = classNames(
+        'inline-flex items-center gap-2 transition-colors',
+        saveStatus === 'saved' && !isRecentSaveVisible && 'text-fg-secondary',
+        isRecentSaveVisible && 'text-accent-success',
+        (saveStatus === 'pending' || saveStatus === 'saving') && 'text-fg-default',
+        (saveStatus === 'error' || saveStatus === 'conflict') && 'text-fg-error',
+    );
+    const saveProgressRingClassName = classNames(
+        'save-progress-ring flex h-4 w-4 shrink-0 items-center justify-center rounded-full',
+        (saveStatus === 'pending' || saveStatus === 'saving') && 'save-progress-ring-active',
+        saveStatus === 'saved' && isRecentSaveVisible && 'save-progress-ring-complete',
+        (saveStatus === 'error' || saveStatus === 'conflict') && 'save-progress-ring-error',
+    );
+    const saveStatusIcon =
+        saveStatus === 'saving' ? (
+            <span className={saveProgressRingClassName} aria-hidden>
+                <span className="h-2 w-2 rounded-full bg-elevated" />
+            </span>
+        ) : saveStatus === 'pending' ? (
+            <span className={saveProgressRingClassName} aria-hidden>
+                <span className="h-2 w-2 rounded-full bg-elevated" />
+            </span>
+        ) : saveStatus === 'error' || saveStatus === 'conflict' ? (
+            <Icon.WarningCircle className="h-3.5 w-3.5" weight="fill" />
+        ) : (
+            <span className={saveProgressRingClassName} aria-hidden>
+                <span className="h-2 w-2 rounded-full bg-elevated" />
+            </span>
+        );
+    const saveStatusIndicator = (
+        <Text
+            as="span"
+            variant="label"
+            weight="medium"
+            className={saveStatusIndicatorClassName}
+            role="status"
+            aria-live="polite"
+            title={lastSavedAt}
+        >
+            {saveStatusIcon}
+            {saveStatusText}
+        </Text>
+    );
     const isConflictedExternalUpdate = saveStatus === 'conflict' && externalNoteChange?.type === 'updated';
     const conflictDraft = isConflictedExternalUpdate ? getPendingDraft() : null;
     const isBlockingExternalChange =
@@ -666,13 +782,10 @@ export function NoteContent({ id }: NoteContentProps) {
                                 </Text>
                             )}
                             {isPinned && <span className="h-1 w-1 rounded-full bg-border-secondary" />}
-                            <Text
-                                as="span"
-                                variant="label"
-                                weight="medium"
-                                tone={saveStatus === 'error' || saveStatus === 'conflict' ? 'error' : 'secondary'}
-                            >
-                                {saveStatusText}
+                            {saveStatusIndicator}
+                            <span className="h-1 w-1 rounded-full bg-border-secondary" />
+                            <Text as="span" variant="micro" weight="medium" tone="tertiary">
+                                Created {createdAtText}
                             </Text>
                         </div>
                     </div>
@@ -898,7 +1011,7 @@ export function NoteContent({ id }: NoteContentProps) {
                         appliedNoteVersionRef.current = restoredNote.updatedAt;
                         setExternalNoteChange(null);
                         setServerUpdatedAt(restoredNote.updatedAt);
-                        setLastSavedAt(formatSavedAt(restoredNote.updatedAt));
+                        updateLastSavedAt(restoredNote.updatedAt);
                     }}
                 />
                 {deleteWarningDialog}

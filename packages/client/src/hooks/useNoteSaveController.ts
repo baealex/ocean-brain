@@ -16,6 +16,7 @@ const NOTE_AUTOSAVE_DELAY_MS = 1000;
 const NOTE_UPDATE_CONFLICT_CODE = 'NOTE_UPDATE_CONFLICT';
 
 export type NoteSaveStatus = 'saved' | 'pending' | 'saving' | 'error' | 'conflict';
+export type NoteSaveFlushResult = 'idle' | 'saved' | 'error' | 'conflict';
 
 interface UseNoteSaveControllerParams {
     noteId: string;
@@ -48,6 +49,7 @@ export function useNoteSaveController({
     const saveTimerRef = useRef<number | null>(null);
     const pendingDraftRef = useRef<NoteSaveDraft | null>(null);
     const inFlightSaveRef = useRef(false);
+    const inFlightSavePromiseRef = useRef<Promise<NoteSaveFlushResult> | null>(null);
     const flushAfterInFlightRef = useRef(false);
     const serverUpdatedAtRef = useRef(initialUpdatedAt);
     const isSaveConflictRef = useRef(false);
@@ -106,13 +108,14 @@ export function useNoteSaveController({
         async ({ ignoreConflict = false, silent = false }: { ignoreConflict?: boolean; silent?: boolean } = {}) => {
             if (inFlightSaveRef.current) {
                 flushAfterInFlightRef.current = true;
-                return;
+                return inFlightSavePromiseRef.current ?? 'idle';
             }
 
             const draft = pendingDraftRef.current;
 
             if (!draft) {
-                return;
+                flushAfterInFlightRef.current = false;
+                return 'idle';
             }
 
             pendingDraftRef.current = null;
@@ -124,118 +127,142 @@ export function useNoteSaveController({
                 setMountedSaveStatus('saving');
             }
 
-            const response = await updateNote({
-                id: noteId,
-                title: draft.title,
-                content: draft.content,
-                ...(draft.layout ? { layout: draft.layout } : {}),
-                editSessionId: editSessionIdRef.current,
-                ...(ignoreConflict ? { force: true } : { expectedUpdatedAt: draft.baseUpdatedAt }),
-            });
+            const savePromise = (async (): Promise<NoteSaveFlushResult> => {
+                let response: Awaited<ReturnType<typeof updateNote>>;
 
-            inFlightSaveRef.current = false;
-
-            if (response.type === 'error') {
-                if (!pendingDraftRef.current) {
-                    pendingDraftRef.current = draft;
+                try {
+                    response = await updateNote({
+                        id: noteId,
+                        title: draft.title,
+                        content: draft.content,
+                        ...(draft.layout ? { layout: draft.layout } : {}),
+                        editSessionId: editSessionIdRef.current,
+                        ...(ignoreConflict ? { force: true } : { expectedUpdatedAt: draft.baseUpdatedAt }),
+                    });
+                } catch {
+                    response = {
+                        type: 'error',
+                        category: 'network',
+                        errors: [
+                            {
+                                code: 'NETWORK_ERROR',
+                                message: 'Failed to save note.',
+                            },
+                        ],
+                    };
                 }
 
-                persistCurrentPendingDraft();
+                inFlightSaveRef.current = false;
+                inFlightSavePromiseRef.current = null;
 
-                const error = response.errors[0];
-
-                if (error.code === NOTE_UPDATE_CONFLICT_CODE && !ignoreConflict) {
-                    const currentUpdatedAt = (error.details as { extensions?: { currentUpdatedAt?: string } })
-                        ?.extensions?.currentUpdatedAt;
-                    isSaveConflictRef.current = true;
-
-                    if (!silent && isAliveRef.current) {
-                        setMountedSaveStatus('conflict');
-                        onConflictRef.current(currentUpdatedAt ?? serverUpdatedAtRef.current);
+                if (response.type === 'error') {
+                    if (!pendingDraftRef.current) {
+                        pendingDraftRef.current = draft;
                     }
 
-                    return;
+                    persistCurrentPendingDraft();
+
+                    const error = response.errors[0];
+
+                    if (error.code === NOTE_UPDATE_CONFLICT_CODE && !ignoreConflict) {
+                        const currentUpdatedAt = (error.details as { extensions?: { currentUpdatedAt?: string } })
+                            ?.extensions?.currentUpdatedAt;
+                        isSaveConflictRef.current = true;
+
+                        if (!silent && isAliveRef.current) {
+                            setMountedSaveStatus('conflict');
+                            onConflictRef.current(currentUpdatedAt ?? serverUpdatedAtRef.current);
+                        }
+
+                        return 'conflict';
+                    }
+
+                    if (!silent && isAliveRef.current) {
+                        setMountedSaveStatus('error');
+                        onErrorRef.current(error.message);
+                    }
+
+                    return 'error';
                 }
 
-                if (!silent && isAliveRef.current) {
-                    setMountedSaveStatus('error');
-                    onErrorRef.current(error.message);
+                isSaveConflictRef.current = false;
+                serverUpdatedAtRef.current = response.updateNote.updatedAt;
+                const shouldNotifySave = !silent && isAliveRef.current;
+                const noteDetailQueryKey = queryKeys.notes.detail(noteId);
+
+                await queryClient.cancelQueries({
+                    queryKey: noteDetailQueryKey,
+                    exact: true,
+                });
+
+                if (shouldNotifySave) {
+                    onSavedRef.current(response.updateNote.updatedAt);
                 }
 
-                return;
-            }
+                queryClient.setQueryData<NoteDetailCache>(noteDetailQueryKey, (current) => {
+                    if (!current) {
+                        return current;
+                    }
 
-            isSaveConflictRef.current = false;
-            serverUpdatedAtRef.current = response.updateNote.updatedAt;
-            const shouldNotifySave = !silent && isAliveRef.current;
-            const noteDetailQueryKey = queryKeys.notes.detail(noteId);
-
-            await queryClient.cancelQueries({
-                queryKey: noteDetailQueryKey,
-                exact: true,
-            });
-
-            if (shouldNotifySave) {
-                onSavedRef.current(response.updateNote.updatedAt);
-            }
-
-            queryClient.setQueryData<NoteDetailCache>(noteDetailQueryKey, (current) => {
-                if (!current) {
-                    return current;
-                }
-
-                return {
-                    ...current,
-                    title: response.updateNote.title,
-                    content: draft.content,
-                    ...(draft.layout ? { layout: draft.layout } : {}),
+                    return {
+                        ...current,
+                        title: response.updateNote.title,
+                        content: draft.content,
+                        ...(draft.layout ? { layout: draft.layout } : {}),
+                        updatedAt: response.updateNote.updatedAt,
+                    };
+                });
+                publishClientNoteUpdatedEvent({
+                    noteId,
                     updatedAt: response.updateNote.updatedAt,
-                };
-            });
-            publishClientNoteUpdatedEvent({
-                noteId,
-                updatedAt: response.updateNote.updatedAt,
-                editSessionId: editSessionIdRef.current,
-            });
-            const nextPendingDraft = pendingDraftRef.current as NoteSaveDraft | null;
+                    editSessionId: editSessionIdRef.current,
+                });
+                const nextPendingDraft = pendingDraftRef.current as NoteSaveDraft | null;
 
-            if (nextPendingDraft?.baseUpdatedAt === draft.baseUpdatedAt) {
-                pendingDraftRef.current = {
-                    ...nextPendingDraft,
-                    baseUpdatedAt: response.updateNote.updatedAt,
-                };
-                persistCurrentPendingDraft();
-            } else if (!nextPendingDraft) {
-                clearLocalNoteDraft(noteId);
-            }
-
-            if (shouldNotifySave) {
-                if (pendingDraftRef.current) {
-                    setSaveStatus('pending');
-                } else {
-                    setSaveStatus('saved');
-                    void queryClient.invalidateQueries({
-                        queryKey: queryKeys.notes.listAll(),
-                        exact: false,
-                    });
-                    void queryClient.invalidateQueries({
-                        queryKey: queryKeys.notes.tagListAll(),
-                        exact: false,
-                    });
-                    void queryClient.invalidateQueries({
-                        queryKey: queryKeys.notes.backReferencesAll(),
-                        exact: false,
-                    });
-                    void queryClient.invalidateQueries({
-                        queryKey: queryKeys.notes.graph(),
-                        exact: true,
-                    });
+                if (nextPendingDraft?.baseUpdatedAt === draft.baseUpdatedAt) {
+                    pendingDraftRef.current = {
+                        ...nextPendingDraft,
+                        baseUpdatedAt: response.updateNote.updatedAt,
+                    };
+                    persistCurrentPendingDraft();
+                } else if (!nextPendingDraft) {
+                    clearLocalNoteDraft(noteId);
                 }
-            }
 
-            if (pendingDraftRef.current || flushAfterInFlightRef.current) {
-                void flushPendingSave({ silent });
-            }
+                if (shouldNotifySave) {
+                    if (pendingDraftRef.current) {
+                        setSaveStatus('pending');
+                    } else {
+                        setSaveStatus('saved');
+                        void queryClient.invalidateQueries({
+                            queryKey: queryKeys.notes.listAll(),
+                            exact: false,
+                        });
+                        void queryClient.invalidateQueries({
+                            queryKey: queryKeys.notes.tagListAll(),
+                            exact: false,
+                        });
+                        void queryClient.invalidateQueries({
+                            queryKey: queryKeys.notes.backReferencesAll(),
+                            exact: false,
+                        });
+                        void queryClient.invalidateQueries({
+                            queryKey: queryKeys.notes.graph(),
+                            exact: true,
+                        });
+                    }
+                }
+
+                if (pendingDraftRef.current || flushAfterInFlightRef.current) {
+                    return flushPendingSave({ silent });
+                }
+
+                return 'saved';
+            })();
+
+            inFlightSavePromiseRef.current = savePromise;
+
+            return savePromise;
         },
         [clearSaveTimer, editSessionIdRef, noteId, persistCurrentPendingDraft, queryClient, setMountedSaveStatus],
     );
@@ -284,6 +311,7 @@ export function useNoteSaveController({
     const clearDrafts = useCallback(() => {
         clearSaveTimer();
         pendingDraftRef.current = null;
+        inFlightSavePromiseRef.current = null;
         flushAfterInFlightRef.current = false;
         isSaveConflictRef.current = false;
         clearLocalNoteDraft(noteId);
@@ -293,6 +321,7 @@ export function useNoteSaveController({
 
     const resolveConflict = useCallback(() => {
         clearSaveTimer();
+        inFlightSavePromiseRef.current = null;
         flushAfterInFlightRef.current = false;
         isSaveConflictRef.current = false;
         setMountedSaveStatus(pendingDraftRef.current ? 'pending' : 'saved');
@@ -322,6 +351,8 @@ export function useNoteSaveController({
     }, [onConflict, onError, onSaved]);
 
     useEffect(() => {
+        isAliveRef.current = true;
+
         return () => {
             isAliveRef.current = false;
         };
@@ -339,6 +370,7 @@ export function useNoteSaveController({
     useEffect(() => {
         pendingDraftRef.current = null;
         inFlightSaveRef.current = false;
+        inFlightSavePromiseRef.current = null;
         flushAfterInFlightRef.current = false;
         isSaveConflictRef.current = false;
         serverUpdatedAtRef.current = initialUpdatedAt;

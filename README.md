@@ -1,24 +1,26 @@
 # Ocean Brain
 
-**Self-hosted, open-source Notion alternative** with bi-directional links and privacy-first design.
+**A self-hosted writing space for connected notes.**
 
-Own your notes. Connect your thoughts. No cloud required, no subscription needed.
+Write in the browser, link notes together, and keep the workspace on your own server.
 
-> Just like the vast ocean holds countless treasures, Ocean Brain lets your thoughts flow freely and securely on your own server.
+Ocean Brain is inspired by Zettelkasten-style note taking: small notes, deliberate links, and ideas that can build on each other over time.
 
-### Why Ocean Brain?
+## What it is
 
-- **Privacy-first**: Your notes stay on your server. No third-party access, ever.
-- **Notion-like editor**: Block-based editing powered by [BlockNote](https://www.blocknotejs.org/)
-- **Bi-directional links**: Connect notes with `[` and see backlinks instantly
-- **Zero subscription**: Self-host once, use forever
-- **Quick setup**: One npx or docker command, ready in 30 seconds
+Ocean Brain focuses on the writing experience first, then adds enough structure to keep notes connected: links, backlinks, tags, saved views, graph navigation, search, reminders, and calendar views.
+
+It is meant for project notes, decisions, research, learning notes, and ideas you expect to revisit.
+
+## Why connected notes?
+
+A note is easier to reuse when it points to related notes.
+
+Ocean Brain keeps that connection close to the writing flow. You can write a note, link it to another note, and later follow backlinks or views to see where that idea has been used.
 
 ## Try it now
 
-**[Live Demo](https://demo-ocean-brain.baejino.com/)** - See Ocean Brain in action
-
-<br>
+**[Live Demo](https://demo-ocean-brain.baejino.com/)** - Try the hosted demo
 
 ## Quick Start
 
@@ -111,25 +113,25 @@ pnpm dev
 
 If you run server/client in separate terminals, only the server terminal needs password/session env values.
 
-<br>
+## Core features
 
-## Features
+| Area | What it does |
+|------|--------------|
+| Writing | Write and edit notes from a browser-based workspace with block editing and `/` commands |
+| Connected notes | Link notes with `[[Note Title]]`, backlinks, tags, saved views, and graph navigation |
+| Returning to notes | Use search, pinned notes, reminders, and calendar views to revisit past notes |
+| Self-hosted operation | Run the app yourself and keep the database and assets with your instance |
 
-| Feature | Description |
-|---------|-------------|
-| Block editor | Notion-like editing with `/` commands |
-| Bi-directional links | Link notes with `[[Note Title]]` and track backlinks |
-| Knowledge graph | Explore connections between notes visually |
-| Tags | Organize with `@` mentions |
-| Search | Full-text search across all notes |
-| Pin notes | Keep important notes at the top |
-| Reminders | Set reminders with priorities |
-| Calendar view | See your notes by date |
-| MCP server | Integrate with AI tools like Claude Code |
+## Data, recovery, and backups
 
-<br>
+Ocean Brain provides everyday recovery paths, but it is not a replacement for regular backups.
 
-## MCP Server (AI Integration)
+- Deleted notes can be recovered from Trash for a limited time.
+- Recent note snapshots can help recover from common editing mistakes.
+- Individual notes can be exported as Markdown or HTML.
+- For full-instance safety, back up the database and assets used by your deployment.
+
+## MCP Server
 
 Ocean Brain includes a built-in [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server for AI tool integration.
 

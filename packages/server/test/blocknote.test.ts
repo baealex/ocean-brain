@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { blocksToMarkdown, extractTagIdsFromContentJson, markdownToBlocksJson } from '../src/modules/blocknote.js';
+import {
+    blocksToMarkdown,
+    countReferenceInlinesFromContentJson,
+    extractTagIdsFromContentJson,
+    hasUnsupportedMarkdownBlocks,
+    markdownToBlocksJson,
+} from '../src/modules/blocknote.js';
 
 test('blocksToMarkdown preserves supported content when tableOfContents blocks are present', async () => {
     const content = JSON.stringify([
@@ -53,6 +59,25 @@ test('blocksToMarkdown preserves supported content when tableOfContents blocks a
 
     assert.match(markdown, /hello world/);
     assert.match(markdown, /weekly review/i);
+});
+
+test('hasUnsupportedMarkdownBlocks detects BlockNote-only blocks before markdown writes', () => {
+    const content = JSON.stringify([
+        {
+            id: 'paragraph-1',
+            type: 'paragraph',
+            content: [{ type: 'text', text: 'Supported text', styles: {} }],
+            children: [],
+        },
+        {
+            id: 'toc-1',
+            type: 'tableOfContents',
+            props: {},
+            children: [],
+        },
+    ]);
+
+    assert.equal(hasUnsupportedMarkdownBlocks(content), true);
 });
 
 test('blocksToMarkdown does not drop the whole note when table blocks are present', async () => {
@@ -513,4 +538,20 @@ test('extractTagIdsFromContentJson collects tags from table cells', () => {
     );
 
     assert.deepEqual(tagIds.sort(), ['12', '34']);
+});
+
+test('countReferenceInlinesFromContentJson counts structured note references', () => {
+    const content = JSON.stringify([
+        {
+            id: 'paragraph-1',
+            type: 'paragraph',
+            content: [
+                { type: 'text', text: 'See ', styles: {} },
+                { type: 'reference', props: { id: '7', title: 'Reference note' } },
+            ],
+            children: [],
+        },
+    ]);
+
+    assert.equal(countReferenceInlinesFromContentJson(content), 1);
 });

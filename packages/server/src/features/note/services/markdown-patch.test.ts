@@ -5,6 +5,8 @@ import {
     buildMarkdownAppendPlan,
     buildMarkdownPatchPlan,
     buildMarkdownReplacePlan,
+    countExplicitTagTokens,
+    countMarkdownReferenceTokens,
     previewMarkdownPatch,
 } from './markdown-patch.js';
 
@@ -82,6 +84,34 @@ test('markdown patch preview fails when exact text is missing', () => {
         reason: 'TARGET_NOT_FOUND',
         message: 'No exact text match was found in the current note.',
     });
+});
+
+test('markdown patch preview accepts epoch millisecond baselines from GraphQL clients', () => {
+    const result = previewMarkdownPatch({
+        note: {
+            ...note,
+            markdown: 'Original sentence.',
+        },
+        expectedUpdatedAt: String(Date.parse(note.updatedAt)),
+        intent: 'Replace one sentence',
+        selector: {
+            type: 'exact_text',
+            text: 'Original sentence.',
+        },
+        operation: {
+            type: 'replace',
+            replacement: 'Updated sentence.',
+        },
+    });
+
+    assert.equal(result.status, 'dry_run');
+});
+
+test('markdown token counters scan malformed bracket-heavy input without regex backtracking', () => {
+    const noisyMarkdown = `${'[['.repeat(10_000)} [@project] [[Reference]] [#topic]`;
+
+    assert.equal(countExplicitTagTokens(noisyMarkdown), 2);
+    assert.equal(countMarkdownReferenceTokens(noisyMarkdown), 1);
 });
 
 test('markdown patch preview requires disambiguation when exact text appears more than once', () => {

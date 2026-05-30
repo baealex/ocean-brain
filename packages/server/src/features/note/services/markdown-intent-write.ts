@@ -1,5 +1,11 @@
 import models, { type NoteLayout } from '~/models.js';
-import { blocksToMarkdown, extractTagIdsFromContentJson, markdownToBlocksJson } from '~/modules/blocknote.js';
+import {
+    blocksToMarkdown,
+    countReferenceInlinesFromContentJson,
+    extractTagIdsFromContentJson,
+    hasUnsupportedMarkdownBlocks,
+    markdownToBlocksJson,
+} from '~/modules/blocknote.js';
 import type {
     MarkdownAppendPlanResult,
     MarkdownChangeDryRun,
@@ -18,6 +24,12 @@ import {
 } from './markdown-patch.js';
 import { MCP_SNAPSHOT_META } from './snapshot.js';
 import { type GuardedNoteWriteResult, updateNoteWithVersionGuardAndSnapshot } from './write.js';
+import {
+    isInvalidNoteVersionError,
+    isMissingNoteVersionError,
+    isNoteVersionConflictError,
+    parseNoteVersion,
+} from './write-conflict.js';
 
 interface MarkdownIntentNoteRecord {
     id: number;
@@ -32,6 +44,8 @@ interface MarkdownIntentWriteDeps {
     renderMarkdown: (contentJson: string) => Promise<string>;
     parseMarkdownToContentJson: (markdown: string) => Promise<string>;
     extractTagIds: (contentJson: string) => string[];
+    countReferenceInlines?: (contentJson: string) => number;
+    hasUnsupportedMarkdownBlocks?: (contentJson: string) => boolean;
     updateNote: (input: {
         id: number;
         data: {
@@ -197,29 +211,104 @@ const toTagIds = (tagIds: string[]) => {
     return tagIds.map((tagId) => Number(tagId)).filter((tagId) => Number.isSafeInteger(tagId) && tagId > 0);
 };
 
+const baselineMismatchFailure = (): MarkdownChangeFailure => ({
+    status: 'failed',
+    reason: 'BASELINE_MISMATCH',
+    message: 'The markdown write baseline does not match the current note.',
+});
+
+const missingBaselineFailure = (): MarkdownChangeFailure => ({
+    status: 'failed',
+    reason: 'MISSING_BASELINE',
+    message: 'expectedUpdatedAt or baseMarkdownSha256 is required for markdown writes.',
+});
+
+const unsupportedMarkdownStructureFailure = (): MarkdownChangeFailure => ({
+    status: 'failed',
+    reason: 'UNSUPPORTED_MARKDOWN_STRUCTURE',
+    message: 'This note contains BlockNote content that cannot be safely represented as Markdown.',
+});
+
+const referenceStructureFailure = (): MarkdownChangeFailure => ({
+    status: 'failed',
+    reason: 'REFERENCE_STRUCTURE_DECREASED',
+    message: 'The markdown write would reduce structured note reference links.',
+});
+
+const mapGuardedWriteError = (error: unknown): MarkdownChangeFailure | null => {
+    if (isNoteVersionConflictError(error) || isInvalidNoteVersionError(error)) {
+        return baselineMismatchFailure();
+    }
+
+    if (isMissingNoteVersionError(error)) {
+        return missingBaselineFailure();
+    }
+
+    return null;
+};
+
+const noteVersionMatches = (expectedUpdatedAt: string | undefined, currentUpdatedAt: Date) => {
+    try {
+        const expectedTimestamp = parseNoteVersion(expectedUpdatedAt);
+
+        return expectedTimestamp !== null && expectedTimestamp === currentUpdatedAt.getTime();
+    } catch {
+        return false;
+    }
+};
+
+const getUnsupportedSourceFailure = (deps: MarkdownIntentWriteDeps, note: MarkdownIntentNoteRecord) => {
+    if (deps.hasUnsupportedMarkdownBlocks?.(note.content)) {
+        return unsupportedMarkdownStructureFailure();
+    }
+
+    return null;
+};
+
 const applyMarkdownPlan = async (
     deps: MarkdownIntentWriteDeps,
     input: {
         noteId: number;
         noteUpdatedAt: string;
+        beforeContentJson: string;
         plan: Extract<MarkdownPatchPlanResult, { status: 'dry_run' }>;
         expectedUpdatedAt?: string;
+        policy?: MarkdownWritePolicy;
         summary: string;
         force?: boolean;
     },
 ): Promise<AppliedMarkdownWriteResult | MarkdownChangeFailure> => {
     const content = await deps.parseMarkdownToContentJson(input.plan.afterMarkdown);
+    const beforeReferenceCount = deps.countReferenceInlines?.(input.beforeContentJson) ?? 0;
+    const afterReferenceCount = deps.countReferenceInlines?.(content) ?? 0;
+
+    if (input.policy?.preserveReferences !== false && afterReferenceCount < beforeReferenceCount) {
+        return referenceStructureFailure();
+    }
+
     const tagIds = toTagIds(deps.extractTagIds(content));
-    const updateResult = await deps.updateNote({
-        id: input.noteId,
-        data: {
-            content,
-            tagIds,
-        },
-        expectedUpdatedAt: input.expectedUpdatedAt ?? input.noteUpdatedAt,
-        snapshotMeta: MCP_SNAPSHOT_META,
-        ...(input.force ? { force: true } : {}),
-    });
+    let updateResult: GuardedNoteWriteResult | null;
+
+    try {
+        updateResult = await deps.updateNote({
+            id: input.noteId,
+            data: {
+                content,
+                tagIds,
+            },
+            expectedUpdatedAt: input.expectedUpdatedAt ?? input.noteUpdatedAt,
+            snapshotMeta: MCP_SNAPSHOT_META,
+            ...(input.force ? { force: true } : {}),
+        });
+    } catch (error) {
+        const mappedError = mapGuardedWriteError(error);
+
+        if (mappedError) {
+            return mappedError;
+        }
+
+        throw error;
+    }
 
     if (!updateResult) {
         return {
@@ -249,9 +338,11 @@ const mapPlanResult = async (
     input: {
         noteId: number;
         noteUpdatedAt: string;
+        beforeContentJson: string;
         plan: MarkdownPatchPlanResult | MarkdownAppendPlanResult | MarkdownReplacePlanResult;
         dryRun?: boolean;
         expectedUpdatedAt?: string;
+        policy?: MarkdownWritePolicy;
         summary: string;
         force?: boolean;
     },
@@ -267,8 +358,10 @@ const mapPlanResult = async (
     return applyMarkdownPlan(deps, {
         noteId: input.noteId,
         noteUpdatedAt: input.noteUpdatedAt,
+        beforeContentJson: input.beforeContentJson,
         plan: input.plan,
         expectedUpdatedAt: input.expectedUpdatedAt,
+        policy: input.policy,
         summary: input.summary,
         ...(input.force ? { force: true } : {}),
     });
@@ -286,6 +379,12 @@ export const createMarkdownIntentWriteService = (deps: MarkdownIntentWriteDeps) 
             };
         }
 
+        const unsupportedFailure = getUnsupportedSourceFailure(deps, note);
+
+        if (unsupportedFailure) {
+            return unsupportedFailure;
+        }
+
         const noteSnapshot = await serializeNoteSnapshot(note, deps.renderMarkdown);
         const plan = buildMarkdownPatchPlan({
             note: noteSnapshot,
@@ -300,9 +399,11 @@ export const createMarkdownIntentWriteService = (deps: MarkdownIntentWriteDeps) 
         return mapPlanResult(deps, {
             noteId: input.id,
             noteUpdatedAt: noteSnapshot.updatedAt,
+            beforeContentJson: note.content,
             plan,
             dryRun: input.dryRun,
             expectedUpdatedAt: input.expectedUpdatedAt,
+            policy: input.policy,
             summary: input.intent,
         });
     },
@@ -316,6 +417,12 @@ export const createMarkdownIntentWriteService = (deps: MarkdownIntentWriteDeps) 
                 reason: 'TARGET_NOT_FOUND',
                 message: 'The requested note was not found.',
             };
+        }
+
+        const unsupportedFailure = getUnsupportedSourceFailure(deps, note);
+
+        if (unsupportedFailure) {
+            return unsupportedFailure;
         }
 
         const noteSnapshot = await serializeNoteSnapshot(note, deps.renderMarkdown);
@@ -333,9 +440,11 @@ export const createMarkdownIntentWriteService = (deps: MarkdownIntentWriteDeps) 
         return mapPlanResult(deps, {
             noteId: input.id,
             noteUpdatedAt: noteSnapshot.updatedAt,
+            beforeContentJson: note.content,
             plan,
             dryRun: input.dryRun,
             expectedUpdatedAt: input.expectedUpdatedAt,
+            policy: input.policy,
             summary: input.intent,
         });
     },
@@ -351,6 +460,12 @@ export const createMarkdownIntentWriteService = (deps: MarkdownIntentWriteDeps) 
             };
         }
 
+        const unsupportedFailure = getUnsupportedSourceFailure(deps, note);
+
+        if (unsupportedFailure) {
+            return unsupportedFailure;
+        }
+
         const noteSnapshot = await serializeNoteSnapshot(note, deps.renderMarkdown);
         const plan = buildMarkdownReplacePlan({
             note: noteSnapshot,
@@ -364,9 +479,11 @@ export const createMarkdownIntentWriteService = (deps: MarkdownIntentWriteDeps) 
         return mapPlanResult(deps, {
             noteId: input.id,
             noteUpdatedAt: noteSnapshot.updatedAt,
+            beforeContentJson: note.content,
             plan,
             dryRun: input.dryRun,
             expectedUpdatedAt: input.expectedUpdatedAt,
+            policy: input.policy,
             summary: input.intent,
         });
     },
@@ -382,7 +499,7 @@ export const createMarkdownIntentWriteService = (deps: MarkdownIntentWriteDeps) 
             };
         }
 
-        if (!input.expectedUpdatedAt || input.expectedUpdatedAt !== note.updatedAt.toISOString()) {
+        if (!noteVersionMatches(input.expectedUpdatedAt, note.updatedAt)) {
             return {
                 status: 'failed',
                 reason: input.expectedUpdatedAt ? 'BASELINE_MISMATCH' : 'MISSING_BASELINE',
@@ -430,15 +547,27 @@ export const createMarkdownIntentWriteService = (deps: MarkdownIntentWriteDeps) 
             return preview;
         }
 
-        const updateResult = await deps.updateNote({
-            id: input.id,
-            data: {
-                ...(preview.proposed.title !== undefined ? { title: preview.proposed.title } : {}),
-                ...(preview.proposed.layout !== undefined ? { layout: preview.proposed.layout } : {}),
-            },
-            expectedUpdatedAt: input.expectedUpdatedAt,
-            snapshotMeta: MCP_SNAPSHOT_META,
-        });
+        let updateResult: GuardedNoteWriteResult | null;
+
+        try {
+            updateResult = await deps.updateNote({
+                id: input.id,
+                data: {
+                    ...(preview.proposed.title !== undefined ? { title: preview.proposed.title } : {}),
+                    ...(preview.proposed.layout !== undefined ? { layout: preview.proposed.layout } : {}),
+                },
+                expectedUpdatedAt: input.expectedUpdatedAt,
+                snapshotMeta: MCP_SNAPSHOT_META,
+            });
+        } catch (error) {
+            const mappedError = mapGuardedWriteError(error);
+
+            if (mappedError) {
+                return mappedError;
+            }
+
+            throw error;
+        }
 
         if (!updateResult) {
             return {
@@ -476,6 +605,8 @@ export const defaultMarkdownIntentWriteService = createMarkdownIntentWriteServic
     renderMarkdown: blocksToMarkdown,
     parseMarkdownToContentJson: markdownToBlocksJson,
     extractTagIds: extractTagIdsFromContentJson,
+    countReferenceInlines: countReferenceInlinesFromContentJson,
+    hasUnsupportedMarkdownBlocks,
     updateNote: updateNoteWithVersionGuardAndSnapshot,
 });
 

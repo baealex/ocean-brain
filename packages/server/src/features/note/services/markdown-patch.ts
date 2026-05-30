@@ -163,9 +163,11 @@ export interface MarkdownChangeFailure {
         | 'INVALID_HEADING_LEVEL'
         | 'MISSING_BASELINE'
         | 'NOOP'
+        | 'REFERENCE_STRUCTURE_DECREASED'
         | 'REFERENCE_TOKEN_DECREASED'
         | 'TAG_TOKEN_DECREASED'
-        | 'TARGET_NOT_FOUND';
+        | 'TARGET_NOT_FOUND'
+        | 'UNSUPPORTED_MARKDOWN_STRUCTURE';
     message: string;
 }
 
@@ -356,8 +358,80 @@ const countChangedLines = (beforeMarkdown: string, afterMarkdown: string) => {
     return Math.max(removedLineCount, addedLineCount);
 };
 
-const countMatches = (value: string, pattern: RegExp) => {
-    return Array.from(value.matchAll(pattern)).length;
+const isMarkdownTokenWhitespace = (character: string) => /\s/.test(character);
+
+export const countExplicitTagTokens = (value: string) => {
+    let count = 0;
+
+    for (let index = 0; index < value.length; index += 1) {
+        if (value[index] !== '[' || (value[index + 1] !== '@' && value[index + 1] !== '#')) {
+            continue;
+        }
+
+        let cursor = index + 2;
+        let isValid = cursor < value.length;
+
+        while (cursor < value.length && value[cursor] !== ']') {
+            if (value[cursor] === '[' || isMarkdownTokenWhitespace(value[cursor])) {
+                isValid = false;
+                break;
+            }
+
+            cursor += 1;
+        }
+
+        if (isValid && cursor < value.length && cursor > index + 2) {
+            count += 1;
+            index = cursor;
+            continue;
+        }
+
+        if (!isValid) {
+            index = Math.max(index, cursor - 1);
+        }
+    }
+
+    return count;
+};
+
+export const countMarkdownReferenceTokens = (value: string) => {
+    let count = 0;
+    let cursor = 0;
+
+    while (cursor < value.length) {
+        const start = value.indexOf('[[', cursor);
+
+        if (start === -1) {
+            break;
+        }
+
+        const end = value.indexOf(']]', start + 2);
+
+        if (end === -1) {
+            break;
+        }
+
+        if (end > start + 2) {
+            count += 1;
+        }
+
+        cursor = end + 2;
+    }
+
+    return count;
+};
+
+const parseVersionTimestamp = (value: string) => {
+    const timestamp = /^\d+$/.test(value) ? Number(value) : Date.parse(value);
+
+    return Number.isFinite(timestamp) ? timestamp : null;
+};
+
+const noteVersionsMatch = (expectedUpdatedAt: string, currentUpdatedAt: string) => {
+    const expectedTimestamp = parseVersionTimestamp(expectedUpdatedAt);
+    const currentTimestamp = parseVersionTimestamp(currentUpdatedAt);
+
+    return expectedTimestamp !== null && currentTimestamp !== null && expectedTimestamp === currentTimestamp;
 };
 
 const getPreservationFailure = (
@@ -365,8 +439,8 @@ const getPreservationFailure = (
     afterMarkdown: string,
     policy: MarkdownChangePolicy | undefined,
 ): MarkdownChangeFailure | null => {
-    const beforeTagCount = countMatches(beforeMarkdown, /\[[@#][^\s[\]]+\]/g);
-    const afterTagCount = countMatches(afterMarkdown, /\[[@#][^\s[\]]+\]/g);
+    const beforeTagCount = countExplicitTagTokens(beforeMarkdown);
+    const afterTagCount = countExplicitTagTokens(afterMarkdown);
 
     if (policy?.preserveTags === true && afterTagCount < beforeTagCount) {
         return {
@@ -376,8 +450,8 @@ const getPreservationFailure = (
         };
     }
 
-    const beforeReferenceCount = countMatches(beforeMarkdown, /\[\[[^\]]+\]\]/g);
-    const afterReferenceCount = countMatches(afterMarkdown, /\[\[[^\]]+\]\]/g);
+    const beforeReferenceCount = countMarkdownReferenceTokens(beforeMarkdown);
+    const afterReferenceCount = countMarkdownReferenceTokens(afterMarkdown);
 
     if (policy?.preserveReferences === true && afterReferenceCount < beforeReferenceCount) {
         return {
@@ -396,16 +470,16 @@ const collectWarnings = (
     policy: MarkdownChangePolicy | undefined,
 ): string[] => {
     const warnings: string[] = [];
-    const beforeTagCount = countMatches(beforeMarkdown, /\[[@#][^\s[\]]+\]/g);
-    const afterTagCount = countMatches(afterMarkdown, /\[[@#][^\s[\]]+\]/g);
+    const beforeTagCount = countExplicitTagTokens(beforeMarkdown);
+    const afterTagCount = countExplicitTagTokens(afterMarkdown);
     const shouldWarnTags = policy?.preserveTags === undefined || policy.preserveTags === 'warn';
 
     if (shouldWarnTags && afterTagCount < beforeTagCount) {
         warnings.push('TAG_TOKEN_COUNT_DECREASED');
     }
 
-    const beforeReferenceCount = countMatches(beforeMarkdown, /\[\[[^\]]+\]\]/g);
-    const afterReferenceCount = countMatches(afterMarkdown, /\[\[[^\]]+\]\]/g);
+    const beforeReferenceCount = countMarkdownReferenceTokens(beforeMarkdown);
+    const afterReferenceCount = countMarkdownReferenceTokens(afterMarkdown);
     const shouldWarnReferences = policy?.preserveReferences === undefined || policy.preserveReferences === 'warn';
 
     if (shouldWarnReferences && afterReferenceCount < beforeReferenceCount) {
@@ -431,7 +505,7 @@ const validateBaseline = (
     }
 
     if (
-        (expectedUpdatedAt && expectedUpdatedAt !== note.updatedAt) ||
+        (expectedUpdatedAt && !noteVersionsMatch(expectedUpdatedAt, note.updatedAt)) ||
         (baseMarkdownSha256 && baseMarkdownSha256 !== beforeMarkdownSha256)
     ) {
         return {

@@ -53,6 +53,7 @@ test('note trash service moves a live note to trash and returns a summary', asyn
                 deletedAt: new Date('2026-03-31T01:00:00.000Z'),
                 tags: note.tags.map((tag) => ({ name: tag.name })),
                 reminders: [],
+                properties: [],
             };
         },
         purgeDeletedNote: async () => {

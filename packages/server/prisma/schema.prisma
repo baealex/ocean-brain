@@ -39,6 +39,64 @@ model Note {
     tags                 Tag[]      @relation("NoteToTag")
     reminders            Reminder[] @relation("NoteToReminder")
     snapshots            NoteSnapshot[]
+    properties           NoteProperty[]
+
+    @@index([updatedAt, id])
+    @@index([createdAt, id])
+    @@index([pinned, updatedAt, id])
+}
+
+model PropertyDefinition {
+    id         Int               @id @default(autoincrement())
+    key        String            @unique
+    name       String
+    valueType  PropertyValueType
+    createdAt  DateTime          @default(now())
+    updatedAt  DateTime          @updatedAt
+    options    PropertyOption[]
+    properties NoteProperty[]
+}
+
+
+model PropertyOption {
+    id                   Int                @id @default(autoincrement())
+    propertyDefinitionId Int
+    definition           PropertyDefinition @relation(fields: [propertyDefinitionId], references: [id], onDelete: Cascade)
+    label                String
+    value                String
+    color                String?
+    order                Int                @default(0)
+    properties           NoteProperty[]
+    createdAt            DateTime           @default(now())
+    updatedAt            DateTime           @updatedAt
+
+    @@unique([propertyDefinitionId, value])
+    @@index([propertyDefinitionId, order])
+}
+
+model NoteProperty {
+    id                   Int                @id @default(autoincrement())
+    noteId               Int
+    propertyDefinitionId Int
+    note                 Note               @relation(fields: [noteId], references: [id], onDelete: Cascade)
+    definition           PropertyDefinition @relation(fields: [propertyDefinitionId], references: [id], onDelete: Cascade)
+    optionId             Int?
+    option               PropertyOption?    @relation(fields: [optionId], references: [id], onDelete: SetNull)
+    textValue            String?
+    textValueNormalized  String?
+    numberValue          Float?
+    dateValue            DateTime?
+    boolValue            Boolean?
+    createdAt            DateTime           @default(now())
+    updatedAt            DateTime           @updatedAt
+
+    @@unique([noteId, propertyDefinitionId])
+    @@index([propertyDefinitionId, noteId])
+    @@index([propertyDefinitionId, textValueNormalized, noteId])
+    @@index([propertyDefinitionId, numberValue, noteId])
+    @@index([propertyDefinitionId, dateValue, noteId])
+    @@index([propertyDefinitionId, boolValue, noteId])
+    @@index([propertyDefinitionId, optionId, noteId])
 }
 
 model NoteSnapshot {
@@ -67,8 +125,31 @@ model DeletedNote {
     layout     NoteLayout       @default(wide)
     tags       DeletedNoteTag[]
     reminders  DeletedReminder[]
+    properties DeletedNoteProperty[]
 
     @@index([deletedAt, updatedAt])
+}
+
+model DeletedNoteProperty {
+    id                  Int               @id @default(autoincrement())
+    deletedNoteId       Int
+    deletedNote         DeletedNote       @relation(fields: [deletedNoteId], references: [id], onDelete: Cascade)
+    key                 String
+    name                String
+    valueType           PropertyValueType
+    textValue           String?
+    textValueNormalized String?
+    numberValue         Float?
+    dateValue           DateTime?
+    boolValue           Boolean?
+    optionValue         String?
+    optionLabel         String?
+    optionColor         String?
+    createdAt           DateTime
+    updatedAt           DateTime
+
+    @@unique([deletedNoteId, key])
+    @@index([deletedNoteId])
 }
 
 model DeletedNoteTag {
@@ -121,6 +202,14 @@ enum NoteLayout {
     narrow
     wide
     full
+}
+
+enum PropertyValueType {
+    text
+    number
+    date
+    boolean
+    select
 }
 
 model Reminder {

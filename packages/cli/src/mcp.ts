@@ -243,6 +243,7 @@ export async function startMcpServer(
                         createdAt
                         updatedAt
                         tags { id name }
+                        properties { key name value valueType option { label value } }
                     }
                     backReferences(id: $id) {
                         id
@@ -258,6 +259,7 @@ export async function startMcpServer(
                 createdAt: string;
                 updatedAt: string;
                 tags: Array<{ id: string; name: string }>;
+                properties?: Array<{ key: string; name: string; value: string; valueType: string }>;
             };
             const backReferences = (data?.backReferences as Array<{
                 id: string;

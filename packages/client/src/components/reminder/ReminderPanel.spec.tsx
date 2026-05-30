@@ -22,6 +22,7 @@ let mockReminderData: MockReminderRenderData = {
 };
 
 vi.mock('~/components/icon', () => ({
+    Bell: () => <span aria-hidden="true">Bell</span>,
     TriangleRight: () => <span aria-hidden="true">TriangleRight</span>,
     TriangleDown: () => <span aria-hidden="true">TriangleDown</span>,
     Plus: () => <span aria-hidden="true">Plus</span>,

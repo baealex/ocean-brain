@@ -14,6 +14,7 @@ export const SETTINGS_TRASH_ROUTE = '/setting/trash' as const;
 export const SETTINGS_MANAGE_IMAGE_ROUTE = '/setting/manage-image' as const;
 export const SETTINGS_MANAGE_IMAGE_DETAIL_ROUTE = '/setting/manage-image/$id' as const;
 export const SETTINGS_PLACEHOLDER_ROUTE = '/setting/placeholder' as const;
+export const SETTINGS_PROPERTIES_ROUTE = '/setting/properties' as const;
 
 export const getTagURL = (id: string) => `/tag/${id}`;
 export const getNoteURL = (id: string) => `/${id}`;

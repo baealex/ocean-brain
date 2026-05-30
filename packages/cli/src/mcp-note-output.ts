@@ -3,6 +3,14 @@ export interface McpReadNoteTag {
     name: string;
 }
 
+export interface McpReadNoteProperty {
+    key: string;
+    name: string;
+    value: string;
+    valueType: string;
+    option?: { label: string; value: string } | null;
+}
+
 export interface McpReadNote {
     id: string;
     title: string;
@@ -10,6 +18,7 @@ export interface McpReadNote {
     createdAt: string;
     updatedAt: string;
     tags: McpReadNoteTag[];
+    properties?: McpReadNoteProperty[];
 }
 
 export interface McpReadNoteBackReference {
@@ -46,11 +55,17 @@ export const formatMcpReadNoteOutput = ({
     const backReferenceLines = backReferences.length > 0
         ? backReferences.map(formatBackReferenceLine)
         : ['- (none)'];
+    const propertyLines = note.properties && note.properties.length > 0
+        ? note.properties.map((property) => `- ${property.key}: ${property.option?.label ?? property.value} (${property.valueType})`)
+        : ['- (none)'];
 
     return [
         `# ${note.title}`,
         '',
         `Tags: ${note.tags.map((tag) => tag.name).join(', ') || '(none)'}`,
+        '',
+        'Properties:',
+        ...propertyLines,
         `Created: ${note.createdAt}`,
         `Updated: ${note.updatedAt}`,
         ...(truncated ? [`Content: ${totalLength} chars (showing first ${maxLength})`] : []),

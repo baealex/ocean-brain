@@ -2,6 +2,15 @@ import type { IResolvers } from '@graphql-tools/utils';
 import type { Request } from 'express';
 import { GraphQLError } from 'graphql';
 import { extractBlocksByType, parseNoteContent } from '~/features/note/services/content-blocks.js';
+import {
+    createNotePropertyDefinition,
+    deleteNotePropertyDefinition,
+    InvalidNotePropertyInputError,
+    type NotePropertiesPatchInput,
+    type NotePropertyDefinitionInput,
+    NotePropertyDeleteConfirmationRequiredError,
+    updateNotePropertiesWithVersionGuard,
+} from '~/features/note/services/properties.js';
 import { buildNoteSearchProjection } from '~/features/note/services/search.js';
 import { createSnapshotMetaFromUserAgent, restoreNoteSnapshot } from '~/features/note/services/snapshot.js';
 import { purgeTrashedNoteById, restoreTrashedNoteById, trashNoteById } from '~/features/note/services/trash.js';
@@ -211,6 +220,119 @@ export const noteMutationResolvers: NoteMutationResolvers = {
         }
 
         return true;
+    },
+    createNotePropertyKey: async (_, { input }: { input: NotePropertyDefinitionInput }) => {
+        try {
+            return await createNotePropertyDefinition(input);
+        } catch (error) {
+            if (error instanceof InvalidNotePropertyInputError) {
+                throw new GraphQLError(error.message, {
+                    extensions: {
+                        code: 'INVALID_NOTE_PROPERTY_INPUT',
+                    },
+                });
+            }
+
+            throw error;
+        }
+    },
+    deleteNotePropertyKey: async (_, { key, confirmImpact }: { key: string; confirmImpact?: boolean }) => {
+        try {
+            const result = await deleteNotePropertyDefinition({ key, confirmImpact });
+
+            if (!result) {
+                throw 'NOT FOUND';
+            }
+
+            return result;
+        } catch (error) {
+            if (error instanceof InvalidNotePropertyInputError) {
+                throw new GraphQLError(error.message, {
+                    extensions: {
+                        code: 'INVALID_NOTE_PROPERTY_INPUT',
+                    },
+                });
+            }
+
+            if (error instanceof NotePropertyDeleteConfirmationRequiredError) {
+                throw new GraphQLError(error.message, {
+                    extensions: {
+                        code: error.code,
+                        affectedNoteCount: error.affectedNoteCount,
+                    },
+                });
+            }
+
+            throw error;
+        }
+    },
+    updateNoteProperties: async (
+        _,
+        {
+            id,
+            patch,
+            editSessionId,
+            expectedUpdatedAt,
+            force,
+        }: {
+            id: string;
+            patch: NotePropertiesPatchInput;
+            editSessionId?: string;
+            expectedUpdatedAt?: string;
+            force?: boolean;
+        },
+    ) => {
+        try {
+            const note = await updateNotePropertiesWithVersionGuard({
+                id: Number(id),
+                patch,
+                ...(editSessionId ? { editSessionId } : {}),
+                ...(expectedUpdatedAt ? { expectedUpdatedAt } : {}),
+                ...(force ? { force: true } : {}),
+            });
+
+            if (!note) {
+                throw 'NOT FOUND';
+            }
+
+            return note;
+        } catch (error) {
+            if (error instanceof InvalidNotePropertyInputError) {
+                throw new GraphQLError(error.message, {
+                    extensions: {
+                        code: 'INVALID_NOTE_PROPERTY_INPUT',
+                    },
+                });
+            }
+
+            if (isNoteVersionConflictError(error)) {
+                throw new GraphQLError(error.message, {
+                    extensions: {
+                        code: error.code,
+                        currentUpdatedAt: error.currentUpdatedAt,
+                        expectedUpdatedAt: error.expectedUpdatedAt,
+                    },
+                });
+            }
+
+            if (isInvalidNoteVersionError(error)) {
+                throw new GraphQLError(error.message, {
+                    extensions: {
+                        code: error.code,
+                    },
+                });
+            }
+
+            if (isMissingNoteVersionError(error)) {
+                throw new GraphQLError(error.message, {
+                    extensions: {
+                        code: error.code,
+                    },
+                });
+            }
+
+            throw error;
+        }
     },
     pinNote: (_, { id, pinned }: { id: string; pinned: boolean }) =>
         models.note.update({

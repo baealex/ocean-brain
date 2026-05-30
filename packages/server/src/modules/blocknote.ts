@@ -92,6 +92,26 @@ function stripUnsupportedMarkdownBlocks(blocks: BlockNote[]): BlockNote[] {
         }));
 }
 
+function parseBlockNoteContent(contentJson: string): BlockNote[] {
+    const parsed = JSON.parse(contentJson);
+
+    if (!Array.isArray(parsed)) {
+        throw new Error('INVALID_BLOCKNOTE_CONTENT');
+    }
+
+    return parsed;
+}
+
+function visitBlocks(blocks: BlockNote[], visit: (block: BlockNote) => void) {
+    for (const block of blocks) {
+        visit(block);
+
+        if (block.children?.length) {
+            visitBlocks(block.children, visit);
+        }
+    }
+}
+
 function createTagPlaceholder(index: number) {
     return `${TAG_PLACEHOLDER_PREFIX}${index}${TAG_PLACEHOLDER_SUFFIX}`;
 }
@@ -445,7 +465,7 @@ function getEditor(): ServerBlockNoteEditor {
 
 export async function blocksToMarkdown(contentJson: string): Promise<string> {
     try {
-        const blocks = JSON.parse(contentJson);
+        const blocks = parseBlockNoteContent(contentJson);
         const supportedBlocks = stripUnsupportedMarkdownBlocks(blocks);
         const placeholderToTag = new Map<string, string>();
         const processed = preprocessCustomInlineContent(supportedBlocks, placeholderToTag, { value: 0 });
@@ -475,6 +495,38 @@ export async function markdownToBlocksJson(
 }
 
 export function extractTagIdsFromContentJson(contentJson: string): string[] {
-    const blocks = JSON.parse(contentJson) as BlockNote[];
+    const blocks = parseBlockNoteContent(contentJson);
     return collectTagIds(blocks);
+}
+
+export function hasUnsupportedMarkdownBlocks(contentJson: string): boolean {
+    try {
+        let hasUnsupportedBlock = false;
+        visitBlocks(parseBlockNoteContent(contentJson), (block) => {
+            if (UNSUPPORTED_MARKDOWN_BLOCK_TYPES.has(block.type)) {
+                hasUnsupportedBlock = true;
+            }
+        });
+
+        return hasUnsupportedBlock;
+    } catch {
+        return false;
+    }
+}
+
+export function countReferenceInlinesFromContentJson(contentJson: string): number {
+    try {
+        let count = 0;
+        visitBlocks(parseBlockNoteContent(contentJson), (block) => {
+            visitBlockContent(block.content, (inline) => {
+                if (inline.type === 'reference') {
+                    count += 1;
+                }
+            });
+        });
+
+        return count;
+    } catch {
+        return 0;
+    }
 }

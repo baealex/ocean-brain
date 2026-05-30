@@ -18,6 +18,15 @@ export const destructiveMcpWriteFields = {
         .describe('Explicitly confirm a bulk destructive change when the preview says force is required.')
 };
 
+export const confirmedMcpWriteFields = {
+    dryRun: z.boolean().optional().default(true)
+        .describe('Preview the write first. Set dryRun to false only after you receive an operationId and confirmToken.'),
+    operationId: z.string().optional()
+        .describe('Operation id returned by the dry-run response. Required when dryRun is false.'),
+    confirmToken: z.string().optional()
+        .describe('Confirmation token returned by the dry-run response. Required when dryRun is false.')
+};
+
 export interface DestructiveWriteRequest {
     dryRun?: boolean;
     operationId?: string;
@@ -37,6 +46,7 @@ export interface PrepareWriteOperationInput {
     affectedIds: string[];
     estimatedChangeCount: number;
     force?: boolean;
+    operationFingerprint?: string;
     risk: McpWriteRisk;
     summary: string;
     toolName: string;
@@ -50,6 +60,7 @@ export interface PreparedWriteOperation {
     estimatedChangeCount: number;
     expiresAt: string;
     force: boolean;
+    operationFingerprint?: string;
     operationId: string;
     risk: McpWriteRisk;
     summary: string;
@@ -64,6 +75,7 @@ export interface PendingWriteOperation {
     estimatedChangeCount: number;
     expiresAt: string;
     force: boolean;
+    operationFingerprint?: string;
     operationId: string;
     risk: McpWriteRisk;
     summary: string;
@@ -77,6 +89,7 @@ export interface PublicPendingWriteOperation {
     estimatedChangeCount: number;
     expiresAt: string;
     force: boolean;
+    operationFingerprint?: string;
     operationId: string;
     risk: McpWriteRisk;
     summary: string;
@@ -133,6 +146,7 @@ const toPublicPendingOperation = (operation: PendingWriteOperation): PublicPendi
     estimatedChangeCount: operation.estimatedChangeCount,
     expiresAt: operation.expiresAt,
     force: operation.force,
+    ...(operation.operationFingerprint ? { operationFingerprint: operation.operationFingerprint } : {}),
     operationId: operation.operationId,
     risk: operation.risk,
     summary: operation.summary,
@@ -245,6 +259,7 @@ export const createMcpWriteSafetyCoordinator = (options: McpWriteSafetyOptions =
             estimatedChangeCount: input.estimatedChangeCount,
             expiresAt,
             force: Boolean(input.force),
+            ...(input.operationFingerprint ? { operationFingerprint: input.operationFingerprint } : {}),
             operationId,
             risk: input.risk,
             summary: input.summary,
@@ -262,7 +277,7 @@ export const createMcpWriteSafetyCoordinator = (options: McpWriteSafetyOptions =
 
     const requireConfirmedOperation = (
         request: DestructiveWriteRequest,
-        expected: Pick<PrepareWriteOperationInput, 'toolName'>
+        expected: Pick<PrepareWriteOperationInput, 'toolName' | 'operationFingerprint'>
     ): PublicPendingWriteOperation => {
         if (!request.operationId || !request.confirmToken) {
             throw createError(
@@ -291,6 +306,14 @@ export const createMcpWriteSafetyCoordinator = (options: McpWriteSafetyOptions =
             throw createError('INVALID_CONFIRMATION', 'The write confirmation does not match this MCP tool.');
         }
 
+        if (
+            expected.operationFingerprint &&
+            pendingOperation.operationFingerprint !== expected.operationFingerprint
+        ) {
+            appendLog(buildLogEntry(publicPendingOperation, 'rejected', 'operation_fingerprint_mismatch'));
+            throw createError('INVALID_CONFIRMATION', 'The write confirmation does not match this MCP operation.');
+        }
+
         if (pendingOperation.confirmTokenHash !== hashToken(request.confirmToken)) {
             appendLog(buildLogEntry(publicPendingOperation, 'rejected', 'token_mismatch'));
             throw createError('INVALID_CONFIRMATION', 'The write confirmation token is invalid.');
@@ -317,7 +340,10 @@ export const createMcpWriteSafetyCoordinator = (options: McpWriteSafetyOptions =
 
         return {
             kind: 'confirmed' as const,
-            operation: requireConfirmedOperation(request, { toolName: input.toolName })
+            operation: requireConfirmedOperation(request, {
+                toolName: input.toolName,
+                operationFingerprint: input.operationFingerprint
+            })
         };
     };
 

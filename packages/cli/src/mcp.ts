@@ -12,6 +12,7 @@ import {
     formatMcpGraphqlError
 } from './mcp-write-safety.js';
 import { formatMcpReadNoteOutput } from './mcp-note-output.js';
+import { registerIntentWriteTools } from './mcp-intent-write-tools.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
@@ -23,6 +24,10 @@ export const OCEAN_BRAIN_MCP_TOOLS = {
     readNote: 'ocean_brain_read_note',
     createNote: 'ocean_brain_create_note',
     updateNote: 'ocean_brain_update_note',
+    patchNoteMarkdown: 'ocean_brain_patch_note_markdown',
+    appendNoteMarkdown: 'ocean_brain_append_note_markdown',
+    updateNoteMetadata: 'ocean_brain_update_note_metadata',
+    replaceNoteMarkdown: 'ocean_brain_replace_note_markdown',
     listTags: 'ocean_brain_list_tags',
     listNotesByTag: 'ocean_brain_list_notes_by_tag',
     listNotesByTags: 'ocean_brain_list_notes_by_tags',
@@ -280,7 +285,7 @@ export async function startMcpServer(
 
     server.tool(
         OCEAN_BRAIN_MCP_TOOLS.createNote,
-        'Create an Ocean Brain note from markdown through the MCP write path. In MCP markdown, use explicit tags like [@project] or [#project], and use [[Note Title]] for note links. When writing linked notes, prefer creating or organizing the reference target note first. A single link is enough for Ocean Brain to surface a back reference on the other note.',
+        'Create an Ocean Brain note from markdown. Search/read first to avoid duplicates; prefer patching an existing note when the intent is a local change.',
         {
             title: z.string().describe('Note title'),
             markdown: z.string().optional().default('').describe('Markdown body for the new note. In MCP markdown, tags must use [@tag] or [#tag]. Defaults to an empty note body.'),
@@ -314,7 +319,7 @@ export async function startMcpServer(
 
     server.tool(
         OCEAN_BRAIN_MCP_TOOLS.updateNote,
-        'Update an Ocean Brain note from markdown through the MCP write path. In MCP markdown, use explicit tags like [@project] or [#project], and use [[Note Title]] for note links. When you add linked notes, prefer organizing the reference target note first. A single link is enough for Ocean Brain to surface a back reference on the other note.',
+        'Legacy full-field note update through the MCP write path. Prefer patch/append/metadata tools for small changes; use this only when intentionally replacing provided fields.',
         {
             id: z.string().describe('Note ID to update'),
             title: z.string().optional().describe('New note title'),
@@ -348,6 +353,15 @@ export async function startMcpServer(
             };
         }
     );
+
+    registerIntentWriteTools(server, {
+        jsonRequest,
+        requireWriteToken,
+        serverUrl,
+        token,
+        tools: OCEAN_BRAIN_MCP_TOOLS,
+        writeSafety
+    });
 
     server.tool(
         OCEAN_BRAIN_MCP_TOOLS.listTags,
@@ -626,6 +640,10 @@ export async function startMcpServer(
                         writeTools: [
                             OCEAN_BRAIN_MCP_TOOLS.createNote,
                             OCEAN_BRAIN_MCP_TOOLS.updateNote,
+                            OCEAN_BRAIN_MCP_TOOLS.patchNoteMarkdown,
+                            OCEAN_BRAIN_MCP_TOOLS.appendNoteMarkdown,
+                            OCEAN_BRAIN_MCP_TOOLS.updateNoteMetadata,
+                            OCEAN_BRAIN_MCP_TOOLS.replaceNoteMarkdown,
                             OCEAN_BRAIN_MCP_TOOLS.createTag,
                             OCEAN_BRAIN_MCP_TOOLS.deleteNote
                         ],

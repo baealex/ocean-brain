@@ -3,7 +3,7 @@ import { buildNoteSearchProjection } from './search.js';
 import { captureNoteBaseline } from './snapshot.js';
 import { createNoteVersionConflictError, MissingNoteVersionError, parseNoteVersion } from './write-conflict.js';
 
-interface NoteWriteRecord {
+export interface NoteWriteRecord {
     id: number;
     title: string;
     content: string;
@@ -28,6 +28,11 @@ interface UpdateNoteWithVersionGuardInput {
     expectedUpdatedAt?: string;
     snapshotMeta?: string;
     force?: boolean;
+}
+
+export interface GuardedNoteWriteResult {
+    note: NoteWriteRecord;
+    snapshot: unknown;
 }
 
 interface NoteWriteDeps {
@@ -65,15 +70,15 @@ const isRecordNotFoundError = (error: unknown) => {
     return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025';
 };
 
-export const createNoteWriteService = (deps: NoteWriteDeps) => ({
-    updateNoteWithVersionGuard: async ({
+export const createNoteWriteService = (deps: NoteWriteDeps) => {
+    const updateNoteWithVersionGuardAndSnapshot = async ({
         id,
         data,
         editSessionId,
         expectedUpdatedAt,
         snapshotMeta,
         force = false,
-    }: UpdateNoteWithVersionGuardInput): Promise<NoteWriteRecord | null> => {
+    }: UpdateNoteWithVersionGuardInput): Promise<GuardedNoteWriteResult | null> => {
         const existingNote = await deps.findNoteForWrite(id);
 
         if (!existingNote) {
@@ -107,7 +112,7 @@ export const createNoteWriteService = (deps: NoteWriteDeps) => ({
                 },
             });
 
-            await deps.captureBaseline({
+            const snapshot = await deps.captureBaseline({
                 noteId: id,
                 baseline: {
                     id,
@@ -122,7 +127,10 @@ export const createNoteWriteService = (deps: NoteWriteDeps) => ({
                 ...(force ? { force: true } : {}),
             });
 
-            return updatedNote;
+            return {
+                note: updatedNote,
+                snapshot,
+            };
         } catch (error) {
             if (deps.isRecordNotFoundError(error)) {
                 const currentNote = await deps.findNoteVersion(id);
@@ -143,8 +151,16 @@ export const createNoteWriteService = (deps: NoteWriteDeps) => ({
 
             throw error;
         }
-    },
-});
+    };
+
+    return {
+        updateNoteWithVersionGuard: async (input: UpdateNoteWithVersionGuardInput): Promise<NoteWriteRecord | null> => {
+            const result = await updateNoteWithVersionGuardAndSnapshot(input);
+            return result?.note ?? null;
+        },
+        updateNoteWithVersionGuardAndSnapshot,
+    };
+};
 
 const defaultNoteWriteService = createNoteWriteService({
     findNoteForWrite: (id) =>
@@ -177,4 +193,8 @@ const defaultNoteWriteService = createNoteWriteService({
 
 export const updateNoteWithVersionGuard = async (input: UpdateNoteWithVersionGuardInput) => {
     return defaultNoteWriteService.updateNoteWithVersionGuard(input);
+};
+
+export const updateNoteWithVersionGuardAndSnapshot = async (input: UpdateNoteWithVersionGuardInput) => {
+    return defaultNoteWriteService.updateNoteWithVersionGuardAndSnapshot(input);
 };

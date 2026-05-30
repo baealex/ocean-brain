@@ -129,6 +129,49 @@ test('ensureDestructiveWriteRequest consumes a matching confirmation and removes
     assert.equal(coordinator.getStatus().pendingOperationCount, 0);
 });
 
+test('ensureDestructiveWriteRequest binds confirmations to an operation fingerprint', () => {
+    const rootDir = createTempRootDir();
+    const coordinator = createMcpWriteSafetyCoordinator({
+        rootDir,
+        now: () => new Date('2026-03-30T12:00:00.000Z'),
+        randomBytes: (size) => Buffer.alloc(size, 6)
+    });
+
+    const prepared = coordinator.prepareOperation({
+        actor: 'test-actor',
+        affectedIds: ['9'],
+        estimatedChangeCount: 1,
+        operationFingerprint: 'fingerprint-a',
+        risk: 'high-impact',
+        summary: 'Patch note 9',
+        toolName: 'ocean_brain_patch_note_markdown'
+    });
+
+    assert.throws(
+        () => coordinator.ensureDestructiveWriteRequest(
+            {
+                dryRun: false,
+                operationId: prepared.operationId,
+                confirmToken: prepared.confirmToken
+            },
+            {
+                actor: 'test-actor',
+                affectedIds: ['9'],
+                estimatedChangeCount: 1,
+                operationFingerprint: 'fingerprint-b',
+                risk: 'high-impact',
+                summary: 'Patch note 9 differently',
+                toolName: 'ocean_brain_patch_note_markdown'
+            }
+        ),
+        (error: unknown) => {
+            assert.ok(error instanceof McpCliWriteSafetyError);
+            assert.equal(error.code, 'INVALID_CONFIRMATION');
+            return true;
+        }
+    );
+});
+
 test('ensureDestructiveWriteRequest rejects invalid confirmation tokens', () => {
     const coordinator = createMcpWriteSafetyCoordinator({
         rootDir: createTempRootDir(),

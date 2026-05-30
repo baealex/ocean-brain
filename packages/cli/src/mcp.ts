@@ -1,12 +1,14 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import crypto from 'crypto';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 
 import {
     createMcpWriteSafetyCoordinator,
+    confirmedMcpWriteFields,
     defaultMcpWriteSafetyDir,
     destructiveMcpWriteFields,
     formatMcpGraphqlError
@@ -23,6 +25,10 @@ export const OCEAN_BRAIN_MCP_TOOLS = {
     readNote: 'ocean_brain_read_note',
     createNote: 'ocean_brain_create_note',
     updateNote: 'ocean_brain_update_note',
+    patchNoteMarkdown: 'ocean_brain_patch_note_markdown',
+    appendNoteMarkdown: 'ocean_brain_append_note_markdown',
+    updateNoteMetadata: 'ocean_brain_update_note_metadata',
+    replaceNoteMarkdown: 'ocean_brain_replace_note_markdown',
     listTags: 'ocean_brain_list_tags',
     listNotesByTag: 'ocean_brain_list_notes_by_tag',
     listNotesByTags: 'ocean_brain_list_notes_by_tags',
@@ -35,6 +41,54 @@ export const OCEAN_BRAIN_MCP_TOOLS = {
 
 const noteLayoutSchema = z.enum(['narrow', 'wide', 'full']);
 const tagMatchModeSchema = z.enum(['and', 'or']);
+const markdownPatchSelectorSchema = z.discriminatedUnion('type', [
+    z.object({
+        type: z.literal('exact_text'),
+        text: z.string(),
+        before: z.string().optional(),
+        after: z.string().optional()
+    }),
+    z.object({
+        type: z.literal('match_candidate'),
+        text: z.string(),
+        matchIndex: z.number().int().nonnegative(),
+        lineStart: z.number().int().positive(),
+        matchSha256: z.string(),
+        surroundingHash: z.string(),
+        positionHint: z.enum(['first', 'last']).optional()
+    })
+]);
+const markdownPatchOperationSchema = z.discriminatedUnion('type', [
+    z.object({
+        type: z.literal('replace'),
+        replacement: z.string()
+    }),
+    z.object({
+        type: z.literal('insert_before'),
+        insertion: z.string()
+    }),
+    z.object({
+        type: z.literal('insert_after'),
+        insertion: z.string()
+    })
+]);
+const markdownAppendPlacementSchema = z.discriminatedUnion('type', [
+    z.object({
+        type: z.literal('end')
+    }),
+    z.object({
+        type: z.literal('after_heading'),
+        heading: z.string(),
+        level: z.number().int().min(1).max(6).optional()
+    })
+]);
+const markdownWritePolicySchema = z.object({
+    allowNoop: z.boolean().optional(),
+    maxChangedChars: z.number().int().nonnegative().optional(),
+    maxChangedLines: z.number().int().nonnegative().optional(),
+    preserveTags: z.union([z.boolean(), z.literal('warn')]).optional(),
+    preserveReferences: z.union([z.boolean(), z.literal('warn')]).optional()
+}).optional();
 
 const normalizeOceanBrainTagName = (name: string) => {
     const trimmedName = name.trim();
@@ -151,6 +205,27 @@ async function jsonRequest<TResponse extends Record<string, unknown>>(
     return result;
 }
 
+interface ConfirmedWriteRequest {
+    dryRun?: boolean;
+    operationId?: string;
+    confirmToken?: string;
+}
+
+interface DryRunWriteResult extends Record<string, unknown> {
+    status?: string;
+    reason?: string;
+    proposed?: {
+        changedLineCount?: number;
+    };
+}
+
+const createOperationFingerprint = (toolName: string, payload: Record<string, unknown>) => {
+    return crypto
+        .createHash('sha256')
+        .update(JSON.stringify({ toolName, payload }))
+        .digest('hex');
+};
+
 const requireWriteToken = (token: string | undefined, toolName: string) => {
     if (token) {
         return token;
@@ -171,6 +246,54 @@ export async function startMcpServer(
     const writeSafety = createMcpWriteSafetyCoordinator({
         rootDir: options.writeSafetyDir ?? defaultMcpWriteSafetyDir()
     });
+    const prepareConfirmedWriteOperation = (
+        result: DryRunWriteResult,
+        input: {
+            affectedIds: string[];
+            operationFingerprint: string;
+            summary: string;
+            toolName: string;
+        }
+    ) => {
+        if (result.status !== 'dry_run') {
+            return result;
+        }
+
+        return {
+            ...result,
+            operation: writeSafety.prepareOperation({
+                actor: 'mcp-bearer',
+                affectedIds: input.affectedIds,
+                estimatedChangeCount: result.proposed?.changedLineCount ?? 1,
+                operationFingerprint: input.operationFingerprint,
+                risk: 'high-impact',
+                summary: input.summary,
+                toolName: input.toolName
+            })
+        };
+    };
+    const requireConfirmedWriteOperation = (
+        request: ConfirmedWriteRequest,
+        input: {
+            affectedIds: string[];
+            operationFingerprint: string;
+            summary: string;
+            toolName: string;
+        }
+    ) => {
+        return writeSafety.ensureDestructiveWriteRequest(
+            request,
+            {
+                actor: 'mcp-bearer',
+                affectedIds: input.affectedIds,
+                estimatedChangeCount: 1,
+                operationFingerprint: input.operationFingerprint,
+                risk: 'high-impact',
+                summary: input.summary,
+                toolName: input.toolName
+            }
+        );
+    };
 
     server.tool(
         OCEAN_BRAIN_MCP_TOOLS.searchNotes,
@@ -280,7 +403,7 @@ export async function startMcpServer(
 
     server.tool(
         OCEAN_BRAIN_MCP_TOOLS.createNote,
-        'Create an Ocean Brain note from markdown through the MCP write path. In MCP markdown, use explicit tags like [@project] or [#project], and use [[Note Title]] for note links. When writing linked notes, prefer creating or organizing the reference target note first. A single link is enough for Ocean Brain to surface a back reference on the other note.',
+        'Create an Ocean Brain note from markdown. Search/read first to avoid duplicates; prefer patching an existing note when the intent is a local change.',
         {
             title: z.string().describe('Note title'),
             markdown: z.string().optional().default('').describe('Markdown body for the new note. In MCP markdown, tags must use [@tag] or [#tag]. Defaults to an empty note body.'),
@@ -314,7 +437,7 @@ export async function startMcpServer(
 
     server.tool(
         OCEAN_BRAIN_MCP_TOOLS.updateNote,
-        'Update an Ocean Brain note from markdown through the MCP write path. In MCP markdown, use explicit tags like [@project] or [#project], and use [[Note Title]] for note links. When you add linked notes, prefer organizing the reference target note first. A single link is enough for Ocean Brain to surface a back reference on the other note.',
+        'Legacy full-field note update through the MCP write path. Prefer patch/append/metadata tools for small changes; use this only when intentionally replacing provided fields.',
         {
             id: z.string().describe('Note ID to update'),
             title: z.string().optional().describe('New note title'),
@@ -339,6 +462,297 @@ export async function startMcpServer(
                 ...(markdown !== undefined ? { markdown } : {}),
                 ...(layout ? { layout } : {})
             });
+
+            return {
+                content: [{
+                    type: 'text' as const,
+                    text: JSON.stringify(result, null, 2)
+                }]
+            };
+        }
+    );
+
+    server.tool(
+        OCEAN_BRAIN_MCP_TOOLS.patchNoteMarkdown,
+        'Patch a small part of an Ocean Brain note. Dry-run is the default; commit requires operationId and confirmToken from the dry-run result.',
+        {
+            id: z.string().describe('Note ID to patch'),
+            expectedUpdatedAt: z.string().optional().describe('Expected note updatedAt from a prior read. Required unless baseMarkdownSha256 is provided.'),
+            baseMarkdownSha256: z.string().optional().describe('SHA-256 of the current markdown. Required unless expectedUpdatedAt is provided.'),
+            intent: z.string().describe('Human-readable reason for the patch.'),
+            selector: markdownPatchSelectorSchema.describe('Exact text or previously returned match candidate.'),
+            operation: markdownPatchOperationSchema.describe('replace, insert_before, or insert_after.'),
+            policy: markdownWritePolicySchema,
+            ...confirmedMcpWriteFields
+        },
+        async ({ id, expectedUpdatedAt, baseMarkdownSha256, intent, selector, operation, policy, dryRun, operationId, confirmToken }) => {
+            const writeToken = requireWriteToken(token, OCEAN_BRAIN_MCP_TOOLS.patchNoteMarkdown);
+            const payload = {
+                id,
+                ...(expectedUpdatedAt ? { expectedUpdatedAt } : {}),
+                ...(baseMarkdownSha256 ? { baseMarkdownSha256 } : {}),
+                intent,
+                selector,
+                operation,
+                ...(policy ? { policy } : {})
+            };
+            const operationFingerprint = createOperationFingerprint(OCEAN_BRAIN_MCP_TOOLS.patchNoteMarkdown, payload);
+
+            if (dryRun) {
+                const result = await jsonRequest<DryRunWriteResult>(serverUrl, writeToken, '/api/mcp/notes/patch-markdown', {
+                    ...payload,
+                    dryRun: true
+                });
+
+                return {
+                    content: [{
+                        type: 'text' as const,
+                        text: JSON.stringify(prepareConfirmedWriteOperation(result, {
+                            affectedIds: [id],
+                            operationFingerprint,
+                            summary: intent,
+                            toolName: OCEAN_BRAIN_MCP_TOOLS.patchNoteMarkdown
+                        }), null, 2)
+                    }]
+                };
+            }
+
+            const confirmed = requireConfirmedWriteOperation(
+                { dryRun, operationId, confirmToken },
+                {
+                    affectedIds: [id],
+                    operationFingerprint,
+                    summary: intent,
+                    toolName: OCEAN_BRAIN_MCP_TOOLS.patchNoteMarkdown
+                }
+            );
+            const result = await jsonRequest<DryRunWriteResult>(serverUrl, writeToken, '/api/mcp/notes/patch-markdown', {
+                ...payload,
+                dryRun: false
+            });
+
+            writeSafety.recordWriteResult(
+                confirmed.operation,
+                result.status === 'applied',
+                result.status === 'applied' ? undefined : result.reason
+            );
+
+            return {
+                content: [{
+                    type: 'text' as const,
+                    text: JSON.stringify(result, null, 2)
+                }]
+            };
+        }
+    );
+
+    server.tool(
+        OCEAN_BRAIN_MCP_TOOLS.appendNoteMarkdown,
+        'Append markdown to a note without replacing existing body content. Dry-run is the default; commit requires operationId and confirmToken.',
+        {
+            id: z.string().describe('Note ID to append to'),
+            expectedUpdatedAt: z.string().optional().describe('Expected note updatedAt from a prior read. Required unless baseMarkdownSha256 is provided.'),
+            baseMarkdownSha256: z.string().optional().describe('SHA-256 of the current markdown. Required unless expectedUpdatedAt is provided.'),
+            intent: z.string().describe('Human-readable reason for the append.'),
+            insertion: z.string().describe('Markdown to append. Tags are body tokens such as [@tag] or [#tag].'),
+            placement: markdownAppendPlacementSchema.optional().describe('Default is end. after_heading requires one unique matching heading.'),
+            separator: z.enum(['\n\n', '\n']).optional().describe('Separator inserted around appended markdown. Defaults to a blank line.'),
+            policy: markdownWritePolicySchema,
+            ...confirmedMcpWriteFields
+        },
+        async ({ id, expectedUpdatedAt, baseMarkdownSha256, intent, insertion, placement, separator, policy, dryRun, operationId, confirmToken }) => {
+            const writeToken = requireWriteToken(token, OCEAN_BRAIN_MCP_TOOLS.appendNoteMarkdown);
+            const payload = {
+                id,
+                ...(expectedUpdatedAt ? { expectedUpdatedAt } : {}),
+                ...(baseMarkdownSha256 ? { baseMarkdownSha256 } : {}),
+                intent,
+                insertion,
+                ...(placement ? { placement } : {}),
+                ...(separator ? { separator } : {}),
+                ...(policy ? { policy } : {})
+            };
+            const operationFingerprint = createOperationFingerprint(OCEAN_BRAIN_MCP_TOOLS.appendNoteMarkdown, payload);
+
+            if (dryRun) {
+                const result = await jsonRequest<DryRunWriteResult>(serverUrl, writeToken, '/api/mcp/notes/append-markdown', {
+                    ...payload,
+                    dryRun: true
+                });
+
+                return {
+                    content: [{
+                        type: 'text' as const,
+                        text: JSON.stringify(prepareConfirmedWriteOperation(result, {
+                            affectedIds: [id],
+                            operationFingerprint,
+                            summary: intent,
+                            toolName: OCEAN_BRAIN_MCP_TOOLS.appendNoteMarkdown
+                        }), null, 2)
+                    }]
+                };
+            }
+
+            const confirmed = requireConfirmedWriteOperation(
+                { dryRun, operationId, confirmToken },
+                {
+                    affectedIds: [id],
+                    operationFingerprint,
+                    summary: intent,
+                    toolName: OCEAN_BRAIN_MCP_TOOLS.appendNoteMarkdown
+                }
+            );
+            const result = await jsonRequest<DryRunWriteResult>(serverUrl, writeToken, '/api/mcp/notes/append-markdown', {
+                ...payload,
+                dryRun: false
+            });
+
+            writeSafety.recordWriteResult(
+                confirmed.operation,
+                result.status === 'applied',
+                result.status === 'applied' ? undefined : result.reason
+            );
+
+            return {
+                content: [{
+                    type: 'text' as const,
+                    text: JSON.stringify(result, null, 2)
+                }]
+            };
+        }
+    );
+
+    server.tool(
+        OCEAN_BRAIN_MCP_TOOLS.updateNoteMetadata,
+        'Update note metadata only. Supports title and layout; tags are markdown body tokens and are not handled here.',
+        {
+            id: z.string().describe('Note ID to update'),
+            expectedUpdatedAt: z.string().describe('Expected note updatedAt from a prior read.'),
+            title: z.string().optional().describe('New note title'),
+            layout: noteLayoutSchema.optional().describe('New note layout'),
+            ...confirmedMcpWriteFields
+        },
+        async ({ id, expectedUpdatedAt, title, layout, dryRun, operationId, confirmToken }) => {
+            const writeToken = requireWriteToken(token, OCEAN_BRAIN_MCP_TOOLS.updateNoteMetadata);
+            const payload = {
+                id,
+                expectedUpdatedAt,
+                ...(title !== undefined ? { title } : {}),
+                ...(layout ? { layout } : {})
+            };
+            const summary = `Update note ${id} metadata`;
+            const operationFingerprint = createOperationFingerprint(OCEAN_BRAIN_MCP_TOOLS.updateNoteMetadata, payload);
+
+            if (dryRun) {
+                const result = await jsonRequest<DryRunWriteResult>(serverUrl, writeToken, '/api/mcp/notes/metadata', {
+                    ...payload,
+                    dryRun: true
+                });
+
+                return {
+                    content: [{
+                        type: 'text' as const,
+                        text: JSON.stringify(prepareConfirmedWriteOperation(result, {
+                            affectedIds: [id],
+                            operationFingerprint,
+                            summary,
+                            toolName: OCEAN_BRAIN_MCP_TOOLS.updateNoteMetadata
+                        }), null, 2)
+                    }]
+                };
+            }
+
+            const confirmed = requireConfirmedWriteOperation(
+                { dryRun, operationId, confirmToken },
+                {
+                    affectedIds: [id],
+                    operationFingerprint,
+                    summary,
+                    toolName: OCEAN_BRAIN_MCP_TOOLS.updateNoteMetadata
+                }
+            );
+            const result = await jsonRequest<DryRunWriteResult>(serverUrl, writeToken, '/api/mcp/notes/metadata', {
+                ...payload,
+                dryRun: false
+            });
+
+            writeSafety.recordWriteResult(
+                confirmed.operation,
+                result.status === 'applied',
+                result.status === 'applied' ? undefined : result.reason
+            );
+
+            return {
+                content: [{
+                    type: 'text' as const,
+                    text: JSON.stringify(result, null, 2)
+                }]
+            };
+        }
+    );
+
+    server.tool(
+        OCEAN_BRAIN_MCP_TOOLS.replaceNoteMarkdown,
+        'Replace a note body as a high-impact full overwrite. Dry-run returns a full diff; commit requires operationId and confirmToken.',
+        {
+            id: z.string().describe('Note ID to replace'),
+            expectedUpdatedAt: z.string().optional().describe('Expected note updatedAt from a prior read. Required unless baseMarkdownSha256 is provided.'),
+            baseMarkdownSha256: z.string().optional().describe('SHA-256 of the current markdown. Required unless expectedUpdatedAt is provided.'),
+            intent: z.string().describe('Human-readable reason for the full replace.'),
+            replacement: z.string().describe('Complete replacement markdown body. Tags are body tokens such as [@tag] or [#tag].'),
+            policy: markdownWritePolicySchema,
+            ...confirmedMcpWriteFields
+        },
+        async ({ id, expectedUpdatedAt, baseMarkdownSha256, intent, replacement, policy, dryRun, operationId, confirmToken }) => {
+            const writeToken = requireWriteToken(token, OCEAN_BRAIN_MCP_TOOLS.replaceNoteMarkdown);
+            const payload = {
+                id,
+                ...(expectedUpdatedAt ? { expectedUpdatedAt } : {}),
+                ...(baseMarkdownSha256 ? { baseMarkdownSha256 } : {}),
+                intent,
+                replacement,
+                ...(policy ? { policy } : {})
+            };
+            const operationFingerprint = createOperationFingerprint(OCEAN_BRAIN_MCP_TOOLS.replaceNoteMarkdown, payload);
+
+            if (dryRun) {
+                const result = await jsonRequest<DryRunWriteResult>(serverUrl, writeToken, '/api/mcp/notes/replace-markdown', {
+                    ...payload,
+                    dryRun: true
+                });
+
+                return {
+                    content: [{
+                        type: 'text' as const,
+                        text: JSON.stringify(prepareConfirmedWriteOperation(result, {
+                            affectedIds: [id],
+                            operationFingerprint,
+                            summary: intent,
+                            toolName: OCEAN_BRAIN_MCP_TOOLS.replaceNoteMarkdown
+                        }), null, 2)
+                    }]
+                };
+            }
+
+            const confirmed = requireConfirmedWriteOperation(
+                { dryRun, operationId, confirmToken },
+                {
+                    affectedIds: [id],
+                    operationFingerprint,
+                    summary: intent,
+                    toolName: OCEAN_BRAIN_MCP_TOOLS.replaceNoteMarkdown
+                }
+            );
+            const result = await jsonRequest<DryRunWriteResult>(serverUrl, writeToken, '/api/mcp/notes/replace-markdown', {
+                ...payload,
+                dryRun: false
+            });
+
+            writeSafety.recordWriteResult(
+                confirmed.operation,
+                result.status === 'applied',
+                result.status === 'applied' ? undefined : result.reason
+            );
 
             return {
                 content: [{
@@ -626,6 +1040,10 @@ export async function startMcpServer(
                         writeTools: [
                             OCEAN_BRAIN_MCP_TOOLS.createNote,
                             OCEAN_BRAIN_MCP_TOOLS.updateNote,
+                            OCEAN_BRAIN_MCP_TOOLS.patchNoteMarkdown,
+                            OCEAN_BRAIN_MCP_TOOLS.appendNoteMarkdown,
+                            OCEAN_BRAIN_MCP_TOOLS.updateNoteMetadata,
+                            OCEAN_BRAIN_MCP_TOOLS.replaceNoteMarkdown,
                             OCEAN_BRAIN_MCP_TOOLS.createTag,
                             OCEAN_BRAIN_MCP_TOOLS.deleteNote
                         ],

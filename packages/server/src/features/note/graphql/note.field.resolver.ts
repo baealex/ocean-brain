@@ -11,7 +11,13 @@ interface NoteSnapshotSource {
     payload?: string;
 }
 
+const serializeDateString = (value: Date | string) => {
+    return value instanceof Date ? value.toISOString() : value;
+};
+
 export const noteFieldResolvers: NoteFieldResolvers = {
+    createdAt: (note: Note) => serializeDateString(note.createdAt),
+    updatedAt: (note: Note) => serializeDateString(note.updatedAt),
     tags: async (note: Note) => models.tag.findMany({ where: { notes: { some: { id: note.id } } } }),
     contentAsMarkdown: async (note: Note) => {
         const { blocksToMarkdown } = await import('~/modules/blocknote.js');

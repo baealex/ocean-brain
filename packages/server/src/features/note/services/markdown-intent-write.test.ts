@@ -7,7 +7,7 @@ import { createNoteVersionConflictError } from './write-conflict.js';
 const createNote = (input?: { content?: string; updatedAt?: Date }) => ({
     id: 7,
     title: 'Existing',
-    content: input?.content ?? '기존 문장입니다.',
+    content: input?.content ?? 'Original sentence.',
     layout: 'wide' as const,
     updatedAt: input?.updatedAt ?? new Date('2026-05-28T00:00:00.000Z'),
 });
@@ -44,14 +44,14 @@ test('markdown intent write applies an exact text patch through guarded update a
     const result = await service.patchNoteMarkdown({
         id: 7,
         expectedUpdatedAt: '2026-05-28T00:00:00.000Z',
-        intent: '문장 교체',
+        intent: 'Replace one sentence',
         selector: {
             type: 'exact_text',
             text: 'Original sentence.',
         },
         operation: {
             type: 'replace',
-            replacement: '새 문장입니다. [@MCP]',
+            replacement: 'Updated sentence. [@MCP]',
         },
         dryRun: false,
     });
@@ -66,7 +66,7 @@ test('markdown intent write applies an exact text patch through guarded update a
         {
             id: 7,
             data: {
-                content: 'json:새 문장입니다. [@MCP]',
+                content: 'json:Updated sentence. [@MCP]',
                 tagIds: [3],
             },
             expectedUpdatedAt: '2026-05-28T00:00:00.000Z',
@@ -96,14 +96,14 @@ test('markdown intent write refuses apply when the note changed after preview ba
     const result = await service.patchNoteMarkdown({
         id: 7,
         expectedUpdatedAt: '2026-05-28T00:00:00.000Z',
-        intent: '문장 교체',
+        intent: 'Replace one sentence',
         selector: {
             type: 'exact_text',
-            text: '기존 문장입니다.',
+            text: 'Original sentence.',
         },
         operation: {
             type: 'replace',
-            replacement: '새 문장입니다.',
+            replacement: 'Updated sentence.',
         },
         dryRun: false,
     });
@@ -207,7 +207,7 @@ test('markdown intent write maps guarded update conflicts to baseline mismatch f
         intent: 'Replace one sentence',
         selector: {
             type: 'exact_text',
-            text: '기존 문장입니다.',
+            text: 'Original sentence.',
         },
         operation: {
             type: 'replace',

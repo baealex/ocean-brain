@@ -1,12 +1,30 @@
 import {
     EMPTY_VIEWS_WORKSPACE,
+    formatViewPropertyFilter,
     getActiveViewTab,
+    getViewPropertyOperatorLabel,
     getViewTagMatchToken,
     normalizeViewTagNames,
     reorderViewSectionsInWorkspace,
     reorderViewTabsInWorkspace,
     setActiveViewTabInWorkspace,
 } from './view-dashboard';
+
+const createSection = (section: {
+    id: string;
+    tabId: string;
+    title: string;
+    tagNames: string[];
+    mode: 'and' | 'or';
+    limit: number;
+    order: number;
+}) => ({
+    displayType: 'list' as const,
+    propertyFilters: [],
+    sortBy: 'updatedAt' as const,
+    sortOrder: 'desc' as const,
+    ...section,
+});
 
 describe('view-dashboard helpers', () => {
     it('normalizes hash-prefixed or plain tags to the canonical @ form', () => {
@@ -85,7 +103,7 @@ describe('view-dashboard helpers', () => {
                             title: 'Now',
                             order: 0,
                             sections: [
-                                {
+                                createSection({
                                     id: 'section-1',
                                     tabId: 'tab-1',
                                     title: 'One',
@@ -93,8 +111,8 @@ describe('view-dashboard helpers', () => {
                                     mode: 'and',
                                     limit: 5,
                                     order: 0,
-                                },
-                                {
+                                }),
+                                createSection({
                                     id: 'section-2',
                                     tabId: 'tab-1',
                                     title: 'Two',
@@ -102,8 +120,8 @@ describe('view-dashboard helpers', () => {
                                     mode: 'and',
                                     limit: 5,
                                     order: 1,
-                                },
-                                {
+                                }),
+                                createSection({
                                     id: 'section-3',
                                     tabId: 'tab-1',
                                     title: 'Three',
@@ -111,7 +129,7 @@ describe('view-dashboard helpers', () => {
                                     mode: 'or',
                                     limit: 3,
                                     order: 2,
-                                },
+                                }),
                             ],
                         },
                     ],
@@ -126,5 +144,28 @@ describe('view-dashboard helpers', () => {
     it('returns a short conjunction token for tag matching', () => {
         expect(getViewTagMatchToken('and')).toBe('AND');
         expect(getViewTagMatchToken('or')).toBe('OR');
+    });
+
+    it('formats property filter labels for display', () => {
+        expect(getViewPropertyOperatorLabel('exists')).toBe('is set');
+        expect(getViewPropertyOperatorLabel('notExists')).toBe('is empty');
+        expect(
+            formatViewPropertyFilter({
+                key: 'state',
+                name: 'State',
+                valueType: 'select',
+                operator: 'equals',
+                value: 'doing',
+            }),
+        ).toBe('State is doing');
+        expect(
+            formatViewPropertyFilter({
+                key: 'state',
+                name: 'State',
+                valueType: 'select',
+                operator: 'exists',
+                value: null,
+            }),
+        ).toBe('State is set');
     });
 });

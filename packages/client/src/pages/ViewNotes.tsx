@@ -9,7 +9,7 @@ import { Text } from '~/components/ui';
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
 import { queryKeys } from '~/modules/query-key-factory';
 import { VIEW_NOTES_ROUTE } from '~/modules/url';
-import { getViewTagMatchLabel } from '~/modules/view-dashboard';
+import { formatViewPropertyFilter, getViewTagMatchLabel } from '~/modules/view-dashboard';
 
 const Route = getRouteApi(VIEW_NOTES_ROUTE);
 
@@ -54,6 +54,16 @@ function ViewNotesContent() {
     const heading = sectionData?.title || 'View Notes';
     const tagNames = sectionData?.tagNames ?? [];
     const mode = sectionData?.mode ?? 'and';
+    const propertyFilters = sectionData?.propertyFilters ?? [];
+    const hasTagFilter = tagNames.length > 0;
+    const hasPropertyFilter = propertyFilters.length > 0;
+    const filterSummary = hasTagFilter
+        ? hasPropertyFilter
+            ? `Property and tag filters · ${getViewTagMatchLabel(mode)}`
+            : `Tag filters · ${getViewTagMatchLabel(mode)}`
+        : hasPropertyFilter
+          ? 'Property filters'
+          : 'All notes';
 
     return (
         <PageLayout
@@ -62,7 +72,7 @@ function ViewNotesContent() {
             description={
                 <div className="flex flex-col gap-2">
                     <Text as="span" variant="meta" tone="tertiary">
-                        {getViewTagMatchLabel(mode)}
+                        {filterSummary}
                     </Text>
                     <div className="flex flex-wrap gap-1.5">
                         {tagNames.map((tagName) => (
@@ -73,6 +83,19 @@ function ViewNotesContent() {
                                 {tagName}
                             </span>
                         ))}
+                        {propertyFilters.map((filter) => (
+                            <span
+                                key={`${filter.key}-${filter.operator}-${filter.value ?? ''}`}
+                                className="inline-flex items-center rounded-full border border-border-subtle bg-hover-subtle px-2.5 py-1 text-xs font-medium text-fg-secondary"
+                            >
+                                {formatViewPropertyFilter(filter)}
+                            </span>
+                        ))}
+                        {tagNames.length === 0 && propertyFilters.length === 0 && (
+                            <span className="inline-flex items-center rounded-full border border-border-subtle bg-hover-subtle px-2.5 py-1 text-xs font-medium text-fg-secondary">
+                                All notes
+                            </span>
+                        )}
                     </div>
                 </div>
             }
@@ -81,7 +104,7 @@ function ViewNotesContent() {
                 fallback={
                     <Empty
                         title="No notes match this saved view"
-                        description="Adjust the section tags or keep writing until matching notes appear."
+                        description="Adjust this view's filters or keep writing until matching notes appear."
                     />
                 }
             >

@@ -1,13 +1,44 @@
 import type { Note } from '~/models/note.model';
-import type { ViewSection, ViewsWorkspace } from '~/models/view.model';
+import type {
+    ViewDisplayType,
+    ViewPropertyFilter,
+    ViewSection,
+    ViewSortBy,
+    ViewSortOrder,
+    ViewsWorkspace,
+} from '~/models/view.model';
 import { graphQuery } from '~/modules/graph-query';
 
 export interface ViewSectionInput {
     title?: string;
-    tagNames: string[];
+    displayType?: ViewDisplayType;
+    tagNames?: string[];
     mode?: 'and' | 'or';
+    propertyFilters?: Array<Pick<ViewPropertyFilter, 'key' | 'valueType' | 'operator' | 'value'>>;
+    sortBy?: ViewSortBy;
+    sortOrder?: ViewSortOrder;
     limit?: number;
 }
+
+const VIEW_SECTION_FIELDS = `
+    id
+    tabId
+    title
+    displayType
+    tagNames
+    mode
+    propertyFilters {
+        key
+        name
+        valueType
+        operator
+        value
+    }
+    sortBy
+    sortOrder
+    limit
+    order
+`;
 
 export function fetchViewWorkspace() {
     return graphQuery<{
@@ -20,13 +51,7 @@ export function fetchViewWorkspace() {
                 title
                 order
                 sections {
-                    id
-                    tabId
-                    title
-                    tagNames
-                    mode
-                    limit
-                    order
+                    ${VIEW_SECTION_FIELDS}
                 }
             }
         }
@@ -42,13 +67,7 @@ export function fetchViewSection(id: string) {
     >(
         `query FetchViewSection($id: ID!) {
             viewSection(id: $id) {
-                id
-                tabId
-                title
-                tagNames
-                mode
-                limit
-                order
+                ${VIEW_SECTION_FIELDS}
             }
         }`,
         { id },
@@ -81,6 +100,15 @@ export function fetchViewSectionNotes(
                     }
                     createdAt
                     updatedAt
+                    properties {
+                        key
+                        name
+                        value
+                        valueType
+                        option { id label value color order }
+                        createdAt
+                        updatedAt
+                    }
                 }
             }
         }`,
@@ -159,13 +187,7 @@ export function setActiveViewTab(id: string) {
                     title
                     order
                     sections {
-                        id
-                        tabId
-                        title
-                        tagNames
-                        mode
-                        limit
-                        order
+                        ${VIEW_SECTION_FIELDS}
                     }
                 }
             }

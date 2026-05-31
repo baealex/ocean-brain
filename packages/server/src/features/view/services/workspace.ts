@@ -1,15 +1,32 @@
-import type { Note, Prisma } from '@prisma/client';
+import type { Note, Prisma, PropertyValueType } from '@prisma/client';
+import { InvalidNotePropertyInputError, normalizePropertyKey } from '~/features/note/services/properties.js';
 import { buildNoteTagNamesWhere, type NoteTagMatchMode } from '~/features/note/services/tag-filter.js';
 import models from '~/models.js';
 
 export type ViewTagMatchMode = NoteTagMatchMode;
+export type ViewDisplayType = 'list' | 'calendar';
+export type ViewPropertyFilterOperator = 'equals' | 'before' | 'after' | 'exists' | 'notExists';
+export type ViewSortBy = 'updatedAt' | 'createdAt' | 'title';
+export type ViewSortOrder = 'asc' | 'desc';
+
+export interface ViewPropertyFilterRecord {
+    key: string;
+    name: string;
+    valueType: PropertyValueType;
+    operator: ViewPropertyFilterOperator;
+    value: string | null;
+}
 
 export interface ViewSectionRecord {
     id: string;
     tabId: string;
     title: string;
+    displayType: ViewDisplayType;
     tagNames: string[];
     mode: ViewTagMatchMode;
+    propertyFilters: ViewPropertyFilterRecord[];
+    sortBy: ViewSortBy;
+    sortOrder: ViewSortOrder;
     limit: number;
     order: number;
 }
@@ -28,9 +45,20 @@ export interface ViewWorkspaceRecord {
 
 export interface ViewSectionInput {
     title?: string;
-    tagNames: string[];
+    displayType?: ViewDisplayType;
+    tagNames?: string[] | null;
     mode?: ViewTagMatchMode;
+    propertyFilters?: ViewPropertyFilterInput[] | null;
+    sortBy?: ViewSortBy;
+    sortOrder?: ViewSortOrder;
     limit?: number;
+}
+
+export interface ViewPropertyFilterInput {
+    key: string;
+    operator: ViewPropertyFilterOperator;
+    value?: string | null;
+    valueType?: PropertyValueType | null;
 }
 
 export interface ViewSectionNotesResult {
@@ -43,6 +71,10 @@ const VIEW_WORKSPACE_ID = 1;
 export const DEFAULT_VIEW_SECTION_LIMIT = 5;
 export const MIN_VIEW_SECTION_LIMIT = 1;
 export const MAX_VIEW_SECTION_LIMIT = 20;
+const MAX_VIEW_PROPERTY_FILTERS = 10;
+const DEFAULT_VIEW_DISPLAY_TYPE: ViewDisplayType = 'list';
+const DEFAULT_VIEW_SORT_BY: ViewSortBy = 'updatedAt';
+const DEFAULT_VIEW_SORT_ORDER: ViewSortOrder = 'desc';
 
 type ViewDbClient = typeof models | Prisma.TransactionClient;
 
@@ -91,6 +123,151 @@ export const normalizeViewTagNames = (values: string[]) => {
     return Array.from(new Set(normalizedTagNames.map(normalizeTagName).filter(Boolean)));
 };
 
+interface StoredViewQuery {
+    propertyFilters?: ViewPropertyFilterRecord[];
+    sortBy?: ViewSortBy;
+    sortOrder?: ViewSortOrder;
+}
+
+const isViewPropertyFilterOperator = (value: unknown): value is ViewPropertyFilterOperator => {
+    return value === 'equals' || value === 'before' || value === 'after' || value === 'exists' || value === 'notExists';
+};
+
+const isPropertyValueType = (value: unknown): value is PropertyValueType => {
+    return value === 'text' || value === 'number' || value === 'date' || value === 'boolean' || value === 'select';
+};
+
+const normalizeViewDisplayType = (value: ViewDisplayType | undefined): ViewDisplayType => {
+    return value === 'calendar' ? 'calendar' : DEFAULT_VIEW_DISPLAY_TYPE;
+};
+
+const normalizeViewSortBy = (value: ViewSortBy | undefined): ViewSortBy => {
+    return value === 'createdAt' || value === 'title' ? value : DEFAULT_VIEW_SORT_BY;
+};
+
+const normalizeViewSortOrder = (value: ViewSortOrder | undefined): ViewSortOrder => {
+    return value === 'asc' ? 'asc' : DEFAULT_VIEW_SORT_ORDER;
+};
+
+const normalizeFilterValue = ({
+    value,
+    valueType,
+    operator,
+}: {
+    value?: string | null;
+    valueType: PropertyValueType;
+    operator: ViewPropertyFilterOperator;
+}) => {
+    if (operator === 'exists' || operator === 'notExists') {
+        return null;
+    }
+
+    const normalizedValue = String(value ?? '').trim();
+
+    if (!normalizedValue) {
+        throw new InvalidNotePropertyInputError('Property filter value is required.');
+    }
+
+    if (valueType === 'number' && !Number.isFinite(Number(normalizedValue))) {
+        throw new InvalidNotePropertyInputError('Number property filter value must be finite.');
+    }
+
+    if (valueType === 'boolean' && normalizedValue !== 'true' && normalizedValue !== 'false') {
+        throw new InvalidNotePropertyInputError('Boolean property filter value must be true or false.');
+    }
+
+    if (valueType === 'date') {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(normalizedValue)) {
+            throw new InvalidNotePropertyInputError('Date property filter values must use YYYY-MM-DD.');
+        }
+
+        const date = new Date(`${normalizedValue}T00:00:00.000Z`);
+
+        if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== normalizedValue) {
+            throw new InvalidNotePropertyInputError('Date property filter value is invalid.');
+        }
+    }
+
+    if ((operator === 'before' || operator === 'after') && valueType !== 'date' && valueType !== 'number') {
+        throw new InvalidNotePropertyInputError('Before and after filters require date or number properties.');
+    }
+
+    return normalizedValue;
+};
+
+export const normalizeViewPropertyFilters = (filters: ViewPropertyFilterInput[] | null | undefined) => {
+    const normalizedFilters = filters ?? [];
+
+    if (normalizedFilters.length > MAX_VIEW_PROPERTY_FILTERS) {
+        throw new InvalidNotePropertyInputError(`A view can have up to ${MAX_VIEW_PROPERTY_FILTERS} property filters.`);
+    }
+
+    return normalizedFilters
+        .map((filter): ViewPropertyFilterRecord | null => {
+            const key = normalizePropertyKey(filter.key);
+            const valueType = filter.valueType;
+            const operator = filter.operator;
+
+            if (!isPropertyValueType(valueType)) {
+                throw new InvalidNotePropertyInputError('Property filter value type is required.');
+            }
+
+            if (!isViewPropertyFilterOperator(operator)) {
+                throw new InvalidNotePropertyInputError('Property filter operator is invalid.');
+            }
+
+            const storedName = (filter as { name?: unknown }).name;
+            const name = typeof storedName === 'string' && storedName.trim() ? storedName.trim() : key;
+
+            return {
+                key,
+                name,
+                valueType,
+                operator,
+                value: normalizeFilterValue({
+                    value: filter.value,
+                    valueType,
+                    operator,
+                }),
+            };
+        })
+        .filter((filter): filter is ViewPropertyFilterRecord => filter !== null);
+};
+
+const parseStoredViewQuery = (value: string | null): Required<StoredViewQuery> => {
+    if (!value) {
+        return {
+            propertyFilters: [],
+            sortBy: DEFAULT_VIEW_SORT_BY,
+            sortOrder: DEFAULT_VIEW_SORT_ORDER,
+        };
+    }
+
+    try {
+        const parsed = JSON.parse(value) as Partial<StoredViewQuery>;
+
+        return {
+            propertyFilters: normalizeViewPropertyFilters(parsed.propertyFilters ?? []),
+            sortBy: normalizeViewSortBy(parsed.sortBy),
+            sortOrder: normalizeViewSortOrder(parsed.sortOrder),
+        };
+    } catch {
+        return {
+            propertyFilters: [],
+            sortBy: DEFAULT_VIEW_SORT_BY,
+            sortOrder: DEFAULT_VIEW_SORT_ORDER,
+        };
+    }
+};
+
+const serializeStoredViewQuery = ({ propertyFilters, sortBy, sortOrder }: Required<StoredViewQuery>) => {
+    return JSON.stringify({
+        propertyFilters,
+        sortBy,
+        sortOrder,
+    });
+};
+
 export const clampViewSectionLimit = (value: number | undefined) => {
     const numericValue = typeof value === 'number' ? value : Number.NaN;
 
@@ -107,32 +284,45 @@ export const normalizeViewTabTitle = (title: string) => {
     return trimmedTitle || 'Untitled View';
 };
 
-const buildDefaultSectionTitle = (tagNames: string[]) => {
-    if (tagNames.length === 0) {
-        return 'Tagged notes';
+const buildDefaultSectionTitle = (tagNames: string[], propertyFilters: ViewPropertyFilterRecord[]) => {
+    if (tagNames.length > 0) {
+        return tagNames.slice(0, 2).join(' + ');
     }
 
-    return tagNames.slice(0, 2).join(' + ');
+    if (propertyFilters.length > 0) {
+        return propertyFilters
+            .slice(0, 2)
+            .map((filter) => filter.name)
+            .join(' + ');
+    }
+
+    return 'All notes';
 };
 
 export const normalizeViewSectionInput = (input: ViewSectionInput) => {
-    const tagNames = normalizeViewTagNames(input.tagNames);
-
-    if (tagNames.length === 0) {
-        throw new Error('A view section requires at least one tag.');
-    }
-
+    const tagNames = normalizeViewTagNames(input.tagNames ?? []);
+    const propertyFilters = normalizeViewPropertyFilters(input.propertyFilters);
     const trimmedTitle = input.title?.trim() ?? '';
+    const sortBy = normalizeViewSortBy(input.sortBy);
+    const sortOrder = normalizeViewSortOrder(input.sortOrder);
 
     return {
-        title: trimmedTitle || buildDefaultSectionTitle(tagNames),
+        title: trimmedTitle || buildDefaultSectionTitle(tagNames, propertyFilters),
+        displayType: normalizeViewDisplayType(input.displayType),
         tagNames,
         mode: input.mode === 'or' ? 'or' : 'and',
+        propertyFilters,
+        sortBy,
+        sortOrder,
         limit: clampViewSectionLimit(input.limit),
     } satisfies {
         title: string;
+        displayType: ViewDisplayType;
         tagNames: string[];
         mode: ViewTagMatchMode;
+        propertyFilters: ViewPropertyFilterRecord[];
+        sortBy: ViewSortBy;
+        sortOrder: ViewSortOrder;
         limit: number;
     };
 };
@@ -180,15 +370,23 @@ const parseViewId = (id: string) => {
     return numericId;
 };
 
-const serializeViewSection = (section: DbViewSection): ViewSectionRecord => ({
-    id: String(section.id),
-    tabId: String(section.tabId),
-    title: section.title,
-    tagNames: section.tags.map((tag) => tag.name),
-    mode: section.mode as ViewTagMatchMode,
-    limit: section.limit,
-    order: section.order,
-});
+const serializeViewSection = (section: DbViewSection): ViewSectionRecord => {
+    const query = parseStoredViewQuery(section.query);
+
+    return {
+        id: String(section.id),
+        tabId: String(section.tabId),
+        title: section.title,
+        displayType: normalizeViewDisplayType(section.displayType as ViewDisplayType),
+        tagNames: section.tags.map((tag) => tag.name),
+        mode: section.mode as ViewTagMatchMode,
+        propertyFilters: query.propertyFilters,
+        sortBy: query.sortBy,
+        sortOrder: query.sortOrder,
+        limit: section.limit,
+        order: section.order,
+    };
+};
 
 const serializeViewTab = (tab: DbViewTab): ViewTabRecord => ({
     id: String(tab.id),
@@ -235,6 +433,45 @@ const readViewSection = async (db: ViewDbClient, id: number): Promise<ViewSectio
     });
 
     return section ? serializeViewSection(section) : null;
+};
+
+const hydratePropertyFilters = async (db: ViewDbClient, filters: ViewPropertyFilterRecord[]) => {
+    if (filters.length === 0) {
+        return [];
+    }
+
+    const definitions = await db.propertyDefinition.findMany({
+        where: { key: { in: filters.map((filter) => filter.key) } },
+        select: { key: true, name: true, valueType: true },
+    });
+    const definitionByKey = new Map(definitions.map((definition) => [definition.key, definition]));
+
+    return filters.map((filter) => {
+        const definition = definitionByKey.get(filter.key);
+
+        if (!definition) {
+            throw new InvalidNotePropertyInputError(`Property ${filter.key} is not defined.`);
+        }
+
+        if (definition.valueType !== filter.valueType) {
+            throw new InvalidNotePropertyInputError(`Property ${filter.key} uses ${definition.valueType} values.`);
+        }
+
+        return {
+            ...filter,
+            name: definition.name,
+        };
+    });
+};
+
+const buildStoredViewQuery = async (db: ViewDbClient, section: ReturnType<typeof normalizeViewSectionInput>) => {
+    const propertyFilters = await hydratePropertyFilters(db, section.propertyFilters);
+
+    return serializeStoredViewQuery({
+        propertyFilters,
+        sortBy: section.sortBy,
+        sortOrder: section.sortOrder,
+    });
 };
 
 const getNextTabOrder = async (db: ViewDbClient) => {
@@ -297,6 +534,105 @@ export const getViewSectionById = async (id: string) => {
     return readViewSection(models, parseViewId(id));
 };
 
+const normalizeSelectFilterValue = (value: string) => {
+    return value.trim().toLowerCase().replace(/\s+/g, '-');
+};
+
+const buildPropertyFilterValueWhere = (filter: ViewPropertyFilterRecord): Prisma.NotePropertyWhereInput => {
+    switch (filter.valueType) {
+        case 'number': {
+            const numberValue = Number(filter.value);
+
+            if (filter.operator === 'before') {
+                return { numberValue: { lt: numberValue } };
+            }
+
+            if (filter.operator === 'after') {
+                return { numberValue: { gt: numberValue } };
+            }
+
+            return { numberValue };
+        }
+        case 'date': {
+            const dateValue = new Date(`${filter.value}T00:00:00.000Z`);
+
+            if (filter.operator === 'before') {
+                return { dateValue: { lt: dateValue } };
+            }
+
+            if (filter.operator === 'after') {
+                return { dateValue: { gt: dateValue } };
+            }
+
+            return { dateValue };
+        }
+        case 'boolean':
+            return { boolValue: filter.value === 'true' };
+        case 'select':
+            return { option: { is: { value: normalizeSelectFilterValue(filter.value ?? '') } } };
+        case 'text':
+        default:
+            return { textValueNormalized: filter.value?.toLowerCase() ?? '' };
+    }
+};
+
+export const buildPropertyFilterWhere = (filter: ViewPropertyFilterRecord): Prisma.NoteWhereInput => {
+    const definitionWhere = {
+        definition: {
+            is: {
+                key: filter.key,
+            },
+        },
+    } satisfies Prisma.NotePropertyWhereInput;
+
+    if (filter.operator === 'notExists') {
+        return {
+            properties: {
+                none: definitionWhere,
+            },
+        };
+    }
+
+    if (filter.operator === 'exists') {
+        return {
+            properties: {
+                some: definitionWhere,
+            },
+        };
+    }
+
+    return {
+        properties: {
+            some: {
+                ...definitionWhere,
+                ...buildPropertyFilterValueWhere(filter),
+            },
+        },
+    };
+};
+
+export const buildViewSectionWhere = (section: ViewSectionRecord): Prisma.NoteWhereInput => {
+    const clauses: Prisma.NoteWhereInput[] = [];
+
+    if (section.tagNames.length > 0) {
+        clauses.push(buildNoteTagNamesWhere(section.tagNames, section.mode as NoteTagMatchMode));
+    }
+
+    for (const filter of section.propertyFilters) {
+        clauses.push(buildPropertyFilterWhere(filter));
+    }
+
+    if (clauses.length === 0) {
+        return {};
+    }
+
+    return { AND: clauses };
+};
+
+const buildViewSectionOrderBy = (section: ViewSectionRecord): Prisma.NoteOrderByWithRelationInput[] => {
+    return [{ [section.sortBy]: section.sortOrder }, { id: 'asc' }];
+};
+
 export const getViewSectionNotes = async (
     id: string,
     pagination: {
@@ -313,21 +649,13 @@ export const getViewSectionNotes = async (
         return null;
     }
 
-    const tagNames = section.tags.map((tag) => tag.name);
-
-    if (tagNames.length === 0) {
-        return {
-            totalCount: 0,
-            notes: [],
-        };
-    }
-
-    const where = buildNoteTagNamesWhere(tagNames, section.mode as NoteTagMatchMode);
+    const serializedSection = serializeViewSection(section);
+    const where = buildViewSectionWhere(serializedSection);
 
     const [totalCount, notes] = await Promise.all([
         models.note.count({ where }),
         models.note.findMany({
-            orderBy: { updatedAt: 'desc' },
+            orderBy: buildViewSectionOrderBy(serializedSection),
             where,
             take: Number(pagination.limit),
             skip: Number(pagination.offset),
@@ -471,11 +799,14 @@ export const createViewSection = async (tabId: string, input: ViewSectionInput) 
         }
 
         const nextSectionOrder = await getNextSectionOrder(tx, numericTabId);
+        const query = await buildStoredViewQuery(tx, nextSection);
 
         const createdSection = await tx.viewSection.create({
             data: {
                 tabId: numericTabId,
                 title: nextSection.title,
+                displayType: nextSection.displayType,
+                query,
                 mode: nextSection.mode,
                 limit: nextSection.limit,
                 order: nextSectionOrder,
@@ -497,24 +828,30 @@ export const updateViewSection = async (id: string, input: ViewSectionInput) => 
     const sectionId = parseViewId(id);
     const nextSection = normalizeViewSectionInput(input);
 
-    const updatedSection = await models.viewSection.update({
-        where: { id: sectionId },
-        data: {
-            title: nextSection.title,
-            mode: nextSection.mode,
-            limit: nextSection.limit,
-            tags: {
-                deleteMany: {},
-                create: nextSection.tagNames.map((tagName, index) => ({
-                    name: tagName,
-                    order: index,
-                })),
-            },
-        },
-        include: orderedViewSectionTagsInclude,
-    });
+    return models.$transaction(async (tx) => {
+        const query = await buildStoredViewQuery(tx, nextSection);
 
-    return serializeViewSection(updatedSection);
+        const updatedSection = await tx.viewSection.update({
+            where: { id: sectionId },
+            data: {
+                title: nextSection.title,
+                displayType: nextSection.displayType,
+                query,
+                mode: nextSection.mode,
+                limit: nextSection.limit,
+                tags: {
+                    deleteMany: {},
+                    create: nextSection.tagNames.map((tagName, index) => ({
+                        name: tagName,
+                        order: index,
+                    })),
+                },
+            },
+            include: orderedViewSectionTagsInclude,
+        });
+
+        return serializeViewSection(updatedSection);
+    });
 };
 
 export const deleteViewSection = async (id: string) => {

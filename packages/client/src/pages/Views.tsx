@@ -13,6 +13,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import classNames from 'classnames';
 import { useState } from 'react';
 
+import { fetchNotePropertyKeys } from '~/apis/note.api';
 import { fetchTags } from '~/apis/tag.api';
 import {
     createViewSection,
@@ -29,7 +30,7 @@ import {
 import * as Icon from '~/components/icon';
 import { Button, Dropdown, Empty, PageLayout, Skeleton, SurfaceCard } from '~/components/shared';
 import { MoreButton, Text, useConfirm, useToast } from '~/components/ui';
-import { ViewSectionCard, ViewSectionDialog, ViewTabDialog } from '~/components/view';
+import { ViewSectionCard, ViewSectionDialog, type ViewSectionDialogDraft, ViewTabDialog } from '~/components/view';
 import type { ViewSection, ViewsWorkspace, ViewTab } from '~/models/view.model';
 import { queryKeys } from '~/modules/query-key-factory';
 import {
@@ -40,7 +41,7 @@ import {
     setActiveViewTabInWorkspace,
 } from '~/modules/view-dashboard';
 
-const pageDescription = 'Save tag-based views and switch between them without leaving your notes.';
+const pageDescription = 'Save reusable note queries with tags, shared properties, and sorting.';
 
 type ViewTabDialogState = { mode: 'create' } | { mode: 'edit'; tab: ViewTab } | null;
 type ViewSectionDialogState = { mode: 'create' } | { mode: 'edit'; section: ViewSection } | null;
@@ -203,6 +204,21 @@ export default function Views() {
 
     const availableTags = tagData?.tags ?? [];
 
+    const { data: propertyKeyData, isPending: isPropertiesLoading } = useQuery({
+        queryKey: queryKeys.notes.propertyKeys({ limit: 100 }),
+        async queryFn() {
+            const response = await fetchNotePropertyKeys({ limit: 100 });
+
+            if (response.type === 'error') {
+                throw response;
+            }
+
+            return response.notePropertyKeys;
+        },
+    });
+
+    const availableProperties = propertyKeyData?.keys ?? [];
+
     const syncWorkspace = (nextWorkspace: ViewsWorkspace) => {
         queryClient.setQueryData(queryKeys.views.workspace(), nextWorkspace);
     };
@@ -311,12 +327,7 @@ export default function Views() {
         await invalidateViews();
     };
 
-    const handleCreateSection = async (draft: {
-        title: string;
-        tagNames: string[];
-        mode: ViewSection['mode'];
-        limit: number;
-    }) => {
+    const handleCreateSection = async (draft: ViewSectionDialogDraft) => {
         if (!activeTab) {
             return;
         }
@@ -332,12 +343,7 @@ export default function Views() {
         setSectionDialogState(null);
     };
 
-    const handleUpdateSection = async (draft: {
-        title: string;
-        tagNames: string[];
-        mode: ViewSection['mode'];
-        limit: number;
-    }) => {
+    const handleUpdateSection = async (draft: ViewSectionDialogDraft) => {
         if (!activeTab || !sectionDialogState || sectionDialogState.mode !== 'edit') {
             return;
         }
@@ -401,7 +407,7 @@ export default function Views() {
                     <SurfaceCard className="px-6 py-8 sm:px-8 sm:py-10">
                         <Empty
                             title="Create your first view tab"
-                            description="Start with a saved view tab, then add tag-based sections inside it."
+                            description="Start with a saved view tab, then add sections that query notes by tags, properties, or both."
                         />
                         <div className="mt-6 flex justify-center">
                             <Button type="button" onClick={() => setTabDialogState({ mode: 'create' })}>
@@ -515,7 +521,7 @@ export default function Views() {
                                     <SurfaceCard className="px-6 py-8 sm:px-8 sm:py-10">
                                         <Empty
                                             title="Add the first section to this tab"
-                                            description="Sections pull notes by tag."
+                                            description="Sections can pull notes by tags, properties, or both."
                                         />
                                     </SurfaceCard>
                                 ) : (
@@ -572,7 +578,9 @@ export default function Views() {
                 mode={sectionDialogState?.mode ?? 'create'}
                 initialSection={sectionDialogState?.mode === 'edit' ? sectionDialogState.section : null}
                 availableTags={availableTags}
+                availableProperties={availableProperties}
                 isTagsLoading={isTagsLoading}
+                isPropertiesLoading={isPropertiesLoading}
                 onClose={() => setSectionDialogState(null)}
                 onSubmit={(draft) => {
                     if (sectionDialogState?.mode === 'edit') {

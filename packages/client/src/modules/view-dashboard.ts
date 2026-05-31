@@ -1,4 +1,11 @@
-import type { ViewSection, ViewsWorkspace, ViewTab, ViewTagMatchMode } from '~/models/view.model';
+import type {
+    ViewPropertyFilter,
+    ViewPropertyFilterOperator,
+    ViewSection,
+    ViewsWorkspace,
+    ViewTab,
+    ViewTagMatchMode,
+} from '~/models/view.model';
 
 export const DEFAULT_VIEW_SECTION_LIMIT = 5;
 export const MIN_VIEW_SECTION_LIMIT = 1;
@@ -112,6 +119,32 @@ export const getViewTagMatchLabel = (mode: ViewTagMatchMode) => {
 
 export const getViewTagMatchToken = (mode: ViewTagMatchMode) => {
     return mode === 'or' ? 'OR' : 'AND';
+};
+
+export const getViewPropertyOperatorLabel = (operator: ViewPropertyFilterOperator) => {
+    switch (operator) {
+        case 'before':
+            return 'before';
+        case 'after':
+            return 'after';
+        case 'exists':
+            return 'is set';
+        case 'notExists':
+            return 'is empty';
+        case 'equals':
+        default:
+            return 'is';
+    }
+};
+
+export const formatViewPropertyFilter = (filter: ViewPropertyFilter) => {
+    const operatorLabel = getViewPropertyOperatorLabel(filter.operator);
+
+    if (filter.operator === 'exists' || filter.operator === 'notExists') {
+        return `${filter.name} ${operatorLabel}`;
+    }
+
+    return `${filter.name} ${operatorLabel} ${filter.value ?? ''}`.trim();
 };
 
 export const buildViewNotesSearch = (section: Pick<ViewSection, 'id'>) => ({

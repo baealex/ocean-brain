@@ -6,6 +6,7 @@ import {
     SETTINGS_MANAGE_IMAGE_ROUTE,
     SETTINGS_MCP_ROUTE,
     SETTINGS_PLACEHOLDER_ROUTE,
+    SETTINGS_PROPERTIES_ROUTE,
     SETTINGS_TRASH_ROUTE,
 } from '~/modules/url';
 import { useTheme } from '~/store/theme';
@@ -108,6 +109,22 @@ const Setting = () => {
                                     </Text>
                                     <Text as="div" variant="meta" tone="secondary">
                                         Upload and organize images.
+                                    </Text>
+                                </div>
+                            </div>
+                            <Icon.ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-fg-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-fg-secondary" />
+                        </Link>
+                        <Link to={SETTINGS_PROPERTIES_ROUTE} search={{ page: 1 }} className={itemClassName}>
+                            <div className="flex min-w-0 items-start gap-3">
+                                <span className={leadingClassName}>
+                                    <Icon.Tag className={iconClassName} />
+                                </span>
+                                <div className={contentClassName}>
+                                    <Text as="div" variant="body" weight="medium">
+                                        Properties
+                                    </Text>
+                                    <Text as="div" variant="meta" tone="secondary">
+                                        Define shared fields for notes and future views.
                                     </Text>
                                 </div>
                             </div>

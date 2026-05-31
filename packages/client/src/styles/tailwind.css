@@ -2,18 +2,9 @@
 
 @custom-variant dark (&:where(html.dark *));
 
-@property --save-progress {
-    syntax: "<percentage>";
-    initial-value: 0%;
-    inherits: false;
-}
-
-@keyframes save-ring-progress {
-    from {
-        --save-progress: 0%;
-    }
+@keyframes save-ring-spin {
     to {
-        --save-progress: 92%;
+        transform: rotate(360deg);
     }
 }
 
@@ -409,9 +400,9 @@ html.dark .surface-base {
 }
 
 .save-progress-ring-active {
-    --save-progress: 0%;
+    --save-progress: 28%;
     --save-ring-color: var(--accent-primary);
-    animation: save-ring-progress 1200ms linear forwards;
+    animation: save-ring-spin 800ms linear infinite;
 }
 
 .save-progress-ring-complete {
@@ -422,6 +413,13 @@ html.dark .surface-base {
 .save-progress-ring-error {
     --save-progress: 100%;
     --save-ring-color: var(--accent-danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .save-progress-ring-active {
+        --save-progress: 100%;
+        animation: none;
+    }
 }
 
 /* Skeleton sizing */

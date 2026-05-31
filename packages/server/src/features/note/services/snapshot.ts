@@ -1,5 +1,5 @@
 import { ensureTagByName } from '~/features/tag/services/organization.js';
-import models, { type NoteLayout } from '~/models.js';
+import models, { type NoteLayout, type PropertyValueType } from '~/models.js';
 import { blocksToMarkdown, extractTagIdsFromContentJson } from '~/modules/blocknote.js';
 import { type BlockNoteTreeNode, parseBlockNoteContent, walkBlockNoteTree } from '~/modules/blocknote-tree.js';
 import {
@@ -20,6 +20,21 @@ interface NoteRecord {
     order: number;
     layout: NoteLayout;
     updatedAt?: Date;
+    properties?: SnapshotNoteProperty[];
+}
+
+interface SnapshotNoteProperty {
+    key: string;
+    name: string;
+    valueType: PropertyValueType;
+    textValue?: string | null;
+    textValueNormalized?: string | null;
+    numberValue?: number | null;
+    dateValue?: Date | string | null;
+    boolValue?: boolean | null;
+    optionValue?: string | null;
+    optionLabel?: string | null;
+    optionColor?: string | null;
 }
 
 interface NoteSnapshotRecord {
@@ -57,6 +72,7 @@ interface NoteSnapshotDeps {
             order: number;
             layout: NoteLayout;
             tagIds?: number[];
+            properties?: SnapshotNoteProperty[];
         },
     ) => Promise<NoteRecord>;
 }
@@ -72,6 +88,7 @@ interface NoteSnapshotPayload {
     pinned: boolean;
     order: number;
     layout: NoteLayout;
+    properties?: SnapshotNoteProperty[];
 }
 
 interface TagRecord {
@@ -149,6 +166,14 @@ const serializePayload = (note: NoteRecord): string => {
         pinned: note.pinned,
         order: note.order,
         layout: note.layout,
+        ...(note.properties
+            ? {
+                  properties: note.properties.map((property) => ({
+                      ...property,
+                      ...(property.dateValue instanceof Date ? { dateValue: property.dateValue.toISOString() } : {}),
+                  })),
+              }
+            : {}),
     };
 
     return JSON.stringify(payload);
@@ -470,7 +495,35 @@ export const createNoteSnapshotService = (deps: NoteSnapshotDeps) => ({
 
 export const defaultNoteSnapshotService = createNoteSnapshotService({
     findNoteById: async (id) => {
-        return models.note.findUnique({ where: { id } });
+        const note = await models.note.findUnique({
+            where: { id },
+            include: {
+                properties: {
+                    include: { definition: true, option: true },
+                },
+            },
+        });
+
+        if (!note) {
+            return null;
+        }
+
+        return {
+            ...note,
+            properties: note.properties.map((property) => ({
+                key: property.definition.key,
+                name: property.definition.name,
+                valueType: property.definition.valueType,
+                textValue: property.textValue,
+                textValueNormalized: property.textValueNormalized,
+                numberValue: property.numberValue,
+                dateValue: property.dateValue,
+                boolValue: property.boolValue,
+                optionValue: property.option?.value ?? null,
+                optionLabel: property.option?.label ?? null,
+                optionColor: property.option?.color ?? null,
+            })),
+        };
     },
     findSnapshotByEditSessionId: async (noteId, editSessionId) => {
         return models.noteSnapshot.findFirst({
@@ -530,18 +583,76 @@ export const defaultNoteSnapshotService = createNoteSnapshotService({
         return models.noteSnapshot.findUnique({ where: { id } });
     },
     updateNote: async (id, input) => {
-        const { tagIds, ...noteInput } = input;
+        const { tagIds, properties, ...noteInput } = input;
 
-        return models.note.update({
-            where: { id },
-            data: {
-                ...noteInput,
-                ...buildNoteSearchProjection({
-                    title: noteInput.title,
-                    content: noteInput.content,
-                }),
-                ...(tagIds !== undefined ? { tags: { set: tagIds.map((tagId) => ({ id: tagId })) } } : {}),
-            },
+        return models.$transaction(async (tx) => {
+            const note = await tx.note.update({
+                where: { id },
+                data: {
+                    ...noteInput,
+                    ...buildNoteSearchProjection({
+                        title: noteInput.title,
+                        content: noteInput.content,
+                    }),
+                    ...(tagIds !== undefined ? { tags: { set: tagIds.map((tagId) => ({ id: tagId })) } } : {}),
+                },
+            });
+
+            if (properties !== undefined) {
+                await tx.noteProperty.deleteMany({ where: { noteId: id } });
+
+                for (const property of properties) {
+                    const definition = await tx.propertyDefinition.upsert({
+                        where: { key: property.key },
+                        create: {
+                            key: property.key,
+                            name: property.name,
+                            valueType: property.valueType,
+                        },
+                        update: {
+                            name: property.name,
+                            valueType: property.valueType,
+                        },
+                    });
+
+                    const option =
+                        property.valueType === 'select' && property.optionValue
+                            ? await tx.propertyOption.upsert({
+                                  where: {
+                                      propertyDefinitionId_value: {
+                                          propertyDefinitionId: definition.id,
+                                          value: property.optionValue,
+                                      },
+                                  },
+                                  create: {
+                                      propertyDefinitionId: definition.id,
+                                      value: property.optionValue,
+                                      label: property.optionLabel ?? property.optionValue,
+                                      color: property.optionColor ?? null,
+                                  },
+                                  update: {
+                                      label: property.optionLabel ?? property.optionValue,
+                                      color: property.optionColor ?? null,
+                                  },
+                              })
+                            : null;
+
+                    await tx.noteProperty.create({
+                        data: {
+                            noteId: id,
+                            propertyDefinitionId: definition.id,
+                            optionId: option?.id ?? null,
+                            textValue: property.textValue ?? null,
+                            textValueNormalized: property.textValueNormalized ?? null,
+                            numberValue: property.numberValue ?? null,
+                            dateValue: property.dateValue ? new Date(property.dateValue) : null,
+                            boolValue: property.boolValue ?? null,
+                        },
+                    });
+                }
+            }
+
+            return note;
         });
     },
 });

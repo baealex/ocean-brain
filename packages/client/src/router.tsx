@@ -20,6 +20,7 @@ import {
     SETTINGS_MANAGE_IMAGE_ROUTE,
     SETTINGS_MCP_ROUTE,
     SETTINGS_PLACEHOLDER_ROUTE,
+    SETTINGS_PROPERTIES_ROUTE,
     SETTINGS_ROUTE,
     SETTINGS_TRASH_ROUTE,
     TAG_NOTES_ROUTE,
@@ -174,6 +175,16 @@ const manageImageDetailRoute = createRoute({
     ),
 });
 
+const propertiesRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: SETTINGS_PROPERTIES_ROUTE,
+    component: lazyRouteComponent(() => import('~/pages/setting/properties')),
+    pendingComponent: () => (
+        <RoutePendingView title="Loading properties" description="Preparing shared property definitions." />
+    ),
+    validateSearch: validatePaginationSearch,
+});
+
 const placeholderRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: SETTINGS_PLACEHOLDER_ROUTE,
@@ -201,6 +212,7 @@ const routeTree = rootRoute.addChildren([
     manageImageRoute,
     manageImageDetailRoute,
     placeholderRoute,
+    propertiesRoute,
 ]);
 
 export const router = createRouter({

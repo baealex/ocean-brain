@@ -2,7 +2,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { StrictMode, Suspense } from 'react';
-import { createNote as createNoteApi, fetchNote, updateNote } from '~/apis/note.api';
+import { createNote as createNoteApi, fetchNote, fetchNotePropertyKeys, updateNote } from '~/apis/note.api';
 import { ToastProvider } from '~/components/ui';
 import type { Note } from '~/models/note.model';
 import { getDraftStorageKey, type NoteSaveDraft } from '~/modules/note-draft-storage';
@@ -36,7 +36,9 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('~/apis/note.api', () => ({
     createNote: vi.fn(),
     fetchNote: vi.fn(),
+    fetchNotePropertyKeys: vi.fn(),
     updateNote: vi.fn(),
+    updateNoteProperties: vi.fn(),
     fetchNoteSnapshot: vi.fn(),
     fetchNoteSnapshots: vi.fn(),
     restoreNoteSnapshot: vi.fn(),
@@ -129,6 +131,7 @@ const createNote = (overrides: Partial<Note> = {}): Note => ({
     createdAt: '1779700000000',
     updatedAt: '1779700000000',
     tags: [],
+    properties: [],
     ...overrides,
 });
 
@@ -147,6 +150,13 @@ const renderNote = (note: Note) => {
     vi.mocked(fetchNote).mockResolvedValue({
         type: 'success',
         note,
+    });
+    vi.mocked(fetchNotePropertyKeys).mockResolvedValue({
+        type: 'success',
+        notePropertyKeys: {
+            keys: [],
+            totalCount: 0,
+        },
     });
 
     render(

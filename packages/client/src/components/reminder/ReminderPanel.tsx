@@ -3,7 +3,7 @@ import dayjs from 'dayjs';
 import { useState } from 'react';
 import { Reminders } from '~/components/entities';
 import * as Icon from '~/components/icon';
-import { AuxiliaryPanelHeader, Button, Dropdown } from '~/components/shared';
+import { AuxiliaryPanel, Button, Dropdown } from '~/components/shared';
 import { Checkbox, MoreButton, Text } from '~/components/ui';
 import useReminderMutate from '~/hooks/resource/useReminderMutate';
 import type { Reminder } from '~/models/reminder.model';
@@ -98,125 +98,136 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
     };
 
     return (
-        <div className="surface-base mb-5 p-4">
-            <div className={classNames('flex items-center justify-between', !isCollapsed && 'mb-3')}>
-                <button
-                    type="button"
-                    onClick={() => setIsCollapsed(!isCollapsed)}
-                    className="focus-ring-soft flex items-center gap-2 rounded-[10px] px-2 py-1.5 text-fg-tertiary transition-colors hover:bg-hover-subtle hover:text-fg-default"
-                >
-                    <AuxiliaryPanelHeader
-                        icon={isCollapsed ? <Icon.TriangleRight size={12} /> : <Icon.TriangleDown size={12} />}
-                        title="Reminders"
-                    />
-                </button>
+        <>
+            <AuxiliaryPanel
+                title="Reminders"
+                icon={<Icon.Bell className="h-3.5 w-3.5" />}
+                action={
+                    <>
+                        {!isCollapsed && (
+                            <Button size="sm" variant="ghost" onClick={handleOpenCreateModal}>
+                                <Icon.Plus className="w-3 h-3" />
+                                <Text as="span" variant="label" className="hidden sm:inline">
+                                    Add
+                                </Text>
+                            </Button>
+                        )}
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            aria-label={isCollapsed ? 'Expand reminders' : 'Collapse reminders'}
+                            aria-expanded={!isCollapsed}
+                            onClick={() => setIsCollapsed(!isCollapsed)}
+                        >
+                            {isCollapsed ? (
+                                <Icon.TriangleRight className="h-3.5 w-3.5" />
+                            ) : (
+                                <Icon.TriangleDown className="h-3.5 w-3.5" />
+                            )}
+                            {isCollapsed ? 'Expand' : 'Collapse'}
+                        </Button>
+                    </>
+                }
+            >
                 {!isCollapsed && (
-                    <Button size="sm" variant="ghost" onClick={handleOpenCreateModal}>
-                        <Icon.Plus className="w-3 h-3" />
-                        <Text as="span" variant="label" className="hidden sm:inline">
-                            Add
-                        </Text>
-                    </Button>
-                )}
-            </div>
+                    <Reminders
+                        noteId={noteId}
+                        searchParams={{
+                            offset: 0,
+                            limit: 9999,
+                        }}
+                        render={({ reminders, totalCount }) => {
+                            return (
+                                <div className="flex flex-col gap-2">
+                                    {reminders.length === 0 ? (
+                                        <Text as="p" variant="meta" tone="secondary" className="py-3 text-center">
+                                            {totalCount === 0 ? 'No reminders yet' : 'All reminders complete'}
+                                        </Text>
+                                    ) : (
+                                        <div className="flex flex-col">
+                                            {reminders.map((reminder) => {
+                                                const urgency =
+                                                    reminder.priority || calculateUrgency(reminder.reminderDate);
+                                                const timeRemaining = getTimeRemaining(reminder.reminderDate);
+                                                const isOverdue = timeRemaining === 'Overdue';
 
-            {!isCollapsed && (
-                <Reminders
-                    noteId={noteId}
-                    searchParams={{
-                        offset: 0,
-                        limit: 9999,
-                    }}
-                    render={({ reminders, totalCount }) => {
-                        return (
-                            <div className="flex flex-col gap-2">
-                                {reminders.length === 0 ? (
-                                    <Text as="p" variant="meta" tone="secondary" className="py-3 text-center">
-                                        {totalCount === 0 ? 'No reminders yet' : 'All reminders complete'}
-                                    </Text>
-                                ) : (
-                                    <div className="flex flex-col">
-                                        {reminders.map((reminder) => {
-                                            const urgency =
-                                                reminder.priority || calculateUrgency(reminder.reminderDate);
-                                            const timeRemaining = getTimeRemaining(reminder.reminderDate);
-                                            const isOverdue = timeRemaining === 'Overdue';
-
-                                            return (
-                                                <div
-                                                    key={reminder.id}
-                                                    className={classNames('flex items-center gap-2.5 px-2 py-1.5')}
-                                                >
-                                                    <Checkbox
-                                                        checked={reminder.completed}
-                                                        onChange={() => handleToggleComplete(reminder)}
-                                                        size="sm"
-                                                    />
-                                                    <Text
-                                                        as="div"
-                                                        variant="body"
-                                                        weight="medium"
-                                                        className={classNames(
-                                                            'truncate flex-1 min-w-0',
-                                                            reminder.completed && 'line-through opacity-40',
-                                                        )}
-                                                    >
-                                                        {reminder.content || formatReminderDate(reminder.reminderDate)}
-                                                    </Text>
+                                                return (
                                                     <div
-                                                        className={classNames(
-                                                            'shrink-0 flex items-center gap-1',
-                                                            reminder.completed && 'opacity-40',
-                                                        )}
+                                                        key={reminder.id}
+                                                        className={classNames('flex items-center gap-2.5 px-2 py-1.5')}
                                                     >
-                                                        {reminder.content && (
-                                                            <Text as="span" variant="meta" tone="secondary">
-                                                                {formatReminderDate(reminder.reminderDate)}
-                                                            </Text>
-                                                        )}
-                                                        {!reminder.completed && (
-                                                            <Text
-                                                                as="span"
-                                                                variant="label"
-                                                                weight="medium"
-                                                                tone={
-                                                                    isOverdue || urgency === 'high'
-                                                                        ? 'error'
-                                                                        : 'tertiary'
-                                                                }
-                                                                className={classNames(
-                                                                    reminder.content &&
-                                                                        'before:content-["·"] before:mr-1',
-                                                                )}
-                                                            >
-                                                                {timeRemaining}
-                                                            </Text>
-                                                        )}
+                                                        <Checkbox
+                                                            checked={reminder.completed}
+                                                            onChange={() => handleToggleComplete(reminder)}
+                                                            size="sm"
+                                                        />
+                                                        <Text
+                                                            as="div"
+                                                            variant="body"
+                                                            weight="medium"
+                                                            className={classNames(
+                                                                'truncate flex-1 min-w-0',
+                                                                reminder.completed && 'line-through opacity-40',
+                                                            )}
+                                                        >
+                                                            {reminder.content ||
+                                                                formatReminderDate(reminder.reminderDate)}
+                                                        </Text>
+                                                        <div
+                                                            className={classNames(
+                                                                'shrink-0 flex items-center gap-1',
+                                                                reminder.completed && 'opacity-40',
+                                                            )}
+                                                        >
+                                                            {reminder.content && (
+                                                                <Text as="span" variant="meta" tone="secondary">
+                                                                    {formatReminderDate(reminder.reminderDate)}
+                                                                </Text>
+                                                            )}
+                                                            {!reminder.completed && (
+                                                                <Text
+                                                                    as="span"
+                                                                    variant="label"
+                                                                    weight="medium"
+                                                                    tone={
+                                                                        isOverdue || urgency === 'high'
+                                                                            ? 'error'
+                                                                            : 'tertiary'
+                                                                    }
+                                                                    className={classNames(
+                                                                        reminder.content &&
+                                                                            'before:content-["·"] before:mr-1',
+                                                                    )}
+                                                                >
+                                                                    {timeRemaining}
+                                                                </Text>
+                                                            )}
+                                                        </div>
+                                                        <Dropdown
+                                                            button={<MoreButton label="Reminder actions" />}
+                                                            items={[
+                                                                {
+                                                                    name: 'Edit',
+                                                                    onClick: () => handleOpenEditModal(reminder),
+                                                                },
+                                                                {
+                                                                    name: 'Delete',
+                                                                    onClick: () => onDelete(reminder.id, noteId),
+                                                                },
+                                                            ]}
+                                                        />
                                                     </div>
-                                                    <Dropdown
-                                                        button={<MoreButton label="Reminder actions" />}
-                                                        items={[
-                                                            {
-                                                                name: 'Edit',
-                                                                onClick: () => handleOpenEditModal(reminder),
-                                                            },
-                                                            {
-                                                                name: 'Delete',
-                                                                onClick: () => onDelete(reminder.id, noteId),
-                                                            },
-                                                        ]}
-                                                    />
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    }}
-                />
-            )}
-
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        }}
+                    />
+                )}
+            </AuxiliaryPanel>
             <ReminderModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
@@ -224,6 +235,6 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                 reminder={editingReminder}
                 mode={modalMode}
             />
-        </div>
+        </>
     );
 }

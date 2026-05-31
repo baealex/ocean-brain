@@ -29,10 +29,44 @@ export const noteType = gql`
         or
     }
 
+    enum NotePropertyValueType {
+        text
+        number
+        date
+        boolean
+        select
+    }
+
     input NoteInput {
         title: String
         content: String
         layout: NoteLayout
+    }
+
+    input NotePropertySetInput {
+        key: String!
+        name: String
+        value: String!
+        valueType: NotePropertyValueType!
+    }
+
+    input NotePropertyOptionInput {
+        label: String!
+        value: String
+        color: String
+        order: Int
+    }
+
+    input NotePropertyDefinitionInput {
+        key: String!
+        name: String
+        valueType: NotePropertyValueType!
+        options: [NotePropertyOptionInput!]
+    }
+
+    input NotePropertiesPatchInput {
+        set: [NotePropertySetInput!]
+        deleteKeys: [String!]
     }
 
     input NoteOrderInput {
@@ -58,6 +92,47 @@ export const noteType = gql`
         order: Int!
         layout: NoteLayout!
         tags: [Tag!]!
+        properties: [NoteProperty!]!
+    }
+
+    type NoteProperty {
+        key: String!
+        name: String!
+        value: String!
+        valueType: NotePropertyValueType!
+        createdAt: String!
+        option: NotePropertyOption
+        updatedAt: String!
+    }
+
+    type NotePropertyOption {
+        id: ID!
+        label: String!
+        value: String!
+        color: String
+        order: Int!
+    }
+
+    type NotePropertyKey {
+        key: String!
+        name: String!
+        valueType: NotePropertyValueType!
+        noteCount: Int!
+        options: [NotePropertyOption!]!
+        updatedAt: String!
+    }
+
+    type NotePropertyKeys {
+        totalCount: Int!
+        keys: [NotePropertyKey!]!
+    }
+
+    type NotePropertyDeleteResult {
+        key: String!
+        name: String!
+        valueType: NotePropertyValueType!
+        affectedNoteCount: Int!
+        deleted: Boolean!
     }
 
     type Notes {
@@ -161,6 +236,7 @@ export const noteQuery = gql`
         noteCleanupPreview(id: ID!): NoteCleanupPreview
         noteSnapshots(id: ID!, limit: Int): [NoteSnapshot!]!
         noteSnapshot(id: ID!): NoteSnapshot
+        notePropertyKeys(query: String, pagination: PaginationInput): NotePropertyKeys!
         trashedNote(id: ID!): DeletedNote
         trashedNotes(pagination: PaginationInput): DeletedNotes!
         noteGraph: NoteGraph!
@@ -175,6 +251,15 @@ export const noteMutation = gql`
         restoreNoteSnapshot(id: ID!): Note!
         restoreTrashedNote(id: ID!): Note!
         purgeTrashedNote(id: ID!): Boolean!
+        createNotePropertyKey(input: NotePropertyDefinitionInput!): NotePropertyKey!
+        deleteNotePropertyKey(key: String!, confirmImpact: Boolean): NotePropertyDeleteResult!
+        updateNoteProperties(
+            id: ID!
+            patch: NotePropertiesPatchInput!
+            editSessionId: String
+            expectedUpdatedAt: String!
+            force: Boolean
+        ): Note!
         pinNote(id: ID!, pinned: Boolean!): Note!
         reorderNotes(notes: [NoteOrderInput!]!): [Note!]!
     }

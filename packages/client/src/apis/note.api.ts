@@ -1,9 +1,9 @@
-import type { Note } from '~/models/note.model';
+import type { Note, NotePropertyOption, NotePropertyValueType } from '~/models/note.model';
 import { graphQuery } from '~/modules/graph-query';
 
-type NoteAdditionalField = 'content' | 'order' | 'layout';
+type NoteAdditionalField = 'content' | 'order' | 'layout' | 'properties';
 
-const NOTE_ADDITIONAL_FIELDS = new Set<NoteAdditionalField>(['content', 'order', 'layout']);
+const NOTE_ADDITIONAL_FIELDS = new Set<NoteAdditionalField>(['content', 'order', 'layout', 'properties']);
 
 const FETCH_NOTES_QUERY = `query FetchNotes(
             $searchFilter: SearchFilterInput,
@@ -45,7 +45,15 @@ const buildAdditionalNoteSelection = (fields?: (keyof Note)[]) => {
         return '';
     }
 
-    return selectedFields.map((field) => '                    ' + field).join('\n') + '\n';
+    return (
+        selectedFields
+            .map((field) =>
+                field === 'properties'
+                    ? '                    properties {\n                        key\n                        name\n                        value\n                        valueType\n                        option { id label value color order }\n                        createdAt\n                        updatedAt\n                    }'
+                    : '                    ' + field,
+            )
+            .join('\n') + '\n'
+    );
 };
 
 export interface FetchNotesParams {
@@ -186,7 +194,7 @@ export function fetchNotesByTagNames({ tagNames, mode = 'and', limit = 25, offse
 export function fetchNote(id: string) {
     return graphQuery<
         {
-            note: Pick<Note, 'title' | 'content' | 'pinned' | 'layout' | 'createdAt' | 'updatedAt'>;
+            note: Pick<Note, 'title' | 'content' | 'pinned' | 'layout' | 'createdAt' | 'updatedAt' | 'properties'>;
         },
         { id: string }
     >(
@@ -198,6 +206,15 @@ export function fetchNote(id: string) {
                 content
                 createdAt
                 updatedAt
+                properties {
+                    key
+                    name
+                    value
+                    valueType
+                    option { id label value color order }
+                    createdAt
+                    updatedAt
+                }
             }
         }`,
         { id },
@@ -240,6 +257,126 @@ export function fetchImageNotes(src: string) {
     );
 }
 
+export interface NotePropertyKeySummary {
+    key: string;
+    name: string;
+    valueType: NotePropertyValueType;
+    noteCount: number;
+    options: NotePropertyOption[];
+    updatedAt: string;
+}
+
+export interface FetchNotePropertyKeysParams {
+    query?: string;
+    limit?: number;
+    offset?: number;
+}
+
+export function fetchNotePropertyKeys({ query = '', limit = 50, offset = 0 }: FetchNotePropertyKeysParams = {}) {
+    return graphQuery<
+        {
+            notePropertyKeys: {
+                totalCount: number;
+                keys: NotePropertyKeySummary[];
+            };
+        },
+        {
+            query?: string;
+            pagination: {
+                limit: number;
+                offset: number;
+            };
+        }
+    >(
+        `query FetchNotePropertyKeys($query: String, $pagination: PaginationInput) {
+            notePropertyKeys(query: $query, pagination: $pagination) {
+                totalCount
+                keys {
+                    key
+                    name
+                    valueType
+                    noteCount
+                    options { id label value color order }
+                    updatedAt
+                }
+            }
+        }`,
+        {
+            ...(query ? { query } : {}),
+            pagination: {
+                limit,
+                offset,
+            },
+        },
+    );
+}
+
+export interface CreateNotePropertyKeyRequestData {
+    key: string;
+    name?: string;
+    valueType: NotePropertyValueType;
+    options?: Array<
+        Omit<NotePropertyOption, 'id'> | { label: string; value?: string; color?: string | null; order?: number }
+    >;
+}
+
+export function createNotePropertyKey(input: CreateNotePropertyKeyRequestData) {
+    return graphQuery<
+        {
+            createNotePropertyKey: NotePropertyKeySummary;
+        },
+        { input: CreateNotePropertyKeyRequestData }
+    >(
+        `mutation CreateNotePropertyKey($input: NotePropertyDefinitionInput!) {
+            createNotePropertyKey(input: $input) {
+                key
+                name
+                valueType
+                noteCount
+                options { id label value color order }
+                updatedAt
+            }
+        }`,
+        { input },
+    );
+}
+
+export interface DeleteNotePropertyKeyRequestData {
+    key: string;
+    confirmImpact?: boolean;
+}
+
+export interface DeleteNotePropertyKeyResult {
+    key: string;
+    name: string;
+    valueType: NotePropertyValueType;
+    affectedNoteCount: number;
+    deleted: boolean;
+}
+
+export function deleteNotePropertyKey({ key, confirmImpact }: DeleteNotePropertyKeyRequestData) {
+    return graphQuery<
+        {
+            deleteNotePropertyKey: DeleteNotePropertyKeyResult;
+        },
+        DeleteNotePropertyKeyRequestData
+    >(
+        `mutation DeleteNotePropertyKey($key: String!, $confirmImpact: Boolean) {
+            deleteNotePropertyKey(key: $key, confirmImpact: $confirmImpact) {
+                key
+                name
+                valueType
+                affectedNoteCount
+                deleted
+            }
+        }`,
+        {
+            key,
+            ...(confirmImpact ? { confirmImpact: true } : {}),
+        },
+    );
+}
+
 export interface CreateNoteRequestData {
     title: string;
     content: string;
@@ -259,6 +396,85 @@ export function createNote(note: CreateNoteRequestData) {
             }
         }`,
         { note },
+    );
+}
+
+export interface NotePropertySetInput {
+    key: string;
+    name?: string;
+    value: string;
+    valueType: NotePropertyValueType;
+}
+
+export interface UpdateNotePropertiesRequestData {
+    id: string;
+    set?: NotePropertySetInput[];
+    deleteKeys?: string[];
+    editSessionId?: string;
+    expectedUpdatedAt: string;
+    force?: boolean;
+}
+
+export function updateNoteProperties({
+    id,
+    set = [],
+    deleteKeys = [],
+    editSessionId,
+    expectedUpdatedAt,
+    force,
+}: UpdateNotePropertiesRequestData) {
+    return graphQuery<
+        {
+            updateNoteProperties: Pick<Note, 'id' | 'updatedAt' | 'properties'>;
+        },
+        {
+            id: string;
+            patch: {
+                set?: NotePropertySetInput[];
+                deleteKeys?: string[];
+            };
+            editSessionId?: string;
+            expectedUpdatedAt: string;
+            force?: boolean;
+        }
+    >(
+        `mutation UpdateNoteProperties(
+            $id: ID!,
+            $patch: NotePropertiesPatchInput!,
+            $editSessionId: String,
+            $expectedUpdatedAt: String!,
+            $force: Boolean
+        ) {
+            updateNoteProperties(
+                id: $id,
+                patch: $patch,
+                editSessionId: $editSessionId,
+                expectedUpdatedAt: $expectedUpdatedAt,
+                force: $force
+            ) {
+                id
+                updatedAt
+                properties {
+                    key
+                    name
+                    value
+                    valueType
+                    option { id label value color order }
+                    createdAt
+                    updatedAt
+                }
+            }
+        }`,
+        {
+            id,
+            patch: {
+                ...(set.length > 0 ? { set } : {}),
+                ...(deleteKeys.length > 0 ? { deleteKeys } : {}),
+            },
+            ...(editSessionId ? { editSessionId } : {}),
+            expectedUpdatedAt,
+            ...(force ? { force: true } : {}),
+        },
     );
 }
 

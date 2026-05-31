@@ -1,5 +1,10 @@
 import type { FetchImagesParams } from '~/apis/image.api';
-import type { FetchNotesByTagNamesParams, FetchNotesParams, FetchTagNotesParams } from '~/apis/note.api';
+import type {
+    FetchNotePropertyKeysParams,
+    FetchNotesByTagNamesParams,
+    FetchNotesParams,
+    FetchTagNotesParams,
+} from '~/apis/note.api';
 import type { FetchPlaceholdersParams } from '~/apis/placeholder.api';
 import type { ReminderPaginationParams } from '~/apis/reminder.api';
 import type { FetchTagsParams } from '~/apis/tag.api';
@@ -95,6 +100,16 @@ export const queryKeys = {
         backReferencesAll: () => ['notes', 'back-references'] as const,
         backReferences: (noteId: string) => ['notes', 'back-references', { noteId }] as const,
         graph: () => ['notes', 'graph'] as const,
+        propertyKeys: (params: FetchNotePropertyKeysParams = {}) =>
+            [
+                'notes',
+                'property-keys',
+                {
+                    query: params.query ?? '',
+                    limit: params.limit ?? 50,
+                    offset: params.offset ?? 0,
+                },
+            ] as const,
     },
     tags: {
         all: () => ['tags'] as const,

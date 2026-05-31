@@ -1,4 +1,4 @@
-import models, { type NoteLayout, type ReminderPriority } from '~/models.js';
+import models, { type NoteLayout, type PropertyValueType, type ReminderPriority } from '~/models.js';
 import {
     createRetentionCutoff,
     RECOVERY_CLEANUP_BATCH_LIMIT,
@@ -34,6 +34,24 @@ interface LiveNoteRecord {
     layout: NoteLayout;
     tags: LiveTagRecord[];
     reminders: LiveReminderRecord[];
+    properties?: LivePropertyRecord[];
+}
+
+interface LivePropertyRecord {
+    id: number;
+    textValue: string | null;
+    textValueNormalized: string | null;
+    numberValue: number | null;
+    dateValue: Date | null;
+    boolValue: boolean | null;
+    option: { value: string; label: string; color: string | null } | null;
+    createdAt: Date;
+    updatedAt: Date;
+    definition: {
+        key: string;
+        name: string;
+        valueType: PropertyValueType;
+    };
 }
 
 interface RestoredNoteRecord {
@@ -73,6 +91,23 @@ interface DeletedNoteRecord {
     layout: NoteLayout;
     tags: DeletedTagRecord[];
     reminders: DeletedReminderRecord[];
+    properties?: DeletedPropertyRecord[];
+}
+
+interface DeletedPropertyRecord {
+    key: string;
+    name: string;
+    valueType: PropertyValueType;
+    textValue: string | null;
+    textValueNormalized: string | null;
+    numberValue: number | null;
+    dateValue: Date | null;
+    boolValue: boolean | null;
+    optionValue: string | null;
+    optionLabel: string | null;
+    optionColor: string | null;
+    createdAt: Date;
+    updatedAt: Date;
 }
 
 interface BlockNoteNode {
@@ -262,6 +297,7 @@ export const createNoteTrashService = (deps: NoteTrashServiceDeps) => ({
 const includeDeletedNote = {
     reminders: { orderBy: { reminderDate: 'asc' as const } },
     tags: { orderBy: { name: 'asc' as const } },
+    properties: { orderBy: { key: 'asc' as const } },
 };
 
 const defaultPurgeExpiredDeletedNotes = async (before: Date, limit: number) => {
@@ -295,6 +331,10 @@ const noteTrashService = createNoteTrashService({
             include: {
                 reminders: { orderBy: { reminderDate: 'asc' } },
                 tags: { orderBy: { name: 'asc' } },
+                properties: {
+                    orderBy: { definition: { key: 'asc' } },
+                    include: { definition: true, option: true },
+                },
             },
         });
     },
@@ -339,6 +379,23 @@ const noteTrashService = createNoteTrashService({
                             content: reminder.content,
                             createdAt: reminder.createdAt,
                             updatedAt: reminder.updatedAt,
+                        })),
+                    },
+                    properties: {
+                        create: (note.properties ?? []).map((property) => ({
+                            key: property.definition.key,
+                            name: property.definition.name,
+                            valueType: property.definition.valueType,
+                            textValue: property.textValue,
+                            textValueNormalized: property.textValueNormalized,
+                            numberValue: property.numberValue,
+                            dateValue: property.dateValue,
+                            boolValue: property.boolValue,
+                            optionValue: property.option?.value ?? null,
+                            optionLabel: property.option?.label ?? null,
+                            optionColor: property.option?.color ?? null,
+                            createdAt: property.createdAt,
+                            updatedAt: property.updatedAt,
                         })),
                     },
                 },
@@ -430,6 +487,58 @@ const noteTrashService = createNoteTrashService({
                         : {}),
                 },
             });
+
+            for (const property of deletedNote.properties ?? []) {
+                const definition = await tx.propertyDefinition.upsert({
+                    where: { key: property.key },
+                    create: {
+                        key: property.key,
+                        name: property.name,
+                        valueType: property.valueType,
+                    },
+                    update: {
+                        name: property.name,
+                        valueType: property.valueType,
+                    },
+                });
+
+                const option =
+                    property.valueType === 'select' && property.optionValue
+                        ? await tx.propertyOption.upsert({
+                              where: {
+                                  propertyDefinitionId_value: {
+                                      propertyDefinitionId: definition.id,
+                                      value: property.optionValue,
+                                  },
+                              },
+                              create: {
+                                  propertyDefinitionId: definition.id,
+                                  value: property.optionValue,
+                                  label: property.optionLabel ?? property.optionValue,
+                                  color: property.optionColor,
+                              },
+                              update: {
+                                  label: property.optionLabel ?? property.optionValue,
+                                  color: property.optionColor,
+                              },
+                          })
+                        : null;
+
+                await tx.noteProperty.create({
+                    data: {
+                        noteId: note.id,
+                        propertyDefinitionId: definition.id,
+                        optionId: option?.id ?? null,
+                        textValue: property.textValue,
+                        textValueNormalized: property.textValueNormalized,
+                        numberValue: property.numberValue,
+                        dateValue: property.dateValue,
+                        boolValue: property.boolValue,
+                        createdAt: property.createdAt,
+                        updatedAt: property.updatedAt,
+                    },
+                });
+            }
 
             await tx.deletedNote.delete({ where: { id: deletedNote.id } });
 

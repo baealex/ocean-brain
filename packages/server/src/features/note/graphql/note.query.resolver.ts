@@ -7,6 +7,7 @@ import {
     normalizeReferenceId,
     syncReferenceTitlesInContent,
 } from '~/features/note/services/content-blocks.js';
+import { listNotePropertyKeys } from '~/features/note/services/properties.js';
 import {
     buildNoteSearchProjection,
     filterNotesBySearchQuery,
@@ -494,6 +495,25 @@ export const noteQueryResolvers: NoteQueryResolvers = {
     },
     noteSnapshot: async (_, { id }: { id: string }) => {
         return getNoteSnapshot(Number(id));
+    },
+    notePropertyKeys: async (
+        _,
+        {
+            query,
+            pagination = {
+                limit: 50,
+                offset: 0,
+            },
+        }: {
+            query?: string;
+            pagination: Pagination;
+        },
+    ) => {
+        return listNotePropertyKeys({
+            query,
+            limit: Number(pagination.limit),
+            offset: Number(pagination.offset),
+        });
     },
     trashedNote: async (_, { id }: { id: string }) => {
         return getTrashedNoteById(Number(id));

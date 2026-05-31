@@ -2,11 +2,16 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+    buildPropertyFilterWhere,
+    buildViewSectionWhere,
     clampViewSectionLimit,
+    normalizeViewPropertyFilters,
     normalizeViewSectionInput,
     normalizeViewTabTitle,
     normalizeViewTagNames,
     pickNextActiveViewTabId,
+    type ViewPropertyFilterRecord,
+    type ViewSectionRecord,
 } from './workspace.js';
 
 test('normalizeViewTagNames trims values and canonicalizes plain or hash-prefixed tags', () => {
@@ -27,19 +32,232 @@ test('normalizeViewSectionInput derives a default title and clamps invalid limit
         }),
         {
             title: '@project + @review',
+            displayType: 'list',
             tagNames: ['@project', '@review'],
             mode: 'or',
+            propertyFilters: [],
+            sortBy: 'updatedAt',
+            sortOrder: 'desc',
             limit: 20,
         },
     );
 });
 
-test('normalizeViewSectionInput rejects sections without usable tags', () => {
-    assert.throws(() =>
+test('normalizeViewSectionInput allows all-note views without filters', () => {
+    assert.deepEqual(
         normalizeViewSectionInput({
-            title: 'Inbox',
+            title: '',
             tagNames: ['   ', ''],
         }),
+        {
+            title: 'All notes',
+            displayType: 'list',
+            tagNames: [],
+            mode: 'and',
+            propertyFilters: [],
+            sortBy: 'updatedAt',
+            sortOrder: 'desc',
+            limit: 5,
+        },
+    );
+});
+
+test('normalizeViewPropertyFilters validates typed filter values', () => {
+    assert.deepEqual(
+        normalizeViewPropertyFilters([{ key: ' State ', valueType: 'select', operator: 'equals', value: 'todo' }]),
+        [
+            {
+                key: 'state',
+                name: 'state',
+                valueType: 'select',
+                operator: 'equals',
+                value: 'todo',
+            },
+        ],
+    );
+
+    assert.throws(() =>
+        normalizeViewPropertyFilters([{ key: 'due', valueType: 'date', operator: 'equals', value: '2026-99-99' }]),
+    );
+});
+
+test('buildPropertyFilterWhere maps property filters to note relation filters', () => {
+    assert.deepEqual(
+        buildPropertyFilterWhere({
+            key: 'state',
+            name: 'State',
+            valueType: 'select',
+            operator: 'equals',
+            value: 'Todo',
+        }),
+        {
+            properties: {
+                some: {
+                    definition: {
+                        is: {
+                            key: 'state',
+                        },
+                    },
+                    option: {
+                        is: {
+                            value: 'todo',
+                        },
+                    },
+                },
+            },
+        },
+    );
+});
+
+test('buildPropertyFilterWhere maps existence operators', () => {
+    const baseFilter: ViewPropertyFilterRecord = {
+        key: 'state',
+        name: 'State',
+        valueType: 'select',
+        operator: 'exists',
+        value: null,
+    };
+
+    assert.deepEqual(buildPropertyFilterWhere(baseFilter), {
+        properties: {
+            some: {
+                definition: {
+                    is: {
+                        key: 'state',
+                    },
+                },
+            },
+        },
+    });
+
+    assert.deepEqual(buildPropertyFilterWhere({ ...baseFilter, operator: 'notExists' }), {
+        properties: {
+            none: {
+                definition: {
+                    is: {
+                        key: 'state',
+                    },
+                },
+            },
+        },
+    });
+});
+
+test('buildPropertyFilterWhere maps number and date range operators', () => {
+    assert.deepEqual(
+        buildPropertyFilterWhere({
+            key: 'priority',
+            name: 'Priority',
+            valueType: 'number',
+            operator: 'before',
+            value: '3',
+        }),
+        {
+            properties: {
+                some: {
+                    definition: {
+                        is: {
+                            key: 'priority',
+                        },
+                    },
+                    numberValue: {
+                        lt: 3,
+                    },
+                },
+            },
+        },
+    );
+
+    assert.deepEqual(
+        buildPropertyFilterWhere({
+            key: 'due',
+            name: 'Due',
+            valueType: 'date',
+            operator: 'after',
+            value: '2026-05-31',
+        }),
+        {
+            properties: {
+                some: {
+                    definition: {
+                        is: {
+                            key: 'due',
+                        },
+                    },
+                    dateValue: {
+                        gt: new Date('2026-05-31T00:00:00.000Z'),
+                    },
+                },
+            },
+        },
+    );
+});
+
+const createSectionRecord = (patch: Partial<ViewSectionRecord> = {}): ViewSectionRecord => ({
+    id: '1',
+    tabId: '1',
+    title: 'Doing',
+    displayType: 'list',
+    tagNames: [],
+    mode: 'and',
+    propertyFilters: [],
+    sortBy: 'updatedAt',
+    sortOrder: 'desc',
+    limit: 5,
+    order: 0,
+    ...patch,
+});
+
+test('buildViewSectionWhere returns an open query for all-note views', () => {
+    assert.deepEqual(buildViewSectionWhere(createSectionRecord()), {});
+});
+
+test('buildViewSectionWhere combines tag and property filters with AND', () => {
+    assert.deepEqual(
+        buildViewSectionWhere(
+            createSectionRecord({
+                tagNames: ['@ocean', '@ai'],
+                mode: 'or',
+                propertyFilters: [
+                    {
+                        key: 'state',
+                        name: 'State',
+                        valueType: 'select',
+                        operator: 'equals',
+                        value: 'doing',
+                    },
+                ],
+            }),
+        ),
+        {
+            AND: [
+                {
+                    tags: {
+                        some: {
+                            name: {
+                                in: ['@ocean', '@ai'],
+                            },
+                        },
+                    },
+                },
+                {
+                    properties: {
+                        some: {
+                            definition: {
+                                is: {
+                                    key: 'state',
+                                },
+                            },
+                            option: {
+                                is: {
+                                    value: 'doing',
+                                },
+                            },
+                        },
+                    },
+                },
+            ],
+        },
     );
 });
 

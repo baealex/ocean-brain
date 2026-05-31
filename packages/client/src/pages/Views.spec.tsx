@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 
+import { fetchNotePropertyKeys } from '~/apis/note.api';
 import { fetchTags } from '~/apis/tag.api';
 import { fetchViewWorkspace } from '~/apis/view.api';
 import { ConfirmProvider, ToastProvider } from '~/components/ui';
@@ -7,6 +8,7 @@ import { createQueryClientWrapper } from '~/test/test-utils';
 
 import Views from './Views';
 
+vi.mock('~/apis/note.api', () => ({ fetchNotePropertyKeys: vi.fn() }));
 vi.mock('~/apis/tag.api', () => ({ fetchTags: vi.fn() }));
 vi.mock('~/apis/view.api', () => ({
     createViewSection: vi.fn(),
@@ -23,6 +25,13 @@ vi.mock('~/apis/view.api', () => ({
 
 describe('<Views />', () => {
     beforeEach(() => {
+        vi.mocked(fetchNotePropertyKeys).mockResolvedValue({
+            type: 'success',
+            notePropertyKeys: {
+                totalCount: 0,
+                keys: [],
+            },
+        } as never);
         vi.mocked(fetchTags).mockResolvedValue({
             type: 'success',
             allTags: {

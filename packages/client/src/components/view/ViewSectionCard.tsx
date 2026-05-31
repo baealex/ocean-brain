@@ -8,7 +8,7 @@ import type { ViewSection } from '~/models/view.model';
 import { queryKeys } from '~/modules/query-key-factory';
 import { timeSince } from '~/modules/time';
 import { NOTE_ROUTE, VIEW_NOTES_ROUTE } from '~/modules/url';
-import { buildViewNotesSearch, getViewTagMatchToken } from '~/modules/view-dashboard';
+import { buildViewNotesSearch, formatViewPropertyFilter, getViewTagMatchToken } from '~/modules/view-dashboard';
 
 interface ViewSectionCardProps {
     section: ViewSection;
@@ -42,6 +42,7 @@ export default function ViewSectionCard({ section, onEdit, onDelete, dragHandle 
     const notes = data?.notes ?? [];
     const totalCount = data?.totalCount ?? 0;
     const tagMatchToken = getViewTagMatchToken(section.mode);
+    const hasFilters = section.tagNames.length > 0 || section.propertyFilters.length > 0;
 
     return (
         <SurfaceCard className="flex h-full flex-col gap-4">
@@ -74,6 +75,19 @@ export default function ViewSectionCard({ section, onEdit, onDelete, dragHandle 
                                 </span>
                             </div>
                         ))}
+                        {section.propertyFilters.map((filter) => (
+                            <span
+                                key={`${filter.key}-${filter.operator}-${filter.value ?? ''}`}
+                                className="inline-flex items-center rounded-full border border-border-subtle/80 bg-subtle px-2.5 py-1 text-xs font-medium text-fg-secondary"
+                            >
+                                {formatViewPropertyFilter(filter)}
+                            </span>
+                        ))}
+                        {!hasFilters && (
+                            <span className="inline-flex items-center rounded-full border border-border-subtle/80 bg-transparent px-2.5 py-1 text-xs font-medium text-fg-tertiary">
+                                All notes
+                            </span>
+                        )}
                     </div>
                 </div>
                 <div className="shrink-0">
@@ -109,7 +123,7 @@ export default function ViewSectionCard({ section, onEdit, onDelete, dragHandle 
                             Failed to load this section
                         </Text>
                         <Text as="p" variant="meta" tone="tertiary" className="mt-1">
-                            Retry to refresh the tag-based note block.
+                            Retry to refresh this saved query.
                         </Text>
                         <div className="mt-3">
                             <Button type="button" variant="ghost" size="sm" onClick={() => refetch()}>
@@ -125,7 +139,7 @@ export default function ViewSectionCard({ section, onEdit, onDelete, dragHandle 
                             No notes match yet
                         </Text>
                         <Text as="p" variant="meta" tone="tertiary" className="mt-1">
-                            Add more notes with these tags, or edit the section filter.
+                            Add matching notes, or edit this view query.
                         </Text>
                     </div>
                 )}

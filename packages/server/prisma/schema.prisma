@@ -1,286 +1,292 @@
 generator client {
-    provider = "prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-    provider = "sqlite"
-    url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 model Cache {
-    id        Int      @id @default(autoincrement())
-    key       String   @unique
-    value     String
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model McpToken {
-    id         Int      @id @default(autoincrement())
-    tokenHash  String
-    createdAt  DateTime @default(now())
-    lastUsedAt DateTime?
-    revokedAt  DateTime?
+  id         Int       @id @default(autoincrement())
+  tokenHash  String
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
 
-    @@index([revokedAt, createdAt])
+  @@index([revokedAt, createdAt])
 }
 
 model Note {
-    id                   Int        @id @default(autoincrement())
-    title                String
-    content              String
-    searchableText       String     @default("")
-    searchableTextVersion Int       @default(0)
-    createdAt            DateTime   @default(now())
-    updatedAt            DateTime   @updatedAt
-    pinned               Boolean    @default(false)
-    order                Int        @default(0)
-    layout               NoteLayout @default(wide)
-    tags                 Tag[]      @relation("NoteToTag")
-    reminders            Reminder[] @relation("NoteToReminder")
-    snapshots            NoteSnapshot[]
-    properties           NoteProperty[]
+  id                    Int            @id @default(autoincrement())
+  title                 String
+  content               String
+  searchableText        String         @default("")
+  searchableTextVersion Int            @default(0)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  pinned                Boolean        @default(false)
+  order                 Int            @default(0)
+  layout                NoteLayout     @default(wide)
+  tags                  Tag[]          @relation("NoteToTag")
+  reminders             Reminder[]     @relation("NoteToReminder")
+  snapshots             NoteSnapshot[]
+  properties            NoteProperty[]
 
-    @@index([updatedAt, id])
-    @@index([createdAt, id])
-    @@index([pinned, updatedAt, id])
+  @@index([updatedAt, id])
+  @@index([createdAt, id])
+  @@index([pinned, updatedAt, id])
 }
 
 model PropertyDefinition {
-    id         Int               @id @default(autoincrement())
-    key        String            @unique
-    name       String
-    valueType  PropertyValueType
-    createdAt  DateTime          @default(now())
-    updatedAt  DateTime          @updatedAt
-    options    PropertyOption[]
-    properties NoteProperty[]
+  id         Int               @id @default(autoincrement())
+  key        String            @unique
+  name       String
+  valueType  PropertyValueType
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  options    PropertyOption[]
+  properties NoteProperty[]
 }
 
-
 model PropertyOption {
-    id                   Int                @id @default(autoincrement())
-    propertyDefinitionId Int
-    definition           PropertyDefinition @relation(fields: [propertyDefinitionId], references: [id], onDelete: Cascade)
-    label                String
-    value                String
-    color                String?
-    order                Int                @default(0)
-    properties           NoteProperty[]
-    createdAt            DateTime           @default(now())
-    updatedAt            DateTime           @updatedAt
+  id                   Int                @id @default(autoincrement())
+  propertyDefinitionId Int
+  definition           PropertyDefinition @relation(fields: [propertyDefinitionId], references: [id], onDelete: Cascade)
+  label                String
+  value                String
+  color                String?
+  order                Int                @default(0)
+  properties           NoteProperty[]
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
 
-    @@unique([propertyDefinitionId, value])
-    @@index([propertyDefinitionId, order])
+  @@unique([propertyDefinitionId, value])
+  @@index([propertyDefinitionId, order])
 }
 
 model NoteProperty {
-    id                   Int                @id @default(autoincrement())
-    noteId               Int
-    propertyDefinitionId Int
-    note                 Note               @relation(fields: [noteId], references: [id], onDelete: Cascade)
-    definition           PropertyDefinition @relation(fields: [propertyDefinitionId], references: [id], onDelete: Cascade)
-    optionId             Int?
-    option               PropertyOption?    @relation(fields: [optionId], references: [id], onDelete: SetNull)
-    textValue            String?
-    textValueNormalized  String?
-    numberValue          Float?
-    dateValue            DateTime?
-    boolValue            Boolean?
-    createdAt            DateTime           @default(now())
-    updatedAt            DateTime           @updatedAt
+  id                   Int                @id @default(autoincrement())
+  noteId               Int
+  propertyDefinitionId Int
+  note                 Note               @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  definition           PropertyDefinition @relation(fields: [propertyDefinitionId], references: [id], onDelete: Cascade)
+  optionId             Int?
+  option               PropertyOption?    @relation(fields: [optionId], references: [id], onDelete: SetNull)
+  textValue            String?
+  textValueNormalized  String?
+  numberValue          Float?
+  dateValue            DateTime?
+  boolValue            Boolean?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
 
-    @@unique([noteId, propertyDefinitionId])
-    @@index([propertyDefinitionId, noteId])
-    @@index([propertyDefinitionId, textValueNormalized, noteId])
-    @@index([propertyDefinitionId, numberValue, noteId])
-    @@index([propertyDefinitionId, dateValue, noteId])
-    @@index([propertyDefinitionId, boolValue, noteId])
-    @@index([propertyDefinitionId, optionId, noteId])
+  @@unique([noteId, propertyDefinitionId])
+  @@index([propertyDefinitionId, noteId])
+  @@index([propertyDefinitionId, textValueNormalized, noteId])
+  @@index([propertyDefinitionId, numberValue, noteId])
+  @@index([propertyDefinitionId, dateValue, noteId])
+  @@index([propertyDefinitionId, boolValue, noteId])
+  @@index([propertyDefinitionId, optionId, noteId])
 }
 
 model NoteSnapshot {
-    id            Int        @id @default(autoincrement())
-    noteId        Int
-    note          Note       @relation(fields: [noteId], references: [id], onDelete: Cascade)
-    title         String
-    payload       String
-    editSessionId String?
-    meta          String?
-    createdAt     DateTime   @default(now())
+  id            Int      @id @default(autoincrement())
+  noteId        Int
+  note          Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  title         String
+  payload       String
+  editSessionId String?
+  meta          String?
+  createdAt     DateTime @default(now())
 
-    @@index([noteId, createdAt])
-    @@unique([noteId, editSessionId])
+  @@unique([noteId, editSessionId])
+  @@index([noteId, createdAt])
 }
 
 model DeletedNote {
-    id         Int              @id
-    title      String
-    content    String
-    createdAt  DateTime
-    updatedAt  DateTime
-    deletedAt  DateTime         @default(now())
-    pinned     Boolean          @default(false)
-    order      Int              @default(0)
-    layout     NoteLayout       @default(wide)
-    tags       DeletedNoteTag[]
-    reminders  DeletedReminder[]
-    properties DeletedNoteProperty[]
+  id         Int                   @id
+  title      String
+  content    String
+  createdAt  DateTime
+  updatedAt  DateTime
+  deletedAt  DateTime              @default(now())
+  pinned     Boolean               @default(false)
+  order      Int                   @default(0)
+  layout     NoteLayout            @default(wide)
+  tags       DeletedNoteTag[]
+  reminders  DeletedReminder[]
+  properties DeletedNoteProperty[]
 
-    @@index([deletedAt, updatedAt])
+  @@index([deletedAt, updatedAt])
 }
 
 model DeletedNoteProperty {
-    id                  Int               @id @default(autoincrement())
-    deletedNoteId       Int
-    deletedNote         DeletedNote       @relation(fields: [deletedNoteId], references: [id], onDelete: Cascade)
-    key                 String
-    name                String
-    valueType           PropertyValueType
-    textValue           String?
-    textValueNormalized String?
-    numberValue         Float?
-    dateValue           DateTime?
-    boolValue           Boolean?
-    optionValue         String?
-    optionLabel         String?
-    optionColor         String?
-    createdAt           DateTime
-    updatedAt           DateTime
+  id                  Int               @id @default(autoincrement())
+  deletedNoteId       Int
+  deletedNote         DeletedNote       @relation(fields: [deletedNoteId], references: [id], onDelete: Cascade)
+  key                 String
+  name                String
+  valueType           PropertyValueType
+  textValue           String?
+  textValueNormalized String?
+  numberValue         Float?
+  dateValue           DateTime?
+  boolValue           Boolean?
+  optionValue         String?
+  optionLabel         String?
+  optionColor         String?
+  createdAt           DateTime
+  updatedAt           DateTime
 
-    @@unique([deletedNoteId, key])
-    @@index([deletedNoteId])
+  @@unique([deletedNoteId, key])
+  @@index([deletedNoteId])
 }
 
 model DeletedNoteTag {
-    id            Int         @id @default(autoincrement())
-    deletedNoteId Int
-    deletedNote   DeletedNote @relation(fields: [deletedNoteId], references: [id], onDelete: Cascade)
-    name          String
+  id            Int         @id @default(autoincrement())
+  deletedNoteId Int
+  deletedNote   DeletedNote @relation(fields: [deletedNoteId], references: [id], onDelete: Cascade)
+  name          String
 
-    @@index([deletedNoteId])
+  @@index([deletedNoteId])
 }
 
 model DeletedReminder {
-    id               Int              @id @default(autoincrement())
-    deletedNoteId    Int
-    deletedNote      DeletedNote      @relation(fields: [deletedNoteId], references: [id], onDelete: Cascade)
-    originalId       Int?
-    reminderDate     DateTime
-    completed        Boolean          @default(false)
-    priority         ReminderPriority @default(medium)
-    content          String?
-    createdAt        DateTime
-    updatedAt        DateTime
+  id            Int              @id @default(autoincrement())
+  deletedNoteId Int
+  deletedNote   DeletedNote      @relation(fields: [deletedNoteId], references: [id], onDelete: Cascade)
+  originalId    Int?
+  reminderDate  DateTime
+  completed     Boolean          @default(false)
+  priority      ReminderPriority @default(medium)
+  content       String?
+  createdAt     DateTime
+  updatedAt     DateTime
 
-    @@index([deletedNoteId])
+  @@index([deletedNoteId])
 }
 
 model Image {
-    id        Int      @id @default(autoincrement())
-    url       String
-    hash      String   @unique
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+  id        Int      @id @default(autoincrement())
+  url       String
+  hash      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Tag {
-    id        Int      @id @default(autoincrement())
-    name      String   @unique
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-    notes     Note[]   @relation("NoteToTag")
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  notes     Note[]   @relation("NoteToTag")
 }
 
 enum ReminderPriority {
-    low
-    medium
-    high
+  low
+  medium
+  high
 }
 
 enum NoteLayout {
-    narrow
-    wide
-    full
+  narrow
+  wide
+  full
 }
 
 enum PropertyValueType {
-    text
-    number
-    date
-    boolean
-    select
+  text
+  number
+  date
+  boolean
+  select
 }
 
 model Reminder {
-    id           Int              @id @default(autoincrement())
-    noteId       Int
-    note         Note             @relation("NoteToReminder", fields: [noteId], references: [id], onDelete: Cascade)
-    reminderDate DateTime
-    completed    Boolean          @default(false)
-    priority     ReminderPriority @default(medium)
-    content      String?
-    createdAt    DateTime         @default(now())
-    updatedAt    DateTime         @updatedAt
+  id           Int              @id @default(autoincrement())
+  noteId       Int
+  note         Note             @relation("NoteToReminder", fields: [noteId], references: [id], onDelete: Cascade)
+  reminderDate DateTime
+  completed    Boolean          @default(false)
+  priority     ReminderPriority @default(medium)
+  content      String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 }
 
 model Placeholder {
-    id          Int      @id @default(autoincrement())
-    name        String   @unique
-    template    String
-    replacement String
-    createdAt   DateTime @default(now())
-    updatedAt   DateTime @updatedAt
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  template    String
+  replacement String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model ViewWorkspace {
-    id         Int      @id
-    activeTabId Int?
-    activeTab  ViewTab? @relation("ActiveViewTab", fields: [activeTabId], references: [id], onDelete: SetNull)
-    createdAt  DateTime @default(now())
-    updatedAt  DateTime @updatedAt
+  id          Int      @id
+  activeTabId Int?
+  activeTab   ViewTab? @relation("ActiveViewTab", fields: [activeTabId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model ViewTab {
-    id               Int             @id @default(autoincrement())
-    title            String
-    order            Int             @default(0)
-    createdAt        DateTime        @default(now())
-    updatedAt        DateTime        @updatedAt
-    sections         ViewSection[]
-    activeWorkspaces ViewWorkspace[] @relation("ActiveViewTab")
+  id               Int             @id @default(autoincrement())
+  title            String
+  order            Int             @default(0)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  sections         ViewSection[]
+  activeWorkspaces ViewWorkspace[] @relation("ActiveViewTab")
 
-    @@index([order, createdAt])
+  @@index([order, createdAt])
 }
 
 model ViewSection {
-    id        Int              @id @default(autoincrement())
-    tabId     Int
-    tab       ViewTab          @relation(fields: [tabId], references: [id], onDelete: Cascade)
-    title     String
-    mode      ViewTagMatchMode @default(and)
-    limit     Int              @default(5)
-    order     Int              @default(0)
-    createdAt DateTime         @default(now())
-    updatedAt DateTime         @updatedAt
-    tags      ViewSectionTag[]
+  id          Int              @id @default(autoincrement())
+  tabId       Int
+  tab         ViewTab          @relation(fields: [tabId], references: [id], onDelete: Cascade)
+  title       String
+  displayType ViewDisplayType  @default(list)
+  query       String?
+  mode        ViewTagMatchMode @default(and)
+  limit       Int              @default(5)
+  order       Int              @default(0)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  tags        ViewSectionTag[]
 
-    @@index([tabId, order, createdAt])
+  @@index([tabId, order, createdAt])
 }
 
 model ViewSectionTag {
-    id        Int         @id @default(autoincrement())
-    sectionId Int
-    section   ViewSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
-    name      String
-    order     Int         @default(0)
-    createdAt DateTime    @default(now())
-    updatedAt DateTime    @updatedAt
+  id        Int         @id @default(autoincrement())
+  sectionId Int
+  section   ViewSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  name      String
+  order     Int         @default(0)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
 
-    @@index([sectionId, order, createdAt])
+  @@index([sectionId, order, createdAt])
 }
 
 enum ViewTagMatchMode {
-    and
-    or
+  and
+  or
+}
+
+enum ViewDisplayType {
+  list
+  calendar
 }

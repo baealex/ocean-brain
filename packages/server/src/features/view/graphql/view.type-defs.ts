@@ -17,16 +17,63 @@ export const viewType = gql`
         id: ID!
         tabId: ID!
         title: String!
+        displayType: ViewDisplayType!
         tagNames: [String!]!
         mode: TagMatchMode!
+        propertyFilters: [ViewPropertyFilter!]!
+        sortBy: ViewSortBy!
+        sortOrder: ViewSortOrder!
         limit: Int!
         order: Int!
     }
 
+    type ViewPropertyFilter {
+        key: String!
+        name: String!
+        valueType: NotePropertyValueType!
+        operator: ViewPropertyFilterOperator!
+        value: String
+    }
+
+    enum ViewDisplayType {
+        list
+        calendar
+    }
+
+    enum ViewPropertyFilterOperator {
+        equals
+        before
+        after
+        exists
+        notExists
+    }
+
+    enum ViewSortBy {
+        updatedAt
+        createdAt
+        title
+    }
+
+    enum ViewSortOrder {
+        asc
+        desc
+    }
+
+    input ViewPropertyFilterInput {
+        key: String!
+        valueType: NotePropertyValueType!
+        operator: ViewPropertyFilterOperator!
+        value: String
+    }
+
     input ViewSectionInput {
         title: String
-        tagNames: [String!]!
+        displayType: ViewDisplayType
+        tagNames: [String!]
         mode: TagMatchMode
+        propertyFilters: [ViewPropertyFilterInput!]
+        sortBy: ViewSortBy
+        sortOrder: ViewSortOrder
         limit: Int
     }
 `;

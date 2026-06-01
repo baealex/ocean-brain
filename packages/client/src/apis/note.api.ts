@@ -341,6 +341,38 @@ export function createNotePropertyKey(input: CreateNotePropertyKeyRequestData) {
     );
 }
 
+export interface UpdateNotePropertyKeyRequestData {
+    key: string;
+    name?: string;
+    options?: Array<
+        NotePropertyOption | { id?: string; label: string; value?: string; color?: string | null; order?: number }
+    >;
+}
+
+export function updateNotePropertyKey({ key, ...input }: UpdateNotePropertyKeyRequestData) {
+    return graphQuery<
+        {
+            updateNotePropertyKey: NotePropertyKeySummary;
+        },
+        {
+            key: string;
+            input: Omit<UpdateNotePropertyKeyRequestData, 'key'>;
+        }
+    >(
+        `mutation UpdateNotePropertyKey($key: String!, $input: NotePropertyDefinitionUpdateInput!) {
+            updateNotePropertyKey(key: $key, input: $input) {
+                key
+                name
+                valueType
+                noteCount
+                options { id label value color order }
+                updatedAt
+            }
+        }`,
+        { key, input },
+    );
+}
+
 export interface DeleteNotePropertyKeyRequestData {
     key: string;
     confirmImpact?: boolean;

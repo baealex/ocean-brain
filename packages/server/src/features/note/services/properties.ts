@@ -61,11 +61,20 @@ export interface NotePropertyOptionInput {
     order?: number | null;
 }
 
+export interface NotePropertyOptionUpdateInput extends NotePropertyOptionInput {
+    id?: string | number | null;
+}
+
 export interface NotePropertyDefinitionInput {
     key: string;
     name?: string | null;
     valueType: PropertyValueType;
     options?: NotePropertyOptionInput[] | null;
+}
+
+export interface NotePropertyDefinitionUpdateInput {
+    name?: string | null;
+    options?: NotePropertyOptionUpdateInput[] | null;
 }
 
 type NotePropertyWithDefinition = Prisma.NotePropertyGetPayload<{
@@ -203,6 +212,52 @@ const normalizePropertyOptions = (options: NotePropertyOptionInput[] | null | un
     });
 };
 
+const normalizePropertyOptionUpdates = (
+    options: NotePropertyOptionUpdateInput[] | null | undefined,
+    existingOptions: Array<{ id: number; value: string }>,
+) => {
+    const normalizedOptions = options ?? [];
+
+    if (normalizedOptions.length > PROPERTY_OPTION_LIMIT) {
+        throw new InvalidNotePropertyInputError(`Select properties can have up to ${PROPERTY_OPTION_LIMIT} options.`);
+    }
+
+    const existingOptionById = new Map(existingOptions.map((option) => [String(option.id), option]));
+    const seenValues = new Set<string>();
+
+    return normalizedOptions.map((option, index) => {
+        const label = normalizeOptionLabel(option.label);
+        const existingOption =
+            option.id === undefined || option.id === null ? null : existingOptionById.get(String(option.id));
+
+        if (option.id !== undefined && option.id !== null && !existingOption) {
+            throw new InvalidNotePropertyInputError('Property option does not belong to this property.');
+        }
+
+        const value = normalizeOptionValue(option.value ?? existingOption?.value ?? label);
+
+        if (existingOption && value !== existingOption.value) {
+            throw new InvalidNotePropertyInputError(
+                `Property option ${existingOption.value} value cannot be changed. Create a new option instead.`,
+            );
+        }
+
+        if (seenValues.has(value)) {
+            throw new InvalidNotePropertyInputError('Property options contain duplicate values.');
+        }
+
+        seenValues.add(value);
+
+        return {
+            id: existingOption?.id,
+            label,
+            value,
+            color: option.color?.trim() || null,
+            order: Number.isFinite(Number(option.order)) ? Number(option.order) : index,
+        };
+    });
+};
+
 const normalizeTextValue = (value: string) => {
     if (value.length > PROPERTY_TEXT_VALUE_MAX_LENGTH) {
         throw new InvalidNotePropertyInputError(
@@ -305,6 +360,135 @@ const serializePropertyDefinition = (definition: PropertyDefinitionWithOptions):
     options: definition.options.sort((left, right) => left.order - right.order).map(serializeDefinitionOption),
     updatedAt: definition.updatedAt.toISOString(),
 });
+
+export const assertPropertyOptionUpdateKeepsUsedValues = ({
+    existingOptions,
+    nextOptions,
+}: {
+    existingOptions: Array<{ value: string; _count: { properties: number } }>;
+    nextOptions: Array<{ value: string }>;
+}) => {
+    const nextValues = new Set(nextOptions.map((option) => option.value));
+    const removedUsedOption = existingOptions.find(
+        (option) => option._count.properties > 0 && !nextValues.has(option.value),
+    );
+
+    if (removedUsedOption) {
+        throw new InvalidNotePropertyInputError(
+            `Property option ${removedUsedOption.value} is used by notes and cannot be removed.`,
+        );
+    }
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+};
+
+const parseViewQueryRecord = (value: string | null) => {
+    if (!value) {
+        return null;
+    }
+
+    try {
+        const parsed = JSON.parse(value) as unknown;
+        return isRecord(parsed) ? parsed : null;
+    } catch {
+        return null;
+    }
+};
+
+const getNormalizedViewFilterKey = (filter: Record<string, unknown>) => {
+    if (typeof filter.key !== 'string') {
+        return null;
+    }
+
+    try {
+        return normalizePropertyKey(filter.key);
+    } catch {
+        return null;
+    }
+};
+
+export const renamePropertyFiltersInViewQuery = ({
+    query,
+    key,
+    name,
+}: {
+    query: string | null;
+    key: string;
+    name: string;
+}) => {
+    const parsed = parseViewQueryRecord(query);
+
+    if (!parsed || !Array.isArray(parsed.propertyFilters)) {
+        return null;
+    }
+
+    let changed = false;
+    const propertyFilters = parsed.propertyFilters.map((filter) => {
+        if (!isRecord(filter) || getNormalizedViewFilterKey(filter) !== key) {
+            return filter;
+        }
+
+        changed = true;
+        return {
+            ...filter,
+            key,
+            name,
+        };
+    });
+
+    if (!changed) {
+        return null;
+    }
+
+    return JSON.stringify({
+        ...parsed,
+        propertyFilters,
+    });
+};
+
+const normalizeReferencedOptionValue = (value: unknown) => {
+    return typeof value === 'string' ? normalizeOptionValue(value) : null;
+};
+
+export const findReferencedRemovedPropertyOptionValue = ({
+    query,
+    key,
+    removedValues,
+}: {
+    query: string | null;
+    key: string;
+    removedValues: Set<string>;
+}) => {
+    const parsed = parseViewQueryRecord(query);
+
+    if (!parsed || !Array.isArray(parsed.propertyFilters)) {
+        return null;
+    }
+
+    for (const filter of parsed.propertyFilters) {
+        if (!isRecord(filter) || getNormalizedViewFilterKey(filter) !== key) {
+            continue;
+        }
+
+        if (filter.valueType !== 'select' || filter.operator === 'exists' || filter.operator === 'notExists') {
+            continue;
+        }
+
+        try {
+            const optionValue = normalizeReferencedOptionValue(filter.value);
+
+            if (optionValue && removedValues.has(optionValue)) {
+                return optionValue;
+            }
+        } catch {
+            continue;
+        }
+    }
+
+    return null;
+};
 
 const buildTypedValueData = async (
     input: NotePropertySetInput,
@@ -480,6 +664,156 @@ export const createNotePropertyDefinition = async (input: NotePropertyDefinition
 
         throw error;
     }
+};
+
+export const updateNotePropertyDefinition = async ({
+    key,
+    input,
+}: {
+    key: string;
+    input: NotePropertyDefinitionUpdateInput;
+}): Promise<SerializedNotePropertyKey | null> => {
+    const normalizedKey = normalizePropertyKey(key);
+
+    return models.$transaction(async (tx) => {
+        const definition = await tx.propertyDefinition.findUnique({
+            where: { key: normalizedKey },
+            include: {
+                options: {
+                    orderBy: { order: 'asc' },
+                    include: { _count: { select: { properties: true } } },
+                },
+                _count: { select: { properties: true } },
+            },
+        });
+
+        if (!definition) {
+            return null;
+        }
+
+        const nextName = input.name !== undefined ? normalizePropertyName(input.name, definition.key) : definition.name;
+        const shouldUpdateOptions = input.options !== undefined;
+        let nextOptions: ReturnType<typeof normalizePropertyOptionUpdates> | null = null;
+
+        if (shouldUpdateOptions) {
+            nextOptions = normalizePropertyOptionUpdates(input.options, definition.options);
+
+            if (definition.valueType !== 'select' && nextOptions.length > 0) {
+                throw new InvalidNotePropertyInputError('Only select properties can have options.');
+            }
+
+            if (definition.valueType === 'select' && nextOptions.length === 0) {
+                throw new InvalidNotePropertyInputError('Select properties require at least one option.');
+            }
+
+            assertPropertyOptionUpdateKeepsUsedValues({
+                existingOptions: definition.options,
+                nextOptions,
+            });
+
+            const nextValues = new Set(nextOptions.map((option) => option.value));
+            const removedValues = new Set(
+                definition.options.filter((option) => !nextValues.has(option.value)).map((option) => option.value),
+            );
+
+            if (removedValues.size > 0) {
+                const referencingViewSections = await tx.viewSection.findMany({
+                    where: { query: { contains: definition.key } },
+                    select: { title: true, query: true },
+                });
+
+                for (const section of referencingViewSections) {
+                    const removedReferencedValue = findReferencedRemovedPropertyOptionValue({
+                        query: section.query,
+                        key: definition.key,
+                        removedValues,
+                    });
+
+                    if (removedReferencedValue) {
+                        throw new InvalidNotePropertyInputError(
+                            `Property option ${removedReferencedValue} is used by view ${section.title} and cannot be removed.`,
+                        );
+                    }
+                }
+            }
+        }
+
+        await tx.propertyDefinition.update({
+            where: { id: definition.id },
+            data: { name: nextName },
+        });
+
+        if (nextName !== definition.name) {
+            const referencingViewSections = await tx.viewSection.findMany({
+                where: { query: { contains: definition.key } },
+                select: { id: true, query: true },
+            });
+
+            for (const section of referencingViewSections) {
+                const nextQuery = renamePropertyFiltersInViewQuery({
+                    query: section.query,
+                    key: definition.key,
+                    name: nextName,
+                });
+
+                if (nextQuery) {
+                    await tx.viewSection.update({
+                        where: { id: section.id },
+                        data: { query: nextQuery },
+                    });
+                }
+            }
+        }
+
+        if (nextOptions) {
+            const existingOptionByValue = new Map(definition.options.map((option) => [option.value, option]));
+            const nextValues = new Set(nextOptions.map((option) => option.value));
+            const removableOptionIds = definition.options
+                .filter((option) => !nextValues.has(option.value) && option._count.properties === 0)
+                .map((option) => option.id);
+
+            if (removableOptionIds.length > 0) {
+                await tx.propertyOption.deleteMany({
+                    where: {
+                        id: { in: removableOptionIds },
+                    },
+                });
+            }
+
+            for (const option of nextOptions) {
+                const existingOption = existingOptionByValue.get(option.value);
+
+                if (existingOption) {
+                    await tx.propertyOption.update({
+                        where: { id: existingOption.id },
+                        data: {
+                            label: option.label,
+                            color: option.color,
+                            order: option.order,
+                        },
+                    });
+                    continue;
+                }
+
+                await tx.propertyOption.create({
+                    data: {
+                        propertyDefinitionId: definition.id,
+                        label: option.label,
+                        value: option.value,
+                        color: option.color,
+                        order: option.order,
+                    },
+                });
+            }
+        }
+
+        const updatedDefinition = await tx.propertyDefinition.findUniqueOrThrow({
+            where: { id: definition.id },
+            include: { options: { orderBy: { order: 'asc' } }, _count: { select: { properties: true } } },
+        });
+
+        return serializePropertyDefinition(updatedDefinition);
+    });
 };
 
 export const deleteNotePropertyDefinition = async ({

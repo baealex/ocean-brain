@@ -6,6 +6,7 @@ import {
     deleteNotePropertyKey,
     fetchNotePropertyKeys,
     type NotePropertyKeySummary,
+    updateNotePropertyKey,
 } from '~/apis/note.api';
 import { Button, Modal, ModalActionRow, PageLayout } from '~/components/shared';
 import { Input, Select, SelectItem, Text, useToast } from '~/components/ui';
@@ -23,6 +24,36 @@ const PROPERTY_TYPE_OPTIONS: { value: NotePropertyValueType; label: string; desc
     { value: 'select', label: 'Select', description: 'Choose one option from a controlled list.' },
 ];
 
+interface PropertyOptionDraft {
+    id?: string;
+    label: string;
+    value: string;
+    color?: string | null;
+    order?: number;
+}
+
+const isEmptyNewOptionDraft = (option: PropertyOptionDraft) => {
+    return !option.id && !option.label.trim() && !option.value.trim();
+};
+
+const normalizeDraftOptionValue = (option: PropertyOptionDraft) => {
+    return (option.value.trim() || option.label.trim()).toLowerCase().replace(/\s+/g, '-');
+};
+
+const isValidOptionValue = (value: string) => /^[a-z0-9][a-z0-9_-]*$/.test(value);
+
+const buildOptionPayload = (options: PropertyOptionDraft[]) => {
+    return options
+        .filter((option) => option.id || option.label.trim())
+        .map((option, index) => ({
+            ...(option.id ? { id: option.id } : {}),
+            label: option.label.trim(),
+            value: option.value.trim() || option.label.trim(),
+            color: option.color ?? null,
+            order: option.order ?? index,
+        }));
+};
+
 export default function PropertiesSettings() {
     const toast = useToast();
     const queryClient = useQueryClient();
@@ -33,8 +64,11 @@ export default function PropertiesSettings() {
     const [key, setKey] = useState('');
     const [name, setName] = useState('');
     const [valueType, setValueType] = useState<NotePropertyValueType>('text');
-    const [options, setOptions] = useState([{ label: '', value: '' }]);
+    const [options, setOptions] = useState<PropertyOptionDraft[]>([{ label: '', value: '' }]);
     const [propertyToDelete, setPropertyToDelete] = useState<NotePropertyKeySummary | null>(null);
+    const [propertyToEdit, setPropertyToEdit] = useState<NotePropertyKeySummary | null>(null);
+    const [editName, setEditName] = useState('');
+    const [editOptions, setEditOptions] = useState<PropertyOptionDraft[]>([{ label: '', value: '' }]);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
     const resetCreateForm = () => {
@@ -42,6 +76,28 @@ export default function PropertiesSettings() {
         setName('');
         setValueType('text');
         setOptions([{ label: '', value: '' }]);
+    };
+
+    const openEditModal = (propertyKey: NotePropertyKeySummary) => {
+        setPropertyToEdit(propertyKey);
+        setEditName(propertyKey.name);
+        setEditOptions(
+            propertyKey.options.length > 0
+                ? propertyKey.options.map((option) => ({
+                      id: option.id,
+                      label: option.label,
+                      value: option.value,
+                      color: option.color,
+                      order: option.order,
+                  }))
+                : [{ label: '', value: '' }],
+        );
+    };
+
+    const closeEditModal = () => {
+        setPropertyToEdit(null);
+        setEditName('');
+        setEditOptions([{ label: '', value: '' }]);
     };
 
     const propertyKeysQuery = useQuery({
@@ -83,11 +139,44 @@ export default function PropertiesSettings() {
 
             resetCreateForm();
             setIsCreateModalOpen(false);
-            void queryClient.invalidateQueries({ queryKey: queryKeys.notes.propertyKeys() });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.notes.propertyKeysAll(), exact: false });
             toast('Property created.');
         },
         onError: () => {
             toast('Failed to create property.');
+        },
+    });
+
+    const updateMutation = useMutation({
+        mutationFn: async () => {
+            if (!propertyToEdit) {
+                throw new Error('Property to edit is missing.');
+            }
+
+            return updateNotePropertyKey({
+                key: propertyToEdit.key,
+                name: editName || propertyToEdit.key,
+                ...(propertyToEdit.valueType === 'select'
+                    ? {
+                          options: buildOptionPayload(editOptions),
+                      }
+                    : {}),
+            });
+        },
+        onSuccess: (response) => {
+            if (response.type === 'error') {
+                toast(response.errors[0]?.message ?? 'Failed to update property.');
+                return;
+            }
+
+            closeEditModal();
+            void queryClient.invalidateQueries({ queryKey: queryKeys.notes.propertyKeysAll(), exact: false });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.notes.all(), exact: false });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.views.all(), exact: false });
+            toast('Property updated.');
+        },
+        onError: () => {
+            toast('Failed to update property.');
         },
     });
 
@@ -109,7 +198,9 @@ export default function PropertiesSettings() {
                 return;
             }
 
-            void queryClient.invalidateQueries({ queryKey: queryKeys.notes.all() });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.notes.propertyKeysAll(), exact: false });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.notes.all(), exact: false });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.views.all(), exact: false });
             setPropertyToDelete(null);
             toast(
                 response.deleteNotePropertyKey.affectedNoteCount > 0
@@ -124,6 +215,46 @@ export default function PropertiesSettings() {
 
     const propertyKeys = propertyKeysQuery.data?.keys ?? [];
     const hasValidSelectOption = valueType !== 'select' || options.some((option) => option.label.trim());
+    const editableEditOptions =
+        propertyToEdit?.valueType === 'select' ? editOptions.filter((option) => !isEmptyNewOptionDraft(option)) : [];
+    const editOptionValues = editableEditOptions.map(normalizeDraftOptionValue);
+    const duplicateEditOptionValue = editOptionValues.find((value, index) => editOptionValues.indexOf(value) !== index);
+    const invalidEditOptionValue = editOptionValues.find((value) => !isValidOptionValue(value));
+    const hasBlankExistingOptionLabel = editableEditOptions.some(
+        (option) => Boolean(option.id) && !option.label.trim(),
+    );
+    const hasIncompleteNewOption = editableEditOptions.some((option) => !option.id && !option.label.trim());
+    const hasValidEditSelectOption =
+        !propertyToEdit ||
+        propertyToEdit.valueType !== 'select' ||
+        (editableEditOptions.length > 0 &&
+            !hasBlankExistingOptionLabel &&
+            !hasIncompleteNewOption &&
+            !duplicateEditOptionValue &&
+            !invalidEditOptionValue);
+    const hasEditNameChanged = Boolean(propertyToEdit) && editName.trim() !== propertyToEdit?.name;
+    const hasEditOptionsChanged =
+        propertyToEdit?.valueType === 'select' &&
+        JSON.stringify(buildOptionPayload(editOptions)) !==
+            JSON.stringify(
+                propertyToEdit.options.map((option) => ({
+                    id: option.id,
+                    label: option.label,
+                    value: option.value,
+                    color: option.color ?? null,
+                    order: option.order,
+                })),
+            );
+    const hasEditChanges = hasEditNameChanged || Boolean(hasEditOptionsChanged);
+    const editValidationMessage = hasBlankExistingOptionLabel
+        ? 'Existing option labels cannot be empty.'
+        : hasIncompleteNewOption
+          ? 'New options need a label.'
+          : duplicateEditOptionValue
+            ? `Option value “${duplicateEditOptionValue}” is duplicated.`
+            : invalidEditOptionValue
+              ? 'Option values must use letters, numbers, dashes, or underscores.'
+              : '';
     const handleConfirmDeleteProperty = () => {
         if (!propertyToDelete) return;
 
@@ -228,16 +359,26 @@ export default function PropertiesSettings() {
                                         {propertyKey.noteCount} note{propertyKey.noteCount === 1 ? '' : 's'}
                                     </Text>
                                 </div>
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="soft-danger"
-                                    className="justify-self-start md:justify-self-end"
-                                    disabled={deleteMutation.isPending}
-                                    onClick={() => setPropertyToDelete(propertyKey)}
-                                >
-                                    Delete
-                                </Button>
+                                <div className="flex flex-wrap gap-2 justify-self-start md:justify-self-end">
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="subtle"
+                                        disabled={updateMutation.isPending || deleteMutation.isPending}
+                                        onClick={() => openEditModal(propertyKey)}
+                                    >
+                                        Edit
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="soft-danger"
+                                        disabled={deleteMutation.isPending || updateMutation.isPending}
+                                        onClick={() => setPropertyToDelete(propertyKey)}
+                                    >
+                                        Delete
+                                    </Button>
+                                </div>
                             </article>
                         ))}
                     </div>
@@ -305,7 +446,7 @@ export default function PropertiesSettings() {
                         </label>
                         {valueType === 'select' && (
                             <div className="rounded-[14px] border border-border-subtle bg-subtle/50 p-3">
-                                <div className="mb-2 flex items-center justify-between gap-2">
+                                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                                     <Text as="span" variant="label" weight="semibold">
                                         Options
                                     </Text>
@@ -394,6 +535,179 @@ export default function PropertiesSettings() {
                             onClick={() => createMutation.mutate()}
                         >
                             Create property
+                        </Button>
+                    </ModalActionRow>
+                </Modal.Footer>
+            </Modal>
+
+            <Modal
+                isOpen={Boolean(propertyToEdit)}
+                onClose={() => {
+                    if (!updateMutation.isPending) closeEditModal();
+                }}
+                variant="form"
+            >
+                <Modal.Header
+                    title="Edit property"
+                    onClose={() => {
+                        if (!updateMutation.isPending) closeEditModal();
+                    }}
+                />
+                <Modal.Body>
+                    {propertyToEdit && (
+                        <div className="flex flex-col gap-3">
+                            <Text as="p" variant="label" tone="tertiary">
+                                Rename the display label or add select options. Key, type, and existing option values
+                                stay fixed so notes and views remain stable.
+                            </Text>
+                            <div className="grid gap-2 sm:grid-cols-2">
+                                <div className="rounded-[14px] border border-border-subtle bg-subtle/50 px-3 py-2">
+                                    <Text as="span" variant="micro" tone="tertiary" className="block">
+                                        Key
+                                    </Text>
+                                    <Text as="span" variant="label" weight="medium" className="font-mono">
+                                        {propertyToEdit.key}
+                                    </Text>
+                                </div>
+                                <div className="rounded-[14px] border border-border-subtle bg-subtle/50 px-3 py-2">
+                                    <Text as="span" variant="micro" tone="tertiary" className="block">
+                                        Type
+                                    </Text>
+                                    <Text as="span" variant="label" weight="medium" className="capitalize">
+                                        {propertyToEdit.valueType}
+                                    </Text>
+                                </div>
+                            </div>
+                            <label className="flex flex-col gap-1.5">
+                                <Text as="span" variant="label" weight="medium">
+                                    Display name
+                                </Text>
+                                <Input
+                                    size="md"
+                                    placeholder="Workflow state"
+                                    value={editName}
+                                    onChange={(event) => setEditName(event.target.value)}
+                                />
+                            </label>
+                            {propertyToEdit.valueType === 'select' && (
+                                <div className="rounded-[14px] border border-border-subtle bg-subtle/50 p-3">
+                                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                                        <div>
+                                            <Text as="span" variant="label" weight="semibold">
+                                                Options
+                                            </Text>
+                                            <Text as="p" variant="micro" tone="tertiary" className="mt-0.5">
+                                                Existing option values are locked. Removing existing options needs an
+                                                impact-aware delete flow.
+                                            </Text>
+                                        </div>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="subtle"
+                                            onClick={() =>
+                                                setEditOptions((current) => [...current, { label: '', value: '' }])
+                                            }
+                                        >
+                                            Add option
+                                        </Button>
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        {editOptions.map((option, index) => (
+                                            <div
+                                                key={option.id ?? `new-${index}`}
+                                                className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]"
+                                            >
+                                                <Input
+                                                    size="sm"
+                                                    placeholder="Label"
+                                                    value={option.label}
+                                                    onChange={(event) =>
+                                                        setEditOptions((current) =>
+                                                            current.map((item, itemIndex) =>
+                                                                itemIndex === index
+                                                                    ? { ...item, label: event.target.value }
+                                                                    : item,
+                                                            ),
+                                                        )
+                                                    }
+                                                />
+                                                <Input
+                                                    size="sm"
+                                                    placeholder={option.id ? 'Locked value' : 'value'}
+                                                    value={option.value}
+                                                    disabled={Boolean(option.id)}
+                                                    onChange={(event) =>
+                                                        setEditOptions((current) =>
+                                                            current.map((item, itemIndex) =>
+                                                                itemIndex === index
+                                                                    ? { ...item, value: event.target.value }
+                                                                    : item,
+                                                            ),
+                                                        )
+                                                    }
+                                                />
+                                                {option.id ? (
+                                                    <Text
+                                                        as="span"
+                                                        variant="meta"
+                                                        tone="tertiary"
+                                                        className="flex h-8 items-center px-3"
+                                                    >
+                                                        Locked
+                                                    </Text>
+                                                ) : (
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        variant="soft-danger"
+                                                        onClick={() =>
+                                                            setEditOptions((current) =>
+                                                                current.filter((_, itemIndex) => itemIndex !== index),
+                                                            )
+                                                        }
+                                                    >
+                                                        Remove
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {editValidationMessage && (
+                                        <Text as="p" variant="micro" tone="error" className="mt-2">
+                                            {editValidationMessage}
+                                        </Text>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </Modal.Body>
+                <Modal.Footer>
+                    <ModalActionRow>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={updateMutation.isPending}
+                            onClick={closeEditModal}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="primary"
+                            size="sm"
+                            disabled={
+                                !editName.trim() ||
+                                !hasEditChanges ||
+                                !hasValidEditSelectOption ||
+                                updateMutation.isPending
+                            }
+                            isLoading={updateMutation.isPending}
+                            onClick={() => updateMutation.mutate()}
+                        >
+                            Save changes
                         </Button>
                     </ModalActionRow>
                 </Modal.Footer>

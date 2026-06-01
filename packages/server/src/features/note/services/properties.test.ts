@@ -2,9 +2,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+    assertPropertyOptionUpdateKeepsUsedValues,
     createNotePropertyDefinition,
+    findReferencedRemovedPropertyOptionValue,
     InvalidNotePropertyInputError,
     normalizePropertyKey,
+    renamePropertyFiltersInViewQuery,
     updateNotePropertiesWithVersionGuard,
 } from './properties.js';
 import { MissingNoteVersionError } from './write-conflict.js';
@@ -57,6 +60,103 @@ test('property definitions require valid select option datasets before write', a
         (error: unknown) =>
             error instanceof InvalidNotePropertyInputError &&
             error.message === 'Only select properties can have options.',
+    );
+});
+
+test('property definition option updates keep used option values', () => {
+    assert.doesNotThrow(() =>
+        assertPropertyOptionUpdateKeepsUsedValues({
+            existingOptions: [
+                { value: 'todo', _count: { properties: 0 } },
+                { value: 'doing', _count: { properties: 2 } },
+            ],
+            nextOptions: [{ value: 'doing' }],
+        }),
+    );
+
+    assert.throws(
+        () =>
+            assertPropertyOptionUpdateKeepsUsedValues({
+                existingOptions: [{ value: 'doing', _count: { properties: 2 } }],
+                nextOptions: [{ value: 'done' }],
+            }),
+        InvalidNotePropertyInputError,
+    );
+});
+
+test('property option updates keep values referenced by saved views', () => {
+    const query = JSON.stringify({
+        propertyFilters: [
+            {
+                key: 'state',
+                name: 'State',
+                valueType: 'select',
+                operator: 'equals',
+                value: 'doing',
+            },
+        ],
+        sortBy: 'updatedAt',
+        sortOrder: 'desc',
+    });
+
+    assert.equal(
+        findReferencedRemovedPropertyOptionValue({
+            query,
+            key: 'state',
+            removedValues: new Set(['doing']),
+        }),
+        'doing',
+    );
+
+    assert.equal(
+        findReferencedRemovedPropertyOptionValue({
+            query,
+            key: 'state',
+            removedValues: new Set(['done']),
+        }),
+        null,
+    );
+});
+
+test('property definition rename refreshes saved view filter labels', () => {
+    const query = JSON.stringify({
+        propertyFilters: [
+            {
+                key: 'state',
+                name: 'State',
+                valueType: 'select',
+                operator: 'equals',
+                value: 'doing',
+            },
+            {
+                key: 'project',
+                name: 'Project',
+                valueType: 'text',
+                operator: 'equals',
+                value: 'ocean',
+            },
+        ],
+        sortBy: 'updatedAt',
+        sortOrder: 'desc',
+    });
+
+    const updatedQuery = renamePropertyFiltersInViewQuery({
+        query,
+        key: 'state',
+        name: 'Workflow state',
+    });
+
+    assert.ok(updatedQuery);
+    const parsed = JSON.parse(updatedQuery) as {
+        propertyFilters: Array<{ key: string; name: string }>;
+    };
+
+    assert.deepEqual(
+        parsed.propertyFilters.map((filter) => [filter.key, filter.name]),
+        [
+            ['state', 'Workflow state'],
+            ['project', 'Project'],
+        ],
     );
 });
 

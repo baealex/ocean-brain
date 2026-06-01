@@ -54,6 +54,22 @@ export interface ViewSectionInput {
     limit?: number;
 }
 
+export interface ViewNotesQueryInput {
+    tagNames?: string[] | null;
+    mode?: ViewTagMatchMode;
+    propertyFilters?: ViewPropertyFilterInput[] | null;
+    sortBy?: ViewSortBy;
+    sortOrder?: ViewSortOrder;
+}
+
+export interface ViewNotesQueryRecord {
+    tagNames: string[];
+    mode: ViewTagMatchMode;
+    propertyFilters: ViewPropertyFilterRecord[];
+    sortBy: ViewSortBy;
+    sortOrder: ViewSortOrder;
+}
+
 export interface ViewPropertyFilterInput {
     key: string;
     operator: ViewPropertyFilterOperator;
@@ -71,6 +87,8 @@ const VIEW_WORKSPACE_ID = 1;
 export const DEFAULT_VIEW_SECTION_LIMIT = 5;
 export const MIN_VIEW_SECTION_LIMIT = 1;
 export const MAX_VIEW_SECTION_LIMIT = 20;
+export const DEFAULT_VIEW_NOTES_QUERY_LIMIT = 20;
+export const MAX_VIEW_NOTES_QUERY_LIMIT = 50;
 const MAX_VIEW_PROPERTY_FILTERS = 10;
 const DEFAULT_VIEW_DISPLAY_TYPE: ViewDisplayType = 'list';
 const DEFAULT_VIEW_SORT_BY: ViewSortBy = 'updatedAt';
@@ -327,6 +345,27 @@ export const normalizeViewSectionInput = (input: ViewSectionInput) => {
     };
 };
 
+export const normalizeViewNotesQueryInput = (input: ViewNotesQueryInput): ViewNotesQueryRecord => {
+    return {
+        tagNames: normalizeViewTagNames(input.tagNames ?? []),
+        mode: input.mode === 'or' ? 'or' : 'and',
+        propertyFilters: normalizeViewPropertyFilters(input.propertyFilters),
+        sortBy: normalizeViewSortBy(input.sortBy),
+        sortOrder: normalizeViewSortOrder(input.sortOrder),
+    };
+};
+
+export const normalizeViewNotesPagination = (pagination?: { limit?: number; offset?: number }) => {
+    const numericLimit = Number(pagination?.limit ?? DEFAULT_VIEW_NOTES_QUERY_LIMIT);
+    const limit = Number.isInteger(numericLimit)
+        ? Math.min(MAX_VIEW_NOTES_QUERY_LIMIT, Math.max(1, numericLimit))
+        : DEFAULT_VIEW_NOTES_QUERY_LIMIT;
+    const numericOffset = Number(pagination?.offset ?? 0);
+    const offset = Number.isInteger(numericOffset) ? Math.max(0, numericOffset) : 0;
+
+    return { limit, offset };
+};
+
 export const pickNextActiveViewTabId = (tabIds: number[], deletedTabId: number, currentActiveTabId: number | null) => {
     const remainingTabIds = tabIds.filter((tabId) => tabId !== deletedTabId);
 
@@ -435,14 +474,27 @@ const readViewSection = async (db: ViewDbClient, id: number): Promise<ViewSectio
     return section ? serializeViewSection(section) : null;
 };
 
-const hydratePropertyFilters = async (db: ViewDbClient, filters: ViewPropertyFilterRecord[]) => {
+export const hydratePropertyFilters = async (
+    db: ViewDbClient,
+    filters: ViewPropertyFilterRecord[],
+    options: { validateSelectOptions?: boolean } = {},
+) => {
     if (filters.length === 0) {
         return [];
     }
 
     const definitions = await db.propertyDefinition.findMany({
         where: { key: { in: filters.map((filter) => filter.key) } },
-        select: { key: true, name: true, valueType: true },
+        select: {
+            key: true,
+            name: true,
+            valueType: true,
+            options: {
+                select: {
+                    value: true,
+                },
+            },
+        },
     });
     const definitionByKey = new Map(definitions.map((definition) => [definition.key, definition]));
 
@@ -457,6 +509,19 @@ const hydratePropertyFilters = async (db: ViewDbClient, filters: ViewPropertyFil
             throw new InvalidNotePropertyInputError(`Property ${filter.key} uses ${definition.valueType} values.`);
         }
 
+        if (
+            options.validateSelectOptions &&
+            filter.valueType === 'select' &&
+            filter.operator !== 'exists' &&
+            filter.operator !== 'notExists'
+        ) {
+            const optionValue = normalizeSelectFilterValue(filter.value ?? '');
+
+            if (!definition.options.some((option) => option.value === optionValue)) {
+                throw new InvalidNotePropertyInputError(`Property ${filter.key} option ${optionValue} is not defined.`);
+            }
+        }
+
         return {
             ...filter,
             name: definition.name,
@@ -465,7 +530,7 @@ const hydratePropertyFilters = async (db: ViewDbClient, filters: ViewPropertyFil
 };
 
 const buildStoredViewQuery = async (db: ViewDbClient, section: ReturnType<typeof normalizeViewSectionInput>) => {
-    const propertyFilters = await hydratePropertyFilters(db, section.propertyFilters);
+    const propertyFilters = await hydratePropertyFilters(db, section.propertyFilters, { validateSelectOptions: true });
 
     return serializeStoredViewQuery({
         propertyFilters,
@@ -611,14 +676,16 @@ export const buildPropertyFilterWhere = (filter: ViewPropertyFilterRecord): Pris
     };
 };
 
-export const buildViewSectionWhere = (section: ViewSectionRecord): Prisma.NoteWhereInput => {
+export const buildViewNotesWhere = (
+    query: Pick<ViewNotesQueryRecord, 'tagNames' | 'mode' | 'propertyFilters'>,
+): Prisma.NoteWhereInput => {
     const clauses: Prisma.NoteWhereInput[] = [];
 
-    if (section.tagNames.length > 0) {
-        clauses.push(buildNoteTagNamesWhere(section.tagNames, section.mode as NoteTagMatchMode));
+    if (query.tagNames.length > 0) {
+        clauses.push(buildNoteTagNamesWhere(query.tagNames, query.mode as NoteTagMatchMode));
     }
 
-    for (const filter of section.propertyFilters) {
+    for (const filter of query.propertyFilters) {
         clauses.push(buildPropertyFilterWhere(filter));
     }
 
@@ -629,8 +696,18 @@ export const buildViewSectionWhere = (section: ViewSectionRecord): Prisma.NoteWh
     return { AND: clauses };
 };
 
+export const buildViewSectionWhere = (section: ViewSectionRecord): Prisma.NoteWhereInput => {
+    return buildViewNotesWhere(section);
+};
+
+const buildViewNotesOrderBy = (
+    query: Pick<ViewNotesQueryRecord, 'sortBy' | 'sortOrder'>,
+): Prisma.NoteOrderByWithRelationInput[] => {
+    return [{ [query.sortBy]: query.sortOrder }, { id: 'asc' }];
+};
+
 const buildViewSectionOrderBy = (section: ViewSectionRecord): Prisma.NoteOrderByWithRelationInput[] => {
-    return [{ [section.sortBy]: section.sortOrder }, { id: 'asc' }];
+    return buildViewNotesOrderBy(section);
 };
 
 export const getViewSectionNotes = async (
@@ -659,6 +736,44 @@ export const getViewSectionNotes = async (
             where,
             take: Number(pagination.limit),
             skip: Number(pagination.offset),
+        }),
+    ]);
+
+    return {
+        totalCount,
+        notes,
+    };
+};
+
+export const getNotesByProperties = async (
+    input: ViewNotesQueryInput,
+    pagination?: {
+        limit?: number;
+        offset?: number;
+    },
+): Promise<ViewSectionNotesResult> => {
+    const normalizedQuery = normalizeViewNotesQueryInput(input);
+
+    if (normalizedQuery.propertyFilters.length === 0) {
+        throw new InvalidNotePropertyInputError('At least one property filter is required.');
+    }
+
+    const query = {
+        ...normalizedQuery,
+        propertyFilters: await hydratePropertyFilters(models, normalizedQuery.propertyFilters, {
+            validateSelectOptions: true,
+        }),
+    };
+    const normalizedPagination = normalizeViewNotesPagination(pagination);
+    const where = buildViewNotesWhere(query);
+
+    const [totalCount, notes] = await Promise.all([
+        models.note.count({ where }),
+        models.note.findMany({
+            orderBy: buildViewNotesOrderBy(query),
+            where,
+            take: normalizedPagination.limit,
+            skip: normalizedPagination.offset,
         }),
     ]);
 

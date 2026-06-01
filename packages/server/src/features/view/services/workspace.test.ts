@@ -5,6 +5,9 @@ import {
     buildPropertyFilterWhere,
     buildViewSectionWhere,
     clampViewSectionLimit,
+    hydratePropertyFilters,
+    normalizeViewNotesPagination,
+    normalizeViewNotesQueryInput,
     normalizeViewPropertyFilters,
     normalizeViewSectionInput,
     normalizeViewTabTitle,
@@ -79,6 +82,39 @@ test('normalizeViewPropertyFilters validates typed filter values', () => {
     assert.throws(() =>
         normalizeViewPropertyFilters([{ key: 'due', valueType: 'date', operator: 'equals', value: '2026-99-99' }]),
     );
+});
+
+test('normalizeViewNotesQueryInput normalizes property query filters without section-only fields', () => {
+    assert.deepEqual(
+        normalizeViewNotesQueryInput({
+            tagNames: ['project', '#doing'],
+            mode: 'or',
+            propertyFilters: [{ key: ' State ', valueType: 'select', operator: 'equals', value: 'doing' }],
+            sortBy: 'title',
+            sortOrder: 'asc',
+        }),
+        {
+            tagNames: ['@project', '@doing'],
+            mode: 'or',
+            propertyFilters: [
+                {
+                    key: 'state',
+                    name: 'state',
+                    valueType: 'select',
+                    operator: 'equals',
+                    value: 'doing',
+                },
+            ],
+            sortBy: 'title',
+            sortOrder: 'asc',
+        },
+    );
+});
+
+test('normalizeViewNotesPagination clamps property query pagination', () => {
+    assert.deepEqual(normalizeViewNotesPagination({ limit: 999, offset: -5 }), { limit: 50, offset: 0 });
+    assert.deepEqual(normalizeViewNotesPagination({ limit: 0, offset: 7 }), { limit: 1, offset: 7 });
+    assert.deepEqual(normalizeViewNotesPagination({ limit: Number.NaN, offset: Number.NaN }), { limit: 20, offset: 0 });
 });
 
 test('buildPropertyFilterWhere maps property filters to note relation filters', () => {
@@ -190,6 +226,106 @@ test('buildPropertyFilterWhere maps number and date range operators', () => {
                 },
             },
         },
+    );
+});
+
+test('hydratePropertyFilters validates property definitions and select options', async () => {
+    const db = {
+        propertyDefinition: {
+            findMany: async () => [
+                {
+                    key: 'state',
+                    name: 'State',
+                    valueType: 'select',
+                    options: [{ value: 'doing' }],
+                },
+                {
+                    key: 'priority',
+                    name: 'Priority',
+                    valueType: 'number',
+                    options: [],
+                },
+            ],
+        },
+    } as never;
+
+    assert.deepEqual(
+        await hydratePropertyFilters(
+            db,
+            [
+                {
+                    key: 'state',
+                    name: 'state',
+                    valueType: 'select',
+                    operator: 'equals',
+                    value: 'Doing',
+                },
+            ],
+            { validateSelectOptions: true },
+        ),
+        [
+            {
+                key: 'state',
+                name: 'State',
+                valueType: 'select',
+                operator: 'equals',
+                value: 'Doing',
+            },
+        ],
+    );
+
+    await assert.rejects(
+        () =>
+            hydratePropertyFilters(
+                db,
+                [
+                    {
+                        key: 'state',
+                        name: 'state',
+                        valueType: 'select',
+                        operator: 'equals',
+                        value: 'blocked',
+                    },
+                ],
+                { validateSelectOptions: true },
+            ),
+        /Property state option blocked is not defined/,
+    );
+
+    await assert.rejects(
+        () =>
+            hydratePropertyFilters(
+                db,
+                [
+                    {
+                        key: 'missing',
+                        name: 'missing',
+                        valueType: 'text',
+                        operator: 'notExists',
+                        value: null,
+                    },
+                ],
+                { validateSelectOptions: true },
+            ),
+        /Property missing is not defined/,
+    );
+
+    await assert.rejects(
+        () =>
+            hydratePropertyFilters(
+                db,
+                [
+                    {
+                        key: 'priority',
+                        name: 'priority',
+                        valueType: 'text',
+                        operator: 'equals',
+                        value: '1',
+                    },
+                ],
+                { validateSelectOptions: true },
+            ),
+        /Property priority uses number values/,
     );
 });
 

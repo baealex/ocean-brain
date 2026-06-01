@@ -29,6 +29,8 @@ export const OCEAN_BRAIN_MCP_TOOLS = {
     updateNoteMetadata: 'ocean_brain_update_note_metadata',
     replaceNoteMarkdown: 'ocean_brain_replace_note_markdown',
     listTags: 'ocean_brain_list_tags',
+    listProperties: 'ocean_brain_list_properties',
+    queryNotesByProperties: 'ocean_brain_query_notes_by_properties',
     listNotesByTag: 'ocean_brain_list_notes_by_tag',
     listNotesByTags: 'ocean_brain_list_notes_by_tags',
     listRecentNotes: 'ocean_brain_list_recent_notes',
@@ -40,6 +42,16 @@ export const OCEAN_BRAIN_MCP_TOOLS = {
 
 const noteLayoutSchema = z.enum(['narrow', 'wide', 'full']);
 const tagMatchModeSchema = z.enum(['and', 'or']);
+const propertyValueTypeSchema = z.enum(['text', 'number', 'date', 'boolean', 'select']);
+const propertyFilterOperatorSchema = z.enum(['equals', 'before', 'after', 'exists', 'notExists']);
+const viewSortBySchema = z.enum(['updatedAt', 'createdAt', 'title']);
+const viewSortOrderSchema = z.enum(['asc', 'desc']);
+const propertyFilterSchema = z.object({
+    key: z.string().describe('Property key from ocean_brain_list_properties, e.g. state'),
+    valueType: propertyValueTypeSchema.describe('Property value type from the property definition'),
+    operator: propertyFilterOperatorSchema.describe('Filter operator. before/after are only valid for date or number properties.'),
+    value: z.string().nullable().optional().describe('Filter value. Required unless operator is exists or notExists. Select filters use option.value, not option.label.')
+});
 
 const normalizeOceanBrainTagName = (name: string) => {
     const trimmedName = name.trim();
@@ -233,7 +245,7 @@ export async function startMcpServer(
 
     server.tool(
         OCEAN_BRAIN_MCP_TOOLS.readNote,
-        'Read an Ocean Brain note by ID. Returns truncated content by default (1000 chars) and includes a back-reference summary. Set maxLength to 0 only when full content is necessary.',
+        'Read an Ocean Brain note by ID. Returns properties, tags, truncated content by default (1000 chars), and a back-reference summary. Set maxLength to 0 only when full content is necessary.',
         {
             id: z.string().describe('Note ID'),
             maxLength: z.number().optional().default(1000).describe('Max content length in characters. 0 for full content. (default: 1000)'),
@@ -248,7 +260,7 @@ export async function startMcpServer(
                         createdAt
                         updatedAt
                         tags { id name }
-                        properties { key name value valueType option { label value } }
+                        properties { key name value valueType option { id label value color order } }
                     }
                     backReferences(id: $id) {
                         id
@@ -264,7 +276,13 @@ export async function startMcpServer(
                 createdAt: string;
                 updatedAt: string;
                 tags: Array<{ id: string; name: string }>;
-                properties?: Array<{ key: string; name: string; value: string; valueType: string }>;
+                properties?: Array<{
+                    key: string;
+                    name: string;
+                    value: string;
+                    valueType: string;
+                    option?: { id: string; label: string; value: string; color?: string | null; order: number } | null;
+                }>;
             };
             const backReferences = (data?.backReferences as Array<{
                 id: string;
@@ -398,6 +416,64 @@ export async function startMcpServer(
                 }],
             };
         },
+    );
+
+    server.tool(
+        OCEAN_BRAIN_MCP_TOOLS.listProperties,
+        'List shared Ocean Brain property definitions. Use this before property queries so keys, value types, and select option values are valid.',
+        {
+            query: z.string().optional().default('').describe('Optional property key/name search query'),
+            limit: z.number().optional().default(50).describe('Max results (default: 50, server max: 100)'),
+            offset: z.number().optional().default(0).describe('Pagination offset (default: 0)')
+        },
+        async ({ query, limit, offset }) => {
+            const data = await graphql(serverUrl, token, `
+                query ($query: String, $pagination: PaginationInput) {
+                    notePropertyKeys(query: $query, pagination: $pagination) {
+                        totalCount
+                        keys {
+                            key
+                            name
+                            valueType
+                            noteCount
+                            updatedAt
+                            options { id label value color order }
+                        }
+                    }
+                }
+            `, {
+                query,
+                pagination: { limit, offset }
+            });
+
+            const result = data?.notePropertyKeys as {
+                totalCount: number;
+                keys: Array<{
+                    key: string;
+                    name: string;
+                    valueType: 'text' | 'number' | 'date' | 'boolean' | 'select';
+                    noteCount: number;
+                    updatedAt: string;
+                    options: Array<{
+                        id: string;
+                        label: string;
+                        value: string;
+                        color?: string | null;
+                        order: number;
+                    }>;
+                }>;
+            };
+
+            return {
+                content: [{
+                    type: 'text' as const,
+                    text: JSON.stringify({
+                        totalCount: result.totalCount,
+                        propertyKeys: result.keys
+                    }, null, 2),
+                }],
+            };
+        }
     );
 
     server.tool(
@@ -571,6 +647,96 @@ export async function startMcpServer(
                             title: note.title,
                             updatedAt: note.updatedAt,
                             tags: note.tags.map((item) => item.name)
+                        }))
+                    }, null, 2),
+                }],
+            };
+        }
+    );
+
+    server.tool(
+        OCEAN_BRAIN_MCP_TOOLS.queryNotesByProperties,
+        'Query Ocean Brain notes with property filters. Call ocean_brain_list_properties first; select filters must use option.value. Property filters are combined with AND, and optional tag filters use the provided tag match mode.',
+        {
+            propertyFilters: z.array(propertyFilterSchema).min(1).max(10).describe('Property filters to apply. Multiple property filters are combined with AND.'),
+            tagNames: z.array(z.string()).optional().default([]).describe('Optional tag filters. You can pass @project, #project, or project.'),
+            mode: tagMatchModeSchema.optional().default('and').describe('Tag match mode for tagNames only. Property filters are always combined with AND.'),
+            sortBy: viewSortBySchema.optional().default('updatedAt').describe('Sort field (default: updatedAt)'),
+            sortOrder: viewSortOrderSchema.optional().default('desc').describe('Sort order (default: desc)'),
+            limit: z.number().optional().default(20).describe('Max results (default: 20, server max: 50)'),
+            offset: z.number().optional().default(0).describe('Pagination offset (default: 0)')
+        },
+        async ({ propertyFilters, tagNames, mode, sortBy, sortOrder, limit, offset }) => {
+            const data = await graphql(serverUrl, token, `
+                query ($input: NotesByPropertiesInput!, $pagination: PaginationInput) {
+                    notesByProperties(input: $input, pagination: $pagination) {
+                        totalCount
+                        notes {
+                            id
+                            title
+                            createdAt
+                            updatedAt
+                            tags { id name }
+                            properties { key name value valueType option { id label value color order } }
+                        }
+                    }
+                }
+            `, {
+                input: {
+                    tagNames,
+                    mode,
+                    propertyFilters,
+                    sortBy,
+                    sortOrder
+                },
+                pagination: { limit, offset }
+            });
+
+            const result = data?.notesByProperties as {
+                totalCount: number;
+                notes: Array<{
+                    id: string;
+                    title: string;
+                    createdAt: string;
+                    updatedAt: string;
+                    tags: Array<{ id: string; name: string }>;
+                    properties: Array<{
+                        key: string;
+                        name: string;
+                        value: string;
+                        valueType: string;
+                        option?: {
+                            id: string;
+                            label: string;
+                            value: string;
+                            color?: string | null;
+                            order: number;
+                        } | null;
+                    }>;
+                }>;
+            };
+
+            return {
+                content: [{
+                    type: 'text' as const,
+                    text: JSON.stringify({
+                        query: {
+                            propertyFilters,
+                            tagNames,
+                            mode,
+                            sortBy,
+                            sortOrder,
+                            limit,
+                            offset
+                        },
+                        totalCount: result.totalCount,
+                        notes: result.notes.map((note) => ({
+                            id: note.id,
+                            title: note.title,
+                            createdAt: note.createdAt,
+                            updatedAt: note.updatedAt,
+                            tags: note.tags.map((item) => item.name),
+                            properties: note.properties
                         }))
                     }, null, 2),
                 }],

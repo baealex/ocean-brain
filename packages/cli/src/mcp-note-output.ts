@@ -35,6 +35,14 @@ const formatBackReferenceLine = (backReference: McpReadNoteBackReference) => {
     return `- ${backReference.id}: ${backReference.title}`;
 };
 
+const formatPropertyLine = (property: McpReadNoteProperty) => {
+    const displayValue = (property.option?.label ?? property.value) || '(empty)';
+    const rawValue = property.option?.value ?? property.value;
+    const rawValueLabel = rawValue ? `, value=${rawValue}` : '';
+
+    return `- ${property.key} (${property.name}): ${displayValue} [${property.valueType}${rawValueLabel}]`;
+};
+
 export const formatMcpReadNoteOutput = ({
     note,
     backReferences,
@@ -56,7 +64,7 @@ export const formatMcpReadNoteOutput = ({
         ? backReferences.map(formatBackReferenceLine)
         : ['- (none)'];
     const propertyLines = note.properties && note.properties.length > 0
-        ? note.properties.map((property) => `- ${property.key}: ${property.option?.label ?? property.value} (${property.valueType})`)
+        ? note.properties.map(formatPropertyLine)
         : ['- (none)'];
 
     return [

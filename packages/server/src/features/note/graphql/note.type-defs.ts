@@ -57,11 +57,24 @@ export const noteType = gql`
         order: Int
     }
 
+    input NotePropertyOptionUpdateInput {
+        id: ID
+        label: String!
+        value: String
+        color: String
+        order: Int
+    }
+
     input NotePropertyDefinitionInput {
         key: String!
         name: String
         valueType: NotePropertyValueType!
         options: [NotePropertyOptionInput!]
+    }
+
+    input NotePropertyDefinitionUpdateInput {
+        name: String
+        options: [NotePropertyOptionUpdateInput!]
     }
 
     input NotePropertiesPatchInput {
@@ -252,6 +265,7 @@ export const noteMutation = gql`
         restoreTrashedNote(id: ID!): Note!
         purgeTrashedNote(id: ID!): Boolean!
         createNotePropertyKey(input: NotePropertyDefinitionInput!): NotePropertyKey!
+        updateNotePropertyKey(key: String!, input: NotePropertyDefinitionUpdateInput!): NotePropertyKey!
         deleteNotePropertyKey(key: String!, confirmImpact: Boolean): NotePropertyDeleteResult!
         updateNoteProperties(
             id: ID!

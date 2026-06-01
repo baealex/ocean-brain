@@ -8,8 +8,10 @@ import {
     InvalidNotePropertyInputError,
     type NotePropertiesPatchInput,
     type NotePropertyDefinitionInput,
+    type NotePropertyDefinitionUpdateInput,
     NotePropertyDeleteConfirmationRequiredError,
     updateNotePropertiesWithVersionGuard,
+    updateNotePropertyDefinition,
 } from '~/features/note/services/properties.js';
 import { buildNoteSearchProjection } from '~/features/note/services/search.js';
 import { createSnapshotMetaFromUserAgent, restoreNoteSnapshot } from '~/features/note/services/snapshot.js';
@@ -224,6 +226,27 @@ export const noteMutationResolvers: NoteMutationResolvers = {
     createNotePropertyKey: async (_, { input }: { input: NotePropertyDefinitionInput }) => {
         try {
             return await createNotePropertyDefinition(input);
+        } catch (error) {
+            if (error instanceof InvalidNotePropertyInputError) {
+                throw new GraphQLError(error.message, {
+                    extensions: {
+                        code: 'INVALID_NOTE_PROPERTY_INPUT',
+                    },
+                });
+            }
+
+            throw error;
+        }
+    },
+    updateNotePropertyKey: async (_, { key, input }: { key: string; input: NotePropertyDefinitionUpdateInput }) => {
+        try {
+            const result = await updateNotePropertyDefinition({ key, input });
+
+            if (!result) {
+                throw 'NOT FOUND';
+            }
+
+            return result;
         } catch (error) {
             if (error instanceof InvalidNotePropertyInputError) {
                 throw new GraphQLError(error.message, {

@@ -100,6 +100,7 @@ export const queryKeys = {
         backReferencesAll: () => ['notes', 'back-references'] as const,
         backReferences: (noteId: string) => ['notes', 'back-references', { noteId }] as const,
         graph: () => ['notes', 'graph'] as const,
+        propertyKeysAll: () => ['notes', 'property-keys'] as const,
         propertyKeys: (params: FetchNotePropertyKeysParams = {}) =>
             [
                 'notes',

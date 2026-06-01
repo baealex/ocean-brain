@@ -76,6 +76,14 @@ export const viewType = gql`
         sortOrder: ViewSortOrder
         limit: Int
     }
+
+    input NotesByPropertiesInput {
+        tagNames: [String!]
+        mode: TagMatchMode
+        propertyFilters: [ViewPropertyFilterInput!]!
+        sortBy: ViewSortBy
+        sortOrder: ViewSortOrder
+    }
 `;
 
 export const viewQuery = gql`
@@ -83,6 +91,7 @@ export const viewQuery = gql`
         viewWorkspace: ViewWorkspace!
         viewSection(id: ID!): ViewSection
         viewSectionNotes(id: ID!, pagination: PaginationInput): Notes!
+        notesByProperties(input: NotesByPropertiesInput!, pagination: PaginationInput): Notes!
     }
 `;
 

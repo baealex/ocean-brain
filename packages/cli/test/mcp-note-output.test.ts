@@ -44,3 +44,38 @@ test('formatMcpReadNoteOutput truncates markdown and shows an empty back referen
     assert.match(output, /Content: 10 chars \(showing first 5\)/);
     assert.match(output, /Back References:\n- \(none\)\n\nabcde\n\n\.\.\. \(truncated, use maxLength: 0 to read full content\)$/);
 });
+
+test('formatMcpReadNoteOutput includes property names, display labels, and raw values', () => {
+    const output = formatMcpReadNoteOutput({
+        note: {
+            id: '30',
+            title: 'Property Note',
+            contentAsMarkdown: 'Body',
+            createdAt: '2026-04-07T10:00:00.000Z',
+            updatedAt: '2026-04-07T11:00:00.000Z',
+            tags: [],
+            properties: [
+                {
+                    key: 'state',
+                    name: 'State',
+                    value: 'doing',
+                    valueType: 'select',
+                    option: {
+                        label: 'Doing',
+                        value: 'doing'
+                    }
+                },
+                {
+                    key: 'project',
+                    name: 'Project',
+                    value: 'ocean-brain',
+                    valueType: 'text'
+                }
+            ]
+        },
+        backReferences: [],
+        maxLength: 0
+    });
+
+    assert.match(output, /Properties:\n- state \(State\): Doing \[select, value=doing\]\n- project \(Project\): ocean-brain \[text, value=ocean-brain\]/);
+});

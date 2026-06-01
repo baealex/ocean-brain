@@ -14,6 +14,8 @@ test('Ocean Brain MCP tool names use explicit product-prefixed names', () => {
         updateNoteMetadata: 'ocean_brain_update_note_metadata',
         replaceNoteMarkdown: 'ocean_brain_replace_note_markdown',
         listTags: 'ocean_brain_list_tags',
+        listProperties: 'ocean_brain_list_properties',
+        queryNotesByProperties: 'ocean_brain_query_notes_by_properties',
         listNotesByTag: 'ocean_brain_list_notes_by_tag',
         listNotesByTags: 'ocean_brain_list_notes_by_tags',
         listRecentNotes: 'ocean_brain_list_recent_notes',

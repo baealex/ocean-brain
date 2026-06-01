@@ -173,8 +173,10 @@ Example Claude Code `.mcp.json`:
 | Tool | Description |
 |------|-------------|
 | `ocean_brain_search_notes` | Search notes by keyword |
-| `ocean_brain_read_note` | Read a note by ID |
+| `ocean_brain_read_note` | Read a note by ID, including tags, properties, and back references |
 | `ocean_brain_list_tags` | List tags with note counts |
+| `ocean_brain_list_properties` | List shared property definitions, types, and select options |
+| `ocean_brain_query_notes_by_properties` | Query notes with property filters |
 | `ocean_brain_list_recent_notes` | List recently updated notes |
 | `ocean_brain_create_note` / `ocean_brain_update_note` | Create or update notes |
 | `ocean_brain_create_tag` / `ocean_brain_delete_note` | Create tags or delete notes (safe write flow) |

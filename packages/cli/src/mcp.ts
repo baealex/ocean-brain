@@ -656,19 +656,22 @@ export async function startMcpServer(
 
     server.tool(
         OCEAN_BRAIN_MCP_TOOLS.queryNotesByProperties,
-        'Query Ocean Brain notes with property filters. Call ocean_brain_list_properties first; select filters must use option.value. Property filters are combined with AND, and optional tag filters use the provided tag match mode.',
+        'Query Ocean Brain notes with property filters. Call ocean_brain_list_properties first; select filters must use option.value. Property filters are combined with AND, and optional tag filters use the provided tag match mode. Returns note summaries by default to reduce token use; set includeProperties or propertyKeys when property details are needed.',
         {
             propertyFilters: z.array(propertyFilterSchema).min(1).max(10).describe('Property filters to apply. Multiple property filters are combined with AND.'),
             tagNames: z.array(z.string()).optional().default([]).describe('Optional tag filters. You can pass @project, #project, or project.'),
             mode: tagMatchModeSchema.optional().default('and').describe('Tag match mode for tagNames only. Property filters are always combined with AND.'),
             sortBy: viewSortBySchema.optional().default('updatedAt').describe('Sort field (default: updatedAt)'),
             sortOrder: viewSortOrderSchema.optional().default('desc').describe('Sort order (default: desc)'),
+            includeProperties: z.boolean().optional().default(false).describe('Include returned note properties. Defaults to false to reduce tokens.'),
+            propertyKeys: z.array(z.string()).optional().default([]).describe('Optional property keys to include in the response. Passing keys automatically includes properties.'),
             limit: z.number().optional().default(20).describe('Max results (default: 20, server max: 50)'),
             offset: z.number().optional().default(0).describe('Pagination offset (default: 0)')
         },
-        async ({ propertyFilters, tagNames, mode, sortBy, sortOrder, limit, offset }) => {
+        async ({ propertyFilters, tagNames, mode, sortBy, sortOrder, includeProperties, propertyKeys, limit, offset }) => {
+            const shouldIncludeProperties = includeProperties || propertyKeys.length > 0;
             const data = await graphql(serverUrl, token, `
-                query ($input: NotesByPropertiesInput!, $pagination: PaginationInput) {
+                query ($input: NotesByPropertiesInput!, $pagination: PaginationInput, $includeProperties: Boolean!) {
                     notesByProperties(input: $input, pagination: $pagination) {
                         totalCount
                         notes {
@@ -677,7 +680,7 @@ export async function startMcpServer(
                             createdAt
                             updatedAt
                             tags { id name }
-                            properties { key name value valueType option { id label value color order } }
+                            properties @include(if: $includeProperties) { key name value valueType option { id label value color order } }
                         }
                     }
                 }
@@ -689,7 +692,8 @@ export async function startMcpServer(
                     sortBy,
                     sortOrder
                 },
-                pagination: { limit, offset }
+                pagination: { limit, offset },
+                includeProperties: shouldIncludeProperties
             });
 
             const result = data?.notesByProperties as {
@@ -700,7 +704,7 @@ export async function startMcpServer(
                     createdAt: string;
                     updatedAt: string;
                     tags: Array<{ id: string; name: string }>;
-                    properties: Array<{
+                    properties?: Array<{
                         key: string;
                         name: string;
                         value: string;
@@ -726,6 +730,8 @@ export async function startMcpServer(
                             mode,
                             sortBy,
                             sortOrder,
+                            includeProperties: shouldIncludeProperties,
+                            propertyKeys,
                             limit,
                             offset
                         },
@@ -736,7 +742,13 @@ export async function startMcpServer(
                             createdAt: note.createdAt,
                             updatedAt: note.updatedAt,
                             tags: note.tags.map((item) => item.name),
-                            properties: note.properties
+                            ...(shouldIncludeProperties
+                                ? {
+                                    properties: propertyKeys.length > 0
+                                        ? (note.properties ?? []).filter((property) => propertyKeys.includes(property.key))
+                                        : (note.properties ?? [])
+                                }
+                                : {})
                         }))
                     }, null, 2),
                 }],

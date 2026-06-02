@@ -99,6 +99,14 @@ const markdownWritePolicySchema = z.object({
     preserveReferences: z.union([z.boolean(), z.literal('warn')]).optional()
 }).optional();
 
+const metadataPropertyPatchSchema = z.object({
+    set: z.array(z.object({
+        key: z.string().describe('Property key from ocean_brain_list_properties.'),
+        value: z.string().describe('Property value as a string. The server resolves the property value type by key.')
+    })).optional().describe('Property values to set. Use deleteKeys to remove a property value.'),
+    deleteKeys: z.array(z.string()).optional().describe('Property keys to remove from this note.')
+}).optional();
+
 const sha256 = (value: string) => crypto.createHash('sha256').update(value).digest('hex');
 
 const normalizeServerUrl = (serverUrl: string) => {
@@ -369,23 +377,25 @@ export const registerIntentWriteTools = (
 
     server.tool(
         tools.updateNoteMetadata,
-        'Update note metadata only. Supports title and layout; tags are markdown body tokens and are not handled here.',
+        'Update note metadata only. Supports title, layout, and note properties. Call ocean_brain_list_properties before setting properties; the server resolves value types by key. Tags are markdown body tokens and are not handled here.',
         {
             id: z.string().describe('Note ID to update'),
             expectedUpdatedAt: z.string().describe('Expected note updatedAt from a prior read.'),
             title: z.string().optional().describe('New note title'),
             layout: z.enum(['narrow', 'wide', 'full']).optional().describe('New note layout'),
+            properties: metadataPropertyPatchSchema.describe('Optional note property patch. Set values by key, or remove values with deleteKeys.'),
             ...confirmedMcpWriteFields
         },
-        async ({ id, expectedUpdatedAt, title, layout, dryRun, operationId, confirmToken }) => {
+        async ({ id, expectedUpdatedAt, title, layout, properties, dryRun, operationId, confirmToken }) => {
             const writeToken = requireWriteToken(token, tools.updateNoteMetadata);
             const payload = {
                 id,
                 expectedUpdatedAt,
                 ...(title !== undefined ? { title } : {}),
-                ...(layout ? { layout } : {})
+                ...(layout ? { layout } : {}),
+                ...(properties ? { properties } : {})
             };
-            const summary = `Update note ${id} metadata`;
+            const summary = properties ? `Update note ${id} metadata and properties` : `Update note ${id} metadata`;
             const operationFingerprint = createIntentWriteOperationFingerprint(serverUrl, writeToken, tools.updateNoteMetadata, payload);
 
             if (dryRun) {

@@ -601,3 +601,50 @@ test('mcp update note metadata handler requires a baseline and does not emit eve
     });
     assert.deepEqual(emittedEvents, []);
 });
+
+test('mcp update note metadata handler forwards property patches without value types', async () => {
+    let receivedInput: unknown;
+    const handler = createMcpUpdateNoteMetadataHandler(async (input) => {
+        receivedInput = input;
+        return {
+            status: 'dry_run',
+            note: {
+                id: '7',
+                title: 'Old title',
+                updatedAt: '2026-04-01T00:00:00.000Z',
+            },
+            proposed: {
+                properties: {
+                    set: [{ key: 'state', name: 'State', value: 'todo', valueType: 'select' }],
+                    deleteKeys: ['project'],
+                },
+            },
+            warnings: [],
+        };
+    });
+
+    await handler(
+        {
+            body: {
+                id: '7',
+                expectedUpdatedAt: '2026-04-01T00:00:00.000Z',
+                properties: {
+                    set: [{ key: 'state', value: 'todo' }],
+                    deleteKeys: ['project'],
+                },
+                dryRun: true,
+            },
+        } as never,
+        createResponse() as never,
+    );
+
+    assert.deepEqual(receivedInput, {
+        id: 7,
+        expectedUpdatedAt: '2026-04-01T00:00:00.000Z',
+        properties: {
+            set: [{ key: 'state', value: 'todo' }],
+            deleteKeys: ['project'],
+        },
+        dryRun: true,
+    });
+});

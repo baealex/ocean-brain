@@ -296,3 +296,70 @@ test('metadata update applies title and layout without content data', async () =
         },
     ]);
 });
+
+test('metadata update applies property patches through the property write path', async () => {
+    const propertyUpdates: unknown[] = [];
+    const service = createMarkdownIntentWriteService({
+        findNoteById: async () => createNote(),
+        renderMarkdown: async (content) => content,
+        parseMarkdownToContentJson: async () => {
+            throw new Error('should not parse markdown for metadata');
+        },
+        extractTagIds: () => [],
+        updateNote: async () => {
+            throw new Error('should not use note update for property metadata');
+        },
+        resolvePropertyPatch: async (patch) => ({
+            set: (patch.set ?? []).map((item) => ({
+                key: item.key,
+                name: 'State',
+                value: item.value,
+                valueType: 'select' as const,
+            })),
+            deleteKeys: patch.deleteKeys ?? [],
+        }),
+        validatePropertyPatch: async (patch) => patch,
+        updateProperties: async (input) => {
+            propertyUpdates.push(input);
+            return {
+                note: {
+                    id: input.id,
+                    title: input.noteData?.title ?? 'Existing',
+                    layout: input.noteData?.layout ?? 'wide',
+                    updatedAt: new Date('2026-05-28T00:00:01.000Z'),
+                },
+                snapshot: {
+                    id: '13',
+                    createdAt: '2026-05-28T00:00:00.500Z',
+                    meta: { label: 'MCP' },
+                },
+            };
+        },
+    });
+
+    const result = await service.applyNoteMetadata({
+        id: 7,
+        expectedUpdatedAt: '2026-05-28T00:00:00.000Z',
+        title: 'Renamed',
+        properties: {
+            set: [{ key: 'state', value: 'todo' }],
+            deleteKeys: ['project'],
+        },
+    });
+
+    assert.equal(result.status, 'applied');
+    assert.deepEqual(propertyUpdates, [
+        {
+            id: 7,
+            patch: {
+                set: [{ key: 'state', name: 'State', value: 'todo', valueType: 'select' }],
+                deleteKeys: ['project'],
+            },
+            expectedUpdatedAt: '2026-05-28T00:00:00.000Z',
+            noteData: {
+                title: 'Renamed',
+            },
+            snapshotMeta: '{"entrypoint":"mcp","label":"MCP"}',
+        },
+    ]);
+});

@@ -1,4 +1,5 @@
-import models, { type Note, Prisma, type PropertyValueType } from '~/models.js';
+import models, { type Note, type NoteLayout, Prisma, type PropertyValueType } from '~/models.js';
+import { buildNoteSearchProjection } from './search.js';
 import { captureNoteBaseline } from './snapshot.js';
 import { createNoteVersionConflictError, MissingNoteVersionError, parseNoteVersion } from './write-conflict.js';
 
@@ -54,6 +55,16 @@ export interface NotePropertiesPatchInput {
     deleteKeys?: string[] | null;
 }
 
+export interface NotePropertySetByKeyInput {
+    key: string;
+    value: string;
+}
+
+export interface NotePropertiesByKeyPatchInput {
+    set?: NotePropertySetByKeyInput[] | null;
+    deleteKeys?: string[] | null;
+}
+
 export interface NotePropertyOptionInput {
     label: string;
     value?: string | null;
@@ -84,6 +95,9 @@ type NotePropertyWithDefinition = Prisma.NotePropertyGetPayload<{
 type PropertyDefinitionWithOptions = Prisma.PropertyDefinitionGetPayload<{
     include: { options: true; _count: { select: { properties: true } } };
 }>;
+
+type PropertyPatchDefinitionLookupClient = Pick<typeof models, 'propertyDefinition'>;
+type PropertyPatchValueValidationClient = Pick<typeof models, 'propertyDefinition' | 'propertyOption'>;
 
 const PROPERTY_KEY_MAX_LENGTH = 80;
 const PROPERTY_NAME_MAX_LENGTH = 120;
@@ -617,6 +631,117 @@ const normalizePatch = (patch: NotePropertiesPatchInput) => {
     return { set: normalizedSet, deleteKeys: normalizedDeleteKeys };
 };
 
+const normalizePatchByKey = (patch: NotePropertiesByKeyPatchInput) => {
+    const set = patch.set ?? [];
+    const deleteKeys = patch.deleteKeys ?? [];
+
+    if (set.length === 0 && deleteKeys.length === 0) {
+        throw new InvalidNotePropertyInputError('At least one property change is required.');
+    }
+
+    if (set.length > PROPERTY_PATCH_SET_LIMIT || deleteKeys.length > PROPERTY_PATCH_DELETE_LIMIT) {
+        throw new InvalidNotePropertyInputError('Too many property changes in one request.');
+    }
+
+    const normalizedSet = set.map((item) => ({
+        key: normalizePropertyKey(item.key),
+        value: item.value,
+    }));
+    const normalizedDeleteKeys = deleteKeys.map(normalizePropertyKey);
+    const seenSetKeys = new Set<string>();
+    const seenDeleteKeys = new Set<string>();
+
+    for (const item of normalizedSet) {
+        if (seenSetKeys.has(item.key)) {
+            throw new InvalidNotePropertyInputError('Property patch contains duplicate keys.');
+        }
+
+        seenSetKeys.add(item.key);
+    }
+
+    for (const key of normalizedDeleteKeys) {
+        if (seenDeleteKeys.has(key)) {
+            throw new InvalidNotePropertyInputError('Property patch contains duplicate delete keys.');
+        }
+
+        if (seenSetKeys.has(key)) {
+            throw new InvalidNotePropertyInputError('Property patch cannot set and delete the same key.');
+        }
+
+        seenDeleteKeys.add(key);
+    }
+
+    return { set: normalizedSet, deleteKeys: normalizedDeleteKeys };
+};
+
+export const resolveNotePropertiesPatchValueTypes = async (
+    patch: NotePropertiesByKeyPatchInput,
+    tx: PropertyPatchDefinitionLookupClient = models,
+): Promise<NotePropertiesPatchInput> => {
+    const normalizedPatch = normalizePatchByKey(patch);
+
+    if (normalizedPatch.set.length === 0) {
+        return normalizePatch({ deleteKeys: normalizedPatch.deleteKeys });
+    }
+
+    const definitions = await tx.propertyDefinition.findMany({
+        where: { key: { in: normalizedPatch.set.map((item) => item.key) } },
+        select: {
+            key: true,
+            name: true,
+            valueType: true,
+        },
+    });
+    const definitionByKey = new Map(definitions.map((definition) => [definition.key, definition]));
+
+    return normalizePatch({
+        set: normalizedPatch.set.map((item) => {
+            const definition = definitionByKey.get(item.key);
+
+            if (!definition) {
+                throw new InvalidNotePropertyInputError(
+                    `Property ${item.key} is not defined. Create it in property settings first.`,
+                );
+            }
+
+            return {
+                key: item.key,
+                name: definition.name,
+                value: item.value,
+                valueType: definition.valueType,
+            };
+        }),
+        deleteKeys: normalizedPatch.deleteKeys,
+    });
+};
+
+export const validateNotePropertiesPatchValues = async (
+    patch: NotePropertiesPatchInput,
+    tx: PropertyPatchValueValidationClient = models,
+) => {
+    const normalizedPatch = normalizePatch(patch);
+
+    for (const item of normalizedPatch.set) {
+        const definition = await tx.propertyDefinition.findUnique({ where: { key: item.key } });
+
+        if (!definition) {
+            throw new InvalidNotePropertyInputError(
+                `Property ${item.key} is not defined. Create it in property settings first.`,
+            );
+        }
+
+        if (definition.valueType !== item.valueType) {
+            throw new InvalidNotePropertyInputError(
+                `Property ${item.key} already uses ${definition.valueType} values.`,
+            );
+        }
+
+        await buildTypedValueData(item, definition.id, tx);
+    }
+
+    return normalizedPatch;
+};
+
 export const listNoteProperties = async (noteId: number) => {
     const properties = await models.noteProperty.findMany({
         where: { noteId },
@@ -897,19 +1022,33 @@ export const deleteNotePropertyDefinition = async ({
     });
 };
 
-export const updateNotePropertiesWithVersionGuard = async ({
-    id,
-    patch,
-    editSessionId,
-    expectedUpdatedAt,
-    force = false,
-}: {
+interface UpdateNotePropertiesWithVersionGuardInput {
     id: number;
     patch: NotePropertiesPatchInput;
     editSessionId?: string;
     expectedUpdatedAt?: string;
     force?: boolean;
-}): Promise<Note | null> => {
+    noteData?: {
+        title?: string;
+        layout?: NoteLayout;
+    };
+    snapshotMeta?: string;
+}
+
+export interface GuardedNotePropertiesWriteResult {
+    note: Note;
+    snapshot: unknown;
+}
+
+export const updateNotePropertiesWithVersionGuardAndSnapshot = async ({
+    id,
+    patch,
+    editSessionId,
+    expectedUpdatedAt,
+    force = false,
+    noteData,
+    snapshotMeta,
+}: UpdateNotePropertiesWithVersionGuardInput): Promise<GuardedNotePropertiesWriteResult | null> => {
     const normalizedPatch = normalizePatch(patch);
     const expectedTimestamp = parseNoteVersion(expectedUpdatedAt);
 
@@ -1003,7 +1142,17 @@ export const updateNotePropertiesWithVersionGuard = async ({
 
             const updatedNote = await tx.note.update({
                 where: { id },
-                data: { updatedAt: new Date() },
+                data: {
+                    ...(noteData?.title !== undefined ? { title: noteData.title } : {}),
+                    ...(noteData?.layout !== undefined ? { layout: noteData.layout } : {}),
+                    ...(noteData?.title !== undefined
+                        ? buildNoteSearchProjection({
+                              title: noteData.title,
+                              content: existingNote.content,
+                          })
+                        : {}),
+                    updatedAt: new Date(),
+                },
             });
 
             return { updatedNote, baseline };
@@ -1013,14 +1162,18 @@ export const updateNotePropertiesWithVersionGuard = async ({
             return null;
         }
 
-        await captureNoteBaseline({
+        const snapshot = await captureNoteBaseline({
             noteId: id,
             baseline: result.baseline,
             ...(editSessionId && !force ? { editSessionId } : {}),
+            ...(snapshotMeta ? { meta: snapshotMeta } : {}),
             ...(force ? { force: true } : {}),
         });
 
-        return result.updatedNote;
+        return {
+            note: result.updatedNote,
+            snapshot,
+        };
     } catch (error) {
         if (isRecordNotFoundError(error)) {
             return null;
@@ -1028,4 +1181,9 @@ export const updateNotePropertiesWithVersionGuard = async ({
 
         throw error;
     }
+};
+
+export const updateNotePropertiesWithVersionGuard = async (input: UpdateNotePropertiesWithVersionGuardInput) => {
+    const result = await updateNotePropertiesWithVersionGuardAndSnapshot(input);
+    return result?.note ?? null;
 };

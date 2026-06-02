@@ -432,12 +432,6 @@ const NotePropertiesPanel = ({
                 </>
             }
         >
-            {disabled && (
-                <Text as="p" variant="label" tone="tertiary" className="mb-3">
-                    Finish the current note save or resolve conflicts before editing properties.
-                </Text>
-            )}
-
             {rows.length === 0 ? (
                 <Text as="p" variant="label" tone="tertiary" className="px-1 py-2">
                     No properties yet.

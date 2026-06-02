@@ -98,6 +98,21 @@ const compareNoteVersions = (left: string, right: string) => {
     return leftTime - rightTime;
 };
 
+const getSafeExternalUrl = (value: string) => {
+    const trimmedValue = value.trim();
+
+    if (!trimmedValue) {
+        return null;
+    }
+
+    try {
+        const url = new URL(trimmedValue);
+        return url.protocol === 'http:' || url.protocol === 'https:' ? url.toString() : null;
+    } catch {
+        return null;
+    }
+};
+
 const NOTE_LAYOUT_WIDTH: Record<NoteLayout, string> = {
     narrow: 'max-w-[640px]',
     wide: 'max-w-[896px]',
@@ -172,7 +187,10 @@ const getPropertyRowsPatchDraft = (
         const value = row.value.trim();
         const shouldDeleteBlankPersistedValue =
             Boolean(row.persistedKey) &&
-            (row.valueType === 'number' || row.valueType === 'date' || row.valueType === 'select');
+            (row.valueType === 'number' ||
+                row.valueType === 'date' ||
+                row.valueType === 'select' ||
+                row.valueType === 'url');
 
         if (!value && shouldDeleteBlankPersistedValue) {
             deleteKeySet.add(row.persistedKey as string);
@@ -426,84 +444,120 @@ const NotePropertiesPanel = ({
                 </Text>
             ) : (
                 <div className="divide-y divide-border-subtle">
-                    {rows.map((row) => (
-                        <div
-                            key={row.id}
-                            className="group grid gap-2 py-2 sm:grid-cols-[minmax(0,180px)_minmax(0,1fr)_auto] sm:items-center"
-                        >
-                            <div className="flex min-w-0 items-center gap-2 px-1">
-                                <Text as="span" variant="label" tone="secondary" className="truncate">
-                                    {row.name}
-                                </Text>
-                                <Text
-                                    as="span"
-                                    variant="micro"
-                                    tone="tertiary"
-                                    className="hidden truncate font-mono sm:inline"
-                                >
-                                    {row.key}
-                                </Text>
-                            </div>
-                            {row.valueType === 'boolean' ? (
-                                <Select
-                                    size="sm"
-                                    variant="ghost"
-                                    value={row.value || 'false'}
-                                    disabled={disabled}
-                                    onValueChange={(value) => updateRow(row.id, { value })}
-                                >
-                                    <SelectItem value="false">False</SelectItem>
-                                    <SelectItem value="true">True</SelectItem>
-                                </Select>
-                            ) : row.valueType === 'select' ? (
-                                <Select
-                                    size="sm"
-                                    variant="ghost"
-                                    value={row.value}
-                                    placeholder="Select option"
-                                    disabled={disabled}
-                                    onValueChange={(value) => updateRow(row.id, { value })}
-                                >
-                                    {(
-                                        propertyKeySummaries.find((propertyKey) => propertyKey.key === row.key)
-                                            ?.options ?? []
-                                    ).map((option) => (
-                                        <SelectItem key={option.id} value={option.value}>
-                                            {option.label}
-                                        </SelectItem>
-                                    ))}
-                                </Select>
-                            ) : (
-                                <Input
-                                    size="sm"
-                                    variant="ghost"
-                                    type={
-                                        row.valueType === 'date'
-                                            ? 'date'
-                                            : row.valueType === 'number'
-                                              ? 'number'
-                                              : 'text'
-                                    }
-                                    aria-label="Property value"
-                                    placeholder="Value"
-                                    value={row.value}
-                                    disabled={disabled}
-                                    onChange={(event) => updateRow(row.id, { value: event.target.value })}
-                                />
-                            )}
-                            <Button
-                                type="button"
-                                size="icon-sm"
-                                variant="ghost"
-                                aria-label={`Remove ${row.name}`}
-                                disabled={disabled}
-                                className="justify-self-end text-fg-tertiary sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
-                                onClick={() => removeRow(row)}
+                    {rows.map((row) => {
+                        const safeExternalUrl = row.valueType === 'url' ? getSafeExternalUrl(row.value) : null;
+
+                        return (
+                            <div
+                                key={row.id}
+                                className="group grid gap-2 py-2 sm:grid-cols-[minmax(0,180px)_minmax(0,1fr)_auto] sm:items-center"
                             >
-                                <Icon.Close className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    ))}
+                                <div className="flex min-w-0 items-center gap-2 px-1">
+                                    <Text as="span" variant="label" tone="secondary" className="truncate">
+                                        {row.name}
+                                    </Text>
+                                    <Text
+                                        as="span"
+                                        variant="micro"
+                                        tone="tertiary"
+                                        className="hidden truncate font-mono sm:inline"
+                                    >
+                                        {row.key}
+                                    </Text>
+                                </div>
+                                {row.valueType === 'boolean' ? (
+                                    <Select
+                                        size="sm"
+                                        variant="ghost"
+                                        value={row.value || 'false'}
+                                        disabled={disabled}
+                                        onValueChange={(value) => updateRow(row.id, { value })}
+                                    >
+                                        <SelectItem value="false">False</SelectItem>
+                                        <SelectItem value="true">True</SelectItem>
+                                    </Select>
+                                ) : row.valueType === 'select' ? (
+                                    <Select
+                                        size="sm"
+                                        variant="ghost"
+                                        value={row.value}
+                                        placeholder="Select option"
+                                        disabled={disabled}
+                                        onValueChange={(value) => updateRow(row.id, { value })}
+                                    >
+                                        {(
+                                            propertyKeySummaries.find((propertyKey) => propertyKey.key === row.key)
+                                                ?.options ?? []
+                                        ).map((option) => (
+                                            <SelectItem key={option.id} value={option.value}>
+                                                {option.label}
+                                            </SelectItem>
+                                        ))}
+                                    </Select>
+                                ) : row.valueType === 'url' ? (
+                                    <div className="flex min-w-0 items-center gap-1">
+                                        <Input
+                                            className="min-w-0"
+                                            size="sm"
+                                            variant="ghost"
+                                            type="url"
+                                            aria-label="Property value"
+                                            placeholder="https://example.com"
+                                            value={row.value}
+                                            disabled={disabled}
+                                            onChange={(event) => updateRow(row.id, { value: event.target.value })}
+                                        />
+                                        {safeExternalUrl ? (
+                                            <Button
+                                                asChild
+                                                size="icon-sm"
+                                                variant="ghost"
+                                                aria-label={`Open ${row.name}`}
+                                                className="shrink-0 text-fg-tertiary"
+                                            >
+                                                <a
+                                                    href={safeExternalUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    title={safeExternalUrl}
+                                                >
+                                                    <Icon.LinkSimple className="h-4 w-4" />
+                                                </a>
+                                            </Button>
+                                        ) : null}
+                                    </div>
+                                ) : (
+                                    <Input
+                                        size="sm"
+                                        variant="ghost"
+                                        type={
+                                            row.valueType === 'date'
+                                                ? 'date'
+                                                : row.valueType === 'number'
+                                                  ? 'number'
+                                                  : 'text'
+                                        }
+                                        aria-label="Property value"
+                                        placeholder="Value"
+                                        value={row.value}
+                                        disabled={disabled}
+                                        onChange={(event) => updateRow(row.id, { value: event.target.value })}
+                                    />
+                                )}
+                                <Button
+                                    type="button"
+                                    size="icon-sm"
+                                    variant="ghost"
+                                    aria-label={`Remove ${row.name}`}
+                                    disabled={disabled}
+                                    className="justify-self-end text-fg-tertiary sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
+                                    onClick={() => removeRow(row)}
+                                >
+                                    <Icon.Close className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        );
+                    })}
                 </div>
             )}
 

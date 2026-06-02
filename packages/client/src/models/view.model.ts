@@ -7,7 +7,7 @@ export type ViewSortOrder = 'asc' | 'desc';
 export interface ViewPropertyFilter {
     key: string;
     name: string;
-    valueType: 'text' | 'number' | 'date' | 'boolean' | 'select';
+    valueType: 'text' | 'url' | 'number' | 'date' | 'boolean' | 'select';
     operator: ViewPropertyFilterOperator;
     value?: string | null;
 }

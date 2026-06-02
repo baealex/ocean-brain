@@ -1,5 +1,5 @@
 export type NoteLayout = 'narrow' | 'wide' | 'full';
-export type NotePropertyValueType = 'text' | 'number' | 'date' | 'boolean' | 'select';
+export type NotePropertyValueType = 'text' | 'url' | 'number' | 'date' | 'boolean' | 'select';
 
 export interface NotePropertyOption {
     id: string;

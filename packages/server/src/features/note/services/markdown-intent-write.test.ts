@@ -221,6 +221,40 @@ test('markdown intent write refuses apply when Markdown import loses literal tex
     });
 });
 
+test('markdown intent write refuses apply when Markdown import loses numeric tilde ranges', async () => {
+    const service = createMarkdownIntentWriteService({
+        findNoteById: async () => createNote({ content: 'before-content' }),
+        renderMarkdown: async (content) =>
+            content === 'before-content' ? 'Original sentence.' : 'Range is 1~~3 and 4~~5.',
+        parseMarkdownToContentJson: async () => 'after-content',
+        extractTagIds: () => [],
+        updateNote: async () => {
+            throw new Error('should not update');
+        },
+    });
+
+    const result = await service.patchNoteMarkdown({
+        id: 7,
+        expectedUpdatedAt: '2026-05-28T00:00:00.000Z',
+        intent: 'Replace one sentence',
+        selector: {
+            type: 'exact_text',
+            text: 'Original sentence.',
+        },
+        operation: {
+            type: 'replace',
+            replacement: 'Range is 1~3 and 4~5.',
+        },
+        dryRun: false,
+    });
+
+    assert.deepEqual(result, {
+        status: 'failed',
+        reason: 'MARKDOWN_IMPORT_LOSSY',
+        message: 'The markdown write would lose literal text during Markdown import.',
+    });
+});
+
 test('markdown intent write maps guarded update conflicts to baseline mismatch failures', async () => {
     const service = createMarkdownIntentWriteService({
         findNoteById: async () => createNote(),

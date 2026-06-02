@@ -5,6 +5,8 @@ import {
     extractLiteralAngleBracketTextTokens,
     extractTagIdsFromContentJson,
     hasLiteralAngleBracketTextTokenLoss,
+    hasNumericTildeRangeMarkerLoss,
+    hasNumericTildeRangeMarkers,
     hasUnsupportedMarkdownBlocks,
     markdownToBlocksJson,
 } from '~/modules/blocknote.js';
@@ -348,11 +350,16 @@ const applyMarkdownPlan = async (
 ): Promise<AppliedMarkdownWriteResult | MarkdownChangeFailure> => {
     const content = await deps.parseMarkdownToContentJson(input.plan.afterMarkdown);
     const literalAngleBracketTokens = extractLiteralAngleBracketTextTokens(input.plan.afterMarkdown);
+    const shouldCheckMarkdownImportLoss =
+        literalAngleBracketTokens.length > 0 || hasNumericTildeRangeMarkers(input.plan.afterMarkdown);
 
-    if (literalAngleBracketTokens.length > 0) {
+    if (shouldCheckMarkdownImportLoss) {
         const importedMarkdown = await deps.renderMarkdown(content);
 
-        if (hasLiteralAngleBracketTextTokenLoss(input.plan.afterMarkdown, importedMarkdown)) {
+        if (
+            hasLiteralAngleBracketTextTokenLoss(input.plan.afterMarkdown, importedMarkdown) ||
+            hasNumericTildeRangeMarkerLoss(input.plan.afterMarkdown, importedMarkdown)
+        ) {
             return markdownImportLossyFailure();
         }
     }

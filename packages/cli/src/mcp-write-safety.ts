@@ -9,22 +9,22 @@ export type McpWriteLogPhase = 'prepared' | 'confirmed' | 'executed' | 'failed' 
 
 export const destructiveMcpWriteFields = {
     dryRun: z.boolean().optional().default(true)
-        .describe('Preview the destructive change first. Set dryRun to false only after you receive an operationId and confirmToken.'),
+        .describe('Preview the destructive change first. Commit only after dry-run returns operation.operationId and operation.confirmToken.'),
     operationId: z.string().optional()
-        .describe('Operation id returned by the dry-run response. Required when dryRun is false.'),
+        .describe('Dry-run response operation.operationId. Required when dryRun is false.'),
     confirmToken: z.string().optional()
-        .describe('Confirmation token returned by the dry-run response. Required when dryRun is false.'),
+        .describe('Dry-run response operation.confirmToken. Required when dryRun is false.'),
     force: z.boolean().optional().default(false)
         .describe('Explicitly confirm a bulk destructive change when the preview says force is required.')
 };
 
 export const confirmedMcpWriteFields = {
     dryRun: z.boolean().optional().default(true)
-        .describe('Preview the write first. Set dryRun to false only after you receive an operationId and confirmToken.'),
+        .describe('Preview the write first. Commit only after dry-run returns operation.operationId and operation.confirmToken.'),
     operationId: z.string().optional()
-        .describe('Operation id returned by the dry-run response. Required when dryRun is false.'),
+        .describe('Dry-run response operation.operationId. Required when dryRun is false.'),
     confirmToken: z.string().optional()
-        .describe('Confirmation token returned by the dry-run response. Required when dryRun is false.')
+        .describe('Dry-run response operation.confirmToken. Required when dryRun is false.')
 };
 
 export interface DestructiveWriteRequest {

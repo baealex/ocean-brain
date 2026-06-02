@@ -11,8 +11,10 @@ const createQueryClientMock = () => {
 
 describe('server-event-invalidation', () => {
     it('invalidates note collection queries for MCP note updates', async () => {
+        // Arrange
         const queryClient = createQueryClientMock();
 
+        // Act
         await invalidateQueriesForServerEvent(queryClient, {
             type: 'mcp.note.updated',
             source: 'mcp',
@@ -20,6 +22,7 @@ describe('server-event-invalidation', () => {
             updatedAt: '2026-04-14T00:00:00.000Z',
         });
 
+        // Assert
         expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
             queryKey: queryKeys.notes.listAll(),
             exact: false,
@@ -45,6 +48,10 @@ describe('server-event-invalidation', () => {
             exact: true,
         });
         expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+            queryKey: queryKeys.notes.propertyKeysAll(),
+            exact: false,
+        });
+        expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
             queryKey: queryKeys.views.sectionNotesAll(),
             exact: false,
         });
@@ -55,8 +62,10 @@ describe('server-event-invalidation', () => {
     });
 
     it('invalidates note collection queries for web note updates', async () => {
+        // Arrange
         const queryClient = createQueryClientMock();
 
+        // Act
         await invalidateQueriesForServerEvent(queryClient, {
             type: 'web.note.updated',
             source: 'web',
@@ -65,6 +74,7 @@ describe('server-event-invalidation', () => {
             editSessionId: 'editor-a',
         });
 
+        // Assert
         expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
             queryKey: queryKeys.notes.listAll(),
             exact: false,
@@ -73,23 +83,34 @@ describe('server-event-invalidation', () => {
             queryKey: queryKeys.views.sectionNotesAll(),
             exact: false,
         });
+        expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith({
+            queryKey: queryKeys.notes.propertyKeysAll(),
+            exact: false,
+        });
     });
 
     it('invalidates trash-related queries for MCP note deletes', async () => {
+        // Arrange
         const queryClient = createQueryClientMock();
 
+        // Act
         await invalidateQueriesForServerEvent(queryClient, {
             type: 'mcp.note.deleted',
             source: 'mcp',
             noteId: '11',
         });
 
+        // Assert
         expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
             queryKey: queryKeys.notes.trashAll(),
             exact: false,
         });
         expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
             queryKey: queryKeys.notes.tagNameListAll(),
+            exact: false,
+        });
+        expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+            queryKey: queryKeys.notes.propertyKeysAll(),
             exact: false,
         });
         expect(queryClient.invalidateQueries).toHaveBeenCalledWith({

@@ -180,3 +180,7 @@ Example Claude Code `.mcp.json`:
 | `ocean_brain_list_recent_notes` | List recently updated notes |
 | `ocean_brain_create_note` / `ocean_brain_update_note` | Create or update notes |
 | `ocean_brain_create_tag` / `ocean_brain_delete_note` | Create tags or delete notes (safe write flow) |
+
+## License
+
+Ocean Brain is licensed under the [MIT License](./LICENSE).

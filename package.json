@@ -1,6 +1,7 @@
 {
     "name": "ocean-brain-workspace",
     "private": true,
+    "license": "MIT",
     "scripts": {
         "check:encoding": "node scripts/ci/check-encoding.mjs",
         "dev": "pnpm --parallel --filter @ocean-brain/client --filter @ocean-brain/server dev",

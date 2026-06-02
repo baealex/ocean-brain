@@ -13,6 +13,7 @@ import {
 } from './mcp-write-safety.js';
 import { formatMcpReadNoteOutput } from './mcp-note-output.js';
 import { registerIntentWriteTools } from './mcp-intent-write-tools.js';
+import { formatPropertyQueryResponse, type PropertyQueryResult } from './mcp-property-query-output.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
@@ -50,7 +51,7 @@ const propertyFilterSchema = z.object({
     key: z.string().describe('Property key from ocean_brain_list_properties, e.g. state'),
     valueType: propertyValueTypeSchema.describe('Property value type from the property definition'),
     operator: propertyFilterOperatorSchema.describe('Filter operator. before/after are only valid for date or number properties.'),
-    value: z.string().nullable().optional().describe('Filter value. Required unless operator is exists or notExists. Select filters use option.value, not option.label. URL filters require an http(s) URL.')
+    value: z.string().nullable().optional().describe('Filter value. Required unless operator is exists or notExists. select=option.value, date=YYYY-MM-DD, boolean=true/false, number=finite, url=http(s).')
 });
 
 const normalizeOceanBrainTagName = (name: string) => {
@@ -656,15 +657,15 @@ export async function startMcpServer(
 
     server.tool(
         OCEAN_BRAIN_MCP_TOOLS.queryNotesByProperties,
-        'Query Ocean Brain notes with property filters. Call ocean_brain_list_properties first; select filters must use option.value. Property filters are combined with AND, and optional tag filters use the provided tag match mode. Returns note summaries by default to reduce token use; set includeProperties or propertyKeys when property details are needed.',
+        'Call ocean_brain_list_properties first. Requires >=1 propertyFilter; use search/recent for broad lists. Use key/valueType from the property definition. Values are strings: select=option.value, date=YYYY-MM-DD, boolean=true/false, number=finite, url=http(s). exists/notExists need no value. Property filters use AND; tagNames use mode. Summaries are returned by default; use propertyKeys for needed property details.',
         {
-            propertyFilters: z.array(propertyFilterSchema).min(1).max(10).describe('Property filters to apply. Multiple property filters are combined with AND.'),
+            propertyFilters: z.array(propertyFilterSchema).min(1).max(10).describe('Required property filters. Multiple property filters are combined with AND.'),
             tagNames: z.array(z.string()).optional().default([]).describe('Optional tag filters. You can pass @project, #project, or project.'),
             mode: tagMatchModeSchema.optional().default('and').describe('Tag match mode for tagNames only. Property filters are always combined with AND.'),
             sortBy: viewSortBySchema.optional().default('updatedAt').describe('Sort field (default: updatedAt)'),
             sortOrder: viewSortOrderSchema.optional().default('desc').describe('Sort order (default: desc)'),
             includeProperties: z.boolean().optional().default(false).describe('Include returned note properties. Defaults to false to reduce tokens.'),
-            propertyKeys: z.array(z.string()).optional().default([]).describe('Optional property keys to include in the response. Passing keys automatically includes properties.'),
+            propertyKeys: z.array(z.string()).optional().default([]).describe('Property keys to include in output; automatically includes properties.'),
             limit: z.number().optional().default(20).describe('Max results (default: 20, server max: 50)'),
             offset: z.number().optional().default(0).describe('Pagination offset (default: 0)')
         },
@@ -696,61 +697,29 @@ export async function startMcpServer(
                 includeProperties: shouldIncludeProperties
             });
 
-            const result = data?.notesByProperties as {
-                totalCount: number;
-                notes: Array<{
-                    id: string;
-                    title: string;
-                    createdAt: string;
-                    updatedAt: string;
-                    tags: Array<{ id: string; name: string }>;
-                    properties?: Array<{
-                        key: string;
-                        name: string;
-                        value: string;
-                        valueType: string;
-                        option?: {
-                            id: string;
-                            label: string;
-                            value: string;
-                            color?: string | null;
-                            order: number;
-                        } | null;
-                    }>;
-                }>;
-            };
+            const result = data?.notesByProperties as PropertyQueryResult;
 
             return {
                 content: [{
                     type: 'text' as const,
-                    text: JSON.stringify({
-                        query: {
-                            propertyFilters,
-                            tagNames,
-                            mode,
-                            sortBy,
-                            sortOrder,
+                    text: JSON.stringify(
+                        formatPropertyQueryResponse({
+                            result,
+                            query: {
+                                propertyFilters,
+                                tagNames,
+                                mode,
+                                sortBy,
+                                sortOrder,
+                                limit,
+                                offset
+                            },
                             includeProperties: shouldIncludeProperties,
-                            propertyKeys,
-                            limit,
-                            offset
-                        },
-                        totalCount: result.totalCount,
-                        notes: result.notes.map((note) => ({
-                            id: note.id,
-                            title: note.title,
-                            createdAt: note.createdAt,
-                            updatedAt: note.updatedAt,
-                            tags: note.tags.map((item) => item.name),
-                            ...(shouldIncludeProperties
-                                ? {
-                                    properties: propertyKeys.length > 0
-                                        ? (note.properties ?? []).filter((property) => propertyKeys.includes(property.key))
-                                        : (note.properties ?? [])
-                                }
-                                : {})
-                        }))
-                    }, null, 2),
+                            propertyKeys
+                        }),
+                        null,
+                        2
+                    ),
                 }],
             };
         }

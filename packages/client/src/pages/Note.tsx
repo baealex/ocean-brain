@@ -330,7 +330,7 @@ const NotePropertiesPanel = ({
                 getNormalizedRows(response.updateNoteProperties.properties ?? []),
             );
             onSaved(response.updateNoteProperties);
-            void queryClient.invalidateQueries({ queryKey: queryKeys.notes.propertyKeys() });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.notes.propertyKeysAll(), exact: false });
             setAutoSaveStatus('saved');
         } catch {
             setAutoSaveStatus('error');

@@ -99,12 +99,62 @@ const markdownWritePolicySchema = z.object({
     preserveReferences: z.union([z.boolean(), z.literal('warn')]).optional()
 }).optional();
 
-const metadataPropertyPatchSchema = z.object({
+export const MCP_METADATA_PROPERTY_PATCH_LIMIT = 50;
+
+const normalizeMetadataPropertyKey = (key: string) => key.trim().toLowerCase().replace(/\s+/g, '-');
+
+export const metadataPropertyPatchSchema = z.object({
     set: z.array(z.object({
-        key: z.string().describe('Property key from ocean_brain_list_properties.'),
-        value: z.string().describe('Property value as a string. The server resolves the property value type by key.')
-    })).optional().describe('Property values to set. Use deleteKeys to remove a property value.'),
-    deleteKeys: z.array(z.string()).optional().describe('Property keys to remove from this note.')
+        key: z.string().min(1).describe('Property key from ocean_brain_list_properties.'),
+        value: z.string().describe('String value: select option.value, date YYYY-MM-DD, boolean true/false, number finite string, url http(s).')
+    })).max(MCP_METADATA_PROPERTY_PATCH_LIMIT).optional().describe('Set up to 50 property values. Keys must be unique.'),
+    deleteKeys: z.array(z.string().min(1)).max(MCP_METADATA_PROPERTY_PATCH_LIMIT).optional()
+        .describe('Remove up to 50 property values from this note. Keys must be unique and not also in set.')
+}).superRefine((patch, context) => {
+    if ((patch.set?.length ?? 0) === 0 && (patch.deleteKeys?.length ?? 0) === 0) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'properties must include set or deleteKeys.'
+        });
+        return;
+    }
+
+    const setKeys = new Set<string>();
+
+    for (const item of patch.set ?? []) {
+        const key = normalizeMetadataPropertyKey(item.key);
+
+        if (setKeys.has(key)) {
+            context.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: `properties.set contains duplicate key ${key}.`
+            });
+        }
+
+        setKeys.add(key);
+    }
+
+    const deleteKeys = new Set<string>();
+
+    for (const rawKey of patch.deleteKeys ?? []) {
+        const key = normalizeMetadataPropertyKey(rawKey);
+
+        if (deleteKeys.has(key)) {
+            context.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: `properties.deleteKeys contains duplicate key ${key}.`
+            });
+        }
+
+        if (setKeys.has(key)) {
+            context.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: `properties cannot set and delete ${key} in one request.`
+            });
+        }
+
+        deleteKeys.add(key);
+    }
 }).optional();
 
 const sha256 = (value: string) => crypto.createHash('sha256').update(value).digest('hex');
@@ -377,13 +427,13 @@ export const registerIntentWriteTools = (
 
     server.tool(
         tools.updateNoteMetadata,
-        'Update note metadata only. Supports title, layout, and note properties. Call ocean_brain_list_properties before setting properties; the server resolves value types by key. Tags are markdown body tokens and are not handled here.',
+        'Update note title/layout/properties. For properties, call ocean_brain_list_properties first. Use existing property key and string value only; do not send valueType. select=option.value, date=YYYY-MM-DD, boolean=true/false, number=finite string, url=http(s). Use deleteKeys to remove values. Definitions are not created.',
         {
             id: z.string().describe('Note ID to update'),
             expectedUpdatedAt: z.string().describe('Expected note updatedAt from a prior read.'),
             title: z.string().optional().describe('New note title'),
             layout: z.enum(['narrow', 'wide', 'full']).optional().describe('New note layout'),
-            properties: metadataPropertyPatchSchema.describe('Optional note property patch. Set values by key, or remove values with deleteKeys.'),
+            properties: metadataPropertyPatchSchema.describe('Patch existing shared property values. Include set and/or deleteKeys; empty patches are rejected.'),
             ...confirmedMcpWriteFields
         },
         async ({ id, expectedUpdatedAt, title, layout, properties, dryRun, operationId, confirmToken }) => {

@@ -7,6 +7,7 @@ import {
     findReferencedRemovedPropertyOptionValue,
     InvalidNotePropertyInputError,
     normalizePropertyKey,
+    normalizeUrlValue,
     renamePropertyFiltersInViewQuery,
     updateNotePropertiesWithVersionGuard,
 } from './properties.js';
@@ -20,6 +21,12 @@ test('normalizePropertyKey normalizes user input into a stable query key', () =>
 test('normalizePropertyKey rejects empty or unsupported keys', () => {
     assert.throws(() => normalizePropertyKey('   '), InvalidNotePropertyInputError);
     assert.throws(() => normalizePropertyKey('#state'), InvalidNotePropertyInputError);
+});
+
+test('normalizeUrlValue accepts only http(s) URLs', () => {
+    assert.equal(normalizeUrlValue(' https://example.com/docs '), 'https://example.com/docs');
+    assert.throws(() => normalizeUrlValue('example.com'), InvalidNotePropertyInputError);
+    assert.throws(() => normalizeUrlValue('javascript:alert(1)'), InvalidNotePropertyInputError);
 });
 
 test('property definitions require valid select option datasets before write', async () => {

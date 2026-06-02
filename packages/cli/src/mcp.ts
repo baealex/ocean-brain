@@ -42,7 +42,7 @@ export const OCEAN_BRAIN_MCP_TOOLS = {
 
 const noteLayoutSchema = z.enum(['narrow', 'wide', 'full']);
 const tagMatchModeSchema = z.enum(['and', 'or']);
-const propertyValueTypeSchema = z.enum(['text', 'number', 'date', 'boolean', 'select']);
+const propertyValueTypeSchema = z.enum(['text', 'url', 'number', 'date', 'boolean', 'select']);
 const propertyFilterOperatorSchema = z.enum(['equals', 'before', 'after', 'exists', 'notExists']);
 const viewSortBySchema = z.enum(['updatedAt', 'createdAt', 'title']);
 const viewSortOrderSchema = z.enum(['asc', 'desc']);
@@ -50,7 +50,7 @@ const propertyFilterSchema = z.object({
     key: z.string().describe('Property key from ocean_brain_list_properties, e.g. state'),
     valueType: propertyValueTypeSchema.describe('Property value type from the property definition'),
     operator: propertyFilterOperatorSchema.describe('Filter operator. before/after are only valid for date or number properties.'),
-    value: z.string().nullable().optional().describe('Filter value. Required unless operator is exists or notExists. Select filters use option.value, not option.label.')
+    value: z.string().nullable().optional().describe('Filter value. Required unless operator is exists or notExists. Select filters use option.value, not option.label. URL filters require an http(s) URL.')
 });
 
 const normalizeOceanBrainTagName = (name: string) => {
@@ -451,7 +451,7 @@ export async function startMcpServer(
                 keys: Array<{
                     key: string;
                     name: string;
-                    valueType: 'text' | 'number' | 'date' | 'boolean' | 'select';
+                    valueType: 'text' | 'url' | 'number' | 'date' | 'boolean' | 'select';
                     noteCount: number;
                     updatedAt: string;
                     options: Array<{

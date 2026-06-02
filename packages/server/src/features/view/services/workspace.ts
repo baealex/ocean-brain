@@ -1,5 +1,9 @@
 import type { Note, Prisma, PropertyValueType } from '@prisma/client';
-import { InvalidNotePropertyInputError, normalizePropertyKey } from '~/features/note/services/properties.js';
+import {
+    InvalidNotePropertyInputError,
+    normalizePropertyKey,
+    normalizeUrlValue,
+} from '~/features/note/services/properties.js';
 import { buildNoteTagNamesWhere, type NoteTagMatchMode } from '~/features/note/services/tag-filter.js';
 import models from '~/models.js';
 
@@ -152,7 +156,14 @@ const isViewPropertyFilterOperator = (value: unknown): value is ViewPropertyFilt
 };
 
 const isPropertyValueType = (value: unknown): value is PropertyValueType => {
-    return value === 'text' || value === 'number' || value === 'date' || value === 'boolean' || value === 'select';
+    return (
+        value === 'text' ||
+        value === 'url' ||
+        value === 'number' ||
+        value === 'date' ||
+        value === 'boolean' ||
+        value === 'select'
+    );
 };
 
 const normalizeViewDisplayType = (value: ViewDisplayType | undefined): ViewDisplayType => {
@@ -208,6 +219,10 @@ const normalizeFilterValue = ({
 
     if ((operator === 'before' || operator === 'after') && valueType !== 'date' && valueType !== 'number') {
         throw new InvalidNotePropertyInputError('Before and after filters require date or number properties.');
+    }
+
+    if (valueType === 'url') {
+        return normalizeUrlValue(normalizedValue);
     }
 
     return normalizedValue;
@@ -635,6 +650,7 @@ const buildPropertyFilterValueWhere = (filter: ViewPropertyFilterRecord): Prisma
             return { boolValue: filter.value === 'true' };
         case 'select':
             return { option: { is: { value: normalizeSelectFilterValue(filter.value ?? '') } } };
+        case 'url':
         case 'text':
         default:
             return { textValueNormalized: filter.value?.toLowerCase() ?? '' };

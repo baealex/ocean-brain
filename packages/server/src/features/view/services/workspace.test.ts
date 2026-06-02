@@ -82,6 +82,25 @@ test('normalizeViewPropertyFilters validates typed filter values', () => {
     assert.throws(() =>
         normalizeViewPropertyFilters([{ key: 'due', valueType: 'date', operator: 'equals', value: '2026-99-99' }]),
     );
+
+    assert.deepEqual(
+        normalizeViewPropertyFilters([
+            { key: 'source', valueType: 'url', operator: 'equals', value: 'https://example.com/docs' },
+        ]),
+        [
+            {
+                key: 'source',
+                name: 'source',
+                valueType: 'url',
+                operator: 'equals',
+                value: 'https://example.com/docs',
+            },
+        ],
+    );
+
+    assert.throws(() =>
+        normalizeViewPropertyFilters([{ key: 'source', valueType: 'url', operator: 'equals', value: 'not-a-url' }]),
+    );
 });
 
 test('normalizeViewNotesQueryInput normalizes property query filters without section-only fields', () => {
@@ -223,6 +242,30 @@ test('buildPropertyFilterWhere maps number and date range operators', () => {
                     dateValue: {
                         gt: new Date('2026-05-31T00:00:00.000Z'),
                     },
+                },
+            },
+        },
+    );
+});
+
+test('buildPropertyFilterWhere maps URL filters through normalized text storage', () => {
+    assert.deepEqual(
+        buildPropertyFilterWhere({
+            key: 'source',
+            name: 'Source',
+            valueType: 'url',
+            operator: 'equals',
+            value: 'https://example.com/docs',
+        }),
+        {
+            properties: {
+                some: {
+                    definition: {
+                        is: {
+                            key: 'source',
+                        },
+                    },
+                    textValueNormalized: 'https://example.com/docs',
                 },
             },
         },

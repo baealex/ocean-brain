@@ -18,6 +18,7 @@ const Route = getRouteApi(SETTINGS_PROPERTIES_ROUTE);
 
 const PROPERTY_TYPE_OPTIONS: { value: NotePropertyValueType; label: string; description: string }[] = [
     { value: 'text', label: 'Text', description: 'Short status or label values.' },
+    { value: 'url', label: 'URL', description: 'External sources, issues, docs, or references.' },
     { value: 'number', label: 'Number', description: 'Priority, score, or count values.' },
     { value: 'date', label: 'Date', description: 'Due dates and milestones.' },
     { value: 'boolean', label: 'Boolean', description: 'True or false flags.' },

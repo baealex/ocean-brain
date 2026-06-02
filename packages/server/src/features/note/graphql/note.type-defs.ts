@@ -31,6 +31,7 @@ export const noteType = gql`
 
     enum NotePropertyValueType {
         text
+        url
         number
         date
         boolean

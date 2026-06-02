@@ -268,6 +268,28 @@ const normalizeTextValue = (value: string) => {
     return value;
 };
 
+export const normalizeUrlValue = (value: string) => {
+    const trimmedValue = normalizeTextValue(value.trim());
+
+    if (!trimmedValue) {
+        throw new InvalidNotePropertyInputError('URL property value is required.');
+    }
+
+    let url: URL;
+
+    try {
+        url = new URL(trimmedValue);
+    } catch {
+        throw new InvalidNotePropertyInputError('URL property values must be valid http(s) URLs.');
+    }
+
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+        throw new InvalidNotePropertyInputError('URL property values must use http or https.');
+    }
+
+    return url.toString();
+};
+
 const normalizeDateValue = (value: string) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
         throw new InvalidNotePropertyInputError('Date property values must use YYYY-MM-DD.');
@@ -332,6 +354,7 @@ const serializePropertyValue = (property: NotePropertyWithDefinition) => {
             return property.boolValue === null ? '' : String(property.boolValue);
         case 'select':
             return property.option?.value ?? '';
+        case 'url':
         case 'text':
         default:
             return property.textValue ?? '';
@@ -533,6 +556,10 @@ const buildTypedValueData = async (
             }
 
             return { ...resetValues, optionId: option.id };
+        }
+        case 'url': {
+            const urlValue = normalizeUrlValue(input.value);
+            return { ...resetValues, textValue: urlValue, textValueNormalized: urlValue.toLowerCase() };
         }
         case 'text': {
             const textValue = normalizeTextValue(input.value);

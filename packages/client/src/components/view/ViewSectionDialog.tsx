@@ -402,14 +402,20 @@ export default function ViewSectionDialog({
                                                                 ? 'date'
                                                                 : property.valueType === 'number'
                                                                   ? 'number'
-                                                                  : 'text'
+                                                                  : property.valueType === 'url'
+                                                                    ? 'url'
+                                                                    : 'text'
                                                         }
                                                         value={filter.value}
                                                         onChange={(event) =>
                                                             updateFilter(filter.id, { value: event.target.value })
                                                         }
                                                         placeholder={
-                                                            property.valueType === 'text' ? 'Value' : undefined
+                                                            property.valueType === 'url'
+                                                                ? 'https://example.com'
+                                                                : property.valueType === 'text'
+                                                                  ? 'Value'
+                                                                  : undefined
                                                         }
                                                     />
                                                 )

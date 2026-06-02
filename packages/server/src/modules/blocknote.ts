@@ -271,6 +271,184 @@ function preprocessMarkdownExplicitTags(markdown: string) {
     };
 }
 
+const MARKDOWN_ANGLE_BRACKET_TOKEN_PATTERN = /<([^<>\n]+)>/g;
+const MARKDOWN_FENCED_CODE_PATTERN = /^ {0,3}(`{3,}|~{3,})/;
+const ANGLE_BRACKET_PLACEHOLDER_PREFIX = '\uE000OBANGLE';
+const ANGLE_BRACKET_PLACEHOLDER_SUFFIX = '\uE001';
+
+function isMarkdownAutolinkAngleBracketText(innerText: string) {
+    if (innerText !== innerText.trim()) {
+        return false;
+    }
+
+    return /^[a-z][a-z0-9.+-]{1,31}:[^\s<>]*$/i.test(innerText) || /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(innerText);
+}
+
+function countLiteralAngleBracketTextTokens(markdown: string) {
+    const tokenCounts = new Map<string, number>();
+
+    for (const match of markdown.matchAll(MARKDOWN_ANGLE_BRACKET_TOKEN_PATTERN)) {
+        const token = match[0];
+        const innerText = match[1] ?? '';
+
+        if (!token || isMarkdownAutolinkAngleBracketText(innerText)) {
+            continue;
+        }
+
+        tokenCounts.set(token, (tokenCounts.get(token) ?? 0) + 1);
+    }
+
+    return tokenCounts;
+}
+
+export function extractLiteralAngleBracketTextTokens(markdown: string) {
+    return [...countLiteralAngleBracketTextTokens(markdown).keys()];
+}
+
+export function hasLiteralAngleBracketTextTokenLoss(sourceMarkdown: string, renderedMarkdown: string) {
+    const sourceCounts = countLiteralAngleBracketTextTokens(sourceMarkdown);
+
+    if (sourceCounts.size === 0) {
+        return false;
+    }
+
+    const renderedCounts = countLiteralAngleBracketTextTokens(renderedMarkdown);
+
+    for (const [token, sourceCount] of sourceCounts) {
+        if ((renderedCounts.get(token) ?? 0) < sourceCount) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function protectMarkdownTextAngleBrackets(markdown: string) {
+    const protectedLines: string[] = [];
+    const placeholderToToken = new Map<string, string>();
+    let activeFence: { marker: '`' | '~'; length: number } | null = null;
+
+    for (const line of markdown.split(/(?<=\n)/)) {
+        const { body: lineBody, lineEnding } = splitMarkdownLineEnding(line);
+        const fenceMatch = lineBody.match(MARKDOWN_FENCED_CODE_PATTERN);
+
+        if (activeFence) {
+            protectedLines.push(line);
+
+            if (isClosingFenceLine(lineBody, activeFence)) {
+                activeFence = null;
+            }
+
+            continue;
+        }
+
+        if (fenceMatch?.[1]) {
+            const marker = fenceMatch[1][0] as '`' | '~';
+            activeFence = {
+                marker,
+                length: fenceMatch[1].length,
+            };
+            protectedLines.push(line);
+            continue;
+        }
+
+        if (/^(?: {4,}|\t)/.test(lineBody)) {
+            protectedLines.push(line);
+            continue;
+        }
+
+        protectedLines.push(`${protectMarkdownLineTextAngleBrackets(lineBody, placeholderToToken)}${lineEnding}`);
+    }
+
+    return {
+        markdown: protectedLines.join(''),
+        placeholderToToken,
+    };
+}
+
+function splitMarkdownLineEnding(line: string) {
+    if (line.endsWith('\r\n')) {
+        return {
+            body: line.slice(0, -2),
+            lineEnding: '\r\n',
+        };
+    }
+
+    if (line.endsWith('\n')) {
+        return {
+            body: line.slice(0, -1),
+            lineEnding: '\n',
+        };
+    }
+
+    return {
+        body: line,
+        lineEnding: '',
+    };
+}
+
+function isClosingFenceLine(line: string, fence: { marker: '`' | '~'; length: number }) {
+    const escapedMarker = fence.marker === '`' ? '`' : '~';
+    return new RegExp(`^ {0,3}${escapedMarker}{${fence.length},} *$`).test(line);
+}
+
+function protectMarkdownLineTextAngleBrackets(line: string, placeholderToToken: Map<string, string>) {
+    let result = '';
+    let cursor = 0;
+
+    while (cursor < line.length) {
+        const codeStart = line.indexOf('`', cursor);
+
+        if (codeStart === -1) {
+            result += replaceLiteralAngleBracketTextTokens(line.slice(cursor), placeholderToToken);
+            break;
+        }
+
+        result += replaceLiteralAngleBracketTextTokens(line.slice(cursor, codeStart), placeholderToToken);
+
+        const delimiterLength = countRepeatedCharacter(line, codeStart, '`');
+        const codeEnd = line.indexOf('`'.repeat(delimiterLength), codeStart + delimiterLength);
+
+        if (codeEnd === -1) {
+            result += replaceLiteralAngleBracketTextTokens(line.slice(codeStart), placeholderToToken);
+            break;
+        }
+
+        const codeEndExclusive = codeEnd + delimiterLength;
+        result += line.slice(codeStart, codeEndExclusive);
+        cursor = codeEndExclusive;
+    }
+
+    return result;
+}
+
+function replaceLiteralAngleBracketTextTokens(text: string, placeholderToToken: Map<string, string>) {
+    return text.replace(MARKDOWN_ANGLE_BRACKET_TOKEN_PATTERN, (match, innerText: string) => {
+        if (isMarkdownAutolinkAngleBracketText(innerText)) {
+            return match;
+        }
+
+        const placeholder = createAngleBracketPlaceholder(placeholderToToken.size);
+        placeholderToToken.set(placeholder, match);
+
+        return placeholder;
+    });
+}
+
+function createAngleBracketPlaceholder(index: number) {
+    return `${ANGLE_BRACKET_PLACEHOLDER_PREFIX}${index}${ANGLE_BRACKET_PLACEHOLDER_SUFFIX}`;
+}
+
+function countRepeatedCharacter(value: string, start: number, character: string) {
+    let cursor = start;
+
+    while (value[cursor] === character) {
+        cursor += 1;
+    }
+
+    return cursor - start;
+}
+
 function findTagPlaceholderAtCursor(text: string, cursor: number, placeholderToTag: Map<string, string>) {
     for (const [placeholder, tagToken] of placeholderToTag.entries()) {
         if (text.startsWith(placeholder, cursor)) {
@@ -295,6 +473,31 @@ function restoreRemainingTagPlaceholders(blocks: BlockNote[], placeholderToTag: 
 
             for (const [placeholder, tagToken] of placeholderToTag.entries()) {
                 text = text.split(placeholder).join(`[${tagToken}]`);
+            }
+
+            return {
+                ...inline,
+                text,
+            };
+        }),
+    );
+}
+
+function restoreAngleBracketPlaceholders(blocks: BlockNote[], placeholderToToken: Map<string, string>): BlockNote[] {
+    if (placeholderToToken.size === 0) {
+        return blocks;
+    }
+
+    return mapBlocks(blocks, (content) =>
+        mapBlockContent(content, (inline) => {
+            if (inline.type !== 'text' || typeof inline.text !== 'string') {
+                return inline;
+            }
+
+            let text = inline.text;
+
+            for (const [placeholder, token] of placeholderToToken.entries()) {
+                text = text.split(placeholder).join(token);
             }
 
             return {
@@ -485,13 +688,48 @@ export async function markdownToBlocksJson(
 ): Promise<string> {
     const editor = getEditor();
     const preprocessedMarkdown = preprocessMarkdownExplicitTags(markdown);
-    const blocks = await editor.tryParseMarkdownToBlocks(preprocessedMarkdown.markdown);
-    const restoredBlocks = await restoreCustomInlineContent(
-        blocks as BlockNote[],
+    const contentJson = await parseMarkdownToContentJson(
+        editor,
+        preprocessedMarkdown.markdown,
         deps,
         preprocessedMarkdown.placeholderToTag,
     );
-    return JSON.stringify(restoreRemainingTagPlaceholders(restoredBlocks, preprocessedMarkdown.placeholderToTag));
+
+    if (extractLiteralAngleBracketTextTokens(preprocessedMarkdown.markdown).length === 0) {
+        return contentJson;
+    }
+
+    if (!hasLiteralAngleBracketTextTokenLoss(preprocessedMarkdown.markdown, await blocksToMarkdown(contentJson))) {
+        return contentJson;
+    }
+
+    const protectedMarkdown = protectMarkdownTextAngleBrackets(preprocessedMarkdown.markdown);
+
+    return parseMarkdownToContentJson(
+        editor,
+        protectedMarkdown.markdown,
+        deps,
+        preprocessedMarkdown.placeholderToTag,
+        protectedMarkdown.placeholderToToken,
+    );
+}
+
+async function parseMarkdownToContentJson(
+    editor: ServerBlockNoteEditor,
+    markdown: string,
+    deps: MarkdownImportDeps,
+    placeholderToTag: Map<string, string>,
+    placeholderToAngleBracketToken: Map<string, string> = new Map(),
+) {
+    const blocks = await editor.tryParseMarkdownToBlocks(markdown);
+    const restoredBlocks = await restoreCustomInlineContent(blocks as BlockNote[], deps, placeholderToTag);
+    const restoredTagBlocks = restoreRemainingTagPlaceholders(restoredBlocks, placeholderToTag);
+    const restoredAngleBracketBlocks = restoreAngleBracketPlaceholders(
+        restoredTagBlocks,
+        placeholderToAngleBracketToken,
+    );
+
+    return JSON.stringify(restoredAngleBracketBlocks);
 }
 
 export function extractTagIdsFromContentJson(contentJson: string): string[] {

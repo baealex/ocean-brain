@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
     blocksToMarkdown,
     countReferenceInlinesFromContentJson,
+    extractLiteralAngleBracketTextTokens,
     extractTagIdsFromContentJson,
     hasUnsupportedMarkdownBlocks,
     markdownToBlocksJson,
@@ -412,6 +413,73 @@ test('markdownToBlocksJson leaves plain @ and # tokens as text to avoid accident
             styles: {},
         },
     ]);
+});
+
+test('markdownToBlocksJson preserves angle-bracket text markers', async () => {
+    const markdown = [
+        '**<MARKER> Primary note, <MARKER-A> Follow-up note, <BR> Final note**',
+        '',
+        '* <MARKER> First list item',
+        '* <MARKER-A> Second list item',
+        '* <BR> Third list item',
+    ].join('\n');
+
+    const contentJson = await markdownToBlocksJson(markdown, {
+        ensureTag: async () => {
+            throw new Error('should not ensure tags');
+        },
+        findNotesByTitle: async () => [],
+    });
+    const roundTripMarkdown = await blocksToMarkdown(contentJson);
+
+    assert.match(roundTripMarkdown, /<MARKER> Primary note/);
+    assert.match(roundTripMarkdown, /<MARKER-A> Follow-up note/);
+    assert.match(roundTripMarkdown, /<BR> Final note/);
+    assert.match(roundTripMarkdown, /<MARKER> First list item/);
+    assert.match(roundTripMarkdown, /<MARKER-A> Second list item/);
+    assert.match(roundTripMarkdown, /<BR> Third list item/);
+});
+
+test('markdownToBlocksJson leaves angle-bracket text markers unchanged inside code', async () => {
+    const markdown = ['Inline `<MARKER>` sample.', '', '```', '<MARKER-A>', '```'].join('\n');
+
+    const contentJson = await markdownToBlocksJson(markdown, {
+        ensureTag: async () => {
+            throw new Error('should not ensure tags');
+        },
+        findNotesByTitle: async () => [],
+    });
+    const roundTripMarkdown = await blocksToMarkdown(contentJson);
+
+    assert.match(roundTripMarkdown, /`<MARKER>`/);
+    assert.match(roundTripMarkdown, /```text\n<MARKER-A>\n```/);
+    assert.doesNotMatch(roundTripMarkdown, /&lt;MARKER(?:-A)?&gt;/);
+});
+
+test('markdownToBlocksJson preserves Markdown autolinks while protecting spaced angle text', async () => {
+    const markdown = 'Visit <https://example.com>, email <user@example.com>, keep < https://example.com > literal.';
+
+    const contentJson = await markdownToBlocksJson(markdown, {
+        ensureTag: async () => {
+            throw new Error('should not ensure tags');
+        },
+        findNotesByTitle: async () => [],
+    });
+    const roundTripMarkdown = await blocksToMarkdown(contentJson);
+
+    assert.match(roundTripMarkdown, /<https:\/\/example\.com>/);
+    assert.match(roundTripMarkdown, /<user@example\.com>/);
+    assert.match(roundTripMarkdown, /< https:\/\/example\.com >/);
+    assert.doesNotMatch(roundTripMarkdown, /&lt;/);
+});
+
+test('extractLiteralAngleBracketTextTokens ignores Markdown autolinks', () => {
+    assert.deepEqual(
+        extractLiteralAngleBracketTextTokens(
+            'Visit <https://example.com>, email <user@example.com>, then keep <MARKER_A> as text.',
+        ),
+        ['<MARKER_A>'],
+    );
 });
 
 test('markdownToBlocksJson leaves ambiguous references as plain text', async () => {

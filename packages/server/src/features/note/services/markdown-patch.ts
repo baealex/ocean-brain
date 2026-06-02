@@ -162,6 +162,7 @@ export interface MarkdownChangeFailure {
         | 'HEADING_NOT_FOUND'
         | 'INVALID_HEADING_LEVEL'
         | 'INVALID_PROPERTY_INPUT'
+        | 'MARKDOWN_IMPORT_LOSSY'
         | 'MISSING_BASELINE'
         | 'NOOP'
         | 'REFERENCE_STRUCTURE_DECREASED'

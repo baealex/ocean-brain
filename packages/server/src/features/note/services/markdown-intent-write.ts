@@ -2,7 +2,9 @@ import models, { type NoteLayout } from '~/models.js';
 import {
     blocksToMarkdown,
     countReferenceInlinesFromContentJson,
+    extractLiteralAngleBracketTextTokens,
     extractTagIdsFromContentJson,
+    hasLiteralAngleBracketTextTokenLoss,
     hasUnsupportedMarkdownBlocks,
     markdownToBlocksJson,
 } from '~/modules/blocknote.js';
@@ -265,6 +267,12 @@ const referenceStructureFailure = (): MarkdownChangeFailure => ({
     message: 'The markdown write would reduce structured note reference links.',
 });
 
+const markdownImportLossyFailure = (): MarkdownChangeFailure => ({
+    status: 'failed',
+    reason: 'MARKDOWN_IMPORT_LOSSY',
+    message: 'The markdown write would lose literal text during Markdown import.',
+});
+
 const invalidPropertyInputFailure = (error: InvalidNotePropertyInputError): MarkdownChangeFailure => ({
     status: 'failed',
     reason: 'INVALID_PROPERTY_INPUT',
@@ -339,6 +347,16 @@ const applyMarkdownPlan = async (
     },
 ): Promise<AppliedMarkdownWriteResult | MarkdownChangeFailure> => {
     const content = await deps.parseMarkdownToContentJson(input.plan.afterMarkdown);
+    const literalAngleBracketTokens = extractLiteralAngleBracketTextTokens(input.plan.afterMarkdown);
+
+    if (literalAngleBracketTokens.length > 0) {
+        const importedMarkdown = await deps.renderMarkdown(content);
+
+        if (hasLiteralAngleBracketTextTokenLoss(input.plan.afterMarkdown, importedMarkdown)) {
+            return markdownImportLossyFailure();
+        }
+    }
+
     const beforeReferenceCount = deps.countReferenceInlines?.(input.beforeContentJson) ?? 0;
     const afterReferenceCount = deps.countReferenceInlines?.(content) ?? 0;
 

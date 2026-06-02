@@ -187,6 +187,40 @@ test('markdown intent write refuses apply when structured references would be lo
     });
 });
 
+test('markdown intent write refuses apply when Markdown import loses literal text markers', async () => {
+    const service = createMarkdownIntentWriteService({
+        findNoteById: async () => createNote({ content: 'before-content' }),
+        renderMarkdown: async (content) =>
+            content === 'before-content' ? 'Original sentence.' : '<MARKER> Updated sentence.',
+        parseMarkdownToContentJson: async () => 'after-content',
+        extractTagIds: () => [],
+        updateNote: async () => {
+            throw new Error('should not update');
+        },
+    });
+
+    const result = await service.patchNoteMarkdown({
+        id: 7,
+        expectedUpdatedAt: '2026-05-28T00:00:00.000Z',
+        intent: 'Replace one sentence',
+        selector: {
+            type: 'exact_text',
+            text: 'Original sentence.',
+        },
+        operation: {
+            type: 'replace',
+            replacement: '<MARKER> <MARKER> Updated sentence.',
+        },
+        dryRun: false,
+    });
+
+    assert.deepEqual(result, {
+        status: 'failed',
+        reason: 'MARKDOWN_IMPORT_LOSSY',
+        message: 'The markdown write would lose literal text during Markdown import.',
+    });
+});
+
 test('markdown intent write maps guarded update conflicts to baseline mismatch failures', async () => {
     const service = createMarkdownIntentWriteService({
         findNoteById: async () => createNote(),

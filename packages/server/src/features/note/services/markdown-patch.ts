@@ -161,6 +161,7 @@ export interface MarkdownChangeFailure {
         | 'HEADING_AMBIGUOUS'
         | 'HEADING_NOT_FOUND'
         | 'INVALID_HEADING_LEVEL'
+        | 'INVALID_PROPERTY_INPUT'
         | 'MISSING_BASELINE'
         | 'NOOP'
         | 'REFERENCE_STRUCTURE_DECREASED'

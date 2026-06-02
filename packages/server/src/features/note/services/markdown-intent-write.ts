@@ -22,6 +22,14 @@ import {
     buildMarkdownReplacePlan,
     calculateMarkdownSha256,
 } from './markdown-patch.js';
+import {
+    InvalidNotePropertyInputError,
+    type NotePropertiesByKeyPatchInput,
+    type NotePropertiesPatchInput,
+    resolveNotePropertiesPatchValueTypes,
+    updateNotePropertiesWithVersionGuardAndSnapshot,
+    validateNotePropertiesPatchValues,
+} from './properties.js';
 import { MCP_SNAPSHOT_META } from './snapshot.js';
 import { type GuardedNoteWriteResult, updateNoteWithVersionGuardAndSnapshot } from './write.js';
 import {
@@ -58,6 +66,26 @@ interface MarkdownIntentWriteDeps {
         snapshotMeta?: string;
         force?: boolean;
     }) => Promise<GuardedNoteWriteResult | null>;
+    resolvePropertyPatch?: (patch: NotePropertiesByKeyPatchInput) => Promise<NotePropertiesPatchInput>;
+    validatePropertyPatch?: (patch: NotePropertiesPatchInput) => Promise<NotePropertiesPatchInput>;
+    updateProperties?: (input: {
+        id: number;
+        patch: NotePropertiesPatchInput;
+        expectedUpdatedAt: string;
+        noteData?: {
+            title?: string;
+            layout?: NoteLayout;
+        };
+        snapshotMeta?: string;
+    }) => Promise<{
+        note: {
+            id: number;
+            title: string;
+            layout: NoteLayout;
+            updatedAt: Date;
+        };
+        snapshot: unknown;
+    } | null>;
 }
 
 export interface MarkdownWritePolicy {
@@ -114,6 +142,7 @@ export interface UpdateNoteMetadataInput {
     expectedUpdatedAt: string;
     title?: string;
     layout?: NoteLayout;
+    properties?: NotePropertiesByKeyPatchInput;
 }
 
 export interface AppliedMarkdownWriteResult {
@@ -144,6 +173,7 @@ export interface MetadataUpdatePreview {
     proposed: {
         title?: string;
         layout?: NoteLayout;
+        properties?: NotePropertiesPatchInput;
     };
     warnings: string[];
 }
@@ -235,6 +265,12 @@ const referenceStructureFailure = (): MarkdownChangeFailure => ({
     message: 'The markdown write would reduce structured note reference links.',
 });
 
+const invalidPropertyInputFailure = (error: InvalidNotePropertyInputError): MarkdownChangeFailure => ({
+    status: 'failed',
+    reason: 'INVALID_PROPERTY_INPUT',
+    message: error.message,
+});
+
 const mapGuardedWriteError = (error: unknown): MarkdownChangeFailure | null => {
     if (isNoteVersionConflictError(error) || isInvalidNoteVersionError(error)) {
         return baselineMismatchFailure();
@@ -245,6 +281,30 @@ const mapGuardedWriteError = (error: unknown): MarkdownChangeFailure | null => {
     }
 
     return null;
+};
+
+const resolveMetadataPropertyPatch = async (
+    deps: MarkdownIntentWriteDeps,
+    patch: NotePropertiesByKeyPatchInput | undefined,
+): Promise<NotePropertiesPatchInput | MarkdownChangeFailure | undefined> => {
+    if (patch === undefined) {
+        return undefined;
+    }
+
+    if (!deps.resolvePropertyPatch || !deps.validatePropertyPatch) {
+        throw new Error('Metadata property patch dependencies are not configured.');
+    }
+
+    try {
+        const resolvedPatch = await deps.resolvePropertyPatch(patch);
+        return deps.validatePropertyPatch(resolvedPatch);
+    } catch (error) {
+        if (error instanceof InvalidNotePropertyInputError) {
+            return invalidPropertyInputFailure(error);
+        }
+
+        throw error;
+    }
 };
 
 const noteVersionMatches = (expectedUpdatedAt: string | undefined, currentUpdatedAt: Date) => {
@@ -508,6 +568,11 @@ export const createMarkdownIntentWriteService = (deps: MarkdownIntentWriteDeps) 
         }
 
         const nextTitle = input.title?.trim();
+        const resolvedPropertyPatch = await resolveMetadataPropertyPatch(deps, input.properties);
+
+        if (resolvedPropertyPatch && 'status' in resolvedPropertyPatch) {
+            return resolvedPropertyPatch;
+        }
 
         if (input.title !== undefined && !nextTitle) {
             return {
@@ -517,7 +582,11 @@ export const createMarkdownIntentWriteService = (deps: MarkdownIntentWriteDeps) 
             };
         }
 
-        if (nextTitle === note.title && (input.layout === undefined || input.layout === note.layout)) {
+        if (
+            nextTitle === note.title &&
+            (input.layout === undefined || input.layout === note.layout) &&
+            resolvedPropertyPatch === undefined
+        ) {
             return {
                 status: 'failed',
                 reason: 'NOOP',
@@ -535,6 +604,7 @@ export const createMarkdownIntentWriteService = (deps: MarkdownIntentWriteDeps) 
             proposed: {
                 ...(nextTitle !== undefined ? { title: nextTitle } : {}),
                 ...(input.layout !== undefined ? { layout: input.layout } : {}),
+                ...(resolvedPropertyPatch ? { properties: resolvedPropertyPatch } : {}),
             },
             warnings: [],
         };
@@ -545,6 +615,58 @@ export const createMarkdownIntentWriteService = (deps: MarkdownIntentWriteDeps) 
 
         if (preview.status !== 'dry_run') {
             return preview;
+        }
+
+        if (input.properties !== undefined) {
+            if (!deps.updateProperties) {
+                throw new Error('Metadata property write dependency is not configured.');
+            }
+
+            let updateResult: Awaited<ReturnType<NonNullable<MarkdownIntentWriteDeps['updateProperties']>>>;
+
+            try {
+                updateResult = await deps.updateProperties({
+                    id: input.id,
+                    patch: preview.proposed.properties ?? { set: [], deleteKeys: [] },
+                    expectedUpdatedAt: input.expectedUpdatedAt,
+                    noteData: {
+                        ...(preview.proposed.title !== undefined ? { title: preview.proposed.title } : {}),
+                        ...(preview.proposed.layout !== undefined ? { layout: preview.proposed.layout } : {}),
+                    },
+                    snapshotMeta: MCP_SNAPSHOT_META,
+                });
+            } catch (error) {
+                const mappedError = mapGuardedWriteError(error);
+
+                if (mappedError) {
+                    return mappedError;
+                }
+
+                if (error instanceof InvalidNotePropertyInputError) {
+                    return invalidPropertyInputFailure(error);
+                }
+
+                throw error;
+            }
+
+            if (!updateResult) {
+                return {
+                    status: 'failed',
+                    reason: 'TARGET_NOT_FOUND',
+                    message: 'The requested note was not found.',
+                };
+            }
+
+            return {
+                status: 'applied',
+                note: {
+                    id: String(updateResult.note.id),
+                    title: updateResult.note.title,
+                    layout: updateResult.note.layout,
+                    updatedAt: updateResult.note.updatedAt.toISOString(),
+                },
+                snapshot: serializeSnapshot(updateResult.snapshot),
+            };
         }
 
         let updateResult: GuardedNoteWriteResult | null;
@@ -608,6 +730,9 @@ export const defaultMarkdownIntentWriteService = createMarkdownIntentWriteServic
     countReferenceInlines: countReferenceInlinesFromContentJson,
     hasUnsupportedMarkdownBlocks,
     updateNote: updateNoteWithVersionGuardAndSnapshot,
+    resolvePropertyPatch: resolveNotePropertiesPatchValueTypes,
+    validatePropertyPatch: validateNotePropertiesPatchValues,
+    updateProperties: updateNotePropertiesWithVersionGuardAndSnapshot,
 });
 
 export const patchNoteMarkdown = async (input: PatchNoteMarkdownInput) => {

@@ -9,6 +9,7 @@ import {
     normalizePropertyKey,
     normalizeUrlValue,
     renamePropertyFiltersInViewQuery,
+    resolveNotePropertiesPatchValueTypes,
     updateNotePropertiesWithVersionGuard,
 } from './properties.js';
 import { MissingNoteVersionError } from './write-conflict.js';
@@ -27,6 +28,50 @@ test('normalizeUrlValue accepts only http(s) URLs', () => {
     assert.equal(normalizeUrlValue(' https://example.com/docs '), 'https://example.com/docs');
     assert.throws(() => normalizeUrlValue('example.com'), InvalidNotePropertyInputError);
     assert.throws(() => normalizeUrlValue('javascript:alert(1)'), InvalidNotePropertyInputError);
+});
+
+test('resolveNotePropertiesPatchValueTypes fills value types from shared definitions', async () => {
+    const patch = await resolveNotePropertiesPatchValueTypes(
+        {
+            set: [{ key: ' State ', value: 'todo' }],
+            deleteKeys: [' Project '],
+        },
+        {
+            propertyDefinition: {
+                findMany: async () => [
+                    {
+                        key: 'state',
+                        name: 'State',
+                        valueType: 'select' as const,
+                    },
+                ],
+            },
+        } as never,
+    );
+
+    assert.deepEqual(patch, {
+        set: [{ key: 'state', name: 'State', value: 'todo', valueType: 'select' }],
+        deleteKeys: ['project'],
+    });
+});
+
+test('resolveNotePropertiesPatchValueTypes rejects unknown property keys', async () => {
+    await assert.rejects(
+        () =>
+            resolveNotePropertiesPatchValueTypes(
+                {
+                    set: [{ key: 'state', value: 'todo' }],
+                },
+                {
+                    propertyDefinition: {
+                        findMany: async () => [],
+                    },
+                } as never,
+            ),
+        (error: unknown) =>
+            error instanceof InvalidNotePropertyInputError &&
+            error.message === 'Property state is not defined. Create it in property settings first.',
+    );
 });
 
 test('property definitions require valid select option datasets before write', async () => {

@@ -16,6 +16,7 @@ import type {
     MarkdownPatchOperation,
     MarkdownPatchSelector,
 } from '~/features/note/services/markdown-patch.js';
+import type { NotePropertiesByKeyPatchInput } from '~/features/note/services/properties.js';
 import { MCP_SNAPSHOT_META } from '~/features/note/services/snapshot.js';
 import type { NoteLayout } from '~/models.js';
 import { createAppError } from '~/modules/error-handler.js';
@@ -65,6 +66,62 @@ const resolveOptionalBoolean = (value: unknown, code: string, message: string) =
     }
 
     throw createAppError(400, code, message);
+};
+
+const resolveMetadataPropertyPatch = (value: unknown): NotePropertiesByKeyPatchInput | undefined => {
+    if (value === undefined) {
+        return undefined;
+    }
+
+    if (!isRecord(value)) {
+        throw createAppError(400, 'INVALID_NOTE_PROPERTIES', 'Properties patch must be an object.');
+    }
+
+    const set =
+        value.set === undefined
+            ? undefined
+            : Array.isArray(value.set)
+              ? value.set.map((item) => {
+                    if (!isRecord(item) || typeof item.key !== 'string' || typeof item.value !== 'string') {
+                        throw createAppError(
+                            400,
+                            'INVALID_NOTE_PROPERTIES',
+                            'Property set items must include string key and value fields.',
+                        );
+                    }
+
+                    return {
+                        key: item.key,
+                        value: item.value,
+                    };
+                })
+              : null;
+
+    if (set === null) {
+        throw createAppError(400, 'INVALID_NOTE_PROPERTIES', 'Property set must be an array.');
+    }
+
+    const deleteKeys =
+        value.deleteKeys === undefined
+            ? undefined
+            : Array.isArray(value.deleteKeys)
+              ? value.deleteKeys.map((key) => {
+                    if (typeof key !== 'string') {
+                        throw createAppError(400, 'INVALID_NOTE_PROPERTIES', 'Property deleteKeys must be strings.');
+                    }
+
+                    return key;
+                })
+              : null;
+
+    if (deleteKeys === null) {
+        throw createAppError(400, 'INVALID_NOTE_PROPERTIES', 'Property deleteKeys must be an array.');
+    }
+
+    return {
+        ...(set !== undefined ? { set } : {}),
+        ...(deleteKeys !== undefined ? { deleteKeys } : {}),
+    };
 };
 
 const resolvePositiveNoteId = (value: unknown) => {
@@ -557,9 +614,10 @@ export const createMcpUpdateNoteMetadataHandler = (
     emitEvent: EmitServerEvent = emitServerEvent,
 ): Controller => {
     return async (req, res) => {
-        const { id, expectedUpdatedAt, title, layout, dryRun } = req.body ?? {};
+        const { id, expectedUpdatedAt, title, layout, properties, dryRun } = req.body ?? {};
         const noteId = resolvePositiveNoteId(id);
         const resolvedLayout = resolveNoteLayout(layout);
+        const resolvedProperties = resolveMetadataPropertyPatch(properties);
         const resolvedDryRun = resolveOptionalBoolean(dryRun, 'INVALID_DRY_RUN', 'dryRun must be a boolean.');
 
         if (typeof expectedUpdatedAt !== 'string') {
@@ -574,7 +632,7 @@ export const createMcpUpdateNoteMetadataHandler = (
             throw createAppError(400, 'INVALID_NOTE_LAYOUT', 'Note layout must be one of narrow, wide, or full.');
         }
 
-        if (title === undefined && layout === undefined) {
+        if (title === undefined && layout === undefined && resolvedProperties === undefined) {
             throw createAppError(400, 'INVALID_NOTE_INPUT', 'At least one metadata field must be provided.');
         }
 
@@ -583,6 +641,7 @@ export const createMcpUpdateNoteMetadataHandler = (
             expectedUpdatedAt,
             ...(title !== undefined ? { title } : {}),
             ...(resolvedLayout ? { layout: resolvedLayout } : {}),
+            ...(resolvedProperties !== undefined ? { properties: resolvedProperties } : {}),
             dryRun: resolvedDryRun,
         });
 

@@ -3,6 +3,7 @@ import { useState } from 'react';
 
 import { PageLayout, Skeleton } from '~/components/shared';
 import { Button, Text } from '~/components/ui';
+import { HOME_DEFAULT_LIMIT } from '~/modules/home-pagination';
 import { HOME_ROUTE } from '~/modules/url';
 
 interface RoutePendingViewProps {
@@ -125,6 +126,7 @@ export function QueryErrorView({
                                 to: HOME_ROUTE,
                                 search: {
                                     page: 1,
+                                    limit: HOME_DEFAULT_LIMIT,
                                     sortBy: 'updatedAt',
                                     sortOrder: 'desc',
                                     pinnedFirst: false,

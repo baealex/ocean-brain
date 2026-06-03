@@ -876,7 +876,8 @@ export const getViewSectionNotes = async (
     };
 };
 
-export const getNotesByProperties = async (
+export const getNotesByPropertiesWithDb = async (
+    db: ViewDbClient,
     input: ViewNotesQueryInput,
     pagination?: {
         limit?: number;
@@ -891,7 +892,7 @@ export const getNotesByProperties = async (
 
     const query = {
         ...normalizedQuery,
-        propertyFilters: await hydratePropertyFilters(models, normalizedQuery.propertyFilters, {
+        propertyFilters: await hydratePropertyFilters(db, normalizedQuery.propertyFilters, {
             validateSelectOptions: true,
         }),
     };
@@ -899,8 +900,8 @@ export const getNotesByProperties = async (
     const where = buildViewNotesWhere(query);
 
     const [totalCount, notes] = await Promise.all([
-        models.note.count({ where }),
-        models.note.findMany({
+        db.note.count({ where }),
+        db.note.findMany({
             orderBy: buildViewNotesOrderBy(query),
             where,
             take: normalizedPagination.limit,
@@ -912,6 +913,16 @@ export const getNotesByProperties = async (
         totalCount,
         notes,
     };
+};
+
+export const getNotesByProperties = async (
+    input: ViewNotesQueryInput,
+    pagination?: {
+        limit?: number;
+        offset?: number;
+    },
+): Promise<ViewSectionNotesResult> => {
+    return getNotesByPropertiesWithDb(models, input, pagination);
 };
 
 export const createViewTab = async (title: string) => {

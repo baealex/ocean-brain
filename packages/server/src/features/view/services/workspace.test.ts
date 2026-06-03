@@ -6,6 +6,7 @@ import {
     buildViewSectionWhere,
     clampViewSectionLimit,
     hydratePropertyFilters,
+    normalizeViewDisplayOptions,
     normalizeViewNotesPagination,
     normalizeViewNotesQueryInput,
     normalizeViewPropertyFilters,
@@ -36,6 +37,9 @@ test('normalizeViewSectionInput derives a default title and clamps invalid limit
         {
             title: '@project + @review',
             displayType: 'list',
+            displayOptions: {
+                tableColumns: ['title', 'tags', 'properties', 'createdAt', 'updatedAt'],
+            },
             tagNames: ['@project', '@review'],
             mode: 'or',
             propertyFilters: [],
@@ -55,6 +59,9 @@ test('normalizeViewSectionInput allows all-note views without filters', () => {
         {
             title: 'All notes',
             displayType: 'list',
+            displayOptions: {
+                tableColumns: ['title', 'tags', 'properties', 'createdAt', 'updatedAt'],
+            },
             tagNames: [],
             mode: 'and',
             propertyFilters: [],
@@ -63,6 +70,26 @@ test('normalizeViewSectionInput allows all-note views without filters', () => {
             limit: 5,
         },
     );
+});
+
+test('normalizeViewSectionInput preserves table display sections', () => {
+    assert.equal(
+        normalizeViewSectionInput({
+            title: 'Project tasks',
+            displayType: 'table',
+            displayOptions: {
+                tableColumns: ['title', 'properties', 'updatedAt'],
+            },
+            tagNames: [],
+        }).displayType,
+        'table',
+    );
+});
+
+test('normalizeViewDisplayOptions keeps table title visible and drops duplicates', () => {
+    assert.deepEqual(normalizeViewDisplayOptions({ tableColumns: ['tags', 'tags', 'updatedAt'] }), {
+        tableColumns: ['title', 'tags', 'updatedAt'],
+    });
 });
 
 test('normalizeViewPropertyFilters validates typed filter values', () => {
@@ -377,6 +404,9 @@ const createSectionRecord = (patch: Partial<ViewSectionRecord> = {}): ViewSectio
     tabId: '1',
     title: 'Doing',
     displayType: 'list',
+    displayOptions: {
+        tableColumns: ['title', 'tags', 'properties', 'createdAt', 'updatedAt'],
+    },
     tagNames: [],
     mode: 'and',
     propertyFilters: [],

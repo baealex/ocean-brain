@@ -1,9 +1,13 @@
 import {
+    buildViewSectionInput,
     EMPTY_VIEWS_WORKSPACE,
     formatViewPropertyFilter,
     getActiveViewTab,
+    getViewDisplayTypeLabel,
     getViewPropertyOperatorLabel,
+    getViewTableColumnLabel,
     getViewTagMatchToken,
+    normalizeViewTableColumns,
     normalizeViewTagNames,
     reorderViewSectionsInWorkspace,
     reorderViewTabsInWorkspace,
@@ -20,6 +24,9 @@ const createSection = (section: {
     order: number;
 }) => ({
     displayType: 'list' as const,
+    displayOptions: {
+        tableColumns: ['title', 'tags', 'properties', 'createdAt', 'updatedAt'] as const,
+    },
     propertyFilters: [],
     sortBy: 'updatedAt' as const,
     sortOrder: 'desc' as const,
@@ -167,5 +174,49 @@ describe('view-dashboard helpers', () => {
                 value: null,
             }),
         ).toBe('State is set');
+    });
+
+    it('labels supported view display types', () => {
+        expect(getViewDisplayTypeLabel('list')).toBe('List');
+        expect(getViewDisplayTypeLabel('table')).toBe('Table');
+        expect(getViewDisplayTypeLabel('calendar')).toBe('Unavailable');
+    });
+
+    it('normalizes table columns and keeps title visible', () => {
+        expect(normalizeViewTableColumns(['tags', 'tags', 'updatedAt'])).toEqual(['title', 'tags', 'updatedAt']);
+        expect(normalizeViewTableColumns([])).toEqual(['title', 'tags', 'properties', 'createdAt', 'updatedAt']);
+        expect(getViewTableColumnLabel('createdAt')).toBe('Created');
+    });
+
+    it('builds a mutation input from a saved section while preserving filters', () => {
+        expect(
+            buildViewSectionInput(
+                createSection({
+                    id: 'section-1',
+                    tabId: 'tab-1',
+                    title: 'Tasks',
+                    tagNames: ['@제품'],
+                    mode: 'and',
+                    limit: 5,
+                    order: 0,
+                }),
+                {
+                    sortBy: 'title',
+                    sortOrder: 'asc',
+                },
+            ),
+        ).toEqual({
+            title: 'Tasks',
+            displayType: 'list',
+            displayOptions: {
+                tableColumns: ['title', 'tags', 'properties', 'createdAt', 'updatedAt'],
+            },
+            tagNames: ['@제품'],
+            mode: 'and',
+            propertyFilters: [],
+            sortBy: 'title',
+            sortOrder: 'asc',
+            limit: 5,
+        });
     });
 });

@@ -1,31 +1,41 @@
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
+import { useState } from 'react';
 
-import { fetchViewSection, fetchViewSectionNotes } from '~/apis/view.api';
+import { fetchViewSection, fetchViewSectionNotes, updateViewSection } from '~/apis/view.api';
 import { QueryBoundary } from '~/components/app';
 import { NoteListCard } from '~/components/note';
 import { Empty, FallbackRender, PageLayout, Pagination, Skeleton } from '~/components/shared';
-import { Text } from '~/components/ui';
+import { Text, useToast } from '~/components/ui';
+import { ViewSectionTableRenderer } from '~/components/view';
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
+import type { ViewSortBy, ViewSortOrder } from '~/models/view.model';
 import { queryKeys } from '~/modules/query-key-factory';
 import { VIEW_NOTES_ROUTE } from '~/modules/url';
-import { formatViewPropertyFilter, getViewTagMatchLabel } from '~/modules/view-dashboard';
+import { buildViewSectionInput, formatViewPropertyFilter, getViewTagMatchLabel } from '~/modules/view-dashboard';
 
 const Route = getRouteApi(VIEW_NOTES_ROUTE);
 
 function ViewNotesContent() {
     const navigate = Route.useNavigate();
+    const queryClient = useQueryClient();
+    const toast = useToast();
     const { page, sectionId } = Route.useSearch();
     const { onDelete, onPinned, deleteWarningDialog } = useNoteMutate();
+    const [isSortPending, setIsSortPending] = useState(false);
     const limit = 25;
 
-    const { data: sectionData } = useQuery({
+    const { data: sectionData } = useSuspenseQuery({
         queryKey: queryKeys.views.section(sectionId),
         async queryFn() {
             const response = await fetchViewSection(sectionId);
 
             if (response.type === 'error') {
                 throw response;
+            }
+
+            if (!response.viewSection) {
+                throw new Error('View section not found.');
             }
 
             return response.viewSection;
@@ -51,10 +61,10 @@ function ViewNotesContent() {
         },
     });
 
-    const heading = sectionData?.title || 'View Notes';
-    const tagNames = sectionData?.tagNames ?? [];
-    const mode = sectionData?.mode ?? 'and';
-    const propertyFilters = sectionData?.propertyFilters ?? [];
+    const heading = sectionData.title;
+    const tagNames = sectionData.tagNames;
+    const mode = sectionData.mode;
+    const propertyFilters = sectionData.propertyFilters;
     const hasTagFilter = tagNames.length > 0;
     const hasPropertyFilter = propertyFilters.length > 0;
     const filterSummary = hasTagFilter
@@ -64,6 +74,61 @@ function ViewNotesContent() {
         : hasPropertyFilter
           ? 'Property filters'
           : 'All notes';
+    const pagination = (
+        <FallbackRender fallback={null}>
+            {data.totalCount && limit < data.totalCount && (
+                <Pagination
+                    page={page}
+                    last={Math.ceil(data.totalCount / limit)}
+                    onChange={(nextPage) => {
+                        navigate({
+                            search: (prev) => ({
+                                ...prev,
+                                page: nextPage,
+                            }),
+                        });
+                    }}
+                />
+            )}
+        </FallbackRender>
+    );
+
+    const updateSectionSort = async (sortBy: ViewSortBy) => {
+        if (isSortPending) {
+            return;
+        }
+
+        const nextSortOrder: ViewSortOrder =
+            sectionData.sortBy === sortBy
+                ? sectionData.sortOrder === 'asc'
+                    ? 'desc'
+                    : 'asc'
+                : sortBy === 'title'
+                  ? 'asc'
+                  : 'desc';
+
+        setIsSortPending(true);
+
+        const response = await updateViewSection(
+            sectionData.id,
+            buildViewSectionInput(sectionData, {
+                sortBy,
+                sortOrder: nextSortOrder,
+            }),
+        );
+
+        if (response.type === 'error') {
+            toast(response.errors[0]?.message ?? 'Failed to update table sort.');
+            setIsSortPending(false);
+            return;
+        }
+
+        await queryClient.invalidateQueries({
+            queryKey: queryKeys.views.all(),
+            exact: false,
+        });
+        setIsSortPending(false);
+    };
 
     return (
         <PageLayout
@@ -108,7 +173,27 @@ function ViewNotesContent() {
                     />
                 }
             >
-                {data.notes.length > 0 && (
+                {data.notes.length > 0 && sectionData.displayType === 'table' ? (
+                    <div className="flex flex-col gap-4">
+                        <ViewSectionTableRenderer
+                            section={sectionData}
+                            notes={data.notes}
+                            isPending={false}
+                            isError={false}
+                            onRetry={() =>
+                                void queryClient.invalidateQueries({
+                                    queryKey: queryKeys.views.sectionNotes(sectionId, {
+                                        limit,
+                                        offset: (page - 1) * limit,
+                                    }),
+                                })
+                            }
+                            onSortChange={updateSectionSort}
+                            isSortPending={isSortPending}
+                        />
+                        {pagination}
+                    </div>
+                ) : data.notes.length > 0 ? (
                     <div className="flex flex-col gap-4">
                         <div className="grid-auto-cards grid gap-5">
                             {data.notes.map((note) => (
@@ -120,24 +205,9 @@ function ViewNotesContent() {
                                 />
                             ))}
                         </div>
-                        <FallbackRender fallback={null}>
-                            {data.totalCount && limit < data.totalCount && (
-                                <Pagination
-                                    page={page}
-                                    last={Math.ceil(data.totalCount / limit)}
-                                    onChange={(nextPage) => {
-                                        navigate({
-                                            search: (prev) => ({
-                                                ...prev,
-                                                page: nextPage,
-                                            }),
-                                        });
-                                    }}
-                                />
-                            )}
-                        </FallbackRender>
+                        {pagination}
                     </div>
-                )}
+                ) : null}
             </FallbackRender>
             {deleteWarningDialog}
         </PageLayout>

@@ -1,5 +1,6 @@
 import type { Note } from '~/models/note.model';
 import type {
+    ViewDisplayOptions,
     ViewDisplayType,
     ViewPropertyFilter,
     ViewSection,
@@ -12,6 +13,7 @@ import { graphQuery } from '~/modules/graph-query';
 export interface ViewSectionInput {
     title?: string;
     displayType?: ViewDisplayType;
+    displayOptions?: ViewDisplayOptions;
     tagNames?: string[];
     mode?: 'and' | 'or';
     propertyFilters?: Array<Pick<ViewPropertyFilter, 'key' | 'valueType' | 'operator' | 'value'>>;
@@ -25,6 +27,9 @@ const VIEW_SECTION_FIELDS = `
     tabId
     title
     displayType
+    displayOptions {
+        tableColumns
+    }
     tagNames
     mode
     propertyFilters {

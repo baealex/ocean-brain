@@ -18,6 +18,7 @@ export const viewType = gql`
         tabId: ID!
         title: String!
         displayType: ViewDisplayType!
+        displayOptions: ViewDisplayOptions!
         tagNames: [String!]!
         mode: TagMatchMode!
         propertyFilters: [ViewPropertyFilter!]!
@@ -35,9 +36,22 @@ export const viewType = gql`
         value: String
     }
 
+    type ViewDisplayOptions {
+        tableColumns: [ViewTableColumn!]!
+    }
+
     enum ViewDisplayType {
         list
+        table
         calendar
+    }
+
+    enum ViewTableColumn {
+        title
+        tags
+        properties
+        createdAt
+        updatedAt
     }
 
     enum ViewPropertyFilterOperator {
@@ -66,9 +80,14 @@ export const viewType = gql`
         value: String
     }
 
+    input ViewDisplayOptionsInput {
+        tableColumns: [ViewTableColumn!]
+    }
+
     input ViewSectionInput {
         title: String
         displayType: ViewDisplayType
+        displayOptions: ViewDisplayOptionsInput
         tagNames: [String!]
         mode: TagMatchMode
         propertyFilters: [ViewPropertyFilterInput!]

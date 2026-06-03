@@ -1,15 +1,19 @@
 import type {
+    ViewDisplayOptions,
+    ViewDisplayType,
     ViewPropertyFilter,
     ViewPropertyFilterOperator,
     ViewSection,
     ViewsWorkspace,
     ViewTab,
+    ViewTableColumn,
     ViewTagMatchMode,
 } from '~/models/view.model';
 
 export const DEFAULT_VIEW_SECTION_LIMIT = 5;
 export const MIN_VIEW_SECTION_LIMIT = 1;
 export const MAX_VIEW_SECTION_LIMIT = 20;
+export const DEFAULT_VIEW_TABLE_COLUMNS: ViewTableColumn[] = ['title', 'tags', 'properties', 'createdAt', 'updatedAt'];
 
 export const EMPTY_VIEWS_WORKSPACE: ViewsWorkspace = {
     activeTabId: null,
@@ -137,6 +141,50 @@ export const getViewPropertyOperatorLabel = (operator: ViewPropertyFilterOperato
     }
 };
 
+export const getViewDisplayTypeLabel = (displayType: ViewDisplayType) => {
+    switch (displayType) {
+        case 'table':
+            return 'Table';
+        case 'calendar':
+            return 'Unavailable';
+        case 'list':
+        default:
+            return 'List';
+    }
+};
+
+export const getViewTableColumnLabel = (column: ViewTableColumn) => {
+    switch (column) {
+        case 'tags':
+            return 'Tags';
+        case 'properties':
+            return 'Properties';
+        case 'createdAt':
+            return 'Created';
+        case 'updatedAt':
+            return 'Updated';
+        case 'title':
+        default:
+            return 'Title';
+    }
+};
+
+export const normalizeViewTableColumns = (columns?: readonly ViewTableColumn[] | null): ViewTableColumn[] => {
+    const allowedColumns = new Set(DEFAULT_VIEW_TABLE_COLUMNS);
+    const nextColumns = (columns ?? []).filter((column): column is ViewTableColumn => allowedColumns.has(column));
+    const uniqueColumns = Array.from(new Set(nextColumns));
+
+    if (uniqueColumns.length === 0) {
+        return [...DEFAULT_VIEW_TABLE_COLUMNS];
+    }
+
+    return uniqueColumns.includes('title') ? uniqueColumns : ['title', ...uniqueColumns];
+};
+
+export const normalizeViewDisplayOptions = (options?: Partial<ViewDisplayOptions> | null): ViewDisplayOptions => ({
+    tableColumns: normalizeViewTableColumns(options?.tableColumns),
+});
+
 export const formatViewPropertyFilter = (filter: ViewPropertyFilter) => {
     const operatorLabel = getViewPropertyOperatorLabel(filter.operator);
 
@@ -145,6 +193,33 @@ export const formatViewPropertyFilter = (filter: ViewPropertyFilter) => {
     }
 
     return `${filter.name} ${operatorLabel} ${filter.value ?? ''}`.trim();
+};
+
+export const buildViewSectionInput = (
+    section: ViewSection,
+    overrides: Partial<Pick<ViewSection, 'sortBy' | 'sortOrder' | 'displayOptions' | 'displayType'>> = {},
+) => {
+    const nextSection = {
+        ...section,
+        ...overrides,
+    };
+
+    return {
+        title: nextSection.title,
+        displayType: nextSection.displayType,
+        displayOptions: normalizeViewDisplayOptions(nextSection.displayOptions),
+        tagNames: nextSection.tagNames,
+        mode: nextSection.mode,
+        propertyFilters: nextSection.propertyFilters.map((filter) => ({
+            key: filter.key,
+            valueType: filter.valueType,
+            operator: filter.operator,
+            value: filter.value,
+        })),
+        sortBy: nextSection.sortBy,
+        sortOrder: nextSection.sortOrder,
+        limit: nextSection.limit,
+    };
 };
 
 export const buildViewNotesSearch = (section: Pick<ViewSection, 'id'>) => ({

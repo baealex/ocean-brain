@@ -1,8 +1,13 @@
 export type ViewTagMatchMode = 'and' | 'or';
-export type ViewDisplayType = 'list' | 'calendar';
+export type ViewDisplayType = 'list' | 'table' | 'calendar';
+export type ViewTableColumn = 'title' | 'tags' | 'properties' | 'createdAt' | 'updatedAt';
 export type ViewPropertyFilterOperator = 'equals' | 'before' | 'after' | 'exists' | 'notExists';
 export type ViewSortBy = 'updatedAt' | 'createdAt' | 'title';
 export type ViewSortOrder = 'asc' | 'desc';
+
+export interface ViewDisplayOptions {
+    tableColumns: ViewTableColumn[];
+}
 
 export interface ViewPropertyFilter {
     key: string;
@@ -17,6 +22,7 @@ export interface ViewSection {
     tabId: string;
     title: string;
     displayType: ViewDisplayType;
+    displayOptions: ViewDisplayOptions;
     tagNames: string[];
     mode: ViewTagMatchMode;
     propertyFilters: ViewPropertyFilter[];

@@ -3,6 +3,7 @@ import type { NotePropertyKeySummary } from '~/apis/note.api';
 import { ModalActionRow } from '~/components/shared';
 import {
     Button,
+    Checkbox,
     Input,
     Label,
     Modal,
@@ -15,19 +16,31 @@ import {
 } from '~/components/ui';
 import type { Tag } from '~/models/tag.model';
 import type {
+    ViewDisplayOptions,
     ViewDisplayType,
     ViewPropertyFilter,
     ViewPropertyFilterOperator,
     ViewSection,
     ViewSortBy,
     ViewSortOrder,
+    ViewTableColumn,
     ViewTagMatchMode,
 } from '~/models/view.model';
-import { getViewPropertyOperatorLabel, getViewTagMatchLabel, normalizeViewTagNames } from '~/modules/view-dashboard';
+import {
+    DEFAULT_VIEW_TABLE_COLUMNS,
+    getViewDisplayTypeLabel,
+    getViewPropertyOperatorLabel,
+    getViewTableColumnLabel,
+    getViewTagMatchLabel,
+    normalizeViewDisplayOptions,
+    normalizeViewTableColumns,
+    normalizeViewTagNames,
+} from '~/modules/view-dashboard';
 
 export interface ViewSectionDialogDraft {
     title: string;
     displayType: ViewDisplayType;
+    displayOptions: ViewDisplayOptions;
     tagNames: string[];
     mode: ViewTagMatchMode;
     propertyFilters: Array<Pick<ViewPropertyFilter, 'key' | 'valueType' | 'operator' | 'value'>>;
@@ -56,8 +69,18 @@ interface ViewSectionDialogProps {
 }
 
 const PROPERTY_PLACEHOLDER_VALUE = '__choose_property__';
+const TABLE_COLUMN_OPTIONS: ViewTableColumn[] = ['title', 'tags', 'properties', 'createdAt', 'updatedAt'];
 
 const getInitialLimitValue = (section?: ViewSection | null) => String(section?.limit ?? 5);
+const getInitialDisplayTypeValue = (section?: ViewSection | null): ViewDisplayType => {
+    if (section?.displayType === 'table') {
+        return 'table';
+    }
+
+    return 'list';
+};
+const getInitialTableColumnsValue = (section?: ViewSection | null): ViewTableColumn[] =>
+    normalizeViewTableColumns(section?.displayOptions?.tableColumns ?? DEFAULT_VIEW_TABLE_COLUMNS);
 const getInitialModeValue = (section?: ViewSection | null): ViewTagMatchMode => section?.mode ?? 'and';
 const getInitialTagsValue = (section?: ViewSection | null) => (section ? section.tagNames.join(', ') : '');
 const getInitialTitleValue = (section?: ViewSection | null) => section?.title ?? '';
@@ -122,6 +145,8 @@ export default function ViewSectionDialog({
     onSubmit,
 }: ViewSectionDialogProps) {
     const [title, setTitle] = useState(getInitialTitleValue(initialSection));
+    const [displayType, setDisplayType] = useState<ViewDisplayType>(getInitialDisplayTypeValue(initialSection));
+    const [tableColumns, setTableColumns] = useState<ViewTableColumn[]>(getInitialTableColumnsValue(initialSection));
     const [tagInput, setTagInput] = useState(getInitialTagsValue(initialSection));
     const [matchMode, setMatchMode] = useState<ViewTagMatchMode>(getInitialModeValue(initialSection));
     const [sortBy, setSortBy] = useState<ViewSortBy>(getInitialSortByValue(initialSection));
@@ -142,6 +167,8 @@ export default function ViewSectionDialog({
         }
 
         setTitle(getInitialTitleValue(initialSection));
+        setDisplayType(getInitialDisplayTypeValue(initialSection));
+        setTableColumns(getInitialTableColumnsValue(initialSection));
         setTagInput(getInitialTagsValue(initialSection));
         setMatchMode(getInitialModeValue(initialSection));
         setSortBy(getInitialSortByValue(initialSection));
@@ -155,6 +182,22 @@ export default function ViewSectionDialog({
     const selectedTagNames = normalizeViewTagNames([tagInput]);
     const showTagFilter = isTagFilterOpen || selectedTagNames.length > 0;
     const isAllNotesView = selectedTagNames.length === 0 && filters.length === 0;
+
+    const toggleTableColumn = (column: ViewTableColumn) => {
+        if (column === 'title') {
+            return;
+        }
+
+        setTableColumns((currentColumns) => {
+            if (currentColumns.includes(column)) {
+                const nextColumns = currentColumns.filter((currentColumn) => currentColumn !== column);
+                return nextColumns.length > 0 ? nextColumns : currentColumns;
+            }
+
+            return normalizeViewTableColumns([...currentColumns, column]);
+        });
+        setFormError('');
+    };
 
     const toggleTagName = (tagName: string) => {
         const nextTagNames = selectedTagNames.includes(tagName)
@@ -274,7 +317,10 @@ export default function ViewSectionDialog({
 
                         onSubmit({
                             title,
-                            displayType: 'list',
+                            displayType,
+                            displayOptions: normalizeViewDisplayOptions({
+                                tableColumns,
+                            }),
                             tagNames,
                             mode: matchMode,
                             propertyFilters,
@@ -296,6 +342,75 @@ export default function ViewSectionDialog({
                             autoFocus
                         />
                     </div>
+
+                    <section className="flex flex-col gap-3 rounded-[18px] border border-border-subtle bg-elevated px-4 py-3">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="min-w-0">
+                                <Label size="md">Display</Label>
+                                <Text as="p" variant="meta" tone="tertiary" className="mt-1">
+                                    Show the same query as a compact list or a table.
+                                </Text>
+                            </div>
+                            <Text as="span" variant="meta" tone="tertiary">
+                                {getViewDisplayTypeLabel(displayType)}
+                            </Text>
+                        </div>
+                        <ToggleGroup
+                            type="single"
+                            value={displayType}
+                            onValueChange={(value) => {
+                                if (value === 'list' || value === 'table') {
+                                    setDisplayType(value);
+                                }
+                            }}
+                            variant="quiet"
+                            size="sm"
+                            className="self-start"
+                        >
+                            <ToggleGroupItem value="list" aria-label="Show as list">
+                                List
+                            </ToggleGroupItem>
+                            <ToggleGroupItem value="table" aria-label="Show as table">
+                                Table
+                            </ToggleGroupItem>
+                        </ToggleGroup>
+                        {displayType === 'table' ? (
+                            <div className="rounded-[16px] border border-border-subtle bg-subtle/45 p-3">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <Label size="sm">Table columns</Label>
+                                    <Text as="span" variant="meta" tone="tertiary">
+                                        {tableColumns.length} shown
+                                    </Text>
+                                </div>
+                                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                                    {TABLE_COLUMN_OPTIONS.map((column) => {
+                                        const label = getViewTableColumnLabel(column);
+
+                                        return (
+                                            <div
+                                                key={column}
+                                                className="flex items-center gap-2 rounded-[12px] border border-border-subtle bg-elevated px-3 py-2"
+                                            >
+                                                <Checkbox
+                                                    size="sm"
+                                                    checked={tableColumns.includes(column)}
+                                                    disabled={column === 'title'}
+                                                    aria-label={`Show ${label} column`}
+                                                    onChange={() => toggleTableColumn(column)}
+                                                />
+                                                <Text as="span" variant="label" tone="secondary">
+                                                    {label}
+                                                </Text>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                <Text as="p" variant="meta" tone="tertiary" className="mt-2">
+                                    Title is always shown because it opens the note.
+                                </Text>
+                            </div>
+                        ) : null}
+                    </section>
 
                     <section className="flex flex-col gap-3 rounded-[20px] border border-border-subtle bg-subtle/40 p-4">
                         <div className="flex flex-wrap items-start justify-between gap-3">

@@ -289,5 +289,6 @@ enum ViewTagMatchMode {
 
 enum ViewDisplayType {
   list
+  table
   calendar
 }

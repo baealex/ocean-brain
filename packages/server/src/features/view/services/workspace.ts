@@ -8,10 +8,15 @@ import { buildNoteTagNamesWhere, type NoteTagMatchMode } from '~/features/note/s
 import models from '~/models.js';
 
 export type ViewTagMatchMode = NoteTagMatchMode;
-export type ViewDisplayType = 'list' | 'calendar';
+export type ViewDisplayType = 'list' | 'table' | 'calendar';
+export type ViewTableColumn = 'title' | 'tags' | 'properties' | 'createdAt' | 'updatedAt';
 export type ViewPropertyFilterOperator = 'equals' | 'before' | 'after' | 'exists' | 'notExists';
 export type ViewSortBy = 'updatedAt' | 'createdAt' | 'title';
 export type ViewSortOrder = 'asc' | 'desc';
+
+export interface ViewDisplayOptionsRecord {
+    tableColumns: ViewTableColumn[];
+}
 
 export interface ViewPropertyFilterRecord {
     key: string;
@@ -26,6 +31,7 @@ export interface ViewSectionRecord {
     tabId: string;
     title: string;
     displayType: ViewDisplayType;
+    displayOptions: ViewDisplayOptionsRecord;
     tagNames: string[];
     mode: ViewTagMatchMode;
     propertyFilters: ViewPropertyFilterRecord[];
@@ -50,6 +56,7 @@ export interface ViewWorkspaceRecord {
 export interface ViewSectionInput {
     title?: string;
     displayType?: ViewDisplayType;
+    displayOptions?: ViewDisplayOptionsInput | null;
     tagNames?: string[] | null;
     mode?: ViewTagMatchMode;
     propertyFilters?: ViewPropertyFilterInput[] | null;
@@ -81,6 +88,10 @@ export interface ViewPropertyFilterInput {
     valueType?: PropertyValueType | null;
 }
 
+export interface ViewDisplayOptionsInput {
+    tableColumns?: ViewTableColumn[] | null;
+}
+
 export interface ViewSectionNotesResult {
     totalCount: number;
     notes: Note[];
@@ -97,6 +108,7 @@ const MAX_VIEW_PROPERTY_FILTERS = 10;
 const DEFAULT_VIEW_DISPLAY_TYPE: ViewDisplayType = 'list';
 const DEFAULT_VIEW_SORT_BY: ViewSortBy = 'updatedAt';
 const DEFAULT_VIEW_SORT_ORDER: ViewSortOrder = 'desc';
+const DEFAULT_VIEW_TABLE_COLUMNS: ViewTableColumn[] = ['title', 'tags', 'properties', 'createdAt', 'updatedAt'];
 
 type ViewDbClient = typeof models | Prisma.TransactionClient;
 
@@ -149,6 +161,14 @@ interface StoredViewQuery {
     propertyFilters?: ViewPropertyFilterRecord[];
     sortBy?: ViewSortBy;
     sortOrder?: ViewSortOrder;
+    displayOptions?: Partial<ViewDisplayOptionsRecord>;
+}
+
+interface ParsedStoredViewQuery {
+    propertyFilters: ViewPropertyFilterRecord[];
+    sortBy: ViewSortBy;
+    sortOrder: ViewSortOrder;
+    displayOptions: ViewDisplayOptionsRecord;
 }
 
 const isViewPropertyFilterOperator = (value: unknown): value is ViewPropertyFilterOperator => {
@@ -166,8 +186,22 @@ const isPropertyValueType = (value: unknown): value is PropertyValueType => {
     );
 };
 
+const isViewTableColumn = (value: unknown): value is ViewTableColumn => {
+    return (
+        value === 'title' ||
+        value === 'tags' ||
+        value === 'properties' ||
+        value === 'createdAt' ||
+        value === 'updatedAt'
+    );
+};
+
 const normalizeViewDisplayType = (value: ViewDisplayType | undefined): ViewDisplayType => {
-    return value === 'calendar' ? 'calendar' : DEFAULT_VIEW_DISPLAY_TYPE;
+    if (value === 'table' || value === 'calendar') {
+        return value;
+    }
+
+    return DEFAULT_VIEW_DISPLAY_TYPE;
 };
 
 const normalizeViewSortBy = (value: ViewSortBy | undefined): ViewSortBy => {
@@ -176,6 +210,25 @@ const normalizeViewSortBy = (value: ViewSortBy | undefined): ViewSortBy => {
 
 const normalizeViewSortOrder = (value: ViewSortOrder | undefined): ViewSortOrder => {
     return value === 'asc' ? 'asc' : DEFAULT_VIEW_SORT_ORDER;
+};
+
+export const normalizeViewTableColumns = (columns: ViewTableColumn[] | null | undefined): ViewTableColumn[] => {
+    const normalizedColumns = (columns ?? []).filter(isViewTableColumn);
+    const uniqueColumns = Array.from(new Set(normalizedColumns));
+
+    if (uniqueColumns.length === 0) {
+        return [...DEFAULT_VIEW_TABLE_COLUMNS];
+    }
+
+    return uniqueColumns.includes('title') ? uniqueColumns : ['title' as const, ...uniqueColumns];
+};
+
+export const normalizeViewDisplayOptions = (
+    options: ViewDisplayOptionsInput | Partial<ViewDisplayOptionsRecord> | null | undefined,
+): ViewDisplayOptionsRecord => {
+    return {
+        tableColumns: normalizeViewTableColumns(options?.tableColumns),
+    };
 };
 
 const normalizeFilterValue = ({
@@ -267,12 +320,13 @@ export const normalizeViewPropertyFilters = (filters: ViewPropertyFilterInput[] 
         .filter((filter): filter is ViewPropertyFilterRecord => filter !== null);
 };
 
-const parseStoredViewQuery = (value: string | null): Required<StoredViewQuery> => {
+const parseStoredViewQuery = (value: string | null): ParsedStoredViewQuery => {
     if (!value) {
         return {
             propertyFilters: [],
             sortBy: DEFAULT_VIEW_SORT_BY,
             sortOrder: DEFAULT_VIEW_SORT_ORDER,
+            displayOptions: normalizeViewDisplayOptions(null),
         };
     }
 
@@ -283,21 +337,24 @@ const parseStoredViewQuery = (value: string | null): Required<StoredViewQuery> =
             propertyFilters: normalizeViewPropertyFilters(parsed.propertyFilters ?? []),
             sortBy: normalizeViewSortBy(parsed.sortBy),
             sortOrder: normalizeViewSortOrder(parsed.sortOrder),
+            displayOptions: normalizeViewDisplayOptions(parsed.displayOptions),
         };
     } catch {
         return {
             propertyFilters: [],
             sortBy: DEFAULT_VIEW_SORT_BY,
             sortOrder: DEFAULT_VIEW_SORT_ORDER,
+            displayOptions: normalizeViewDisplayOptions(null),
         };
     }
 };
 
-const serializeStoredViewQuery = ({ propertyFilters, sortBy, sortOrder }: Required<StoredViewQuery>) => {
+const serializeStoredViewQuery = ({ propertyFilters, sortBy, sortOrder, displayOptions }: ParsedStoredViewQuery) => {
     return JSON.stringify({
         propertyFilters,
         sortBy,
         sortOrder,
+        displayOptions,
     });
 };
 
@@ -338,10 +395,12 @@ export const normalizeViewSectionInput = (input: ViewSectionInput) => {
     const trimmedTitle = input.title?.trim() ?? '';
     const sortBy = normalizeViewSortBy(input.sortBy);
     const sortOrder = normalizeViewSortOrder(input.sortOrder);
+    const displayOptions = normalizeViewDisplayOptions(input.displayOptions);
 
     return {
         title: trimmedTitle || buildDefaultSectionTitle(tagNames, propertyFilters),
         displayType: normalizeViewDisplayType(input.displayType),
+        displayOptions,
         tagNames,
         mode: input.mode === 'or' ? 'or' : 'and',
         propertyFilters,
@@ -351,6 +410,7 @@ export const normalizeViewSectionInput = (input: ViewSectionInput) => {
     } satisfies {
         title: string;
         displayType: ViewDisplayType;
+        displayOptions: ViewDisplayOptionsRecord;
         tagNames: string[];
         mode: ViewTagMatchMode;
         propertyFilters: ViewPropertyFilterRecord[];
@@ -432,6 +492,7 @@ const serializeViewSection = (section: DbViewSection): ViewSectionRecord => {
         tabId: String(section.tabId),
         title: section.title,
         displayType: normalizeViewDisplayType(section.displayType as ViewDisplayType),
+        displayOptions: query.displayOptions,
         tagNames: section.tags.map((tag) => tag.name),
         mode: section.mode as ViewTagMatchMode,
         propertyFilters: query.propertyFilters,
@@ -551,6 +612,7 @@ const buildStoredViewQuery = async (db: ViewDbClient, section: ReturnType<typeof
         propertyFilters,
         sortBy: section.sortBy,
         sortOrder: section.sortOrder,
+        displayOptions: section.displayOptions,
     });
 };
 

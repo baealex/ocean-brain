@@ -20,11 +20,18 @@ describe('route-search validators', () => {
             }),
         ).toEqual({
             page: 1,
-            limit: undefined,
+            limit: 28,
             sortBy: 'updatedAt',
             sortOrder: 'desc',
             pinnedFirst: true,
         });
+    });
+
+    it('keeps supported home page sizes and rejects unsupported limits', () => {
+        expect(validateHomeSearch({ limit: '50' }).limit).toBe(50);
+        expect(validateHomeSearch({ limit: '100' }).limit).toBe(100);
+        expect(validateHomeSearch({ limit: '25' }).limit).toBe(28);
+        expect(validateHomeSearch({ limit: '100000' }).limit).toBe(28);
     });
 
     it('returns a safe pagination fallback', () => {

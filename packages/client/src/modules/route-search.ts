@@ -1,12 +1,14 @@
 import dayjs from 'dayjs';
 
 import type { SortBy, SortOrder } from '~/components/shared/NoteFilters';
+import { HOME_DEFAULT_LIMIT, HOME_LIMIT_OPTIONS, type HomeLimit } from '~/modules/home-pagination';
 
 type SearchRecord = Record<string, unknown>;
 
 const HOME_SORT_BY = ['updatedAt', 'createdAt'] as const satisfies readonly SortBy[];
 const SORT_ORDER = ['asc', 'desc'] as const satisfies readonly SortOrder[];
 const CALENDAR_TYPES = ['create', 'update'] as const;
+
 const getFirstValue = (value: unknown) => (Array.isArray(value) ? value[0] : value);
 
 const parsePositiveInt = (
@@ -25,15 +27,14 @@ const parsePositiveInt = (
     return parsed;
 };
 
-const parseOptionalPositiveInt = (value: unknown) => {
-    const normalized = getFirstValue(value);
+const parseNumberEnum = <TValue extends number>(
+    value: unknown,
+    allowedValues: readonly TValue[],
+    fallback: TValue,
+): TValue => {
+    const parsed = parsePositiveInt(value, Number.NaN);
 
-    if (normalized === undefined || normalized === null || normalized === '') {
-        return undefined;
-    }
-
-    const parsed = parsePositiveInt(normalized, Number.NaN);
-    return Number.isNaN(parsed) ? undefined : parsed;
+    return allowedValues.includes(parsed as TValue) ? (parsed as TValue) : fallback;
 };
 
 const parseBoolean = (value: unknown, fallback = false) => {
@@ -67,7 +68,7 @@ const parseEnum = <TValue extends string>(value: unknown, allowedValues: readonl
 
 export interface HomeRouteSearch {
     page: number;
-    limit?: number;
+    limit: HomeLimit;
     sortBy: SortBy;
     sortOrder: SortOrder;
     pinnedFirst: boolean;
@@ -93,7 +94,7 @@ export interface ViewNotesRouteSearch extends PaginationRouteSearch {
 
 export const validateHomeSearch = (search: SearchRecord): HomeRouteSearch => ({
     page: parsePositiveInt(search.page, 1),
-    limit: parseOptionalPositiveInt(search.limit),
+    limit: parseNumberEnum(search.limit, HOME_LIMIT_OPTIONS, HOME_DEFAULT_LIMIT),
     sortBy: parseEnum(search.sortBy, HOME_SORT_BY, 'updatedAt'),
     sortOrder: parseEnum(search.sortOrder, SORT_ORDER, 'desc'),
     pinnedFirst: parseBoolean(search.pinnedFirst, false),

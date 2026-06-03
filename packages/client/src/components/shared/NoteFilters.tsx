@@ -1,13 +1,13 @@
 import * as Icon from '~/components/icon';
 import { Checkbox, Label, Select, SelectItem, Text } from '~/components/ui';
+import { HOME_DEFAULT_LIMIT, HOME_LIMIT_OPTIONS, type HomeLimit, isHomeLimit } from '~/modules/home-pagination';
 
 export type SortBy = 'updatedAt' | 'createdAt';
 export type SortOrder = 'asc' | 'desc';
 
 interface Props {
     itemsPerPage: number;
-    onItemsPerPageChange: (count: number) => void;
-    isAutoLimit?: boolean;
+    onItemsPerPageChange: (count: HomeLimit) => void;
     sortBy: SortBy;
     onSortByChange: (sortBy: SortBy) => void;
     sortOrder: SortOrder;
@@ -19,7 +19,6 @@ interface Props {
 export default function NoteFilters({
     itemsPerPage,
     onItemsPerPageChange,
-    isAutoLimit = false,
     sortBy,
     onSortByChange,
     sortOrder,
@@ -36,18 +35,22 @@ export default function NoteFilters({
                         Items
                     </Text>
                     <Select
-                        value={isAutoLimit ? 'auto' : String(itemsPerPage)}
+                        value={String(itemsPerPage)}
                         onValueChange={(value) => {
-                            if (value === 'auto') return;
-                            onItemsPerPageChange(Number(value));
+                            const nextItemsPerPage = Number(value);
+
+                            if (isHomeLimit(nextItemsPerPage)) {
+                                onItemsPerPageChange(nextItemsPerPage);
+                            }
                         }}
                         variant="ghost"
                         size="sm"
                     >
-                        {isAutoLimit && <SelectItem value="auto">Auto ({itemsPerPage})</SelectItem>}
-                        <SelectItem value="25">25</SelectItem>
-                        <SelectItem value="50">50</SelectItem>
-                        <SelectItem value="100">100</SelectItem>
+                        {HOME_LIMIT_OPTIONS.map((option) => (
+                            <SelectItem key={option} value={String(option)}>
+                                {option === HOME_DEFAULT_LIMIT ? `Default (${option})` : option}
+                            </SelectItem>
+                        ))}
                     </Select>
                 </div>
 

@@ -4,25 +4,19 @@ import { QueryBoundary } from '~/components/app';
 import { Tags } from '~/components/entities';
 import { Empty, FallbackRender, PageLayout, Pagination, Skeleton } from '~/components/shared';
 import { Text } from '~/components/ui';
-import { useGridLimit } from '~/hooks/useGridLimit';
+import { HOME_DEFAULT_LIMIT } from '~/modules/home-pagination';
 import { TAG_NOTES_ROUTE, TAG_ROUTE } from '~/modules/url';
 
-const TAG_MIN_WIDTH = 100;
-const TAG_GAP = 8;
-const TAG_ROWS = 12;
+const TAG_PAGE_LIMIT = HOME_DEFAULT_LIMIT;
 const Route = getRouteApi(TAG_ROUTE);
 
 export default function Tag() {
     const navigate = Route.useNavigate();
     const { page } = Route.useSearch();
-    const { containerRef, limit } = useGridLimit({
-        minItemWidth: TAG_MIN_WIDTH,
-        gap: TAG_GAP,
-        rows: TAG_ROWS,
-    });
+    const limit = TAG_PAGE_LIMIT;
 
     return (
-        <div ref={containerRef}>
+        <div>
             <QueryBoundary
                 fallback={
                     <PageLayout

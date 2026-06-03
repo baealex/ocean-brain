@@ -6,24 +6,14 @@ import { NoteListCard } from '~/components/note';
 import { Empty, FallbackRender, NoteFilters, PageLayout, Pagination, Skeleton } from '~/components/shared';
 
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
-import { useGridLimit } from '~/hooks/useGridLimit';
 import type { HomeRouteSearch } from '~/modules/route-search';
 import { HOME_ROUTE } from '~/modules/url';
 
-const CARD_MIN_WIDTH = 240;
-const CARD_GAP = 20;
-const GRID_ROWS = 6;
 const Route = getRouteApi(HOME_ROUTE);
 
 export default function Home() {
     const navigate = Route.useNavigate();
-    const { limit: urlLimit, page, sortBy, sortOrder, pinnedFirst } = Route.useSearch();
-    const { containerRef, limit, isAutoLimit } = useGridLimit({
-        minItemWidth: CARD_MIN_WIDTH,
-        gap: CARD_GAP,
-        rows: GRID_ROWS,
-        override: urlLimit ?? null,
-    });
+    const { limit, page, sortBy, sortOrder, pinnedFirst } = Route.useSearch();
 
     const { onDelete, onPinned, deleteWarningDialog } = useNoteMutate();
 
@@ -38,7 +28,7 @@ export default function Home() {
 
     return (
         <PageLayout title="" variant="none">
-            <div ref={containerRef} className="flex flex-col gap-5">
+            <div className="flex flex-col gap-5">
                 <NoteFilters
                     itemsPerPage={limit}
                     onItemsPerPageChange={(count) =>
@@ -47,7 +37,6 @@ export default function Home() {
                             page: 1,
                         })
                     }
-                    isAutoLimit={isAutoLimit}
                     sortBy={sortBy}
                     onSortByChange={(sort) =>
                         updateSearchParams({

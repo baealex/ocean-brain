@@ -5,6 +5,7 @@ import {
     buildPropertyFilterWhere,
     buildViewSectionWhere,
     clampViewSectionLimit,
+    getNotesByPropertiesWithDb,
     hydratePropertyFilters,
     normalizeViewDisplayOptions,
     normalizeViewNotesPagination,
@@ -127,6 +128,23 @@ test('normalizeViewPropertyFilters validates typed filter values', () => {
 
     assert.throws(() =>
         normalizeViewPropertyFilters([{ key: 'source', valueType: 'url', operator: 'equals', value: 'not-a-url' }]),
+    );
+
+    assert.deepEqual(
+        normalizeViewPropertyFilters([{ key: 'source', valueType: 'url', operator: 'contains', value: 'example.com' }]),
+        [
+            {
+                key: 'source',
+                name: 'source',
+                valueType: 'url',
+                operator: 'contains',
+                value: 'example.com',
+            },
+        ],
+    );
+
+    assert.throws(() =>
+        normalizeViewPropertyFilters([{ key: 'priority', valueType: 'number', operator: 'contains', value: '1' }]),
     );
 });
 
@@ -297,6 +315,192 @@ test('buildPropertyFilterWhere maps URL filters through normalized text storage'
             },
         },
     );
+});
+
+test('buildPropertyFilterWhere maps negative and contains operators while requiring the property to exist', () => {
+    assert.deepEqual(
+        buildPropertyFilterWhere({
+            key: 'state',
+            name: 'State',
+            valueType: 'select',
+            operator: 'notEquals',
+            value: 'Done',
+        }),
+        {
+            properties: {
+                some: {
+                    definition: {
+                        is: {
+                            key: 'state',
+                        },
+                    },
+                    option: {
+                        is: {
+                            value: {
+                                not: 'done',
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    );
+
+    assert.deepEqual(
+        buildPropertyFilterWhere({
+            key: 'summary',
+            name: 'Summary',
+            valueType: 'text',
+            operator: 'contains',
+            value: 'Brain',
+        }),
+        {
+            properties: {
+                some: {
+                    definition: {
+                        is: {
+                            key: 'summary',
+                        },
+                    },
+                    textValueNormalized: {
+                        contains: 'brain',
+                    },
+                },
+            },
+        },
+    );
+
+    assert.deepEqual(
+        buildPropertyFilterWhere({
+            key: 'summary',
+            name: 'Summary',
+            valueType: 'text',
+            operator: 'notContains',
+            value: 'Brain',
+        }),
+        {
+            properties: {
+                some: {
+                    definition: {
+                        is: {
+                            key: 'summary',
+                        },
+                    },
+                    textValueNormalized: {
+                        not: {
+                            contains: 'brain',
+                        },
+                    },
+                },
+            },
+        },
+    );
+});
+
+test('getNotesByProperties builds negative filters that require property existence', async () => {
+    let capturedWhere = {};
+
+    const db = {
+        propertyDefinition: {
+            findMany: async () => [
+                {
+                    key: 'state',
+                    name: 'State',
+                    valueType: 'select' as const,
+                    options: [{ value: 'done' }, { value: 'doing' }],
+                },
+                {
+                    key: 'summary',
+                    name: 'Summary',
+                    valueType: 'text' as const,
+                    options: [],
+                },
+            ],
+        },
+        note: {
+            count: async ({ where }: { where: unknown }) => {
+                capturedWhere = where as object;
+                return 1;
+            },
+            findMany: async () => [
+                {
+                    id: 2,
+                    title: 'Doing',
+                    content: '',
+                    searchableText: '',
+                    searchableTextVersion: 0,
+                    createdAt: new Date('2026-06-03T00:00:00.000Z'),
+                    updatedAt: new Date('2026-06-03T00:00:00.000Z'),
+                    pinned: false,
+                    order: 0,
+                    layout: 'wide' as const,
+                },
+            ],
+        },
+    } as never;
+
+    const result = await getNotesByPropertiesWithDb(
+        db,
+        {
+            propertyFilters: [
+                {
+                    key: 'state',
+                    valueType: 'select',
+                    operator: 'notEquals',
+                    value: 'done',
+                },
+                {
+                    key: 'summary',
+                    valueType: 'text',
+                    operator: 'notContains',
+                    value: 'brain',
+                },
+            ],
+            sortBy: 'title',
+            sortOrder: 'asc',
+        },
+        { limit: 20, offset: 0 },
+    );
+
+    assert.equal(result.totalCount, 1);
+    assert.deepEqual(capturedWhere, {
+        AND: [
+            {
+                properties: {
+                    some: {
+                        definition: {
+                            is: {
+                                key: 'state',
+                            },
+                        },
+                        option: {
+                            is: {
+                                value: {
+                                    not: 'done',
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+            {
+                properties: {
+                    some: {
+                        definition: {
+                            is: {
+                                key: 'summary',
+                            },
+                        },
+                        textValueNormalized: {
+                            not: {
+                                contains: 'brain',
+                            },
+                        },
+                    },
+                },
+            },
+        ],
+    });
 });
 
 test('hydratePropertyFilters validates property definitions and select options', async () => {

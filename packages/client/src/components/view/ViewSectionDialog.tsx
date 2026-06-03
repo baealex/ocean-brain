@@ -104,10 +104,14 @@ const getOperatorsForProperty = (property?: NotePropertyKeySummary): ViewPropert
     }
 
     if (property.valueType === 'date' || property.valueType === 'number') {
-        return ['equals', 'before', 'after', 'exists', 'notExists'];
+        return ['equals', 'notEquals', 'before', 'after', 'exists', 'notExists'];
     }
 
-    return ['equals', 'exists', 'notExists'];
+    if (property.valueType === 'text' || property.valueType === 'url') {
+        return ['equals', 'notEquals', 'contains', 'notContains', 'exists', 'notExists'];
+    }
+
+    return ['equals', 'notEquals', 'exists', 'notExists'];
 };
 
 const getDefaultOperator = (property?: NotePropertyKeySummary): ViewPropertyFilterOperator => {
@@ -132,6 +136,37 @@ const getDefaultValue = (property?: NotePropertyKeySummary) => {
 
 const shouldShowFilterValue = (operator: ViewPropertyFilterOperator) =>
     operator !== 'exists' && operator !== 'notExists';
+
+const isSearchTextOperator = (operator: ViewPropertyFilterOperator) =>
+    operator === 'contains' || operator === 'notContains';
+
+const getFilterInputType = (property: NotePropertyKeySummary, operator: ViewPropertyFilterOperator) => {
+    if (property.valueType === 'date') {
+        return 'date';
+    }
+
+    if (property.valueType === 'number') {
+        return 'number';
+    }
+
+    if (property.valueType === 'url' && !isSearchTextOperator(operator)) {
+        return 'url';
+    }
+
+    return 'text';
+};
+
+const getFilterInputPlaceholder = (property: NotePropertyKeySummary, operator: ViewPropertyFilterOperator) => {
+    if (property.valueType === 'url') {
+        return isSearchTextOperator(operator) ? 'example.com' : 'https://example.com';
+    }
+
+    if (property.valueType === 'text') {
+        return 'Value';
+    }
+
+    return undefined;
+};
 
 export default function ViewSectionDialog({
     open,
@@ -452,10 +487,12 @@ export default function ViewSectionDialog({
                                     return (
                                         <div
                                             key={filter.id}
-                                            className="grid gap-2 rounded-[16px] border border-border-subtle bg-elevated p-3 md:grid-cols-[minmax(0,1fr)_150px_minmax(0,1fr)_auto] md:items-center"
+                                            className="grid gap-2 rounded-[16px] border border-border-subtle bg-elevated p-3 md:grid-cols-[minmax(0,1fr)_minmax(10.5rem,12rem)_minmax(0,1fr)_auto] md:items-center"
                                         >
                                             <Select
                                                 value={filter.key || PROPERTY_PLACEHOLDER_VALUE}
+                                                ariaLabel="Property filter property"
+                                                className="w-full min-w-0"
                                                 onValueChange={(value) => {
                                                     if (value === PROPERTY_PLACEHOLDER_VALUE) {
                                                         return;
@@ -477,6 +514,8 @@ export default function ViewSectionDialog({
                                             <Select
                                                 value={filter.operator}
                                                 disabled={!property}
+                                                ariaLabel="Property filter operator"
+                                                className="w-full min-w-0"
                                                 onValueChange={(value) =>
                                                     updateFilter(filter.id, {
                                                         operator: value as ViewPropertyFilterOperator,
@@ -494,6 +533,8 @@ export default function ViewSectionDialog({
                                                 property.valueType === 'select' ? (
                                                     <Select
                                                         value={filter.value}
+                                                        ariaLabel="Property filter value"
+                                                        className="w-full min-w-0"
                                                         onValueChange={(value) => updateFilter(filter.id, { value })}
                                                     >
                                                         {property.options.map((option) => (
@@ -505,6 +546,8 @@ export default function ViewSectionDialog({
                                                 ) : property.valueType === 'boolean' ? (
                                                     <Select
                                                         value={filter.value || 'true'}
+                                                        ariaLabel="Property filter value"
+                                                        className="w-full min-w-0"
                                                         onValueChange={(value) => updateFilter(filter.id, { value })}
                                                     >
                                                         <SelectItem value="true">True</SelectItem>
@@ -512,26 +555,16 @@ export default function ViewSectionDialog({
                                                     </Select>
                                                 ) : (
                                                     <Input
-                                                        type={
-                                                            property.valueType === 'date'
-                                                                ? 'date'
-                                                                : property.valueType === 'number'
-                                                                  ? 'number'
-                                                                  : property.valueType === 'url'
-                                                                    ? 'url'
-                                                                    : 'text'
-                                                        }
+                                                        type={getFilterInputType(property, filter.operator)}
                                                         value={filter.value}
                                                         onChange={(event) =>
                                                             updateFilter(filter.id, { value: event.target.value })
                                                         }
-                                                        placeholder={
-                                                            property.valueType === 'url'
-                                                                ? 'https://example.com'
-                                                                : property.valueType === 'text'
-                                                                  ? 'Value'
-                                                                  : undefined
-                                                        }
+                                                        placeholder={getFilterInputPlaceholder(
+                                                            property,
+                                                            filter.operator,
+                                                        )}
+                                                        aria-label="Property filter value"
                                                     />
                                                 )
                                             ) : (
@@ -591,7 +624,7 @@ export default function ViewSectionDialog({
 
                                 {selectedTagNames.length > 1 ? (
                                     <div className="flex flex-col gap-2">
-                                        <Label size="sm">When multiple tags are selected</Label>
+                                        <Label size="sm">Tag match</Label>
                                         <ToggleGroup
                                             type="single"
                                             value={matchMode}
@@ -605,12 +638,15 @@ export default function ViewSectionDialog({
                                             className="self-start"
                                         >
                                             <ToggleGroupItem value="and" aria-label={getViewTagMatchLabel('and')}>
-                                                Match all
+                                                AND
                                             </ToggleGroupItem>
                                             <ToggleGroupItem value="or" aria-label={getViewTagMatchLabel('or')}>
-                                                Match any
+                                                OR
                                             </ToggleGroupItem>
                                         </ToggleGroup>
+                                        <Text as="p" variant="meta" tone="tertiary">
+                                            AND requires every selected tag. OR accepts any selected tag.
+                                        </Text>
                                     </div>
                                 ) : null}
 

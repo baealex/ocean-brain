@@ -72,7 +72,7 @@ const SortableViewTab = ({ tab, isActive, onSelect }: SortableViewTabProps) => {
         <div
             ref={setNodeRef}
             style={{
-                transform: CSS.Transform.toString(transform),
+                transform: CSS.Translate.toString(transform),
                 transition,
                 opacity: isDragging ? 0.6 : 1,
             }}
@@ -130,7 +130,7 @@ const SortableViewSection = ({ section, onEdit, onDelete }: SortableViewSectionP
         <div
             ref={setNodeRef}
             style={{
-                transform: CSS.Transform.toString(transform),
+                transform: CSS.Translate.toString(transform),
                 transition,
                 opacity: isDragging ? 0.6 : 1,
             }}

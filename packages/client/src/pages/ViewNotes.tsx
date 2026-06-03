@@ -67,10 +67,11 @@ function ViewNotesContent() {
     const propertyFilters = sectionData.propertyFilters;
     const hasTagFilter = tagNames.length > 0;
     const hasPropertyFilter = propertyFilters.length > 0;
+    const tagModeSummary = tagNames.length > 1 ? ` · ${getViewTagMatchLabel(mode)}` : '';
     const filterSummary = hasTagFilter
         ? hasPropertyFilter
-            ? `Property and tag filters · ${getViewTagMatchLabel(mode)}`
-            : `Tag filters · ${getViewTagMatchLabel(mode)}`
+            ? `Property and tag filters${tagModeSummary}`
+            : `Tag filters${tagModeSummary}`
         : hasPropertyFilter
           ? 'Property filters'
           : 'All notes';

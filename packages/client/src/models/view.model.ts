@@ -1,7 +1,15 @@
 export type ViewTagMatchMode = 'and' | 'or';
 export type ViewDisplayType = 'list' | 'table' | 'calendar';
 export type ViewTableColumn = 'title' | 'tags' | 'properties' | 'createdAt' | 'updatedAt';
-export type ViewPropertyFilterOperator = 'equals' | 'before' | 'after' | 'exists' | 'notExists';
+export type ViewPropertyFilterOperator =
+    | 'equals'
+    | 'notEquals'
+    | 'contains'
+    | 'notContains'
+    | 'before'
+    | 'after'
+    | 'exists'
+    | 'notExists';
 export type ViewSortBy = 'updatedAt' | 'createdAt' | 'title';
 export type ViewSortOrder = 'asc' | 'desc';
 

@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 
+import models from '~/models.js';
 import {
     buildPropertyFilterWhere,
     buildViewSectionWhere,
     clampViewSectionLimit,
+    getNotesByProperties,
     hydratePropertyFilters,
     normalizeViewDisplayOptions,
     normalizeViewNotesPagination,
@@ -127,6 +130,23 @@ test('normalizeViewPropertyFilters validates typed filter values', () => {
 
     assert.throws(() =>
         normalizeViewPropertyFilters([{ key: 'source', valueType: 'url', operator: 'equals', value: 'not-a-url' }]),
+    );
+
+    assert.deepEqual(
+        normalizeViewPropertyFilters([{ key: 'source', valueType: 'url', operator: 'contains', value: 'example.com' }]),
+        [
+            {
+                key: 'source',
+                name: 'source',
+                valueType: 'url',
+                operator: 'contains',
+                value: 'example.com',
+            },
+        ],
+    );
+
+    assert.throws(() =>
+        normalizeViewPropertyFilters([{ key: 'priority', valueType: 'number', operator: 'contains', value: '1' }]),
     );
 });
 
@@ -297,6 +317,221 @@ test('buildPropertyFilterWhere maps URL filters through normalized text storage'
             },
         },
     );
+});
+
+test('buildPropertyFilterWhere maps negative and contains operators while requiring the property to exist', () => {
+    assert.deepEqual(
+        buildPropertyFilterWhere({
+            key: 'state',
+            name: 'State',
+            valueType: 'select',
+            operator: 'notEquals',
+            value: 'Done',
+        }),
+        {
+            properties: {
+                some: {
+                    definition: {
+                        is: {
+                            key: 'state',
+                        },
+                    },
+                    option: {
+                        is: {
+                            value: {
+                                not: 'done',
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    );
+
+    assert.deepEqual(
+        buildPropertyFilterWhere({
+            key: 'summary',
+            name: 'Summary',
+            valueType: 'text',
+            operator: 'contains',
+            value: 'Brain',
+        }),
+        {
+            properties: {
+                some: {
+                    definition: {
+                        is: {
+                            key: 'summary',
+                        },
+                    },
+                    textValueNormalized: {
+                        contains: 'brain',
+                    },
+                },
+            },
+        },
+    );
+
+    assert.deepEqual(
+        buildPropertyFilterWhere({
+            key: 'summary',
+            name: 'Summary',
+            valueType: 'text',
+            operator: 'notContains',
+            value: 'Brain',
+        }),
+        {
+            properties: {
+                some: {
+                    definition: {
+                        is: {
+                            key: 'summary',
+                        },
+                    },
+                    textValueNormalized: {
+                        not: {
+                            contains: 'brain',
+                        },
+                    },
+                },
+            },
+        },
+    );
+});
+
+test('getNotesByProperties excludes notes missing the property for negative filters', async () => {
+    const suffix = randomUUID().slice(0, 8);
+    const stateKey = `state-${suffix}`;
+    const summaryKey = `summary-${suffix}`;
+    const noteIds: number[] = [];
+    const propertyDefinitionIds: number[] = [];
+
+    try {
+        const stateDefinition = await models.propertyDefinition.create({
+            data: {
+                key: stateKey,
+                name: `State ${suffix}`,
+                valueType: 'select',
+                options: {
+                    create: [
+                        { label: 'Done', value: 'done', order: 0 },
+                        { label: 'Doing', value: 'doing', order: 1 },
+                    ],
+                },
+            },
+            include: {
+                options: true,
+            },
+        });
+        const summaryDefinition = await models.propertyDefinition.create({
+            data: {
+                key: summaryKey,
+                name: `Summary ${suffix}`,
+                valueType: 'text',
+            },
+        });
+        propertyDefinitionIds.push(stateDefinition.id, summaryDefinition.id);
+
+        const doneOption = stateDefinition.options.find((option) => option.value === 'done');
+        const doingOption = stateDefinition.options.find((option) => option.value === 'doing');
+
+        assert.ok(doneOption);
+        assert.ok(doingOption);
+
+        const doneNote = await models.note.create({
+            data: {
+                title: `Done ${suffix}`,
+                content: '',
+                properties: {
+                    create: [
+                        {
+                            propertyDefinitionId: stateDefinition.id,
+                            optionId: doneOption.id,
+                        },
+                        {
+                            propertyDefinitionId: summaryDefinition.id,
+                            textValue: 'Brainstorm note',
+                            textValueNormalized: 'brainstorm note',
+                        },
+                    ],
+                },
+            },
+        });
+        const doingNote = await models.note.create({
+            data: {
+                title: `Doing ${suffix}`,
+                content: '',
+                properties: {
+                    create: [
+                        {
+                            propertyDefinitionId: stateDefinition.id,
+                            optionId: doingOption.id,
+                        },
+                        {
+                            propertyDefinitionId: summaryDefinition.id,
+                            textValue: 'Plain note',
+                            textValueNormalized: 'plain note',
+                        },
+                    ],
+                },
+            },
+        });
+        const missingPropertiesNote = await models.note.create({
+            data: {
+                title: `Missing properties ${suffix}`,
+                content: '',
+            },
+        });
+        noteIds.push(doneNote.id, doingNote.id, missingPropertiesNote.id);
+
+        const notDoneResult = await getNotesByProperties(
+            {
+                propertyFilters: [
+                    {
+                        key: stateKey,
+                        valueType: 'select',
+                        operator: 'notEquals',
+                        value: 'done',
+                    },
+                ],
+                sortBy: 'title',
+                sortOrder: 'asc',
+            },
+            { limit: 20, offset: 0 },
+        );
+        const notBrainResult = await getNotesByProperties(
+            {
+                propertyFilters: [
+                    {
+                        key: summaryKey,
+                        valueType: 'text',
+                        operator: 'notContains',
+                        value: 'brain',
+                    },
+                ],
+                sortBy: 'title',
+                sortOrder: 'asc',
+            },
+            { limit: 20, offset: 0 },
+        );
+
+        assert.deepEqual(
+            notDoneResult.notes.map((note) => note.id),
+            [doingNote.id],
+        );
+        assert.deepEqual(
+            notBrainResult.notes.map((note) => note.id),
+            [doingNote.id],
+        );
+    } finally {
+        if (noteIds.length > 0) {
+            await models.note.deleteMany({ where: { id: { in: noteIds } } });
+        }
+
+        if (propertyDefinitionIds.length > 0) {
+            await models.propertyDefinition.deleteMany({ where: { id: { in: propertyDefinitionIds } } });
+        }
+    }
 });
 
 test('hydratePropertyFilters validates property definitions and select options', async () => {

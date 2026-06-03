@@ -56,6 +56,9 @@ export const viewType = gql`
 
     enum ViewPropertyFilterOperator {
         equals
+        notEquals
+        contains
+        notContains
         before
         after
         exists

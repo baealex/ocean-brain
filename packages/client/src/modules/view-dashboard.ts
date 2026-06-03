@@ -118,7 +118,7 @@ export const reorderViewSectionsInWorkspace = (
 });
 
 export const getViewTagMatchLabel = (mode: ViewTagMatchMode) => {
-    return mode === 'or' ? 'Matches any selected tag' : 'Matches all selected tags';
+    return mode === 'or' ? 'OR — any selected tag' : 'AND — all selected tags';
 };
 
 export const getViewTagMatchToken = (mode: ViewTagMatchMode) => {
@@ -127,6 +127,12 @@ export const getViewTagMatchToken = (mode: ViewTagMatchMode) => {
 
 export const getViewPropertyOperatorLabel = (operator: ViewPropertyFilterOperator) => {
     switch (operator) {
+        case 'notEquals':
+            return 'is not';
+        case 'contains':
+            return 'contains';
+        case 'notContains':
+            return 'does not contain';
         case 'before':
             return 'before';
         case 'after':

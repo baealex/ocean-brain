@@ -48,6 +48,7 @@ export interface SelectProps extends VariantProps<typeof selectTriggerVariants> 
     defaultValue?: string;
     onValueChange?: (value: string) => void;
     placeholder?: string;
+    ariaLabel?: string;
     className?: string;
     children: React.ReactNode;
     disabled?: boolean;
@@ -58,6 +59,7 @@ const Select = ({
     defaultValue,
     onValueChange,
     placeholder,
+    ariaLabel,
     variant,
     size,
     className,
@@ -72,13 +74,14 @@ const Select = ({
             disabled={disabled}
         >
             <SelectPrimitive.Trigger
+                aria-label={ariaLabel}
                 className={selectTriggerVariants({
                     variant,
                     size,
                     className,
                 })}
             >
-                <SelectPrimitive.Value placeholder={placeholder} />
+                <SelectPrimitive.Value className="min-w-0 truncate" placeholder={placeholder} />
                 <SelectPrimitive.Icon>
                     <Icon.ChevronDown className="w-3.5 h-3.5 opacity-60" />
                 </SelectPrimitive.Icon>

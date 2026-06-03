@@ -6,6 +6,7 @@ import {
     getViewDisplayTypeLabel,
     getViewPropertyOperatorLabel,
     getViewTableColumnLabel,
+    getViewTagMatchLabel,
     getViewTagMatchToken,
     normalizeViewTableColumns,
     normalizeViewTagNames,
@@ -148,12 +149,17 @@ describe('view-dashboard helpers', () => {
         ).toEqual(['section-3', 'section-1', 'section-2']);
     });
 
-    it('returns a short conjunction token for tag matching', () => {
+    it('returns clear labels and short conjunction tokens for tag matching', () => {
+        expect(getViewTagMatchLabel('and')).toBe('AND — all selected tags');
+        expect(getViewTagMatchLabel('or')).toBe('OR — any selected tag');
         expect(getViewTagMatchToken('and')).toBe('AND');
         expect(getViewTagMatchToken('or')).toBe('OR');
     });
 
     it('formats property filter labels for display', () => {
+        expect(getViewPropertyOperatorLabel('notEquals')).toBe('is not');
+        expect(getViewPropertyOperatorLabel('contains')).toBe('contains');
+        expect(getViewPropertyOperatorLabel('notContains')).toBe('does not contain');
         expect(getViewPropertyOperatorLabel('exists')).toBe('is set');
         expect(getViewPropertyOperatorLabel('notExists')).toBe('is empty');
         expect(
@@ -174,6 +180,15 @@ describe('view-dashboard helpers', () => {
                 value: null,
             }),
         ).toBe('State is set');
+        expect(
+            formatViewPropertyFilter({
+                key: 'source',
+                name: 'Source',
+                valueType: 'url',
+                operator: 'contains',
+                value: 'github.com',
+            }),
+        ).toBe('Source contains github.com');
     });
 
     it('labels supported view display types', () => {

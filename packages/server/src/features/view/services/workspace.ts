@@ -10,7 +10,15 @@ import models from '~/models.js';
 export type ViewTagMatchMode = NoteTagMatchMode;
 export type ViewDisplayType = 'list' | 'table' | 'calendar';
 export type ViewTableColumn = 'title' | 'tags' | 'properties' | 'createdAt' | 'updatedAt';
-export type ViewPropertyFilterOperator = 'equals' | 'before' | 'after' | 'exists' | 'notExists';
+export type ViewPropertyFilterOperator =
+    | 'equals'
+    | 'notEquals'
+    | 'contains'
+    | 'notContains'
+    | 'before'
+    | 'after'
+    | 'exists'
+    | 'notExists';
 export type ViewSortBy = 'updatedAt' | 'createdAt' | 'title';
 export type ViewSortOrder = 'asc' | 'desc';
 
@@ -172,7 +180,16 @@ interface ParsedStoredViewQuery {
 }
 
 const isViewPropertyFilterOperator = (value: unknown): value is ViewPropertyFilterOperator => {
-    return value === 'equals' || value === 'before' || value === 'after' || value === 'exists' || value === 'notExists';
+    return (
+        value === 'equals' ||
+        value === 'notEquals' ||
+        value === 'contains' ||
+        value === 'notContains' ||
+        value === 'before' ||
+        value === 'after' ||
+        value === 'exists' ||
+        value === 'notExists'
+    );
 };
 
 const isPropertyValueType = (value: unknown): value is PropertyValueType => {
@@ -274,7 +291,11 @@ const normalizeFilterValue = ({
         throw new InvalidNotePropertyInputError('Before and after filters require date or number properties.');
     }
 
-    if (valueType === 'url') {
+    if ((operator === 'contains' || operator === 'notContains') && valueType !== 'text' && valueType !== 'url') {
+        throw new InvalidNotePropertyInputError('Contains filters require text or url properties.');
+    }
+
+    if (valueType === 'url' && operator !== 'contains' && operator !== 'notContains') {
         return normalizeUrlValue(normalizedValue);
     }
 
@@ -693,6 +714,10 @@ const buildPropertyFilterValueWhere = (filter: ViewPropertyFilterRecord): Prisma
                 return { numberValue: { gt: numberValue } };
             }
 
+            if (filter.operator === 'notEquals') {
+                return { numberValue: { not: numberValue } };
+            }
+
             return { numberValue };
         }
         case 'date': {
@@ -706,16 +731,44 @@ const buildPropertyFilterValueWhere = (filter: ViewPropertyFilterRecord): Prisma
                 return { dateValue: { gt: dateValue } };
             }
 
+            if (filter.operator === 'notEquals') {
+                return { dateValue: { not: dateValue } };
+            }
+
             return { dateValue };
         }
-        case 'boolean':
+        case 'boolean': {
+            if (filter.operator === 'notEquals') {
+                return { boolValue: { not: filter.value === 'true' } };
+            }
+
             return { boolValue: filter.value === 'true' };
+        }
         case 'select':
+            if (filter.operator === 'notEquals') {
+                return { option: { is: { value: { not: normalizeSelectFilterValue(filter.value ?? '') } } } };
+            }
+
             return { option: { is: { value: normalizeSelectFilterValue(filter.value ?? '') } } };
         case 'url':
         case 'text':
-        default:
-            return { textValueNormalized: filter.value?.toLowerCase() ?? '' };
+        default: {
+            const textValue = filter.value?.toLowerCase() ?? '';
+
+            if (filter.operator === 'notEquals') {
+                return { textValueNormalized: { not: textValue } };
+            }
+
+            if (filter.operator === 'contains') {
+                return { textValueNormalized: { contains: textValue } };
+            }
+
+            if (filter.operator === 'notContains') {
+                return { textValueNormalized: { not: { contains: textValue } } };
+            }
+
+            return { textValueNormalized: textValue };
+        }
     }
 };
 

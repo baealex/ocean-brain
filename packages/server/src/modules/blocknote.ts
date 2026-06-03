@@ -278,6 +278,8 @@ const ANGLE_BRACKET_PLACEHOLDER_PREFIX = '\uE000OBANGLE';
 const ANGLE_BRACKET_PLACEHOLDER_SUFFIX = '\uE001';
 const NUMERIC_TILDE_RANGE_PLACEHOLDER_PREFIX = '\uE000OBTILDE';
 const NUMERIC_TILDE_RANGE_PLACEHOLDER_SUFFIX = '\uE001';
+const HARD_BREAK_PLACEHOLDER_PREFIX = '\uE000OBHARDBREAK';
+const HARD_BREAK_PLACEHOLDER_SUFFIX = '\uE001';
 
 function isMarkdownAutolinkAngleBracketText(innerText: string) {
     if (innerText !== innerText.trim()) {
@@ -375,6 +377,58 @@ function protectMarkdownNumericTildeRanges(markdown: string) {
         }
 
         protectedLines.push(`${protectMarkdownLineNumericTildeRanges(lineBody, placeholderToToken)}${lineEnding}`);
+    }
+
+    return {
+        markdown: protectedLines.join(''),
+        placeholderToToken,
+    };
+}
+
+function protectMarkdownLineEndHardBreakMarkers(markdown: string) {
+    const protectedLines: string[] = [];
+    const placeholderToToken = new Map<string, string>();
+    let activeFence: { marker: '`' | '~'; length: number } | null = null;
+    const lines = markdown.split(/(?<=\n)/);
+
+    for (const [index, line] of lines.entries()) {
+        const { body: lineBody, lineEnding } = splitMarkdownLineEnding(line);
+        const fenceMatch = lineBody.match(MARKDOWN_FENCED_CODE_PATTERN);
+
+        if (activeFence) {
+            protectedLines.push(line);
+
+            if (isClosingFenceLine(lineBody, activeFence)) {
+                activeFence = null;
+            }
+
+            continue;
+        }
+
+        if (fenceMatch?.[1]) {
+            const marker = fenceMatch[1][0] as '`' | '~';
+            activeFence = {
+                marker,
+                length: fenceMatch[1].length,
+            };
+            protectedLines.push(line);
+            continue;
+        }
+
+        if (/^(?: {4,}|\t)/.test(lineBody)) {
+            protectedLines.push(line);
+            continue;
+        }
+
+        const nextLineBody = splitMarkdownLineEnding(lines[index + 1] ?? '').body;
+        protectedLines.push(
+            `${protectMarkdownLineEndHardBreakMarker(
+                lineBody,
+                lineEnding,
+                isMarkdownHardBreakContinuationLine(nextLineBody),
+                placeholderToToken,
+            )}${lineEnding}`,
+        );
     }
 
     return {
@@ -579,12 +633,83 @@ function replaceNumericTildeRangeMarkers(text: string, placeholderToToken: Map<s
     });
 }
 
+function protectMarkdownLineEndHardBreakMarker(
+    line: string,
+    lineEnding: string,
+    hasContinuationLine: boolean,
+    placeholderToToken: Map<string, string>,
+) {
+    if (!lineEnding || !line.endsWith('\\')) {
+        return line;
+    }
+
+    const placeholder = createHardBreakPlaceholder(placeholderToToken.size);
+    const shouldPreserveAsHardBreak = hasContinuationLine && !hasUnclosedInlineCodeSpanAtLineEnd(line);
+    placeholderToToken.set(placeholder, shouldPreserveAsHardBreak ? '' : '\\');
+
+    return `${line.slice(0, -1)}${placeholder}`;
+}
+
+function isMarkdownHardBreakContinuationLine(line: string) {
+    if (!line.trim()) {
+        return false;
+    }
+
+    const trimmedLine = line.trimStart();
+
+    if (trimmedLine.match(MARKDOWN_FENCED_CODE_PATTERN)) {
+        return false;
+    }
+
+    if (/^(?:#{1,6})(?:\s|$)/.test(trimmedLine)) {
+        return false;
+    }
+
+    if (/^>/.test(trimmedLine)) {
+        return false;
+    }
+
+    if (/^(?:[-+*])(?:\s|$)/.test(trimmedLine) || /^\d{1,9}[.)](?:\s|$)/.test(trimmedLine)) {
+        return false;
+    }
+
+    if (/^(?:-{3,}|\*{3,}|_{3,})\s*$/.test(trimmedLine)) {
+        return false;
+    }
+
+    return true;
+}
+
+function hasUnclosedInlineCodeSpanAtLineEnd(line: string) {
+    let cursor = 0;
+    let openDelimiter: string | null = null;
+
+    while (cursor < line.length) {
+        const codeStart = line.indexOf('`', cursor);
+
+        if (codeStart === -1) {
+            break;
+        }
+
+        const delimiterLength = countRepeatedCharacter(line, codeStart, '`');
+        const delimiter = '`'.repeat(delimiterLength);
+        openDelimiter = openDelimiter === delimiter ? null : delimiter;
+        cursor = codeStart + delimiterLength;
+    }
+
+    return openDelimiter !== null;
+}
+
 function createAngleBracketPlaceholder(index: number) {
     return `${ANGLE_BRACKET_PLACEHOLDER_PREFIX}${index}${ANGLE_BRACKET_PLACEHOLDER_SUFFIX}`;
 }
 
 function createNumericTildeRangePlaceholder(index: number) {
     return `${NUMERIC_TILDE_RANGE_PLACEHOLDER_PREFIX}${index}${NUMERIC_TILDE_RANGE_PLACEHOLDER_SUFFIX}`;
+}
+
+function createHardBreakPlaceholder(index: number) {
+    return `${HARD_BREAK_PLACEHOLDER_PREFIX}${index}${HARD_BREAK_PLACEHOLDER_SUFFIX}`;
 }
 
 function countRepeatedCharacter(value: string, start: number, character: string) {
@@ -853,12 +978,17 @@ export async function markdownToBlocksJson(
     const editor = getEditor();
     const preprocessedMarkdown = preprocessMarkdownExplicitTags(markdown);
     const tildeProtectedMarkdown = protectMarkdownNumericTildeRanges(preprocessedMarkdown.markdown);
+    const hardBreakProtectedMarkdown = protectMarkdownLineEndHardBreakMarkers(tildeProtectedMarkdown.markdown);
+    const basePlaceholderToToken = new Map([
+        ...tildeProtectedMarkdown.placeholderToToken,
+        ...hardBreakProtectedMarkdown.placeholderToToken,
+    ]);
     const contentJson = await parseMarkdownToContentJson(
         editor,
-        tildeProtectedMarkdown.markdown,
+        hardBreakProtectedMarkdown.markdown,
         deps,
         preprocessedMarkdown.placeholderToTag,
-        tildeProtectedMarkdown.placeholderToToken,
+        basePlaceholderToToken,
     );
 
     if (extractLiteralAngleBracketTextTokens(preprocessedMarkdown.markdown).length === 0) {
@@ -869,11 +999,8 @@ export async function markdownToBlocksJson(
         return contentJson;
     }
 
-    const protectedMarkdown = protectMarkdownTextAngleBrackets(tildeProtectedMarkdown.markdown);
-    const placeholderToToken = new Map([
-        ...tildeProtectedMarkdown.placeholderToToken,
-        ...protectedMarkdown.placeholderToToken,
-    ]);
+    const protectedMarkdown = protectMarkdownTextAngleBrackets(hardBreakProtectedMarkdown.markdown);
+    const placeholderToToken = new Map([...basePlaceholderToToken, ...protectedMarkdown.placeholderToToken]);
 
     return parseMarkdownToContentJson(
         editor,

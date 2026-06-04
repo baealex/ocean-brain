@@ -5,6 +5,7 @@ import { AppError } from '~/modules/error-handler.js';
 import {
     createMcpAppendNoteMarkdownHandler,
     createMcpCreateNoteHandler,
+    createMcpNoteWriteBaselineHandler,
     createMcpPatchNoteMarkdownHandler,
     createMcpReplaceNoteMarkdownHandler,
     createMcpUpdateNoteHandler,
@@ -290,6 +291,54 @@ test('mcp update note handler forwards MCP snapshot metadata without requiring a
         title: 'Renamed',
         snapshotMeta: '{"entrypoint":"mcp","label":"MCP"}',
     });
+});
+
+test('mcp note write baseline handler returns only the note write version', async () => {
+    const handler = createMcpNoteWriteBaselineHandler(async (id) => ({
+        id,
+        updatedAt: new Date('2026-06-04T10:00:00.000Z'),
+    }));
+    const response = createResponse();
+
+    await handler(
+        {
+            body: {
+                id: '7',
+            },
+        } as never,
+        response as never,
+    );
+
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(response.body, {
+        note: {
+            id: '7',
+            updatedAt: '2026-06-04T10:00:00.000Z',
+        },
+    });
+});
+
+test('mcp note write baseline handler returns not found when the note is missing', async () => {
+    const handler = createMcpNoteWriteBaselineHandler(async () => null);
+
+    await assert.rejects(
+        () =>
+            handler(
+                {
+                    body: {
+                        id: '7',
+                    },
+                } as never,
+                createResponse() as never,
+            ),
+        (error: unknown) => {
+            assert.ok(error instanceof AppError);
+            assert.equal(error.status, 404);
+            assert.equal(error.code, 'NOTE_NOT_FOUND');
+            assert.equal(error.message, 'The requested note was not found.');
+            return true;
+        },
+    );
 });
 
 test('mcp update note handler rejects empty updates', async () => {

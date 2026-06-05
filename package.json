@@ -29,7 +29,7 @@
         "overrides": {
             "express-rate-limit": "8.5.1",
             "fast-uri": "3.1.2",
-            "hono": "4.12.18",
+            "hono": "4.12.21",
             "ip-address": "10.1.1",
             "postcss": "8.5.10",
             "qs": "6.15.2",

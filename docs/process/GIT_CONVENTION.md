@@ -1,6 +1,6 @@
 # Ocean Brain Git Convention
 
-Updated: 2026-03-06
+Updated: 2026-06-05
 
 ## 1. Scope
 - This document defines commit and PR conventions for the Ocean Brain repository.
@@ -74,9 +74,22 @@ Use these shortcode labels exactly:
 1. CI checks (`lint`, `type-check`, `build`) pass
 2. Local validation for the changed scope is complete
 3. Any docs/scripts/env changes are documented in PR body
-4. Release-impacting changes include version/tag plan
+4. Exactly one release impact label is applied: `release: major`, `release: minor`, or `release: patch`
+5. Release-impacting changes include version/tag plan
 
-### 3-5. Release-Impact PR
+### 3-5. Release Impact Labels
+Every PR must have exactly one release impact label before review/merge. Pick the highest applicable impact.
+
+- `release: major`: breaking change, migration requirement, removed/renamed public behavior, or incompatible API/CLI/config change
+- `release: minor`: backward-compatible feature, new endpoint/tool/command, new user-visible capability, or backward-compatible output enrichment
+- `release: patch`: backward-compatible bug fix, documentation-only change, tests, refactor, maintenance, or performance improvement without a new capability
+
+Examples:
+- Preserving Markdown hard breaks: `release: patch`
+- Adding `[[title]](note:id)` reference Markdown support: `release: minor`
+- Removing or changing an existing MCP/CLI contract incompatibly: `release: major`
+
+### 3-6. Release-Impact PR
 Changes in the files below are treated as release-impacting.
 1. `packages/cli/package.json`
 2. `scripts/release/prepublish.mjs`, `scripts/release/bump-version.mjs`
@@ -88,17 +101,18 @@ Release-impact PRs must include:
 2. tag plan (`vX.Y.Z`)
 3. verification result (`CLI_SMOKE` pass)
 
-### 3-6. Merge Policy
+### 3-7. Merge Policy
 - Default: merge commit
 - Squash merge is allowed for single-commit-style changes
 
-### 3-7. PR Submission Guardrail (Required)
+### 3-8. PR Submission Guardrail (Required)
 Before sharing a PR URL, confirm all of the following:
 1. Title follows `<emoji> <subject>` and subject starts with an English verb.
 2. Body section headings exactly match the template headings.
 3. PR body heading emojis must use shortcode form (`:dart:`, `:hammer_and_wrench:`, etc.).
 4. `Verification Guide` contains concrete commands and expected results.
 5. The `Checklist` state is intentionally set (not left ambiguous).
+6. Exactly one release impact label is applied: `release: major`, `release: minor`, or `release: patch`.
 
 ## 4. PR Template Path
 - Use `.github/PULL_REQUEST_TEMPLATE.md` as the official PR template.

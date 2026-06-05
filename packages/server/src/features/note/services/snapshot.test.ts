@@ -775,3 +775,202 @@ test('getSnapshot returns full markdown content for one snapshot', async () => {
     assert.match(snapshot?.contentAsMarkdown ?? '', /Full snapshot body/);
     assert.match(snapshot?.contentPreview ?? '', /Full snapshot body/);
 });
+
+test('diffSnapshot compares a write baseline snapshot to the next snapshot', async () => {
+    const firstContent = JSON.stringify([
+        {
+            type: 'paragraph',
+            content: [{ type: 'text', text: 'Before body', styles: {} }],
+        },
+    ]);
+    const secondContent = JSON.stringify([
+        {
+            type: 'paragraph',
+            content: [{ type: 'text', text: 'After body', styles: {} }],
+        },
+    ]);
+    const snapshots = [
+        {
+            id: 1,
+            noteId: 7,
+            title: 'Before title',
+            payload: JSON.stringify({
+                title: 'Before title',
+                content: firstContent,
+                pinned: false,
+                order: 0,
+                layout: 'wide',
+            }),
+            editSessionId: null,
+            meta: '{"label":"MCP"}',
+            createdAt: new Date('2026-03-31T00:00:00.000Z'),
+        },
+        {
+            id: 2,
+            noteId: 7,
+            title: 'After title',
+            payload: JSON.stringify({
+                title: 'After title',
+                content: secondContent,
+                pinned: false,
+                order: 0,
+                layout: 'wide',
+            }),
+            editSessionId: null,
+            meta: '{"label":"MCP"}',
+            createdAt: new Date('2026-03-31T00:01:00.000Z'),
+        },
+    ];
+    const service = createNoteSnapshotService({
+        findNoteById: async () => null,
+        findSnapshotByEditSessionId: async () => null,
+        findLatestSnapshot: async () => null,
+        createSnapshot: async () => {
+            throw new Error('should not create');
+        },
+        purgeExpiredSnapshots: async () => 0,
+        trimOverflowSnapshots: async () => 0,
+        listSnapshots: async () => snapshots,
+        findSnapshotById: async (id) => snapshots.find((snapshot) => snapshot.id === id) ?? null,
+        findNextSnapshot: async (snapshot) => snapshots.find((candidate) => candidate.id > snapshot.id) ?? null,
+        updateNote: async () => {
+            throw new Error('should not update');
+        },
+    });
+
+    const diff = await service.diffSnapshot(1);
+
+    assert.equal(diff?.mode, 'snapshot_to_snapshot');
+    assert.equal(diff?.before.id, '1');
+    assert.equal(diff?.after.id, '2');
+    assert.match(diff?.diff.markdown ?? '', /Before body/);
+    assert.match(diff?.diff.markdown ?? '', /After body/);
+    assert.equal(diff?.diff.changedLineCount, 2);
+});
+
+test('diffSnapshot compares the latest snapshot to the current note when no next snapshot exists', async () => {
+    const snapshotContent = JSON.stringify([
+        {
+            type: 'paragraph',
+            content: [{ type: 'text', text: 'Snapshot body', styles: {} }],
+        },
+    ]);
+    const currentContent = JSON.stringify([
+        {
+            type: 'paragraph',
+            content: [{ type: 'text', text: 'Current body', styles: {} }],
+        },
+    ]);
+    const snapshot = {
+        id: 3,
+        noteId: 7,
+        title: 'Snapshot title',
+        payload: JSON.stringify({
+            title: 'Snapshot title',
+            content: snapshotContent,
+            pinned: false,
+            order: 0,
+            layout: 'wide',
+        }),
+        editSessionId: null,
+        meta: null,
+        createdAt: new Date('2026-03-31T00:00:00.000Z'),
+    };
+    const service = createNoteSnapshotService({
+        findNoteById: async () => ({
+            id: 7,
+            title: 'Current title',
+            content: currentContent,
+            pinned: false,
+            order: 0,
+            layout: 'wide',
+            updatedAt: new Date('2026-03-31T00:02:00.000Z'),
+        }),
+        findSnapshotByEditSessionId: async () => null,
+        findLatestSnapshot: async () => null,
+        createSnapshot: async () => {
+            throw new Error('should not create');
+        },
+        purgeExpiredSnapshots: async () => 0,
+        trimOverflowSnapshots: async () => 0,
+        listSnapshots: async () => [snapshot],
+        findSnapshotById: async () => snapshot,
+        findNextSnapshot: async () => null,
+        updateNote: async () => {
+            throw new Error('should not update');
+        },
+    });
+
+    const diff = await service.diffSnapshot(3);
+
+    assert.equal(diff?.mode, 'snapshot_to_current');
+    assert.equal(diff?.after.kind, 'current_note');
+    assert.match(diff?.diff.markdown ?? '', /Snapshot body/);
+    assert.match(diff?.diff.markdown ?? '', /Current body/);
+});
+
+test('diffSnapshot renders separate hunks for distant changes', async () => {
+    const toContent = (...lines: string[]) =>
+        JSON.stringify(
+            lines.map((line) => ({
+                type: 'paragraph',
+                content: [{ type: 'text', text: line, styles: {} }],
+            })),
+        );
+    const snapshots = [
+        {
+            id: 10,
+            noteId: 7,
+            title: 'Before title',
+            payload: JSON.stringify({
+                title: 'Before title',
+                content: toContent('Top old', 'same 1', 'same 2', 'same 3', 'same 4', 'Bottom old'),
+                pinned: false,
+                order: 0,
+                layout: 'wide',
+            }),
+            editSessionId: null,
+            meta: null,
+            createdAt: new Date('2026-03-31T00:00:00.000Z'),
+        },
+        {
+            id: 11,
+            noteId: 7,
+            title: 'After title',
+            payload: JSON.stringify({
+                title: 'After title',
+                content: toContent('Top new', 'same 1', 'same 2', 'same 3', 'same 4', 'Bottom new'),
+                pinned: false,
+                order: 0,
+                layout: 'wide',
+            }),
+            editSessionId: null,
+            meta: null,
+            createdAt: new Date('2026-03-31T00:01:00.000Z'),
+        },
+    ];
+    const service = createNoteSnapshotService({
+        findNoteById: async () => null,
+        findSnapshotByEditSessionId: async () => null,
+        findLatestSnapshot: async () => null,
+        createSnapshot: async () => {
+            throw new Error('should not create');
+        },
+        purgeExpiredSnapshots: async () => 0,
+        trimOverflowSnapshots: async () => 0,
+        listSnapshots: async () => snapshots,
+        findSnapshotById: async (id) => snapshots.find((snapshot) => snapshot.id === id) ?? null,
+        findNextSnapshot: async (snapshot) => snapshots.find((candidate) => candidate.id > snapshot.id) ?? null,
+        updateNote: async () => {
+            throw new Error('should not update');
+        },
+    });
+
+    const diff = await service.diffSnapshot(10, { contextLines: 1 });
+    const hunkCount = diff?.diff.markdown.split('\n').filter((line) => line.startsWith('@@')).length;
+
+    assert.equal(hunkCount, 2);
+    assert.match(diff?.diff.markdown ?? '', /Top old/);
+    assert.match(diff?.diff.markdown ?? '', /Bottom new/);
+    assert.doesNotMatch(diff?.diff.markdown ?? '', /same 2/);
+});

@@ -14,7 +14,7 @@ import {
     NOTE_SEARCH_TEXT_SCHEMA_VERSION,
     parseNoteSearchQuery,
 } from '~/features/note/services/search.js';
-import { getNoteSnapshot, listNoteSnapshots } from '~/features/note/services/snapshot.js';
+import { diffNoteSnapshot, getNoteSnapshot, listNoteSnapshots } from '~/features/note/services/snapshot.js';
 import {
     buildNoteTagNamesWhere,
     type NoteTagMatchMode,
@@ -495,6 +495,32 @@ export const noteQueryResolvers: NoteQueryResolvers = {
     },
     noteSnapshot: async (_, { id }: { id: string }) => {
         return getNoteSnapshot(Number(id));
+    },
+    noteSnapshotDiff: async (
+        _,
+        {
+            id,
+            compareToSnapshotId,
+            target,
+            contextLines,
+        }: {
+            id: string;
+            compareToSnapshotId?: string;
+            target?: 'NEXT' | 'PREVIOUS' | 'CURRENT';
+            contextLines?: number | null;
+        },
+    ) => {
+        const normalizedContextLines = contextLines ?? 3;
+
+        if (normalizedContextLines < 0 || normalizedContextLines > 20) {
+            throw new Error('INVALID_SNAPSHOT_DIFF_CONTEXT_LINES');
+        }
+
+        return diffNoteSnapshot(Number(id), {
+            ...(compareToSnapshotId !== undefined ? { compareToSnapshotId: Number(compareToSnapshotId) } : {}),
+            ...(target !== undefined ? { target: target.toLowerCase() as 'next' | 'previous' | 'current' } : {}),
+            contextLines: normalizedContextLines,
+        });
     },
     notePropertyKeys: async (
         _,

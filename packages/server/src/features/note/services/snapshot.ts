@@ -1,3 +1,4 @@
+import { FILE_HEADERS_ONLY, formatPatch, structuredPatch } from 'diff';
 import { ensureTagByName } from '~/features/tag/services/organization.js';
 import models, { type NoteLayout, type PropertyValueType } from '~/models.js';
 import { blocksToMarkdown, extractTagIdsFromContentJson } from '~/modules/blocknote.js';
@@ -8,6 +9,7 @@ import {
     SNAPSHOT_MAX_PER_NOTE,
     SNAPSHOT_RETENTION_DAYS,
 } from '~/modules/recovery-retention.js';
+import { calculateMarkdownSha256 } from './markdown-patch.js';
 import { buildNoteSearchProjection, extractVisibleSearchTextFromContent } from './search.js';
 
 const SNAPSHOT_CONTENT_PREVIEW_MAX_LENGTH = 240;
@@ -60,6 +62,8 @@ interface NoteSnapshotDeps {
     }) => Promise<NoteSnapshotRecord>;
     listSnapshots: (noteId: number, limit: number) => Promise<NoteSnapshotRecord[]>;
     findSnapshotById: (id: number) => Promise<NoteSnapshotRecord | null>;
+    findNextSnapshot?: (snapshot: NoteSnapshotRecord) => Promise<NoteSnapshotRecord | null>;
+    findPreviousSnapshot?: (snapshot: NoteSnapshotRecord) => Promise<NoteSnapshotRecord | null>;
     purgeExpiredSnapshots: (before: Date, limit: number) => Promise<number>;
     trimOverflowSnapshots: (noteId: number, keep: number, limit: number) => Promise<number>;
     resolveRestoredTags?: (content: string) => Promise<ResolvedRestoredSnapshotTags | null>;
@@ -116,6 +120,31 @@ export interface NoteSnapshotSummary {
     payload?: string;
 }
 
+export type NoteSnapshotDiffTarget = 'next' | 'previous' | 'current';
+
+export interface NoteSnapshotDiffEndpoint {
+    kind: 'snapshot' | 'current_note';
+    id: string;
+    title: string;
+    createdAt?: string;
+    updatedAt?: string;
+    meta?: NoteSnapshotMeta;
+}
+
+export interface NoteSnapshotDiffResult {
+    noteId: string;
+    mode: 'snapshot_to_snapshot' | 'snapshot_to_current';
+    before: NoteSnapshotDiffEndpoint;
+    after: NoteSnapshotDiffEndpoint;
+    diff: {
+        markdown: string;
+        changedLineCount: number;
+        changedCharCount: number;
+        beforeMarkdownSha256: string;
+        afterMarkdownSha256: string;
+    };
+}
+
 const parseMeta = (value?: string | null): NoteSnapshotMeta => {
     if (!value) {
         return {};
@@ -137,6 +166,14 @@ const readSnapshotContent = (payload: string) => {
         return parsePayload(payload).content;
     } catch {
         return '';
+    }
+};
+
+const readSnapshotTitle = (payload: string, fallback: string) => {
+    try {
+        return parsePayload(payload).title;
+    } catch {
+        return fallback;
     }
 };
 
@@ -316,6 +353,82 @@ export const renderNoteSnapshotContentAsMarkdown = async (payload: string) => {
     }
 };
 
+const renderNoteRecordContentAsMarkdown = async (note: NoteRecord) => {
+    try {
+        return blocksToMarkdown(note.content);
+    } catch {
+        return '';
+    }
+};
+
+const createSnapshotMarkdownDiff = (beforeMarkdown: string, afterMarkdown: string, contextLines: number | null = 3) => {
+    const patch = structuredPatch('before.md', 'after.md', beforeMarkdown, afterMarkdown, undefined, undefined, {
+        context: contextLines === null ? Number.MAX_SAFE_INTEGER : contextLines,
+    });
+    const changedLines = patch.hunks.flatMap((hunk) =>
+        hunk.lines.filter((line) => (line.startsWith('+') && !line.startsWith('+++')) || line.startsWith('-')),
+    );
+
+    return {
+        markdown: formatPatch(patch, FILE_HEADERS_ONLY).trimEnd(),
+        changedLineCount: changedLines.length,
+        changedCharCount: changedLines.reduce((total, line) => total + line.slice(1).length, 0),
+    };
+};
+
+const snapshotToDiffEndpoint = (snapshot: NoteSnapshotRecord): NoteSnapshotDiffEndpoint => ({
+    kind: 'snapshot',
+    id: String(snapshot.id),
+    title: readSnapshotTitle(snapshot.payload, snapshot.title),
+    createdAt: snapshot.createdAt.toISOString(),
+    meta: parseMeta(snapshot.meta),
+});
+
+const noteToDiffEndpoint = (note: NoteRecord): NoteSnapshotDiffEndpoint => ({
+    kind: 'current_note',
+    id: String(note.id),
+    title: note.title,
+    ...(note.updatedAt ? { updatedAt: note.updatedAt.toISOString() } : {}),
+});
+
+const buildSnapshotDiff = async ({
+    beforeSnapshot,
+    afterSnapshot,
+    afterNote,
+    contextLines,
+}: {
+    beforeSnapshot: NoteSnapshotRecord;
+    afterSnapshot?: NoteSnapshotRecord;
+    afterNote?: NoteRecord;
+    contextLines?: number | null;
+}): Promise<NoteSnapshotDiffResult | null> => {
+    if (!afterSnapshot && !afterNote) {
+        return null;
+    }
+
+    const beforeMarkdown = await renderNoteSnapshotContentAsMarkdown(beforeSnapshot.payload);
+    const afterMarkdown = afterSnapshot
+        ? await renderNoteSnapshotContentAsMarkdown(afterSnapshot.payload)
+        : afterNote
+          ? await renderNoteRecordContentAsMarkdown(afterNote)
+          : '';
+    const diff = createSnapshotMarkdownDiff(beforeMarkdown, afterMarkdown, contextLines ?? 3);
+
+    return {
+        noteId: String(beforeSnapshot.noteId),
+        mode: afterSnapshot ? 'snapshot_to_snapshot' : 'snapshot_to_current',
+        before: snapshotToDiffEndpoint(beforeSnapshot),
+        after: afterSnapshot ? snapshotToDiffEndpoint(afterSnapshot) : noteToDiffEndpoint(afterNote as NoteRecord),
+        diff: {
+            markdown: diff.markdown,
+            changedLineCount: diff.changedLineCount,
+            changedCharCount: diff.changedCharCount,
+            beforeMarkdownSha256: calculateMarkdownSha256(beforeMarkdown),
+            afterMarkdownSha256: calculateMarkdownSha256(afterMarkdown),
+        },
+    };
+};
+
 const serializeSnapshotWithContent = async (snapshot: NoteSnapshotRecord): Promise<NoteSnapshotSummary> => {
     const contentAsMarkdown = await renderNoteSnapshotContentAsMarkdown(snapshot.payload);
 
@@ -440,6 +553,86 @@ export const createNoteSnapshotService = (deps: NoteSnapshotDeps) => ({
         }
 
         return serializeSnapshotWithContent(snapshot);
+    },
+
+    diffSnapshot: async (
+        snapshotId: number,
+        options: {
+            compareToSnapshotId?: number;
+            target?: NoteSnapshotDiffTarget;
+            contextLines?: number | null;
+        } = {},
+    ) => {
+        await deps.purgeExpiredSnapshots(createRetentionCutoff(SNAPSHOT_RETENTION_DAYS), RECOVERY_CLEANUP_BATCH_LIMIT);
+        const snapshot = await deps.findSnapshotById(snapshotId);
+
+        if (!snapshot) {
+            return null;
+        }
+
+        if (options.compareToSnapshotId !== undefined) {
+            const comparedSnapshot = await deps.findSnapshotById(options.compareToSnapshotId);
+
+            if (!comparedSnapshot || comparedSnapshot.noteId !== snapshot.noteId) {
+                return null;
+            }
+
+            return buildSnapshotDiff({
+                beforeSnapshot: snapshot,
+                afterSnapshot: comparedSnapshot,
+                contextLines: options.contextLines,
+            });
+        }
+
+        if (options.target === 'previous') {
+            const previousSnapshot = deps.findPreviousSnapshot ? await deps.findPreviousSnapshot(snapshot) : null;
+
+            if (!previousSnapshot) {
+                return null;
+            }
+
+            return buildSnapshotDiff({
+                beforeSnapshot: previousSnapshot,
+                afterSnapshot: snapshot,
+                contextLines: options.contextLines,
+            });
+        }
+
+        if (options.target === 'current') {
+            const note = await deps.findNoteById(snapshot.noteId);
+
+            if (!note) {
+                return null;
+            }
+
+            return buildSnapshotDiff({
+                beforeSnapshot: snapshot,
+                afterNote: note,
+                contextLines: options.contextLines,
+            });
+        }
+
+        const nextSnapshot = deps.findNextSnapshot ? await deps.findNextSnapshot(snapshot) : null;
+
+        if (nextSnapshot) {
+            return buildSnapshotDiff({
+                beforeSnapshot: snapshot,
+                afterSnapshot: nextSnapshot,
+                contextLines: options.contextLines,
+            });
+        }
+
+        const note = await deps.findNoteById(snapshot.noteId);
+
+        if (!note) {
+            return null;
+        }
+
+        return buildSnapshotDiff({
+            beforeSnapshot: snapshot,
+            afterNote: note,
+            contextLines: options.contextLines,
+        });
     },
 
     restoreSnapshot: async (snapshotId: number, options?: { meta?: string }) => {
@@ -582,6 +775,36 @@ export const defaultNoteSnapshotService = createNoteSnapshotService({
     findSnapshotById: async (id) => {
         return models.noteSnapshot.findUnique({ where: { id } });
     },
+    findNextSnapshot: async (snapshot) => {
+        return models.noteSnapshot.findFirst({
+            where: {
+                noteId: snapshot.noteId,
+                OR: [
+                    { createdAt: { gt: snapshot.createdAt } },
+                    {
+                        createdAt: snapshot.createdAt,
+                        id: { gt: snapshot.id },
+                    },
+                ],
+            },
+            orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        });
+    },
+    findPreviousSnapshot: async (snapshot) => {
+        return models.noteSnapshot.findFirst({
+            where: {
+                noteId: snapshot.noteId,
+                OR: [
+                    { createdAt: { lt: snapshot.createdAt } },
+                    {
+                        createdAt: snapshot.createdAt,
+                        id: { lt: snapshot.id },
+                    },
+                ],
+            },
+            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        });
+    },
     updateNote: async (id, input) => {
         const { tagIds, properties, ...noteInput } = input;
 
@@ -673,6 +896,17 @@ export const listNoteSnapshots = async (noteId: number, limit?: number) => {
 
 export const getNoteSnapshot = async (snapshotId: number) => {
     return defaultNoteSnapshotService.getSnapshot(snapshotId);
+};
+
+export const diffNoteSnapshot = async (
+    snapshotId: number,
+    options?: {
+        compareToSnapshotId?: number;
+        target?: NoteSnapshotDiffTarget;
+        contextLines?: number | null;
+    },
+) => {
+    return defaultNoteSnapshotService.diffSnapshot(snapshotId, options);
 };
 
 export const restoreNoteSnapshot = async (snapshotId: number, options?: { meta?: string }) => {

@@ -54,6 +54,7 @@ export interface MarkdownChangePolicy {
     allowNoop?: boolean;
     maxChangedChars?: number;
     maxChangedLines?: number;
+    diffPreviewMaxChars?: number;
     preserveReferences?: boolean | 'warn';
     preserveTags?: boolean | 'warn';
 }
@@ -134,6 +135,8 @@ export interface MarkdownChangeDryRun {
         beforeMarkdownSha256: string;
         afterMarkdownSha256: string;
         diff: string;
+        diffTruncated?: boolean;
+        diffCharCount?: number;
     };
     warnings: string[];
 }
@@ -171,6 +174,7 @@ export interface MarkdownChangeFailure {
         | 'TARGET_NOT_FOUND'
         | 'UNSUPPORTED_MARKDOWN_STRUCTURE';
     message: string;
+    details?: Record<string, unknown>;
 }
 
 export type MarkdownPatchPreviewResult =
@@ -513,7 +517,8 @@ const validateBaseline = (
         return {
             status: 'failed',
             reason: 'BASELINE_MISMATCH',
-            message: 'The markdown write baseline does not match the current note.',
+            message:
+                'The markdown write baseline does not match the current note. expectedUpdatedAt accepts an ISO datetime string or epoch milliseconds string.',
         };
     }
 
@@ -527,19 +532,46 @@ const validateChangeLimits = (
     policy: MarkdownChangePolicy | undefined,
 ): MarkdownChangeFailure | null => {
     const changedLineCount = countChangedLines(beforeMarkdown, afterMarkdown);
+    const exceededLines = policy?.maxChangedLines !== undefined && changedLineCount > policy.maxChangedLines;
+    const exceededChars = policy?.maxChangedChars !== undefined && changedCharCount > policy.maxChangedChars;
 
-    if (
-        (policy?.maxChangedLines !== undefined && changedLineCount > policy.maxChangedLines) ||
-        (policy?.maxChangedChars !== undefined && changedCharCount > policy.maxChangedChars)
-    ) {
+    if (exceededLines || exceededChars) {
         return {
             status: 'failed',
             reason: 'CHANGE_LIMIT_EXCEEDED',
-            message: 'The markdown write exceeds the configured change limit.',
+            message:
+                'The markdown write exceeds the configured change limit. Increase maxChangedLines/maxChangedChars to at least the requiredMinimum values or omit them for this write.',
+            details: {
+                configured: {
+                    ...(policy?.maxChangedLines !== undefined ? { maxChangedLines: policy.maxChangedLines } : {}),
+                    ...(policy?.maxChangedChars !== undefined ? { maxChangedChars: policy.maxChangedChars } : {}),
+                },
+                requiredMinimum: {
+                    maxChangedLines: changedLineCount,
+                    maxChangedChars: changedCharCount,
+                },
+            },
         };
     }
 
     return null;
+};
+
+const buildDiffPreview = (diff: string, policy: MarkdownChangePolicy | undefined) => {
+    const maxChars = policy?.diffPreviewMaxChars;
+
+    if (maxChars === undefined || diff.length <= maxChars) {
+        return {
+            diff,
+            ...(maxChars !== undefined ? { diffCharCount: diff.length } : {}),
+        };
+    }
+
+    return {
+        diff: diff.slice(0, maxChars),
+        diffTruncated: true,
+        diffCharCount: diff.length,
+    };
 };
 
 const createChangePlan = ({
@@ -579,6 +611,11 @@ const createChangePlan = ({
         return limitFailure;
     }
 
+    const diffPreview = buildDiffPreview(
+        createUnifiedMarkdownDiff(note.markdown, afterMarkdown, diffContextLines),
+        policy,
+    );
+
     return {
         status: 'dry_run',
         note: {
@@ -593,7 +630,7 @@ const createChangePlan = ({
             changedCharCount,
             beforeMarkdownSha256: calculateMarkdownSha256(note.markdown),
             afterMarkdownSha256: calculateMarkdownSha256(afterMarkdown),
-            diff: createUnifiedMarkdownDiff(note.markdown, afterMarkdown, diffContextLines),
+            ...diffPreview,
         },
         warnings: collectWarnings(note.markdown, afterMarkdown, policy),
         afterMarkdown,

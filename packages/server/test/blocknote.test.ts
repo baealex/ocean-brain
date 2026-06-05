@@ -10,6 +10,13 @@ import {
     markdownToBlocksJson,
 } from '../src/modules/blocknote.js';
 
+const noopMarkdownImportDeps = {
+    ensureTag: async () => {
+        throw new Error('should not ensure tags');
+    },
+    findNotesByTitle: async () => [],
+};
+
 test('blocksToMarkdown preserves supported content when tableOfContents blocks are present', async () => {
     const content = JSON.stringify([
         {
@@ -633,6 +640,117 @@ test('markdownToBlocksJson preserves numeric tilde ranges as plain text', async 
         },
     ]);
     assert.equal(roundTripMarkdown.trim(), markdown);
+});
+
+test('markdownToBlocksJson preserves numeric tilde ranges across hard break lines', async () => {
+    const markdown = 'Range is 1~3 and 4~5\\\nNext range is 6~7.';
+
+    const contentJson = await markdownToBlocksJson(markdown, noopMarkdownImportDeps);
+    const blocks = JSON.parse(contentJson);
+    const renderedMarkdown = await blocksToMarkdown(contentJson);
+
+    assert.equal(blocks.length, 1);
+    assert.deepEqual(blocks[0].content, [
+        {
+            type: 'text',
+            text: 'Range is 1~3 and 4~5\nNext range is 6~7.',
+            styles: {},
+        },
+    ]);
+    assert.equal(renderedMarkdown, `${markdown}\n`);
+    assert.doesNotMatch(renderedMarkdown, /~~/);
+});
+
+test('markdownToBlocksJson preserves line-end hard break markers without doubling them', async () => {
+    const markdown = 'Updated: 2026-06-01\\\n상태: 실제 프로젝트 구조 기반 초안';
+
+    const contentJson = await markdownToBlocksJson(markdown, noopMarkdownImportDeps);
+    const blocks = JSON.parse(contentJson);
+
+    assert.equal(blocks.length, 1);
+    assert.deepEqual(blocks[0].content, [
+        {
+            type: 'text',
+            text: 'Updated: 2026-06-01\n상태: 실제 프로젝트 구조 기반 초안',
+            styles: {},
+        },
+    ]);
+    assert.equal(await blocksToMarkdown(contentJson), `${markdown}\n`);
+});
+
+test('markdownToBlocksJson preserves consecutive line-end hard break markers without paragraph splitting', async () => {
+    const markdown = 'Updated: 2026-06-01\\\n\\\n상태: 실제 프로젝트 구조 기반 초안';
+
+    const contentJson = await markdownToBlocksJson(markdown, noopMarkdownImportDeps);
+    const blocks = JSON.parse(contentJson);
+
+    assert.equal(blocks.length, 1);
+    assert.deepEqual(blocks[0].content, [
+        {
+            type: 'text',
+            text: 'Updated: 2026-06-01\n\n상태: 실제 프로젝트 구조 기반 초안',
+            styles: {},
+        },
+    ]);
+    assert.equal(await blocksToMarkdown(contentJson), `${markdown}\n`);
+});
+
+test('markdownToBlocksJson preserves trailing backslashes at paragraph boundaries', async () => {
+    const markdown = 'Path: C:\\\n\nNext paragraph';
+
+    const contentJson = await markdownToBlocksJson(markdown, noopMarkdownImportDeps);
+    const blocks = JSON.parse(contentJson);
+
+    assert.equal(blocks.length, 2);
+    assert.deepEqual(blocks[0].content, [
+        {
+            type: 'text',
+            text: 'Path: C:\\',
+            styles: {},
+        },
+    ]);
+    assert.equal(await blocksToMarkdown(contentJson), `${markdown}\n`);
+});
+
+test('markdownToBlocksJson preserves trailing backslashes before block boundaries', async () => {
+    const cases = ['foo\\\n# heading', 'foo\\\n- item', 'foo\\\n> quote'];
+
+    for (const markdown of cases) {
+        const contentJson = await markdownToBlocksJson(markdown, noopMarkdownImportDeps);
+        const blocks = JSON.parse(contentJson);
+
+        assert.deepEqual(blocks[0].content, [
+            {
+                type: 'text',
+                text: 'foo\\',
+                styles: {},
+            },
+        ]);
+    }
+});
+
+test('markdownToBlocksJson preserves code block trailing backslashes', async () => {
+    const markdown = ['```', 'Updated: 2026-06-01\\', '```'].join('\n');
+
+    const contentJson = await markdownToBlocksJson(markdown, noopMarkdownImportDeps);
+    const blocks = JSON.parse(contentJson);
+    const renderedMarkdown = await blocksToMarkdown(contentJson);
+
+    assert.equal(blocks[0].type, 'codeBlock');
+    assert.equal(blocks[0].content[0].text, 'Updated: 2026-06-01\\');
+    assert.match(renderedMarkdown, /Updated: 2026-06-01\\\n```/);
+});
+
+test('markdownToBlocksJson preserves trailing backslashes inside multiline inline code', async () => {
+    const markdown = '`foo\\\nbar`';
+
+    const contentJson = await markdownToBlocksJson(markdown, noopMarkdownImportDeps);
+    const blocks = JSON.parse(contentJson);
+    const renderedMarkdown = await blocksToMarkdown(contentJson);
+
+    assert.equal(blocks[0].content[0].text, 'foo\\ bar');
+    assert.equal(blocks[0].content[0].styles.code, true);
+    assert.match(renderedMarkdown, /foo\\ bar/);
 });
 
 test('markdownToBlocksJson preserves double-tilde strikethrough', async () => {

@@ -18,7 +18,7 @@ import type {
 } from '~/features/note/services/markdown-patch.js';
 import type { NotePropertiesByKeyPatchInput } from '~/features/note/services/properties.js';
 import { MCP_SNAPSHOT_META } from '~/features/note/services/snapshot.js';
-import type { NoteLayout } from '~/models.js';
+import models, { type NoteLayout } from '~/models.js';
 import { createAppError } from '~/modules/error-handler.js';
 import { emitServerEvent, type ServerEventInput } from '~/modules/server-events.js';
 import type { Controller } from '~/types/index.js';
@@ -134,6 +134,13 @@ const resolvePositiveNoteId = (value: unknown) => {
     return noteId;
 };
 
+const serializeNoteWriteBaseline = (note: { id: number | string; updatedAt: Date | string }) => {
+    return {
+        id: String(note.id),
+        updatedAt: note.updatedAt instanceof Date ? note.updatedAt.toISOString() : note.updatedAt,
+    };
+};
+
 const isNonNegativeInteger = (value: unknown): value is number => {
     return typeof value === 'number' && Number.isInteger(value) && value >= 0;
 };
@@ -172,6 +179,13 @@ const resolveMarkdownWritePolicy = (value: unknown): MarkdownChangePolicy | unde
             throw createAppError(400, 'INVALID_MARKDOWN_POLICY', 'maxChangedLines must be a non-negative integer.');
         }
         policy.maxChangedLines = value.maxChangedLines;
+    }
+
+    if (value.diffPreviewMaxChars !== undefined) {
+        if (!isNonNegativeInteger(value.diffPreviewMaxChars)) {
+            throw createAppError(400, 'INVALID_MARKDOWN_POLICY', 'diffPreviewMaxChars must be a non-negative integer.');
+        }
+        policy.diffPreviewMaxChars = value.diffPreviewMaxChars;
     }
 
     if (value.preserveTags !== undefined) {
@@ -455,6 +469,32 @@ export const createMcpUpdateNoteHandler = (
 
             throw error;
         }
+    };
+};
+
+export const createMcpNoteWriteBaselineHandler = (
+    findNoteBaseline: (id: number) => Promise<{ id: number; updatedAt: Date } | null> = async (id) =>
+        models.note.findUnique({
+            where: { id },
+            select: {
+                id: true,
+                updatedAt: true,
+            },
+        }),
+): Controller => {
+    return async (req, res) => {
+        const noteId = resolvePositiveNoteId(req.body?.id);
+        const note = await findNoteBaseline(noteId);
+
+        if (!note) {
+            throw createAppError(404, 'NOTE_NOT_FOUND', 'The requested note was not found.');
+        }
+
+        res.status(200)
+            .json({
+                note: serializeNoteWriteBaseline(note),
+            })
+            .end();
     };
 };
 

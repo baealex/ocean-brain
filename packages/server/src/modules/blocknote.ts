@@ -57,11 +57,17 @@ interface MarkdownImportDeps {
             title: string;
         }>
     >;
+    findNoteById?: (id: string) => Promise<{
+        id: string;
+        title: string;
+    } | null>;
 }
 
 const UNSUPPORTED_MARKDOWN_BLOCK_TYPES = new Set(['tableOfContents']);
 const TAG_PLACEHOLDER_PREFIX = 'OCEAN_BRAIN_TAG_';
 const TAG_PLACEHOLDER_SUFFIX = '_TOKEN';
+const REFERENCE_PLACEHOLDER_PREFIX = 'OCEAN_BRAIN_REFERENCE_';
+const REFERENCE_PLACEHOLDER_SUFFIX = '_TOKEN';
 
 const defaultMarkdownImportDeps: MarkdownImportDeps = {
     ensureTag: async (name) => ensureTagByName(name),
@@ -80,6 +86,28 @@ const defaultMarkdownImportDeps: MarkdownImportDeps = {
             id: String(note.id),
             title: note.title,
         }));
+    },
+    findNoteById: async (id) => {
+        if (!isValidNoteIdString(id)) {
+            return null;
+        }
+
+        const numericId = Number(id);
+
+        const note = await models.note.findUnique({
+            select: {
+                id: true,
+                title: true,
+            },
+            where: { id: numericId },
+        });
+
+        return note
+            ? {
+                  id: String(note.id),
+                  title: note.title,
+              }
+            : null;
     },
 };
 
@@ -114,6 +142,20 @@ function visitBlocks(blocks: BlockNote[], visit: (block: BlockNote) => void) {
 
 function createTagPlaceholder(index: number) {
     return `${TAG_PLACEHOLDER_PREFIX}${index}${TAG_PLACEHOLDER_SUFFIX}`;
+}
+
+function createReferencePlaceholder(index: number) {
+    return `${REFERENCE_PLACEHOLDER_PREFIX}${index}${REFERENCE_PLACEHOLDER_SUFFIX}`;
+}
+
+function isValidNoteIdString(id: string) {
+    if (!/^[1-9]\d*$/.test(id)) {
+        return false;
+    }
+
+    const numericId = Number(id);
+
+    return Number.isSafeInteger(numericId) && numericId <= MAX_SQLITE_INT_ID;
 }
 
 function isTableContent(content: BlockNoteContent | undefined): content is BlockNoteTableContent {
@@ -204,19 +246,6 @@ function mapBlocks(
     }));
 }
 
-async function mapBlocksAsync(
-    blocks: BlockNote[],
-    mapContent: (content: BlockNoteContent | undefined) => Promise<BlockNoteContent | undefined>,
-): Promise<BlockNote[]> {
-    return Promise.all(
-        blocks.map(async (block) => ({
-            ...block,
-            content: await mapContent(block.content),
-            children: block.children?.length ? await mapBlocksAsync(block.children, mapContent) : [],
-        })),
-    );
-}
-
 function preprocessCustomInlineContent(
     blocks: BlockNote[],
     placeholderToTag: Map<string, string>,
@@ -225,9 +254,12 @@ function preprocessCustomInlineContent(
     return mapBlocks(blocks, (content) =>
         mapBlockContent(content, (inline) => {
             if (inline.type === 'reference') {
+                const id = String(inline.props?.id || '');
+                const title = String(inline.props?.title || inline.props?.id || '');
+
                 return {
                     type: 'text',
-                    text: `[[${inline.props?.title || inline.props?.id || ''}]]`,
+                    text: isValidNoteIdString(id) ? `[[${title}]](note:${id})` : `[[${title}]]`,
                     styles: {},
                 };
             }
@@ -271,6 +303,77 @@ function preprocessMarkdownExplicitTags(markdown: string) {
     };
 }
 
+function preprocessMarkdownExplicitReferences(markdown: string) {
+    const placeholderToReference = new Map<string, { id: string; title: string; token: string }>();
+    let activeFence: { marker: '`' | '~'; length: number } | null = null;
+
+    const preprocessedLines = markdown.split(/(?<=\n)/).map((line) => {
+        const { body: lineBody, lineEnding } = splitMarkdownLineEnding(line);
+        const fenceMatch = lineBody.match(MARKDOWN_FENCED_CODE_PATTERN);
+
+        if (activeFence) {
+            if (isClosingFenceLine(lineBody, activeFence)) {
+                activeFence = null;
+            }
+
+            return line;
+        }
+
+        if (fenceMatch?.[1]) {
+            activeFence = {
+                marker: fenceMatch[1][0] as '`' | '~',
+                length: fenceMatch[1].length,
+            };
+            return line;
+        }
+
+        if (/^(?: {4,}|\t)/.test(lineBody)) {
+            return line;
+        }
+
+        return `${replaceMarkdownLineExplicitReferences(lineBody, placeholderToReference)}${lineEnding}`;
+    });
+
+    return {
+        markdown: preprocessedLines.join(''),
+        placeholderToReference,
+    };
+}
+
+function replaceMarkdownLineExplicitReferences(
+    line: string,
+    placeholderToReference: Map<string, { id: string; title: string; token: string }>,
+) {
+    let result = '';
+    let cursor = 0;
+
+    while (cursor < line.length) {
+        const codeSpan = findNextInlineCodeSpan(line, cursor);
+
+        if (!codeSpan) {
+            result += replaceExplicitReferenceTokens(line.slice(cursor), placeholderToReference);
+            break;
+        }
+
+        result += replaceExplicitReferenceTokens(line.slice(cursor, codeSpan.start), placeholderToReference);
+        result += line.slice(codeSpan.start, codeSpan.end);
+        cursor = codeSpan.end;
+    }
+
+    return result;
+}
+
+function replaceExplicitReferenceTokens(
+    text: string,
+    placeholderToReference: Map<string, { id: string; title: string; token: string }>,
+) {
+    return text.replace(/\[\[([^\]\n]+)\]\]\(note:([^)\s]+)\)/g, (token, title: string, id: string) => {
+        const placeholder = createReferencePlaceholder(placeholderToReference.size);
+        placeholderToReference.set(placeholder, { id, title, token });
+        return placeholder;
+    });
+}
+
 const MARKDOWN_ANGLE_BRACKET_TOKEN_PATTERN = /<([^<>\n]+)>/g;
 const MARKDOWN_NUMERIC_TILDE_RANGE_PATTERN = /(\d)~(?=\d)/g;
 const MARKDOWN_FENCED_CODE_PATTERN = /^ {0,3}(`{3,}|~{3,})/;
@@ -280,6 +383,7 @@ const NUMERIC_TILDE_RANGE_PLACEHOLDER_PREFIX = '\uE000OBTILDE';
 const NUMERIC_TILDE_RANGE_PLACEHOLDER_SUFFIX = '\uE001';
 const HARD_BREAK_PLACEHOLDER_PREFIX = '\uE000OBHARDBREAK';
 const HARD_BREAK_PLACEHOLDER_SUFFIX = '\uE001';
+const MAX_SQLITE_INT_ID = 2_147_483_647;
 
 function isMarkdownAutolinkAngleBracketText(innerText: string) {
     if (innerText !== innerText.trim()) {
@@ -735,6 +839,23 @@ function findTagPlaceholderAtCursor(text: string, cursor: number, placeholderToT
     return null;
 }
 
+function findReferencePlaceholderAtCursor(
+    text: string,
+    cursor: number,
+    placeholderToReference: Map<string, { id: string; title: string; token: string }>,
+) {
+    for (const [placeholder, reference] of placeholderToReference.entries()) {
+        if (text.startsWith(placeholder, cursor)) {
+            return {
+                placeholder,
+                reference,
+            };
+        }
+    }
+
+    return null;
+}
+
 function restoreRemainingTagPlaceholders(blocks: BlockNote[], placeholderToTag: Map<string, string>): BlockNote[] {
     return mapBlocks(blocks, (content) =>
         mapBlockContent(content, (inline) => {
@@ -826,9 +947,11 @@ async function restoreCustomInlineContent(
     blocks: BlockNote[],
     deps: MarkdownImportDeps,
     placeholderToTag: Map<string, string>,
+    placeholderToReference: Map<string, { id: string; title: string; token: string }> = new Map(),
 ): Promise<BlockNote[]> {
     const tagCache = new Map<string, Promise<{ id: string; tag: string }>>();
     const noteCache = new Map<string, Promise<Array<{ id: string; title: string }>>>();
+    const noteByIdCache = new Map<string, Promise<{ id: string; title: string } | null>>();
 
     const getTag = (token: string) => {
         const normalizedToken = token.startsWith('#') ? `@${token.slice(1)}` : token;
@@ -856,6 +979,17 @@ async function restoreCustomInlineContent(
         return existing;
     };
 
+    const getNoteById = (id: string) => {
+        let existing = noteByIdCache.get(id);
+
+        if (!existing) {
+            existing = deps.findNoteById ? deps.findNoteById(id) : Promise.resolve(null);
+            noteByIdCache.set(id, existing);
+        }
+
+        return existing;
+    };
+
     const restoreTextInline = async (inline: BlockNoteInline): Promise<BlockNoteInline[]> => {
         if (inline.type !== 'text' || typeof inline.text !== 'string' || !inline.text || inline.styles?.code === true) {
             return [inline];
@@ -866,6 +1000,37 @@ async function restoreCustomInlineContent(
         let cursor = 0;
 
         while (cursor < inline.text.length) {
+            const referencePlaceholderMatch = findReferencePlaceholderAtCursor(
+                inline.text,
+                cursor,
+                placeholderToReference,
+            );
+
+            if (referencePlaceholderMatch) {
+                if (!isValidNoteIdString(referencePlaceholderMatch.reference.id)) {
+                    appendInline(restored, createTextInline(referencePlaceholderMatch.reference.token, styles));
+                    cursor += referencePlaceholderMatch.placeholder.length;
+                    continue;
+                }
+
+                const note = await getNoteById(referencePlaceholderMatch.reference.id);
+
+                if (note) {
+                    appendInline(restored, {
+                        type: 'reference',
+                        props: {
+                            id: note.id,
+                            title: note.title,
+                        },
+                    });
+                } else {
+                    appendInline(restored, createTextInline(referencePlaceholderMatch.reference.token, styles));
+                }
+
+                cursor += referencePlaceholderMatch.placeholder.length;
+                continue;
+            }
+
             if (inline.text.startsWith('[[', cursor)) {
                 const closeIndex = inline.text.indexOf(']]', cursor + 2);
 
@@ -915,6 +1080,14 @@ async function restoreCustomInlineContent(
                 }
             }
 
+            for (const placeholder of placeholderToReference.keys()) {
+                const nextPlaceholderCursor = inline.text.indexOf(placeholder, cursor + 1);
+
+                if (nextPlaceholderCursor !== -1) {
+                    nextCursor = Math.min(nextCursor, nextPlaceholderCursor);
+                }
+            }
+
             appendInline(restored, createTextInline(inline.text.slice(cursor, nextCursor), styles));
             cursor = nextCursor;
         }
@@ -922,7 +1095,26 @@ async function restoreCustomInlineContent(
         return restored;
     };
 
-    return mapBlocksAsync(blocks, (content) => mapBlockContentAsync(content, restoreTextInline));
+    const restoreBlocks = async (items: BlockNote[]): Promise<BlockNote[]> => {
+        return Promise.all(
+            items.map(async (block) => {
+                if (block.type === 'codeBlock') {
+                    return {
+                        ...block,
+                        children: block.children?.length ? await restoreBlocks(block.children) : [],
+                    };
+                }
+
+                return {
+                    ...block,
+                    content: await mapBlockContentAsync(block.content, restoreTextInline),
+                    children: block.children?.length ? await restoreBlocks(block.children) : [],
+                };
+            }),
+        );
+    };
+
+    return restoreBlocks(blocks);
 }
 
 function collectTagIds(blocks: BlockNote[]): string[] {
@@ -977,7 +1169,8 @@ export async function markdownToBlocksJson(
 ): Promise<string> {
     const editor = getEditor();
     const preprocessedMarkdown = preprocessMarkdownExplicitTags(markdown);
-    const tildeProtectedMarkdown = protectMarkdownNumericTildeRanges(preprocessedMarkdown.markdown);
+    const preprocessedReferenceMarkdown = preprocessMarkdownExplicitReferences(preprocessedMarkdown.markdown);
+    const tildeProtectedMarkdown = protectMarkdownNumericTildeRanges(preprocessedReferenceMarkdown.markdown);
     const hardBreakProtectedMarkdown = protectMarkdownLineEndHardBreakMarkers(tildeProtectedMarkdown.markdown);
     const basePlaceholderToToken = new Map([
         ...tildeProtectedMarkdown.placeholderToToken,
@@ -988,14 +1181,20 @@ export async function markdownToBlocksJson(
         hardBreakProtectedMarkdown.markdown,
         deps,
         preprocessedMarkdown.placeholderToTag,
+        preprocessedReferenceMarkdown.placeholderToReference,
         basePlaceholderToToken,
     );
 
-    if (extractLiteralAngleBracketTextTokens(preprocessedMarkdown.markdown).length === 0) {
+    if (extractLiteralAngleBracketTextTokens(preprocessedReferenceMarkdown.markdown).length === 0) {
         return contentJson;
     }
 
-    if (!hasLiteralAngleBracketTextTokenLoss(preprocessedMarkdown.markdown, await blocksToMarkdown(contentJson))) {
+    if (
+        !hasLiteralAngleBracketTextTokenLoss(
+            preprocessedReferenceMarkdown.markdown,
+            await blocksToMarkdown(contentJson),
+        )
+    ) {
         return contentJson;
     }
 
@@ -1007,6 +1206,7 @@ export async function markdownToBlocksJson(
         protectedMarkdown.markdown,
         deps,
         preprocessedMarkdown.placeholderToTag,
+        preprocessedReferenceMarkdown.placeholderToReference,
         placeholderToToken,
     );
 }
@@ -1016,10 +1216,16 @@ async function parseMarkdownToContentJson(
     markdown: string,
     deps: MarkdownImportDeps,
     placeholderToTag: Map<string, string>,
+    placeholderToReference: Map<string, { id: string; title: string; token: string }> = new Map(),
     placeholderToProtectedTextToken: Map<string, string> = new Map(),
 ) {
     const blocks = await editor.tryParseMarkdownToBlocks(markdown);
-    const restoredBlocks = await restoreCustomInlineContent(blocks as BlockNote[], deps, placeholderToTag);
+    const restoredBlocks = await restoreCustomInlineContent(
+        blocks as BlockNote[],
+        deps,
+        placeholderToTag,
+        placeholderToReference,
+    );
     const restoredTagBlocks = restoreRemainingTagPlaceholders(restoredBlocks, placeholderToTag);
     const restoredProtectedTextBlocks = restoreProtectedTextPlaceholders(
         restoredTagBlocks,

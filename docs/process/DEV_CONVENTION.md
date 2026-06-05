@@ -1,6 +1,6 @@
 # Ocean Brain Dev Convention
 
-Updated: 2026-03-06
+Updated: 2026-06-05
 
 ## 1. Base Environment
 - Node.js: `22`
@@ -30,6 +30,7 @@ Updated: 2026-03-06
    - Body sections: write each section as a Markdown H2 heading using the exact shortcode labels, for example `## :dart: Goal`
    - Required section labels: `:dart: Goal`, `:hammer_and_wrench: Core Changes`, `:brain: Key Decisions`, `:test_tube: Verification Guide`, `:white_check_mark: Checklist` (shortcode only)
    - Commit format: `<emoji> <subject>` (Unicode emoji only)
+   - Release impact label: exactly one of `release: major`, `release: minor`, or `release: patch`
 
 ## 5. Server and Release Linked Rules
 - Server start script includes `prisma migrate deploy`.

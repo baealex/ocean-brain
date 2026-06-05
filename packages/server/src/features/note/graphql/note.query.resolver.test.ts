@@ -5,7 +5,22 @@ import {
     createAllNotesQueryResolver,
     createBackReferencesQueryResolver,
     createNoteGraphQueryResolver,
+    createNoteQueryResolver,
 } from './note.query.resolver.js';
+
+const createNoteRecord = (input: { id: number; title: string; content: string; updatedAt?: Date }) =>
+    ({
+        id: input.id,
+        title: input.title,
+        content: input.content,
+        searchableText: '',
+        searchableTextVersion: 0,
+        createdAt: new Date('2026-06-04T00:00:00.000Z'),
+        updatedAt: input.updatedAt ?? new Date('2026-06-04T00:00:00.000Z'),
+        pinned: false,
+        order: 0,
+        layout: 'wide',
+    }) as const;
 
 test('allNotes resolver uses stored searchable text with DB pagination when no stale notes exist', async () => {
     const findCalls: unknown[] = [];
@@ -229,6 +244,94 @@ test('allNotes resolver leaves unfiltered queries on the fast default path', asy
     });
     assert.equal(result.totalCount, 3);
     assert.deepEqual(result.notes, []);
+});
+
+test('note resolver lazily repairs structured reference titles after target note rename', async () => {
+    const sourceUpdatedAt = new Date('2026-06-04T00:00:00.000Z');
+    const sourceContent = JSON.stringify([
+        {
+            id: 'paragraph-1',
+            type: 'paragraph',
+            props: {},
+            content: [
+                { type: 'text', text: 'See ', styles: {} },
+                {
+                    type: 'reference',
+                    props: {
+                        id: '2',
+                        title: 'Old target title',
+                    },
+                },
+            ],
+            children: [],
+        },
+    ]);
+    const updates: unknown[] = [];
+
+    const resolver = createNoteQueryResolver({
+        findNote: async (id) =>
+            createNoteRecord({ id, title: 'Source note', content: sourceContent, updatedAt: sourceUpdatedAt }) as never,
+        findReferenceNotes: async (ids) => {
+            assert.deepEqual(ids, [2]);
+            return [createNoteRecord({ id: 2, title: 'Renamed target title', content: '[]' })] as never;
+        },
+        updateNoteContent: async (input) => {
+            updates.push(input);
+            return createNoteRecord({
+                id: input.id,
+                title: 'Source note',
+                content: input.content,
+                updatedAt: new Date('2026-06-04T00:00:01.000Z'),
+            }) as never;
+        },
+        isRecordNotFoundError: () => false,
+    });
+
+    const result = await resolver(null, { id: '1' });
+
+    assert.equal(JSON.parse(result.content)[0].content[1].props.title, 'Renamed target title');
+    assert.deepEqual(updates, [
+        {
+            id: 1,
+            updatedAt: sourceUpdatedAt,
+            content: result.content,
+            searchableText: 'source note see renamed target title',
+            searchableTextVersion: 1,
+        },
+    ]);
+});
+
+test('note resolver cannot repair unresolved plain-text wiki links after target note rename', async () => {
+    const sourceContent = JSON.stringify([
+        {
+            id: 'paragraph-1',
+            type: 'paragraph',
+            props: {},
+            content: [{ type: 'text', text: 'See [[Old target title]]', styles: {} }],
+            children: [],
+        },
+    ]);
+    let didFindReferences = false;
+    let didUpdate = false;
+
+    const resolver = createNoteQueryResolver({
+        findNote: async (id) => createNoteRecord({ id, title: 'Source note', content: sourceContent }) as never,
+        findReferenceNotes: async () => {
+            didFindReferences = true;
+            return [];
+        },
+        updateNoteContent: async () => {
+            didUpdate = true;
+            throw new Error('should not update unresolved plain text links');
+        },
+        isRecordNotFoundError: () => false,
+    });
+
+    const result = await resolver(null, { id: '1' });
+
+    assert.equal(result.content, sourceContent);
+    assert.equal(didFindReferences, false);
+    assert.equal(didUpdate, false);
 });
 
 test('backReferences resolver finds structurally valid references in formatted note JSON', async () => {

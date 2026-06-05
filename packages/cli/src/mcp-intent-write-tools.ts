@@ -104,6 +104,7 @@ const markdownWritePolicySchema = z.object({
     allowNoop: z.boolean().optional(),
     maxChangedChars: z.number().int().nonnegative().optional(),
     maxChangedLines: z.number().int().nonnegative().optional(),
+    diffPreviewMaxChars: z.number().int().nonnegative().optional(),
     preserveTags: z.union([z.boolean(), z.literal('warn')]).optional(),
     preserveReferences: z.union([z.boolean(), z.literal('warn')]).optional()
 }).optional();

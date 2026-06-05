@@ -111,7 +111,8 @@ test('markdown intent write refuses apply when the note changed after preview ba
     assert.deepEqual(result, {
         status: 'failed',
         reason: 'BASELINE_MISMATCH',
-        message: 'The markdown write baseline does not match the current note.',
+        message:
+            'The markdown write baseline does not match the current note. expectedUpdatedAt accepts an ISO datetime string or epoch milliseconds string.',
     });
 });
 
@@ -176,6 +177,9 @@ test('markdown intent write refuses apply when structured references would be lo
         operation: {
             type: 'replace',
             replacement: 'Updated sentence.',
+        },
+        policy: {
+            preserveReferences: true,
         },
         dryRun: false,
     });
@@ -287,8 +291,137 @@ test('markdown intent write maps guarded update conflicts to baseline mismatch f
     assert.deepEqual(result, {
         status: 'failed',
         reason: 'BASELINE_MISMATCH',
-        message: 'The markdown write baseline does not match the current note.',
+        message:
+            'The markdown write baseline does not match the current note. expectedUpdatedAt accepts an ISO datetime string or epoch milliseconds string.',
     });
+});
+
+test('markdown intent write allows intentional reference loss when preserveReferences is false', async () => {
+    const updates: unknown[] = [];
+    const service = createMarkdownIntentWriteService({
+        findNoteById: async () => createNote({ content: 'before-content' }),
+        renderMarkdown: async () => 'See [[Shared Title]]\n\nOriginal sentence.',
+        parseMarkdownToContentJson: async () => 'after-content',
+        extractTagIds: () => [],
+        countReferenceInlines: (content) => (content === 'before-content' ? 1 : 0),
+        updateNote: async (input) => {
+            updates.push(input);
+            return {
+                note: {
+                    id: input.id,
+                    title: 'Existing',
+                    content: input.data.content ?? '',
+                    layout: 'wide',
+                    pinned: false,
+                    order: 0,
+                    createdAt: new Date('2026-05-28T00:00:00.000Z'),
+                    updatedAt: new Date('2026-05-28T00:00:01.000Z'),
+                },
+                snapshot: {
+                    id: '14',
+                    createdAt: '2026-05-28T00:00:00.500Z',
+                    meta: { label: 'MCP' },
+                },
+            };
+        },
+    });
+
+    const result = await service.patchNoteMarkdown({
+        id: 7,
+        expectedUpdatedAt: '2026-05-28T00:00:00.000Z',
+        intent: 'Remove reference intentionally',
+        selector: {
+            type: 'exact_text',
+            text: 'See [[Shared Title]]\n\n',
+        },
+        operation: {
+            type: 'replace',
+            replacement: '',
+        },
+        policy: {
+            preserveReferences: false,
+        },
+        dryRun: false,
+    });
+
+    assert.equal(result.status, 'applied');
+    assert.equal(updates.length, 1);
+});
+
+test('markdown intent write reports required minimum limits when change limits are exceeded', async () => {
+    const service = createMarkdownIntentWriteService({
+        findNoteById: async () => createNote({ content: 'Original sentence.' }),
+        renderMarkdown: async (content) => content,
+        parseMarkdownToContentJson: async () => {
+            throw new Error('should not parse');
+        },
+        extractTagIds: () => [],
+        updateNote: async () => {
+            throw new Error('should not update');
+        },
+    });
+
+    const result = await service.appendNoteMarkdown({
+        id: 7,
+        expectedUpdatedAt: '2026-05-28T00:00:00.000Z',
+        intent: 'Append longer section',
+        insertion: 'Line 1\nLine 2\nLine 3',
+        policy: {
+            maxChangedLines: 1,
+            maxChangedChars: 5,
+        },
+    });
+
+    assert.deepEqual(result, {
+        status: 'failed',
+        reason: 'CHANGE_LIMIT_EXCEEDED',
+        message:
+            'The markdown write exceeds the configured change limit. Increase maxChangedLines/maxChangedChars to at least the requiredMinimum values or omit them for this write.',
+        details: {
+            configured: {
+                maxChangedLines: 1,
+                maxChangedChars: 5,
+            },
+            requiredMinimum: {
+                maxChangedLines: 4,
+                maxChangedChars: 20,
+            },
+        },
+    });
+});
+
+test('markdown intent write can truncate dry-run diff previews', async () => {
+    const service = createMarkdownIntentWriteService({
+        findNoteById: async () => createNote({ content: 'Original sentence.' }),
+        renderMarkdown: async (content) => content,
+        parseMarkdownToContentJson: async () => {
+            throw new Error('should not parse during dry run');
+        },
+        extractTagIds: () => [],
+        updateNote: async () => {
+            throw new Error('should not update');
+        },
+    });
+
+    const result = await service.appendNoteMarkdown({
+        id: 7,
+        expectedUpdatedAt: '2026-05-28T00:00:00.000Z',
+        intent: 'Append with short diff',
+        insertion: 'A long appended sentence that should be hidden from the short diff preview.',
+        policy: {
+            diffPreviewMaxChars: 24,
+        },
+    });
+
+    assert.equal(result.status, 'dry_run');
+
+    if (result.status !== 'dry_run') {
+        throw new Error('expected dry run');
+    }
+
+    assert.equal(result.proposed.diff.length, 24);
+    assert.equal(result.proposed.diffTruncated, true);
+    assert.ok((result.proposed.diffCharCount ?? 0) > result.proposed.diff.length);
 });
 
 test('metadata update accepts epoch millisecond note versions', async () => {

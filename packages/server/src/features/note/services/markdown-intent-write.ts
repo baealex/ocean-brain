@@ -96,6 +96,7 @@ export interface MarkdownWritePolicy {
     allowNoop?: boolean;
     maxChangedChars?: number;
     maxChangedLines?: number;
+    diffPreviewMaxChars?: number;
     preserveReferences?: boolean | 'warn';
     preserveTags?: boolean | 'warn';
 }
@@ -248,7 +249,8 @@ const toTagIds = (tagIds: string[]) => {
 const baselineMismatchFailure = (): MarkdownChangeFailure => ({
     status: 'failed',
     reason: 'BASELINE_MISMATCH',
-    message: 'The markdown write baseline does not match the current note.',
+    message:
+        'The markdown write baseline does not match the current note. expectedUpdatedAt accepts an ISO datetime string or epoch milliseconds string.',
 });
 
 const missingBaselineFailure = (): MarkdownChangeFailure => ({
@@ -367,7 +369,7 @@ const applyMarkdownPlan = async (
     const beforeReferenceCount = deps.countReferenceInlines?.(input.beforeContentJson) ?? 0;
     const afterReferenceCount = deps.countReferenceInlines?.(content) ?? 0;
 
-    if (input.policy?.preserveReferences !== false && afterReferenceCount < beforeReferenceCount) {
+    if (input.policy?.preserveReferences === true && afterReferenceCount < beforeReferenceCount) {
         return referenceStructureFailure();
     }
 
@@ -588,7 +590,8 @@ export const createMarkdownIntentWriteService = (deps: MarkdownIntentWriteDeps) 
             return {
                 status: 'failed',
                 reason: input.expectedUpdatedAt ? 'BASELINE_MISMATCH' : 'MISSING_BASELINE',
-                message: 'The metadata update baseline does not match the current note.',
+                message:
+                    'The metadata update baseline does not match the current note. expectedUpdatedAt accepts an ISO datetime string or epoch milliseconds string.',
             };
         }
 

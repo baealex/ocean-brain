@@ -181,6 +181,13 @@ const resolveMarkdownWritePolicy = (value: unknown): MarkdownChangePolicy | unde
         policy.maxChangedLines = value.maxChangedLines;
     }
 
+    if (value.diffPreviewMaxChars !== undefined) {
+        if (!isNonNegativeInteger(value.diffPreviewMaxChars)) {
+            throw createAppError(400, 'INVALID_MARKDOWN_POLICY', 'diffPreviewMaxChars must be a non-negative integer.');
+        }
+        policy.diffPreviewMaxChars = value.diffPreviewMaxChars;
+    }
+
     if (value.preserveTags !== undefined) {
         if (!PRESERVATION_POLICIES.has(value.preserveTags)) {
             throw createAppError(400, 'INVALID_MARKDOWN_POLICY', 'preserveTags must be boolean or warn.');

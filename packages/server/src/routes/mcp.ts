@@ -4,6 +4,7 @@ import {
     createMcpAppendNoteMarkdownHandler,
     createMcpCreateNoteHandler,
     createMcpDeleteNoteHandler,
+    createMcpNoteWriteBaselineHandler,
     createMcpPatchNoteMarkdownHandler,
     createMcpReplaceNoteMarkdownHandler,
     createMcpUpdateNoteHandler,
@@ -27,6 +28,11 @@ export const createMcpRouter = (authConfig: AuthConfig, mcpAdminService: McpRout
             '/notes/update',
             createMcpAuthMiddleware(authConfig, mcpAdminService),
             useAsync(createMcpUpdateNoteHandler()),
+        )
+        .post(
+            '/notes/baseline',
+            createMcpAuthMiddleware(authConfig, mcpAdminService),
+            useAsync(createMcpNoteWriteBaselineHandler()),
         )
         .post(
             '/notes/patch-markdown',

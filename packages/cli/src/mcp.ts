@@ -169,6 +169,22 @@ async function jsonRequest<TResponse extends Record<string, unknown>>(
     return result;
 }
 
+export const fetchMcpNoteWriteBaseline = async (
+    serverUrl: string,
+    token: string | undefined,
+    id: string,
+    request: typeof jsonRequest = jsonRequest
+) => {
+    const result = await request<{
+        note: {
+            id: string;
+            updatedAt: string;
+        };
+    }>(serverUrl, token, '/api/mcp/notes/baseline', { id });
+
+    return result.note;
+};
+
 const requireWriteToken = (token: string | undefined, toolName: string) => {
     if (token) {
         return token;
@@ -376,6 +392,7 @@ export async function startMcpServer(
     );
 
     registerIntentWriteTools(server, {
+        fetchNoteWriteBaseline: (id, writeToken) => fetchMcpNoteWriteBaseline(serverUrl, writeToken, id),
         jsonRequest,
         requireWriteToken,
         serverUrl,

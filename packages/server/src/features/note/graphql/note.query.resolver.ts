@@ -37,6 +37,31 @@ interface AllNotesResolverDeps {
     triggerSearchBackfill: () => void;
 }
 
+const MAX_SQLITE_INT_ID = 2_147_483_647;
+
+const isValidNoteIdString = (id: string) => {
+    if (!/^[1-9]\d*$/.test(id)) {
+        return false;
+    }
+
+    const numericId = Number(id);
+
+    return Number.isSafeInteger(numericId) && numericId <= MAX_SQLITE_INT_ID;
+};
+
+interface NoteResolverDeps {
+    findNote: (id: number) => Promise<Note | null>;
+    findReferenceNotes: (ids: number[]) => Promise<Note[]>;
+    updateNoteContent: (input: {
+        id: number;
+        updatedAt: Date;
+        content: string;
+        searchableText: string;
+        searchableTextVersion: number;
+    }) => Promise<Note>;
+    isRecordNotFoundError: (error: unknown) => boolean;
+}
+
 const buildAllNotesOrderBy = (searchFilter: SearchFilter) => {
     const sortBy = searchFilter.sortBy || 'updatedAt';
     const sortOrder = searchFilter.sortOrder || 'desc';
@@ -291,6 +316,83 @@ export const createNoteGraphQueryResolver = (
     };
 };
 
+export const createNoteQueryResolver = (
+    deps: NoteResolverDeps = {
+        findNote: (id) => models.note.findUnique({ where: { id } }),
+        findReferenceNotes: (ids) => models.note.findMany({ where: { id: { in: ids } } }),
+        updateNoteContent: ({ id, updatedAt, content, searchableText, searchableTextVersion }) =>
+            models.note.update({
+                where: {
+                    id,
+                    updatedAt,
+                },
+                data: {
+                    content,
+                    searchableText,
+                    searchableTextVersion,
+                },
+            }),
+        isRecordNotFoundError,
+    },
+) => {
+    return async (_: unknown, { id }: { id: string }) => {
+        const note = await deps.findNote(Number(id));
+
+        if (!note) {
+            throw 'NOT FOUND';
+        }
+
+        if (!note.content) {
+            return note;
+        }
+
+        const blocks = extractReferenceBlocksFromContent(note.content);
+
+        if (blocks.length === 0) {
+            return note;
+        }
+
+        const referenceIds = Array.from(
+            new Set(
+                blocks
+                    .map((block) => normalizeReferenceId(block.props?.id))
+                    .filter(
+                        (referenceId): referenceId is string =>
+                            referenceId !== null && isValidNoteIdString(referenceId),
+                    )
+                    .map(Number),
+            ),
+        );
+        const references = await deps.findReferenceNotes(referenceIds);
+        const titlesById = new Map(
+            references.map((referenceNote: Note) => [String(referenceNote.id), referenceNote.title]),
+        );
+        const newContent = syncReferenceTitlesInContent(note.content, titlesById);
+
+        if (!newContent || newContent === note.content) {
+            return note;
+        }
+
+        try {
+            return await deps.updateNoteContent({
+                id: note.id,
+                updatedAt: note.updatedAt,
+                content: newContent,
+                ...buildNoteSearchProjection({
+                    title: note.title,
+                    content: newContent,
+                }),
+            });
+        } catch (error) {
+            if (deps.isRecordNotFoundError(error)) {
+                return note;
+            }
+
+            throw error;
+        }
+    };
+};
+
 export const noteQueryResolvers: NoteQueryResolvers = {
     allNotes: createAllNotesQueryResolver(),
     notesInDateRange: async (
@@ -394,64 +496,7 @@ export const noteQueryResolvers: NoteQueryResolvers = {
             where: { content: { contains: src } },
         }),
     backReferences: createBackReferencesQueryResolver(),
-    note: async (_, { id }: { id: string }) => {
-        const note = await models.note.findUnique({ where: { id: Number(id) } });
-
-        if (!note) {
-            throw 'NOT FOUND';
-        }
-
-        if (!note.content) {
-            return note;
-        }
-
-        const blocks = extractReferenceBlocksFromContent(note.content);
-
-        if (blocks.length === 0) {
-            return note;
-        }
-
-        const referenceIds = Array.from(
-            new Set(
-                blocks
-                    .map((block) => normalizeReferenceId(block.props?.id))
-                    .filter((referenceId): referenceId is string => referenceId !== null)
-                    .map(Number)
-                    .filter(Number.isFinite),
-            ),
-        );
-        const references = await models.note.findMany({ where: { id: { in: referenceIds } } });
-        const titlesById = new Map(
-            references.map((referenceNote: Note) => [String(referenceNote.id), referenceNote.title]),
-        );
-        const newContent = syncReferenceTitlesInContent(note.content, titlesById);
-
-        if (!newContent || newContent === note.content) {
-            return note;
-        }
-
-        try {
-            return await models.note.update({
-                where: {
-                    id: note.id,
-                    updatedAt: note.updatedAt,
-                },
-                data: {
-                    content: newContent,
-                    ...buildNoteSearchProjection({
-                        title: note.title,
-                        content: newContent,
-                    }),
-                },
-            });
-        } catch (error) {
-            if (isRecordNotFoundError(error)) {
-                return note;
-            }
-
-            throw error;
-        }
-    },
+    note: createNoteQueryResolver(),
     noteCleanupCandidates: async (
         _,
         {

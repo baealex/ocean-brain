@@ -200,7 +200,7 @@ test('blocksToMarkdown serializes tags using explicit bracket syntax', async () 
     const markdown = await blocksToMarkdown(content);
 
     assert.match(markdown, /\[@project\]/);
-    assert.match(markdown, /\[\[Reference Note\]\]/);
+    assert.match(markdown, /\[\[Reference Note\]\]\(note:44\)/);
 });
 
 test('blocksToMarkdown serializes custom inline content inside table cells', async () => {
@@ -303,7 +303,147 @@ test('blocksToMarkdown serializes custom inline content inside table cells', asy
     const markdown = await blocksToMarkdown(content);
 
     assert.match(markdown, /\[@project\]/);
-    assert.match(markdown, /\[\[Reference Note\]\]/);
+    assert.match(markdown, /\[\[Reference Note\]\]\(note:44\)/);
+});
+
+test('markdownToBlocksJson restores note-id references with current note title', async () => {
+    const contentJson = await markdownToBlocksJson('See [[Old Title]](note:44)', {
+        ensureTag: async () => {
+            throw new Error('should not ensure tags');
+        },
+        findNotesByTitle: async () => {
+            throw new Error('should not look up title-based references');
+        },
+        findNoteById: async (id) =>
+            id === '44'
+                ? {
+                      id: '44',
+                      title: 'Current Title',
+                  }
+                : null,
+    });
+
+    const blocks = JSON.parse(contentJson);
+
+    assert.deepEqual(blocks[0].content, [
+        {
+            type: 'text',
+            text: 'See ',
+            styles: {},
+        },
+        {
+            type: 'reference',
+            props: {
+                id: '44',
+                title: 'Current Title',
+            },
+        },
+    ]);
+});
+
+test('markdownToBlocksJson leaves missing note-id references as text', async () => {
+    const contentJson = await markdownToBlocksJson('See [[Missing Title]](note:404)', {
+        ensureTag: async () => {
+            throw new Error('should not ensure tags');
+        },
+        findNotesByTitle: async () => {
+            throw new Error('should not look up title-based references');
+        },
+        findNoteById: async () => null,
+    });
+
+    const blocks = JSON.parse(contentJson);
+
+    assert.deepEqual(blocks[0].content, [
+        {
+            type: 'text',
+            text: 'See [[Missing Title]](note:404)',
+            styles: {},
+        },
+    ]);
+});
+
+test('markdownToBlocksJson preserves note-id reference syntax inside inline code', async () => {
+    const contentJson = await markdownToBlocksJson('Use `[[Old Title]](note:44)` as an example.', {
+        ensureTag: async () => {
+            throw new Error('should not ensure tags');
+        },
+        findNotesByTitle: async () => {
+            throw new Error('should not look up title-based references');
+        },
+        findNoteById: async () => {
+            throw new Error('should not look up references inside code');
+        },
+    });
+
+    const roundTripMarkdown = await blocksToMarkdown(contentJson);
+
+    assert.match(roundTripMarkdown, /`\[\[Old Title\]\]\(note:44\)`/);
+});
+
+test('markdownToBlocksJson preserves note-id reference syntax inside fenced code', async () => {
+    const markdown = '```md\n[[Old Title]](note:44)\n```';
+    const contentJson = await markdownToBlocksJson(markdown, {
+        ensureTag: async () => {
+            throw new Error('should not ensure tags');
+        },
+        findNotesByTitle: async () => {
+            throw new Error('should not look up title-based references');
+        },
+        findNoteById: async () => {
+            throw new Error('should not look up references inside code');
+        },
+    });
+
+    const roundTripMarkdown = await blocksToMarkdown(contentJson);
+
+    assert.match(roundTripMarkdown, /\[\[Old Title\]\]\(note:44\)/);
+});
+
+test('markdownToBlocksJson leaves malformed note-id references as text', async () => {
+    const contentJson = await markdownToBlocksJson('See [[Decimal]](note:1.5) and [[Huge]](note:9007199254740993)', {
+        ensureTag: async () => {
+            throw new Error('should not ensure tags');
+        },
+        findNotesByTitle: async () => {
+            throw new Error('should not look up title-based references');
+        },
+        findNoteById: async () => null,
+    });
+
+    const blocks = JSON.parse(contentJson);
+
+    assert.deepEqual(blocks[0].content, [
+        {
+            type: 'text',
+            text: 'See [[Decimal]](note:1.5) and [[Huge]](note:9007199254740993)',
+            styles: {},
+        },
+    ]);
+});
+
+test('blocksToMarkdown falls back to title-only references when reference ids are invalid', async () => {
+    const content = JSON.stringify([
+        {
+            id: 'paragraph-1',
+            type: 'paragraph',
+            props: {},
+            content: [
+                {
+                    type: 'reference',
+                    props: {
+                        title: 'Broken Reference',
+                    },
+                },
+            ],
+            children: [],
+        },
+    ]);
+
+    const markdown = await blocksToMarkdown(content);
+
+    assert.match(markdown, /\[\[Broken Reference\]\]/);
+    assert.doesNotMatch(markdown, /note:/);
 });
 
 test('markdownToBlocksJson restores custom tag and reference inline content from explicit @ tags', async () => {

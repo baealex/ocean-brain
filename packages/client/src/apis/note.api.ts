@@ -537,6 +537,29 @@ export interface NoteSnapshotDetail extends NoteSnapshot {
     contentAsMarkdown: string;
 }
 
+export interface NoteSnapshotDiffEndpoint {
+    kind: 'snapshot' | 'current_note';
+    id: string;
+    title: string;
+    createdAt?: string;
+    updatedAt?: string;
+    meta?: NoteSnapshotMeta | null;
+}
+
+export interface NoteSnapshotDiff {
+    noteId: string;
+    mode: 'snapshot_to_snapshot' | 'snapshot_to_current';
+    before: NoteSnapshotDiffEndpoint;
+    after: NoteSnapshotDiffEndpoint;
+    diff: {
+        markdown: string;
+        changedLineCount: number;
+        changedCharCount: number;
+        beforeMarkdownSha256: string;
+        afterMarkdownSha256: string;
+    };
+}
+
 export interface TrashedNote {
     id: string;
     title: string;
@@ -634,6 +657,52 @@ export function fetchNoteSnapshot(id: string) {
             }
         }`,
         { id },
+    );
+}
+
+export function fetchNoteSnapshotDiff(id: string, target: 'next' | 'previous' | 'current' = 'current') {
+    return graphQuery<
+        {
+            noteSnapshotDiff: NoteSnapshotDiff | null;
+        },
+        { id: string; target: 'NEXT' | 'PREVIOUS' | 'CURRENT'; contextLines: number }
+    >(
+        `query FetchNoteSnapshotDiff($id: ID!, $target: NoteSnapshotDiffTarget, $contextLines: Int) {
+            noteSnapshotDiff(id: $id, target: $target, contextLines: $contextLines) {
+                noteId
+                mode
+                before {
+                    kind
+                    id
+                    title
+                    createdAt
+                    updatedAt
+                    meta {
+                        entrypoint
+                        label
+                    }
+                }
+                after {
+                    kind
+                    id
+                    title
+                    createdAt
+                    updatedAt
+                    meta {
+                        entrypoint
+                        label
+                    }
+                }
+                diff {
+                    markdown
+                    changedLineCount
+                    changedCharCount
+                    beforeMarkdownSha256
+                    afterMarkdownSha256
+                }
+            }
+        }`,
+        { id, target: target.toUpperCase() as 'NEXT' | 'PREVIOUS' | 'CURRENT', contextLines: 3 },
     );
 }
 

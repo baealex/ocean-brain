@@ -200,6 +200,37 @@ export const noteType = gql`
         meta: NoteSnapshotMeta!
     }
 
+    enum NoteSnapshotDiffTarget {
+        NEXT
+        PREVIOUS
+        CURRENT
+    }
+
+    type NoteSnapshotDiffEndpoint {
+        kind: String!
+        id: ID!
+        title: String!
+        createdAt: String
+        updatedAt: String
+        meta: NoteSnapshotMeta
+    }
+
+    type NoteSnapshotDiffDetail {
+        markdown: String!
+        changedLineCount: Int!
+        changedCharCount: Int!
+        beforeMarkdownSha256: String!
+        afterMarkdownSha256: String!
+    }
+
+    type NoteSnapshotDiff {
+        noteId: ID!
+        mode: String!
+        before: NoteSnapshotDiffEndpoint!
+        after: NoteSnapshotDiffEndpoint!
+        diff: NoteSnapshotDiffDetail!
+    }
+
     type DeletedNote {
         id: ID!
         title: String!
@@ -250,6 +281,7 @@ export const noteQuery = gql`
         noteCleanupPreview(id: ID!): NoteCleanupPreview
         noteSnapshots(id: ID!, limit: Int): [NoteSnapshot!]!
         noteSnapshot(id: ID!): NoteSnapshot
+        noteSnapshotDiff(id: ID!, compareToSnapshotId: ID, target: NoteSnapshotDiffTarget, contextLines: Int): NoteSnapshotDiff
         notePropertyKeys(query: String, pagination: PaginationInput): NotePropertyKeys!
         trashedNote(id: ID!): DeletedNote
         trashedNotes(pagination: PaginationInput): DeletedNotes!

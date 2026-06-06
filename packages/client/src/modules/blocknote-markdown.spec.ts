@@ -9,7 +9,7 @@ describe('blocknote markdown helpers', () => {
                 content: [
                     { type: 'tag', props: { tag: '@project' } },
                     { type: 'text', text: ' ', styles: {} },
-                    { type: 'reference', props: { title: 'Reference Note' } },
+                    { type: 'reference', props: { id: '44', title: 'Reference Note' } },
                 ],
                 children: [],
             },
@@ -20,11 +20,26 @@ describe('blocknote markdown helpers', () => {
         expect(prepared.blocks[0].content).toEqual([
             { type: 'text', text: 'OCEAN_BRAIN_TAG_0_TOKEN', styles: {} },
             { type: 'text', text: ' ', styles: {} },
-            { type: 'text', text: '[[Reference Note]]', styles: {} },
+            { type: 'text', text: '[[Reference Note]](note:44)', styles: {} },
         ]);
         expect(
-            restoreTagPlaceholdersInMarkdown('OCEAN_BRAIN_TAG_0_TOKEN [[Reference Note]]', prepared.placeholderToTag),
-        ).toBe('[@project] [[Reference Note]]');
+            restoreTagPlaceholdersInMarkdown(
+                'OCEAN_BRAIN_TAG_0_TOKEN [[Reference Note]](note:44)',
+                prepared.placeholderToTag,
+            ),
+        ).toBe('[@project] [[Reference Note]](note:44)');
+    });
+
+    it('falls back to title-only references when a reference id is missing', () => {
+        const prepared = prepareBlocksForMarkdown([
+            {
+                type: 'paragraph',
+                content: [{ type: 'reference', props: { title: 'Title Only Note' } }],
+                children: [],
+            },
+        ]);
+
+        expect(prepared.blocks[0].content).toEqual([{ type: 'text', text: '[[Title Only Note]]', styles: {} }]);
     });
 
     it('strips unsupported table of contents blocks', () => {
@@ -49,7 +64,7 @@ describe('blocknote markdown helpers', () => {
                                 {
                                     content: [
                                         { type: 'tag', props: { tag: '#topic' } },
-                                        { type: 'reference', props: { title: 'Table Note' } },
+                                        { type: 'reference', props: { id: '45', title: 'Table Note' } },
                                     ],
                                 },
                             ],
@@ -67,7 +82,7 @@ describe('blocknote markdown helpers', () => {
                         {
                             content: [
                                 { type: 'text', text: 'OCEAN_BRAIN_TAG_0_TOKEN', styles: {} },
-                                { type: 'text', text: '[[Table Note]]', styles: {} },
+                                { type: 'text', text: '[[Table Note]](note:45)', styles: {} },
                             ],
                         },
                     ],

@@ -23,7 +23,10 @@ test('formatMcpReadNoteOutput includes a back reference summary before the markd
         maxLength: 0
     });
 
-    assert.match(output, /Back References:\n- 31: Sprint Summary\n- 32: Reference Hub\n\nBody line 1\nBody line 2$/);
+    assert.match(
+        output,
+        /Back References:\n- \[\[Sprint Summary\]\]\(note:31\)\n- \[\[Reference Hub\]\]\(note:32\)\n\nBody line 1\nBody line 2$/,
+    );
 });
 
 test('formatMcpReadNoteOutput truncates markdown and shows an empty back reference state', () => {

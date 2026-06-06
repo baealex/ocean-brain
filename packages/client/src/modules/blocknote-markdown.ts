@@ -83,9 +83,13 @@ export function prepareBlocksForMarkdown(blocks: MarkdownBlock[]) {
     const markdownBlocks = mapBlocks(blocks, (content) =>
         mapBlockContent(content, (inline) => {
             if (inline.type === 'reference') {
+                const id = String(inline.props?.id || '');
+                const title = String(inline.props?.title || inline.props?.id || '');
+                const text = id ? `[[${title}]](note:${id})` : `[[${title}]]`;
+
                 return {
                     type: 'text',
-                    text: `[[${inline.props?.title || inline.props?.id || ''}]]`,
+                    text,
                     styles: {},
                 };
             }

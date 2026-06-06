@@ -407,6 +407,35 @@ test('markdownToBlocksJson preserves note-id reference syntax inside fenced code
     assert.match(roundTripMarkdown, /\[\[Old Title\]\]\(note:44\)/);
 });
 
+test('markdownToBlocksJson keeps portable tags, note-id references, hard breaks, and code text together', async () => {
+    const markdown = [
+        'See [[Old Title]](note:44) with [@project]\\',
+        'Next line keeps the hard break.',
+        '',
+        '```md',
+        'Keep [#literal] and [[Code Title]](note:55) as code.',
+        '```',
+    ].join('\n');
+
+    const contentJson = await markdownToBlocksJson(markdown, {
+        ensureTag: async (name) => ({ id: name === 'project' ? '12' : '13', name: `@${name}` }),
+        findNotesByTitle: async () => [],
+        findNoteById: async (id) =>
+            id === '44'
+                ? {
+                      id: '44',
+                      title: 'Current Title',
+                  }
+                : null,
+    });
+    const roundTripMarkdown = await blocksToMarkdown(contentJson);
+
+    assert.match(roundTripMarkdown, /\[\[Current Title\]\]\(note:44\)/);
+    assert.match(roundTripMarkdown, /\[@project\]/);
+    assert.match(roundTripMarkdown, /with \[@project\]\\\nNext line keeps the hard break/);
+    assert.match(roundTripMarkdown, /Keep \[#literal\] and \[\[Code Title\]\]\(note:55\) as code/);
+});
+
 test('markdownToBlocksJson leaves malformed note-id references as text', async () => {
     const contentJson = await markdownToBlocksJson('See [[Decimal]](note:1.5) and [[Huge]](note:9007199254740993)', {
         ensureTag: async () => {

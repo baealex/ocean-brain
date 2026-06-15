@@ -1,14 +1,12 @@
-import classNames from 'classnames/bind';
-import styles from './Reference.module.scss';
-
-const cx = classNames.bind(styles);
-
 import type { CustomInlineContentConfig, StyleSchema } from '@blocknote/core';
 import { createReactInlineContentSpec, type ReactCustomInlineContentRenderProps } from '@blocknote/react';
 import { useNavigate } from '@tanstack/react-router';
 import type { KeyboardEvent, MouseEvent } from 'react';
 
 import { NOTE_ROUTE } from '~/modules/url';
+
+const referenceClassName =
+    'focus-ring-soft inline-flex cursor-pointer items-center rounded-[8px] border border-border-subtle bg-[color-mix(in_srgb,var(--elevated)_72%,var(--hover-subtle))] px-2 py-0.5 text-xs font-semibold text-fg-secondary transition-colors hover:border-border-secondary hover:bg-elevated hover:text-fg-default dark:bg-[color-mix(in_srgb,var(--elevated)_82%,var(--hover-subtle))]';
 
 const referenceConfig = {
     type: 'reference',
@@ -42,7 +40,7 @@ function ReferenceContent(props: ReferenceRenderProps) {
             role="link"
             tabIndex={0}
             contentEditable={false}
-            className={cx('Reference')}
+            className={referenceClassName}
             onMouseDown={stopEditorInteraction}
             onClick={(event) => {
                 stopEditorInteraction(event);

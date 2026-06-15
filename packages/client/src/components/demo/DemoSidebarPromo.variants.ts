@@ -1,4 +1,5 @@
 import { cva } from 'class-variance-authority';
+import classNames from 'classnames';
 
 const cardTone = {
     star: [
@@ -46,7 +47,7 @@ export const promoCardVariants = cva(
     },
 );
 
-export const promoGlowClassName = [
+export const promoGlowClassName = classNames(
     'pointer-events-none',
     'absolute',
     '-right-10',
@@ -58,9 +59,9 @@ export const promoGlowClassName = [
     'bg-white/55',
     'blur-2xl',
     'dark:bg-white/8',
-].join(' ');
+);
 
-export const promoContentClassName = [
+export const promoContentClassName = classNames(
     'relative',
     'z-10',
     'flex',
@@ -69,12 +70,12 @@ export const promoContentClassName = [
     'flex-col',
     'justify-center',
     'gap-1.5',
-].join(' ');
+);
 
 export const promoTitleClassName = 'block text-[15px] font-semibold leading-5 tracking-tight text-fg-default';
 export const promoDescriptionClassName = 'block text-[12px] leading-[16px] text-fg-secondary';
 
-export const promoImageClassName = [
+export const promoImageClassName = classNames(
     'pointer-events-none',
     'absolute',
     'bottom-[-4px]',
@@ -88,4 +89,4 @@ export const promoImageClassName = [
     'transition',
     'duration-300',
     'group-hover:scale-[1.025]',
-].join(' ');
+);

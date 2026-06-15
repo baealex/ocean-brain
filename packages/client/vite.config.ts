@@ -7,6 +7,16 @@ import { defineConfig } from 'vitest/config';
 import { createDevAuthGateMiddleware } from './src/dev-auth-gate';
 
 const backendOrigin = process.env.OCEAN_BRAIN_DEV_SERVER_URL || 'http://localhost:6683';
+const isLocalOnlyDemoBuild = process.env.VITE_DEMO_MODE === 'local-only';
+const demoSidebarPromoSlotPath = isLocalOnlyDemoBuild
+    ? './src/components/demo/DemoSidebarPromoSlot.tsx'
+    : './src/components/demo/DemoSidebarPromoSlot.noop.tsx';
+const mcpAdminAdapterPath = isLocalOnlyDemoBuild
+    ? './src/apis/mcp-admin-adapter.local.ts'
+    : './src/apis/mcp-admin-adapter.ts';
+const imageUploadAdapterPath = isLocalOnlyDemoBuild
+    ? './src/apis/image-upload-adapter.local.ts'
+    : './src/apis/image-upload-adapter.ts';
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -21,7 +31,23 @@ export default defineConfig({
             },
         },
     ],
-    resolve: { alias: { '~': path.resolve(__dirname, './src') } },
+    resolve: {
+        alias: [
+            {
+                find: '~/components/demo/DemoSidebarPromoSlot',
+                replacement: path.resolve(__dirname, demoSidebarPromoSlotPath),
+            },
+            {
+                find: '~/apis/mcp-admin-adapter',
+                replacement: path.resolve(__dirname, mcpAdminAdapterPath),
+            },
+            {
+                find: '~/apis/image-upload-adapter',
+                replacement: path.resolve(__dirname, imageUploadAdapterPath),
+            },
+            { find: '~', replacement: path.resolve(__dirname, './src') },
+        ],
+    },
     build: {
         sourcemap: false,
         rollupOptions: {

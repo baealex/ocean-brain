@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 
+import DemoSidebarPromoSlot from '~/components/demo/DemoSidebarPromoSlot';
+
 import LayoutShell from './LayoutShell';
 import SidebarHeroBanner from './SidebarHeroBanner';
 import SidebarPrimaryActions from './SidebarPrimaryActions';
@@ -17,6 +19,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                 <>
                     <SidebarHeroBanner />
                     <SidebarSearch />
+                    <DemoSidebarPromoSlot />
                     <SidebarPrimaryActions />
                 </>
             }

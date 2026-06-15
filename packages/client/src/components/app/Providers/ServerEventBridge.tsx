@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { redirectToLoginIfSessionExpired } from '~/modules/auth-redirect';
+import { isLocalOnlyDemoMode } from '~/modules/demo-mode';
 import { invalidateQueriesForServerEvent } from '~/modules/server-event-invalidation';
 import {
     NOTE_SERVER_EVENT_TYPES,
@@ -36,7 +37,7 @@ const ServerEventBridge = () => {
     }, [queryClient]);
 
     useEffect(() => {
-        if (typeof EventSource === 'undefined') {
+        if (isLocalOnlyDemoMode() || typeof EventSource === 'undefined') {
             return;
         }
 

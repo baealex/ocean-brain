@@ -14,7 +14,7 @@ const PinnedNotes = (props: PinnedNotesProps) => {
             const response = await graphQuery<{
                 pinnedNotes: Pick<Note, 'id' | 'title' | 'order'>[];
             }>(`
-                query {
+                query FetchPinnedNotes {
                     pinnedNotes {
                         id
                         title

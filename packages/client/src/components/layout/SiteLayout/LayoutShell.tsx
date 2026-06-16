@@ -1,14 +1,90 @@
 import { useLocation } from '@tanstack/react-router';
-import classNames from 'classnames/bind';
+import classNames from 'classnames';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 
 import * as Icon from '~/components/icon';
 import { RestoreParentScroll } from '~/components/shared';
 
-import styles from './SiteLayout.module.scss';
-
-const cx = classNames.bind(styles);
+const rootClassName = 'flex h-full w-full flex-row';
+const menuButtonClassName = classNames(
+    'fixed',
+    'bottom-4',
+    'left-4',
+    'z-[1003]',
+    'flex',
+    'h-12',
+    'w-12',
+    'items-center',
+    'justify-center',
+    'rounded-[14px]',
+    'border',
+    'border-border-subtle',
+    'bg-surface',
+    'text-fg-secondary',
+    'shadow-[0_12px_24px_-18px_rgba(0,0,0,0.35)]',
+    'transition-all',
+    'hover:bg-hover-subtle',
+    'hover:text-fg-default',
+    'active:translate-y-px',
+    'aria-expanded:bg-hover-subtle',
+    'aria-expanded:text-fg-default',
+);
+const sidebarClassName = classNames(
+    'fixed',
+    'z-[1002]',
+    'h-full',
+    'w-full',
+    'flex-[0_0_300px]',
+    'overflow-y-auto',
+    'border-r-0',
+    'border-border-subtle',
+    'bg-[var(--page-bg)]',
+    'pb-20',
+    'pointer-events-none',
+    '-translate-x-full',
+    'md:static',
+    'md:w-auto',
+    'md:translate-x-0',
+    'md:border-r',
+    'md:pb-0',
+    'md:pointer-events-auto',
+);
+const sidebarOpenClassName = 'pointer-events-auto translate-x-0';
+const centerClassName = classNames(
+    'flex',
+    'h-full',
+    'min-w-0',
+    'flex-1',
+    'flex-col',
+    'overflow-x-hidden',
+    'overflow-y-auto',
+    '[scrollbar-gutter:stable]',
+);
+const topClassName = classNames(
+    'sticky',
+    'top-0',
+    'z-[1001]',
+    'border-b',
+    'border-border-subtle',
+    'bg-[var(--page-bg)]',
+    "max-md:after:content-['']",
+    'max-md:after:pointer-events-none',
+    'max-md:after:absolute',
+    'max-md:after:inset-y-0',
+    'max-md:after:right-0',
+    'max-md:after:w-12',
+    'max-md:after:bg-[linear-gradient(to_right,transparent,var(--page-bg))]',
+);
+const topContentClassName = classNames(
+    'flex',
+    'items-center',
+    'overflow-x-auto',
+    'whitespace-nowrap',
+    '[scrollbar-width:none]',
+    '[&::-webkit-scrollbar]:hidden',
+);
+const contentClassName = 'min-w-0 max-w-full flex-1 overflow-x-clip p-4 max-md:pb-20';
 
 interface LayoutShellProps {
     sidebar: ReactNode;
@@ -26,11 +102,11 @@ const LayoutShell = ({ sidebar, topNavigation, children }: LayoutShellProps) => 
     }, [pathname]);
 
     return (
-        <div className={cx('SiteLayout')}>
+        <div className={rootClassName}>
             <div className="md:hidden">
                 <button
                     type="button"
-                    className={cx('menu')}
+                    className={menuButtonClassName}
                     aria-label="Toggle sidebar"
                     aria-controls={sidebarId}
                     aria-expanded={isMenuOpen}
@@ -39,14 +115,14 @@ const LayoutShell = ({ sidebar, topNavigation, children }: LayoutShellProps) => 
                     <Icon.Menu className="h-6 w-6" />
                 </button>
             </div>
-            <aside id={sidebarId} className={cx('side', { open: isMenuOpen })}>
+            <aside id={sidebarId} className={classNames(sidebarClassName, isMenuOpen && sidebarOpenClassName)}>
                 {sidebar}
             </aside>
-            <main className={cx('center')}>
-                <div className={cx('top')}>
-                    <div className={cx('top-content')}>{topNavigation}</div>
+            <main className={centerClassName}>
+                <div className={topClassName}>
+                    <div className={topContentClassName}>{topNavigation}</div>
                 </div>
-                <div className={cx('content')}>{children}</div>
+                <div className={contentClassName}>{children}</div>
                 <RestoreParentScroll />
             </main>
         </div>

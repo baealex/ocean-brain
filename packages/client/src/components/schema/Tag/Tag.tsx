@@ -1,14 +1,12 @@
-import classNames from 'classnames/bind';
-import styles from './Tag.module.scss';
-
-const cx = classNames.bind(styles);
-
 import type { CustomInlineContentConfig, StyleSchema } from '@blocknote/core';
 import { createReactInlineContentSpec, type ReactCustomInlineContentRenderProps } from '@blocknote/react';
 import { useNavigate } from '@tanstack/react-router';
 import type { KeyboardEvent, MouseEvent } from 'react';
 
 import { TAG_NOTES_ROUTE } from '~/modules/url';
+
+const tagClassName =
+    'focus-ring-soft inline-flex cursor-pointer items-center rounded-[8px] border border-border-subtle bg-emphasis px-2 py-0.5 text-xs font-semibold text-fg-secondary transition-colors hover:border-border-secondary hover:bg-hover-subtle hover:text-fg-default dark:bg-emphasis';
 
 const tagConfig = {
     type: 'tag',
@@ -43,7 +41,7 @@ function TagContent(props: TagRenderProps) {
             role="link"
             tabIndex={0}
             contentEditable={false}
-            className={cx('Tag')}
+            className={tagClassName}
             onMouseDown={stopEditorInteraction}
             onClick={(event) => {
                 stopEditorInteraction(event);

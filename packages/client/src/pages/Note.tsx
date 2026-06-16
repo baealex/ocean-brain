@@ -122,10 +122,13 @@ const NOTE_LAYOUT_WIDTH: Record<NoteLayout, string> = {
 const notePageFallback = (
     <PageLayout title="Loading note" variant="none">
         <main className="mx-auto max-w-[896px]">
-            <Skeleton className="mb-8" height="66px" />
-            <Skeleton className="ml-12 mb-8" height="150px" />
-            <Skeleton className="mb-5" height="80px" />
-            <Skeleton height="80px" />
+            <Skeleton className="mb-8" height={123} />
+            <div className="flex flex-col gap-5">
+                <Skeleton height={135} />
+                <Skeleton className="ml-12" height={320} />
+                <Skeleton height={107} />
+                <Skeleton height={100} />
+            </div>
         </main>
     </PageLayout>
 );
@@ -1402,112 +1405,114 @@ export function NoteContent({ id }: NoteContentProps) {
                     </Callout>
                 )}
 
-                <NotePropertiesPanel
-                    noteId={id}
-                    properties={note.properties}
-                    expectedUpdatedAt={serverUpdatedAtRef.current}
-                    editSessionId={editSessionIdRef.current}
-                    disabled={saveStatus !== 'saved'}
-                    onSaved={(updatedNote) => {
-                        appliedNoteVersionRef.current = updatedNote.updatedAt;
-                        setServerUpdatedAt(updatedNote.updatedAt);
-                        updateLastSavedAt(updatedNote.updatedAt);
-                        setShowSavedConfirmation(true);
-                        queryClient.setQueryData<NoteDetailCache>(queryKeys.notes.detail(id), (current) => {
-                            if (!current) {
-                                return current;
-                            }
-
-                            return {
-                                ...current,
-                                updatedAt: updatedNote.updatedAt,
-                                properties: updatedNote.properties,
-                            };
-                        });
-                        publishClientNoteUpdatedEvent({
-                            noteId: id,
-                            updatedAt: updatedNote.updatedAt,
-                            editSessionId: editSessionIdRef.current,
-                        });
-                    }}
-                />
-
-                <Editor
-                    key={`${id}:${editorRevision}`}
-                    ref={editorRef}
-                    content={editorContentOverride ?? note.content}
-                    currentNoteId={id}
-                    onChange={handleChange}
-                />
-
-                <QueryBoundary
-                    fallback={<Skeleton className="mb-5" height="80px" />}
-                    errorTitle="Failed to load reminders"
-                    errorDescription="Retry loading reminder details for this note."
-                    renderError={({ error, retry }) => (
-                        <QueryErrorView
-                            title="Failed to load reminders"
-                            description="Retry loading reminder details for this note."
-                            error={error}
-                            onRetry={retry}
-                            showBackAction={false}
-                            showHomeAction={false}
-                        />
-                    )}
-                >
-                    <ReminderPanel noteId={id} />
-                </QueryBoundary>
-
-                <QueryBoundary
-                    fallback={<Skeleton height="80px" />}
-                    errorTitle="Failed to load back references"
-                    errorDescription="Retry loading notes that link back here."
-                    renderError={({ error, retry }) => (
-                        <QueryErrorView
-                            title="Failed to load back references"
-                            description="Retry loading notes that link back here."
-                            error={error}
-                            onRetry={retry}
-                            showBackAction={false}
-                            showHomeAction={false}
-                        />
-                    )}
-                >
-                    <BackReferences
+                <div className="flex flex-col gap-5">
+                    <NotePropertiesPanel
                         noteId={id}
-                        render={(backReferences) =>
-                            backReferences &&
-                            backReferences.length > 0 && (
-                                <AuxiliaryPanel
-                                    icon={<Icon.LinkSimple className="h-3.5 w-3.5" />}
-                                    title="Back References"
-                                >
-                                    <ul className="flex flex-col">
-                                        {backReferences.map((backLink) => (
-                                            <li key={backLink.id}>
-                                                <Link
-                                                    to={NOTE_ROUTE}
-                                                    params={{ id: backLink.id }}
-                                                    className="flex items-center gap-2 rounded-[10px] px-2.5 py-1.5 text-fg-secondary transition-colors hover:bg-hover-subtle hover:text-fg-default"
-                                                >
-                                                    <Icon.File className="h-3.5 w-3.5 shrink-0 text-fg-tertiary" />
-                                                    <Text
-                                                        as="span"
-                                                        variant="body"
-                                                        weight="medium"
-                                                        className="text-current"
-                                                    >
-                                                        {backLink.title}
-                                                    </Text>
-                                                </Link>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </AuxiliaryPanel>
-                            )
-                        }
+                        properties={note.properties}
+                        expectedUpdatedAt={serverUpdatedAtRef.current}
+                        editSessionId={editSessionIdRef.current}
+                        disabled={saveStatus !== 'saved'}
+                        onSaved={(updatedNote) => {
+                            appliedNoteVersionRef.current = updatedNote.updatedAt;
+                            setServerUpdatedAt(updatedNote.updatedAt);
+                            updateLastSavedAt(updatedNote.updatedAt);
+                            setShowSavedConfirmation(true);
+                            queryClient.setQueryData<NoteDetailCache>(queryKeys.notes.detail(id), (current) => {
+                                if (!current) {
+                                    return current;
+                                }
+
+                                return {
+                                    ...current,
+                                    updatedAt: updatedNote.updatedAt,
+                                    properties: updatedNote.properties,
+                                };
+                            });
+                            publishClientNoteUpdatedEvent({
+                                noteId: id,
+                                updatedAt: updatedNote.updatedAt,
+                                editSessionId: editSessionIdRef.current,
+                            });
+                        }}
                     />
-                </QueryBoundary>
+
+                    <Editor
+                        key={`${id}:${editorRevision}`}
+                        ref={editorRef}
+                        content={editorContentOverride ?? note.content}
+                        currentNoteId={id}
+                        onChange={handleChange}
+                    />
+
+                    <QueryBoundary
+                        fallback={<Skeleton height={107} />}
+                        errorTitle="Failed to load reminders"
+                        errorDescription="Retry loading reminder details for this note."
+                        renderError={({ error, retry }) => (
+                            <QueryErrorView
+                                title="Failed to load reminders"
+                                description="Retry loading reminder details for this note."
+                                error={error}
+                                onRetry={retry}
+                                showBackAction={false}
+                                showHomeAction={false}
+                            />
+                        )}
+                    >
+                        <ReminderPanel noteId={id} />
+                    </QueryBoundary>
+
+                    <QueryBoundary
+                        fallback={<Skeleton height={100} />}
+                        errorTitle="Failed to load back references"
+                        errorDescription="Retry loading notes that link back here."
+                        renderError={({ error, retry }) => (
+                            <QueryErrorView
+                                title="Failed to load back references"
+                                description="Retry loading notes that link back here."
+                                error={error}
+                                onRetry={retry}
+                                showBackAction={false}
+                                showHomeAction={false}
+                            />
+                        )}
+                    >
+                        <BackReferences
+                            noteId={id}
+                            render={(backReferences) =>
+                                backReferences &&
+                                backReferences.length > 0 && (
+                                    <AuxiliaryPanel
+                                        icon={<Icon.LinkSimple className="h-3.5 w-3.5" />}
+                                        title="Back References"
+                                    >
+                                        <ul className="flex flex-col">
+                                            {backReferences.map((backLink) => (
+                                                <li key={backLink.id}>
+                                                    <Link
+                                                        to={NOTE_ROUTE}
+                                                        params={{ id: backLink.id }}
+                                                        className="flex items-center gap-2 rounded-[10px] px-2.5 py-1.5 text-fg-secondary transition-colors hover:bg-hover-subtle hover:text-fg-default"
+                                                    >
+                                                        <Icon.File className="h-3.5 w-3.5 shrink-0 text-fg-tertiary" />
+                                                        <Text
+                                                            as="span"
+                                                            variant="body"
+                                                            weight="medium"
+                                                            className="text-current"
+                                                        >
+                                                            {backLink.title}
+                                                        </Text>
+                                                    </Link>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </AuxiliaryPanel>
+                                )
+                            }
+                        />
+                    </QueryBoundary>
+                </div>
 
                 <LayoutModal
                     isOpen={isLayoutModalOpen}

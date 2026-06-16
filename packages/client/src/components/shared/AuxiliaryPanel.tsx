@@ -27,7 +27,7 @@ export default function AuxiliaryPanel({
     const header = <AuxiliaryPanelHeader icon={icon} title={title} className="text-fg-tertiary" />;
 
     return (
-        <section className={classNames('surface-base mb-5 p-4', className)} aria-label={ariaLabel ?? title}>
+        <section className={classNames('surface-base p-4', className)} aria-label={ariaLabel ?? title}>
             <div className={classNames('relative', hasAction && 'pr-44 sm:pr-48', hasBody && 'mb-3')}>
                 {titleButtonProps ? (
                     <button

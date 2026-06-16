@@ -349,41 +349,113 @@ html.dark .bn-mantine .bn-menu-dropdown {
 
 /* BlockNote body typography hierarchy */
 .bn-default-styles {
-    h1 {
-        font-size: 1.125rem;
-        font-weight: 700;
-        line-height: 1.35;
-        letter-spacing: -0.01em;
-
-        @media (min-width: 640px) {
-            font-size: 1.25rem;
-        }
+    [data-content-type='heading'] {
+        --level: 1.375rem;
+        --ob-heading-color: var(--fg-default);
+        --ob-heading-letter-spacing: -0.01em;
+        --ob-heading-line-height: 1.35;
+        --ob-heading-weight: 700;
     }
 
-    h2 {
-        font-size: 1rem;
-        font-weight: 600;
-        line-height: 1.4;
-        letter-spacing: -0.005em;
-
-        @media (min-width: 640px) {
-            font-size: 1.125rem;
-        }
+    [data-content-type='heading'][data-level='2'] {
+        --level: 1.1875rem;
+        --ob-heading-letter-spacing: -0.005em;
+        --ob-heading-line-height: 1.4;
+        --ob-heading-weight: 650;
     }
 
-    h3 {
-        font-size: 1rem;
-        font-weight: 600;
-        line-height: 1.5;
+    [data-content-type='heading'][data-level='3'] {
+        --level: 1.0625rem;
+        --ob-heading-letter-spacing: 0;
+        --ob-heading-line-height: 1.45;
+        --ob-heading-weight: 620;
     }
 
-    h4,
-    h5,
-    h6 {
-        font-size: 1rem;
-        font-weight: 500;
-        line-height: 1.5;
+    [data-content-type='heading'][data-level='4'] {
+        --level: 1rem;
+        --ob-heading-letter-spacing: 0;
+        --ob-heading-line-height: 1.5;
+        --ob-heading-weight: 600;
     }
+
+    [data-content-type='heading'][data-level='5'] {
+        --level: 1rem;
+        --ob-heading-color: var(--fg-muted);
+        --ob-heading-letter-spacing: 0;
+        --ob-heading-line-height: 1.5;
+        --ob-heading-weight: 560;
+    }
+
+    [data-content-type='heading'][data-level='6'] {
+        --level: 1rem;
+        --ob-heading-color: var(--fg-secondary);
+        --ob-heading-letter-spacing: 0.01em;
+        --ob-heading-line-height: 1.5;
+        --ob-heading-weight: 520;
+    }
+
+    [data-prev-level='1'] {
+        --prev-level: 1.375rem;
+        --ob-prev-heading-letter-spacing: -0.01em;
+        --ob-prev-heading-line-height: 1.35;
+        --ob-prev-heading-weight: 700;
+    }
+
+    [data-prev-level='2'] {
+        --prev-level: 1.1875rem;
+        --ob-prev-heading-letter-spacing: -0.005em;
+        --ob-prev-heading-line-height: 1.4;
+        --ob-prev-heading-weight: 650;
+    }
+
+    [data-prev-level='3'] {
+        --prev-level: 1.0625rem;
+        --ob-prev-heading-letter-spacing: 0;
+        --ob-prev-heading-line-height: 1.45;
+        --ob-prev-heading-weight: 620;
+    }
+
+    [data-prev-level='4'] {
+        --prev-level: 1rem;
+        --ob-prev-heading-letter-spacing: 0;
+        --ob-prev-heading-line-height: 1.5;
+        --ob-prev-heading-weight: 600;
+    }
+
+    [data-prev-level='5'] {
+        --prev-level: 1rem;
+        --ob-prev-heading-letter-spacing: 0;
+        --ob-prev-heading-line-height: 1.5;
+        --ob-prev-heading-weight: 560;
+    }
+
+    [data-prev-level='6'] {
+        --prev-level: 1rem;
+        --ob-prev-heading-letter-spacing: 0.01em;
+        --ob-prev-heading-line-height: 1.5;
+        --ob-prev-heading-weight: 520;
+    }
+
+    .bn-block-outer:not([data-prev-type]) > .bn-block > .bn-block-content[data-content-type='heading'],
+    .bn-block-outer:not([data-prev-type])
+        > .bn-block
+        > div[data-type='modification']
+        > div[data-type='modification']
+        > .bn-block-content[data-content-type='heading'] {
+        color: var(--ob-heading-color, var(--fg-default));
+        font-size: var(--level);
+        font-weight: var(--ob-heading-weight, 600);
+        letter-spacing: var(--ob-heading-letter-spacing, 0);
+        line-height: var(--ob-heading-line-height, 1.5);
+    }
+
+    .bn-block-outer[data-prev-type='heading'] > .bn-block > .bn-block-content {
+        font-size: var(--prev-level);
+        font-weight: var(--ob-prev-heading-weight, 600);
+        letter-spacing: var(--ob-prev-heading-letter-spacing, 0);
+        line-height: var(--ob-prev-heading-line-height, 1.5);
+    }
+
 
     p {
         line-height: 1.7;
@@ -398,3 +470,22 @@ html.dark .bn-mantine .bn-menu-dropdown {
     content: var(--index) ".";
     white-space: nowrap;
 }
+/* Match BlockNote side menu hitbox to the chosen heading typography. */
+.bn-side-menu[data-block-type='heading'][data-level='1'] {
+    height: 36px;
+}
+
+.bn-side-menu[data-block-type='heading'][data-level='2'] {
+    height: 33px;
+}
+
+.bn-side-menu[data-block-type='heading'][data-level='3'] {
+    height: 31px;
+}
+
+.bn-side-menu[data-block-type='heading'][data-level='4'],
+.bn-side-menu[data-block-type='heading'][data-level='5'],
+.bn-side-menu[data-block-type='heading'][data-level='6'] {
+    height: 30px;
+}
+

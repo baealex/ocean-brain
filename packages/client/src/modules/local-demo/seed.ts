@@ -195,7 +195,8 @@ const refBullet = (id: string, label: string, noteId: string, title: string) =>
     bullet(id, [text(label), reference(noteId, title)]);
 
 export const createLocalDemoSeed = ({ tags, nowMs }: SeedInput): SeedOutput => {
-    const createdAt = timestamp(nowMs);
+    const seedStartMs = nowMs - 30 * 60 * 1000;
+    const createdAt = timestamp(seedStartMs);
     const guide = findTag(tags, '@guide');
     const demo = findTag(tags, '@demo');
     const graph = findTag(tags, '@graph');
@@ -236,7 +237,7 @@ export const createLocalDemoSeed = ({ tags, nowMs }: SeedInput): SeedOutput => {
         createNote({
             id: '2',
             title: 'Note Linking & Backlinks',
-            createdAt: plusMinutes(nowMs, 1),
+            createdAt: plusMinutes(seedStartMs, 1),
             pinned: true,
             order: 1,
             layout: 'wide',
@@ -262,7 +263,7 @@ export const createLocalDemoSeed = ({ tags, nowMs }: SeedInput): SeedOutput => {
         createNote({
             id: '3',
             title: 'Project: Personal Knowledge Hub',
-            createdAt: plusMinutes(nowMs, 2),
+            createdAt: plusMinutes(seedStartMs, 2),
             pinned: true,
             order: 2,
             layout: 'wide',
@@ -302,7 +303,7 @@ export const createLocalDemoSeed = ({ tags, nowMs }: SeedInput): SeedOutput => {
         createNote({
             id: '4',
             title: 'Task Management Demo',
-            createdAt: plusMinutes(nowMs, 3),
+            createdAt: plusMinutes(seedStartMs, 3),
             order: 3,
             layout: 'wide',
             tags: [task, project],
@@ -334,7 +335,7 @@ export const createLocalDemoSeed = ({ tags, nowMs }: SeedInput): SeedOutput => {
         createNote({
             id: '5',
             title: 'Research: Local-first Demo',
-            createdAt: plusMinutes(nowMs, 4),
+            createdAt: plusMinutes(seedStartMs, 4),
             order: 4,
             layout: 'wide',
             tags: [research, demo],
@@ -367,7 +368,7 @@ export const createLocalDemoSeed = ({ tags, nowMs }: SeedInput): SeedOutput => {
         createNote({
             id: '6',
             title: 'Meeting Notes Template',
-            createdAt: plusMinutes(nowMs, 5),
+            createdAt: plusMinutes(seedStartMs, 5),
             order: 5,
             layout: 'wide',
             tags: [meeting, project],
@@ -402,7 +403,7 @@ export const createLocalDemoSeed = ({ tags, nowMs }: SeedInput): SeedOutput => {
         createNote({
             id: '7',
             title: 'Editing Playground',
-            createdAt: plusMinutes(nowMs, 6),
+            createdAt: plusMinutes(seedStartMs, 6),
             order: 6,
             layout: 'full',
             tags: [editor, guide],
@@ -429,7 +430,7 @@ export const createLocalDemoSeed = ({ tags, nowMs }: SeedInput): SeedOutput => {
         createNote({
             id: '8',
             title: 'Media & Attachments Example',
-            createdAt: plusMinutes(nowMs, 7),
+            createdAt: plusMinutes(seedStartMs, 7),
             order: 7,
             layout: 'wide',
             tags: [media, demo],
@@ -455,7 +456,7 @@ export const createLocalDemoSeed = ({ tags, nowMs }: SeedInput): SeedOutput => {
         createNote({
             id: '9',
             title: 'Done: Prepare Seed Workspace',
-            createdAt: plusMinutes(nowMs, 8),
+            createdAt: plusMinutes(seedStartMs, 8),
             order: 8,
             layout: 'wide',
             tags: [archive, project],

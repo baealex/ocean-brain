@@ -27,7 +27,7 @@ export interface LocalPropertyDefinition {
 }
 
 export interface LocalDemoState {
-    version: 4;
+    version: 5;
     notes: Note[];
     trashedNotes: LocalTrashNote[];
     tags: LocalTag[];

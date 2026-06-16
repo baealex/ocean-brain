@@ -22,6 +22,8 @@ Ocean Brain keeps that connection close to the writing flow. You can write a not
 
 **[Live Demo](https://demo-ocean-brain.baejino.com/)** - Try the hosted demo
 
+The hosted demo runs in local-only mode: your edits stay in your browser, so feel free to create, edit, delete, and reset notes while testing.
+
 ## Quick Start
 
 `npx ocean-brain` / `docker run baealex/ocean-brain` now require explicit auth configuration.

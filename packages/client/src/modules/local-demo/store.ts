@@ -1,8 +1,8 @@
 import { createLocalDemoSeed } from './seed';
 import type { LocalDemoState } from './types';
 
-const STORAGE_KEY = 'ocean-brain:local-only-demo:v4';
-const CURRENT_VERSION = 4 as const;
+const STORAGE_KEY = 'ocean-brain:local-only-demo:v5';
+const CURRENT_VERSION = 5 as const;
 
 const createSeedState = (): LocalDemoState => {
     const tags = [

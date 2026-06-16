@@ -33,8 +33,10 @@ export const notesLocalPlugin: LocalDemoPlugin = {
             return success({ allNotes: { totalCount: filtered.length, notes: paginate(filtered, variables) } });
         },
         FetchTagNotes: ({ state, variables }) => {
-            const filtered = state.notes.filter(
-                (note) => note.tags.length > 0 && noteMatchesQuery(note, getQueryText(variables)),
+            const tagId = getQueryText(variables);
+            const filtered = sortNotes(
+                state.notes.filter((note) => note.tags.some((tag) => tag.id.toLowerCase() === tagId)),
+                { ...variables, searchFilter: { sortBy: 'updatedAt', sortOrder: 'desc' } },
             );
             return success({ tagNotes: { totalCount: filtered.length, notes: paginate(filtered, variables) } });
         },

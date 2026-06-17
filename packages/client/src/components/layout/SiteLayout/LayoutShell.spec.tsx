@@ -46,11 +46,15 @@ describe('<LayoutShell />', () => {
         });
 
         const toggleButton = screen.getByRole('button', { name: 'Toggle sidebar' });
+        const sidebar = screen.getByText('Sidebar').closest('aside');
 
         expect(toggleButton).toHaveAttribute('aria-expanded', 'false');
+        expect(sidebar).toHaveClass('pointer-events-none');
 
         fireEvent.click(toggleButton);
 
         expect(toggleButton).toHaveAttribute('aria-expanded', 'true');
+        expect(sidebar).toHaveClass('pointer-events-auto');
+        expect(sidebar).not.toHaveClass('pointer-events-none');
     });
 });

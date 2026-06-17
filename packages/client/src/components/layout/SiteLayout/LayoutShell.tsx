@@ -41,8 +41,6 @@ const sidebarClassName = classNames(
     'border-border-subtle',
     'bg-[var(--page-bg)]',
     'pb-20',
-    'pointer-events-none',
-    '-translate-x-full',
     'md:static',
     'md:w-auto',
     'md:translate-x-0',
@@ -50,6 +48,7 @@ const sidebarClassName = classNames(
     'md:pb-0',
     'md:pointer-events-auto',
 );
+const sidebarClosedClassName = 'pointer-events-none -translate-x-full';
 const sidebarOpenClassName = 'pointer-events-auto translate-x-0';
 const centerClassName = classNames(
     'flex',
@@ -115,7 +114,10 @@ const LayoutShell = ({ sidebar, topNavigation, children }: LayoutShellProps) => 
                     <Icon.Menu className="h-6 w-6" />
                 </button>
             </div>
-            <aside id={sidebarId} className={classNames(sidebarClassName, isMenuOpen && sidebarOpenClassName)}>
+            <aside
+                id={sidebarId}
+                className={classNames(sidebarClassName, isMenuOpen ? sidebarOpenClassName : sidebarClosedClassName)}
+            >
                 {sidebar}
             </aside>
             <main className={centerClassName}>

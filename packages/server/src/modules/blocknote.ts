@@ -367,7 +367,7 @@ function replaceExplicitReferenceTokens(
     text: string,
     placeholderToReference: Map<string, { id: string; title: string; token: string }>,
 ) {
-    return text.replace(/\[\[([^\]\n]+)\]\]\(note:([^)\s]+)\)/g, (token, title: string, id: string) => {
+    return text.replace(/\[\[([^\n]+?)\]\]\(note:([^)\s]+)\)/g, (token, title: string, id: string) => {
         const placeholder = createReferencePlaceholder(placeholderToReference.size);
         placeholderToReference.set(placeholder, { id, title, token });
         return placeholder;

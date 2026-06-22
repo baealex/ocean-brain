@@ -348,6 +348,49 @@ test('markdownToBlocksJson restores note-id references with current note title',
     ]);
 });
 
+test('markdownToBlocksJson restores note-id references whose title contains square brackets', async () => {
+    const cases = [
+        { markdown: 'See [[[P] Project brief]](note:123)', currentTitle: '[P] Project brief' },
+        { markdown: 'See [[Project [P] brief]](note:123)', currentTitle: 'Project [P] brief' },
+        { markdown: 'See [[Project brief[P]]](note:123)', currentTitle: 'Project brief[P]' },
+    ];
+
+    for (const { markdown, currentTitle } of cases) {
+        const contentJson = await markdownToBlocksJson(markdown, {
+            ensureTag: async () => {
+                throw new Error('should not ensure tags');
+            },
+            findNotesByTitle: async () => {
+                throw new Error('should not look up title-based references');
+            },
+            findNoteById: async (id) =>
+                id === '123'
+                    ? {
+                          id: '123',
+                          title: currentTitle,
+                      }
+                    : null,
+        });
+
+        const blocks = JSON.parse(contentJson);
+
+        assert.deepEqual(blocks[0].content, [
+            {
+                type: 'text',
+                text: 'See ',
+                styles: {},
+            },
+            {
+                type: 'reference',
+                props: {
+                    id: '123',
+                    title: currentTitle,
+                },
+            },
+        ]);
+    }
+});
+
 test('markdownToBlocksJson leaves missing note-id references as text', async () => {
     const contentJson = await markdownToBlocksJson('See [[Missing Title]](note:404)', {
         ensureTag: async () => {

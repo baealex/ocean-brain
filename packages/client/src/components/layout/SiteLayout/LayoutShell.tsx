@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import * as Icon from '~/components/icon';
 import { RestoreParentScroll } from '~/components/shared';
 
-const rootClassName = 'flex h-full w-full flex-row';
+const rootClassName = 'flex h-dvh min-h-0 w-full flex-row overflow-hidden';
 const menuButtonClassName = classNames(
     'fixed',
     'bottom-4',
@@ -53,11 +53,13 @@ const sidebarOpenClassName = 'pointer-events-auto translate-x-0';
 const centerClassName = classNames(
     'flex',
     'h-full',
+    'min-h-0',
     'min-w-0',
     'flex-1',
     'flex-col',
     'overflow-x-hidden',
     'overflow-y-auto',
+    'overscroll-contain',
     '[scrollbar-gutter:stable]',
 );
 const topClassName = classNames(
@@ -83,7 +85,17 @@ const topContentClassName = classNames(
     '[scrollbar-width:none]',
     '[&::-webkit-scrollbar]:hidden',
 );
-const contentClassName = 'min-w-0 max-w-full flex-1 overflow-x-clip p-4 max-md:pb-20';
+const contentClassName = classNames(
+    'min-h-0',
+    'min-w-0',
+    'max-w-full',
+    'flex-1',
+    'overflow-x-clip',
+    'px-4',
+    'pt-4',
+    'pb-4',
+    'max-md:pb-[calc(6rem+env(safe-area-inset-bottom))]',
+);
 
 interface LayoutShellProps {
     sidebar: ReactNode;

@@ -26,6 +26,12 @@ describe('<LayoutShell />', () => {
         expect(await screen.findByText('Sidebar')).toBeInTheDocument();
         expect(await screen.findByText('Top Navigation')).toBeInTheDocument();
         expect(await screen.findByText('Page Content')).toBeInTheDocument();
+
+        const root = screen.getByText('Page Content').closest('main')?.parentElement;
+        const main = screen.getByText('Page Content').closest('main');
+
+        expect(root).toHaveClass('h-dvh', 'overflow-hidden');
+        expect(main).toHaveClass('min-h-0', 'overflow-y-auto', 'overscroll-contain');
     });
 
     it('exposes the mobile sidebar toggle as an accessible stateful control', async () => {

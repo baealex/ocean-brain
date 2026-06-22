@@ -14,6 +14,7 @@ import {
     getViewDisplayTypeLabel,
     getViewTagMatchToken,
 } from '~/modules/view-dashboard';
+import ViewChip from './ViewChip';
 import ViewSectionRenderer from './ViewSectionRenderer';
 
 interface ViewSectionCardProps {
@@ -106,33 +107,33 @@ export default function ViewSectionCard({ section, onEdit, onDelete, dragHandle 
                         </div>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-1.5">
-                        <span className="inline-flex items-center rounded-full border border-border-subtle/80 bg-elevated px-2.5 py-1 text-xs font-medium text-fg-secondary">
+                        <ViewChip className="max-w-full border-border-subtle/80 bg-elevated text-fg-secondary">
                             {getViewDisplayTypeLabel(section.displayType)}
-                        </span>
+                        </ViewChip>
                         {section.tagNames.map((tagName, index) => (
-                            <div key={tagName} className="flex items-center gap-1.5">
+                            <div key={tagName} className="flex min-w-0 items-center gap-1.5">
                                 {index > 0 && (
                                     <span className="px-0.5 text-[10px] font-semibold tracking-[0.08em] text-fg-tertiary/85">
                                         {tagMatchToken}
                                     </span>
                                 )}
-                                <span className="inline-flex items-center rounded-full border border-border-subtle/80 bg-transparent px-2.5 py-1 text-xs font-medium text-fg-secondary">
+                                <ViewChip className="max-w-full border-border-subtle/80 bg-transparent text-fg-secondary">
                                     {tagName}
-                                </span>
+                                </ViewChip>
                             </div>
                         ))}
                         {section.propertyFilters.map((filter) => (
-                            <span
+                            <ViewChip
                                 key={`${filter.key}-${filter.operator}-${filter.value ?? ''}`}
-                                className="inline-flex items-center rounded-full border border-border-subtle/80 bg-subtle px-2.5 py-1 text-xs font-medium text-fg-secondary"
+                                className="max-w-full border-border-subtle/80 bg-subtle text-fg-secondary"
                             >
                                 {formatViewPropertyFilter(filter)}
-                            </span>
+                            </ViewChip>
                         ))}
                         {!hasFilters && (
-                            <span className="inline-flex items-center rounded-full border border-border-subtle/80 bg-transparent px-2.5 py-1 text-xs font-medium text-fg-tertiary">
+                            <ViewChip className="max-w-full border-border-subtle/80 bg-transparent text-fg-tertiary">
                                 All notes
-                            </span>
+                            </ViewChip>
                         )}
                     </div>
                 </div>

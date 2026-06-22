@@ -6,6 +6,7 @@ import type { ViewSection, ViewSortBy, ViewTableColumn } from '~/models/view.mod
 import { timeSince } from '~/modules/time';
 import { NOTE_ROUTE } from '~/modules/url';
 import { getViewTableColumnLabel, normalizeViewTableColumns } from '~/modules/view-dashboard';
+import ViewChip from './ViewChip';
 
 interface ViewSectionTableRendererProps {
     section: ViewSection;
@@ -42,6 +43,8 @@ const SORTABLE_TABLE_COLUMNS: Partial<Record<ViewTableColumn, ViewSortBy>> = {
     createdAt: 'createdAt',
     updatedAt: 'updatedAt',
 };
+const summaryListClassName = 'flex h-[22px] min-w-0 max-w-full items-center gap-1.5 overflow-hidden whitespace-nowrap';
+const emptySummaryClassName = 'text-xs leading-5 text-fg-tertiary';
 
 const getTableMinWidth = (columns: ViewTableColumn[]) => {
     const width = columns.reduce((totalWidth, column) => totalWidth + TABLE_COLUMN_WIDTHS[column], 0);
@@ -55,26 +58,27 @@ const renderTagSummary = (note: Note, options: { hideEmpty?: boolean } = {}) => 
             return null;
         }
 
-        return <span className="text-fg-tertiary">—</span>;
+        return <span className={emptySummaryClassName}>—</span>;
     }
 
     const visibleTags = note.tags.slice(0, 3);
     const hiddenCount = note.tags.length - visibleTags.length;
 
     return (
-        <div className="flex min-w-0 max-w-full gap-1.5 overflow-hidden">
+        <div className={summaryListClassName}>
             {visibleTags.map((tag) => (
-                <span
+                <ViewChip
                     key={tag.id}
-                    className="inline-flex max-w-[132px] shrink-0 items-center rounded-full border border-border-subtle bg-transparent px-2 py-0.5 text-xs font-medium text-fg-secondary"
+                    size="compact"
+                    className="max-w-[132px] shrink-0 border-border-subtle bg-transparent text-fg-secondary"
                 >
-                    <span className="truncate">{tag.name}</span>
-                </span>
+                    {tag.name}
+                </ViewChip>
             ))}
             {hiddenCount > 0 && (
-                <span className="inline-flex items-center rounded-full border border-border-subtle bg-subtle px-2 py-0.5 text-xs font-medium text-fg-tertiary">
+                <ViewChip size="compact" className="shrink-0 border-border-subtle bg-subtle text-fg-tertiary">
                     +{hiddenCount}
-                </span>
+                </ViewChip>
             )}
         </div>
     );
@@ -88,26 +92,28 @@ const renderPropertySummary = (note: Note, options: { hideEmpty?: boolean } = {}
             return null;
         }
 
-        return <span className="text-fg-tertiary">—</span>;
+        return <span className={emptySummaryClassName}>—</span>;
     }
 
     const hiddenCount = (note.properties?.length ?? 0) - visibleProperties.length;
 
     return (
-        <div className="flex min-w-0 max-w-full gap-1.5 overflow-hidden">
+        <div className={summaryListClassName}>
             {visibleProperties.map((property) => (
-                <span
+                <ViewChip
                     key={property.key}
-                    className="inline-flex max-w-[190px] shrink-0 items-center gap-1 rounded-full border border-border-subtle bg-subtle px-2 py-0.5 text-xs font-medium text-fg-secondary"
+                    size="compact"
+                    truncateContent={false}
+                    className="max-w-[190px] shrink-0 gap-1 border-border-subtle bg-subtle text-fg-secondary"
                 >
-                    <span className="max-w-[76px] shrink-0 truncate text-fg-tertiary">{property.name}</span>
+                    <span className="min-w-0 max-w-[76px] shrink truncate text-fg-tertiary">{property.name}</span>
                     <span className="min-w-0 truncate">{formatPropertyValue(property) || '—'}</span>
-                </span>
+                </ViewChip>
             ))}
             {hiddenCount > 0 && (
-                <span className="inline-flex items-center rounded-full border border-border-subtle bg-subtle px-2 py-0.5 text-xs font-medium text-fg-tertiary">
+                <ViewChip size="compact" className="shrink-0 border-border-subtle bg-subtle text-fg-tertiary">
                     +{hiddenCount}
-                </span>
+                </ViewChip>
             )}
         </div>
     );
@@ -167,13 +173,13 @@ export default function ViewSectionTableRenderer({
         switch (column) {
             case 'tags':
                 return (
-                    <td key={column} className="px-3 py-2.5 align-middle">
+                    <td key={column} className="overflow-hidden px-3 py-2.5 align-middle">
                         {renderTagSummary(note)}
                     </td>
                 );
             case 'properties':
                 return (
-                    <td key={column} className="px-3 py-2.5 align-middle">
+                    <td key={column} className="overflow-hidden px-3 py-2.5 align-middle">
                         {renderPropertySummary(note)}
                     </td>
                 );

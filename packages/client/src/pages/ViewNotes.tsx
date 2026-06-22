@@ -7,7 +7,7 @@ import { QueryBoundary } from '~/components/app';
 import { NoteListCard } from '~/components/note';
 import { Empty, FallbackRender, PageLayout, Pagination, Skeleton } from '~/components/shared';
 import { Text, useToast } from '~/components/ui';
-import { ViewSectionTableRenderer } from '~/components/view';
+import { ViewChip, ViewSectionTableRenderer } from '~/components/view';
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
 import type { ViewSortBy, ViewSortOrder } from '~/models/view.model';
 import { queryKeys } from '~/modules/query-key-factory';
@@ -142,25 +142,25 @@ function ViewNotesContent() {
                     </Text>
                     <div className="flex flex-wrap gap-1.5">
                         {tagNames.map((tagName) => (
-                            <span
+                            <ViewChip
                                 key={tagName}
-                                className="inline-flex items-center rounded-full border border-border-subtle bg-hover-subtle px-2.5 py-1 text-xs font-medium text-fg-secondary"
+                                className="max-w-full border-border-subtle bg-hover-subtle text-fg-secondary"
                             >
                                 {tagName}
-                            </span>
+                            </ViewChip>
                         ))}
                         {propertyFilters.map((filter) => (
-                            <span
+                            <ViewChip
                                 key={`${filter.key}-${filter.operator}-${filter.value ?? ''}`}
-                                className="inline-flex items-center rounded-full border border-border-subtle bg-hover-subtle px-2.5 py-1 text-xs font-medium text-fg-secondary"
+                                className="max-w-full border-border-subtle bg-hover-subtle text-fg-secondary"
                             >
                                 {formatViewPropertyFilter(filter)}
-                            </span>
+                            </ViewChip>
                         ))}
                         {tagNames.length === 0 && propertyFilters.length === 0 && (
-                            <span className="inline-flex items-center rounded-full border border-border-subtle bg-hover-subtle px-2.5 py-1 text-xs font-medium text-fg-secondary">
+                            <ViewChip className="max-w-full border-border-subtle bg-hover-subtle text-fg-secondary">
                                 All notes
-                            </span>
+                            </ViewChip>
                         )}
                     </div>
                 </div>

@@ -1,4 +1,5 @@
 import type { McpAdminStatus } from '~/apis/mcp-admin.api';
+import { formatMcpVersionRequirement, OCEAN_BRAIN_RELEASES_URL, OCEAN_BRAIN_VERSION } from '~/modules/app-version';
 import type { GraphQueryRequest, GraphQueryResponse } from '../graph-query-types';
 import { cacheLocalPlugin } from './plugins/cache';
 import { imagesLocalPlugin } from './plugins/images';
@@ -29,9 +30,9 @@ const graphHandlers = localDemoPlugins.reduce<Record<string, LocalGraphHandler>>
 const withLocalDemoMcpServerInfo = (mcp: Omit<McpAdminStatus, 'server'>): McpAdminStatus => ({
     ...mcp,
     server: {
-        version: 'local-demo',
-        releaseUrl: 'https://github.com/baealex/ocean-brain/releases',
-        mcpVersionRequirement: 'local-demo',
+        version: OCEAN_BRAIN_VERSION,
+        releaseUrl: OCEAN_BRAIN_RELEASES_URL,
+        mcpVersionRequirement: formatMcpVersionRequirement(OCEAN_BRAIN_VERSION),
     },
 });
 

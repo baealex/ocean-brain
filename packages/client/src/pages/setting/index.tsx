@@ -1,7 +1,15 @@
+import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
+import { fetchMcpAdminStatus } from '~/apis/mcp-admin.api';
 import * as Icon from '~/components/icon';
 import { PageLayout } from '~/components/shared';
 import { Text } from '~/components/ui';
+import {
+    formatMcpVersionRequirement,
+    formatVersionLabel,
+    OCEAN_BRAIN_RELEASES_URL,
+    OCEAN_BRAIN_VERSION,
+} from '~/modules/app-version';
 import {
     SETTINGS_MANAGE_IMAGE_ROUTE,
     SETTINGS_MCP_ROUTE,
@@ -11,8 +19,19 @@ import {
 } from '~/modules/url';
 import { useTheme } from '~/store/theme';
 
+const mcpAdminStatusQueryKey = ['mcp-admin', 'status'] as const;
+
 const Setting = () => {
     const { theme, toggleTheme } = useTheme((state) => state);
+    const { data: status } = useQuery({
+        queryKey: mcpAdminStatusQueryKey,
+        queryFn: fetchMcpAdminStatus,
+    });
+    const versionInfo = status?.server ?? {
+        version: OCEAN_BRAIN_VERSION,
+        releaseUrl: OCEAN_BRAIN_RELEASES_URL,
+        mcpVersionRequirement: formatMcpVersionRequirement(OCEAN_BRAIN_VERSION),
+    };
     const itemClassName =
         'focus-ring-soft surface-base group flex items-start justify-between gap-3.5 px-4 py-3.5 text-left text-fg-default outline-none transition-colors hover:bg-hover-subtle';
     const leadingClassName =
@@ -20,10 +39,39 @@ const Setting = () => {
     const iconClassName = 'h-6 w-6';
     const sectionLabelClassName = 'text-fg-tertiary';
     const contentClassName = 'min-w-0 flex flex-col gap-0.5 pt-0.5';
+    const versionLabel = formatVersionLabel(versionInfo.version);
 
     return (
         <PageLayout title="Settings" description="Manage appearance, integrations, and workspace tools">
             <div className="flex flex-col gap-6">
+                <section className="flex flex-col gap-3">
+                    <Text as="p" variant="label" weight="medium" className={sectionLabelClassName}>
+                        Version
+                    </Text>
+                    <a href={versionInfo.releaseUrl} target="_blank" rel="noreferrer" className={itemClassName}>
+                        <div className="flex min-w-0 items-start gap-3">
+                            <span className={leadingClassName}>
+                                <Icon.Info className={iconClassName} />
+                            </span>
+                            <div className={contentClassName}>
+                                <Text as="div" variant="body" weight="medium">
+                                    Ocean Brain
+                                </Text>
+                                <Text as="div" variant="meta" tone="secondary">
+                                    Current version: {versionLabel} / Required MCP version:{' '}
+                                    {versionInfo.mcpVersionRequirement}
+                                </Text>
+                            </div>
+                        </div>
+                        <div className="mt-0.5 flex shrink-0 items-center gap-2 text-fg-tertiary">
+                            <Text as="span" variant="meta" weight="medium" tone="secondary">
+                                Check latest
+                            </Text>
+                            <Icon.Refresh className="h-4 w-4" />
+                        </div>
+                    </a>
+                </section>
+
                 <section className="flex flex-col gap-3">
                     <Text as="p" variant="label" weight="medium" className={sectionLabelClassName}>
                         Appearance

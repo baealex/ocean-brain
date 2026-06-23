@@ -4,6 +4,7 @@ import { fetchMcpAdminStatus, revokeMcpToken, rotateMcpToken, setMcpEnabled } fr
 import * as Icon from '~/components/icon';
 import { Button, PageLayout, SurfaceCard } from '~/components/shared';
 import { Input, Label, Switch, Text, Textarea, ToggleGroup, ToggleGroupItem, useToast } from '~/components/ui';
+import { formatVersionLabel, OCEAN_BRAIN_RELEASES_URL } from '~/modules/app-version';
 
 const mcpAdminStatusQueryKey = ['mcp-admin', 'status'] as const;
 
@@ -80,13 +81,9 @@ const McpSetting = () => {
     const hasActiveToken = status?.hasActiveToken ?? false;
     const canToggle = !isLoading && !setEnabledMutation.isPending;
     const serverVersion = status?.server.version;
-    const releaseUrl = status?.server.releaseUrl ?? 'https://github.com/baealex/ocean-brain/releases';
+    const releaseUrl = status?.server.releaseUrl ?? OCEAN_BRAIN_RELEASES_URL;
     const mcpVersionRequirement = status?.server.mcpVersionRequirement;
-    const serverVersionLabel = serverVersion
-        ? /^\d+\.\d+\.\d+/.test(serverVersion)
-            ? `v${serverVersion}`
-            : serverVersion
-        : 'Loading...';
+    const serverVersionLabel = serverVersion ? formatVersionLabel(serverVersion) : 'Loading...';
     const headerTextClassName = 'space-y-1';
     const cardBodyClassName = 'space-y-4.5';
     const statusToggleClassName =

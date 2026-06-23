@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { fetchMcpAdminStatus, revokeMcpToken, rotateMcpToken, setMcpEnabled } from '~/apis/mcp-admin.api';
+import * as Icon from '~/components/icon';
 import { Button, PageLayout, SurfaceCard } from '~/components/shared';
 import { Input, Label, Switch, Text, Textarea, ToggleGroup, ToggleGroupItem, useToast } from '~/components/ui';
 
@@ -78,6 +79,14 @@ const McpSetting = () => {
     const enabled = status?.enabled ?? false;
     const hasActiveToken = status?.hasActiveToken ?? false;
     const canToggle = !isLoading && !setEnabledMutation.isPending;
+    const serverVersion = status?.server.version;
+    const releaseUrl = status?.server.releaseUrl ?? 'https://github.com/baealex/ocean-brain/releases';
+    const mcpVersionRequirement = status?.server.mcpVersionRequirement;
+    const serverVersionLabel = serverVersion
+        ? /^\d+\.\d+\.\d+/.test(serverVersion)
+            ? `v${serverVersion}`
+            : serverVersion
+        : 'Loading...';
     const headerTextClassName = 'space-y-1';
     const cardBodyClassName = 'space-y-4.5';
     const statusToggleClassName =
@@ -108,6 +117,43 @@ const McpSetting = () => {
     return (
         <PageLayout title="MCP" variant="default" description="Manage MCP access, tokens, and connection details">
             <div className="grid grid-cols-1 gap-4">
+                <SurfaceCard tone="elevated">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div className={headerTextClassName}>
+                            <Text as="h2" {...cardTitleProps}>
+                                Version
+                            </Text>
+                            <Text as="p" variant="meta" tone="secondary">
+                                Current server version and MCP compatibility target.
+                            </Text>
+                        </div>
+                        <Button asChild variant="subtle" size="sm">
+                            <a href={releaseUrl} target="_blank" rel="noreferrer">
+                                <Icon.Refresh className="h-4 w-4" />
+                                Check latest version
+                            </a>
+                        </Button>
+                    </div>
+                    <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <div className="rounded-[14px] border border-border-subtle bg-muted px-3 py-2.5">
+                            <Text as="div" variant="meta" weight="medium" tone="secondary">
+                                Current version
+                            </Text>
+                            <Text as="div" variant="body" weight="semibold" className="mt-1">
+                                {serverVersionLabel}
+                            </Text>
+                        </div>
+                        <div className="rounded-[14px] border border-border-subtle bg-muted px-3 py-2.5">
+                            <Text as="div" variant="meta" weight="medium" tone="secondary">
+                                Required MCP version
+                            </Text>
+                            <Text as="div" variant="body" weight="semibold" className="mt-1">
+                                {mcpVersionRequirement ?? 'Loading...'}
+                            </Text>
+                        </div>
+                    </div>
+                </SurfaceCard>
+
                 <SurfaceCard tone="elevated">
                     <div className="flex flex-wrap items-start justify-between gap-4">
                         <div className={headerTextClassName}>

@@ -26,6 +26,15 @@ const graphHandlers = localDemoPlugins.reduce<Record<string, LocalGraphHandler>>
     return { ...handlers, ...(plugin.graphHandlers ?? {}) };
 }, {});
 
+const withLocalDemoMcpServerInfo = (mcp: Omit<McpAdminStatus, 'server'>): McpAdminStatus => ({
+    ...mcp,
+    server: {
+        version: 'local-demo',
+        releaseUrl: 'https://github.com/baealex/ocean-brain/releases',
+        mcpVersionRequirement: 'local-demo',
+    },
+});
+
 const resolveOperationName = (request: GraphQueryRequest<object>) => {
     return request.operationName ?? request.query.match(/\b(?:query|mutation)\s+(\w+)/)?.[1] ?? '';
 };
@@ -71,14 +80,16 @@ export const uploadLocalDemoImage = async ({ base64, externalSrc }: { base64?: s
 };
 
 export const fetchLocalDemoMcpAdminStatus = async (): Promise<McpAdminStatus> => {
-    return localDemoStore.read().mcp;
+    return withLocalDemoMcpServerInfo(localDemoStore.read().mcp);
 };
 
 export const setLocalDemoMcpEnabled = async (enabled: boolean): Promise<McpAdminStatus> => {
-    return localDemoStore.update((state) => {
+    const mcp = localDemoStore.update((state) => {
         state.mcp.enabled = enabled;
         return state.mcp;
     });
+
+    return withLocalDemoMcpServerInfo(mcp);
 };
 
 export const rotateLocalDemoMcpToken = async () => {
@@ -98,11 +109,13 @@ export const rotateLocalDemoMcpToken = async () => {
 };
 
 export const revokeLocalDemoMcpToken = async (): Promise<McpAdminStatus> => {
-    return localDemoStore.update((state) => {
+    const mcp = localDemoStore.update((state) => {
         state.mcp.hasActiveToken = false;
         state.mcp.token = null;
         return state.mcp;
     });
+
+    return withLocalDemoMcpServerInfo(mcp);
 };
 
 export const localDemoOperationNames = Object.freeze(Object.keys(graphHandlers).sort());

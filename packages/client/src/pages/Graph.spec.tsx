@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { createTestQueryClient } from '~/test/test-utils';
@@ -73,29 +73,32 @@ describe('<Graph />', () => {
         });
     });
 
-    it('provides a keyboard-accessible graph node list with note links and selection status', async () => {
+    it('provides a keyboard-accessible graph node list with separate selection and open actions', async () => {
+        const user = userEvent.setup();
         renderGraph();
 
-        expect(await screen.findByRole('region', { name: 'Graph nodes' })).toBeInTheDocument();
+        expect(await screen.findByRole('region', { name: 'Graph Explorer' })).toBeInTheDocument();
         expect(screen.getByTestId('force-graph')).toBeInTheDocument();
 
-        const alphaLink = screen.getByRole('link', { name: /Alpha note/ });
-        expect(alphaLink).toHaveAttribute('href', '/note-1');
-        expect(screen.queryByRole('link', { name: /Isolated note/ })).not.toBeInTheDocument();
+        const alphaButton = screen.getByRole('button', { name: /Alpha note/ });
+        const alphaOpenLink = screen.getByRole('link', { name: 'Open Alpha note' });
+        expect(alphaOpenLink).toHaveAttribute('href', '/note-1');
+        expect(screen.queryByRole('button', { name: /Isolated note/ })).not.toBeInTheDocument();
 
-        fireEvent.focus(alphaLink);
+        await user.click(alphaButton);
 
         expect(screen.getByRole('status')).toHaveTextContent('Alpha note selected, 1 links');
-        expect(screen.getByRole('status')).toHaveTextContent('Linked to Beta note');
+        expect(screen.getByRole('status')).toHaveTextContent('Beta note');
+        expect(routeState.navigate).not.toHaveBeenCalled();
     });
 
     it('filters the accessible graph node list', async () => {
         const user = userEvent.setup();
         renderGraph();
 
-        await user.type(await screen.findByRole('textbox', { name: 'Search graph nodes' }), 'beta');
+        await user.type(await screen.findByRole('textbox', { name: 'Search graph' }), 'beta');
 
-        expect(screen.getByRole('link', { name: /Beta note/ })).toBeInTheDocument();
-        expect(screen.queryByRole('link', { name: /Alpha note/ })).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Beta note/ })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /Alpha note/ })).not.toBeInTheDocument();
     });
 });

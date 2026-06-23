@@ -94,9 +94,12 @@ function GraphContent() {
             }
 
             const rect = containerRef.current.getBoundingClientRect();
+            const isCompactLayout = rect.width < 768;
             setDimensions({
                 width: rect.width,
-                height: Math.max(600, window.innerHeight - 150),
+                height: isCompactLayout
+                    ? Math.max(420, Math.min(520, rect.width * 1.25))
+                    : Math.max(600, window.innerHeight - 150),
             });
         };
 
@@ -111,11 +114,11 @@ function GraphContent() {
         }
 
         const timeoutId = window.setTimeout(() => {
-            graphRef.current?.zoomToFit(400, 50);
+            graphRef.current?.zoomToFit(400, dimensions.width < 768 ? 80 : 50);
         }, 500);
 
         return () => window.clearTimeout(timeoutId);
-    }, [graphData]);
+    }, [dimensions.width, graphData]);
 
     const selectedNodeIdRef = useRef(selectedNodeId);
     selectedNodeIdRef.current = selectedNodeId;
@@ -211,6 +214,10 @@ function GraphContent() {
 
         return graphNodes.filter((node) => connectedIds.has(node.id));
     }, [adjacencyMap, graphNodes, selectedNodeId]);
+
+    const hubNodeCount = useMemo(() => graphNodes.filter((node) => node.connections >= 4).length, [graphNodes]);
+    const visibleSelectedConnections = selectedConnectedNodes.slice(0, 4);
+    const remainingSelectedConnectionCount = selectedConnectedNodes.length - visibleSelectedConnections.length;
 
     const selectedNodeStatus = selectedNode
         ? `${selectedNode.title || 'Untitled'} selected, ${selectedNode.connections} links`
@@ -320,10 +327,10 @@ function GraphContent() {
             title="Knowledge Graph"
             description={`${graphData.nodes.length} linked notes, ${graphData.links.length} connections`}
         >
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_23rem]">
                 <div
                     ref={containerRef}
-                    className="surface-base graph-canvas relative overflow-hidden"
+                    className="surface-base graph-canvas relative min-h-[420px] overflow-hidden md:min-h-[520px]"
                     style={{ '--graph-bg': graphTheme.background } as React.CSSProperties}
                 >
                     {selectedNode && (
@@ -406,98 +413,224 @@ function GraphContent() {
                 </div>
 
                 <section
-                    className="surface-base flex max-h-[min(42rem,calc(100vh-10rem))] flex-col overflow-hidden px-4 py-3"
-                    aria-labelledby="graph-node-list-heading"
+                    className="surface-base flex max-h-none flex-col overflow-hidden xl:max-h-[min(44rem,calc(100vh-10rem))]"
+                    aria-labelledby="graph-explorer-heading"
                 >
-                    <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                            <Text id="graph-node-list-heading" as="h2" variant="body" weight="semibold">
-                                Graph nodes
-                            </Text>
-                            <Text as="p" variant="meta" tone="tertiary" className="mt-0.5">
-                                {filteredGraphNodes.length} of {graphNodes.length} notes
-                            </Text>
+                    <div className="border-b border-border-subtle/80 px-4 py-3.5">
+                        <div className="flex items-start gap-3">
+                            <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] border border-border-subtle bg-muted text-fg-secondary">
+                                <Icon.Graph className="h-4 w-4" aria-hidden="true" />
+                            </span>
+                            <div className="min-w-0">
+                                <Text id="graph-explorer-heading" as="h2" variant="body" weight="semibold">
+                                    Graph Explorer
+                                </Text>
+                                <Text as="p" variant="meta" tone="tertiary" className="mt-0.5">
+                                    Connection index
+                                </Text>
+                            </div>
                         </div>
-                        <Text as="span" variant="label" tone="secondary" className="shrink-0">
-                            {graphData.links.length} links
-                        </Text>
+
+                        <div className="mt-3 grid grid-cols-3 divide-x divide-border-subtle rounded-[12px] border border-border-subtle/80 bg-subtle/50">
+                            <div className="px-2.5 py-2">
+                                <Text as="p" variant="micro" tone="tertiary">
+                                    Notes
+                                </Text>
+                                <Text as="p" variant="label" weight="semibold">
+                                    {graphNodes.length}
+                                </Text>
+                            </div>
+                            <div className="px-2.5 py-2">
+                                <Text as="p" variant="micro" tone="tertiary">
+                                    Links
+                                </Text>
+                                <Text as="p" variant="label" weight="semibold">
+                                    {graphData.links.length}
+                                </Text>
+                            </div>
+                            <div className="px-2.5 py-2">
+                                <Text as="p" variant="micro" tone="tertiary">
+                                    Hubs
+                                </Text>
+                                <Text as="p" variant="label" weight="semibold">
+                                    {hubNodeCount}
+                                </Text>
+                            </div>
+                        </div>
                     </div>
 
-                    <label htmlFor="graph-node-search" className="sr-only">
-                        Search graph nodes
-                    </label>
-                    <Input
-                        id="graph-node-search"
-                        size="sm"
-                        value={nodeSearchQuery}
-                        onChange={(event) => setNodeSearchQuery(event.target.value)}
-                        placeholder="Search graph nodes"
-                        className="mt-3"
-                    />
-
-                    <div
-                        id="graph-selection-status"
-                        role="status"
-                        aria-live="polite"
-                        className="mt-3 rounded-[14px] border border-border-subtle bg-subtle px-3 py-2"
-                    >
-                        <Text as="p" variant="label" weight="medium">
-                            {selectedNodeStatus}
-                        </Text>
-                        {selectedConnectedNodes.length > 0 && (
-                            <Text as="p" variant="meta" tone="tertiary" truncate className="mt-0.5">
-                                Linked to {selectedConnectedNodes.map((node) => node.title || 'Untitled').join(', ')}
+                    <div className="border-b border-border-subtle/80 px-4 py-3">
+                        <label htmlFor="graph-node-search">
+                            <Text as="span" variant="label" weight="medium" tone="secondary">
+                                Search graph
                             </Text>
+                        </label>
+                        <div className="relative mt-1.5">
+                            <Icon.Search
+                                className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-fg-tertiary"
+                                aria-hidden="true"
+                            />
+                            <Input
+                                id="graph-node-search"
+                                size="sm"
+                                value={nodeSearchQuery}
+                                onChange={(event) => setNodeSearchQuery(event.target.value)}
+                                placeholder="Find a note"
+                                className="pl-9"
+                            />
+                        </div>
+                    </div>
+
+                    <Text id="graph-selection-status" as="p" role="status" aria-live="polite" className="sr-only">
+                        {selectedNode
+                            ? `${selectedNodeStatus}${
+                                  selectedConnectedNodes.length > 0
+                                      ? `. Linked to ${selectedConnectedNodes
+                                            .map((node) => node.title || 'Untitled')
+                                            .join(', ')}`
+                                      : ''
+                              }`
+                            : selectedNodeStatus}
+                    </Text>
+
+                    <div className="border-b border-border-subtle/80 px-4 py-3">
+                        {selectedNode ? (
+                            <div className="min-w-0">
+                                <Text as="p" variant="micro" tone="tertiary">
+                                    Selected note
+                                </Text>
+                                <div className="mt-1 flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <Text as="p" variant="body" weight="semibold" truncate>
+                                            {selectedNode.title || 'Untitled'}
+                                        </Text>
+                                        <Text as="p" variant="meta" tone="tertiary" className="mt-0.5">
+                                            {selectedNode.connections} links
+                                        </Text>
+                                    </div>
+                                    <Link
+                                        to={NOTE_ROUTE}
+                                        params={{ id: selectedNode.id }}
+                                        aria-label={`Open ${selectedNode.title || 'Untitled'}`}
+                                        className="focus-ring-soft inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] text-fg-secondary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default"
+                                    >
+                                        <Icon.ArrowRight className="h-4 w-4" aria-hidden="true" />
+                                    </Link>
+                                </div>
+                                {visibleSelectedConnections.length > 0 && (
+                                    <div className="mt-2 flex flex-wrap gap-1.5">
+                                        {visibleSelectedConnections.map((node) => (
+                                            <Link
+                                                key={node.id}
+                                                to={NOTE_ROUTE}
+                                                params={{ id: node.id }}
+                                                className="focus-ring-soft inline-flex max-w-full items-center gap-1 rounded-full border border-border-subtle bg-subtle px-2 py-0.5 text-xs font-medium text-fg-secondary outline-none transition-colors hover:border-border-secondary hover:bg-hover-subtle hover:text-fg-default"
+                                            >
+                                                <Icon.LinkIcon className="h-3 w-3 shrink-0" aria-hidden="true" />
+                                                <span className="truncate">{node.title || 'Untitled'}</span>
+                                            </Link>
+                                        ))}
+                                        {remainingSelectedConnectionCount > 0 && (
+                                            <span className="inline-flex items-center rounded-full border border-border-subtle px-2 py-0.5 text-xs font-medium text-fg-tertiary">
+                                                +{remainingSelectedConnectionCount}
+                                            </span>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div>
+                                <Text as="p" variant="micro" tone="tertiary">
+                                    Overview
+                                </Text>
+                                <Text as="p" variant="body" weight="semibold" className="mt-1">
+                                    No graph node selected
+                                </Text>
+                                <Text as="p" variant="meta" tone="tertiary" className="mt-0.5">
+                                    {graphNodes[0]?.title ? `Most linked: ${graphNodes[0].title}` : 'No linked notes'}
+                                </Text>
+                            </div>
                         )}
                     </div>
 
-                    {filteredGraphNodes.length > 0 ? (
-                        <ul
-                            className="mt-3 flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto"
-                            aria-label="Graph node list"
-                        >
-                            {filteredGraphNodes.map((node) => {
-                                const isSelected = selectedNodeId === node.id;
+                    <div className="flex min-h-0 flex-1 flex-col">
+                        <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+                            <Text as="h3" variant="label" weight="semibold">
+                                Notes
+                            </Text>
+                            <Text as="span" variant="meta" tone="tertiary" className="shrink-0">
+                                {filteredGraphNodes.length} shown
+                            </Text>
+                        </div>
+                        {filteredGraphNodes.length > 0 ? (
+                            <ul className="min-h-0 flex-1 overflow-y-auto border-t border-border-subtle/60">
+                                {filteredGraphNodes.map((node) => {
+                                    const isSelected = selectedNodeId === node.id;
+                                    const nodeTitle = node.title || 'Untitled';
 
-                                return (
-                                    <li key={node.id}>
-                                        <Link
-                                            to={NOTE_ROUTE}
-                                            params={{ id: node.id }}
-                                            aria-describedby={isSelected ? 'graph-selection-status' : undefined}
-                                            onFocus={() => setSelectedNodeId(node.id)}
-                                            className={`focus-ring-soft flex items-center justify-between gap-3 rounded-[12px] border px-3 py-2 text-left outline-none transition-colors ${
-                                                isSelected
-                                                    ? 'border-border-secondary bg-elevated text-fg-default'
-                                                    : 'border-border-subtle bg-transparent text-fg-secondary hover:border-border-secondary hover:bg-elevated hover:text-fg-default'
-                                            }`}
-                                        >
-                                            <Text as="span" variant="label" weight="medium" truncate>
-                                                {node.title || 'Untitled'}
-                                            </Text>
-                                            <Text
-                                                as="span"
-                                                variant="meta"
-                                                tone={isSelected ? 'secondary' : 'tertiary'}
-                                                className="shrink-0"
+                                    return (
+                                        <li key={node.id} className="border-b border-border-subtle/60 last:border-b-0">
+                                            <div
+                                                className={`grid grid-cols-[minmax(0,1fr)_auto] items-stretch transition-colors ${
+                                                    isSelected
+                                                        ? 'bg-elevated text-fg-default'
+                                                        : 'text-fg-secondary hover:bg-hover-subtle hover:text-fg-default'
+                                                }`}
                                             >
-                                                {node.connections} links
-                                            </Text>
-                                        </Link>
-                                    </li>
-                                );
-                            })}
-                        </ul>
-                    ) : (
-                        <Text
-                            as="p"
-                            variant="meta"
-                            tone="tertiary"
-                            className="mt-3 rounded-[14px] border border-dashed border-border-subtle px-3 py-4 text-center"
-                        >
-                            No matching graph nodes
-                        </Text>
-                    )}
+                                                <button
+                                                    type="button"
+                                                    aria-pressed={isSelected}
+                                                    aria-describedby={isSelected ? 'graph-selection-status' : undefined}
+                                                    onClick={() => setSelectedNodeId(node.id)}
+                                                    className="focus-ring-soft group grid min-w-0 grid-cols-[3px_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 text-left outline-none"
+                                                >
+                                                    <span
+                                                        className={`h-8 rounded-full transition-colors ${
+                                                            isSelected
+                                                                ? 'bg-fg-default'
+                                                                : 'bg-border-subtle group-hover:bg-border-secondary'
+                                                        }`}
+                                                        aria-hidden="true"
+                                                    />
+                                                    <span className="min-w-0">
+                                                        <Text as="span" variant="label" weight="medium" truncate>
+                                                            {nodeTitle}
+                                                        </Text>
+                                                    </span>
+                                                    <Text
+                                                        as="span"
+                                                        variant="meta"
+                                                        tone={isSelected ? 'secondary' : 'tertiary'}
+                                                        className="shrink-0"
+                                                    >
+                                                        <span aria-hidden="true">{node.connections}</span>
+                                                        <span className="sr-only">{node.connections} links</span>
+                                                    </Text>
+                                                </button>
+                                                <Link
+                                                    to={NOTE_ROUTE}
+                                                    params={{ id: node.id }}
+                                                    aria-label={`Open ${nodeTitle}`}
+                                                    className="focus-ring-soft m-2 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] text-fg-secondary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default"
+                                                >
+                                                    <Icon.ArrowRight className="h-4 w-4" aria-hidden="true" />
+                                                </Link>
+                                            </div>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        ) : (
+                            <Text
+                                as="p"
+                                variant="meta"
+                                tone="tertiary"
+                                className="border-t border-border-subtle/60 px-4 py-5 text-center"
+                            >
+                                No matching graph nodes
+                            </Text>
+                        )}
+                    </div>
                 </section>
             </div>
         </PageLayout>

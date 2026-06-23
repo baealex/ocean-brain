@@ -16,6 +16,7 @@ const apiMocks = vi.hoisted(() => ({
 
 const virtualizerMocks = vi.hoisted(() => ({
     measureElement: vi.fn(),
+    scrollToOffset: vi.fn(),
     scrollToIndex: vi.fn(),
 }));
 
@@ -64,6 +65,7 @@ vi.mock('@tanstack/react-virtual', () => ({
                     start: index * itemSize,
                 })),
             measureElement: virtualizerMocks.measureElement,
+            scrollToOffset: virtualizerMocks.scrollToOffset,
             scrollToIndex: virtualizerMocks.scrollToIndex,
         };
     },
@@ -101,6 +103,7 @@ describe('<Graph />', () => {
         routeState.navigate.mockReset();
         routeState.search = {};
         virtualizerMocks.measureElement.mockReset();
+        virtualizerMocks.scrollToOffset.mockReset();
         virtualizerMocks.scrollToIndex.mockReset();
         apiMocks.fetchNoteGraph.mockResolvedValue({
             type: 'success',
@@ -172,13 +175,74 @@ describe('<Graph />', () => {
         });
     });
 
+    it('provides a keyboard scroll target for virtualized graph notes', async () => {
+        const user = userEvent.setup();
+        apiMocks.fetchNoteGraph.mockResolvedValue({
+            type: 'success',
+            noteGraph: {
+                nodes: Array.from({ length: 20 }, (_, index) => ({
+                    id: `note-${index + 1}`,
+                    title: `Note ${index + 1}`,
+                    connections: 1,
+                })),
+                links: Array.from({ length: 19 }, (_, index) => ({
+                    source: `note-${index + 1}`,
+                    target: `note-${index + 2}`,
+                })),
+            },
+        });
+        renderGraph();
+
+        const list = await screen.findByRole('list', { name: 'Graph notes' });
+        expect(list).toHaveAttribute('tabindex', '0');
+        expect(list).toHaveAccessibleDescription(
+            '20 shown Focus the graph notes list and use arrow, page, home, or end keys to browse more results.',
+        );
+
+        list.focus();
+        expect(list).toHaveFocus();
+
+        await user.keyboard('{PageDown}');
+
+        expect(virtualizerMocks.scrollToOffset).toHaveBeenCalledWith(399, { behavior: 'auto' });
+    });
+
     it('filters the accessible graph node list', async () => {
         const user = userEvent.setup();
         renderGraph();
 
-        await user.type(await screen.findByRole('textbox', { name: 'Search graph' }), 'beta');
+        const searchInput = await screen.findByRole('textbox', { name: 'Search graph' });
+        expect(searchInput).toHaveAccessibleDescription('2 shown');
+
+        await user.type(searchInput, 'beta');
 
         expect(screen.getByRole('button', { name: /Beta note/ })).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: /Alpha note/ })).not.toBeInTheDocument();
+        expect(searchInput).toHaveAccessibleDescription('1 shown');
+        expect(virtualizerMocks.scrollToOffset).toHaveBeenCalledWith(0, { behavior: 'auto' });
+    });
+
+    it('does not let selected-node scrolling override search reset', async () => {
+        routeState.search = { selected: 'note-2' };
+        const user = userEvent.setup();
+        renderGraph();
+
+        expect(await screen.findByRole('status')).toHaveTextContent('Beta note selected, 1 links');
+        await waitFor(() => {
+            expect(virtualizerMocks.scrollToIndex).toHaveBeenCalledWith(1, {
+                align: 'auto',
+                behavior: 'smooth',
+            });
+        });
+
+        virtualizerMocks.scrollToIndex.mockClear();
+        virtualizerMocks.scrollToOffset.mockClear();
+
+        await user.type(screen.getByRole('textbox', { name: 'Search graph' }), 'note');
+
+        expect(screen.getByRole('button', { name: /Alpha note/ })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Beta note/ })).toBeInTheDocument();
+        expect(virtualizerMocks.scrollToOffset).toHaveBeenCalledWith(0, { behavior: 'auto' });
+        expect(virtualizerMocks.scrollToIndex).not.toHaveBeenCalled();
     });
 });

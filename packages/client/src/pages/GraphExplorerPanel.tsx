@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import classNames from 'classnames';
-import { useEffect, useRef } from 'react';
+import { type KeyboardEvent, useCallback, useEffect, useRef } from 'react';
 
 import type { GraphNode } from '~/apis/note.api';
 import * as Icon from '~/components/icon';
@@ -34,6 +34,7 @@ export function GraphExplorerPanel({
     selectedNodeId,
 }: GraphExplorerPanelProps) {
     const nodeListRef = useRef<HTMLDivElement>(null);
+    const previousNodeSearchQueryRef = useRef(nodeSearchQuery);
     const rowVirtualizer = useVirtualizer<HTMLDivElement, HTMLDivElement>({
         count: filteredGraphNodes.length,
         estimateSize: () => GRAPH_NODE_ROW_ESTIMATED_SIZE,
@@ -48,9 +49,59 @@ export function GraphExplorerPanel({
     const selectedNodeStatus = selectedNode
         ? `${selectedNode.title || 'Untitled'} selected, ${selectedNode.connections} links`
         : 'No graph node selected';
+    const graphResultsSummary = `${filteredGraphNodes.length} shown`;
     const virtualRows = rowVirtualizer.getVirtualItems();
 
+    const handleNodeListKeyDown = useCallback(
+        (event: KeyboardEvent<HTMLDivElement>) => {
+            if (event.currentTarget !== event.target || event.altKey || event.ctrlKey || event.metaKey) {
+                return;
+            }
+
+            const viewportSize = nodeListRef.current?.clientHeight || GRAPH_NODE_ROW_ESTIMATED_SIZE * 8;
+            const currentOffset = nodeListRef.current?.scrollTop ?? 0;
+            const maxOffset = Math.max(0, rowVirtualizer.getTotalSize() - viewportSize);
+            const pageStep = Math.max(GRAPH_NODE_ROW_ESTIMATED_SIZE, viewportSize - GRAPH_NODE_ROW_ESTIMATED_SIZE);
+            let nextOffset: number | null = null;
+
+            switch (event.key) {
+                case 'ArrowDown':
+                    nextOffset = currentOffset + GRAPH_NODE_ROW_ESTIMATED_SIZE;
+                    break;
+                case 'ArrowUp':
+                    nextOffset = currentOffset - GRAPH_NODE_ROW_ESTIMATED_SIZE;
+                    break;
+                case 'PageDown':
+                    nextOffset = currentOffset + pageStep;
+                    break;
+                case 'PageUp':
+                    nextOffset = currentOffset - pageStep;
+                    break;
+                case 'Home':
+                    nextOffset = 0;
+                    break;
+                case 'End':
+                    nextOffset = maxOffset;
+                    break;
+                default:
+                    return;
+            }
+
+            event.preventDefault();
+            rowVirtualizer.scrollToOffset(Math.min(maxOffset, Math.max(0, nextOffset)), { behavior: 'auto' });
+        },
+        [rowVirtualizer],
+    );
+
     useEffect(() => {
+        const didSearchQueryChange = previousNodeSearchQueryRef.current !== nodeSearchQuery;
+        previousNodeSearchQueryRef.current = nodeSearchQuery;
+
+        if (didSearchQueryChange) {
+            rowVirtualizer.scrollToOffset(0, { behavior: 'auto' });
+            return;
+        }
+
         if (!selectedNodeId) {
             return;
         }
@@ -67,7 +118,7 @@ export function GraphExplorerPanel({
             align: 'auto',
             behavior: prefersReducedMotion ? 'auto' : 'smooth',
         });
-    }, [filteredGraphNodes, rowVirtualizer, selectedNodeId]);
+    }, [filteredGraphNodes, nodeSearchQuery, rowVirtualizer, selectedNodeId]);
 
     return (
         <section
@@ -170,8 +221,16 @@ export function GraphExplorerPanel({
                         <Text as="h3" variant="label" weight="semibold">
                             Notes
                         </Text>
-                        <Text as="span" variant="meta" tone="tertiary" className="shrink-0">
-                            {filteredGraphNodes.length} shown
+                        <Text
+                            id="graph-node-results-summary"
+                            as="span"
+                            aria-live="polite"
+                            aria-atomic="true"
+                            variant="meta"
+                            tone="tertiary"
+                            className="shrink-0"
+                        >
+                            {graphResultsSummary}
                         </Text>
                     </div>
                     <div className="relative mt-2">
@@ -186,16 +245,23 @@ export function GraphExplorerPanel({
                             onChange={(event) => onNodeSearchQueryChange(event.target.value)}
                             placeholder="Find a note"
                             aria-label="Search graph"
+                            aria-describedby="graph-node-results-summary"
                             className="pl-9"
                         />
                     </div>
                 </div>
+                <Text id="graph-node-list-keyboard-help" as="p" className="sr-only">
+                    Focus the graph notes list and use arrow, page, home, or end keys to browse more results.
+                </Text>
                 {filteredGraphNodes.length > 0 ? (
                     <div
                         ref={nodeListRef}
                         role="list"
                         aria-label="Graph notes"
-                        className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto"
+                        aria-describedby="graph-node-results-summary graph-node-list-keyboard-help"
+                        tabIndex={0}
+                        onKeyDown={handleNodeListKeyDown}
+                        className="focus-ring-soft min-h-0 flex-1 overflow-x-hidden overflow-y-auto outline-none"
                     >
                         <div className="relative w-full" style={{ height: `${rowVirtualizer.getTotalSize()}px` }}>
                             {virtualRows.map((virtualRow) => {

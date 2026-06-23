@@ -1,5 +1,5 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
-import { useDeferredValue, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { fetchNoteGraph } from '~/apis/note.api';
 import { QueryBoundary, QueryErrorView } from '~/components/app';
@@ -27,7 +27,6 @@ const graphPageFallback = (
 
 function GraphContent() {
     const [nodeSearchQuery, setNodeSearchQuery] = useState('');
-    const deferredNodeSearchQuery = useDeferredValue(nodeSearchQuery);
     const { clearSelection, openNode, selectNode, selectedNodeId } = useGraphSelection();
 
     const { data } = useSuspenseQuery({
@@ -48,8 +47,8 @@ function GraphContent() {
     );
     const graphNodes = useMemo(() => (graphData ? sortGraphNodes(graphData.nodes) : []), [graphData]);
     const filteredGraphNodes = useMemo(
-        () => filterGraphNodes(graphNodes, deferredNodeSearchQuery),
-        [deferredNodeSearchQuery, graphNodes],
+        () => filterGraphNodes(graphNodes, nodeSearchQuery),
+        [graphNodes, nodeSearchQuery],
     );
     const selectedNode = useMemo(() => getSelectedGraphNode(graphNodes, selectedNodeId), [graphNodes, selectedNodeId]);
     const selectedConnectedNodes = useMemo(

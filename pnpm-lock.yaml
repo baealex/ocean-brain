@@ -4,6 +4,54 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+catalogs:
+  default:
+    '@baejino/auth':
+      specifier: 0.1.1
+      version: 0.1.1
+    '@blocknote/server-util':
+      specifier: ^0.46.2
+      version: 0.46.2
+    '@graphql-tools/schema':
+      specifier: ^10.0.31
+      version: 10.0.31
+    '@graphql-tools/utils':
+      specifier: ^11.0.0
+      version: 11.0.0
+    '@prisma/client':
+      specifier: ^6.19.3
+      version: 6.19.3
+    diff:
+      specifier: ^9.0.0
+      version: 9.0.0
+    express:
+      specifier: ^5.2.1
+      version: 5.2.1
+    express-rate-limit:
+      specifier: 8.5.1
+      version: 8.5.1
+    express-session:
+      specifier: ^1.19.0
+      version: 1.19.0
+    express-winston:
+      specifier: ^4.2.0
+      version: 4.2.0
+    graphql-http:
+      specifier: ^1.22.4
+      version: 1.22.4
+    lusca:
+      specifier: ^1.7.0
+      version: 1.7.0
+    prisma:
+      specifier: ^6.19.3
+      version: 6.19.3
+    sqlite3:
+      specifier: ^6.0.1
+      version: 6.0.1
+    winston:
+      specifier: ^3.19.0
+      version: 3.19.0
+
 overrides:
   hono: 4.12.26
   undici: 7.28.0
@@ -23,55 +71,55 @@ importers:
   packages/cli:
     dependencies:
       '@baejino/auth':
-        specifier: 0.1.1
+        specifier: 'catalog:'
         version: 0.1.1
       '@blocknote/server-util':
-        specifier: ^0.46.2
+        specifier: 'catalog:'
         version: 0.46.2(prosemirror-model@1.25.7)(prosemirror-state@1.4.4)(prosemirror-view@1.41.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@graphql-tools/schema':
-        specifier: ^10.0.31
+        specifier: 'catalog:'
         version: 10.0.31(graphql@16.12.0)
       '@graphql-tools/utils':
-        specifier: ^11.0.0
+        specifier: 'catalog:'
         version: 11.0.0(graphql@16.12.0)
       '@modelcontextprotocol/sdk':
         specifier: ^1.29.0
         version: 1.29.0(zod@3.25.76)
       '@prisma/client':
-        specifier: ^6.19.3
+        specifier: 'catalog:'
         version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
       commander:
         specifier: ^14.0.3
         version: 14.0.3
       diff:
-        specifier: ^9.0.0
+        specifier: 'catalog:'
         version: 9.0.0
       express:
-        specifier: ^5.2.1
+        specifier: 'catalog:'
         version: 5.2.1
       express-rate-limit:
-        specifier: 8.5.1
+        specifier: 'catalog:'
         version: 8.5.1(express@5.2.1)
       express-session:
-        specifier: ^1.19.0
+        specifier: 'catalog:'
         version: 1.19.0
       express-winston:
-        specifier: ^4.2.0
+        specifier: 'catalog:'
         version: 4.2.0(winston@3.19.0)
       graphql-http:
-        specifier: ^1.22.4
+        specifier: 'catalog:'
         version: 1.22.4(graphql@16.12.0)
       lusca:
-        specifier: ^1.7.0
+        specifier: 'catalog:'
         version: 1.7.0
       prisma:
-        specifier: ^6.19.3
+        specifier: 'catalog:'
         version: 6.19.3(typescript@5.9.3)
       sqlite3:
-        specifier: ^6.0.1
+        specifier: 'catalog:'
         version: 6.0.1
       winston:
-        specifier: ^3.19.0
+        specifier: 'catalog:'
         version: 3.19.0
       zod:
         specifier: ^3.25.0
@@ -219,49 +267,49 @@ importers:
   packages/server:
     dependencies:
       '@baejino/auth':
-        specifier: 0.1.1
+        specifier: 'catalog:'
         version: 0.1.1
       '@blocknote/server-util':
-        specifier: ^0.46.2
+        specifier: 'catalog:'
         version: 0.46.2(prosemirror-model@1.25.7)(prosemirror-state@1.4.4)(prosemirror-view@1.41.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@graphql-tools/schema':
-        specifier: ^10.0.31
+        specifier: 'catalog:'
         version: 10.0.31(graphql@16.12.0)
       '@graphql-tools/utils':
-        specifier: ^11.0.0
+        specifier: 'catalog:'
         version: 11.0.0(graphql@16.12.0)
       '@prisma/client':
-        specifier: ^6.19.3
+        specifier: 'catalog:'
         version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
       diff:
-        specifier: ^9.0.0
+        specifier: 'catalog:'
         version: 9.0.0
       express:
-        specifier: ^5.2.1
+        specifier: 'catalog:'
         version: 5.2.1
       express-rate-limit:
-        specifier: 8.5.1
+        specifier: 'catalog:'
         version: 8.5.1(express@5.2.1)
       express-session:
-        specifier: ^1.19.0
+        specifier: 'catalog:'
         version: 1.19.0
       express-winston:
-        specifier: ^4.2.0
+        specifier: 'catalog:'
         version: 4.2.0(winston@3.19.0)
       graphql-http:
-        specifier: ^1.22.4
+        specifier: 'catalog:'
         version: 1.22.4(graphql@16.12.0)
       lusca:
-        specifier: ^1.7.0
+        specifier: 'catalog:'
         version: 1.7.0
       prisma:
-        specifier: ^6.19.3
+        specifier: 'catalog:'
         version: 6.19.3(typescript@5.9.3)
       sqlite3:
-        specifier: ^6.0.1
+        specifier: 'catalog:'
         version: 6.0.1
       winston:
-        specifier: ^3.19.0
+        specifier: 'catalog:'
         version: 3.19.0
     devDependencies:
       '@biomejs/biome':
@@ -5096,10 +5144,6 @@ packages:
     resolution: {integrity: sha512-j2Zq4NyQYG5XMST4cbs02Ak8iJUdxRM0XI5QyxXuZOzKOINmWurp3smXu3y5wDcJrptwpSjgXHzIQxR0omXljQ==}
     engines: {node: '>=12.0.0'}
 
-  tinyglobby@0.2.16:
-    resolution: {integrity: sha512-pn99VhoACYR8nFHhxqix+uvsbXineAasWm5ojXoN8xEwK5Kd3/TrhNn1wByuD52UxWRLy8pu+kRMniEi6Eq9Zg==}
-    engines: {node: '>=12.0.0'}
-
   tinyglobby@0.2.17:
     resolution: {integrity: sha512-wXR/dYpcqKmfWpEdZjiKJOwCNFndD0DMnrW/cYjVGttEkBfVgcLFHoNrlj47mjOVic9yyNu65alsgF4NQyTa2g==}
     engines: {node: '>=12.0.0'}
@@ -9908,7 +9952,7 @@ snapshots:
       proc-log: 6.1.0
       semver: 7.7.4
       tar: 7.5.16
-      tinyglobby: 0.2.16
+      tinyglobby: 0.2.17
       which: 6.0.1
     transitivePeerDependencies:
       - supports-color
@@ -10802,12 +10846,6 @@ snapshots:
     dependencies:
       fdir: 6.5.0(picomatch@4.0.4)
       picomatch: 4.0.4
-
-  tinyglobby@0.2.16:
-    dependencies:
-      fdir: 6.5.0(picomatch@4.0.4)
-      picomatch: 4.0.4
-    optional: true
 
   tinyglobby@0.2.17:
     dependencies:

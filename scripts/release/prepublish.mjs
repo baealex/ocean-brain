@@ -51,6 +51,9 @@ function copyArtifacts() {
     );
 }
 
+console.log('=== Check CLI/server runtime dependencies ===');
+runPnpm(['check:deps']);
+
 console.log('=== Build client ===');
 runPnpm(['--filter', '@ocean-brain/client', 'build']);
 

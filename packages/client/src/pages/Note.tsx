@@ -50,8 +50,9 @@ import { useNoteSaveController } from '~/hooks/useNoteSaveController';
 import type { Note, NoteLayout, NoteProperty, NotePropertyValueType } from '~/models/note.model';
 import { replaceFixedPlaceholder } from '~/modules/fixed-placeholder';
 import {
-    createHtmlExport,
+    createHtmlAssetsZipExport,
     createMarkdownExport,
+    downloadBlobFile,
     downloadTextFile,
     getNoteExportFilename,
     type HtmlExportMode,
@@ -664,6 +665,7 @@ export function NoteContent({ id }: NoteContentProps) {
     const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
     const [isExportModalOpen, setIsExportModalOpen] = useState(false);
     const [exportFormat, setExportFormat] = useState<'markdown' | 'html'>('markdown');
+    const [isExporting, setIsExporting] = useState(false);
     const [includeMetadata, setIncludeMetadata] = useState(false);
     const [htmlExportMode, setHtmlExportMode] = useState<HtmlExportMode>('fragment');
     const [externalNoteChange, setExternalNoteChange] = useState<ExternalNoteChange | null>(null);
@@ -995,8 +997,10 @@ export function NoteContent({ id }: NoteContentProps) {
         }
     };
 
-    const handleDownloadOtherFormat = () => {
+    const handleDownloadOtherFormat = async () => {
         const metadata = getExportMetadata();
+
+        setIsExporting(true);
 
         try {
             if (exportFormat === 'markdown') {
@@ -1020,17 +1024,20 @@ export function NoteContent({ id }: NoteContentProps) {
                     return;
                 }
 
-                downloadTextFile(
-                    createHtmlExport(html, metadata, { includeMetadata, mode: htmlExportMode }),
-                    getNoteExportFilename(title, 'html'),
-                    'text/html;charset=utf-8',
-                );
+                const zipBlob = await createHtmlAssetsZipExport(html, metadata, {
+                    includeMetadata,
+                    mode: htmlExportMode,
+                });
+
+                downloadBlobFile(zipBlob, getNoteExportFilename(title, 'zip'));
             }
 
             setIsExportModalOpen(false);
             toast('Downloaded note.');
         } catch {
             toast('Failed to download note.');
+        } finally {
+            setIsExporting(false);
         }
     };
 
@@ -1553,8 +1560,8 @@ export function NoteContent({ id }: NoteContentProps) {
                                         onClick={() => setExportFormat('markdown')}
                                     />
                                     <SelectionOptionCard
-                                        title="HTML"
-                                        description="Good for web documents or CMS editors."
+                                        title="HTML + assets ZIP"
+                                        description="Exports note.html with local image copies."
                                         selected={exportFormat === 'html'}
                                         onClick={() => setExportFormat('html')}
                                     />
@@ -1607,8 +1614,13 @@ export function NoteContent({ id }: NoteContentProps) {
                             <Button variant="ghost" size="sm" onClick={() => setIsExportModalOpen(false)}>
                                 Cancel
                             </Button>
-                            <Button variant="primary" size="sm" onClick={handleDownloadOtherFormat}>
-                                Download
+                            <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={handleDownloadOtherFormat}
+                                disabled={isExporting}
+                            >
+                                {isExporting ? 'Downloading...' : 'Download'}
                             </Button>
                         </ModalActionRow>
                     </Modal.Footer>

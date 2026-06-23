@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Dropdown } from '../Dropdown';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from './Dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './Dialog';
 
 describe('<DialogContent />', () => {
     it('renders dialog content with its accessible title and description', () => {
@@ -17,6 +17,18 @@ describe('<DialogContent />', () => {
         expect(screen.getByRole('dialog')).toBeInTheDocument();
         expect(screen.getByText('Title')).toBeInTheDocument();
         expect(screen.getByText('Body')).toBeInTheDocument();
+    });
+
+    it('labels the icon-only close button', () => {
+        render(
+            <Dialog open>
+                <DialogContent>
+                    <DialogHeader title="Preferences" onClose={vi.fn()} />
+                </DialogContent>
+            </Dialog>,
+        );
+
+        expect(screen.getByRole('button', { name: 'Close dialog' })).toBeInTheDocument();
     });
 });
 

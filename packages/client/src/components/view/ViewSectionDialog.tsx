@@ -671,6 +671,7 @@ export default function ViewSectionDialog({
                                                                 ? 'border-border-secondary bg-elevated text-fg-default'
                                                                 : 'border-border-subtle bg-transparent text-fg-secondary hover:border-border-secondary hover:bg-elevated hover:text-fg-default'
                                                         }`}
+                                                        aria-pressed={isSelected}
                                                         onClick={() => toggleTagName(tag.name)}
                                                     >
                                                         {tag.name}

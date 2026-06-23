@@ -93,7 +93,12 @@ const DialogHeader = ({ title, onClose, className }: DialogHeaderProps) => {
             <DialogTitle>{title}</DialogTitle>
             {onClose && (
                 <DialogClose asChild>
-                    <button type="button" className={dialogCloseButtonVariants({ variant })} onClick={onClose}>
+                    <button
+                        type="button"
+                        aria-label="Close dialog"
+                        className={dialogCloseButtonVariants({ variant })}
+                        onClick={onClose}
+                    >
                         <Icon.Close
                             className={
                                 variant === 'compact' || variant === 'form' || variant === 'confirm'

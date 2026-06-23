@@ -46,6 +46,9 @@ describe('<SidebarSearch />', () => {
 
         fireEvent.change(screen.getByRole('textbox'), { target: { value: 'alpha' } });
 
+        expect(screen.getByRole('button', { name: 'Search notes and tags' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Clear search' })).toBeInTheDocument();
+
         await waitFor(() => {
             expect(fetchNotes).toHaveBeenCalledWith({
                 query: 'alpha',

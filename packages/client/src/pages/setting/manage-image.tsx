@@ -151,6 +151,7 @@ const ManageImage = () => {
                                                         variant="ghost"
                                                         size="icon-sm"
                                                         disabled={image.referenceCount > 0}
+                                                        aria-label={`Delete image ${image.id}`}
                                                         onClick={() => handleDelete(image.id)}
                                                     >
                                                         <Icon.TrashCan className="h-4 w-4" />

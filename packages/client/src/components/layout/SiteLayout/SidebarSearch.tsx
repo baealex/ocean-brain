@@ -96,7 +96,7 @@ const SidebarSearch = () => {
                             hasResults ? searchRowWithResultsClassName : searchRowIdleClassName
                         }`}
                     >
-                        <button type="submit" className={iconButtonClassName}>
+                        <button type="submit" className={iconButtonClassName} aria-label="Search notes and tags">
                             <Icon.Search className="h-4.5 w-4.5" weight="bold" />
                         </button>
                         <input
@@ -107,7 +107,12 @@ const SidebarSearch = () => {
                             className={searchInputClassName}
                         />
                         {query && (
-                            <button type="button" className={iconButtonClassName} onClick={handleReset}>
+                            <button
+                                type="button"
+                                className={iconButtonClassName}
+                                aria-label="Clear search"
+                                onClick={handleReset}
+                            >
                                 <Icon.Close className="h-4 w-4" weight="bold" />
                             </button>
                         )}

@@ -4,6 +4,7 @@ import { RouteErrorView, RouteNotFoundView, RoutePendingView } from '~/component
 import { SiteLayout } from '~/components/layout';
 import {
     validateCalendarSearch,
+    validateGraphSearch,
     validateHomeSearch,
     validatePaginationSearch,
     validateSearchPageSearch,
@@ -81,6 +82,7 @@ const graphRoute = createRoute({
     pendingComponent: () => (
         <RoutePendingView title="Loading graph" description="Preparing the linked note constellation." />
     ),
+    validateSearch: validateGraphSearch,
 });
 
 const searchRoute = createRoute({

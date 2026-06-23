@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { createTestQueryClient } from '~/test/test-utils';
@@ -7,13 +7,23 @@ import Graph from './Graph';
 
 const routeState = vi.hoisted(() => ({
     navigate: vi.fn(),
+    search: {} as { selected?: string },
 }));
 
 const apiMocks = vi.hoisted(() => ({
     fetchNoteGraph: vi.fn(),
 }));
 
+const virtualizerMocks = vi.hoisted(() => ({
+    measureElement: vi.fn(),
+    scrollToIndex: vi.fn(),
+}));
+
 vi.mock('@tanstack/react-router', () => ({
+    getRouteApi: () => ({
+        useNavigate: () => routeState.navigate,
+        useSearch: () => routeState.search,
+    }),
     Link: ({
         children,
         params,
@@ -28,7 +38,35 @@ vi.mock('@tanstack/react-router', () => ({
             {children}
         </a>
     ),
-    useNavigate: () => routeState.navigate,
+}));
+
+vi.mock('@tanstack/react-virtual', () => ({
+    useVirtualizer: ({
+        count,
+        estimateSize,
+        getItemKey,
+    }: {
+        count: number;
+        estimateSize: (index: number) => number;
+        getItemKey?: (index: number) => number | string | bigint;
+    }) => {
+        const itemSize = count > 0 ? estimateSize(0) : 0;
+
+        return {
+            getTotalSize: () => count * itemSize,
+            getVirtualItems: () =>
+                Array.from({ length: count }, (_, index) => ({
+                    end: (index + 1) * itemSize,
+                    index,
+                    key: getItemKey?.(index) ?? index,
+                    lane: 0,
+                    size: itemSize,
+                    start: index * itemSize,
+                })),
+            measureElement: virtualizerMocks.measureElement,
+            scrollToIndex: virtualizerMocks.scrollToIndex,
+        };
+    },
 }));
 
 vi.mock('~/apis/note.api', () => apiMocks);
@@ -60,6 +98,10 @@ const renderGraph = () => {
 
 describe('<Graph />', () => {
     beforeEach(() => {
+        routeState.navigate.mockReset();
+        routeState.search = {};
+        virtualizerMocks.measureElement.mockReset();
+        virtualizerMocks.scrollToIndex.mockReset();
         apiMocks.fetchNoteGraph.mockResolvedValue({
             type: 'success',
             noteGraph: {
@@ -87,9 +129,47 @@ describe('<Graph />', () => {
 
         await user.click(alphaButton);
 
-        expect(screen.getByRole('status')).toHaveTextContent('Alpha note selected, 1 links');
-        expect(screen.getByRole('status')).toHaveTextContent('Beta note');
-        expect(routeState.navigate).not.toHaveBeenCalled();
+        expect(routeState.navigate).toHaveBeenCalledWith({
+            search: expect.any(Function),
+            replace: true,
+        });
+        expect(routeState.navigate.mock.calls[0][0].search({})).toEqual({
+            selected: 'note-1',
+        });
+    });
+
+    it('restores selected graph node from the route search', async () => {
+        routeState.search = { selected: 'note-2' };
+        renderGraph();
+
+        expect(await screen.findByRole('status')).toHaveTextContent('Beta note selected, 1 links');
+        expect(screen.getByRole('status')).toHaveTextContent('Alpha note');
+
+        await waitFor(() => {
+            expect(virtualizerMocks.scrollToIndex).toHaveBeenCalledWith(1, {
+                align: 'auto',
+                behavior: 'smooth',
+            });
+        });
+
+        const listItems = screen.getAllByRole('listitem');
+        expect(listItems[1]).toHaveAttribute('aria-posinset', '2');
+        expect(listItems[1]).toHaveAttribute('aria-setsize', '2');
+    });
+
+    it('keeps graph note rows virtualized', async () => {
+        renderGraph();
+
+        expect(await screen.findByRole('list', { name: 'Graph notes' })).toBeInTheDocument();
+        expect(virtualizerMocks.measureElement).toHaveBeenCalled();
+
+        const listItems = screen.getAllByRole('listitem');
+        expect(listItems[0]).toHaveStyle({
+            transform: 'translateY(0px)',
+        });
+        expect(listItems[1]).toHaveStyle({
+            transform: 'translateY(57px)',
+        });
     });
 
     it('filters the accessible graph node list', async () => {

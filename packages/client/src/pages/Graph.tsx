@@ -1,5 +1,5 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 
@@ -7,7 +7,7 @@ import { fetchNoteGraph, type GraphLink, type GraphNode } from '~/apis/note.api'
 import { QueryBoundary, QueryErrorView } from '~/components/app';
 import * as Icon from '~/components/icon';
 import { Empty, PageLayout, Skeleton } from '~/components/shared';
-import { Text } from '~/components/ui';
+import { Input, Text } from '~/components/ui';
 import { getHash } from '~/modules/hash';
 import { queryKeys } from '~/modules/query-key-factory';
 import { NOTE_ROUTE } from '~/modules/url';
@@ -48,6 +48,7 @@ function GraphContent() {
         height: 600,
     });
     const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+    const [nodeSearchQuery, setNodeSearchQuery] = useState('');
 
     const { theme } = useTheme((state) => state);
     const graphTheme = getGraphTheme(theme);
@@ -173,6 +174,48 @@ function GraphContent() {
     }, [graphData]);
     adjacencyMapRef.current = adjacencyMap;
 
+    const graphNodes = useMemo(() => {
+        if (!graphData) {
+            return [];
+        }
+
+        return [...graphData.nodes].sort((a, b) => b.connections - a.connections || a.title.localeCompare(b.title));
+    }, [graphData]);
+
+    const filteredGraphNodes = useMemo(() => {
+        const query = nodeSearchQuery.trim().toLowerCase();
+        if (!query) {
+            return graphNodes;
+        }
+
+        return graphNodes.filter((node) => node.title.toLowerCase().includes(query));
+    }, [graphNodes, nodeSearchQuery]);
+
+    const selectedNode = useMemo(() => {
+        if (!selectedNodeId) {
+            return null;
+        }
+
+        return graphNodes.find((node) => node.id === selectedNodeId) ?? null;
+    }, [graphNodes, selectedNodeId]);
+
+    const selectedConnectedNodes = useMemo(() => {
+        if (!selectedNodeId) {
+            return [];
+        }
+
+        const connectedIds = adjacencyMap.get(selectedNodeId);
+        if (!connectedIds) {
+            return [];
+        }
+
+        return graphNodes.filter((node) => connectedIds.has(node.id));
+    }, [adjacencyMap, graphNodes, selectedNodeId]);
+
+    const selectedNodeStatus = selectedNode
+        ? `${selectedNode.title || 'Untitled'} selected, ${selectedNode.connections} links`
+        : 'No graph node selected';
+
     const nodeCanvasObject = useCallback(
         (node: GraphNode & { x?: number; y?: number }, ctx: CanvasRenderingContext2D, globalScale: number) => {
             const palette = graphThemeRef.current;
@@ -277,94 +320,185 @@ function GraphContent() {
             title="Knowledge Graph"
             description={`${graphData.nodes.length} linked notes, ${graphData.links.length} connections`}
         >
-            <div
-                ref={containerRef}
-                className="surface-base graph-canvas relative overflow-hidden"
-                style={{ '--graph-bg': graphTheme.background } as React.CSSProperties}
-            >
-                {selectedNodeId &&
-                    (() => {
-                        const node = graphData.nodes.find((item) => item.id === selectedNodeId);
-                        if (!node) {
-                            return null;
-                        }
-
-                        return (
-                            <div className="surface-floating absolute top-3 left-3 z-10 flex items-center gap-2 px-3 py-2">
-                                <Text as="span" variant="meta" weight="semibold" truncate className="max-w-48">
-                                    {node.title}
-                                </Text>
-                                <Text as="span" variant="label" tone="tertiary">
-                                    {node.connections} links
-                                </Text>
-                                <button
-                                    type="button"
-                                    onClick={() => setSelectedNodeId(null)}
-                                    className="focus-ring-soft ml-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-[8px] text-fg-tertiary transition-colors hover:bg-hover-subtle hover:text-fg-default"
-                                    aria-label="Deselect node"
-                                >
-                                    <Icon.Close className="h-3.5 w-3.5" />
-                                </button>
-                            </div>
-                        );
-                    })()}
-                <div className="surface-floating absolute top-3 right-3 z-10 flex flex-col gap-1.5 px-3 py-2.5">
-                    <div className="flex items-center gap-2">
-                        <span
-                            className="legend-dot h-2.5 w-2.5 shrink-0 rounded-full"
-                            style={{ '--legend-color': graphTheme.legendHub } as React.CSSProperties}
-                        />
-                        <Text as="span" variant="label" weight="medium" tone="secondary">
-                            Hub notes (4+ connections)
-                        </Text>
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
+                <div
+                    ref={containerRef}
+                    className="surface-base graph-canvas relative overflow-hidden"
+                    style={{ '--graph-bg': graphTheme.background } as React.CSSProperties}
+                >
+                    {selectedNode && (
+                        <div className="surface-floating absolute top-3 left-3 z-10 flex items-center gap-2 px-3 py-2">
+                            <Text as="span" variant="meta" weight="semibold" truncate className="max-w-48">
+                                {selectedNode.title}
+                            </Text>
+                            <Text as="span" variant="label" tone="tertiary">
+                                {selectedNode.connections} links
+                            </Text>
+                            <button
+                                type="button"
+                                onClick={() => setSelectedNodeId(null)}
+                                className="focus-ring-soft ml-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-[8px] text-fg-tertiary transition-colors hover:bg-hover-subtle hover:text-fg-default"
+                                aria-label="Deselect node"
+                            >
+                                <Icon.Close className="h-3.5 w-3.5" />
+                            </button>
+                        </div>
+                    )}
+                    <div className="surface-floating absolute top-3 right-3 z-10 flex flex-col gap-1.5 px-3 py-2.5">
+                        <div className="flex items-center gap-2">
+                            <span
+                                className="legend-dot h-2.5 w-2.5 shrink-0 rounded-full"
+                                style={{ '--legend-color': graphTheme.legendHub } as React.CSSProperties}
+                            />
+                            <Text as="span" variant="label" weight="medium" tone="secondary">
+                                Hub notes (4+ connections)
+                            </Text>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span
+                                className="legend-dot h-2.5 w-2.5 shrink-0 rounded-full"
+                                style={{ '--legend-color': graphTheme.nodeConnected } as React.CSSProperties}
+                            />
+                            <Text as="span" variant="label" weight="medium" tone="secondary">
+                                Connected notes
+                            </Text>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <span
-                            className="legend-dot h-2.5 w-2.5 shrink-0 rounded-full"
-                            style={{ '--legend-color': graphTheme.nodeConnected } as React.CSSProperties}
+                    <div aria-hidden="true">
+                        <ForceGraph2D
+                            ref={graphRef as React.MutableRefObject<never>}
+                            graphData={graphData}
+                            width={dimensions.width}
+                            height={dimensions.height}
+                            nodeId="id"
+                            nodeLabel=""
+                            nodeCanvasObject={nodeCanvasObject}
+                            nodePointerAreaPaint={(node: GraphNode & { x?: number; y?: number }, color, ctx) => {
+                                ctx.beginPath();
+                                ctx.arc(
+                                    node.x || 0,
+                                    node.y || 0,
+                                    Math.max(getNodeSize(node.connections) + 4, 10),
+                                    0,
+                                    2 * Math.PI,
+                                );
+                                ctx.fillStyle = color;
+                                ctx.fill();
+                            }}
+                            linkCanvasObject={linkCanvasObject}
+                            linkCanvasObjectMode={() => 'replace'}
+                            linkDirectionalParticles={0}
+                            onNodeClick={handleNodeClick}
+                            onNodeHover={handleNodeHover}
+                            onBackgroundClick={handleBackgroundClick}
+                            onNodeDrag={handleNodeDrag}
+                            onNodeDragEnd={handleNodeDragEnd}
+                            warmupTicks={30}
+                            cooldownTicks={80}
+                            d3AlphaDecay={0.05}
+                            d3VelocityDecay={0.3}
+                            enableZoomInteraction={true}
+                            enablePanInteraction={true}
+                            minZoom={0.3}
+                            maxZoom={5}
                         />
-                        <Text as="span" variant="label" weight="medium" tone="secondary">
-                            Connected notes
-                        </Text>
                     </div>
                 </div>
-                <ForceGraph2D
-                    ref={graphRef as React.MutableRefObject<never>}
-                    graphData={graphData}
-                    width={dimensions.width}
-                    height={dimensions.height}
-                    nodeId="id"
-                    nodeLabel=""
-                    nodeCanvasObject={nodeCanvasObject}
-                    nodePointerAreaPaint={(node: GraphNode & { x?: number; y?: number }, color, ctx) => {
-                        ctx.beginPath();
-                        ctx.arc(
-                            node.x || 0,
-                            node.y || 0,
-                            Math.max(getNodeSize(node.connections) + 4, 10),
-                            0,
-                            2 * Math.PI,
-                        );
-                        ctx.fillStyle = color;
-                        ctx.fill();
-                    }}
-                    linkCanvasObject={linkCanvasObject}
-                    linkCanvasObjectMode={() => 'replace'}
-                    linkDirectionalParticles={0}
-                    onNodeClick={handleNodeClick}
-                    onNodeHover={handleNodeHover}
-                    onBackgroundClick={handleBackgroundClick}
-                    onNodeDrag={handleNodeDrag}
-                    onNodeDragEnd={handleNodeDragEnd}
-                    warmupTicks={30}
-                    cooldownTicks={80}
-                    d3AlphaDecay={0.05}
-                    d3VelocityDecay={0.3}
-                    enableZoomInteraction={true}
-                    enablePanInteraction={true}
-                    minZoom={0.3}
-                    maxZoom={5}
-                />
+
+                <section
+                    className="surface-base flex max-h-[min(42rem,calc(100vh-10rem))] flex-col overflow-hidden px-4 py-3"
+                    aria-labelledby="graph-node-list-heading"
+                >
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                            <Text id="graph-node-list-heading" as="h2" variant="body" weight="semibold">
+                                Graph nodes
+                            </Text>
+                            <Text as="p" variant="meta" tone="tertiary" className="mt-0.5">
+                                {filteredGraphNodes.length} of {graphNodes.length} notes
+                            </Text>
+                        </div>
+                        <Text as="span" variant="label" tone="secondary" className="shrink-0">
+                            {graphData.links.length} links
+                        </Text>
+                    </div>
+
+                    <label htmlFor="graph-node-search" className="sr-only">
+                        Search graph nodes
+                    </label>
+                    <Input
+                        id="graph-node-search"
+                        size="sm"
+                        value={nodeSearchQuery}
+                        onChange={(event) => setNodeSearchQuery(event.target.value)}
+                        placeholder="Search graph nodes"
+                        className="mt-3"
+                    />
+
+                    <div
+                        id="graph-selection-status"
+                        role="status"
+                        aria-live="polite"
+                        className="mt-3 rounded-[14px] border border-border-subtle bg-subtle px-3 py-2"
+                    >
+                        <Text as="p" variant="label" weight="medium">
+                            {selectedNodeStatus}
+                        </Text>
+                        {selectedConnectedNodes.length > 0 && (
+                            <Text as="p" variant="meta" tone="tertiary" truncate className="mt-0.5">
+                                Linked to {selectedConnectedNodes.map((node) => node.title || 'Untitled').join(', ')}
+                            </Text>
+                        )}
+                    </div>
+
+                    {filteredGraphNodes.length > 0 ? (
+                        <ul
+                            className="mt-3 flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto"
+                            aria-label="Graph node list"
+                        >
+                            {filteredGraphNodes.map((node) => {
+                                const isSelected = selectedNodeId === node.id;
+
+                                return (
+                                    <li key={node.id}>
+                                        <Link
+                                            to={NOTE_ROUTE}
+                                            params={{ id: node.id }}
+                                            aria-describedby={isSelected ? 'graph-selection-status' : undefined}
+                                            onFocus={() => setSelectedNodeId(node.id)}
+                                            className={`focus-ring-soft flex items-center justify-between gap-3 rounded-[12px] border px-3 py-2 text-left outline-none transition-colors ${
+                                                isSelected
+                                                    ? 'border-border-secondary bg-elevated text-fg-default'
+                                                    : 'border-border-subtle bg-transparent text-fg-secondary hover:border-border-secondary hover:bg-elevated hover:text-fg-default'
+                                            }`}
+                                        >
+                                            <Text as="span" variant="label" weight="medium" truncate>
+                                                {node.title || 'Untitled'}
+                                            </Text>
+                                            <Text
+                                                as="span"
+                                                variant="meta"
+                                                tone={isSelected ? 'secondary' : 'tertiary'}
+                                                className="shrink-0"
+                                            >
+                                                {node.connections} links
+                                            </Text>
+                                        </Link>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    ) : (
+                        <Text
+                            as="p"
+                            variant="meta"
+                            tone="tertiary"
+                            className="mt-3 rounded-[14px] border border-dashed border-border-subtle px-3 py-4 text-center"
+                        >
+                            No matching graph nodes
+                        </Text>
+                    )}
+                </section>
             </div>
         </PageLayout>
     );

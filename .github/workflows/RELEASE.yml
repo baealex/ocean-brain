@@ -37,9 +37,12 @@ jobs:
       - name: Build & prepare publish
         run: node scripts/release/prepublish.mjs
 
+      - name: Pack CLI package
+        id: pack
+        run: node scripts/ci/pack-cli-tarball.mjs
+
       - name: Publish ocean-brain
-        working-directory: packages/cli
-        run: npm publish --provenance --access public
+        run: npm publish "${{ steps.pack.outputs.path }}" --provenance --access public
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

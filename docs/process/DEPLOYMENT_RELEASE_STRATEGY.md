@@ -47,7 +47,8 @@ git push origin v0.3.1
 1. `publish-npm`
 - Installs Node 22 and pnpm
 - Runs `node scripts/release/prepublish.mjs`
-- Publishes with `npm publish --provenance --access public` from `packages/cli`
+- Packs the CLI with `pnpm pack` so workspace `catalog:` dependencies are resolved in the tarball.
+- Publishes that tarball with `npm publish --provenance --access public`.
 - Uses npm trusted publishing (OIDC) via GitHub Actions
 - Creates a GitHub Release with auto-generated notes (`generate_release_notes: true`)
 
@@ -67,7 +68,7 @@ git push origin v0.3.1
 2. Builds `@ocean-brain/server`
 3. Builds `ocean-brain` (CLI)
 4. Copies artifacts into `packages/cli/server/**`
-- Result: only CLI is published to npm, with bundled server/client artifacts.
+- Result: only CLI is published to npm, with bundled server/client artifacts and registry-compatible dependency ranges.
 
 ## 6. Release Preparation Runbook
 1. Verify release package

@@ -7,18 +7,10 @@ on:
   workflow_dispatch:
 
 jobs:
-  smoke-npx-cli:
+  pack-cli:
     if: github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'chore/release-v')
-    name: npx smoke (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          - ubuntu-latest
-          - windows-latest
-          - macos-latest
-
+    name: pack CLI tarball
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -41,5 +33,52 @@ jobs:
         id: pack
         run: node scripts/ci/pack-cli-tarball.mjs
 
+      - name: Upload CLI tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-tarball
+          path: ${{ steps.pack.outputs.path }}
+          if-no-files-found: error
+          retention-days: 1
+
+  smoke-npx-cli:
+    needs: pack-cli
+    if: needs.pack-cli.result == 'success'
+    name: npx smoke (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Download CLI tarball
+        uses: actions/download-artifact@v4
+        with:
+          name: cli-tarball
+          path: .tmp
+
+      - name: Resolve CLI tarball
+        id: tarball
+        shell: bash
+        run: |
+          tarball="$(find .tmp -maxdepth 1 -name '*.tgz' | head -n 1)"
+          if [ -z "$tarball" ]; then
+            echo "Failed to find downloaded CLI tarball" >&2
+            exit 1
+          fi
+          echo "path=$tarball" >> "$GITHUB_OUTPUT"
+
       - name: Smoke test `npx ocean-brain`
-        run: node scripts/ci/smoke-cli-npx.mjs "${{ steps.pack.outputs.path }}"
+        run: node scripts/ci/smoke-cli-npx.mjs "${{ steps.tarball.outputs.path }}"

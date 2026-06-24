@@ -44,13 +44,46 @@ jobs:
       - name: Publish ocean-brain
         run: npm publish "${{ steps.pack.outputs.path }}" --provenance --access public
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+  verify-npm:
+    needs: publish-npm
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          generate_release_notes: true
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: Upgrade npm for npx verification
+        run: npm install -g npm@11.11.0
+
+      - name: Wait for npm package propagation
+        shell: bash
+        run: |
+          for attempt in {1..30}; do
+            if npm view "ocean-brain@${{ steps.version.outputs.version }}" version; then
+              exit 0
+            fi
+
+            echo "npm package is not visible yet ($attempt/30); retrying in 10s..."
+            sleep 10
+          done
+
+          echo "npm package did not become visible: ocean-brain@${{ steps.version.outputs.version }}" >&2
+          exit 1
+
+      - name: Verify published npx package
+        run: CLI_SMOKE_PORT=6685 node scripts/ci/smoke-cli-npx.mjs "ocean-brain@${{ steps.version.outputs.version }}"
 
   publish-docker:
-    needs: publish-npm
+    needs: verify-npm
     strategy:
       matrix:
         include:
@@ -133,3 +166,29 @@ jobs:
             -t ${{ env.IMAGE }}:${{ steps.version.outputs.version }} \
             -t ${{ env.IMAGE }}:latest \
             $(printf '${{ env.IMAGE }}@sha256:%s ' *)
+
+  verify-docker:
+    needs: publish-docker-manifest
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify published Docker image
+        run: node scripts/ci/smoke-docker-image.mjs "${{ env.IMAGE }}:${{ steps.version.outputs.version }}"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true

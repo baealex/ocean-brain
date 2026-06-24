@@ -50,17 +50,27 @@ git push origin v0.3.1
 - Packs the CLI with `pnpm pack` so workspace `catalog:` dependencies are resolved in the tarball.
 - Publishes that tarball with `npm publish --provenance --access public`.
 - Uses npm trusted publishing (OIDC) via GitHub Actions
-- Creates a GitHub Release with auto-generated notes (`generate_release_notes: true`)
 
-2. `publish-docker`
+2. `verify-npm`
 - Runs after successful `publish-npm`
+- Waits for `ocean-brain@<version>` to become visible on npm with retry before verification.
+- Runs `npx ocean-brain@<version>` smoke verification against the actually published package.
+
+3. `publish-docker`
+- Runs only after successful `verify-npm`
 - Extracts version from tag (`vX.Y.Z` -> `X.Y.Z`)
 - Builds and pushes per architecture via DockerHub
 - Requires `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`
 
-3. `publish-docker-manifest`
+4. `publish-docker-manifest`
 - Combines architecture digests into one manifest
 - Pushes final tags: `<version>`, `latest`
+
+5. `verify-docker`
+- Runs after successful `publish-docker-manifest`
+- Pulls `baealex/ocean-brain:<version>` with retry to tolerate registry propagation delay.
+- Runs the published Docker image and verifies the web shell, auth session endpoint, and GraphQL endpoint.
+- Creates the GitHub Release with auto-generated notes (`generate_release_notes: true`) only after Docker verification passes.
 
 ## 5. Prepublish Build Strategy
 - `scripts/release/prepublish.mjs` standardizes release artifacts.
@@ -123,10 +133,10 @@ git push origin v<version>
 gh run list --workflow RELEASE.yml --limit 5
 ```
 
-- Wait for npm publish, Docker publish, and manifest jobs to finish.
+- Wait for npm publish, npm verification, Docker publish, manifest, and Docker verification jobs to finish.
 
 8. Finalize GitHub Release note
-- Open the created release page after `RELEASE` creates it.
+- Open the created release page after `verify-docker` creates it.
 - For patch releases, start from GitHub generated notes and preserve the PR-linked bullet format.
 - For minor and major releases, treat auto-generated notes as a draft and replace the body with the final note before sharing the release externally.
 

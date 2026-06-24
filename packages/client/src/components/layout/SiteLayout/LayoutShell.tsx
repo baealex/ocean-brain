@@ -93,8 +93,10 @@ const contentClassName = classNames(
     'overflow-x-clip',
     'px-4',
     'pt-4',
-    'pb-4',
-    'max-md:pb-[calc(6rem+env(safe-area-inset-bottom))]',
+    "after:block",
+    "after:h-4",
+    "after:content-['']",
+    'max-md:after:h-24',
 );
 
 interface LayoutShellProps {

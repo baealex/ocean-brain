@@ -12,11 +12,11 @@ const tempDir = path.join(rootDir, '.tmp');
 
 mkdirSync(tempDir, { recursive: true });
 
-const pnpmArgs = ['--dir', cliDir, 'pack', '--pack-destination', tempDir];
+const pnpmBin = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
 
 const result = spawnSync(
-    process.platform === 'win32' ? 'cmd.exe' : 'pnpm',
-    process.platform === 'win32' ? ['/d', '/s', '/c', 'pnpm', ...pnpmArgs] : pnpmArgs,
+    pnpmBin,
+    ['--dir', cliDir, 'pack', '--pack-destination', tempDir],
     {
         cwd: rootDir,
         encoding: 'utf8',

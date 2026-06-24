@@ -101,11 +101,13 @@ jobs:
 
           ## :test_tube: Verification Guide
           - GitHub Actions: required PR CI (`lint`, `type-check`, `build`) must pass.
+          - GitHub Actions: `E2E` must pass for `${{ steps.version.outputs.branch }}`.
           - GitHub Actions: `CLI_SMOKE` must pass for `${{ steps.version.outputs.branch }}`.
           - After merge and tag push, monitor the `RELEASE` workflow.
 
           ## :white_check_mark: Checklist
           - [ ] Required PR CI passed
+          - [ ] `E2E` passed
           - [ ] `CLI_SMOKE` passed
           - [ ] Expected tag confirmed: `${{ steps.version.outputs.tag }}`
           - [ ] Release notes will be finalized after the `RELEASE` workflow creates the GitHub Release

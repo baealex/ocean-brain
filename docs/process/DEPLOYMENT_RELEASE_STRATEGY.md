@@ -101,6 +101,7 @@ git push origin v0.3.1
 - The workflow creates a dedicated release branch named `chore/release-v<version>`.
 - The workflow commits only the version bump in `packages/cli/package.json`.
 - The workflow opens a release PR titled `🔖 Bump version to <version>`.
+- The workflow dispatches release-only `E2E` and `CLI_SMOKE` against `chore/release-v<version>`.
 - Do not create the release branch or release bump commit from a local checkout in the normal release flow.
 
 4. Review the release PR
@@ -110,8 +111,8 @@ git push origin v0.3.1
 
 5. Verify and merge the release PR to `main`
 - Required PR CI (`lint`, `type-check`, `build`) must pass.
-- `E2E` must pass on the `chore/release-v<version>` release PR branch.
-- `CLI_SMOKE` must pass on the `chore/release-v<version>` release PR branch.
+- `E2E` must pass on the `chore/release-v<version>` release PR branch. It is dispatched by the release PR workflow, not by every PR event.
+- `CLI_SMOKE` must pass on the `chore/release-v<version>` release PR branch. It is dispatched by the release PR workflow, not by every PR event.
 - Version bump must remain a separate PR. Direct release bumps on `main` are not allowed.
 
 6. Trigger release explicitly from merged `main`

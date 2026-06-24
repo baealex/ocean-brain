@@ -1,14 +1,10 @@
 name: CLI SMOKE
 
 on:
-  pull_request:
-    branches:
-      - main
   workflow_dispatch:
 
 jobs:
   pack-cli:
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'chore/release-v')
     name: pack CLI tarball
     runs-on: ubuntu-latest
     steps:
@@ -43,7 +39,6 @@ jobs:
 
   smoke-npx-cli:
     needs: pack-cli
-    if: needs.pack-cli.result == 'success'
     name: npx smoke (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:

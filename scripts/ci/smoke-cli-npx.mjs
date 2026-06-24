@@ -6,8 +6,18 @@ import os from 'os';
 import path from 'path';
 import { pathToFileURL } from 'url';
 
-const [, , tarballArg] = process.argv;
-const tarballPath = tarballArg ? path.resolve(tarballArg) : null;
+const [, , packageArg] = process.argv;
+
+function resolveNpxPackageSpec(spec) {
+    const looksLikePath = spec.endsWith('.tgz')
+        || spec.startsWith('.')
+        || spec.startsWith('/')
+        || /^[A-Za-z]:[\\/]/.test(spec);
+
+    return looksLikePath ? path.resolve(spec) : spec;
+}
+
+const packageSpec = packageArg ? resolveNpxPackageSpec(packageArg) : null;
 const host = '127.0.0.1';
 const port = Number(process.env.CLI_SMOKE_PORT ?? '6683');
 const rootUrl = `http://${host}:${port}`;
@@ -46,11 +56,11 @@ export function extractLocalAssetPaths(html) {
         .filter(assetPath => assetPath.startsWith('/assets/'));
 }
 
-export function buildSmokeScenarios(resolvedTarballPath) {
+export function buildSmokeScenarios(resolvedPackageSpec) {
     const baseArgs = [
         '--yes',
         '--package',
-        resolvedTarballPath,
+        resolvedPackageSpec,
         'ocean-brain',
         'serve',
         '--port',
@@ -415,13 +425,13 @@ async function runScenario(scenario) {
 }
 
 async function main() {
-    if (!tarballPath) {
-        console.error('Usage: node scripts/ci/smoke-cli-npx.mjs <path-to-cli-tarball>');
+    if (!packageSpec) {
+        console.error('Usage: node scripts/ci/smoke-cli-npx.mjs <path-to-cli-tarball-or-package-spec>');
         process.exit(1);
     }
 
     try {
-        for (const scenario of buildSmokeScenarios(tarballPath)) {
+        for (const scenario of buildSmokeScenarios(packageSpec)) {
             await runScenario(scenario);
         }
         console.log('CLI smoke test passed.');
@@ -430,7 +440,7 @@ async function main() {
     }
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
     main()
         .then(() => {
             process.exit(0);

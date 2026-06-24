@@ -71,8 +71,8 @@ git push origin v0.3.1
 
 ## 6. Release Preparation Runbook
 1. Verify release package
-- Required: latest `CLI_SMOKE` workflow is green for the release target PR or commit.
-- Required before tagging: confirm the release commit on `main` has already passed the required PR CI (`lint`, `type-check`, `build`). The tag-triggered `RELEASE` workflow publishes artifacts; it is not a replacement for main-branch quality validation.
+- Required: latest `E2E` and `CLI_SMOKE` workflows are green for the release target PR or commit.
+- Required before tagging: confirm the release commit on `main` has already passed the required PR CI (`lint`, `type-check`, `build`) plus release-only `E2E` and `CLI_SMOKE`. The tag-triggered `RELEASE` workflow publishes artifacts; it is not a replacement for main-branch quality validation.
 
 2. Collect unreleased changes before version bump
 - Commit list:
@@ -99,6 +99,7 @@ git push origin v0.3.1
 
 5. Verify and merge the release PR to `main`
 - Required PR CI (`lint`, `type-check`, `build`) must pass.
+- `E2E` must pass on the `chore/release-v<version>` release PR branch.
 - `CLI_SMOKE` must pass on the `chore/release-v<version>` release PR branch.
 - Version bump must remain a separate PR. Direct release bumps on `main` are not allowed.
 

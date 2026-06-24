@@ -14,7 +14,6 @@ on:
           - major
 
 permissions:
-  actions: write
   contents: write
   pull-requests: write
   issues: write
@@ -94,7 +93,7 @@ jobs:
 
           ## :hammer_and_wrench: Core Changes
           - Bump `packages/cli/package.json` from `${{ steps.version.outputs.current_version }}` to `${{ steps.version.outputs.version }}`.
-          - Use the release branch `${{ steps.version.outputs.branch }}` for release-only `E2E` and `CLI_SMOKE` verification.
+          - Use the release branch `${{ steps.version.outputs.branch }}` so `CLI_SMOKE` runs on this PR.
 
           ## :brain: Key Decisions
           - The release tag is expected to be `${{ steps.version.outputs.tag }}` after this PR is merged.
@@ -102,8 +101,8 @@ jobs:
 
           ## :test_tube: Verification Guide
           - GitHub Actions: required PR CI (`lint`, `type-check`, `build`) must pass.
-          - GitHub Actions: `E2E` must pass for `${{ steps.version.outputs.branch }}` after this workflow dispatches it.
-          - GitHub Actions: `CLI_SMOKE` must pass for `${{ steps.version.outputs.branch }}` after this workflow dispatches it.
+          - GitHub Actions: `E2E` must pass for `${{ steps.version.outputs.branch }}`.
+          - GitHub Actions: `CLI_SMOKE` must pass for `${{ steps.version.outputs.branch }}`.
           - After merge and tag push, monitor the `RELEASE` workflow.
 
           ## :white_check_mark: Checklist
@@ -126,6 +125,3 @@ jobs:
             --method POST \
             "repos/${{ github.repository }}/issues/${pr_number}/labels" \
             --field labels[]='release: ${{ inputs.release_type }}'
-
-          gh workflow run E2E.yml --ref '${{ steps.version.outputs.branch }}'
-          gh workflow run CLI_SMOKE.yml --ref '${{ steps.version.outputs.branch }}'

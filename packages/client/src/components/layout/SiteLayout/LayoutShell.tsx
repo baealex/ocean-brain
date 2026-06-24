@@ -93,8 +93,8 @@ const contentClassName = classNames(
     'overflow-x-clip',
     'px-4',
     'pt-4',
-    "after:block",
-    "after:h-4",
+    'after:block',
+    'after:h-4',
     "after:content-['']",
     'max-md:after:h-24',
 );

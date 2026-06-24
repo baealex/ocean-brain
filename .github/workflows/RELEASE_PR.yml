@@ -14,6 +14,7 @@ on:
           - major
 
 permissions:
+  actions: write
   contents: write
   pull-requests: write
   issues: write
@@ -123,3 +124,6 @@ jobs:
             --method POST \
             "repos/${{ github.repository }}/issues/${pr_number}/labels" \
             --field labels[]='release: ${{ inputs.release_type }}'
+
+          gh workflow run CI.yml --ref '${{ steps.version.outputs.branch }}'
+          gh workflow run CLI_SMOKE.yml --ref '${{ steps.version.outputs.branch }}'

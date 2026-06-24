@@ -12,8 +12,10 @@ const tempDir = path.join(rootDir, '.tmp');
 
 mkdirSync(tempDir, { recursive: true });
 
+const pnpmBin = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
+
 const result = spawnSync(
-    'pnpm',
+    pnpmBin,
     ['--dir', cliDir, 'pack', '--pack-destination', tempDir],
     {
         cwd: rootDir,

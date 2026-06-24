@@ -1,7 +1,9 @@
 FROM node:22-alpine
 
 ARG VERSION=latest
-RUN npm i -g ocean-brain@${VERSION}
+RUN npm i -g --omit=dev --no-audit --no-fund ocean-brain@${VERSION} \
+    && npm cache clean --force \
+    && rm -rf /root/.npm /root/.cache /tmp/*
 
 RUN mkdir -p /data /assets/images
 ENV OCEAN_BRAIN_DATA_DIR=/data

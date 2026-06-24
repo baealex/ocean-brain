@@ -1,0 +1,125 @@
+name: RELEASE PR
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: Semver release type to prepare
+        required: true
+        default: patch
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  create-release-pr:
+    name: Create release PR
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Bump CLI package version
+        id: version
+        shell: bash
+        run: |
+          current_version="$(node -p "JSON.parse(require('node:fs').readFileSync('packages/cli/package.json', 'utf8')).version")"
+
+          cd packages/cli
+          version_output="$(npm version "$RELEASE_TYPE" --no-git-tag-version)"
+          version="${version_output#v}"
+
+          echo "current_version=${current_version}" >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${version}" >> "$GITHUB_OUTPUT"
+          echo "branch=chore/release-v${version}" >> "$GITHUB_OUTPUT"
+        env:
+          RELEASE_TYPE: ${{ inputs.release_type }}
+
+      - name: Stop if release branch already exists
+        shell: bash
+        run: |
+          if git ls-remote --exit-code --heads origin '${{ steps.version.outputs.branch }}' >/dev/null; then
+            echo "Release branch already exists: ${{ steps.version.outputs.branch }}" >&2
+            echo "Delete or finish the existing release PR before creating another one." >&2
+            exit 1
+          fi
+
+          if git ls-remote --exit-code --tags origin '${{ steps.version.outputs.tag }}' >/dev/null; then
+            echo "Release tag already exists: ${{ steps.version.outputs.tag }}" >&2
+            echo "Choose a different release type or inspect the existing release." >&2
+            exit 1
+          fi
+
+      - name: Commit release bump
+        shell: bash
+        run: |
+          if git diff --quiet -- packages/cli/package.json; then
+            echo "No version change was produced for packages/cli/package.json" >&2
+            exit 1
+          fi
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -b '${{ steps.version.outputs.branch }}'
+          git add packages/cli/package.json
+          git commit -m '🔖 Bump version to ${{ steps.version.outputs.version }}'
+          git push origin '${{ steps.version.outputs.branch }}'
+
+      - name: Create release PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          cat > /tmp/release-pr-body.md <<'BODY'
+          ## :dart: Goal
+          Prepare the ${{ steps.version.outputs.tag }} ${{ inputs.release_type }} release with an automated release branch and PR.
+
+          ## :hammer_and_wrench: Core Changes
+          - Bump `packages/cli/package.json` from `${{ steps.version.outputs.current_version }}` to `${{ steps.version.outputs.version }}`.
+          - Use the release branch `${{ steps.version.outputs.branch }}` so `CLI_SMOKE` runs on this PR.
+
+          ## :brain: Key Decisions
+          - The release tag is expected to be `${{ steps.version.outputs.tag }}` after this PR is merged.
+          - This PR does not deploy by itself; deployment still requires the explicit `${{ steps.version.outputs.tag }}` tag push from merged `main`.
+
+          ## :test_tube: Verification Guide
+          - GitHub Actions: required PR CI (`lint`, `type-check`, `build`) must pass.
+          - GitHub Actions: `CLI_SMOKE` must pass for `${{ steps.version.outputs.branch }}`.
+          - After merge and tag push, monitor the `RELEASE` workflow.
+
+          ## :white_check_mark: Checklist
+          - [ ] Required PR CI passed
+          - [ ] `CLI_SMOKE` passed
+          - [ ] Expected tag confirmed: `${{ steps.version.outputs.tag }}`
+          - [ ] Release notes will be finalized after the `RELEASE` workflow creates the GitHub Release
+          BODY
+
+          pr_url="$(gh pr create \
+            --base main \
+            --head '${{ steps.version.outputs.branch }}' \
+            --title '🔖 Bump version to ${{ steps.version.outputs.version }}' \
+            --body-file /tmp/release-pr-body.md)"
+
+          pr_number="${pr_url##*/}"
+
+          gh api \
+            --method POST \
+            "repos/${{ github.repository }}/issues/${pr_number}/labels" \
+            --field labels[]='release: ${{ inputs.release_type }}'

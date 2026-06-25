@@ -3,7 +3,7 @@ import { useState } from 'react';
 import * as Icon from '~/components/icon';
 import { Button, Modal, ModalActionRow } from '~/components/shared';
 import { Checkbox, Text, Tooltip, useToast } from '~/components/ui';
-import { downloadBlobFile, type HtmlExportMode, type NoteExportMetadata } from '~/modules/note-export';
+import { downloadBlobFile, type NoteExportMetadata } from '~/modules/note-export';
 import {
     createNoteExportBlob,
     getNoteExportOutputExtension,
@@ -63,7 +63,6 @@ export default function NoteExportModal({ isOpen, metadata, getHtml, getMarkdown
     const [format, setFormat] = useState<NoteExportFormat>('html');
     const [includeAssets, setIncludeAssets] = useState(true);
     const [includeMetadata, setIncludeMetadata] = useState(false);
-    const [htmlMode, setHtmlMode] = useState<HtmlExportMode>('fragment');
     const [isExporting, setIsExporting] = useState(false);
 
     const outputExtension = getNoteExportOutputExtension(format, includeAssets);
@@ -76,7 +75,6 @@ export default function NoteExportModal({ isOpen, metadata, getHtml, getMarkdown
                 format,
                 includeAssets,
                 includeMetadata,
-                htmlMode,
                 metadata,
                 source: {
                     getHtml,
@@ -158,16 +156,6 @@ export default function NoteExportModal({ isOpen, metadata, getHtml, getMarkdown
                                 onChange={setIncludeMetadata}
                                 description="Add the note title, note id, timestamps, and Ocean Brain source information."
                             />
-
-                            {format === 'html' && (
-                                <ExportOptionCheckbox
-                                    id="note-export-full-html"
-                                    label="Full HTML document"
-                                    checked={htmlMode === 'standalone'}
-                                    onChange={(checked) => setHtmlMode(checked ? 'standalone' : 'fragment')}
-                                    description="Include doctype, head, viewport, and title so the file opens as a complete page."
-                                />
-                            )}
                         </div>
                     </div>
                 </div>

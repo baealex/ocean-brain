@@ -7,19 +7,15 @@ export interface NoteExportMetadata {
     updatedAt?: string;
 }
 
-export type HtmlExportMode = 'fragment' | 'standalone';
-
 type FetchAsset = typeof fetch;
 
 interface HtmlAssetsZipExportOptions {
     fetchImpl?: FetchAsset;
     includeMetadata?: boolean;
-    mode?: HtmlExportMode;
 }
 
 interface HtmlDocumentExportOptions {
     includeMetadata?: boolean;
-    mode?: HtmlExportMode;
 }
 
 interface MarkdownDocumentExportOptions {
@@ -41,14 +37,6 @@ const normalizeTitleForFilename = (title: string) => {
 
     return normalized || 'untitled-note';
 };
-
-const escapeHtml = (value: string) =>
-    value
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
 
 const formatYamlString = (value: string) => {
     if (!value) {
@@ -189,8 +177,8 @@ const findNextImageTagStart = (html: string, startIndex: number) => {
         }
 
         const nextCharacter = html[tagStart + 4];
-        const previousTagStart = html.lastIndexOf('<', tagStart - 1);
-        const previousTagEnd = html.lastIndexOf('>', tagStart - 1);
+        const previousTagStart = tagStart === 0 ? -1 : html.lastIndexOf('<', tagStart - 1);
+        const previousTagEnd = tagStart === 0 ? -1 : html.lastIndexOf('>', tagStart - 1);
 
         if (previousTagStart <= previousTagEnd && (!nextCharacter || /[\s/>]/.test(nextCharacter))) {
             return tagStart;
@@ -465,35 +453,21 @@ export const createMarkdownDocumentExport = (
 export const createHtmlExport = (
     html: string,
     metadata: NoteExportMetadata,
-    { includeMetadata = false, mode = 'fragment' }: HtmlDocumentExportOptions = {},
+    { includeMetadata = false }: HtmlDocumentExportOptions = {},
 ) => {
     const metadataComment = includeMetadata
         ? `<!--\nsource: ocean-brain\nnote_id: ${metadata.id}\ntitle: ${metadata.title}\ncreated_at: ${formatTimestamp(metadata.createdAt) ?? ''}\nupdated_at: ${formatTimestamp(metadata.updatedAt) ?? ''}\n-->\n`
         : '';
 
-    if (mode === 'fragment') {
-        return `${metadataComment}${html}`;
-    }
-
-    return `<!doctype html>
-<html lang="ko">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${escapeHtml(metadata.title)}</title>
-</head>
-<body>
-${metadataComment}${html}
-</body>
-</html>`;
+    return `${metadataComment}${html}`;
 };
 
 export const createHtmlDocumentExport = (
     html: string,
     metadata: NoteExportMetadata,
-    { includeMetadata = false, mode = 'standalone' }: HtmlDocumentExportOptions = {},
+    { includeMetadata = false }: HtmlDocumentExportOptions = {},
 ) => {
-    const htmlExport = createHtmlExport(html, metadata, { includeMetadata, mode });
+    const htmlExport = createHtmlExport(html, metadata, { includeMetadata });
     const replacements = findImageTags(htmlExport)
         .filter((imageTag) => isLocalImageAssetUrl(imageTag.source.value))
         .map((imageTag) => ({
@@ -508,10 +482,10 @@ export const createHtmlDocumentExport = (
 export const createHtmlAssetsZipExport = async (
     html: string,
     metadata: NoteExportMetadata,
-    { fetchImpl = fetch, includeMetadata = false, mode = 'standalone' }: HtmlAssetsZipExportOptions = {},
+    { fetchImpl = fetch, includeMetadata = false }: HtmlAssetsZipExportOptions = {},
 ) => {
     const zip = new JSZip();
-    const htmlExport = createHtmlExport(html, metadata, { includeMetadata, mode });
+    const htmlExport = createHtmlExport(html, metadata, { includeMetadata });
     const imageTags = findImageTags(htmlExport);
     const replacements: Array<{ end: number; start: number; value: string }> = [];
     const usedNames = new Set<string>();

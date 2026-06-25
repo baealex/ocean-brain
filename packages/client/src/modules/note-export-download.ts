@@ -4,7 +4,6 @@ import {
     createMarkdownAssetsZipExport,
     createMarkdownDocumentExport,
     getNoteExportFilename,
-    type HtmlExportMode,
     type NoteExportMetadata,
 } from './note-export';
 
@@ -20,7 +19,6 @@ export interface CreateNoteExportBlobRequest {
     format: NoteExportFormat;
     includeAssets: boolean;
     includeMetadata: boolean;
-    htmlMode: HtmlExportMode;
     metadata: NoteExportMetadata;
     source: NoteExportContentSource;
 }
@@ -52,7 +50,6 @@ const noteExportAdapters: Record<NoteExportFormat, NoteExportAdapter> = {
                 [
                     createHtmlDocumentExport(content, request.metadata, {
                         includeMetadata: request.includeMetadata,
-                        mode: request.htmlMode,
                     }),
                 ],
                 { type: 'text/html;charset=utf-8' },
@@ -61,7 +58,6 @@ const noteExportAdapters: Record<NoteExportFormat, NoteExportAdapter> = {
             createHtmlAssetsZipExport(content, request.metadata, {
                 fetchImpl: request.fetchImpl,
                 includeMetadata: request.includeMetadata,
-                mode: request.htmlMode,
             }),
     },
     markdown: {

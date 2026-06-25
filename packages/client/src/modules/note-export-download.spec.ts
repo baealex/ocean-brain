@@ -20,7 +20,6 @@ describe('note-export-download', () => {
             format: 'html',
             includeAssets: false,
             includeMetadata: false,
-            htmlMode: 'standalone',
             metadata,
             source: {
                 getHtml: () => '<p>Hello</p><img src="/assets/images/a/photo.png">',
@@ -41,7 +40,6 @@ describe('note-export-download', () => {
             format: 'markdown',
             includeAssets: false,
             includeMetadata: false,
-            htmlMode: 'fragment',
             metadata,
             source: {
                 getHtml: () => undefined,
@@ -66,7 +64,6 @@ describe('note-export-download', () => {
                 }),
             includeAssets: true,
             includeMetadata: false,
-            htmlMode: 'fragment',
             metadata,
             source: {
                 getHtml: () => undefined,
@@ -90,7 +87,6 @@ describe('note-export-download', () => {
             format: 'html',
             includeAssets: false,
             includeMetadata: false,
-            htmlMode: 'fragment',
             metadata,
             source: {
                 getHtml: () => undefined,

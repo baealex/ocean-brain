@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import {
     createHtmlAssetsZipExport,
     createHtmlDocumentExport,
-    createHtmlExport,
     createMarkdownAssetsZipExport,
     createMarkdownDocumentExport,
     createMarkdownExport,
@@ -68,19 +67,10 @@ describe('note-export', () => {
         expect(imageBytes).toBe('image-bytes');
     });
 
-    it('wraps html in a complete document when standalone mode is requested', () => {
-        const html = createHtmlExport('<p>Body</p>', { id: '123', title: 'Hello <World>' }, { mode: 'standalone' });
-
-        expect(html).toContain('<!doctype html>');
-        expect(html).toContain('<title>Hello &lt;World&gt;</title>');
-        expect(html).toContain('<p>Body</p>');
-    });
-
     it('omits local image assets from document-only html exports', () => {
         const html = createHtmlDocumentExport(
             '<figure><img src="/assets/images/2026/4/15/photo.png" alt="Local"><figcaption>Local photo</figcaption></figure><img src="https://example.com/external.png" alt="External">',
             { id: '123', title: 'Hello' },
-            { mode: 'standalone' },
         );
 
         expect(html).toContain('<!-- Local Ocean Brain image omitted from document-only export. -->');
@@ -113,7 +103,6 @@ describe('note-export', () => {
                         headers: { 'Content-Type': 'image/png' },
                     });
                 },
-                mode: 'standalone',
             },
         );
         const zip = await JSZip.loadAsync(zipBlob);

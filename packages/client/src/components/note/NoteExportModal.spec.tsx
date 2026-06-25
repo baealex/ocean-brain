@@ -31,7 +31,6 @@ describe('<NoteExportModal />', () => {
         await user.click(screen.getByRole('radio', { name: '.md' }));
 
         expect(screen.getByRole('button', { name: 'Download .md' })).toBeInTheDocument();
-        expect(screen.queryByRole('checkbox', { name: 'Full HTML document' })).not.toBeInTheDocument();
     });
 
     it('toggles checkbox options when their labels are clicked', async () => {

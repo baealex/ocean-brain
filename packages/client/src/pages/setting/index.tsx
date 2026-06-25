@@ -42,7 +42,7 @@ const Setting = () => {
     const versionLabel = formatVersionLabel(versionInfo.version);
 
     return (
-        <PageLayout title="Settings" description="Manage appearance, integrations, and workspace tools">
+        <PageLayout title="Settings" description="Manage display, workspace tools, and advanced connections">
             <div className="flex flex-col gap-6">
                 <section className="flex flex-col gap-3">
                     <Text as="p" variant="label" weight="medium" className={sectionLabelClassName}>
@@ -80,38 +80,6 @@ const Setting = () => {
                         Workspace
                     </Text>
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                        <Link to={SETTINGS_TRASH_ROUTE} search={{ page: 1 }} className={itemClassName}>
-                            <div className="flex min-w-0 items-start gap-3">
-                                <span className={leadingClassName}>
-                                    <Icon.TrashCan className={iconClassName} />
-                                </span>
-                                <div className={contentClassName}>
-                                    <Text as="div" variant="body" weight="medium">
-                                        Trash
-                                    </Text>
-                                    <Text as="div" variant="meta" tone="secondary">
-                                        Restore deleted notes.
-                                    </Text>
-                                </div>
-                            </div>
-                            <Icon.ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-fg-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-fg-secondary" />
-                        </Link>
-                        <Link to={SETTINGS_MANAGE_IMAGE_ROUTE} search={{ page: 1 }} className={itemClassName}>
-                            <div className="flex min-w-0 items-start gap-3">
-                                <span className={leadingClassName}>
-                                    <Icon.Image className={iconClassName} />
-                                </span>
-                                <div className={contentClassName}>
-                                    <Text as="div" variant="body" weight="medium">
-                                        Images
-                                    </Text>
-                                    <Text as="div" variant="meta" tone="secondary">
-                                        Upload and organize images.
-                                    </Text>
-                                </div>
-                            </div>
-                            <Icon.ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-fg-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-fg-secondary" />
-                        </Link>
                         <Link to={SETTINGS_PROPERTIES_ROUTE} search={{ page: 1 }} className={itemClassName}>
                             <div className="flex min-w-0 items-start gap-3">
                                 <span className={leadingClassName}>
@@ -122,7 +90,7 @@ const Setting = () => {
                                         Properties
                                     </Text>
                                     <Text as="div" variant="meta" tone="secondary">
-                                        Define shared fields for notes and future views.
+                                        Manage fields used across notes.
                                     </Text>
                                 </div>
                             </div>
@@ -138,7 +106,39 @@ const Setting = () => {
                                         Placeholders
                                     </Text>
                                     <Text as="div" variant="meta" tone="secondary">
-                                        Manage template variables.
+                                        Manage reusable template variables.
+                                    </Text>
+                                </div>
+                            </div>
+                            <Icon.ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-fg-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-fg-secondary" />
+                        </Link>
+                        <Link to={SETTINGS_MANAGE_IMAGE_ROUTE} search={{ page: 1 }} className={itemClassName}>
+                            <div className="flex min-w-0 items-start gap-3">
+                                <span className={leadingClassName}>
+                                    <Icon.Image className={iconClassName} />
+                                </span>
+                                <div className={contentClassName}>
+                                    <Text as="div" variant="body" weight="medium">
+                                        Images
+                                    </Text>
+                                    <Text as="div" variant="meta" tone="secondary">
+                                        Review uploaded note images.
+                                    </Text>
+                                </div>
+                            </div>
+                            <Icon.ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-fg-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-fg-secondary" />
+                        </Link>
+                        <Link to={SETTINGS_TRASH_ROUTE} search={{ page: 1 }} className={itemClassName}>
+                            <div className="flex min-w-0 items-start gap-3">
+                                <span className={leadingClassName}>
+                                    <Icon.TrashCan className={iconClassName} />
+                                </span>
+                                <div className={contentClassName}>
+                                    <Text as="div" variant="body" weight="medium">
+                                        Trash
+                                    </Text>
+                                    <Text as="div" variant="meta" tone="secondary">
+                                        Restore or permanently delete notes.
                                     </Text>
                                 </div>
                             </div>
@@ -162,7 +162,7 @@ const Setting = () => {
                                         MCP
                                     </Text>
                                     <Text as="div" variant="meta" tone="secondary">
-                                        Connect external AI clients.
+                                        Connect Codex, Claude, or another MCP client.
                                     </Text>
                                 </div>
                             </div>

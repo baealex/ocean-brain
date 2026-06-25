@@ -2,7 +2,10 @@ import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
 import {
     createHtmlAssetsZipExport,
+    createHtmlDocumentExport,
     createHtmlExport,
+    createMarkdownAssetsZipExport,
+    createMarkdownDocumentExport,
     createMarkdownExport,
     getNoteExportFilename,
 } from './note-export';
@@ -30,12 +33,71 @@ describe('note-export', () => {
         expect(markdown).toContain('source: ocean-brain\n---\n\nBody');
     });
 
+    it('omits local image assets from document-only markdown exports', () => {
+        const markdown = createMarkdownDocumentExport(
+            'Before\n![Local](/assets/images/2026/4/15/photo.png)\n![External](https://example.com/external.png)',
+            { id: '123', title: 'Hello' },
+        );
+
+        expect(markdown).toContain('<!-- Local Ocean Brain image omitted from document-only export. -->');
+        expect(markdown).not.toContain('/assets/images/');
+        expect(markdown).toContain('![External](https://example.com/external.png)');
+    });
+
+    it('exports local image assets into a markdown zip and rewrites markdown image paths', async () => {
+        const zipBlob = await createMarkdownAssetsZipExport(
+            '![Local](/assets/images/2026/4/15/photo.png)\n![External](https://example.com/external.png)',
+            { id: '123', title: 'Hello' },
+            {
+                fetchImpl: async (input) => {
+                    expect(input).toBe('/assets/images/2026/4/15/photo.png');
+
+                    return new Response('image-bytes', {
+                        status: 200,
+                        headers: { 'Content-Type': 'image/png' },
+                    });
+                },
+            },
+        );
+        const zip = await JSZip.loadAsync(zipBlob);
+        const markdown = await zip.file('note.md')?.async('string');
+        const imageBytes = await zip.file('assets/photo.png')?.async('string');
+
+        expect(markdown).toContain('![Local](./assets/photo.png)');
+        expect(markdown).toContain('![External](https://example.com/external.png)');
+        expect(imageBytes).toBe('image-bytes');
+    });
+
     it('wraps html in a complete document when standalone mode is requested', () => {
         const html = createHtmlExport('<p>Body</p>', { id: '123', title: 'Hello <World>' }, { mode: 'standalone' });
 
         expect(html).toContain('<!doctype html>');
         expect(html).toContain('<title>Hello &lt;World&gt;</title>');
         expect(html).toContain('<p>Body</p>');
+    });
+
+    it('omits local image assets from document-only html exports', () => {
+        const html = createHtmlDocumentExport(
+            '<figure><img src="/assets/images/2026/4/15/photo.png" alt="Local"><figcaption>Local photo</figcaption></figure><img src="https://example.com/external.png" alt="External">',
+            { id: '123', title: 'Hello' },
+            { mode: 'standalone' },
+        );
+
+        expect(html).toContain('<!-- Local Ocean Brain image omitted from document-only export. -->');
+        expect(html).not.toContain('/assets/images/');
+        expect(html).toContain('<figcaption>Local photo</figcaption>');
+        expect(html).toContain('src="https://example.com/external.png"');
+    });
+
+    it('omits unquoted local image assets from document-only html exports', () => {
+        const html = createHtmlDocumentExport(
+            '<IMG alt="Before > after" src=/assets/images/a/unquoted.png><p data-copy="<img src=\'/assets/images/not-real.png\'>">Text</p>',
+            { id: '123', title: 'Hello' },
+        );
+
+        expect(html).toContain('<!-- Local Ocean Brain image omitted from document-only export. -->');
+        expect(html).not.toContain('src=/assets/images/a/unquoted.png');
+        expect(html).toContain('data-copy="<img src=\'/assets/images/not-real.png\'>"');
     });
 
     it('exports local image assets into a zip and rewrites html image paths', async () => {

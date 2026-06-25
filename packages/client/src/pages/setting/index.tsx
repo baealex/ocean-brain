@@ -77,28 +77,6 @@ const Setting = () => {
 
                 <section className="flex flex-col gap-3">
                     <Text as="p" variant="label" weight="medium" className={sectionLabelClassName}>
-                        Integrations
-                    </Text>
-                    <Link to={SETTINGS_MCP_ROUTE} className={itemClassName}>
-                        <div className="flex min-w-0 items-start gap-3">
-                            <span className={leadingClassName}>
-                                <Icon.LinkIcon className={iconClassName} />
-                            </span>
-                            <div className={contentClassName}>
-                                <Text as="div" variant="body" weight="medium">
-                                    MCP
-                                </Text>
-                                <Text as="div" variant="meta" tone="secondary">
-                                    Manage AI integration access.
-                                </Text>
-                            </div>
-                        </div>
-                        <Icon.ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-fg-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-fg-secondary" />
-                    </Link>
-                </section>
-
-                <section className="flex flex-col gap-3">
-                    <Text as="p" variant="label" weight="medium" className={sectionLabelClassName}>
                         Workspace
                     </Text>
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -161,6 +139,30 @@ const Setting = () => {
                                     </Text>
                                     <Text as="div" variant="meta" tone="secondary">
                                         Manage template variables.
+                                    </Text>
+                                </div>
+                            </div>
+                            <Icon.ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-fg-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-fg-secondary" />
+                        </Link>
+                    </div>
+                </section>
+
+                <section className="flex flex-col gap-3">
+                    <Text as="p" variant="label" weight="medium" className={sectionLabelClassName}>
+                        Advanced
+                    </Text>
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <Link to={SETTINGS_MCP_ROUTE} className={itemClassName}>
+                            <div className="flex min-w-0 items-start gap-3">
+                                <span className={leadingClassName}>
+                                    <Icon.LinkIcon className={iconClassName} />
+                                </span>
+                                <div className={contentClassName}>
+                                    <Text as="div" variant="body" weight="medium">
+                                        MCP
+                                    </Text>
+                                    <Text as="div" variant="meta" tone="secondary">
+                                        Connect external AI clients.
                                     </Text>
                                 </div>
                             </div>

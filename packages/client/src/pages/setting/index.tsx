@@ -46,34 +46,6 @@ const Setting = () => {
             <div className="flex flex-col gap-6">
                 <section className="flex flex-col gap-3">
                     <Text as="p" variant="label" weight="medium" className={sectionLabelClassName}>
-                        Version
-                    </Text>
-                    <a href={versionInfo.releaseUrl} target="_blank" rel="noreferrer" className={itemClassName}>
-                        <div className="flex min-w-0 items-start gap-3">
-                            <span className={leadingClassName}>
-                                <Icon.Info className={iconClassName} />
-                            </span>
-                            <div className={contentClassName}>
-                                <Text as="div" variant="body" weight="medium">
-                                    Ocean Brain
-                                </Text>
-                                <Text as="div" variant="meta" tone="secondary">
-                                    Current version: {versionLabel} / Required MCP version:{' '}
-                                    {versionInfo.mcpVersionRequirement}
-                                </Text>
-                            </div>
-                        </div>
-                        <div className="mt-0.5 flex shrink-0 items-center gap-2 text-fg-tertiary">
-                            <Text as="span" variant="meta" weight="medium" tone="secondary">
-                                Check latest
-                            </Text>
-                            <Icon.Refresh className="h-4 w-4" />
-                        </div>
-                    </a>
-                </section>
-
-                <section className="flex flex-col gap-3">
-                    <Text as="p" variant="label" weight="medium" className={sectionLabelClassName}>
                         Appearance
                     </Text>
                     <button type="button" className={itemClassName} onClick={toggleTheme}>
@@ -196,6 +168,18 @@ const Setting = () => {
                         </Link>
                     </div>
                 </section>
+
+                <Text as="p" variant="meta" tone="tertiary" className="border-t border-border-subtle pt-4">
+                    Ocean Brain {versionLabel} ·{' '}
+                    <a
+                        href={versionInfo.releaseUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-medium text-fg-secondary underline-offset-4 hover:underline"
+                    >
+                        Releases
+                    </a>
+                </Text>
             </div>
         </PageLayout>
     );

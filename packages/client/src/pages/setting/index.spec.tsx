@@ -43,13 +43,13 @@ const renderPage = () => {
 };
 
 describe('<Setting />', () => {
-    it('shows the current server version and update link on the root settings page', async () => {
+    it('shows the current server version as secondary footer metadata', async () => {
         vi.mocked(mcpAdminApi.fetchMcpAdminStatus).mockResolvedValue(createMcpStatus());
 
         renderPage();
 
-        expect(await screen.findByText('Current version: v0.7.3 / Required MCP version: 0.7.x')).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: /ocean brain/i })).toHaveAttribute(
+        expect(await screen.findByText(/Ocean Brain v0\.7\.3/)).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Releases' })).toHaveAttribute(
             'href',
             'https://github.com/baealex/ocean-brain/releases',
         );

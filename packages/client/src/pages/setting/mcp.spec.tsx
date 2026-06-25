@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { McpAdminStatus } from '~/apis/mcp-admin.api';
 import * as mcpAdminApi from '~/apis/mcp-admin.api';
-import { ToastProvider } from '~/components/ui';
+import { ConfirmProvider, ToastProvider } from '~/components/ui';
 import { createTestQueryClient } from '~/test/test-utils';
 import McpSetting from './mcp';
 
@@ -31,9 +31,11 @@ const renderPage = () => {
 
     render(
         <QueryClientProvider client={queryClient}>
-            <ToastProvider>
-                <McpSetting />
-            </ToastProvider>
+            <ConfirmProvider>
+                <ToastProvider>
+                    <McpSetting />
+                </ToastProvider>
+            </ConfirmProvider>
         </QueryClientProvider>,
     );
 };
@@ -43,22 +45,12 @@ describe('<McpSetting />', () => {
         vi.clearAllMocks();
     });
 
-    it('shows origin-based MCP server URL and renders mcp.json snippet', async () => {
+    it('shows origin-based Ocean Brain URL', async () => {
         vi.mocked(mcpAdminApi.fetchMcpAdminStatus).mockResolvedValue(createMcpStatus());
 
         renderPage();
 
-        expect(await screen.findByText('v0.7.3')).toBeInTheDocument();
-        expect(screen.getByText('0.7.x')).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: /check latest version/i })).toHaveAttribute(
-            'href',
-            'https://github.com/baealex/ocean-brain/releases',
-        );
-        expect(await screen.findByLabelText(/server url/i)).toHaveValue(window.location.origin);
-        expect(screen.getAllByText(/"mcpServers"/).length).toBeGreaterThan(0);
-        expect(screen.getAllByText(/--token-file/).length).toBeGreaterThan(0);
-        expect(screen.getAllByText(/--token/).length).toBeGreaterThan(0);
-        expect(screen.getAllByText(new RegExp(window.location.origin)).length).toBeGreaterThan(0);
+        expect(await screen.findByLabelText(/ocean brain url/i)).toHaveValue(window.location.origin);
     });
 
     it('submits enabled toggle and refreshes status', async () => {
@@ -67,7 +59,7 @@ describe('<McpSetting />', () => {
 
         renderPage();
 
-        const toggle = await screen.findByRole('switch', { name: /allow mcp access/i });
+        const toggle = await screen.findByRole('switch', { name: /mcp access/i });
         await userEvent.click(toggle);
         expect(toggle).toHaveAttribute('aria-checked', 'true');
     });

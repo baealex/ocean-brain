@@ -44,7 +44,7 @@ interface PinnedNotesListProps {
 }
 
 const dragHandleBaseClassName =
-    'focus-ring-soft flex h-8 w-8 items-center justify-center rounded-[10px] text-fg-default/70 outline-none transition-colors hover:text-fg-default active:cursor-grabbing touch-none';
+    'focus-ring-soft flex h-8 w-8 items-center justify-center rounded-[10px] text-fg-tertiary opacity-70 outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default hover:opacity-100 focus-visible:opacity-100 active:cursor-grabbing touch-none';
 const pinnedLinkBaseClassName =
     'focus-ring-soft block truncate rounded-[10px] px-1.5 py-1 outline-none transition-colors';
 
@@ -64,21 +64,22 @@ function SortablePinnedNote({ id, title, isActive = false, children }: SortableP
             ref={setNodeRef}
             style={style}
             className={classNames(
-                'group flex min-h-[40px] items-center gap-1.5 rounded-[12px] px-1.5 py-1 transition-colors',
-                isActive && 'bg-hover-subtle',
+                'group flex min-h-[38px] items-center gap-1.5 rounded-[12px] px-1.5 py-1 transition-colors',
+                isActive ? 'bg-hover-subtle' : 'hover:bg-hover-subtle/70',
             )}
         >
             <button
                 type="button"
                 ref={setActivatorNodeRef}
                 aria-label={`Reorder note ${title ?? 'Untitled'}`}
+                title="Drag to reorder"
                 {...attributes}
                 {...listeners}
                 className={classNames(dragHandleBaseClassName, isDragging ? 'cursor-grabbing' : 'cursor-grab')}
             >
                 <Icon.DragHandle className="size-4" />
             </button>
-            <Text as="div" truncate variant="body" weight="medium" className="min-w-0 flex-1">
+            <Text as="div" truncate variant="meta" weight="medium" className="min-w-0 flex-1">
                 {children}
             </Text>
         </div>
@@ -124,7 +125,7 @@ function PinnedNotesList({
                                 pinnedLinkBaseClassName,
                                 pathname === `/${note.id}`
                                     ? 'text-fg-default'
-                                    : 'text-fg-secondary hover:bg-hover-subtle hover:text-fg-default',
+                                    : 'text-fg-secondary hover:text-fg-default',
                             )}
                             to={NOTE_ROUTE}
                             params={{ id: note.id }}
@@ -180,7 +181,7 @@ const PinnedNotesPanel = () => {
     };
 
     return (
-        <div className="flex flex-col gap-1">
+        <div className="border-l border-border-subtle/70 pl-1.5">
             <QueryBoundary
                 fallback={
                     <div className="space-y-1">
@@ -214,7 +215,7 @@ const PinnedNotesPanel = () => {
                             />
                         ) : (
                             <Text as="div" variant="meta" tone="secondary" className="px-2 py-2.5 leading-6">
-                                Pin a note to keep it in view while the rest of the workspace changes.
+                                Pin a note from the note toolbar to keep it here.
                             </Text>
                         )
                     }

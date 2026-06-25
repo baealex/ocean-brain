@@ -27,6 +27,10 @@ vi.mock('./SidebarSearch', () => ({ default: () => <div>Sidebar Search</div> }))
 
 vi.mock('./SidebarPrimaryActions', () => ({ default: () => <div>Primary Actions</div> }));
 
+vi.mock('./SidebarPinnedNotes', () => ({ default: () => <div>Pinned Notes</div> }));
+
+vi.mock('~/components/demo/DemoSidebarPromoSlot', () => ({ default: () => <div>Demo Promo</div> }));
+
 vi.mock('./TopNavigation', () => ({ default: () => <div>Top Navigation</div> }));
 
 describe('<SiteLayout />', () => {
@@ -38,8 +42,10 @@ describe('<SiteLayout />', () => {
         );
 
         expect(screen.getByTestId('sidebar-slot')).toHaveTextContent('Hero Banner');
-        expect(screen.getByTestId('sidebar-slot')).toHaveTextContent('Sidebar Search');
         expect(screen.getByTestId('sidebar-slot')).toHaveTextContent('Primary Actions');
+        expect(screen.getByTestId('sidebar-slot')).toHaveTextContent('Sidebar Search');
+        expect(screen.getByTestId('sidebar-slot')).toHaveTextContent('Pinned Notes');
+        expect(screen.getByTestId('sidebar-slot')).toHaveTextContent('Demo Promo');
         expect(screen.getByTestId('top-navigation-slot')).toHaveTextContent('Top Navigation');
         expect(screen.getByTestId('content-slot')).toHaveTextContent('Page Content');
     });

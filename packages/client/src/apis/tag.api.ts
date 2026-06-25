@@ -5,9 +5,17 @@ export interface FetchTagsParams {
     query?: string;
     limit?: number;
     offset?: number;
+    sortBy?: 'referenceCount' | 'name';
+    sortOrder?: 'asc' | 'desc';
 }
 
-export function fetchTags({ query = '', limit = 50, offset = 0 }: FetchTagsParams = {}) {
+export function fetchTags({
+    query = '',
+    limit = 50,
+    offset = 0,
+    sortBy = 'referenceCount',
+    sortOrder = 'desc',
+}: FetchTagsParams = {}) {
     return graphQuery<{
         allTags: {
             totalCount: number;
@@ -31,7 +39,7 @@ export function fetchTags({ query = '', limit = 50, offset = 0 }: FetchTagsParam
             }
         }`,
         {
-            searchFilter: { query },
+            searchFilter: { query, sortBy, sortOrder },
             pagination: {
                 limit,
                 offset,

@@ -46,7 +46,7 @@ describe('<SidebarHeroBanner />', () => {
 
         render(<SidebarHeroBanner />, { wrapper: Wrapper });
 
-        const removeButton = await screen.findByRole('button', { name: 'Remove hero banner' });
+        const removeButton = await screen.findByRole('button', { name: 'Remove sidebar banner' });
         expect(await screen.findByAltText('Studio atmosphere banner')).toBeInTheDocument();
         fireEvent.click(removeButton);
 

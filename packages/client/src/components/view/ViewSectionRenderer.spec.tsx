@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import type { Note } from '~/models/note.model';
 import type { ViewSection } from '~/models/view.model';
@@ -82,16 +83,21 @@ describe('<ViewSectionRenderer />', () => {
     });
 
     it('shows a generic unavailable state for unsupported display types', () => {
-        const handleEdit = vi.fn();
-
-        renderRenderer(createSection({ displayType: 'calendar' }), handleEdit);
+        renderRenderer(createSection({ displayType: 'calendar' }));
 
         expect(screen.getByText('This display type is unavailable')).toBeInTheDocument();
         expect(
             screen.getByText('Switch this section to List or Table to preview the saved query here.'),
         ).toBeInTheDocument();
+    });
 
-        fireEvent.click(screen.getByRole('button', { name: 'Change display' }));
+    it('opens editing from the unsupported display type recovery action', async () => {
+        const handleEdit = vi.fn();
+        const user = userEvent.setup();
+
+        renderRenderer(createSection({ displayType: 'calendar' }), handleEdit);
+
+        await user.click(screen.getByRole('button', { name: 'Change display' }));
 
         expect(handleEdit).toHaveBeenCalledTimes(1);
     });

@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { fetchNotes } from '~/apis/note.api';
 import { fetchTags } from '~/apis/tag.api';
@@ -19,6 +20,8 @@ vi.mock('~/apis/tag.api', () => ({ fetchTags: vi.fn() }));
 
 describe('<SidebarSearch />', () => {
     it('renders debounced note and tag suggestions', async () => {
+        const user = userEvent.setup();
+
         vi.mocked(fetchNotes).mockResolvedValue({
             type: 'success',
             allNotes: {
@@ -44,7 +47,7 @@ describe('<SidebarSearch />', () => {
 
         render(<SidebarSearch />);
 
-        fireEvent.change(screen.getByRole('textbox'), { target: { value: 'alpha' } });
+        await user.type(screen.getByRole('textbox'), 'alpha');
 
         expect(screen.getByRole('button', { name: 'Search notes and tags' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Clear search' })).toBeInTheDocument();
@@ -64,11 +67,12 @@ describe('<SidebarSearch />', () => {
         expect(await screen.findByText('alpha')).toBeInTheDocument();
     });
 
-    it('navigates to the search route on submit', () => {
+    it('navigates to the search route on submit', async () => {
+        const user = userEvent.setup();
+
         render(<SidebarSearch />);
 
-        fireEvent.change(screen.getByRole('textbox'), { target: { value: 'waves' } });
-        fireEvent.submit(screen.getByRole('textbox').closest('form')!);
+        await user.type(screen.getByRole('textbox'), 'waves{Enter}');
 
         expect(mockNavigate).toHaveBeenCalledWith({
             to: SEARCH_ROUTE,

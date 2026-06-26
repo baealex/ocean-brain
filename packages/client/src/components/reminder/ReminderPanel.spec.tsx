@@ -78,7 +78,9 @@ describe('<ReminderPanel />', () => {
     it('renders no reminder rows when a note has no reminders', () => {
         render(<ReminderPanel noteId="note-1" />);
 
+        expect(screen.getByText('No reminders yet')).toBeInTheDocument();
         expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+        expect(screen.queryByText('Follow up')).not.toBeInTheDocument();
     });
 
     it('renders reminder rows when reminders exist', () => {
@@ -97,6 +99,7 @@ describe('<ReminderPanel />', () => {
 
         render(<ReminderPanel noteId="note-1" />);
 
+        expect(screen.getByText('Follow up')).toBeInTheDocument();
         expect(screen.getByRole('checkbox', { name: 'Reminder: Follow up' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Reminder actions' })).toBeInTheDocument();
     });

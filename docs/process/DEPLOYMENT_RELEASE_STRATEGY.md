@@ -47,19 +47,30 @@ git push origin v0.3.1
 1. `publish-npm`
 - Installs Node 22 and pnpm
 - Runs `node scripts/release/prepublish.mjs`
-- Publishes with `npm publish --provenance --access public` from `packages/cli`
+- Packs the CLI with `pnpm pack` so workspace `catalog:` dependencies are resolved in the tarball.
+- Publishes that tarball with `npm publish --provenance --access public`.
 - Uses npm trusted publishing (OIDC) via GitHub Actions
-- Creates a GitHub Release with auto-generated notes (`generate_release_notes: true`)
 
-2. `publish-docker`
+2. `verify-npm`
 - Runs after successful `publish-npm`
+- Waits for `ocean-brain@<version>` to become visible on npm with retry before verification.
+- Runs `npx ocean-brain@<version>` smoke verification against the actually published package.
+
+3. `publish-docker`
+- Runs only after successful `verify-npm`
 - Extracts version from tag (`vX.Y.Z` -> `X.Y.Z`)
 - Builds and pushes per architecture via DockerHub
 - Requires `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`
 
-3. `publish-docker-manifest`
+4. `publish-docker-manifest`
 - Combines architecture digests into one manifest
 - Pushes final tags: `<version>`, `latest`
+
+5. `verify-docker`
+- Runs after successful `publish-docker-manifest`
+- Pulls `baealex/ocean-brain:<version>` with retry to tolerate registry propagation delay.
+- Runs the published Docker image and verifies the web shell, auth session endpoint, and GraphQL endpoint.
+- Creates the GitHub Release with auto-generated notes (`generate_release_notes: true`) only after Docker verification passes.
 
 ## 5. Prepublish Build Strategy
 - `scripts/release/prepublish.mjs` standardizes release artifacts.
@@ -67,12 +78,12 @@ git push origin v0.3.1
 2. Builds `@ocean-brain/server`
 3. Builds `ocean-brain` (CLI)
 4. Copies artifacts into `packages/cli/server/**`
-- Result: only CLI is published to npm, with bundled server/client artifacts.
+- Result: only CLI is published to npm, with bundled server/client artifacts and registry-compatible dependency ranges.
 
-## 6. Manual Release Runbook
+## 6. Release Preparation Runbook
 1. Verify release package
-- Required: latest `CLI_SMOKE` workflow is green for the release target PR or commit.
-- Required before tagging: confirm the release commit on `main` has already passed the required PR CI (`lint`, `type-check`, `build`). The tag-triggered `RELEASE` workflow publishes artifacts; it is not a replacement for main-branch quality validation.
+- Required: latest `E2E` and `CLI_SMOKE` workflows are green for the release target PR or commit.
+- Required before tagging: confirm the release commit on `main` has already passed the required PR CI (`lint`, `type-check`, `build`) plus release-only `E2E` and `CLI_SMOKE`. The tag-triggered `RELEASE` workflow publishes artifacts; it is not a replacement for main-branch quality validation.
 
 2. Collect unreleased changes before version bump
 - Commit list:
@@ -80,23 +91,30 @@ git push origin v0.3.1
 - PR merge list:
   `git log v<previous-version>..HEAD --merges --pretty=format:"%s"`
 
-3. Bump version
-- `node scripts/release/bump-version.mjs <version>`
-- This updates only `packages/cli/package.json`.
+3. Create the release PR from GitHub Actions
+- Go to **Actions → RELEASE PR → Run workflow**.
+- Select the semver release type:
+  - `patch`: `0.7.3` → `0.7.4`
+  - `minor`: `0.7.3` → `0.8.0`
+  - `major`: `0.7.3` → `1.0.0`
+- The workflow runs `npm version <release-type> --no-git-tag-version` in `packages/cli`.
+- The workflow creates a dedicated release branch named `chore/release-v<version>`.
+- The workflow commits only the version bump in `packages/cli/package.json`.
+- The workflow opens a release PR titled `🔖 Bump version to <version>`.
+- Do not create the release branch or release bump commit from a local checkout in the normal release flow.
 
-4. Create dedicated release branch
-- `git checkout -b chore/release-v<version>`
+4. Review the release PR
+- Confirm the expected tag is `v<version>`.
+- Confirm exactly one release impact label is applied: `release: patch`, `release: minor`, or `release: major`.
+- Confirm the release PR contains the verification plan.
 
-5. Commit version bump
-- `git add packages/cli/package.json`
-- `git commit -m "🔖 Bump version to <version>"`
-- Version bump must be a separate PR. Direct release bumps on `main` are not allowed.
+5. Verify and merge the release PR to `main`
+- Required PR CI (`lint`, `type-check`, `build`) must pass.
+- `E2E` must pass on the `chore/release-v<version>` release PR branch.
+- `CLI_SMOKE` must pass on the `chore/release-v<version>` release PR branch.
+- Version bump must remain a separate PR. Direct release bumps on `main` are not allowed.
 
-6. Open and merge release PR to `main`
-- PR title: `🔖 Bump version to <version>`
-- PR body must include expected tag (`v<version>`) and verification result.
-
-7. Trigger release explicitly from merged `main`
+6. Trigger release explicitly from merged `main`
 
 ```bash
 git checkout main
@@ -108,17 +126,17 @@ git push origin v<version>
 - This tag push is the supported release trigger.
 - Do not treat PR merge itself as deployment.
 
-8. Monitor the `RELEASE` workflow
+7. Monitor the `RELEASE` workflow
 - Example:
 
 ```bash
 gh run list --workflow RELEASE.yml --limit 5
 ```
 
-- Wait for npm publish, Docker publish, and manifest jobs to finish.
+- Wait for npm publish, npm verification, Docker publish, manifest, and Docker verification jobs to finish.
 
-9. Finalize GitHub Release note
-- Open the created release page after `RELEASE` creates it.
+8. Finalize GitHub Release note
+- Open the created release page after `verify-docker` creates it.
 - For patch releases, start from GitHub generated notes and preserve the PR-linked bullet format.
 - For minor and major releases, treat auto-generated notes as a draft and replace the body with the final note before sharing the release externally.
 

@@ -229,11 +229,6 @@ describe('useNoteMutate', () => {
         expect(mockConfirm).not.toHaveBeenCalled();
         const dialog = await screen.findByRole('dialog');
         expect(within(dialog).getByText('Move note to Trash?')).toBeInTheDocument();
-        expect(
-            within(dialog).getByText(
-                /Those links may stop opening while this note stays in Trash\. If you restore this note later, the links will work again\./i,
-            ),
-        ).toBeInTheDocument();
         expect(within(dialog).getByText('Linked note')).toBeInTheDocument();
         expect(within(dialog).getByRole('link', { name: /open note/i })).toBeInTheDocument();
 

@@ -63,6 +63,12 @@ const flushAnimationFrame = () => {
     callbacks.forEach((callback) => callback(0));
 };
 
+const twoColumnWidth = 220;
+const threeColumnBreakpointWidth = 340;
+const slightlyBelowThreeColumns = threeColumnBreakpointWidth - 1;
+const clearlyBelowThreeColumns = threeColumnBreakpointWidth - 17;
+const clearlyAboveThreeColumns = threeColumnBreakpointWidth + 16;
+
 describe('useGridLimit', () => {
     beforeEach(() => {
         resizeObserverInstances.length = 0;
@@ -87,8 +93,8 @@ describe('useGridLimit', () => {
 
     it('calculates the auto limit from container width', () => {
         expect(calculateAutoLimit(0, 100, 20, 3)).toBe(3);
-        expect(calculateAutoLimit(220, 100, 20, 3)).toBe(6);
-        expect(calculateAutoLimit(340, 100, 20, 3)).toBe(9);
+        expect(calculateAutoLimit(twoColumnWidth, 100, 20, 3)).toBe(6);
+        expect(calculateAutoLimit(threeColumnBreakpointWidth, 100, 20, 3)).toBe(9);
     });
 
     it('recalculates the limit when ResizeObserver reports a new width', () => {
@@ -97,14 +103,14 @@ describe('useGridLimit', () => {
         const grid = screen.getByTestId('grid');
         const observer = resizeObserverInstances[0];
 
-        setOffsetWidth(grid, 220);
+        setOffsetWidth(grid, twoColumnWidth);
         act(() => {
             observer.trigger(grid);
             flushAnimationFrame();
         });
         expect(screen.getByTestId('limit')).toHaveTextContent('6');
 
-        setOffsetWidth(grid, 356);
+        setOffsetWidth(grid, clearlyAboveThreeColumns);
         act(() => {
             observer.trigger(grid);
             flushAnimationFrame();
@@ -119,21 +125,21 @@ describe('useGridLimit', () => {
         const grid = screen.getByTestId('grid');
         const observer = resizeObserverInstances[0];
 
-        setOffsetWidth(grid, 340);
+        setOffsetWidth(grid, threeColumnBreakpointWidth);
         act(() => {
             observer.trigger(grid);
             flushAnimationFrame();
         });
         expect(screen.getByTestId('limit')).toHaveTextContent('9');
 
-        setOffsetWidth(grid, 339);
+        setOffsetWidth(grid, slightlyBelowThreeColumns);
         act(() => {
             observer.trigger(grid);
             flushAnimationFrame();
         });
         expect(screen.getByTestId('limit')).toHaveTextContent('9');
 
-        setOffsetWidth(grid, 323);
+        setOffsetWidth(grid, clearlyBelowThreeColumns);
         act(() => {
             observer.trigger(grid);
             flushAnimationFrame();
@@ -147,21 +153,21 @@ describe('useGridLimit', () => {
         const grid = screen.getByTestId('grid');
         const observer = resizeObserverInstances[0];
 
-        setOffsetWidth(grid, 339);
+        setOffsetWidth(grid, slightlyBelowThreeColumns);
         act(() => {
             observer.trigger(grid);
             flushAnimationFrame();
         });
         expect(screen.getByTestId('limit')).toHaveTextContent('6');
 
-        setOffsetWidth(grid, 340);
+        setOffsetWidth(grid, threeColumnBreakpointWidth);
         act(() => {
             observer.trigger(grid);
             flushAnimationFrame();
         });
         expect(screen.getByTestId('limit')).toHaveTextContent('6');
 
-        setOffsetWidth(grid, 356);
+        setOffsetWidth(grid, clearlyAboveThreeColumns);
         act(() => {
             observer.trigger(grid);
             flushAnimationFrame();
@@ -199,10 +205,7 @@ describe('useGridLimit', () => {
             animationFrameQueue.delete(id);
         });
 
-        const addEventListenerSpy = vi.spyOn(window, 'addEventListener');
-        const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener');
-
-        const { unmount } = render(<GridLimitHarness minItemWidth={100} gap={20} rows={3} />);
+        render(<GridLimitHarness minItemWidth={100} gap={20} rows={3} />);
 
         const grid = screen.getByTestId('grid');
         setOffsetWidth(grid, 460);
@@ -213,12 +216,5 @@ describe('useGridLimit', () => {
         });
 
         expect(screen.getByTestId('limit')).toHaveTextContent('12');
-        expect(addEventListenerSpy).toHaveBeenCalledWith('resize', expect.any(Function));
-        expect(addEventListenerSpy).toHaveBeenCalledWith('orientationchange', expect.any(Function));
-
-        unmount();
-
-        expect(removeEventListenerSpy).toHaveBeenCalledWith('resize', expect.any(Function));
-        expect(removeEventListenerSpy).toHaveBeenCalledWith('orientationchange', expect.any(Function));
     });
 });

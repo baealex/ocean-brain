@@ -6,4 +6,5 @@ export { default as ViewSectionListRenderer } from './ViewSectionListRenderer';
 export { default as ViewSectionRenderer } from './ViewSectionRenderer';
 export { default as ViewSectionTableRenderer } from './ViewSectionTableRenderer';
 export { default as ViewSectionUnsupportedRenderer } from './ViewSectionUnsupportedRenderer';
+export { default as ViewTabBar } from './ViewTabBar';
 export { default as ViewTabDialog } from './ViewTabDialog';

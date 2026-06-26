@@ -56,7 +56,7 @@ describe('<ViewSectionDialog />', () => {
         );
 
         await user.click(screen.getByRole('radio', { name: 'Show as table' }));
-        await user.click(screen.getByRole('button', { name: 'Create view' }));
+        await user.click(screen.getByRole('button', { name: 'Create section' }));
 
         expect(handleSubmit).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -84,7 +84,7 @@ describe('<ViewSectionDialog />', () => {
         await user.click(screen.getByRole('checkbox', { name: 'Show Tags column' }));
         await user.click(screen.getByRole('checkbox', { name: 'Show Properties column' }));
         await user.click(screen.getByRole('checkbox', { name: 'Show Created column' }));
-        await user.click(screen.getByRole('button', { name: 'Create view' }));
+        await user.click(screen.getByRole('button', { name: 'Create section' }));
 
         expect(handleSubmit).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -176,7 +176,7 @@ describe('<ViewSectionDialog />', () => {
         expect(valueInput).toHaveAttribute('type', 'text');
 
         await user.type(valueInput, 'example.com');
-        await user.click(screen.getByRole('button', { name: 'Save view' }));
+        await user.click(screen.getByRole('button', { name: 'Save section' }));
 
         expect(handleSubmit).toHaveBeenCalledWith(
             expect.objectContaining({

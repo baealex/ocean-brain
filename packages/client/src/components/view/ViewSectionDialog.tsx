@@ -306,7 +306,7 @@ export default function ViewSectionDialog({
 
     return (
         <Modal isOpen={open} onClose={onClose} variant="form" className="sm:max-w-[720px]">
-            <Modal.Header title={mode === 'create' ? 'Create view' : 'Edit view'} onClose={onClose} />
+            <Modal.Header title={mode === 'create' ? 'Create section' : 'Edit section'} onClose={onClose} />
             <Modal.Body>
                 <form
                     id="view-section-form"
@@ -367,7 +367,7 @@ export default function ViewSectionDialog({
                 >
                     <div className="flex flex-col gap-2">
                         <Label htmlFor="view-section-title" size="md">
-                            View name
+                            Section name
                         </Label>
                         <Input
                             id="view-section-title"
@@ -708,7 +708,7 @@ export default function ViewSectionDialog({
                                         Sort and limit
                                     </Text>
                                     <Text as="p" variant="meta" tone="tertiary" className="mt-1">
-                                        Defaults to recently updated notes.
+                                        Controls how many matching notes appear on the Views page preview.
                                     </Text>
                                 </div>
                                 <Text as="span" variant="meta" tone="tertiary">
@@ -742,14 +742,14 @@ export default function ViewSectionDialog({
                             </div>
                             <div className="flex flex-col gap-2">
                                 <Label htmlFor="view-section-limit" size="sm">
-                                    Max notes
+                                    Preview rows
                                 </Label>
                                 <Select value={limit} onValueChange={setLimit}>
-                                    <SelectItem value="3">3 notes</SelectItem>
-                                    <SelectItem value="5">5 notes</SelectItem>
-                                    <SelectItem value="8">8 notes</SelectItem>
-                                    <SelectItem value="10">10 notes</SelectItem>
-                                    <SelectItem value="12">12 notes</SelectItem>
+                                    <SelectItem value="3">3 rows</SelectItem>
+                                    <SelectItem value="5">5 rows</SelectItem>
+                                    <SelectItem value="8">8 rows</SelectItem>
+                                    <SelectItem value="10">10 rows</SelectItem>
+                                    <SelectItem value="12">12 rows</SelectItem>
                                 </Select>
                             </div>
                         </div>
@@ -762,7 +762,7 @@ export default function ViewSectionDialog({
                         Cancel
                     </Button>
                     <Button type="submit" size="sm" form="view-section-form">
-                        {mode === 'create' ? 'Create view' : 'Save view'}
+                        {mode === 'create' ? 'Create section' : 'Save section'}
                     </Button>
                 </ModalActionRow>
             </Modal.Footer>

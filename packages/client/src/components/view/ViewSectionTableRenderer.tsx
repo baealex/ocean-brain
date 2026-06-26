@@ -16,6 +16,7 @@ interface ViewSectionTableRendererProps {
     onRetry: () => void;
     onSortChange: (sortBy: ViewSortBy) => void;
     isSortPending: boolean;
+    surface?: 'flush' | 'card';
 }
 
 const formatPropertyValue = (property: NoteProperty) => {
@@ -127,10 +128,22 @@ export default function ViewSectionTableRenderer({
     onRetry,
     onSortChange,
     isSortPending,
+    surface = 'flush',
 }: ViewSectionTableRendererProps) {
     const navigate = useNavigate();
     const visibleColumns = normalizeViewTableColumns(section.displayOptions?.tableColumns);
     const tableMinWidth = getTableMinWidth(visibleColumns);
+    const surfaceClassName =
+        surface === 'card'
+            ? 'overflow-x-auto rounded-[16px] border border-border-subtle bg-elevated'
+            : 'overflow-x-auto bg-transparent';
+    const loadingSurfaceClassName =
+        surface === 'card'
+            ? 'overflow-hidden rounded-[16px] border border-border-subtle bg-elevated'
+            : 'overflow-hidden bg-transparent';
+    const loadingRowClassName = surface === 'card' ? 'bg-elevated' : 'bg-transparent';
+    const tableHeadClassName = surface === 'card' ? 'bg-subtle/65' : 'bg-subtle/45';
+    const tableBodyClassName = surface === 'card' ? 'bg-elevated' : 'bg-transparent';
 
     const openNote = (noteId: string) => {
         void navigate({
@@ -220,18 +233,18 @@ export default function ViewSectionTableRenderer({
 
     if (isPending) {
         return (
-            <div className="overflow-hidden rounded-[16px] border border-border-subtle">
-                <div className="h-11 animate-pulse bg-hover-subtle" />
-                <div className="h-14 animate-pulse border-t border-border-subtle bg-elevated" />
-                <div className="h-14 animate-pulse border-t border-border-subtle bg-elevated" />
-                <div className="h-14 animate-pulse border-t border-border-subtle bg-elevated" />
+            <div className={loadingSurfaceClassName}>
+                <div className="h-11 animate-pulse bg-subtle/50" />
+                <div className={`h-14 animate-pulse border-t border-border-subtle ${loadingRowClassName}`} />
+                <div className={`h-14 animate-pulse border-t border-border-subtle ${loadingRowClassName}`} />
+                <div className={`h-14 animate-pulse border-t border-border-subtle ${loadingRowClassName}`} />
             </div>
         );
     }
 
     if (isError) {
         return (
-            <div className="rounded-[16px] border border-border-subtle bg-hover-subtle/70 p-4">
+            <div className="rounded-[16px] border border-border-subtle bg-subtle/30 p-4">
                 <Text as="p" variant="body" weight="semibold">
                     Failed to load this table
                 </Text>
@@ -261,7 +274,7 @@ export default function ViewSectionTableRenderer({
     }
 
     return (
-        <div className="overflow-x-auto rounded-[16px] border border-border-subtle bg-elevated">
+        <div className={surfaceClassName}>
             <table className="w-full table-fixed border-collapse text-left" style={{ minWidth: tableMinWidth }}>
                 <caption className="sr-only">View query results as a table</caption>
                 <colgroup>
@@ -269,10 +282,10 @@ export default function ViewSectionTableRenderer({
                         <col key={column} style={{ width: TABLE_COLUMN_WIDTHS[column] }} />
                     ))}
                 </colgroup>
-                <thead className="bg-subtle/80">
+                <thead className={tableHeadClassName}>
                     <tr className="border-b border-border-subtle">{visibleColumns.map(renderHeaderCell)}</tr>
                 </thead>
-                <tbody className="bg-elevated">
+                <tbody className={tableBodyClassName}>
                     {notes.map((note) => (
                         <tr
                             key={note.id}

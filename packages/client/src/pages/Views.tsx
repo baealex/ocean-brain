@@ -1,8 +1,7 @@
 import type { DragEndEvent } from '@dnd-kit/core';
 import { closestCenter, DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { restrictToHorizontalAxis, restrictToVerticalAxis } from '@dnd-kit/modifiers';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import {
-    horizontalListSortingStrategy,
     SortableContext,
     sortableKeyboardCoordinates,
     useSortable,
@@ -30,10 +29,17 @@ import {
 import * as Icon from '~/components/icon';
 import { Button, Dropdown, Empty, PageLayout, Skeleton, SurfaceCard } from '~/components/shared';
 import { MoreButton, Text, useConfirm, useToast } from '~/components/ui';
-import { ViewSectionCard, ViewSectionDialog, type ViewSectionDialogDraft, ViewTabDialog } from '~/components/view';
+import {
+    ViewSectionCard,
+    ViewSectionDialog,
+    type ViewSectionDialogDraft,
+    ViewTabBar,
+    ViewTabDialog,
+} from '~/components/view';
 import type { ViewSection, ViewsWorkspace, ViewTab } from '~/models/view.model';
 import { queryKeys } from '~/modules/query-key-factory';
 import {
+    buildViewSectionInput,
     EMPTY_VIEWS_WORKSPACE,
     getActiveViewTab,
     reorderViewSectionsInWorkspace,
@@ -47,81 +53,16 @@ type ViewTabDialogState = { mode: 'create' } | { mode: 'edit'; tab: ViewTab } | 
 type ViewSectionDialogState = { mode: 'create' } | { mode: 'edit'; section: ViewSection } | null;
 
 const dragHandleClassName =
-    'focus-ring-soft inline-flex h-8 w-8 items-center justify-center rounded-[10px] text-fg-default/70 outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default touch-none';
-const tabChromeClassName =
-    'group relative -mb-px flex h-10 min-w-[92px] max-w-[118px] shrink-0 items-center gap-0.5 rounded-t-[12px] border border-b-0 px-1.5 transition-[background-color,border-color,color,box-shadow]';
-const tabTriggerClassName =
-    'focus-ring-soft inline-flex min-w-0 flex-1 items-center gap-1 rounded-[9px] px-0.5 py-1.5 text-[13px] font-medium outline-none';
-const tabDragHandleClassName =
-    'focus-ring-soft inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[8px] text-current/55 outline-none transition-[background-color,color,opacity] hover:bg-hover-subtle hover:text-current touch-none';
-const addTabActionClassName =
-    'focus-ring-soft relative mb-0.5 inline-flex h-9 shrink-0 items-center gap-1 rounded-[10px] px-2.5 text-[13px] font-medium text-fg-secondary outline-none transition-colors hover:bg-hover-subtle/85 hover:text-fg-default';
-
-interface SortableViewTabProps {
-    tab: ViewTab;
-    isActive: boolean;
-    onSelect: () => void;
-}
-
-const SortableViewTab = ({ tab, isActive, onSelect }: SortableViewTabProps) => {
-    const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
-        id: tab.id,
-    });
-
-    return (
-        <div
-            ref={setNodeRef}
-            style={{
-                transform: CSS.Translate.toString(transform),
-                transition,
-                opacity: isDragging ? 0.6 : 1,
-            }}
-            className={classNames(
-                tabChromeClassName,
-                isActive
-                    ? 'z-10 border-border-secondary/75 bg-elevated text-fg-default shadow-[0_10px_18px_-20px_rgba(15,18,24,0.24)]'
-                    : 'border-transparent bg-hover-subtle/45 text-fg-secondary hover:bg-hover-subtle/75 hover:text-fg-default',
-            )}
-        >
-            <button
-                type="button"
-                ref={setActivatorNodeRef}
-                aria-label={`Reorder view tab ${tab.title}`}
-                {...attributes}
-                {...listeners}
-                className={classNames(
-                    tabDragHandleClassName,
-                    isDragging ? 'cursor-grabbing opacity-100' : 'cursor-grab opacity-70 group-hover:opacity-100',
-                )}
-            >
-                <Icon.DragHandle className="size-4" />
-            </button>
-            <button
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                className={classNames(
-                    tabTriggerClassName,
-                    isActive ? 'text-fg-default' : 'text-fg-secondary group-hover:text-fg-default',
-                )}
-                onClick={onSelect}
-            >
-                <span className="min-w-0 flex-1 truncate">{tab.title}</span>
-                <span className="inline-flex min-w-4 shrink-0 items-center justify-center rounded-full bg-hover-subtle/75 px-1 py-0 text-[10px] leading-4 text-current/70">
-                    {tab.sections.length}
-                </span>
-            </button>
-        </div>
-    );
-};
+    'focus-ring-soft hidden h-8 w-8 items-center justify-center rounded-[10px] text-fg-default/70 outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default sm:inline-flex touch-none';
 
 interface SortableViewSectionProps {
     section: ViewSection;
     onEdit: () => void;
+    onDuplicate: () => void;
     onDelete: () => void;
 }
 
-const SortableViewSection = ({ section, onEdit, onDelete }: SortableViewSectionProps) => {
+const SortableViewSection = ({ section, onEdit, onDuplicate, onDelete }: SortableViewSectionProps) => {
     const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
         id: section.id,
     });
@@ -138,6 +79,7 @@ const SortableViewSection = ({ section, onEdit, onDelete }: SortableViewSectionP
             <ViewSectionCard
                 section={section}
                 onEdit={onEdit}
+                onDuplicate={onDuplicate}
                 onDelete={onDelete}
                 dragHandle={
                     <button
@@ -251,6 +193,23 @@ export default function Views() {
         await invalidateViews();
     };
 
+    const handleSelectTab = async (tab: ViewTab) => {
+        const previousWorkspace = queryClient.getQueryData<ViewsWorkspace>(queryKeys.views.workspace()) ?? workspace;
+        const nextWorkspace = setActiveViewTabInWorkspace(previousWorkspace, tab.id);
+
+        syncWorkspace(nextWorkspace);
+
+        const response = await setActiveViewTab(tab.id);
+
+        if (response.type === 'error') {
+            syncWorkspace(previousWorkspace);
+            toast(response.errors[0].message);
+            return;
+        }
+
+        syncWorkspace(response.setActiveViewTab);
+    };
+
     const handleSectionDragEnd = async ({ active, over }: DragEndEvent) => {
         if (!activeTab || !over || active.id === over.id) {
             return;
@@ -359,6 +318,21 @@ export default function Views() {
         setSectionDialogState(null);
     };
 
+    const handleDuplicateSection = async (section: ViewSection) => {
+        const response = await createViewSection(section.tabId, {
+            ...buildViewSectionInput(section),
+            title: `${section.title} copy`,
+        });
+
+        if (response.type === 'error') {
+            toast(response.errors[0].message);
+            return;
+        }
+
+        await invalidateViews();
+        toast('Section duplicated.');
+    };
+
     const handleDeleteSection = async (sectionId: string) => {
         if (!activeTab) {
             return;
@@ -404,85 +378,34 @@ export default function Views() {
                         </div>
                     </SurfaceCard>
                 ) : workspace.tabs.length === 0 ? (
-                    <SurfaceCard className="px-6 py-8 sm:px-8 sm:py-10">
+                    <div className="flex flex-col gap-4">
                         <Empty
                             title="Create your first view tab"
                             description="Start with a saved view tab, then add sections that query notes by tags, properties, or both."
+                            className="h-[320px]"
                         />
-                        <div className="mt-6 flex justify-center">
+                        <div className="flex justify-center">
                             <Button type="button" onClick={() => setTabDialogState({ mode: 'create' })}>
                                 <Icon.Plus className="h-4 w-4" />
                                 Create first tab
                             </Button>
                         </div>
-                    </SurfaceCard>
+                    </div>
                 ) : (
-                    <div className="flex flex-col gap-6">
-                        <div className="border-b border-border-secondary/75">
-                            <DndContext
-                                sensors={sensors}
-                                collisionDetection={closestCenter}
-                                modifiers={[restrictToHorizontalAxis]}
-                                onDragEnd={handleTabDragEnd}
-                            >
-                                <div className="flex items-end gap-1 overflow-x-auto overflow-y-hidden pb-px">
-                                    <SortableContext
-                                        items={workspace.tabs.map((tab) => tab.id)}
-                                        strategy={horizontalListSortingStrategy}
-                                    >
-                                        <div
-                                            role="tablist"
-                                            aria-label="Views tab list"
-                                            className="flex min-w-0 items-end gap-1"
-                                        >
-                                            {workspace.tabs.map((tab) => (
-                                                <SortableViewTab
-                                                    key={tab.id}
-                                                    tab={tab}
-                                                    isActive={tab.id === activeTab?.id}
-                                                    onSelect={async () => {
-                                                        const previousWorkspace =
-                                                            queryClient.getQueryData<ViewsWorkspace>(
-                                                                queryKeys.views.workspace(),
-                                                            ) ?? workspace;
-                                                        const nextWorkspace = setActiveViewTabInWorkspace(
-                                                            previousWorkspace,
-                                                            tab.id,
-                                                        );
-
-                                                        syncWorkspace(nextWorkspace);
-
-                                                        const response = await setActiveViewTab(tab.id);
-
-                                                        if (response.type === 'error') {
-                                                            syncWorkspace(previousWorkspace);
-                                                            toast(response.errors[0].message);
-                                                            return;
-                                                        }
-
-                                                        syncWorkspace(response.setActiveViewTab);
-                                                    }}
-                                                />
-                                            ))}
-                                        </div>
-                                    </SortableContext>
-                                    <button
-                                        type="button"
-                                        className={addTabActionClassName}
-                                        onClick={() => setTabDialogState({ mode: 'create' })}
-                                    >
-                                        <Icon.Plus className="size-4" />
-                                        Add tab
-                                    </button>
-                                </div>
-                            </DndContext>
-                        </div>
+                    <div className="flex flex-col gap-5">
+                        <ViewTabBar
+                            tabs={workspace.tabs}
+                            activeTabId={activeTab?.id ?? null}
+                            onSelectTab={handleSelectTab}
+                            onReorderTabs={handleTabDragEnd}
+                            onCreateTab={() => setTabDialogState({ mode: 'create' })}
+                        />
 
                         {activeTab && (
                             <div className="flex flex-col gap-5">
-                                <SurfaceCard className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                                    <div>
-                                        <Text as="h2" variant="heading" weight="bold" tracking="tight">
+                                <div className="flex flex-col gap-3 border-b border-border-subtle/80 px-1 pb-4 sm:flex-row sm:items-center sm:justify-between">
+                                    <div className="min-w-0">
+                                        <Text as="h2" variant="subheading" weight="semibold" tracking="tight" truncate>
                                             {activeTab.title}
                                         </Text>
                                         <Text as="p" variant="meta" tone="tertiary" className="mt-1">
@@ -491,7 +414,7 @@ export default function Views() {
                                                 : 'Add sections to build this view'}
                                         </Text>
                                     </div>
-                                    <div className="flex items-start gap-2">
+                                    <div className="inline-flex flex-wrap items-center gap-2 self-start sm:self-center">
                                         <Button
                                             type="button"
                                             size="sm"
@@ -504,7 +427,7 @@ export default function Views() {
                                             button={<MoreButton label="View tab actions" />}
                                             items={[
                                                 {
-                                                    name: 'Rename',
+                                                    name: 'Rename tab',
                                                     onClick: () => setTabDialogState({ mode: 'edit', tab: activeTab }),
                                                 },
                                                 { type: 'separator' },
@@ -515,15 +438,14 @@ export default function Views() {
                                             ]}
                                         />
                                     </div>
-                                </SurfaceCard>
+                                </div>
 
                                 {activeTab.sections.length === 0 ? (
-                                    <SurfaceCard className="px-6 py-8 sm:px-8 sm:py-10">
-                                        <Empty
-                                            title="Add the first section to this tab"
-                                            description="Sections can pull notes by tags, properties, or both."
-                                        />
-                                    </SurfaceCard>
+                                    <Empty
+                                        title="Add the first section to this tab"
+                                        description="Sections can pull notes by tags, properties, or both."
+                                        className="h-[300px]"
+                                    />
                                 ) : (
                                     <div className="flex flex-col">
                                         <DndContext
@@ -544,6 +466,7 @@ export default function Views() {
                                                             onEdit={() =>
                                                                 setSectionDialogState({ mode: 'edit', section })
                                                             }
+                                                            onDuplicate={() => void handleDuplicateSection(section)}
                                                             onDelete={() => void handleDeleteSection(section.id)}
                                                         />
                                                     ))}

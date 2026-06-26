@@ -5,6 +5,7 @@ import { Button, Text } from '~/components/ui';
 import type { Note } from '~/models/note.model';
 import { timeSince } from '~/modules/time';
 import { NOTE_ROUTE } from '~/modules/url';
+import ViewChip from './ViewChip';
 
 interface ViewSectionListRendererProps {
     notes: Note[];
@@ -14,22 +15,50 @@ interface ViewSectionListRendererProps {
 }
 
 const sectionPreviewRowClassName =
-    'flex items-start justify-between gap-3 rounded-[14px] border border-border-subtle/70 px-3 py-2.5 transition-colors hover:border-border-secondary hover:bg-hover-subtle';
+    'group flex min-h-[64px] items-start justify-between gap-3 px-3 py-2.5 transition-colors hover:bg-hover-subtle';
+
+const renderTagSummary = (note: Note) => {
+    const visibleTags = note.tags.slice(0, 2);
+    const hiddenTagCount = note.tags.length - visibleTags.length;
+
+    if (visibleTags.length === 0) {
+        return null;
+    }
+
+    return (
+        <>
+            {visibleTags.map((tag) => (
+                <ViewChip
+                    key={tag.id}
+                    size="compact"
+                    className="max-w-[116px] shrink-0 border-border-subtle bg-transparent text-fg-secondary"
+                >
+                    {tag.name}
+                </ViewChip>
+            ))}
+            {hiddenTagCount > 0 && (
+                <ViewChip size="compact" className="shrink-0 border-border-subtle bg-subtle text-fg-tertiary">
+                    +{hiddenTagCount}
+                </ViewChip>
+            )}
+        </>
+    );
+};
 
 export default function ViewSectionListRenderer({ notes, isPending, isError, onRetry }: ViewSectionListRendererProps) {
     if (isPending) {
         return (
-            <>
-                <div className="h-14 animate-pulse rounded-[14px] bg-hover-subtle" />
-                <div className="h-14 animate-pulse rounded-[14px] bg-hover-subtle" />
-                <div className="h-14 animate-pulse rounded-[14px] bg-hover-subtle" />
-            </>
+            <div className="overflow-hidden bg-transparent">
+                <div className="h-[64px] animate-pulse bg-subtle/35" />
+                <div className="h-[64px] animate-pulse border-t border-border-subtle/70 bg-subtle/35" />
+                <div className="h-[64px] animate-pulse border-t border-border-subtle/70 bg-subtle/35" />
+            </div>
         );
     }
 
     if (isError) {
         return (
-            <div className="rounded-[16px] border border-border-subtle bg-hover-subtle/70 p-4">
+            <div className="rounded-[16px] border border-border-subtle bg-subtle/30 p-4">
                 <Text as="p" variant="body" weight="semibold">
                     Failed to load this section
                 </Text>
@@ -59,20 +88,23 @@ export default function ViewSectionListRenderer({ notes, isPending, isError, onR
     }
 
     return (
-        <>
+        <div className="divide-y divide-border-subtle/70 bg-transparent">
             {notes.map((note) => (
                 <Link key={note.id} to={NOTE_ROUTE} params={{ id: note.id }} className={sectionPreviewRowClassName}>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                         <Text as="div" variant="body" weight="semibold" className="line-clamp-1">
                             {note.title || 'Untitled'}
                         </Text>
-                        <Text as="div" variant="meta" tone="tertiary" className="mt-1">
-                            Updated {timeSince(Number(note.updatedAt))}
-                        </Text>
+                        <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1.5">
+                            <Text as="span" variant="label" weight="medium" tone="secondary" className="mr-0.5">
+                                Updated {timeSince(Number(note.updatedAt))}
+                            </Text>
+                            {renderTagSummary(note)}
+                        </div>
                     </div>
-                    <Icon.ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-fg-tertiary" />
+                    <Icon.ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-fg-tertiary transition-transform group-hover:translate-x-0.5" />
                 </Link>
             ))}
-        </>
+        </div>
     );
 }

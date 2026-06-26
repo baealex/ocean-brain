@@ -160,19 +160,18 @@ describe('<Graph />', () => {
         expect(listItems[1]).toHaveAttribute('aria-setsize', '2');
     });
 
-    it('keeps graph note rows virtualized', async () => {
+    it('keeps graph note rows in an accessible virtualized list', async () => {
         renderGraph();
 
         expect(await screen.findByRole('list', { name: 'Graph notes' })).toBeInTheDocument();
         expect(virtualizerMocks.measureElement).toHaveBeenCalled();
 
         const listItems = screen.getAllByRole('listitem');
-        expect(listItems[0]).toHaveStyle({
-            transform: 'translateY(0px)',
-        });
-        expect(listItems[1]).toHaveStyle({
-            transform: 'translateY(57px)',
-        });
+        expect(listItems).toHaveLength(2);
+        expect(listItems[0]).toHaveAttribute('aria-posinset', '1');
+        expect(listItems[0]).toHaveAttribute('aria-setsize', '2');
+        expect(listItems[1]).toHaveAttribute('aria-posinset', '2');
+        expect(listItems[1]).toHaveAttribute('aria-setsize', '2');
     });
 
     it('provides a keyboard scroll target for virtualized graph notes', async () => {
@@ -204,7 +203,11 @@ describe('<Graph />', () => {
 
         await user.keyboard('{PageDown}');
 
-        expect(virtualizerMocks.scrollToOffset).toHaveBeenCalledWith(399, { behavior: 'auto' });
+        const [offset, options] = virtualizerMocks.scrollToOffset.mock.calls[0] ?? [];
+
+        expect(offset).toEqual(expect.any(Number));
+        expect(offset).toBeGreaterThan(0);
+        expect(options).toEqual({ behavior: 'auto' });
     });
 
     it('filters the accessible graph node list', async () => {

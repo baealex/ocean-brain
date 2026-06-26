@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { Checkbox } from './Checkbox';
 import { Input } from './Input';
@@ -18,16 +19,18 @@ describe('shared primitive controls', () => {
         expect(screen.getByRole('combobox')).toBeInTheDocument();
     });
 
-    it('keeps the visual checkbox focus ring connected to the hidden input', () => {
+    it('exposes checkbox state through the native accessible input', async () => {
+        const user = userEvent.setup();
+
         render(<Checkbox aria-label="Include metadata" />);
 
         const checkbox = screen.getByRole('checkbox', { name: 'Include metadata' });
-        const visualCheckbox = checkbox.nextElementSibling;
 
-        expect(visualCheckbox).toHaveClass('peer-focus-visible:border-border-focus');
-        expect(visualCheckbox).toHaveClass(
-            'peer-focus-visible:shadow-[0_0_0_4px_color-mix(in_srgb,var(--accent-soft-primary)_90%,transparent)]',
-        );
+        expect(checkbox).not.toBeChecked();
+
+        await user.click(checkbox);
+
+        expect(checkbox).toBeChecked();
     });
 
     it('marks the selected toggle item through accessible radio state', () => {

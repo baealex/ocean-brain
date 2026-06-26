@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 vi.mock('./NoteCard', () => ({
@@ -102,8 +102,11 @@ describe('<CalendarDay />', () => {
 
         await user.click(screen.getByRole('button', { name: '+1 more' }));
 
-        expect(screen.getByRole('dialog')).toBeInTheDocument();
-        expect(screen.getAllByTestId('calendar-note-card')).toHaveLength(4);
-        expect(screen.getAllByTestId('calendar-reminder-card')).toHaveLength(3);
+        const dialog = screen.getByRole('dialog');
+
+        expect(within(dialog).getAllByTestId('calendar-note-card')).toHaveLength(2);
+        expect(within(dialog).getAllByTestId('calendar-reminder-card')).toHaveLength(2);
+        expect(within(dialog).getByText('Note one')).toBeInTheDocument();
+        expect(within(dialog).getByText('Reminder one')).toBeInTheDocument();
     });
 });

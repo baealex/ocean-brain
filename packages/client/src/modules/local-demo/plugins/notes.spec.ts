@@ -1,42 +1,61 @@
 import { describe, expect, it } from 'vitest';
 
-import { createLocalDemoSeed } from '../seed';
-import type { LocalDemoState, LocalTag } from '../types';
+import type { Note } from '~/models/note.model';
+import type { LocalDemoState } from '../types';
 import { notesLocalPlugin } from './notes';
 
-const createState = (): LocalDemoState => {
-    const tags: LocalTag[] = [
-        { id: 'tag-guide', name: '@guide' },
-        { id: 'tag-demo', name: '@demo' },
-        { id: 'tag-graph', name: '@graph' },
-        { id: 'tag-project', name: '@project' },
-        { id: 'tag-task', name: '@task' },
-        { id: 'tag-research', name: '@research' },
-        { id: 'tag-meeting', name: '@meeting' },
-        { id: 'tag-editor', name: '@editor' },
-        { id: 'tag-media', name: '@media' },
-        { id: 'tag-archive', name: '@archive' },
-    ];
-    const seed = createLocalDemoSeed({ tags, nowMs: 1_710_000_000_000 });
+const createNote = (input: Pick<Note, 'id' | 'title' | 'tags'>): Note => ({
+    content: '',
+    pinned: false,
+    order: 0,
+    layout: 'wide',
+    properties: [],
+    createdAt: '1710000000000',
+    updatedAt: '1710000000000',
+    ...input,
+});
 
+const createState = (): LocalDemoState => {
     return {
-        version: 4,
-        notes: seed.notes,
+        version: 5,
+        notes: [
+            createNote({
+                id: 'note-guide-a',
+                title: 'Guide A',
+                tags: [{ id: 'tag-guide', name: '@guide' }],
+            }),
+            createNote({
+                id: 'note-guide-b',
+                title: 'Guide B',
+                tags: [
+                    { id: 'tag-guide', name: '@guide' },
+                    { id: 'tag-demo', name: '@demo' },
+                ],
+            }),
+            createNote({
+                id: 'note-other',
+                title: 'Other',
+                tags: [{ id: 'tag-demo', name: '@demo' }],
+            }),
+        ],
         trashedNotes: [],
-        tags,
-        reminders: seed.reminders,
+        tags: [
+            { id: 'tag-guide', name: '@guide' },
+            { id: 'tag-demo', name: '@demo' },
+        ],
+        reminders: [],
         placeholders: [],
         images: [],
         cache: {},
-        propertyDefinitions: seed.propertyDefinitions,
+        propertyDefinitions: [],
         mcp: {
             enabled: false,
             hasActiveToken: false,
             token: null,
         },
         viewWorkspace: {
-            activeTabId: seed.viewTabs[0]?.id ?? null,
-            tabs: seed.viewTabs,
+            activeTabId: null,
+            tabs: [],
         },
     };
 };
@@ -58,12 +77,11 @@ describe('notesLocalPlugin', () => {
         const tagNotes =
             response && 'tagNotes' in response
                 ? (response.tagNotes as
-                      | { totalCount: number; notes: Array<{ tags: Array<{ id: string }> }> }
+                      | { totalCount: number; notes: Array<{ id: string; tags: Array<{ id: string }> }> }
                       | undefined)
                 : undefined;
 
-        expect(tagNotes?.totalCount).toBe(3);
-        expect(tagNotes?.notes).toHaveLength(3);
-        expect(tagNotes?.notes.every((note) => note.tags.some((tag) => tag.id === 'tag-guide'))).toBe(true);
+        expect(tagNotes?.totalCount).toBe(2);
+        expect(tagNotes?.notes.map((note) => note.id)).toEqual(['note-guide-a', 'note-guide-b']);
     });
 });

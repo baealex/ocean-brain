@@ -10,14 +10,14 @@ test('unauthenticated users see the login page and authenticated users load the 
 
     await expect(page).toHaveURL(/\/login\?next=%2F$/);
     await expect(page.getByText('Enter the workspace password to continue')).toBeVisible();
-    await expect(page.locator('form[action="/login"]')).toBeVisible();
+    await expect(page.getByLabel('Password')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible();
 
-    await page.locator('input[name="password"]').fill('e2e-password');
-    await page.locator('form[action="/login"]').evaluate((form: HTMLFormElement) => form.submit());
+    await page.getByLabel('Password').fill('e2e-password');
+    await page.getByRole('button', { name: 'Sign in' }).click();
 
     await expect(page).toHaveURL('/');
     await expect(page.locator('#root')).not.toBeEmpty();
-    await page.waitForTimeout(1000);
 
     expect(pageErrors).toEqual([]);
 });

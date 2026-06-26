@@ -1,4 +1,4 @@
-import dayjs from 'dayjs';
+import { afterEach, vi } from 'vitest';
 
 import {
     validateCalendarSearch,
@@ -10,6 +10,10 @@ import {
 } from './route-search';
 
 describe('route-search validators', () => {
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
     it('normalizes invalid home search input', () => {
         expect(
             validateHomeSearch({
@@ -70,6 +74,9 @@ describe('route-search validators', () => {
     });
 
     it('bounds calendar search values', () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date(2026, 3, 15));
+
         expect(
             validateCalendarSearch({
                 year: '10000',
@@ -77,8 +84,8 @@ describe('route-search validators', () => {
                 type: 'invalid',
             }),
         ).toEqual({
-            year: dayjs().year(),
-            month: dayjs().month() + 1,
+            year: 2026,
+            month: 4,
             type: 'create',
         });
     });

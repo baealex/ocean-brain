@@ -31,17 +31,17 @@ describe('theme-dom', () => {
 
     it('updates the dom class and local storage together', () => {
         applyThemeClass('light');
-        expect(document.documentElement.className).toContain('light');
+        expect(document.documentElement.classList.contains('light')).toBe(true);
 
         applyThemeClass('dark');
-        expect(document.documentElement.className).toContain('dark');
+        expect(document.documentElement.classList.contains('dark')).toBe(true);
         expect(localStorage.getItem('theme')).toBe('dark');
     });
 
     it('can apply a system theme without creating a stored preference', () => {
         applyThemeClass('dark', { persist: false });
 
-        expect(document.documentElement.className).toContain('dark');
+        expect(document.documentElement.classList.contains('dark')).toBe(true);
         expect(localStorage.getItem('theme')).toBeNull();
     });
 

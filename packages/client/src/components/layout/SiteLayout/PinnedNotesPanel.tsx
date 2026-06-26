@@ -2,7 +2,6 @@ import type { DragEndEvent } from '@dnd-kit/core';
 import { closestCenter, DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import {
-    arrayMove,
     SortableContext,
     sortableKeyboardCoordinates,
     useSortable,
@@ -26,6 +25,7 @@ import { queryKeys } from '~/modules/query-key-factory';
 import { NOTE_ROUTE } from '~/modules/url';
 
 type PinnedNote = Pick<Note, 'id' | 'title' | 'order'>;
+type PinnedNoteOrder = Pick<PinnedNote, 'id' | 'order'>;
 
 interface SortablePinnedNoteProps {
     id: string;
@@ -47,6 +47,40 @@ const dragHandleBaseClassName =
     'focus-ring-soft flex h-8 w-8 items-center justify-center rounded-[10px] text-fg-default/70 outline-none transition-colors hover:text-fg-default active:cursor-grabbing touch-none';
 const pinnedLinkBaseClassName =
     'focus-ring-soft block truncate rounded-[10px] px-1.5 py-1 outline-none transition-colors';
+
+export const buildPinnedNoteReorderPayload = (
+    items: PinnedNote[],
+    activeId: string,
+    overId: string,
+): { nextItems: PinnedNote[]; orders: PinnedNoteOrder[] } | null => {
+    if (activeId === overId) {
+        return null;
+    }
+
+    const oldIndex = items.findIndex((item) => item.id === activeId);
+    const newIndex = items.findIndex((item) => item.id === overId);
+
+    if (oldIndex < 0 || newIndex < 0) {
+        return null;
+    }
+
+    const nextItems = [...items];
+    const [movedItem] = nextItems.splice(oldIndex, 1);
+
+    if (!movedItem) {
+        return null;
+    }
+
+    nextItems.splice(newIndex, 0, movedItem);
+
+    return {
+        nextItems,
+        orders: nextItems.map((item, index) => ({
+            id: item.id,
+            order: index,
+        })),
+    };
+};
 
 function SortablePinnedNote({ id, title, isActive = false, children }: SortablePinnedNoteProps) {
     const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
@@ -163,18 +197,15 @@ const PinnedNotesPanel = () => {
 
         if (over && active.id !== over.id) {
             setPinnedItems((items) => {
-                const oldIndex = items.findIndex((item) => item.id === active.id);
-                const newIndex = items.findIndex((item) => item.id === over.id);
-                const nextItems = arrayMove(items, oldIndex, newIndex);
+                const reorderPayload = buildPinnedNoteReorderPayload(items, String(active.id), String(over.id));
 
-                reorderMutation.mutate(
-                    nextItems.map((item, index) => ({
-                        id: item.id,
-                        order: index,
-                    })),
-                );
+                if (!reorderPayload) {
+                    return items;
+                }
 
-                return nextItems;
+                reorderMutation.mutate(reorderPayload.orders);
+
+                return reorderPayload.nextItems;
             });
         }
     };

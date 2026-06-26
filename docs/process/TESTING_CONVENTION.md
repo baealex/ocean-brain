@@ -28,7 +28,14 @@ Updated: 2026-06-26
 - Multi-step interaction is acceptable only when it is one user workflow and every assertion supports the same objective.
 - Prefer explicit fixtures that describe the scenario over generic shared fixtures that hide what the test is proving.
 
-## 4. Interaction Events
+## 4. File Naming
+- Follow the existing package convention instead of mixing suffixes freely.
+- Client colocated tests under `packages/client/src/**` use `*.spec.ts` or `*.spec.tsx`.
+- Server tests under `packages/server/**` use `*.test.ts`.
+- CLI tests under `packages/cli/test/**` use `*.test.ts`.
+- E2E tests under `tests/e2e/**` use `*.spec.ts`.
+
+## 5. Interaction Events
 - Use `userEvent` by default for actions a user can perform: click, type, clear, keyboard, tab, select, and upload.
 - Create `const user = userEvent.setup()` inside the test and `await` user interactions.
 - Prefer submitting forms through user-observable behavior, such as pressing Enter or clicking the submit button.
@@ -36,20 +43,20 @@ Updated: 2026-06-26
 - Do not use `fireEvent.click`, `fireEvent.change`, or `fireEvent.submit` just for convenience when the test is describing a user scenario.
 - If `fireEvent` is used in a component test, the reason should be obvious from the event being tested.
 
-## 5. Test Scope Rules
+## 6. Test Scope Rules
 - Unit tests cover pure transforms, validators, serializers, small hooks with stable contracts, and branch-heavy business logic.
 - Component tests cover rendered output, accessible labels, visible states, and user interactions through the public UI surface.
 - Integration tests cover route, query, mutation, and fallback flows that cross module boundaries.
 - Do not add broad screen tests by default. Add one representative integration flow per risky boundary.
 
-## 6. Mocking Rules
+## 7. Mocking Rules
 - Mock slow or uncontrollable boundaries: network, time, random values, browser APIs, confirmation dialogs, toasts, analytics.
 - Keep real code for pure logic and local composition whenever possible.
 - Do not expose private state or add test-only props just to make tests easier.
 - Mock dependencies that are not part of the end result. Keep dependencies that define the observable result real.
 - Prefer one mock seam per scenario. If a test needs many mocks, the scope is probably too wide.
 
-## 7. Frontend Defaults
+## 8. Frontend Defaults
 - Query and search-param logic should use table-style unit tests.
 - Mutation hooks should assert API payloads and the public side effects they trigger.
 - Navigation tests should prefer accessible links, route params, submitted search params, and active-state contracts.
@@ -57,7 +64,7 @@ Updated: 2026-06-26
 - Use `screen.findBy*` for async rendering caused by routing, queries, or suspense.
 - Use real timers by default. Use fake timers only when time control is the point of the test.
 
-## 8. Anti-Patterns
+## 9. Anti-Patterns
 - Snapshot-heavy tests for complex screens.
 - Assertions on React Query cache internals, TanStack Router internals, or component private state when a public outcome exists.
 - Recreating production logic inside the test to compute expected values.
@@ -66,7 +73,7 @@ Updated: 2026-06-26
 - Multiple independent scenarios inside one test body.
 - User-facing interaction tests driven with low-level events when `userEvent` can express the same action.
 
-## 9. Test Audit Checklist
+## 10. Test Audit Checklist
 Use this checklist when adding, reviewing, or cleaning up tests. A test should be deleted or rewritten when it mostly proves one of these things:
 
 - Cosmetic class names, raw Tailwind utilities, or DOM structure that users cannot observe.
@@ -87,7 +94,7 @@ Prefer these replacements:
 - Split independent positive, negative, and edge cases into separate tests with one Arrange-Act-Assert cycle each.
 - For expensive integration and E2E tests, make the protected risk explicit and wait on concrete readiness conditions.
 
-## 10. Ocean Brain FE Baseline
+## 11. Ocean Brain FE Baseline
 - Route search validation should be covered with focused unit tests.
 - Mutation-heavy hooks should cover success, navigation, invalidation, and guarded flows.
 - Layout and navigation tests should assert user-visible contracts, not internal composition.
@@ -95,7 +102,7 @@ Prefer these replacements:
 - New fallback or recovery UI should ship with a test for the intended visible state.
 - New component interaction tests should use `userEvent` unless the interaction is a low-level browser event.
 
-## 11. PR and CI Expectations
+## 12. PR and CI Expectations
 - Frontend changes that alter routing, loading, mutation, or fallback behavior should add or update tests unless there is a clear reason not to.
 - `pnpm test:ci` is part of CI and must stay green.
 - Recommended local validation for FE test changes:
@@ -104,12 +111,12 @@ Prefer these replacements:
 - `pnpm type-check`
 - `pnpm build`
 
-## 12. Source Notes
+## 13. Source Notes
 - The Pragmatic Programmer tips: testing is a perspective into code, write the failing test before fixing bugs, prove assumptions, test significant states, use tracer bullets, and finish only when tests pass.
 - Unit Testing: Principles, Practices, and Patterns: good tests balance protection against regressions, resistance to refactoring, fast feedback, and maintainability.
 - Enterprisecraftsmanship guidance: mock dependencies that are not part of the end result, and do not expose private state just to enable tests.
 
-## 13. References
+## 14. References
 - https://pragprog.com/tips/
 - https://www.manning.com/books/unit-testing
 - https://freecontent.manning.com/wp-content/uploads/Unit-Testing-Chapter-4-1.pdf

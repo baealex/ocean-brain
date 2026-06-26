@@ -49,7 +49,7 @@ export function GraphExplorerPanel({
     const selectedNodeStatus = selectedNode
         ? `${selectedNode.title || 'Untitled'} selected, ${selectedNode.connections} links`
         : 'No graph node selected';
-    const graphResultsSummary = `${filteredGraphNodes.length} shown`;
+    const graphResultsSummary = `${filteredGraphNodes.length} graph notes shown`;
     const virtualRows = rowVirtualizer.getVirtualItems();
 
     const handleNodeListKeyDown = useCallback(
@@ -125,19 +125,57 @@ export function GraphExplorerPanel({
             className="surface-base flex min-h-[420px] flex-col overflow-hidden md:min-h-[520px] xl:h-[min(44rem,calc(100vh-10rem))]"
             aria-labelledby="graph-explorer-heading"
         >
-            <div className="border-b border-border-subtle/80 px-4 py-3.5">
-                <div className="flex items-start gap-3">
-                    <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] border border-border-subtle bg-muted text-fg-secondary">
-                        <Icon.Graph className="h-4 w-4" aria-hidden="true" />
-                    </span>
-                    <div className="min-w-0">
-                        <Text id="graph-explorer-heading" as="h2" variant="body" weight="semibold">
+            <div className="border-b border-border-subtle/80 px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-2 text-fg-tertiary">
+                        <Icon.Graph className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                        <Text
+                            id="graph-explorer-heading"
+                            as="h2"
+                            variant="label"
+                            weight="semibold"
+                            className="text-current"
+                        >
                             Graph Explorer
                         </Text>
-                        <Text as="p" variant="meta" tone="tertiary" className="mt-0.5">
-                            Connection index
-                        </Text>
                     </div>
+                    <Text
+                        id="graph-node-results-summary"
+                        as="span"
+                        aria-live="polite"
+                        aria-atomic="true"
+                        variant="meta"
+                        tone="tertiary"
+                        className="shrink-0"
+                    >
+                        {graphResultsSummary}
+                    </Text>
+                </div>
+                <div className="relative mt-2.5">
+                    <Icon.Search
+                        className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-fg-tertiary"
+                        aria-hidden="true"
+                    />
+                    <Input
+                        id="graph-node-search"
+                        size="sm"
+                        value={nodeSearchQuery}
+                        onChange={(event) => onNodeSearchQueryChange(event.target.value)}
+                        placeholder="Find graph notes"
+                        aria-label="Search graph notes"
+                        aria-describedby="graph-node-results-summary"
+                        className={classNames('pl-9', nodeSearchQuery && 'pr-9')}
+                    />
+                    {nodeSearchQuery && (
+                        <button
+                            type="button"
+                            onClick={() => onNodeSearchQueryChange('')}
+                            className="focus-ring-soft absolute top-1/2 right-1.5 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-[8px] text-fg-tertiary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default"
+                            aria-label="Clear graph search"
+                        >
+                            <Icon.Close className="h-3.5 w-3.5" aria-hidden="true" />
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -151,7 +189,7 @@ export function GraphExplorerPanel({
                     : selectedNodeStatus}
             </Text>
 
-            <div className="border-b border-border-subtle/80 px-4 py-3">
+            <div className="border-b border-border-subtle/80 px-4 py-2.5">
                 {selectedNode ? (
                     <div className="min-w-0">
                         <div className="flex items-start justify-between gap-3">
@@ -204,52 +242,15 @@ export function GraphExplorerPanel({
                         )}
                     </div>
                 ) : (
-                    <div>
-                        <Text as="p" variant="body" weight="semibold">
-                            No graph node selected
-                        </Text>
-                        <Text as="p" variant="meta" tone="tertiary" className="mt-0.5">
-                            {graphNodes[0]?.title ? `Most linked: ${graphNodes[0].title}` : 'No linked notes'}
-                        </Text>
-                    </div>
+                    <Text as="p" variant="meta" tone="secondary">
+                        {graphNodes[0]?.title
+                            ? `Select a node to preview links. Most linked: ${graphNodes[0].title}`
+                            : 'Select a node to preview links.'}
+                    </Text>
                 )}
             </div>
 
             <div className="flex min-h-0 flex-1 flex-col">
-                <div className="border-b border-border-subtle/60 px-4 py-2.5">
-                    <div className="flex items-center justify-between gap-3">
-                        <Text as="h3" variant="label" weight="semibold">
-                            Notes
-                        </Text>
-                        <Text
-                            id="graph-node-results-summary"
-                            as="span"
-                            aria-live="polite"
-                            aria-atomic="true"
-                            variant="meta"
-                            tone="tertiary"
-                            className="shrink-0"
-                        >
-                            {graphResultsSummary}
-                        </Text>
-                    </div>
-                    <div className="relative mt-2">
-                        <Icon.Search
-                            className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-fg-tertiary"
-                            aria-hidden="true"
-                        />
-                        <Input
-                            id="graph-node-search"
-                            size="sm"
-                            value={nodeSearchQuery}
-                            onChange={(event) => onNodeSearchQueryChange(event.target.value)}
-                            placeholder="Find a note"
-                            aria-label="Search graph"
-                            aria-describedby="graph-node-results-summary"
-                            className="pl-9"
-                        />
-                    </div>
-                </div>
                 <Text id="graph-node-list-keyboard-help" as="p" className="sr-only">
                     Focus the graph notes list and use arrow, page, home, or end keys to browse more results.
                 </Text>

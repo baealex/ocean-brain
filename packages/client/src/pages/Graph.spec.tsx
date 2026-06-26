@@ -195,7 +195,7 @@ describe('<Graph />', () => {
         const list = await screen.findByRole('list', { name: 'Graph notes' });
         expect(list).toHaveAttribute('tabindex', '0');
         expect(list).toHaveAccessibleDescription(
-            '20 shown Focus the graph notes list and use arrow, page, home, or end keys to browse more results.',
+            '20 graph notes shown Focus the graph notes list and use arrow, page, home, or end keys to browse more results.',
         );
 
         list.focus();
@@ -214,15 +214,21 @@ describe('<Graph />', () => {
         const user = userEvent.setup();
         renderGraph();
 
-        const searchInput = await screen.findByRole('textbox', { name: 'Search graph' });
-        expect(searchInput).toHaveAccessibleDescription('2 shown');
+        const searchInput = await screen.findByRole('textbox', { name: 'Search graph notes' });
+        expect(searchInput).toHaveAccessibleDescription('2 graph notes shown');
 
         await user.type(searchInput, 'beta');
 
         expect(screen.getByRole('button', { name: /Beta note/ })).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: /Alpha note/ })).not.toBeInTheDocument();
-        expect(searchInput).toHaveAccessibleDescription('1 shown');
+        expect(searchInput).toHaveAccessibleDescription('1 graph notes shown');
         expect(virtualizerMocks.scrollToOffset).toHaveBeenCalledWith(0, { behavior: 'auto' });
+
+        await user.click(screen.getByRole('button', { name: 'Clear graph search' }));
+
+        expect(searchInput).toHaveValue('');
+        expect(screen.getByRole('button', { name: /Alpha note/ })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Beta note/ })).toBeInTheDocument();
     });
 
     it('does not let selected-node scrolling override search reset', async () => {
@@ -241,7 +247,7 @@ describe('<Graph />', () => {
         virtualizerMocks.scrollToIndex.mockClear();
         virtualizerMocks.scrollToOffset.mockClear();
 
-        await user.type(screen.getByRole('textbox', { name: 'Search graph' }), 'note');
+        await user.type(screen.getByRole('textbox', { name: 'Search graph notes' }), 'note');
 
         expect(screen.getByRole('button', { name: /Alpha note/ })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /Beta note/ })).toBeInTheDocument();

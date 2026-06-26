@@ -8,7 +8,7 @@ import {
     createMcpAdminStatusHandler,
 } from '../features/mcp-admin/http/handlers.js';
 import type { McpAdminService } from '../features/mcp-admin/service.js';
-import { requireSessionForWrite } from '../modules/auth-guard.js';
+import { createCsrfProtection, requireSessionForWrite } from '../modules/auth-guard.js';
 import type { AuthConfig } from '../modules/auth-mode.js';
 import { createAuthAttemptRateLimit } from '../modules/rate-limit.js';
 import { createServerEventsHandler } from '../modules/server-events-handler.js';
@@ -20,32 +20,40 @@ type McpAdminApiService = Pick<
     'getStatus' | 'setEnabled' | 'rotateToken' | 'revokeActiveToken' | 'validatePresentedToken'
 >;
 
-export const createApiRouter = (authConfig: AuthConfig, mcpAdminService: McpAdminApiService) =>
-    Router()
+export const createApiRouter = (authConfig: AuthConfig, mcpAdminService: McpAdminApiService) => {
+    const csrfProtection = createCsrfProtection(authConfig);
+    const requireSession = requireSessionForWrite(authConfig);
+
+    return Router()
         .use('/mcp', createMcpRouter(authConfig, mcpAdminService))
-        .post('/auth/login', createAuthAttemptRateLimit(), useAsync(createLoginHandler(authConfig)))
-        .post('/auth/logout', useAsync(createLogoutHandler(authConfig)))
-        .get('/auth/session', useAsync(createSessionStatusHandler(authConfig)))
+        .get('/auth/session', csrfProtection, useAsync(createSessionStatusHandler(authConfig)))
+        .post('/auth/login', csrfProtection, createAuthAttemptRateLimit(), useAsync(createLoginHandler(authConfig)))
+        .post('/auth/logout', requireSession, csrfProtection, useAsync(createLogoutHandler(authConfig)))
         .get(
             '/mcp-admin/status',
-            requireSessionForWrite(authConfig),
+            requireSession,
+            csrfProtection,
             useAsync(createMcpAdminStatusHandler(mcpAdminService)),
         )
         .post(
             '/mcp-admin/enabled',
-            requireSessionForWrite(authConfig),
+            requireSession,
+            csrfProtection,
             useAsync(createMcpAdminSetEnabledHandler(mcpAdminService)),
         )
         .post(
             '/mcp-admin/token/rotate',
-            requireSessionForWrite(authConfig),
+            requireSession,
+            csrfProtection,
             useAsync(createMcpAdminRotateTokenHandler(mcpAdminService)),
         )
         .post(
             '/mcp-admin/token/revoke',
-            requireSessionForWrite(authConfig),
+            requireSession,
+            csrfProtection,
             useAsync(createMcpAdminRevokeTokenHandler(mcpAdminService)),
         )
-        .post('/image', requireSessionForWrite(authConfig), useAsync(createUploadImageHandler()))
-        .post('/image-from-src', requireSessionForWrite(authConfig), useAsync(createUploadImageFromSrcHandler()))
-        .get('/events', requireSessionForWrite(authConfig), createServerEventsHandler());
+        .post('/image', requireSession, csrfProtection, useAsync(createUploadImageHandler()))
+        .post('/image-from-src', requireSession, csrfProtection, useAsync(createUploadImageFromSrcHandler()))
+        .get('/events', requireSession, csrfProtection, createServerEventsHandler());
+};

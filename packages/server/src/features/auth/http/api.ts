@@ -7,7 +7,9 @@ import {
     buildSessionResponse,
     compareSharedSecret,
     destroySession,
+    refreshCsrfToken,
     regenerateSession,
+    setSessionStatusHeaders,
 } from '../service.js';
 
 export const createLoginHandler = (authConfig: AuthConfig): Controller => {
@@ -21,6 +23,7 @@ export const createLoginHandler = (authConfig: AuthConfig): Controller => {
 
         await regenerateSession(req);
         req.session.authenticated = true;
+        refreshCsrfToken(req);
 
         res.status(200).json(buildSessionResponse(authConfig, req)).end();
     };
@@ -38,6 +41,7 @@ export const createLogoutHandler = (authConfig: AuthConfig): Controller => {
 
 export const createSessionStatusHandler = (authConfig: AuthConfig): Controller => {
     return async (req, res) => {
+        setSessionStatusHeaders(res);
         res.status(200).json(buildSessionResponse(authConfig, req)).end();
     };
 };

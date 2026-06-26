@@ -1,52 +1,41 @@
-import { render, screen } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 
 import SiteLayout from './SiteLayout';
 
-vi.mock('./LayoutShell', () => ({
-    default: ({
-        sidebar,
-        topNavigation,
-        children,
-    }: {
-        sidebar: ReactNode;
-        topNavigation: ReactNode;
-        children?: ReactNode;
-    }) => (
-        <div>
-            <div data-testid="sidebar-slot">{sidebar}</div>
-            <div data-testid="top-navigation-slot">{topNavigation}</div>
-            <div data-testid="content-slot">{children}</div>
-        </div>
-    ),
+vi.mock('@tanstack/react-router', () => ({
+    useLocation: ({ select }: { select: (location: { pathname: string }) => string }) => select({ pathname: '/notes' }),
 }));
 
-vi.mock('./SidebarHeroBanner', () => ({ default: () => <div>Hero Banner</div> }));
+vi.mock('./SidebarHeroBanner', () => ({ default: () => null }));
 
-vi.mock('./SidebarSearch', () => ({ default: () => <div>Sidebar Search</div> }));
+vi.mock('./SidebarSearch', () => ({ default: () => null }));
 
-vi.mock('./SidebarPrimaryActions', () => ({ default: () => <div>Primary Actions</div> }));
+vi.mock('./SidebarPrimaryActions', () => ({ default: () => null }));
 
-vi.mock('./SidebarPinnedNotes', () => ({ default: () => <div>Pinned Notes</div> }));
+vi.mock('./SidebarPinnedNotes', () => ({ default: () => null }));
 
-vi.mock('~/components/demo/DemoSidebarPromoSlot', () => ({ default: () => <div>Demo Promo</div> }));
+vi.mock('~/components/demo/DemoSidebarPromoSlot', () => ({ default: () => null }));
 
-vi.mock('./TopNavigation', () => ({ default: () => <div>Top Navigation</div> }));
+vi.mock('./TopNavigation', () => ({ default: () => null }));
 
 describe('<SiteLayout />', () => {
-    it('composes the sidebar, top navigation, and page content', () => {
+    it('renders page content inside the main layout and exposes the sidebar toggle', () => {
         render(
             <SiteLayout>
-                <div>Page Content</div>
+                <h1>Page Content</h1>
             </SiteLayout>,
         );
 
-        expect(screen.getByTestId('sidebar-slot')).toHaveTextContent('Hero Banner');
-        expect(screen.getByTestId('sidebar-slot')).toHaveTextContent('Primary Actions');
-        expect(screen.getByTestId('sidebar-slot')).toHaveTextContent('Sidebar Search');
-        expect(screen.getByTestId('sidebar-slot')).toHaveTextContent('Pinned Notes');
-        expect(screen.getByTestId('sidebar-slot')).toHaveTextContent('Demo Promo');
-        expect(screen.getByTestId('top-navigation-slot')).toHaveTextContent('Top Navigation');
-        expect(screen.getByTestId('content-slot')).toHaveTextContent('Page Content');
+        const main = screen.getByRole('main');
+        const sidebar = screen.getByRole('complementary');
+        const toggle = screen.getByRole('button', { name: 'Toggle sidebar' });
+
+        expect(within(main).getByRole('heading', { name: 'Page Content' })).toBeInTheDocument();
+        expect(toggle).toHaveAttribute('aria-controls', sidebar.id);
+        expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+        fireEvent.click(toggle);
+
+        expect(toggle).toHaveAttribute('aria-expanded', 'true');
     });
 });

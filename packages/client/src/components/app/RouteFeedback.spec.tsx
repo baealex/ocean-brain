@@ -21,12 +21,10 @@ describe('RouteFeedback', () => {
     };
 
     it('renders the pending skeleton layout without a visible page header', () => {
-        const { container } = render(
-            <RoutePendingView title="Loading graph" description="Preparing the linked note constellation." />,
-        );
+        render(<RoutePendingView title="Loading graph" description="Preparing the linked note constellation." />);
 
+        expect(screen.getByRole('status', { name: 'Loading graph' })).toBeInTheDocument();
         expect(screen.queryByText('Loading graph')).not.toBeInTheDocument();
-        expect(container.querySelectorAll('.animate-shimmer')).toHaveLength(3);
     });
 
     it('renders the route error message and recovery actions', async () => {

@@ -46,14 +46,33 @@ Updated: 2026-03-09
 - Over-mocking child modules until the test no longer represents the real contract.
 - Asserting cosmetic class names unless styling itself is the contract.
 
-## 7. Ocean Brain FE Baseline
+## 7. Test Audit Checklist
+Use this checklist when adding, reviewing, or cleaning up tests. A test should be deleted or rewritten when it mostly proves one of these things:
+
+- Cosmetic class names, raw Tailwind utilities, or DOM structure that users cannot observe.
+- A simple snapshot or broad render smoke check with no meaningful contract.
+- Behavior already covered by a cheaper or stronger test.
+- Copy, layout, or implementation details that can change with a small product-spec adjustment.
+- Expected values computed by reimplementing the production algorithm in the test.
+- Mocked composition where every meaningful child or boundary is replaced, leaving only import wiring.
+- Fixed time sleeps or current-time assertions that can be replaced with a deterministic event, fake timer, or frozen clock.
+
+Prefer these replacements:
+
+- Assert accessible roles, labels, submitted payloads, navigation targets, persisted state, error surfaces, and visible user outcomes.
+- Use minimal explicit fixtures instead of large seed data when the seed is not the contract.
+- Extract small pure helpers only when they expose a stable behavior contract and reduce UI-test implementation coupling.
+- Keep class or CSS assertions only for a documented styling contract, and prefer semantic state where possible.
+- For expensive integration and E2E tests, make the protected risk explicit and wait on concrete readiness conditions.
+
+## 8. Ocean Brain FE Baseline
 - Route search validation should be covered with focused unit tests.
 - Mutation-heavy hooks should cover success, navigation, invalidation, and guarded flows.
 - Layout and navigation tests should assert user-visible contracts, not internal composition.
 - One composed layout or route test should remain to catch cross-boundary regressions.
 - New fallback or recovery UI should ship with a test for the intended visible state.
 
-## 8. PR and CI Expectations
+## 9. PR and CI Expectations
 - Frontend changes that alter routing, loading, mutation, or fallback behavior should add or update tests unless there is a clear reason not to.
 - `pnpm test:ci` is part of CI and must stay green.
 - Recommended local validation for FE test changes:
@@ -62,12 +81,12 @@ Updated: 2026-03-09
 - `pnpm type-check`
 - `pnpm build`
 
-## 9. Source Notes
+## 10. Source Notes
 - The Pragmatic Programmer tips: testing is a perspective into code, write the failing test before fixing bugs, prove assumptions, test significant states, use tracer bullets, and finish only when tests pass.
 - Unit Testing: Principles, Practices, and Patterns: good tests balance protection against regressions, resistance to refactoring, fast feedback, and maintainability.
 - Enterprisecraftsmanship guidance: mock dependencies that are not part of the end result, and do not expose private state just to enable tests.
 
-## 10. References
+## 11. References
 - https://pragprog.com/tips/
 - https://www.manning.com/books/unit-testing
 - https://freecontent.manning.com/wp-content/uploads/Unit-Testing-Chapter-4-1.pdf

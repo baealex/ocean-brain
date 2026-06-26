@@ -18,7 +18,6 @@ const mockUseNoteMutate = vi.hoisted(() => ({
     onDelete: vi.fn(),
     onPinned: vi.fn(),
 }));
-let editorMountCount = 0;
 
 vi.mock('@tanstack/react-router', () => ({
     getRouteApi: () => ({
@@ -73,10 +72,6 @@ vi.mock('~/components/shared/Editor', async () => {
             setValue(content);
             contentRef.current = content;
         }, [content]);
-
-        React.useEffect(() => {
-            editorMountCount += 1;
-        }, []);
 
         React.useImperativeHandle(ref, () => ({
             getContent: () => contentRef.current,
@@ -183,7 +178,6 @@ describe('<NoteContent /> external change handling', () => {
         mockUseNoteMutate.onPinned.mockReset();
         mockUseBlocker.mockReset();
         window.localStorage.clear();
-        editorMountCount = 0;
     });
 
     it('does not reopen the external-change modal when a stale detail refetch resolves after a local save', async () => {
@@ -350,7 +344,7 @@ describe('<NoteContent /> external change handling', () => {
         expect(screen.getByText(/An MCP client changed this note while it was open here/)).toBeInTheDocument();
     });
 
-    it('keeps the editor mounted after saving local content edits', async () => {
+    it('keeps local editor content after saving local content edits', async () => {
         const user = userEvent.setup();
         const initialNote = createNote({
             content: createContent('Initial body'),
@@ -364,7 +358,6 @@ describe('<NoteContent /> external change handling', () => {
         renderNote(initialNote);
 
         const editor = await screen.findByLabelText('Editor');
-        const mountCountAfterInitialRender = editorMountCount;
 
         vi.mocked(updateNote).mockResolvedValue({
             type: 'success',
@@ -376,7 +369,6 @@ describe('<NoteContent /> external change handling', () => {
         await user.click(screen.getByRole('button', { name: 'Save' }));
 
         await waitFor(() => expect(updateNote).toHaveBeenCalledTimes(1));
-        expect(editorMountCount).toBe(mountCountAfterInitialRender);
         expect(screen.getByLabelText('Editor')).toHaveValue('Local body');
     });
 

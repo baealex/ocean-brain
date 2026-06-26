@@ -6,7 +6,6 @@ import { describe, test } from 'node:test';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import {
-    MCP_METADATA_PROPERTY_PATCH_LIMIT,
     createIntentWriteOperationFingerprint,
     metadataPropertyPatchSchema,
     registerIntentWriteTools
@@ -499,9 +498,19 @@ describe('metadataPropertyPatchSchema', () => {
         assert.equal(result.success, false);
     });
 
-    test('rejects more than 50 set or delete entries', () => {
+    test('accepts 50 property edits and rejects 51 set or delete entries', () => {
         // Arrange
-        const overLimit = MCP_METADATA_PROPERTY_PATCH_LIMIT + 1;
+        const atLimit = 50;
+        const overLimit = 51;
+        const boundarySetPatch = {
+            set: Array.from({ length: atLimit }, (_, index) => ({
+                key: `field-${index}`,
+                value: 'value'
+            }))
+        };
+        const boundaryDeletePatch = {
+            deleteKeys: Array.from({ length: atLimit }, (_, index) => `field-${index}`)
+        };
         const setPatch = {
             set: Array.from({ length: overLimit }, (_, index) => ({
                 key: `field-${index}`,
@@ -513,10 +522,14 @@ describe('metadataPropertyPatchSchema', () => {
         };
 
         // Act
+        const boundarySetResult = metadataPropertyPatchSchema.safeParse(boundarySetPatch);
+        const boundaryDeleteResult = metadataPropertyPatchSchema.safeParse(boundaryDeletePatch);
         const setResult = metadataPropertyPatchSchema.safeParse(setPatch);
         const deleteResult = metadataPropertyPatchSchema.safeParse(deletePatch);
 
         // Assert
+        assert.equal(boundarySetResult.success, true);
+        assert.equal(boundaryDeleteResult.success, true);
         assert.equal(setResult.success, false);
         assert.equal(deleteResult.success, false);
     });

@@ -54,6 +54,7 @@ describe('<ManageImage />', () => {
         });
 
         expect(screen.getByRole('heading', { name: 'Images' })).toBeInTheDocument();
-        expect(screen.queryByRole('img')).not.toBeInTheDocument();
+        expect(screen.getByText('There are no images')).toBeInTheDocument();
+        expect(screen.getByText('Upload an image in any note and it will appear here')).toBeInTheDocument();
     });
 });

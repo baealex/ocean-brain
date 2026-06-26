@@ -1,5 +1,6 @@
 import { RouterProvider } from '@tanstack/react-router';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { createTestRouter } from '~/test/create-test-router';
 
@@ -29,6 +30,7 @@ describe('<LayoutShell />', () => {
     });
 
     it('exposes the mobile sidebar toggle as an accessible stateful control', async () => {
+        const user = userEvent.setup();
         const router = createTestRouter({
             initialPath: '/',
             routePath: '/',
@@ -51,7 +53,7 @@ describe('<LayoutShell />', () => {
         expect(toggleButton).toHaveAttribute('aria-expanded', 'false');
         expect(toggleButton).toHaveAttribute('aria-controls', sidebar?.id);
 
-        fireEvent.click(toggleButton);
+        await user.click(toggleButton);
 
         expect(toggleButton).toHaveAttribute('aria-expanded', 'true');
     });

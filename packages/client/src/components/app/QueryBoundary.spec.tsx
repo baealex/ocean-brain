@@ -1,5 +1,6 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { createQueryClientWrapper } from '~/test/test-utils';
 
@@ -50,6 +51,7 @@ describe('QueryBoundary', () => {
     });
 
     it('retries a failed suspense query when the boundary resets', async () => {
+        const user = userEvent.setup();
         let shouldFail = true;
 
         function RetriableHarness() {
@@ -88,7 +90,8 @@ describe('QueryBoundary', () => {
         expect(await screen.findByText('Boundary failed')).toBeInTheDocument();
 
         shouldFail = false;
-        fireEvent.click(screen.getByRole('button', { name: 'Retry boundary' }));
+
+        await user.click(screen.getByRole('button', { name: 'Retry boundary' }));
 
         expect(await screen.findByText('Recovered data')).toBeInTheDocument();
     });

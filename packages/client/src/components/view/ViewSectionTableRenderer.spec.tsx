@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import type { Note } from '~/models/note.model';
 import type { ViewSection } from '~/models/view.model';
@@ -105,13 +106,16 @@ describe('<ViewSectionTableRenderer />', () => {
         expect(within(table).getByText('Doing')).toBeInTheDocument();
     });
 
-    it('opens the note when a table row is activated', () => {
+    it('opens the note when a table row is activated', async () => {
+        const user = userEvent.setup();
+
         renderTable();
 
         const row = screen.getByRole('link', { name: /Ocean Brain task/i }).closest('tr');
 
         expect(row).toBeInTheDocument();
-        fireEvent.click(row);
+
+        await user.click(row!);
 
         expect(mockNavigate).toHaveBeenCalledWith({
             to: NOTE_ROUTE,
@@ -143,12 +147,13 @@ describe('<ViewSectionTableRenderer />', () => {
         expect(within(table).queryByRole('columnheader', { name: 'Properties' })).not.toBeInTheDocument();
     });
 
-    it('requests saved section sorting from sortable column headers', () => {
+    it('requests saved section sorting from sortable column headers', async () => {
+        const user = userEvent.setup();
         const handleSortChange = vi.fn();
 
         renderTable({ onSortChange: handleSortChange });
 
-        fireEvent.click(screen.getByRole('button', { name: /Title/ }));
+        await user.click(screen.getByRole('button', { name: /Title/ }));
 
         expect(handleSortChange).toHaveBeenCalledWith('title');
     });

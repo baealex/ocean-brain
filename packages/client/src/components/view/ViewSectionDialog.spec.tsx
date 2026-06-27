@@ -129,6 +129,23 @@ describe('<ViewSectionDialog />', () => {
         expect(screen.getByText('AND requires every selected tag. OR accepts any selected tag.')).toBeInTheDocument();
     });
 
+    it('exposes existing tag chip selection state', () => {
+        render(
+            <ViewSectionDialog
+                open
+                mode="edit"
+                initialSection={createSection({ tagNames: ['@product'] })}
+                availableTags={[createTag('@product', 1), createTag('@docs', 2)]}
+                availableProperties={[]}
+                onClose={vi.fn()}
+                onSubmit={vi.fn()}
+            />,
+        );
+
+        expect(screen.getByRole('button', { name: '@product' })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: '@docs' })).toHaveAttribute('aria-pressed', 'false');
+    });
+
     it('normalizes unavailable initial display types back to list when editing', () => {
         render(
             <ViewSectionDialog

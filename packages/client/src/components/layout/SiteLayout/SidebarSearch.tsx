@@ -113,7 +113,7 @@ const SidebarSearch = () => {
                             hasResults ? searchRowWithResultsClassName : searchRowIdleClassName
                         }`}
                     >
-                        <button type="submit" aria-label="Search" className={iconButtonClassName}>
+                        <button type="submit" aria-label="Search notes" className={iconButtonClassName}>
                             <Icon.Search className="h-4.5 w-4.5" weight="bold" />
                         </button>
                         <input

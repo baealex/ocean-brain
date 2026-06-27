@@ -16,7 +16,7 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('~/apis/note.api', () => ({ fetchNotes: vi.fn() }));
 
 describe('<SidebarSearch />', () => {
-    it('renders debounced note and tag suggestions', async () => {
+    it('renders debounced note suggestions and labelled controls', async () => {
         const user = userEvent.setup();
 
         vi.mocked(fetchNotes).mockResolvedValue({
@@ -34,6 +34,9 @@ describe('<SidebarSearch />', () => {
         render(<SidebarSearch />);
 
         await user.type(screen.getByRole('textbox'), 'alpha');
+
+        expect(screen.getByRole('button', { name: 'Search notes' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Clear search' })).toBeInTheDocument();
 
         await waitFor(() => {
             expect(fetchNotes).toHaveBeenCalledWith({

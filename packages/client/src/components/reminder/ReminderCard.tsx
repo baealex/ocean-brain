@@ -57,6 +57,7 @@ export default function ReminderCard({ reminder, onUpdate, onDelete }: ReminderC
                     checked={reminder.completed}
                     onChange={() => onUpdate(reminder.id, noteId, { completed: !reminder.completed })}
                     size="sm"
+                    aria-label={`Reminder: ${primaryText}`}
                 />
                 <div className="min-w-0 flex-1">
                     <Text

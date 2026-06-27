@@ -47,7 +47,7 @@ vi.mock('~/components/ui', async () => {
     const actual = await vi.importActual<object>('~/components/ui');
     return {
         ...actual,
-        Checkbox: () => <button type="button" aria-label="reminder checkbox" />,
+        Checkbox: (props: React.InputHTMLAttributes<HTMLInputElement>) => <input type="checkbox" {...props} />,
     };
 });
 
@@ -79,6 +79,7 @@ describe('<ReminderPanel />', () => {
         render(<ReminderPanel noteId="note-1" />);
 
         expect(screen.getByText('No reminders yet')).toBeInTheDocument();
+        expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
         expect(screen.queryByText('Follow up')).not.toBeInTheDocument();
     });
 
@@ -99,6 +100,7 @@ describe('<ReminderPanel />', () => {
         render(<ReminderPanel noteId="note-1" />);
 
         expect(screen.getByText('Follow up')).toBeInTheDocument();
+        expect(screen.getByRole('checkbox', { name: 'Reminder: Follow up' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Reminder actions' })).toBeInTheDocument();
     });
 });

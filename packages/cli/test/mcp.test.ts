@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { fetchMcpNoteWriteBaseline } from '../src/mcp.js';
+import { createMcpRequestHeaders, fetchMcpNoteWriteBaseline, OCEAN_BRAIN_MCP_VERSION_HEADER } from '../src/mcp.js';
 
 test('fetchMcpNoteWriteBaseline requests the side-effect-free MCP HTTP baseline endpoint', async () => {
     const requests: Array<{
@@ -41,4 +41,12 @@ test('fetchMcpNoteWriteBaseline requests the side-effect-free MCP HTTP baseline 
             },
         },
     ]);
+});
+
+test('createMcpRequestHeaders includes the MCP package version contract header', () => {
+    const headers = createMcpRequestHeaders('token-a');
+
+    assert.equal(headers['Content-Type'], 'application/json');
+    assert.equal(headers.Authorization, 'Bearer token-a');
+    assert.match(headers[OCEAN_BRAIN_MCP_VERSION_HEADER], /^\d+\.\d+\.\d+/);
 });

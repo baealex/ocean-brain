@@ -7,6 +7,7 @@ import {
     validateHomeSearch,
     validatePaginationSearch,
     validateSearchPageSearch,
+    validateTagSearch,
     validateViewNotesSearch,
 } from '~/modules/route-search';
 import {
@@ -96,7 +97,7 @@ const tagRoute = createRoute({
     path: TAG_ROUTE,
     component: lazyRouteComponent(() => import('~/pages/Tag')),
     pendingComponent: () => <RoutePendingView title="Loading tags" description="Preparing the tag catalog." />,
-    validateSearch: validatePaginationSearch,
+    validateSearch: validateTagSearch,
 });
 
 const noteRoute = createRoute({

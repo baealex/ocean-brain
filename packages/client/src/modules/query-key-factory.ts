@@ -122,6 +122,8 @@ export const queryKeys = {
                     limit: params.limit ?? 50,
                     offset: params.offset ?? 0,
                     query: params.query ?? '',
+                    sortBy: params.sortBy ?? 'referenceCount',
+                    sortOrder: params.sortOrder ?? 'desc',
                 },
             ] as const,
     },

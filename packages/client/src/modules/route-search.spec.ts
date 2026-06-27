@@ -5,6 +5,7 @@ import {
     validateHomeSearch,
     validatePaginationSearch,
     validateSearchPageSearch,
+    validateTagSearch,
     validateViewNotesSearch,
 } from './route-search';
 
@@ -51,6 +52,24 @@ describe('route-search validators', () => {
         ).toEqual({
             page: 3,
             query: 'ocean',
+        });
+    });
+
+    it('reads tag page query and page', () => {
+        expect(
+            validateTagSearch({
+                page: '2',
+                query: '@docs',
+                limit: '200',
+                sortBy: 'name',
+                sortOrder: 'asc',
+            }),
+        ).toEqual({
+            page: 2,
+            query: '@docs',
+            limit: 200,
+            sortBy: 'name',
+            sortOrder: 'asc',
         });
     });
 

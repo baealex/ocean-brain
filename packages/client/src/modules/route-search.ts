@@ -2,10 +2,12 @@ import dayjs from 'dayjs';
 
 import type { SortBy, SortOrder } from '~/components/shared/NoteFilters';
 import { HOME_DEFAULT_LIMIT, HOME_LIMIT_OPTIONS, type HomeLimit } from '~/modules/home-pagination';
+import { TAG_DEFAULT_LIMIT, TAG_LIMIT_OPTIONS, type TagLimit } from '~/modules/tag-pagination';
 
 type SearchRecord = Record<string, unknown>;
 
 const HOME_SORT_BY = ['updatedAt', 'createdAt'] as const satisfies readonly SortBy[];
+const TAG_SORT_BY = ['referenceCount', 'name'] as const;
 const SORT_ORDER = ['asc', 'desc'] as const satisfies readonly SortOrder[];
 const CALENDAR_TYPES = ['create', 'update'] as const;
 
@@ -82,6 +84,13 @@ export interface SearchRouteSearch extends PaginationRouteSearch {
     query: string;
 }
 
+export interface TagRouteSearch extends PaginationRouteSearch {
+    query: string;
+    limit: TagLimit;
+    sortBy: (typeof TAG_SORT_BY)[number];
+    sortOrder: SortOrder;
+}
+
 export interface CalendarRouteSearch {
     year: number;
     month: number;
@@ -107,6 +116,14 @@ export const validatePaginationSearch = (search: SearchRecord): PaginationRouteS
 export const validateSearchPageSearch = (search: SearchRecord): SearchRouteSearch => ({
     page: parsePositiveInt(search.page, 1),
     query: parseString(search.query, ''),
+});
+
+export const validateTagSearch = (search: SearchRecord): TagRouteSearch => ({
+    page: parsePositiveInt(search.page, 1),
+    query: parseString(search.query, ''),
+    limit: parseNumberEnum(search.limit, TAG_LIMIT_OPTIONS, TAG_DEFAULT_LIMIT),
+    sortBy: parseEnum(search.sortBy, TAG_SORT_BY, 'referenceCount'),
+    sortOrder: parseEnum(search.sortOrder, SORT_ORDER, 'desc'),
 });
 
 export const validateCalendarSearch = (search: SearchRecord): CalendarRouteSearch => ({

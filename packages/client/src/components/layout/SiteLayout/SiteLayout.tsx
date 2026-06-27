@@ -4,6 +4,7 @@ import DemoSidebarPromoSlot from '~/components/demo/DemoSidebarPromoSlot';
 
 import LayoutShell from './LayoutShell';
 import SidebarHeroBanner from './SidebarHeroBanner';
+import SidebarPinnedNotes from './SidebarPinnedNotes';
 import SidebarPrimaryActions from './SidebarPrimaryActions';
 import SidebarSearch from './SidebarSearch';
 import TopNavigation from './TopNavigation';
@@ -18,9 +19,10 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
             sidebar={
                 <>
                     <SidebarHeroBanner />
-                    <SidebarSearch />
-                    <DemoSidebarPromoSlot />
                     <SidebarPrimaryActions />
+                    <SidebarSearch />
+                    <SidebarPinnedNotes />
+                    <DemoSidebarPromoSlot />
                 </>
             }
             topNavigation={<TopNavigation />}

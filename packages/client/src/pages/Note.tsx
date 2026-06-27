@@ -424,6 +424,7 @@ const NotePropertiesPanel = ({
             ) : (
                 <div className="divide-y divide-border-subtle">
                     {rows.map((row) => {
+                        const propertyLabelId = `note-property-${row.id}-label`;
                         const safeExternalUrl = row.valueType === 'url' ? getSafeExternalUrl(row.value) : null;
 
                         return (
@@ -432,7 +433,13 @@ const NotePropertiesPanel = ({
                                 className="group grid gap-2 py-2 sm:grid-cols-[minmax(0,180px)_minmax(0,1fr)_auto] sm:items-center"
                             >
                                 <div className="flex min-w-0 items-center gap-2 px-1">
-                                    <Text as="span" variant="label" tone="secondary" className="truncate">
+                                    <Text
+                                        id={propertyLabelId}
+                                        as="span"
+                                        variant="label"
+                                        tone="secondary"
+                                        className="truncate"
+                                    >
                                         {row.name}
                                     </Text>
                                     <Text
@@ -450,6 +457,7 @@ const NotePropertiesPanel = ({
                                         variant="ghost"
                                         value={row.value || 'false'}
                                         disabled={disabled}
+                                        aria-labelledby={propertyLabelId}
                                         onValueChange={(value) => updateRow(row.id, { value })}
                                     >
                                         <SelectItem value="false">False</SelectItem>
@@ -462,6 +470,7 @@ const NotePropertiesPanel = ({
                                         value={row.value}
                                         placeholder="Select option"
                                         disabled={disabled}
+                                        aria-labelledby={propertyLabelId}
                                         onValueChange={(value) => updateRow(row.id, { value })}
                                     >
                                         {(

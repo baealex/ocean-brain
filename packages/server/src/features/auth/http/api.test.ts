@@ -3,6 +3,7 @@ import type { AddressInfo } from 'node:net';
 import test, { type TestContext } from 'node:test';
 import { createApp } from '~/app.js';
 import { AUTH_SESSION_COOKIE_NAME, type AuthConfig } from '~/modules/auth-mode.js';
+import { AUTH_SESSION_IDLE_TIMEOUT_MS } from '~/modules/session-store.js';
 
 const createPasswordAuthConfig = (): AuthConfig => ({
     mode: 'password',
@@ -21,19 +22,37 @@ const createOpenAuthConfig = (): AuthConfig => ({
 const startServer = async (t: TestContext, authConfig: AuthConfig) => {
     const app = createApp(authConfig);
     const server = app.listen(0);
+    let closed = false;
 
     await new Promise<void>((resolve, reject) => {
         server.once('listening', () => resolve());
         server.once('error', reject);
     });
 
-    t.after(() => {
-        server.close();
-    });
+    const close = async () => {
+        if (closed) {
+            return;
+        }
+
+        closed = true;
+
+        await new Promise<void>((resolve, reject) => {
+            server.close((error) => {
+                if (error) {
+                    reject(error);
+                    return;
+                }
+
+                resolve();
+            });
+        });
+    };
+
+    t.after(close);
 
     const address = server.address() as AddressInfo;
 
-    return { baseUrl: `http://127.0.0.1:${address.port}` };
+    return { baseUrl: `http://127.0.0.1:${address.port}`, close };
 };
 
 const getSetCookies = (headers: Headers) => {
@@ -43,10 +62,17 @@ const getSetCookies = (headers: Headers) => {
     }
 
     const setCookie = headers.get('set-cookie');
-    return setCookie ? [setCookie] : [];
+    return setCookie ? setCookie.split(/,(?=\s*[^;,]+=)/).map((cookie) => cookie.trim()) : [];
 };
 
 const toCookieHeader = (setCookies: string[]) => setCookies.map((cookie) => cookie.split(';')[0]).join('; ');
+
+const getCookieAttribute = (setCookie: string, attributeName: string) =>
+    setCookie
+        .split(';')
+        .map((part) => part.trim())
+        .find((part) => part.toLowerCase().startsWith(`${attributeName.toLowerCase()}=`))
+        ?.slice(attributeName.length + 1);
 
 const mergeCookieHeaders = (...cookieHeaders: (string | undefined)[]) => {
     const cookies = new Map<string, string>();
@@ -124,8 +150,65 @@ const jsonRequest = async (
         status: response.status,
         body: (await response.json()) as Record<string, unknown>,
         cookie: mergeCookieHeaders(requestCookie, toCookieHeader(getSetCookies(response.headers))) || undefined,
+        setCookies: getSetCookies(response.headers),
+        sessionGeneration: response.headers.get('x-ocean-brain-session-generation') ?? undefined,
+        cacheControl: response.headers.get('cache-control') ?? undefined,
     };
 };
+
+test('password session status sends recovery headers for unauthenticated users', async (t) => {
+    const { baseUrl } = await startServer(t, createPasswordAuthConfig());
+
+    const anonymousSession = await jsonRequest(baseUrl, '/api/auth/session', 'GET');
+
+    assert.equal(anonymousSession.status, 200);
+    assert.ok(anonymousSession.sessionGeneration);
+    assert.equal(anonymousSession.cacheControl, 'no-store');
+    assert.deepEqual(anonymousSession.body, {
+        mode: 'password',
+        authRequired: true,
+        authenticated: false,
+    });
+});
+
+test('password login sets the configured idle session lifetime', async (t) => {
+    const { baseUrl } = await startServer(t, createPasswordAuthConfig());
+    const loginStartedAt = Date.now();
+
+    const login = await jsonRequest(baseUrl, '/api/auth/login', 'POST', { password: 'secret' });
+    const sessionSetCookie = login.setCookies.find((cookie) => cookie.startsWith(`${AUTH_SESSION_COOKIE_NAME}=`));
+    const sessionExpires = sessionSetCookie ? getCookieAttribute(sessionSetCookie, 'Expires') : undefined;
+    const sessionLifetimeMs = sessionExpires ? Date.parse(sessionExpires) - loginStartedAt : Number.NaN;
+
+    assert.equal(login.status, 200);
+    assert.ok(sessionSetCookie);
+    assert.ok(sessionExpires);
+    assert.ok(sessionLifetimeMs >= AUTH_SESSION_IDLE_TIMEOUT_MS - 10_000);
+    assert.ok(sessionLifetimeMs <= AUTH_SESSION_IDLE_TIMEOUT_MS + 10_000);
+});
+
+test('password login returns a CSRF token that authorizes the next write', async (t) => {
+    const { baseUrl } = await startServer(t, createPasswordAuthConfig());
+
+    const login = await jsonRequest(baseUrl, '/api/auth/login', 'POST', { password: 'secret' });
+    const loginCsrfToken = extractCsrfToken(login.cookie);
+    const writeWithLoginCsrf = await fetch(`${baseUrl}/api/image`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...(login.cookie ? { Cookie: login.cookie } : {}),
+            ...(loginCsrfToken ? { 'X-XSRF-TOKEN': loginCsrfToken } : {}),
+        },
+        body: JSON.stringify({}),
+    });
+    const writeWithLoginCsrfBody = (await writeWithLoginCsrf.json()) as Record<string, unknown>;
+
+    assert.equal(login.status, 200);
+    assert.ok(login.cookie);
+    assert.ok(loginCsrfToken);
+    assert.equal(writeWithLoginCsrf.status, 400);
+    assert.equal(writeWithLoginCsrfBody.code, 'INVALID_IMAGE_UPLOAD');
+});
 
 test('password mode protects write paths until login and unlocks them after session auth', async (t) => {
     const { baseUrl } = await startServer(t, createPasswordAuthConfig());
@@ -236,6 +319,34 @@ test('password mode rejects unsafe API requests without a CSRF token', async (t)
 
     assert.equal(response.status, 403);
     assert.equal(body.code, 'CSRF_TOKEN_INVALID');
+});
+
+test('password mode ends memory sessions on server restart and returns 401 before CSRF', async (t) => {
+    const authConfig = createPasswordAuthConfig();
+    const firstServer = await startServer(t, authConfig);
+    const login = await jsonRequest(firstServer.baseUrl, '/api/auth/login', 'POST', { password: 'secret' });
+    const csrfToken = extractCsrfToken(login.cookie);
+
+    assert.equal(login.status, 200);
+    assert.ok(login.cookie);
+    assert.ok(csrfToken);
+
+    await firstServer.close();
+
+    const secondServer = await startServer(t, authConfig);
+    const response = await fetch(`${secondServer.baseUrl}/api/image`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Cookie: login.cookie,
+            'X-XSRF-TOKEN': csrfToken,
+        },
+        body: JSON.stringify({}),
+    });
+    const body = (await response.json()) as Record<string, unknown>;
+
+    assert.equal(response.status, 401);
+    assert.equal(body.code, 'UNAUTHORIZED');
 });
 
 test('open mode keeps auth endpoints explicit and allows existing open write/query behavior', async (t) => {

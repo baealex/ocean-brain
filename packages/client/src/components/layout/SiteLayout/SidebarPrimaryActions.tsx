@@ -2,10 +2,7 @@ import * as Icon from '~/components/icon';
 import { Text } from '~/components/ui';
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
 
-import PinnedNotesPanel from './PinnedNotesPanel';
-import SidebarSectionHeader from './SidebarSectionHeader';
-
-const rootClassName = 'flex flex-col gap-3.5 p-3 pt-2';
+const rootClassName = 'p-3 pb-0';
 const captureButtonClassName =
     'focus-ring-soft surface-base group flex w-full items-center justify-between gap-2.5 px-3 py-2.5 text-left text-fg-default outline-none transition-colors hover:bg-hover-subtle';
 const captureContentClassName = 'flex items-center gap-2.5';
@@ -35,10 +32,6 @@ const SidebarPrimaryActions = () => {
                 </span>
                 <Icon.ChevronRight className={trailingIconClassName} weight="bold" />
             </button>
-            <section className="pt-1">
-                <SidebarSectionHeader title="Pinned" icon={<Icon.Pin className="h-4 w-4" weight="fill" />} />
-                <PinnedNotesPanel />
-            </section>
         </div>
     );
 };

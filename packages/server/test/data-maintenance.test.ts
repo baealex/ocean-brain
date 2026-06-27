@@ -62,6 +62,7 @@ test('data maintenance service deduplicates concurrent background runs', async (
 
 test('data maintenance scheduler triggers an immediate run and can be stopped', async () => {
     let runs = 0;
+    let resolveObservedResults: (results: Array<{ key: string; processedCount: number }>) => void = () => undefined;
     const service = createDataMaintenanceService([
         {
             key: 'note-search-projection',
@@ -73,24 +74,27 @@ test('data maintenance scheduler triggers an immediate run and can be stopped', 
     ]);
 
     const observedResults: Array<Array<{ key: string; processedCount: number }>> = [];
+    const firstObservedResults = new Promise<Array<{ key: string; processedCount: number }>>((resolve) => {
+        resolveObservedResults = resolve;
+    });
     const stop = startDataMaintenanceScheduler({
         intervalMs: 1000,
         runInBackground: service.runInBackground,
         onResults: (results) => {
             observedResults.push(results);
+            resolveObservedResults(results);
         },
     });
 
-    await new Promise<void>((resolve) => {
-        setTimeout(resolve, 20);
-    });
+    const results = await firstObservedResults;
     stop();
 
     assert.equal(runs >= 1, true);
-    assert.deepEqual(observedResults[0], [
+    assert.deepEqual(results, [
         {
             key: 'note-search-projection',
             processedCount: 1,
         },
     ]);
+    assert.deepEqual(observedResults[0], results);
 });

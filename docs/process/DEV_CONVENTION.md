@@ -36,6 +36,7 @@ Updated: 2026-06-05
 - Server start script includes `prisma migrate deploy`.
 - Use `node scripts/release/prepublish.mjs` for release artifact preparation.
 - CLI publish validation is covered by `CLI_SMOKE` CI.
+- Browser E2E validation is split into the `E2E` workflow and is required for release PRs or manual verification, not every PR.
 
 ## 6. Related Documents
 - Git rules: `docs/process/GIT_CONVENTION.md`

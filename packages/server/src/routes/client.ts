@@ -1,7 +1,7 @@
 import express, { type RequestHandler, Router } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import path from 'path';
-import { isAuthenticatedRequest } from '../modules/auth-guard.js';
+import { createCsrfProtection, isAuthenticatedRequest } from '../modules/auth-guard.js';
 import type { AuthConfig } from '../modules/auth-mode.js';
 import { paths } from '../paths.js';
 
@@ -59,6 +59,19 @@ const createProtectedImageAssetsMiddleware = (authConfig: AuthConfig): RequestHa
     };
 };
 
+const createClientRouteCsrfTokenMiddleware = (authConfig: AuthConfig) => {
+    const csrfProtection = createCsrfProtection(authConfig);
+
+    return (req: express.Request, res: express.Response, next: express.NextFunction) => {
+        if (path.extname(req.path) !== '') {
+            next();
+            return;
+        }
+
+        csrfProtection(req, res, next);
+    };
+};
+
 export const createClientRouter = (authConfig: AuthConfig) =>
     Router()
         .use(
@@ -93,6 +106,7 @@ export const createClientRouter = (authConfig: AuthConfig) =>
 
             next();
         })
+        .use(createClientRouteCsrfTokenMiddleware(authConfig))
         .use(express.static(paths.clientDist, { extensions: ['html'] }))
         .get(/.*/, (_req, res) => {
             res.sendFile(paths.clientIndex);

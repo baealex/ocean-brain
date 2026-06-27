@@ -2,7 +2,6 @@ import type { DragEndEvent } from '@dnd-kit/core';
 import { closestCenter, DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import {
-    arrayMove,
     SortableContext,
     sortableKeyboardCoordinates,
     useSortable,
@@ -26,6 +25,7 @@ import { queryKeys } from '~/modules/query-key-factory';
 import { NOTE_ROUTE } from '~/modules/url';
 
 type PinnedNote = Pick<Note, 'id' | 'title' | 'order'>;
+type PinnedNoteOrder = Pick<PinnedNote, 'id' | 'order'>;
 
 interface SortablePinnedNoteProps {
     id: string;
@@ -44,9 +44,43 @@ interface PinnedNotesListProps {
 }
 
 const dragHandleBaseClassName =
-    'focus-ring-soft flex h-8 w-8 items-center justify-center rounded-[10px] text-fg-default/70 outline-none transition-colors hover:text-fg-default active:cursor-grabbing touch-none';
+    'focus-ring-soft flex h-8 w-8 items-center justify-center rounded-[10px] text-fg-tertiary opacity-70 outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default hover:opacity-100 focus-visible:opacity-100 active:cursor-grabbing touch-none';
 const pinnedLinkBaseClassName =
     'focus-ring-soft block truncate rounded-[10px] px-1.5 py-1 outline-none transition-colors';
+
+export const buildPinnedNoteReorderPayload = (
+    items: PinnedNote[],
+    activeId: string,
+    overId: string,
+): { nextItems: PinnedNote[]; orders: PinnedNoteOrder[] } | null => {
+    if (activeId === overId) {
+        return null;
+    }
+
+    const oldIndex = items.findIndex((item) => item.id === activeId);
+    const newIndex = items.findIndex((item) => item.id === overId);
+
+    if (oldIndex < 0 || newIndex < 0) {
+        return null;
+    }
+
+    const nextItems = [...items];
+    const [movedItem] = nextItems.splice(oldIndex, 1);
+
+    if (!movedItem) {
+        return null;
+    }
+
+    nextItems.splice(newIndex, 0, movedItem);
+
+    return {
+        nextItems,
+        orders: nextItems.map((item, index) => ({
+            id: item.id,
+            order: index,
+        })),
+    };
+};
 
 function SortablePinnedNote({ id, title, isActive = false, children }: SortablePinnedNoteProps) {
     const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
@@ -64,21 +98,22 @@ function SortablePinnedNote({ id, title, isActive = false, children }: SortableP
             ref={setNodeRef}
             style={style}
             className={classNames(
-                'group flex min-h-[40px] items-center gap-1.5 rounded-[12px] px-1.5 py-1 transition-colors',
-                isActive && 'bg-hover-subtle',
+                'group flex min-h-[38px] items-center gap-1.5 rounded-[12px] px-1.5 py-1 transition-colors',
+                isActive ? 'bg-hover-subtle' : 'hover:bg-hover-subtle/70',
             )}
         >
             <button
                 type="button"
                 ref={setActivatorNodeRef}
                 aria-label={`Reorder note ${title ?? 'Untitled'}`}
+                title="Drag to reorder"
                 {...attributes}
                 {...listeners}
                 className={classNames(dragHandleBaseClassName, isDragging ? 'cursor-grabbing' : 'cursor-grab')}
             >
                 <Icon.DragHandle className="size-4" />
             </button>
-            <Text as="div" truncate variant="body" weight="medium" className="min-w-0 flex-1">
+            <Text as="div" truncate variant="meta" weight="medium" className="min-w-0 flex-1">
                 {children}
             </Text>
         </div>
@@ -124,7 +159,7 @@ function PinnedNotesList({
                                 pinnedLinkBaseClassName,
                                 pathname === `/${note.id}`
                                     ? 'text-fg-default'
-                                    : 'text-fg-secondary hover:bg-hover-subtle hover:text-fg-default',
+                                    : 'text-fg-secondary hover:text-fg-default',
                             )}
                             to={NOTE_ROUTE}
                             params={{ id: note.id }}
@@ -163,24 +198,21 @@ const PinnedNotesPanel = () => {
 
         if (over && active.id !== over.id) {
             setPinnedItems((items) => {
-                const oldIndex = items.findIndex((item) => item.id === active.id);
-                const newIndex = items.findIndex((item) => item.id === over.id);
-                const nextItems = arrayMove(items, oldIndex, newIndex);
+                const reorderPayload = buildPinnedNoteReorderPayload(items, String(active.id), String(over.id));
 
-                reorderMutation.mutate(
-                    nextItems.map((item, index) => ({
-                        id: item.id,
-                        order: index,
-                    })),
-                );
+                if (!reorderPayload) {
+                    return items;
+                }
 
-                return nextItems;
+                reorderMutation.mutate(reorderPayload.orders);
+
+                return reorderPayload.nextItems;
             });
         }
     };
 
     return (
-        <div className="flex flex-col gap-1">
+        <div className="border-l border-border-subtle/70 pl-1.5">
             <QueryBoundary
                 fallback={
                     <div className="space-y-1">
@@ -214,7 +246,7 @@ const PinnedNotesPanel = () => {
                             />
                         ) : (
                             <Text as="div" variant="meta" tone="secondary" className="px-2 py-2.5 leading-6">
-                                Pin a note to keep it in view while the rest of the workspace changes.
+                                Pin a note from the note toolbar to keep it here.
                             </Text>
                         )
                     }

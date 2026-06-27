@@ -6,4 +6,9 @@ export interface McpAdminStatus {
         createdAt: string;
         lastUsedAt: string | null;
     };
+    server: {
+        version: string;
+        releaseUrl: string;
+        mcpVersionRequirement: string;
+    };
 }

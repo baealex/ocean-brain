@@ -2,7 +2,7 @@ import express from 'express';
 import { createMcpAdminService, type McpAdminService } from './features/mcp-admin/service.js';
 import { purgeExpiredNoteSnapshots } from './features/note/services/snapshot.js';
 import { purgeExpiredTrashedNotes } from './features/note/services/trash.js';
-import { createCsrfProtection, createSessionMiddleware } from './modules/auth-guard.js';
+import { createSessionMiddleware } from './modules/auth-guard.js';
 import type { AuthConfig } from './modules/auth-mode.js';
 import { createErrorHandler } from './modules/error-handler.js';
 import logger from './modules/logger.js';
@@ -26,7 +26,6 @@ export const createAppWithMcpAuth = (authConfig: AuthConfig, mcpAdminService: Mc
         .use(createSessionMiddleware(authConfig))
         .use(express.urlencoded({ extended: false }))
         .use(express.json({ limit: '50mb' }))
-        .use(createCsrfProtection(authConfig))
         .use('/api', createApiRouter(authConfig, mcpAdminService))
         .use(createAuthPagesRouter(authConfig))
         .use('/graphql', createGraphqlRouter(authConfig, mcpAdminService))

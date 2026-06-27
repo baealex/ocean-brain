@@ -4,9 +4,11 @@ import { RouteErrorView, RouteNotFoundView, RoutePendingView } from '~/component
 import { SiteLayout } from '~/components/layout';
 import {
     validateCalendarSearch,
+    validateGraphSearch,
     validateHomeSearch,
     validatePaginationSearch,
     validateSearchPageSearch,
+    validateTagSearch,
     validateViewNotesSearch,
 } from '~/modules/route-search';
 import {
@@ -81,6 +83,7 @@ const graphRoute = createRoute({
     pendingComponent: () => (
         <RoutePendingView title="Loading graph" description="Preparing the linked note constellation." />
     ),
+    validateSearch: validateGraphSearch,
 });
 
 const searchRoute = createRoute({
@@ -96,7 +99,7 @@ const tagRoute = createRoute({
     path: TAG_ROUTE,
     component: lazyRouteComponent(() => import('~/pages/Tag')),
     pendingComponent: () => <RoutePendingView title="Loading tags" description="Preparing the tag catalog." />,
-    validateSearch: validatePaginationSearch,
+    validateSearch: validateTagSearch,
 });
 
 const noteRoute = createRoute({

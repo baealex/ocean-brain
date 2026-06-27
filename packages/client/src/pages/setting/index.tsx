@@ -4,12 +4,7 @@ import { fetchMcpAdminStatus } from '~/apis/mcp-admin.api';
 import * as Icon from '~/components/icon';
 import { PageLayout } from '~/components/shared';
 import { Text } from '~/components/ui';
-import {
-    formatMcpVersionRequirement,
-    formatVersionLabel,
-    OCEAN_BRAIN_RELEASES_URL,
-    OCEAN_BRAIN_VERSION,
-} from '~/modules/app-version';
+import { formatVersionLabel, OCEAN_BRAIN_RELEASES_URL } from '~/modules/app-version';
 import {
     SETTINGS_MANAGE_IMAGE_ROUTE,
     SETTINGS_MCP_ROUTE,
@@ -23,15 +18,11 @@ const mcpAdminStatusQueryKey = ['mcp-admin', 'status'] as const;
 
 const Setting = () => {
     const { theme, toggleTheme } = useTheme((state) => state);
-    const { data: status } = useQuery({
+    const { data: status, isLoading: isStatusLoading } = useQuery({
         queryKey: mcpAdminStatusQueryKey,
         queryFn: fetchMcpAdminStatus,
     });
-    const versionInfo = status?.server ?? {
-        version: OCEAN_BRAIN_VERSION,
-        releaseUrl: OCEAN_BRAIN_RELEASES_URL,
-        mcpVersionRequirement: formatMcpVersionRequirement(OCEAN_BRAIN_VERSION),
-    };
+    const versionInfo = status?.server;
     const itemClassName =
         'focus-ring-soft surface-base group flex items-start justify-between gap-3.5 px-4 py-3.5 text-left text-fg-default outline-none transition-colors hover:bg-hover-subtle';
     const leadingClassName =
@@ -39,7 +30,12 @@ const Setting = () => {
     const iconClassName = 'h-6 w-6';
     const sectionLabelClassName = 'text-fg-tertiary';
     const contentClassName = 'min-w-0 flex flex-col gap-0.5 pt-0.5';
-    const versionLabel = formatVersionLabel(versionInfo.version);
+    const versionLabel = versionInfo
+        ? formatVersionLabel(versionInfo.version)
+        : isStatusLoading
+          ? 'checking…'
+          : 'unknown';
+    const releasesUrl = versionInfo?.releaseUrl ?? OCEAN_BRAIN_RELEASES_URL;
 
     return (
         <PageLayout title="Settings" description="Manage display, workspace tools, and advanced connections">
@@ -174,7 +170,7 @@ const Setting = () => {
                 <Text as="p" variant="meta" tone="tertiary" className="border-t border-border-subtle pt-4">
                     Ocean Brain {versionLabel} ·{' '}
                     <a
-                        href={versionInfo.releaseUrl}
+                        href={releasesUrl}
                         target="_blank"
                         rel="noreferrer"
                         className="font-medium text-fg-secondary underline-offset-4 hover:underline"

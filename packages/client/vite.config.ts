@@ -1,6 +1,5 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import { readFileSync } from 'fs';
 import path from 'path';
 import svgr from 'vite-plugin-svgr';
 import { defineConfig } from 'vitest/config';
@@ -18,9 +17,6 @@ const mcpAdminAdapterPath = isLocalOnlyDemoBuild
 const imageUploadAdapterPath = isLocalOnlyDemoBuild
     ? './src/apis/image-upload-adapter.local.ts'
     : './src/apis/image-upload-adapter.ts';
-const cliPackageJson = JSON.parse(readFileSync(path.resolve(__dirname, '../cli/package.json'), 'utf-8')) as {
-    version: string;
-};
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -51,9 +47,6 @@ export default defineConfig({
             },
             { find: '~', replacement: path.resolve(__dirname, './src') },
         ],
-    },
-    define: {
-        __OCEAN_BRAIN_VERSION__: JSON.stringify(cliPackageJson.version),
     },
     build: {
         sourcemap: false,

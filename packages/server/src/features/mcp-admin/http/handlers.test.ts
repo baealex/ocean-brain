@@ -76,7 +76,7 @@ const getSetCookies = (headers: Headers) => {
     }
 
     const setCookie = headers.get('set-cookie');
-    return setCookie ? [setCookie] : [];
+    return setCookie ? setCookie.split(/,(?=\s*[^;,]+=)/).map((cookie) => cookie.trim()) : [];
 };
 
 const toCookieHeader = (setCookies: string[]) => setCookies.map((cookie) => cookie.split(';')[0]).join('; ');

@@ -31,11 +31,12 @@ export default function NoteFilters({
             <div className="surface-base inline-flex flex-wrap items-center gap-3 rounded-[16px] px-3.5 py-2.5">
                 <div className="flex items-center gap-2">
                     <Icon.Grid className="h-4 w-4 shrink-0 text-fg-tertiary" />
-                    <Text as="span" variant="label" weight="medium" tone="tertiary">
+                    <Text id="note-filters-items-label" as="span" variant="label" weight="medium" tone="tertiary">
                         Items
                     </Text>
                     <Select
                         value={String(itemsPerPage)}
+                        aria-labelledby="note-filters-items-label"
                         onValueChange={(value) => {
                             const nextItemsPerPage = Number(value);
 
@@ -63,6 +64,7 @@ export default function NoteFilters({
                     </Text>
                     <Select
                         value={sortBy}
+                        ariaLabel="Sort field"
                         onValueChange={(value) => onSortByChange(value as SortBy)}
                         variant="ghost"
                         size="sm"
@@ -72,6 +74,7 @@ export default function NoteFilters({
                     </Select>
                     <Select
                         value={sortOrder}
+                        ariaLabel="Sort order"
                         onValueChange={(value) => onSortOrderChange(value as SortOrder)}
                         variant="ghost"
                         size="sm"

@@ -63,11 +63,12 @@ export const CalendarHeader = ({ month, year, type, onPrevMonth, onNextMonth, on
                 <div className="surface-base inline-flex flex-wrap items-center gap-3 rounded-[16px] px-3.5 py-2.5">
                     <div className="flex items-center gap-2">
                         <Icon.Calendar className="h-4 w-4 shrink-0 text-fg-tertiary" />
-                        <Text as="span" variant="label" weight="medium" tone="tertiary">
+                        <Text id="calendar-note-date-label" as="span" variant="label" weight="medium" tone="tertiary">
                             Note date
                         </Text>
                         <Select
                             value={type}
+                            aria-labelledby="calendar-note-date-label"
                             onValueChange={(value) => onTypeChange(value as CalendarDisplayType)}
                             variant="ghost"
                             size="sm"

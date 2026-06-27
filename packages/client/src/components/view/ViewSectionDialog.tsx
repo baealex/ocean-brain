@@ -719,21 +719,28 @@ export default function ViewSectionDialog({
 
                         <div className="mt-4 grid gap-4 md:grid-cols-3">
                             <div className="flex flex-col gap-2">
-                                <Label htmlFor="view-section-sort-by" size="sm">
+                                <Label id="view-section-sort-by-label" htmlFor="view-section-sort-by" size="sm">
                                     Sort by
                                 </Label>
-                                <Select value={sortBy} onValueChange={(value) => setSortBy(value as ViewSortBy)}>
+                                <Select
+                                    id="view-section-sort-by"
+                                    value={sortBy}
+                                    aria-labelledby="view-section-sort-by-label"
+                                    onValueChange={(value) => setSortBy(value as ViewSortBy)}
+                                >
                                     <SelectItem value="updatedAt">Updated time</SelectItem>
                                     <SelectItem value="createdAt">Created time</SelectItem>
                                     <SelectItem value="title">Title</SelectItem>
                                 </Select>
                             </div>
                             <div className="flex flex-col gap-2">
-                                <Label htmlFor="view-section-sort-order" size="sm">
+                                <Label id="view-section-sort-order-label" htmlFor="view-section-sort-order" size="sm">
                                     Order
                                 </Label>
                                 <Select
+                                    id="view-section-sort-order"
                                     value={sortOrder}
+                                    aria-labelledby="view-section-sort-order-label"
                                     onValueChange={(value) => setSortOrder(value as ViewSortOrder)}
                                 >
                                     <SelectItem value="desc">Descending</SelectItem>
@@ -741,10 +748,15 @@ export default function ViewSectionDialog({
                                 </Select>
                             </div>
                             <div className="flex flex-col gap-2">
-                                <Label htmlFor="view-section-limit" size="sm">
+                                <Label id="view-section-limit-label" htmlFor="view-section-limit" size="sm">
                                     Max notes
                                 </Label>
-                                <Select value={limit} onValueChange={setLimit}>
+                                <Select
+                                    id="view-section-limit"
+                                    value={limit}
+                                    aria-labelledby="view-section-limit-label"
+                                    onValueChange={setLimit}
+                                >
                                     <SelectItem value="3">3 notes</SelectItem>
                                     <SelectItem value="5">5 notes</SelectItem>
                                     <SelectItem value="8">8 notes</SelectItem>

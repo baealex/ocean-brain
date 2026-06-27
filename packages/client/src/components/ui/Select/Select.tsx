@@ -44,22 +44,28 @@ const selectTriggerVariants = cva(
 );
 
 export interface SelectProps extends VariantProps<typeof selectTriggerVariants> {
+    id?: string;
     value?: string;
     defaultValue?: string;
     onValueChange?: (value: string) => void;
     placeholder?: string;
     ariaLabel?: string;
+    'aria-labelledby'?: string;
+    'aria-describedby'?: string;
     className?: string;
     children: React.ReactNode;
     disabled?: boolean;
 }
 
 const Select = ({
+    id,
     value,
     defaultValue,
     onValueChange,
     placeholder,
     ariaLabel,
+    'aria-labelledby': ariaLabelledBy,
+    'aria-describedby': ariaDescribedBy,
     variant,
     size,
     className,
@@ -74,7 +80,10 @@ const Select = ({
             disabled={disabled}
         >
             <SelectPrimitive.Trigger
+                id={id}
                 aria-label={ariaLabel}
+                aria-labelledby={ariaLabelledBy}
+                aria-describedby={ariaDescribedBy}
                 className={selectTriggerVariants({
                     variant,
                     size,

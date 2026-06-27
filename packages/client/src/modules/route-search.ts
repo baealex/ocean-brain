@@ -97,6 +97,10 @@ export interface CalendarRouteSearch {
     type: 'create' | 'update';
 }
 
+export interface GraphRouteSearch {
+    selected?: string;
+}
+
 export interface ViewNotesRouteSearch extends PaginationRouteSearch {
     sectionId: string;
 }
@@ -137,6 +141,11 @@ export const validateCalendarSearch = (search: SearchRecord): CalendarRouteSearc
     }),
     type: parseEnum(search.type, CALENDAR_TYPES, 'create'),
 });
+
+export const validateGraphSearch = (search: SearchRecord): GraphRouteSearch => {
+    const selected = parseString(search.selected, '').trim();
+    return selected ? { selected } : {};
+};
 
 export const validateViewNotesSearch = (search: SearchRecord): ViewNotesRouteSearch => ({
     page: parsePositiveInt(search.page, 1),

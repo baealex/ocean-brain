@@ -2,6 +2,7 @@ import { afterEach, vi } from 'vitest';
 
 import {
     validateCalendarSearch,
+    validateGraphSearch,
     validateHomeSearch,
     validatePaginationSearch,
     validateSearchPageSearch,
@@ -88,6 +89,12 @@ describe('route-search validators', () => {
             month: 4,
             type: 'create',
         });
+    });
+
+    it('normalizes graph selected note search values', () => {
+        expect(validateGraphSearch({ selected: 'note-17' })).toEqual({ selected: 'note-17' });
+        expect(validateGraphSearch({ selected: '  ' })).toEqual({});
+        expect(validateGraphSearch({ selected: 17 })).toEqual({});
     });
 
     it('normalizes view-notes search values', () => {

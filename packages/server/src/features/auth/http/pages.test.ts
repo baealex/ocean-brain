@@ -119,6 +119,26 @@ test('password mode blocks client routes until the server-side login form succee
     assert.equal(blockedHome.status, 303);
     assert.equal(blockedHome.headers.get('location'), '/login?next=%2F');
 
+    const blockedAssetPage = await fetch(`${baseUrl}/assets/images/2026/4/15/private.png`, {
+        headers: { Accept: 'text/html' },
+        redirect: 'manual',
+    });
+
+    assert.equal(blockedAssetPage.status, 303);
+    assert.equal(
+        blockedAssetPage.headers.get('location'),
+        '/login?next=%2Fassets%2Fimages%2F2026%2F4%2F15%2Fprivate.png',
+    );
+    assert.equal(blockedAssetPage.headers.get('cache-control'), 'no-store');
+
+    const blockedAssetImage = await fetch(`${baseUrl}/assets/images/2026/4/15/private.png`, {
+        headers: { Accept: 'image/png,image/*' },
+        redirect: 'manual',
+    });
+
+    assert.equal(blockedAssetImage.status, 401);
+    assert.equal(blockedAssetImage.headers.get('cache-control'), 'no-store');
+
     const loginPage = await fetch(`${baseUrl}/login?next=%2Fnotes`);
     const loginPageHtml = await loginPage.text();
     const loginCookie = toCookieHeader(getSetCookies(loginPage.headers));
@@ -171,6 +191,16 @@ test('password mode blocks client routes until the server-side login form succee
         authenticated: true,
     });
 
+    const missingAuthenticatedAsset = await fetch(`${baseUrl}/assets/images/2026/4/15/missing.png`, {
+        headers: {
+            Accept: 'image/png,image/*',
+            Cookie: sessionCookie,
+        },
+    });
+
+    assert.equal(missingAuthenticatedAsset.status, 404);
+    assert.equal(missingAuthenticatedAsset.headers.get('cache-control'), 'no-store');
+
     const logout = await formRequest(baseUrl, '/logout', {}, sessionCookie);
     assert.equal(logout.status, 303);
     assert.equal(logout.location, '/login');
@@ -213,6 +243,29 @@ test('password login page rate limits repeated failed attempts', async (t) => {
 
     assert.equal(rateLimited.status, 429);
     assert.match(rateLimited.text, /AUTH_RATE_LIMITED/);
+});
+
+test('password mode rate limits unauthenticated image asset access', async (t) => {
+    const { baseUrl } = await startServer(t, createPasswordAuthConfig());
+
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+        const response = await fetch(`${baseUrl}/assets/images/2026/4/15/private.png`, {
+            headers: { Accept: 'image/png,image/*' },
+            redirect: 'manual',
+        });
+
+        assert.equal(response.status, 401);
+    }
+
+    const rateLimited = await fetch(`${baseUrl}/assets/images/2026/4/15/private.png`, {
+        headers: { Accept: 'image/png,image/*' },
+        redirect: 'manual',
+    });
+    const body = (await rateLimited.json()) as Record<string, unknown>;
+
+    assert.equal(rateLimited.status, 429);
+    assert.equal(rateLimited.headers.get('cache-control'), 'no-store');
+    assert.equal(body.code, 'IMAGE_ASSET_RATE_LIMITED');
 });
 
 test('password login page redirects stale CSRF submissions to a fresh login page', async (t) => {

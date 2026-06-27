@@ -8,6 +8,8 @@ export const tagType = gql`
 
     input SearchFilterInput {
         query: String!
+        sortBy: String
+        sortOrder: String
     }
 
     type Tag {

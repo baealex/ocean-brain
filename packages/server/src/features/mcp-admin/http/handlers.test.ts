@@ -76,7 +76,7 @@ const getSetCookies = (headers: Headers) => {
     }
 
     const setCookie = headers.get('set-cookie');
-    return setCookie ? [setCookie] : [];
+    return setCookie ? setCookie.split(/,(?=\s*[^;,]+=)/).map((cookie) => cookie.trim()) : [];
 };
 
 const toCookieHeader = (setCookies: string[]) => setCookies.map((cookie) => cookie.split(';')[0]).join('; ');
@@ -176,6 +176,7 @@ test('POST /api/mcp-admin/enabled toggles enabled state for authenticated sessio
 
     assert.equal(enabled.status, 200);
     assert.equal(enabled.body.enabled, true);
+    assert.equal(typeof (enabled.body.server as { version?: unknown }).version, 'string');
 });
 
 test('POST /api/mcp-admin/token/revoke revokes active token for authenticated session', async (t) => {

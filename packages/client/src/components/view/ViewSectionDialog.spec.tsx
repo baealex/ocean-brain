@@ -162,6 +162,24 @@ describe('<ViewSectionDialog />', () => {
         expect(screen.getByRole('radio', { name: 'Show as list' })).toHaveAttribute('aria-checked', 'true');
     });
 
+    it('labels sort and limit selects through their visible labels', () => {
+        render(
+            <ViewSectionDialog
+                open
+                mode="edit"
+                initialSection={createSection()}
+                availableTags={[]}
+                availableProperties={[]}
+                onClose={vi.fn()}
+                onSubmit={vi.fn()}
+            />,
+        );
+
+        expect(screen.getByRole('combobox', { name: 'Sort by' })).toBeInTheDocument();
+        expect(screen.getByRole('combobox', { name: 'Order' })).toBeInTheDocument();
+        expect(screen.getByRole('combobox', { name: 'Max notes' })).toBeInTheDocument();
+    });
+
     it('submits partial URL text for contains filters', async () => {
         const user = userEvent.setup();
         const handleSubmit = vi.fn();

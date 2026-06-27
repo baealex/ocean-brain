@@ -13,7 +13,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 toastOptions={{
                     duration: 3000,
                     classNames: {
-                        toast: 'surface-floating whitespace-nowrap px-5 py-3 text-sm font-medium text-fg-secondary shadow-sm',
+                        toast: 'surface-floating max-w-[min(420px,calc(100vw-32px))] whitespace-normal break-words px-5 py-3 text-sm font-medium text-fg-secondary shadow-sm',
                         title: 'text-sm font-medium text-fg-secondary',
                     },
                 }}

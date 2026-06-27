@@ -38,6 +38,7 @@ program
 
             process.env.DATABASE_URL = process.env.DATABASE_URL || `file:${dbPath}`;
             process.env.OCEAN_BRAIN_PACKAGE_ROOT = serverRoot;
+            process.env.OCEAN_BRAIN_VERSION = pkg.version;
             process.env.OCEAN_BRAIN_DATA_DIR = dataDir;
             process.env.OCEAN_BRAIN_IMAGE_DIR = imageDir;
             process.env.PORT = process.env.PORT || opts.port;

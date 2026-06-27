@@ -130,7 +130,8 @@ Ocean Brain provides everyday recovery paths, but it is not a replacement for re
 
 - Deleted notes can be recovered from Trash for a limited time.
 - Recent note snapshots can help recover from common editing mistakes.
-- Individual notes can be exported as Markdown or HTML.
+- Individual notes can be copied as Markdown or downloaded as Markdown/HTML, with local image assets optionally bundled.
+- In password mode, uploaded image asset URLs require an authenticated session, just like the workspace.
 - For full-instance safety, back up the database and assets used by your deployment.
 
 ## MCP Server

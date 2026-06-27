@@ -1,6 +1,12 @@
 import type { AuthConfig } from '~/modules/auth-mode.js';
 import type { Controller } from '~/types/index.js';
-import { compareSharedSecret, destroySession, regenerateSession, sanitizeRedirectPath } from '../service.js';
+import {
+    compareSharedSecret,
+    destroySession,
+    refreshCsrfToken,
+    regenerateSession,
+    sanitizeRedirectPath,
+} from '../service.js';
 import { renderLoginPage } from './login-page.js';
 
 export const createLoginPageHandler = (authConfig: AuthConfig): Controller => {
@@ -45,6 +51,7 @@ export const createLoginPageSubmitHandler = (authConfig: AuthConfig): Controller
 
         await regenerateSession(req);
         req.session.authenticated = true;
+        refreshCsrfToken(req);
 
         res.redirect(303, nextPath);
     };

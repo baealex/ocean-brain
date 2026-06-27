@@ -16,7 +16,7 @@ const TooltipContent = forwardRef<
         ref={ref}
         sideOffset={sideOffset}
         className={classNames(
-            'z-50',
+            'z-[1200]',
             'overflow-hidden',
             'px-3',
             'py-1.5',

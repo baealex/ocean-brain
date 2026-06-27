@@ -3,7 +3,33 @@ import type { AddressInfo } from 'node:net';
 import test, { type TestContext } from 'node:test';
 import { createAppWithMcpAuth } from '../src/app.js';
 import type { McpAdminService } from '../src/features/mcp-admin/service.js';
+import { parseMajorMinorVersion, resolveOceanBrainVersion } from '../src/modules/app-version.js';
 import { AUTH_SESSION_COOKIE_NAME, type AuthConfig } from '../src/modules/auth-mode.js';
+import { OCEAN_BRAIN_MCP_VERSION_HEADER } from '../src/modules/mcp-auth.js';
+
+const createCompatibleMcpVersion = (patch = 999) => {
+    const version = parseMajorMinorVersion(resolveOceanBrainVersion());
+    assert.ok(version);
+
+    return `${version.major}.${version.minor}.${patch}`;
+};
+
+const createIncompatibleMcpVersion = () => {
+    const version = parseMajorMinorVersion(resolveOceanBrainVersion());
+    assert.ok(version);
+
+    return `${version.major}.${version.minor + 1}.0`;
+};
+
+const createMcpHeaders = (bearerToken?: string, options: { mcpVersion?: string | null } = {}) => {
+    const mcpVersion = Object.hasOwn(options, 'mcpVersion') ? options.mcpVersion : createCompatibleMcpVersion();
+
+    return {
+        'Content-Type': 'application/json',
+        ...(mcpVersion ? { [OCEAN_BRAIN_MCP_VERSION_HEADER]: mcpVersion } : {}),
+        ...(bearerToken ? { Authorization: `Bearer ${bearerToken}` } : {}),
+    };
+};
 
 const createPasswordAuthConfig = (): AuthConfig => ({
     mode: 'password',
@@ -40,10 +66,7 @@ const startServer = async (t: TestContext, authConfig: AuthConfig, mcpAdminAuth:
 const graphRequest = async (baseUrl: string, path: string, query: string, bearerToken?: string) => {
     const response = await fetch(`${baseUrl}${path}`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            ...(bearerToken ? { Authorization: `Bearer ${bearerToken}` } : {}),
-        },
+        headers: createMcpHeaders(bearerToken),
         body: JSON.stringify({ query }),
     });
 
@@ -56,10 +79,7 @@ const graphRequest = async (baseUrl: string, path: string, query: string, bearer
 const deleteNoteRequest = async (baseUrl: string, noteId: string, bearerToken?: string) => {
     const response = await fetch(`${baseUrl}/api/mcp/notes/delete`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            ...(bearerToken ? { Authorization: `Bearer ${bearerToken}` } : {}),
-        },
+        headers: createMcpHeaders(bearerToken),
         body: JSON.stringify({ id: noteId }),
     });
 
@@ -72,10 +92,7 @@ const deleteNoteRequest = async (baseUrl: string, noteId: string, bearerToken?: 
 const createTagRequest = async (baseUrl: string, name: string, bearerToken?: string) => {
     const response = await fetch(`${baseUrl}/api/mcp/tags/create`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            ...(bearerToken ? { Authorization: `Bearer ${bearerToken}` } : {}),
-        },
+        headers: createMcpHeaders(bearerToken),
         body: JSON.stringify({ name }),
     });
 
@@ -88,10 +105,7 @@ const createTagRequest = async (baseUrl: string, name: string, bearerToken?: str
 const createNoteRequest = async (baseUrl: string, body: Record<string, unknown>, bearerToken?: string) => {
     const response = await fetch(`${baseUrl}/api/mcp/notes/create`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            ...(bearerToken ? { Authorization: `Bearer ${bearerToken}` } : {}),
-        },
+        headers: createMcpHeaders(bearerToken),
         body: JSON.stringify(body),
     });
 
@@ -112,10 +126,7 @@ const connectServerEvents = async (baseUrl: string) => {
 const updateNoteRequest = async (baseUrl: string, body: Record<string, unknown>, bearerToken?: string) => {
     const response = await fetch(`${baseUrl}/api/mcp/notes/update`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            ...(bearerToken ? { Authorization: `Bearer ${bearerToken}` } : {}),
-        },
+        headers: createMcpHeaders(bearerToken),
         body: JSON.stringify(body),
     });
 
@@ -128,10 +139,7 @@ const updateNoteRequest = async (baseUrl: string, body: Record<string, unknown>,
 const noteWriteBaselineRequest = async (baseUrl: string, body: Record<string, unknown>, bearerToken?: string) => {
     const response = await fetch(`${baseUrl}/api/mcp/notes/baseline`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            ...(bearerToken ? { Authorization: `Bearer ${bearerToken}` } : {}),
-        },
+        headers: createMcpHeaders(bearerToken),
         body: JSON.stringify(body),
     });
 
@@ -256,6 +264,65 @@ test('mcp disabled state blocks MCP graphql access even with a valid token', asy
     const query = await graphRequest(baseUrl, '/graphql/mcp', 'query { __typename }', 'mcp-secret');
     assert.equal(query.status, 403);
     assert.equal(query.body.code, 'MCP_DISABLED');
+});
+
+test('mcp version guard allows patch version differences', async (t) => {
+    const { baseUrl } = await startServer(
+        t,
+        createOpenAuthConfig(),
+        createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }),
+    );
+
+    const response = await fetch(`${baseUrl}/api/mcp/notes/create`, {
+        method: 'POST',
+        headers: createMcpHeaders('mcp-secret', { mcpVersion: createCompatibleMcpVersion(999) }),
+        body: JSON.stringify({}),
+    });
+    const body = (await response.json()) as Record<string, unknown>;
+
+    assert.equal(response.status, 400);
+    assert.equal(body.code, 'INVALID_NOTE_TITLE');
+});
+
+test('mcp version guard blocks minor version differences', async (t) => {
+    const { baseUrl } = await startServer(
+        t,
+        createOpenAuthConfig(),
+        createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }),
+    );
+
+    const response = await fetch(`${baseUrl}/graphql/mcp`, {
+        method: 'POST',
+        headers: createMcpHeaders('mcp-secret', { mcpVersion: createIncompatibleMcpVersion() }),
+        body: JSON.stringify({ query: 'query { __typename }' }),
+    });
+    const body = (await response.json()) as Record<string, unknown>;
+
+    assert.equal(response.status, 426);
+    assert.equal(body.code, 'MCP_VERSION_INCOMPATIBLE');
+    assert.equal(body.mcpVersion, createIncompatibleMcpVersion());
+    assert.equal(body.serverVersion, resolveOceanBrainVersion());
+    assert.match(String(body.message), /Please update Ocean Brain MCP/);
+    assert.match(String(body.message), /https:\/\/github\.com\/baealex\/ocean-brain\/releases/);
+});
+
+test('mcp version guard blocks requests without an MCP version header after auth succeeds', async (t) => {
+    const { baseUrl } = await startServer(
+        t,
+        createOpenAuthConfig(),
+        createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }),
+    );
+
+    const response = await fetch(`${baseUrl}/graphql/mcp`, {
+        method: 'POST',
+        headers: createMcpHeaders('mcp-secret', { mcpVersion: null }),
+        body: JSON.stringify({ query: 'query { __typename }' }),
+    });
+    const body = (await response.json()) as Record<string, unknown>;
+
+    assert.equal(response.status, 426);
+    assert.equal(body.code, 'MCP_VERSION_INCOMPATIBLE');
+    assert.equal(body.mcpVersion, null);
 });
 
 test('enabled state still requires a valid bearer token on the MCP note delete endpoint', async (t) => {

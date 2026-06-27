@@ -431,11 +431,12 @@ export default function PropertiesSettings() {
                             />
                         </label>
                         <label className="flex flex-col gap-1.5">
-                            <Text as="span" variant="label" weight="medium">
+                            <Text id="property-type-label" as="span" variant="label" weight="medium">
                                 Type
                             </Text>
                             <Select
                                 value={valueType}
+                                aria-labelledby="property-type-label"
                                 onValueChange={(value) => setValueType(value as NotePropertyValueType)}
                             >
                                 {PROPERTY_TYPE_OPTIONS.map((option) => (

@@ -11,6 +11,7 @@ const IMAGE_DIR =
     process.env.OCEAN_BRAIN_IMAGE_DIR || path.resolve(process.env.OCEAN_BRAIN_DATA_DIR || '.', 'assets/images');
 
 export const paths = {
+    packageRoot: path.resolve(PACKAGE_ROOT),
     clientDist: path.resolve(PACKAGE_ROOT, 'client/dist'),
     clientIndex: path.resolve(PACKAGE_ROOT, 'client/dist/index.html'),
     imageDir: path.resolve(IMAGE_DIR),

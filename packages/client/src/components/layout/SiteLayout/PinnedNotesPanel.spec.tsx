@@ -1,11 +1,9 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
-
-import { reorderNotes } from '~/apis/note.api';
 
 import { createQueryClientWrapper } from '~/test/test-utils';
 
-import PinnedNotesPanel from './PinnedNotesPanel';
+import PinnedNotesPanel, { buildPinnedNoteReorderPayload } from './PinnedNotesPanel';
 
 type MockPinnedNote = {
     id: string;
@@ -18,7 +16,6 @@ type RouterLocation = {
 };
 
 let mockPinnedNotes: MockPinnedNote[] = [];
-let latestOnDragEnd: ((event: { active: { id: string }; over: { id: string } | null }) => void) | undefined;
 const mockSortableAttributes = { 'data-sortable-handle': 'true' };
 
 vi.mock('@tanstack/react-router', () => ({
@@ -27,17 +24,7 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 
 vi.mock('@dnd-kit/core', () => ({
-    DndContext: ({
-        children,
-        onDragEnd,
-    }: {
-        children: ReactNode;
-        onDragEnd?: (event: { active: { id: string }; over: { id: string } | null }) => void;
-    }) => {
-        latestOnDragEnd = onDragEnd;
-
-        return <div data-testid="dnd-context">{children}</div>;
-    },
+    DndContext: ({ children }: { children: ReactNode }) => <div data-testid="dnd-context">{children}</div>,
     KeyboardSensor: class KeyboardSensor {},
     PointerSensor: class PointerSensor {},
     closestCenter: vi.fn(),
@@ -52,13 +39,6 @@ vi.mock('@dnd-kit/modifiers', () => ({ restrictToVerticalAxis: vi.fn() }));
 
 vi.mock('@dnd-kit/sortable', () => ({
     SortableContext: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-    arrayMove: vi.fn((items: unknown[], oldIndex: number, newIndex: number) => {
-        const nextItems = [...items];
-        const [movedItem] = nextItems.splice(oldIndex, 1);
-        nextItems.splice(newIndex, 0, movedItem);
-
-        return nextItems;
-    }),
     sortableKeyboardCoordinates: vi.fn(),
     useSortable: () => ({
         attributes: mockSortableAttributes,
@@ -92,7 +72,6 @@ vi.mock('~/components/ui', async () => {
 
 describe('<PinnedNotesPanel />', () => {
     beforeEach(() => {
-        latestOnDragEnd = undefined;
         vi.clearAllMocks();
     });
 
@@ -128,43 +107,34 @@ describe('<PinnedNotesPanel />', () => {
         expect(screen.getByTestId('dnd-context')).toBeInTheDocument();
     });
 
-    it('reorders pinned notes through the drag end handler', async () => {
-        vi.mocked(reorderNotes).mockResolvedValue({ type: 'success' } as never);
-        mockPinnedNotes = [
-            {
-                id: 'note-1',
-                title: 'First note',
-                order: 0,
-            },
-            {
-                id: 'note-2',
-                title: 'Second note',
-                order: 1,
-            },
-        ];
-        const { Wrapper } = createQueryClientWrapper();
-
-        render(<PinnedNotesPanel />, { wrapper: Wrapper });
-
-        await act(async () => {
-            latestOnDragEnd?.({
-                active: { id: 'note-1' },
-                over: { id: 'note-2' },
-            });
-        });
-
-        await waitFor(() => {
-            expect(reorderNotes).toHaveBeenCalled();
-            expect(vi.mocked(reorderNotes).mock.calls[0]?.[0]).toEqual([
+    it('builds the note order payload after a pinned note moves', () => {
+        const reorderPayload = buildPinnedNoteReorderPayload(
+            [
                 {
-                    id: 'note-2',
+                    id: 'note-1',
+                    title: 'First note',
                     order: 0,
                 },
                 {
-                    id: 'note-1',
+                    id: 'note-2',
+                    title: 'Second note',
                     order: 1,
                 },
-            ]);
-        });
+            ],
+            'note-1',
+            'note-2',
+        );
+
+        expect(reorderPayload?.nextItems.map((item) => item.id)).toEqual(['note-2', 'note-1']);
+        expect(reorderPayload?.orders).toEqual([
+            {
+                id: 'note-2',
+                order: 0,
+            },
+            {
+                id: 'note-1',
+                order: 1,
+            },
+        ]);
     });
 });

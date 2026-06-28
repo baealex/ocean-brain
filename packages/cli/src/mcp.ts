@@ -18,7 +18,15 @@ import { formatPropertyQueryResponse, type PropertyQueryResult } from './mcp-pro
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
     fs.readFileSync(path.resolve(__dirname, '..', 'package.json'), 'utf-8')
-);
+) as { version: string };
+
+export const OCEAN_BRAIN_MCP_VERSION_HEADER = 'X-Ocean-Brain-MCP-Version';
+
+export const createMcpRequestHeaders = (token: string | undefined) => ({
+    'Content-Type': 'application/json',
+    [OCEAN_BRAIN_MCP_VERSION_HEADER]: pkg.version,
+    ...(token ? { Authorization: `Bearer ${token}` } : {})
+});
 
 export const OCEAN_BRAIN_MCP_TOOLS = {
     searchNotes: 'ocean_brain_search_notes',
@@ -113,15 +121,19 @@ async function graphql(
 ) {
     const response = await fetch(`${serverUrl}/graphql/mcp`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
+        headers: createMcpRequestHeaders(token),
         body: JSON.stringify({ query, variables }),
     });
 
     if (!response.ok) {
-        throw new Error(`GraphQL request failed: ${response.status} ${response.statusText}`);
+        const errorBody = await response.json().catch(() => undefined) as
+            | { code?: string; message?: string }
+            | undefined;
+        throw new Error(
+            errorBody?.message
+                ? `GraphQL request failed: ${errorBody.code || response.status} ${errorBody.message}`
+                : `GraphQL request failed: ${response.status} ${response.statusText}`
+        );
     }
 
     const result = await response.json() as {
@@ -150,10 +162,7 @@ async function jsonRequest<TResponse extends Record<string, unknown>>(
 ) {
     const response = await fetch(`${serverUrl}${pathName}`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
+        headers: createMcpRequestHeaders(token),
         body: JSON.stringify(body)
     });
 

@@ -1,9 +1,11 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { Button } from './Button';
 
 describe('<Button />', () => {
-    it('renders an accessible button and calls the click handler', () => {
+    it('calls the click handler from the accessible button', async () => {
+        const user = userEvent.setup();
         const handleClick = vi.fn();
 
         render(<Button onClick={handleClick}>Capture</Button>);
@@ -11,7 +13,7 @@ describe('<Button />', () => {
         const button = screen.getByRole('button', { name: 'Capture' });
         expect(button).toBeInTheDocument();
 
-        fireEvent.click(button);
+        await user.click(button);
 
         expect(handleClick).toHaveBeenCalledTimes(1);
     });

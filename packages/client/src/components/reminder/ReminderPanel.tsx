@@ -161,6 +161,10 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                                                             checked={reminder.completed}
                                                             onChange={() => handleToggleComplete(reminder)}
                                                             size="sm"
+                                                            aria-label={`Reminder: ${
+                                                                reminder.content ||
+                                                                formatReminderDate(reminder.reminderDate)
+                                                            }`}
                                                         />
                                                         <Text
                                                             as="div"

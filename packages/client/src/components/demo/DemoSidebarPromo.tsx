@@ -32,6 +32,7 @@ const promoItems = [
 const DemoSidebarPromo = () => {
     return (
         <section className={promoRootClassName} aria-label="Demo actions">
+            <span className="px-1 text-label font-medium text-fg-tertiary">Demo</span>
             {promoItems.map((item) => (
                 <a
                     key={item.title}

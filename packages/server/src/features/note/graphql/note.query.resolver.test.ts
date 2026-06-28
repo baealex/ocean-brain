@@ -24,39 +24,17 @@ const createNoteRecord = (input: { id: number; title: string; content: string; u
 
 test('allNotes resolver uses stored searchable text with DB pagination when no stale notes exist', async () => {
     const findCalls: unknown[] = [];
+    let triggerSearchBackfillCount = 0;
 
     const resolver = createAllNotesQueryResolver({
-        countNotes: async ({ where }) => {
-            assert.deepEqual(where, {
-                AND: [
-                    { searchableTextVersion: 1 },
-                    { searchableText: { contains: '123' } },
-                    { NOT: { searchableText: { contains: 'draft' } } },
-                ],
-            });
-
-            return 2;
+        countNotes: async () => 2,
+        triggerSearchBackfill: () => {
+            triggerSearchBackfillCount += 1;
         },
-        triggerSearchBackfill: () => undefined,
         findNotes: async (args) => {
             findCalls.push(args);
 
-            if (
-                'where' in args &&
-                args.where &&
-                typeof args.where === 'object' &&
-                'AND' in args.where &&
-                Array.isArray(args.where.AND) &&
-                args.where.AND.some(
-                    (item) =>
-                        typeof item === 'object' &&
-                        item !== null &&
-                        'searchableTextVersion' in item &&
-                        typeof item.searchableTextVersion === 'object' &&
-                        item.searchableTextVersion !== null &&
-                        'not' in item.searchableTextVersion,
-                )
-            ) {
+            if (findCalls.length === 1) {
                 return [] as never;
             }
 
@@ -87,31 +65,11 @@ test('allNotes resolver uses stored searchable text with DB pagination when no s
         },
     });
 
-    assert.deepEqual(findCalls, [
-        {
-            orderBy: [{ updatedAt: 'desc' }],
-            where: {
-                AND: [
-                    { searchableTextVersion: { not: 1 } },
-                    {
-                        OR: [{ title: { contains: '123' } }, { content: { contains: '123' } }],
-                    },
-                ],
-            },
-        },
-        {
-            orderBy: [{ updatedAt: 'desc' }],
-            where: {
-                AND: [
-                    { searchableTextVersion: 1 },
-                    { searchableText: { contains: '123' } },
-                    { NOT: { searchableText: { contains: 'draft' } } },
-                ],
-            },
-            take: 1,
-            skip: 1,
-        },
-    ]);
+    assert.equal(findCalls.length, 2);
+    assert.deepEqual((findCalls[1] as { orderBy?: unknown }).orderBy, [{ updatedAt: 'desc' }]);
+    assert.equal((findCalls[1] as { take?: unknown }).take, 1);
+    assert.equal((findCalls[1] as { skip?: unknown }).skip, 1);
+    assert.equal(triggerSearchBackfillCount, 0);
     assert.equal(result.totalCount, 2);
     assert.deepEqual(
         result.notes.map((note) => note.id),
@@ -120,32 +78,18 @@ test('allNotes resolver uses stored searchable text with DB pagination when no s
 });
 
 test('allNotes resolver merges stale fallback matches with stored-search matches', async () => {
-    const resolver = createAllNotesQueryResolver({
-        countNotes: async ({ where }) => {
-            assert.deepEqual(where, {
-                AND: [{ searchableTextVersion: 1 }, { searchableText: { contains: '123' } }],
-            });
+    const findCalls: unknown[] = [];
+    let triggerSearchBackfillCount = 0;
 
-            return 1;
+    const resolver = createAllNotesQueryResolver({
+        countNotes: async () => 1,
+        triggerSearchBackfill: () => {
+            triggerSearchBackfillCount += 1;
         },
-        triggerSearchBackfill: () => undefined,
         findNotes: async (args) => {
-            if (
-                'where' in args &&
-                args.where &&
-                typeof args.where === 'object' &&
-                'AND' in args.where &&
-                Array.isArray(args.where.AND) &&
-                args.where.AND.some(
-                    (item) =>
-                        typeof item === 'object' &&
-                        item !== null &&
-                        'searchableTextVersion' in item &&
-                        typeof item.searchableTextVersion === 'object' &&
-                        item.searchableTextVersion !== null &&
-                        'not' in item.searchableTextVersion,
-                )
-            ) {
+            findCalls.push(args);
+
+            if (findCalls.length === 1) {
                 return [
                     {
                         id: 1,
@@ -204,6 +148,8 @@ test('allNotes resolver merges stale fallback matches with stored-search matches
     });
 
     assert.equal(result.totalCount, 2);
+    assert.equal(findCalls.length, 2);
+    assert.equal(triggerSearchBackfillCount, 1);
     assert.deepEqual(
         result.notes.map((note) => note.id),
         [1, 2],

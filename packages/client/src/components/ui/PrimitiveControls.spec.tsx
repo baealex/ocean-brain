@@ -1,5 +1,7 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
+import { Checkbox } from './Checkbox';
 import { Input } from './Input';
 import { Select } from './Select';
 import { ToggleGroup, ToggleGroupItem } from './ToggleGroup';
@@ -15,6 +17,20 @@ describe('shared primitive controls', () => {
 
         expect(screen.getByPlaceholderText('Search notes')).toBeInTheDocument();
         expect(screen.getByRole('combobox')).toBeInTheDocument();
+    });
+
+    it('exposes checkbox state through the native accessible input', async () => {
+        const user = userEvent.setup();
+
+        render(<Checkbox aria-label="Include metadata" />);
+
+        const checkbox = screen.getByRole('checkbox', { name: 'Include metadata' });
+
+        expect(checkbox).not.toBeChecked();
+
+        await user.click(checkbox);
+
+        expect(checkbox).toBeChecked();
     });
 
     it('marks the selected toggle item through accessible radio state', () => {

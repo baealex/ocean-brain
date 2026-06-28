@@ -198,6 +198,7 @@ const Placeholder = () => {
                                         variant="ghost"
                                         size="icon-sm"
                                         className={removePlaceholderButtonClassName}
+                                        aria-label={`Delete placeholder ${placeholder.name}`}
                                         onClick={() => removePlaceholder.mutate(placeholder.id.toString())}
                                     >
                                         <Icon.Close className="h-4 w-4" />

@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
-import { redirectToLoginIfSessionExpired } from '~/modules/auth-redirect';
+import { redirectToLoginIfSessionExpired } from '~/modules/auth-session-recovery';
 import { isLocalOnlyDemoMode } from '~/modules/demo-mode';
 import { invalidateQueriesForServerEvent } from '~/modules/server-event-invalidation';
 import {
@@ -42,7 +42,17 @@ const ServerEventBridge = () => {
         }
 
         const eventSource = new EventSource('/api/events');
+        let reconnectingAfterError = false;
         const authErrorListener = () => {
+            reconnectingAfterError = true;
+            void redirectToLoginIfSessionExpired();
+        };
+        const reconnectListener = () => {
+            if (!reconnectingAfterError) {
+                return;
+            }
+
+            reconnectingAfterError = false;
             void redirectToLoginIfSessionExpired();
         };
         const cleanupListeners = NOTE_SERVER_EVENT_TYPES.map((eventType) => {
@@ -56,12 +66,14 @@ const ServerEventBridge = () => {
         });
 
         eventSource.addEventListener('error', authErrorListener);
+        eventSource.addEventListener('open', reconnectListener);
 
         return () => {
             cleanupListeners.forEach((cleanup) => {
                 cleanup();
             });
             eventSource.removeEventListener('error', authErrorListener);
+            eventSource.removeEventListener('open', reconnectListener);
             eventSource.close();
         };
     }, []);

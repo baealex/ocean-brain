@@ -155,7 +155,7 @@ export function RoutePendingView({
 }: RoutePendingViewProps) {
     return (
         <PageLayout title={title} description={description} variant="none">
-            <div className="flex flex-col gap-4">
+            <div role="status" aria-label={title} className="flex flex-col gap-4">
                 <Skeleton height="56px" />
                 <Skeleton height="220px" />
                 <Skeleton height="160px" />

@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { getServerCache, setServerCache } from '~/apis/server-cache.api';
 import { queryKeys } from '~/modules/query-key-factory';
@@ -33,6 +34,8 @@ vi.mock('~/store/theme', () => ({
 
 describe('<SidebarHeroBanner />', () => {
     it('renders the hero image and removes it through the confirm flow', async () => {
+        const user = userEvent.setup();
+
         vi.mocked(getServerCache).mockResolvedValue('https://example.com/hero.jpg');
         vi.mocked(setServerCache).mockResolvedValue({
             type: 'success',
@@ -46,9 +49,10 @@ describe('<SidebarHeroBanner />', () => {
 
         render(<SidebarHeroBanner />, { wrapper: Wrapper });
 
-        const removeButton = await screen.findByRole('button', { name: 'Remove hero banner' });
+        const removeButton = await screen.findByRole('button', { name: 'Remove sidebar banner' });
         expect(await screen.findByAltText('Studio atmosphere banner')).toBeInTheDocument();
-        fireEvent.click(removeButton);
+
+        await user.click(removeButton);
 
         await waitFor(() => {
             expect(mockConfirm).toHaveBeenCalledTimes(1);

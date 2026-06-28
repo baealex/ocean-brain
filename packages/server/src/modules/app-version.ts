@@ -51,15 +51,15 @@ const getVersionCandidatePaths = () => {
 };
 
 export const resolveOceanBrainVersion = () => {
-    if (process.env.OCEAN_BRAIN_VERSION) {
-        return normalizeVersion(process.env.OCEAN_BRAIN_VERSION);
-    }
-
     for (const candidatePath of getVersionCandidatePaths()) {
         const version = readPackageVersion(candidatePath);
         if (version) {
             return normalizeVersion(version);
         }
+    }
+
+    if (process.env.OCEAN_BRAIN_VERSION) {
+        return normalizeVersion(process.env.OCEAN_BRAIN_VERSION);
     }
 
     return '0.0.0';

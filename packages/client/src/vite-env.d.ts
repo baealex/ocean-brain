@@ -7,5 +7,3 @@ interface ImportMetaEnv {
 interface ImportMeta {
     readonly env: ImportMetaEnv;
 }
-
-declare const __OCEAN_BRAIN_VERSION__: string;

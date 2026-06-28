@@ -1,17 +1,20 @@
-import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
-import { getRouteApi } from '@tanstack/react-router';
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
+import { getRouteApi, Link } from '@tanstack/react-router';
 import { useState } from 'react';
 
+import { fetchNotePropertyKeys } from '~/apis/note.api';
+import { fetchTags } from '~/apis/tag.api';
 import { fetchViewSection, fetchViewSectionNotes, updateViewSection } from '~/apis/view.api';
 import { QueryBoundary } from '~/components/app';
+import * as Icon from '~/components/icon';
 import { NoteListCard } from '~/components/note';
-import { Empty, FallbackRender, PageLayout, Pagination, Skeleton } from '~/components/shared';
+import { Button, Empty, FallbackRender, PageLayout, Pagination, Skeleton } from '~/components/shared';
 import { Text, useToast } from '~/components/ui';
-import { ViewChip, ViewSectionTableRenderer } from '~/components/view';
+import { ViewChip, ViewSectionDialog, type ViewSectionDialogDraft, ViewSectionTableRenderer } from '~/components/view';
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
 import type { ViewSortBy, ViewSortOrder } from '~/models/view.model';
 import { queryKeys } from '~/modules/query-key-factory';
-import { VIEW_NOTES_ROUTE } from '~/modules/url';
+import { VIEW_NOTES_ROUTE, VIEWS_ROUTE } from '~/modules/url';
 import { buildViewSectionInput, formatViewPropertyFilter, getViewTagMatchLabel } from '~/modules/view-dashboard';
 
 const Route = getRouteApi(VIEW_NOTES_ROUTE);
@@ -23,6 +26,7 @@ function ViewNotesContent() {
     const { page, sectionId } = Route.useSearch();
     const { onDelete, onPinned, deleteWarningDialog } = useNoteMutate();
     const [isSortPending, setIsSortPending] = useState(false);
+    const [isSectionDialogOpen, setIsSectionDialogOpen] = useState(false);
     const limit = 25;
 
     const { data: sectionData } = useSuspenseQuery({
@@ -61,6 +65,34 @@ function ViewNotesContent() {
         },
     });
 
+    const { data: tagData, isPending: isTagsLoading } = useQuery({
+        queryKey: queryKeys.tags.list({ limit: 200 }),
+        enabled: isSectionDialogOpen,
+        async queryFn() {
+            const response = await fetchTags({ limit: 200 });
+
+            if (response.type === 'error') {
+                throw response;
+            }
+
+            return response.allTags;
+        },
+    });
+
+    const { data: propertyKeyData, isPending: isPropertiesLoading } = useQuery({
+        queryKey: queryKeys.notes.propertyKeys({ limit: 100 }),
+        enabled: isSectionDialogOpen,
+        async queryFn() {
+            const response = await fetchNotePropertyKeys({ limit: 100 });
+
+            if (response.type === 'error') {
+                throw response;
+            }
+
+            return response.notePropertyKeys;
+        },
+    });
+
     const heading = sectionData.title;
     const tagNames = sectionData.tagNames;
     const mode = sectionData.mode;
@@ -93,6 +125,8 @@ function ViewNotesContent() {
             )}
         </FallbackRender>
     );
+    const availableTags = tagData?.tags ?? [];
+    const availableProperties = propertyKeyData?.keys ?? [];
 
     const updateSectionSort = async (sortBy: ViewSortBy) => {
         if (isSortPending) {
@@ -131,87 +165,136 @@ function ViewNotesContent() {
         setIsSortPending(false);
     };
 
+    const handleUpdateSection = async (draft: ViewSectionDialogDraft) => {
+        const response = await updateViewSection(sectionData.id, draft);
+
+        if (response.type === 'error') {
+            toast(response.errors[0]?.message ?? 'Failed to update section.');
+            return;
+        }
+
+        await queryClient.invalidateQueries({
+            queryKey: queryKeys.views.all(),
+            exact: false,
+        });
+        navigate({
+            search: (prev) => ({
+                ...prev,
+                page: 1,
+            }),
+        });
+        setIsSectionDialogOpen(false);
+    };
+
     return (
-        <PageLayout
-            title={heading}
-            heading={data.totalCount > 0 ? `${heading} (${data.totalCount})` : heading}
-            description={
-                <div className="flex flex-col gap-2">
-                    <Text as="span" variant="meta" tone="tertiary">
-                        {filterSummary}
-                    </Text>
-                    <div className="flex flex-wrap gap-1.5">
-                        {tagNames.map((tagName) => (
-                            <ViewChip
-                                key={tagName}
-                                className="max-w-full border-border-subtle bg-hover-subtle text-fg-secondary"
-                            >
-                                {tagName}
-                            </ViewChip>
-                        ))}
-                        {propertyFilters.map((filter) => (
-                            <ViewChip
-                                key={`${filter.key}-${filter.operator}-${filter.value ?? ''}`}
-                                className="max-w-full border-border-subtle bg-hover-subtle text-fg-secondary"
-                            >
-                                {formatViewPropertyFilter(filter)}
-                            </ViewChip>
-                        ))}
-                        {tagNames.length === 0 && propertyFilters.length === 0 && (
-                            <ViewChip className="max-w-full border-border-subtle bg-hover-subtle text-fg-secondary">
-                                All notes
-                            </ViewChip>
-                        )}
+        <>
+            <PageLayout
+                title={heading}
+                heading={data.totalCount > 0 ? `${heading} (${data.totalCount})` : heading}
+                description={
+                    <div className="flex flex-col gap-2">
+                        <Text as="span" variant="meta" tone="tertiary">
+                            {filterSummary}
+                        </Text>
+                        <div className="flex flex-wrap gap-1.5">
+                            {tagNames.map((tagName) => (
+                                <ViewChip
+                                    key={tagName}
+                                    className="max-w-full border-border-subtle bg-hover-subtle text-fg-secondary"
+                                >
+                                    {tagName}
+                                </ViewChip>
+                            ))}
+                            {propertyFilters.map((filter) => (
+                                <ViewChip
+                                    key={`${filter.key}-${filter.operator}-${filter.value ?? ''}`}
+                                    className="max-w-full border-border-subtle bg-hover-subtle text-fg-secondary"
+                                >
+                                    {formatViewPropertyFilter(filter)}
+                                </ViewChip>
+                            ))}
+                            {tagNames.length === 0 && propertyFilters.length === 0 && (
+                                <ViewChip className="max-w-full border-border-subtle bg-hover-subtle text-fg-secondary">
+                                    All notes
+                                </ViewChip>
+                            )}
+                        </div>
                     </div>
-                </div>
-            }
-        >
-            <FallbackRender
-                fallback={
-                    <Empty
-                        title="No notes match this saved view"
-                        description="Adjust this view's filters or keep writing until matching notes appear."
-                    />
+                }
+                headerRight={
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Button asChild variant="ghost" size="sm">
+                            <Link to={VIEWS_ROUTE}>
+                                <Icon.ArrowLeft className="h-4 w-4" />
+                                Back to Views
+                            </Link>
+                        </Button>
+                        <Button type="button" variant="subtle" size="sm" onClick={() => setIsSectionDialogOpen(true)}>
+                            <Icon.Edit className="h-4 w-4" />
+                            Edit section
+                        </Button>
+                    </div>
                 }
             >
-                {data.notes.length > 0 && sectionData.displayType === 'table' ? (
-                    <div className="flex flex-col gap-4">
-                        <ViewSectionTableRenderer
-                            section={sectionData}
-                            notes={data.notes}
-                            isPending={false}
-                            isError={false}
-                            onRetry={() =>
-                                void queryClient.invalidateQueries({
-                                    queryKey: queryKeys.views.sectionNotes(sectionId, {
-                                        limit,
-                                        offset: (page - 1) * limit,
-                                    }),
-                                })
-                            }
-                            onSortChange={updateSectionSort}
-                            isSortPending={isSortPending}
+                <FallbackRender
+                    fallback={
+                        <Empty
+                            title="No notes match this saved view"
+                            description="Adjust this view's filters or keep writing until matching notes appear."
                         />
-                        {pagination}
-                    </div>
-                ) : data.notes.length > 0 ? (
-                    <div className="flex flex-col gap-4">
-                        <div className="grid-auto-cards grid gap-5">
-                            {data.notes.map((note) => (
-                                <NoteListCard
-                                    key={note.id}
-                                    {...note}
-                                    onPinned={() => onPinned(note.id, note.pinned)}
-                                    onDelete={() => onDelete(note.id)}
-                                />
-                            ))}
+                    }
+                >
+                    {data.notes.length > 0 && sectionData.displayType === 'table' ? (
+                        <div className="flex flex-col gap-4">
+                            <ViewSectionTableRenderer
+                                section={sectionData}
+                                notes={data.notes}
+                                isPending={false}
+                                isError={false}
+                                surface="card"
+                                onRetry={() =>
+                                    void queryClient.invalidateQueries({
+                                        queryKey: queryKeys.views.sectionNotes(sectionId, {
+                                            limit,
+                                            offset: (page - 1) * limit,
+                                        }),
+                                    })
+                                }
+                                onSortChange={updateSectionSort}
+                                isSortPending={isSortPending}
+                            />
+                            {pagination}
                         </div>
-                        {pagination}
-                    </div>
-                ) : null}
-            </FallbackRender>
-            {deleteWarningDialog}
-        </PageLayout>
+                    ) : data.notes.length > 0 ? (
+                        <div className="flex flex-col gap-4">
+                            <div className="grid-auto-cards grid gap-5">
+                                {data.notes.map((note) => (
+                                    <NoteListCard
+                                        key={note.id}
+                                        {...note}
+                                        onPinned={() => onPinned(note.id, note.pinned)}
+                                        onDelete={() => onDelete(note.id)}
+                                    />
+                                ))}
+                            </div>
+                            {pagination}
+                        </div>
+                    ) : null}
+                </FallbackRender>
+                {deleteWarningDialog}
+            </PageLayout>
+            <ViewSectionDialog
+                open={isSectionDialogOpen}
+                mode="edit"
+                initialSection={sectionData}
+                availableTags={availableTags}
+                availableProperties={availableProperties}
+                isTagsLoading={isTagsLoading}
+                isPropertiesLoading={isPropertiesLoading}
+                onClose={() => setIsSectionDialogOpen(false)}
+                onSubmit={handleUpdateSection}
+            />
+        </>
     );
 }
 

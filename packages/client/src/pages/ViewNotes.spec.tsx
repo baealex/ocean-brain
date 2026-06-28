@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import type { Note } from '~/models/note.model';
@@ -16,6 +16,8 @@ const routeState = vi.hoisted(() => ({
 }));
 
 const apiMocks = vi.hoisted(() => ({
+    fetchNotePropertyKeys: vi.fn(),
+    fetchTags: vi.fn(),
     fetchViewSection: vi.fn(),
     fetchViewSectionNotes: vi.fn(),
     updateViewSection: vi.fn(),
@@ -49,6 +51,8 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 
 vi.mock('~/apis/view.api', () => apiMocks);
+vi.mock('~/apis/note.api', () => ({ fetchNotePropertyKeys: apiMocks.fetchNotePropertyKeys }));
+vi.mock('~/apis/tag.api', () => ({ fetchTags: apiMocks.fetchTags }));
 
 vi.mock('~/hooks/resource/useNoteMutate', () => ({
     default: () => ({
@@ -131,6 +135,8 @@ const renderViewNotes = () => {
 
 describe('<ViewNotes />', () => {
     beforeEach(() => {
+        vi.clearAllMocks();
+
         routeState.search = {
             page: 1,
             sectionId: 'section-1',
@@ -153,12 +159,45 @@ describe('<ViewNotes />', () => {
                 id: 'section-1',
             },
         });
+        apiMocks.fetchTags.mockResolvedValue({
+            type: 'success',
+            allTags: {
+                totalCount: 1,
+                tags: [{ id: 'tag-1', name: '@제품', referenceCount: 1 }],
+            },
+        });
+        apiMocks.fetchNotePropertyKeys.mockResolvedValue({
+            type: 'success',
+            notePropertyKeys: {
+                totalCount: 2,
+                keys: [
+                    {
+                        key: 'project',
+                        name: 'Project',
+                        valueType: 'select',
+                        noteCount: 1,
+                        options: [{ id: 'option-project', label: 'Ocean Brain', value: 'ocean-brain', order: 0 }],
+                        updatedAt: '1780000000000',
+                    },
+                    {
+                        key: 'status',
+                        name: 'Status',
+                        valueType: 'select',
+                        noteCount: 1,
+                        options: [{ id: 'option-status', label: 'Doing', value: 'doing', order: 0 }],
+                        updatedAt: '1780000000000',
+                    },
+                ],
+            },
+        });
     });
 
     it('keeps a table section rendered as a table on the full results page', async () => {
         renderViewNotes();
 
         expect(await screen.findByRole('table', { name: 'View query results as a table' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Back to Views' })).toHaveAttribute('href', '/views');
+        expect(screen.getByRole('button', { name: 'Edit section' })).toBeInTheDocument();
         expect(screen.getByText('Project is ocean-brain')).toBeInTheDocument();
         expect(screen.getByText('Status is doing')).toBeInTheDocument();
 
@@ -206,6 +245,47 @@ describe('<ViewNotes />', () => {
         await waitFor(() => {
             expect(apiMocks.fetchViewSection).toHaveBeenCalledTimes(2);
             expect(apiMocks.fetchViewSectionNotes).toHaveBeenCalledTimes(2);
+        });
+    });
+
+    it('opens the section editor from the full results page', async () => {
+        renderViewNotes();
+
+        fireEvent.click(await screen.findByRole('button', { name: 'Edit section' }));
+
+        expect(await screen.findByRole('dialog')).toHaveTextContent('Edit section');
+        await waitFor(() => {
+            expect(apiMocks.fetchTags).toHaveBeenCalledWith({ limit: 200 });
+            expect(apiMocks.fetchNotePropertyKeys).toHaveBeenCalledWith({ limit: 100 });
+        });
+    });
+
+    it('resets pagination after saving full-result section edits', async () => {
+        routeState.search = {
+            page: 3,
+            sectionId: 'section-1',
+        };
+
+        renderViewNotes();
+
+        fireEvent.click(await screen.findByRole('button', { name: 'Edit section' }));
+        await screen.findByText('2 properties · 1 tags available');
+        fireEvent.click(await screen.findByRole('button', { name: 'Save section' }));
+
+        await waitFor(() => {
+            expect(apiMocks.updateViewSection).toHaveBeenCalledWith('section-1', expect.any(Object));
+        });
+        expect(routeState.navigate).toHaveBeenCalledWith({
+            search: expect.any(Function),
+        });
+
+        const navigateCall = routeState.navigate.mock.calls.at(-1)?.[0] as {
+            search: (previousSearch: typeof routeState.search) => typeof routeState.search;
+        };
+
+        expect(navigateCall.search(routeState.search)).toEqual({
+            page: 1,
+            sectionId: 'section-1',
         });
     });
 });

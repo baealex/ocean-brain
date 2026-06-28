@@ -20,11 +20,12 @@ import ViewSectionRenderer from './ViewSectionRenderer';
 interface ViewSectionCardProps {
     section: ViewSection;
     onEdit: () => void;
+    onDuplicate: () => void;
     onDelete: () => void;
     dragHandle?: React.ReactNode;
 }
 
-export default function ViewSectionCard({ section, onEdit, onDelete, dragHandle }: ViewSectionCardProps) {
+export default function ViewSectionCard({ section, onEdit, onDuplicate, onDelete, dragHandle }: ViewSectionCardProps) {
     const queryClient = useQueryClient();
     const toast = useToast();
     const [isSortPending, setIsSortPending] = useState(false);
@@ -89,8 +90,8 @@ export default function ViewSectionCard({ section, onEdit, onDelete, dragHandle 
     };
 
     return (
-        <SurfaceCard className="flex h-full flex-col gap-4">
-            <div className="flex items-start justify-between gap-3">
+        <SurfaceCard flush className="flex h-full flex-col overflow-hidden">
+            <div className="flex items-start justify-between gap-3 border-b border-border-subtle/75 px-4 py-3.5">
                 <div className="min-w-0">
                     <div className="flex items-center gap-1">
                         {dragHandle && <div className="-mr-1 shrink-0 self-center">{dragHandle}</div>}
@@ -137,25 +138,27 @@ export default function ViewSectionCard({ section, onEdit, onDelete, dragHandle 
                         )}
                     </div>
                 </div>
-                <div className="shrink-0">
-                    <Dropdown
-                        button={<MoreButton label="Section actions" />}
-                        items={[
-                            {
-                                name: 'Edit section',
-                                onClick: onEdit,
-                            },
-                            { type: 'separator' },
-                            {
-                                name: 'Delete section',
-                                onClick: onDelete,
-                            },
-                        ]}
-                    />
-                </div>
+                <Dropdown
+                    button={<MoreButton label="Section actions" />}
+                    items={[
+                        {
+                            name: 'Edit section',
+                            onClick: onEdit,
+                        },
+                        {
+                            name: 'Duplicate section',
+                            onClick: onDuplicate,
+                        },
+                        { type: 'separator' },
+                        {
+                            name: 'Delete section',
+                            onClick: onDelete,
+                        },
+                    ]}
+                />
             </div>
 
-            <div className="flex flex-1 flex-col gap-2.5">
+            <div className="flex flex-1 flex-col">
                 <ViewSectionRenderer
                     section={section}
                     notes={notes}
@@ -168,7 +171,7 @@ export default function ViewSectionCard({ section, onEdit, onDelete, dragHandle 
                 />
             </div>
 
-            <div className="flex items-center justify-between gap-3 border-t border-border-subtle/70 pt-4">
+            <div className="flex items-center justify-between gap-3 border-t border-border-subtle/75 px-4 py-3">
                 <Text as="p" variant="meta" tone="tertiary">
                     {isPending ? 'Loading notes...' : `Showing ${notes.length} of ${totalCount} notes`}
                 </Text>

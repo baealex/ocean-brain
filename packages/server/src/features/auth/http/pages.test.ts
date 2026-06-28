@@ -146,7 +146,8 @@ test('password mode blocks client routes until the server-side login form succee
 
     assert.equal(loginPage.status, 200);
     assert.match(loginPageHtml, /Ocean Brain/);
-    assert.match(loginPageHtml, /Enter the workspace password to continue/);
+    assert.doesNotMatch(loginPageHtml, /Enter the workspace password to continue/);
+    assert.doesNotMatch(loginPageHtml, /This session must be authenticated/);
     assert.match(loginPageHtml, /<form method="post" action="\/login">/);
     assert.match(loginPageHtml, /name="_csrf"/);
     assert.match(loginPageHtml, /name="next" value="\/notes"/);

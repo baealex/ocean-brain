@@ -7,6 +7,7 @@ export const buttonVariants = cva(
         'justify-center',
         'gap-2',
         'whitespace-nowrap',
+        'select-none',
         'font-medium',
         'transition-colors',
         'duration-200',

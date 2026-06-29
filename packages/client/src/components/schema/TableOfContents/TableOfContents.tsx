@@ -84,8 +84,10 @@ const TableOfContentsComponent = () => {
         editor.setTextCursorPosition(headingId);
         const element = document.querySelector(`[data-id="${headingId}"]`);
         if (element) {
+            const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+
             element.scrollIntoView({
-                behavior: 'smooth',
+                behavior: prefersReducedMotion ? 'auto' : 'smooth',
                 block: 'center',
             });
         }

@@ -416,6 +416,15 @@ html.dark .surface-base {
 }
 
 @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+    }
+
     .save-progress-ring-active {
         --save-progress: 100%;
         animation: none;
@@ -432,6 +441,7 @@ html.dark .surface-base {
 /* Graph canvas */
 .graph-canvas {
     background: var(--graph-bg);
+    user-select: none;
 }
 
 /* Legend dot */

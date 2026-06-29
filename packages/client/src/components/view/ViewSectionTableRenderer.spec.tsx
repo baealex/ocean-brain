@@ -3,7 +3,6 @@ import userEvent from '@testing-library/user-event';
 
 import type { Note } from '~/models/note.model';
 import type { ViewSection } from '~/models/view.model';
-import { NOTE_ROUTE } from '~/modules/url';
 import ViewSectionTableRenderer from './ViewSectionTableRenderer';
 
 const mockNavigate = vi.fn();
@@ -106,21 +105,20 @@ describe('<ViewSectionTableRenderer />', () => {
         expect(within(table).getByText('Doing')).toBeInTheDocument();
     });
 
-    it('opens the note when a table row is activated', async () => {
+    it('opens notes through the title link instead of the whole table row', async () => {
         const user = userEvent.setup();
 
         renderTable();
 
-        const row = screen.getByRole('link', { name: /Ocean Brain task/i }).closest('tr');
+        const link = screen.getByRole('link', { name: /Ocean Brain task/i });
+        const row = link.closest('tr');
 
         expect(row).toBeInTheDocument();
+        expect(link).toHaveAttribute('href', '/note-1');
 
         await user.click(row!);
 
-        expect(mockNavigate).toHaveBeenCalledWith({
-            to: NOTE_ROUTE,
-            params: { id: 'note-1' },
-        });
+        expect(mockNavigate).not.toHaveBeenCalled();
     });
 
     it('keeps notes without tags or properties visible with empty table cells', () => {

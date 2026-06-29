@@ -1,4 +1,4 @@
-import { Link, useNavigate } from '@tanstack/react-router';
+import { Link } from '@tanstack/react-router';
 
 import { Button, Text } from '~/components/ui';
 import type { Note, NoteProperty } from '~/models/note.model';
@@ -130,7 +130,6 @@ export default function ViewSectionTableRenderer({
     isSortPending,
     surface = 'flush',
 }: ViewSectionTableRendererProps) {
-    const navigate = useNavigate();
     const visibleColumns = normalizeViewTableColumns(section.displayOptions?.tableColumns);
     const tableMinWidth = getTableMinWidth(visibleColumns);
     const surfaceClassName =
@@ -144,13 +143,6 @@ export default function ViewSectionTableRenderer({
     const loadingRowClassName = surface === 'card' ? 'bg-elevated' : 'bg-transparent';
     const tableHeadClassName = surface === 'card' ? 'bg-subtle/65' : 'bg-subtle/45';
     const tableBodyClassName = surface === 'card' ? 'bg-elevated' : 'bg-transparent';
-
-    const openNote = (noteId: string) => {
-        void navigate({
-            to: NOTE_ROUTE,
-            params: { id: noteId },
-        });
-    };
 
     const renderHeaderCell = (column: ViewTableColumn) => {
         const sortBy = SORTABLE_TABLE_COLUMNS[column];
@@ -221,7 +213,6 @@ export default function ViewSectionTableRenderer({
                                 to={NOTE_ROUTE}
                                 params={{ id: note.id }}
                                 className="focus-ring-soft rounded-[6px] outline-none transition-colors hover:text-fg-default/85"
-                                onClick={(event) => event.stopPropagation()}
                             >
                                 {note.title || 'Untitled'}
                             </Link>
@@ -287,11 +278,7 @@ export default function ViewSectionTableRenderer({
                 </thead>
                 <tbody className={tableBodyClassName}>
                     {notes.map((note) => (
-                        <tr
-                            key={note.id}
-                            className="h-12 cursor-pointer border-b border-border-subtle/70 transition-colors last:border-b-0 hover:bg-hover-subtle"
-                            onClick={() => openNote(note.id)}
-                        >
+                        <tr key={note.id} className="h-12 border-b border-border-subtle/70 last:border-b-0">
                             {visibleColumns.map((column) => renderCell(note, column))}
                         </tr>
                     ))}

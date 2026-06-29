@@ -178,8 +178,8 @@ export const createNoteCleanupService = (deps: {
             })),
             orphanedTagNames: orphanedTags.map((tag) => tag.name),
             orphanedTagIds: orphanedTags.map((tag) => tag.id),
-            requiresForce: candidate.requiresForce || orphanedTags.length > 0,
-            forceReasons: [...candidate.forceReasons, ...(orphanedTags.length > 0 ? ['orphan_tags'] : [])],
+            requiresForce: candidate.requiresForce,
+            forceReasons: candidate.forceReasons,
         };
     };
 

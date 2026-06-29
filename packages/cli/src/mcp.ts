@@ -18,13 +18,22 @@ import { formatPropertyQueryResponse, type PropertyQueryResult } from './mcp-pro
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
     fs.readFileSync(path.resolve(__dirname, '..', 'package.json'), 'utf-8')
-) as { version: string };
+) as { oceanBrain?: { mcpCompatibilityVersion?: string }; version: string };
+
+if (!pkg.oceanBrain?.mcpCompatibilityVersion) {
+    throw new Error('Ocean Brain MCP compatibility version is required in package metadata.');
+}
 
 export const OCEAN_BRAIN_MCP_VERSION_HEADER = 'X-Ocean-Brain-MCP-Version';
+export const OCEAN_BRAIN_MCP_COMPATIBILITY_VERSION_HEADER = 'X-Ocean-Brain-MCP-Compatibility-Version';
+export const OCEAN_BRAIN_MCP_CLIENT_VERSION_HEADER = 'X-Ocean-Brain-MCP-Client-Version';
+export const OCEAN_BRAIN_MCP_COMPATIBILITY_VERSION = pkg.oceanBrain.mcpCompatibilityVersion;
 
 export const createMcpRequestHeaders = (token: string | undefined) => ({
     'Content-Type': 'application/json',
-    [OCEAN_BRAIN_MCP_VERSION_HEADER]: pkg.version,
+    [OCEAN_BRAIN_MCP_VERSION_HEADER]: OCEAN_BRAIN_MCP_COMPATIBILITY_VERSION,
+    [OCEAN_BRAIN_MCP_COMPATIBILITY_VERSION_HEADER]: OCEAN_BRAIN_MCP_COMPATIBILITY_VERSION,
+    [OCEAN_BRAIN_MCP_CLIENT_VERSION_HEADER]: pkg.version,
     ...(token ? { Authorization: `Bearer ${token}` } : {})
 });
 

@@ -3,30 +3,45 @@ import type { AddressInfo } from 'node:net';
 import test, { type TestContext } from 'node:test';
 import { createAppWithMcpAuth } from '../src/app.js';
 import type { McpAdminService } from '../src/features/mcp-admin/service.js';
-import { parseMajorMinorVersion, resolveOceanBrainVersion } from '../src/modules/app-version.js';
+import {
+    OCEAN_BRAIN_MCP_CLIENT_VERSION_HEADER,
+    OCEAN_BRAIN_MCP_COMPATIBILITY_VERSION_HEADER,
+    parseMajorMinorVersion,
+    resolveMcpCompatibilityVersion,
+    resolveOceanBrainVersion,
+} from '../src/modules/app-version.js';
 import { AUTH_SESSION_COOKIE_NAME, type AuthConfig } from '../src/modules/auth-mode.js';
 import { OCEAN_BRAIN_MCP_VERSION_HEADER } from '../src/modules/mcp-auth.js';
 
 const createCompatibleMcpVersion = (patch = 999) => {
-    const version = parseMajorMinorVersion(resolveOceanBrainVersion());
+    const version = parseMajorMinorVersion(resolveMcpCompatibilityVersion());
     assert.ok(version);
 
     return `${version.major}.${version.minor}.${patch}`;
 };
 
 const createIncompatibleMcpVersion = () => {
-    const version = parseMajorMinorVersion(resolveOceanBrainVersion());
+    const version = parseMajorMinorVersion(resolveMcpCompatibilityVersion());
     assert.ok(version);
 
     return `${version.major}.${version.minor + 1}.0`;
 };
 
-const createMcpHeaders = (bearerToken?: string, options: { mcpVersion?: string | null } = {}) => {
+const createMcpHeaders = (
+    bearerToken?: string,
+    options: { legacyMcpVersion?: string | null; mcpClientVersion?: string | null; mcpVersion?: string | null } = {},
+) => {
     const mcpVersion = Object.hasOwn(options, 'mcpVersion') ? options.mcpVersion : createCompatibleMcpVersion();
+    const legacyMcpVersion = Object.hasOwn(options, 'legacyMcpVersion') ? options.legacyMcpVersion : mcpVersion;
+    const mcpClientVersion = Object.hasOwn(options, 'mcpClientVersion')
+        ? options.mcpClientVersion
+        : resolveOceanBrainVersion();
 
     return {
         'Content-Type': 'application/json',
-        ...(mcpVersion ? { [OCEAN_BRAIN_MCP_VERSION_HEADER]: mcpVersion } : {}),
+        ...(legacyMcpVersion ? { [OCEAN_BRAIN_MCP_VERSION_HEADER]: legacyMcpVersion } : {}),
+        ...(mcpVersion ? { [OCEAN_BRAIN_MCP_COMPATIBILITY_VERSION_HEADER]: mcpVersion } : {}),
+        ...(mcpClientVersion ? { [OCEAN_BRAIN_MCP_CLIENT_VERSION_HEADER]: mcpClientVersion } : {}),
         ...(bearerToken ? { Authorization: `Bearer ${bearerToken}` } : {}),
     };
 };
@@ -266,7 +281,7 @@ test('mcp disabled state blocks MCP graphql access even with a valid token', asy
     assert.equal(query.body.code, 'MCP_DISABLED');
 });
 
-test('mcp version guard allows patch version differences', async (t) => {
+test('mcp version guard allows compatibility patch version differences', async (t) => {
     const { baseUrl } = await startServer(
         t,
         createOpenAuthConfig(),
@@ -284,7 +299,49 @@ test('mcp version guard allows patch version differences', async (t) => {
     assert.equal(body.code, 'INVALID_NOTE_TITLE');
 });
 
-test('mcp version guard blocks minor version differences', async (t) => {
+test('mcp version guard allows compatible clients even when app client version differs', async (t) => {
+    const { baseUrl } = await startServer(
+        t,
+        createOpenAuthConfig(),
+        createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }),
+    );
+
+    const response = await fetch(`${baseUrl}/api/mcp/notes/create`, {
+        method: 'POST',
+        headers: createMcpHeaders('mcp-secret', {
+            mcpClientVersion: '0.8.0',
+            mcpVersion: createCompatibleMcpVersion(123),
+        }),
+        body: JSON.stringify({}),
+    });
+    const body = (await response.json()) as Record<string, unknown>;
+
+    assert.equal(response.status, 400);
+    assert.equal(body.code, 'INVALID_NOTE_TITLE');
+});
+
+test('mcp version guard allows legacy compatibility header fallback during migration', async (t) => {
+    const { baseUrl } = await startServer(
+        t,
+        createOpenAuthConfig(),
+        createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }),
+    );
+
+    const response = await fetch(`${baseUrl}/api/mcp/notes/create`, {
+        method: 'POST',
+        headers: createMcpHeaders('mcp-secret', {
+            legacyMcpVersion: createCompatibleMcpVersion(456),
+            mcpVersion: null,
+        }),
+        body: JSON.stringify({}),
+    });
+    const body = (await response.json()) as Record<string, unknown>;
+
+    assert.equal(response.status, 400);
+    assert.equal(body.code, 'INVALID_NOTE_TITLE');
+});
+
+test('mcp version guard blocks compatibility minor version differences', async (t) => {
     const { baseUrl } = await startServer(
         t,
         createOpenAuthConfig(),
@@ -300,8 +357,11 @@ test('mcp version guard blocks minor version differences', async (t) => {
 
     assert.equal(response.status, 426);
     assert.equal(body.code, 'MCP_VERSION_INCOMPATIBLE');
-    assert.equal(body.mcpVersion, createIncompatibleMcpVersion());
+    assert.equal(body.mcpCompatibilityVersion, createIncompatibleMcpVersion());
+    assert.equal(body.mcpClientVersion, resolveOceanBrainVersion());
     assert.equal(body.serverVersion, resolveOceanBrainVersion());
+    assert.equal(body.requiredMcpVersion, '0.8.x');
+    assert.equal(body.requiredMcpCompatibilityVersion, '0.8.x');
     assert.match(String(body.message), /Please update Ocean Brain MCP/);
     assert.match(String(body.message), /https:\/\/github\.com\/baealex\/ocean-brain\/releases/);
 });
@@ -315,7 +375,7 @@ test('mcp version guard blocks requests without an MCP version header after auth
 
     const response = await fetch(`${baseUrl}/graphql/mcp`, {
         method: 'POST',
-        headers: createMcpHeaders('mcp-secret', { mcpVersion: null }),
+        headers: createMcpHeaders('mcp-secret', { mcpClientVersion: null, mcpVersion: null }),
         body: JSON.stringify({ query: 'query { __typename }' }),
     });
     const body = (await response.json()) as Record<string, unknown>;
@@ -323,6 +383,7 @@ test('mcp version guard blocks requests without an MCP version header after auth
     assert.equal(response.status, 426);
     assert.equal(body.code, 'MCP_VERSION_INCOMPATIBLE');
     assert.equal(body.mcpVersion, null);
+    assert.equal(body.mcpCompatibilityVersion, null);
 });
 
 test('enabled state still requires a valid bearer token on the MCP note delete endpoint', async (t) => {

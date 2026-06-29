@@ -49,5 +49,8 @@
         "sqlite3": "catalog:",
         "winston": "catalog:",
         "zod": "^3.25.0"
+    },
+    "oceanBrain": {
+        "mcpCompatibilityVersion": "0.8.0"
     }
 }

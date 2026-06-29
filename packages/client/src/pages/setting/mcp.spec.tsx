@@ -21,7 +21,13 @@ const createMcpStatus = (overrides: Partial<McpAdminStatus> = {}): McpAdminStatu
     server: {
         version: '0.7.3',
         releaseUrl: 'https://github.com/baealex/ocean-brain/releases',
-        mcpVersionRequirement: '0.7.x',
+        mcpVersionRequirement: '0.8.x',
+        mcp: {
+            compatibilityVersion: '0.8.0',
+            compatibilityRequirement: '0.8.x',
+            compatibilityVersionHeader: 'X-Ocean-Brain-MCP-Compatibility-Version',
+            clientVersionHeader: 'X-Ocean-Brain-MCP-Client-Version',
+        },
     },
     ...overrides,
 });
@@ -51,6 +57,28 @@ describe('<McpSetting />', () => {
         renderPage();
 
         expect(await screen.findByLabelText(/ocean brain url/i)).toHaveValue(window.location.origin);
+    });
+
+    it('uses server MCP compatibility requirement instead of app version for CLI guidance', async () => {
+        vi.mocked(mcpAdminApi.fetchMcpAdminStatus).mockResolvedValue(
+            createMcpStatus({
+                server: {
+                    version: '0.8.0',
+                    releaseUrl: 'https://github.com/baealex/ocean-brain/releases',
+                    mcpVersionRequirement: '0.8.x',
+                    mcp: {
+                        compatibilityVersion: '0.8.0',
+                        compatibilityRequirement: '0.8.x',
+                        compatibilityVersionHeader: 'X-Ocean-Brain-MCP-Compatibility-Version',
+                        clientVersionHeader: 'X-Ocean-Brain-MCP-Client-Version',
+                    },
+                },
+            }),
+        );
+
+        renderPage();
+
+        expect(await screen.findByText('MCP compatibility 0.8.x')).toBeInTheDocument();
     });
 
     it('submits enabled toggle and refreshes status', async () => {

@@ -10,5 +10,11 @@ export interface McpAdminStatus {
         version: string;
         releaseUrl: string;
         mcpVersionRequirement: string;
+        mcp?: {
+            compatibilityVersion: string;
+            compatibilityRequirement: string;
+            compatibilityVersionHeader: string;
+            clientVersionHeader: string;
+        };
     };
 }

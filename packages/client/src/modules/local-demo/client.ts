@@ -33,6 +33,12 @@ const withLocalDemoMcpServerInfo = (mcp: Omit<McpAdminStatus, 'server'>): McpAdm
         version: 'local-demo',
         releaseUrl: OCEAN_BRAIN_RELEASES_URL,
         mcpVersionRequirement: 'unknown',
+        mcp: {
+            compatibilityVersion: 'unknown',
+            compatibilityRequirement: 'unknown',
+            compatibilityVersionHeader: 'X-Ocean-Brain-MCP-Compatibility-Version',
+            clientVersionHeader: 'X-Ocean-Brain-MCP-Client-Version',
+        },
     },
 });
 

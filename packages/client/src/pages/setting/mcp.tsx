@@ -93,14 +93,12 @@ const createConnectionOutput = (clientGuide: ClientGuide, serverUrl: string, tok
     ].join('\n');
 };
 
-const getMcpCliRequirement = (version?: string) => {
-    if (!version) {
-        return 'Ocean Brain CLI';
+const getMcpCompatibilityLabel = (requirement?: string) => {
+    if (!requirement || requirement === 'unknown') {
+        return 'MCP compatibility';
     }
 
-    const [major, minor] = version.split('.');
-
-    return major && minor ? `Ocean Brain CLI v${major}.${minor}.x` : 'Ocean Brain CLI';
+    return `MCP compatibility ${requirement}`;
 };
 
 const clientGuideLabel: Record<ClientGuide, string> = {
@@ -154,7 +152,7 @@ const McpSetting = () => {
     const hasActiveToken = status?.hasActiveToken ?? false;
     const canToggle = !isLoading && !setEnabledMutation.isPending;
     const normalizedTokenFilePath = tokenFilePath.trim() || defaultTokenFilePath;
-    const mcpCliRequirement = getMcpCliRequirement(status?.server.version);
+    const mcpCompatibilityLabel = getMcpCompatibilityLabel(status?.server.mcpVersionRequirement);
     const tokenStatusText = hasActiveToken ? '1 active token' : 'No active token';
     const outputLabel = clientGuide === 'json' ? 'Token file and MCP JSON' : `${clientGuideLabel[clientGuide]} setup`;
     const tokenValue = issuedToken || 'PASTE_TOKEN_HERE';
@@ -252,7 +250,7 @@ const McpSetting = () => {
                             tone="tertiary"
                             className="rounded-full border border-border-subtle bg-hover-subtle px-2.5 py-1"
                         >
-                            {mcpCliRequirement}
+                            {mcpCompatibilityLabel}
                         </Text>
                     </div>
 

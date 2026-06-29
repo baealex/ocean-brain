@@ -2,7 +2,12 @@ import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import type { ValidationRule } from 'graphql';
 import { GraphQLError } from 'graphql';
 
-import { getOceanBrainVersionInfo, parseMajorMinorVersion } from './app-version.js';
+import {
+    getOceanBrainVersionInfo,
+    OCEAN_BRAIN_MCP_CLIENT_VERSION_HEADER,
+    OCEAN_BRAIN_MCP_COMPATIBILITY_VERSION_HEADER,
+    parseMajorMinorVersion,
+} from './app-version.js';
 import type { AuthConfig } from './auth-mode.js';
 
 export interface McpTokenValidationResult {
@@ -18,27 +23,47 @@ export interface McpAdminAuthPort {
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 export const OCEAN_BRAIN_MCP_VERSION_HEADER = 'X-Ocean-Brain-MCP-Version';
 
-const readMcpVersion = (req: Request) => {
-    const value = req.headers[OCEAN_BRAIN_MCP_VERSION_HEADER.toLowerCase()];
+const readHeaderValue = (req: Request, headerName: string) => {
+    const value = req.headers[headerName.toLowerCase()];
     return Array.isArray(value) ? value[0] : value;
 };
 
-export const isMcpVersionCompatible = (serverVersion: string, mcpVersion: string) => {
-    const server = parseMajorMinorVersion(serverVersion);
-    const mcp = parseMajorMinorVersion(mcpVersion);
+const readMcpCompatibilityVersion = (req: Request) =>
+    readHeaderValue(req, OCEAN_BRAIN_MCP_COMPATIBILITY_VERSION_HEADER) ??
+    readHeaderValue(req, OCEAN_BRAIN_MCP_VERSION_HEADER);
 
-    return Boolean(server && mcp && server.major === mcp.major && server.minor === mcp.minor);
+const readMcpClientVersion = (req: Request) =>
+    readHeaderValue(req, OCEAN_BRAIN_MCP_CLIENT_VERSION_HEADER) ?? readHeaderValue(req, OCEAN_BRAIN_MCP_VERSION_HEADER);
+
+export const isMcpVersionCompatible = (requiredMcpCompatibilityVersion: string, mcpCompatibilityVersion: string) => {
+    const required = parseMajorMinorVersion(requiredMcpCompatibilityVersion);
+    const mcp = parseMajorMinorVersion(mcpCompatibilityVersion);
+
+    return Boolean(required && mcp && required.major === mcp.major && required.minor === mcp.minor);
 };
 
-const createMcpVersionCompatibilityMessage = (serverVersion: string, mcpVersion: string | undefined) => {
-    const mcpVersionText = mcpVersion ? `v${mcpVersion}` : 'not provided';
+const createMcpVersionCompatibilityMessage = ({
+    mcpClientVersion,
+    mcpCompatibilityVersion,
+    requiredMcpCompatibilityVersion,
+    serverVersion,
+}: {
+    mcpClientVersion?: string;
+    mcpCompatibilityVersion?: string;
+    requiredMcpCompatibilityVersion: string;
+    serverVersion: string;
+}) => {
+    const mcpCompatibilityVersionText = mcpCompatibilityVersion ? `v${mcpCompatibilityVersion}` : 'not provided';
+    const mcpClientVersionText = mcpClientVersion ? `v${mcpClientVersion}` : 'not provided';
 
     return [
-        'Ocean Brain MCP and server versions are incompatible.',
+        'Ocean Brain MCP compatibility versions are incompatible.',
         `Server: v${serverVersion}`,
-        `MCP: ${mcpVersionText}`,
+        `Required MCP compatibility: ${requiredMcpCompatibilityVersion}`,
+        `MCP compatibility: ${mcpCompatibilityVersionText}`,
+        `MCP client: ${mcpClientVersionText}`,
         '',
-        'Please update Ocean Brain MCP to match the server minor version.',
+        'Please update Ocean Brain MCP to a compatible release.',
         getOceanBrainVersionInfo().releaseUrl,
     ].join('\n');
 };
@@ -104,17 +129,29 @@ export const createMcpAuthMiddleware = (_authConfig: AuthConfig, mcpAdminAuth: M
             }
 
             const versionInfo = getOceanBrainVersionInfo();
-            const mcpVersion = readMcpVersion(req);
+            const mcpCompatibilityVersion = readMcpCompatibilityVersion(req);
+            const mcpClientVersion = readMcpClientVersion(req);
 
-            if (!mcpVersion || !isMcpVersionCompatible(versionInfo.version, mcpVersion)) {
+            if (
+                !mcpCompatibilityVersion ||
+                !isMcpVersionCompatible(versionInfo.mcp.compatibilityVersion, mcpCompatibilityVersion)
+            ) {
                 res.status(426)
                     .set(JSON_HEADERS)
                     .json({
                         code: 'MCP_VERSION_INCOMPATIBLE',
-                        message: createMcpVersionCompatibilityMessage(versionInfo.version, mcpVersion),
+                        message: createMcpVersionCompatibilityMessage({
+                            serverVersion: versionInfo.version,
+                            requiredMcpCompatibilityVersion: versionInfo.mcp.compatibilityRequirement,
+                            mcpCompatibilityVersion,
+                            mcpClientVersion,
+                        }),
                         serverVersion: versionInfo.version,
-                        mcpVersion: mcpVersion ?? null,
+                        mcpVersion: mcpClientVersion ?? mcpCompatibilityVersion ?? null,
+                        mcpClientVersion: mcpClientVersion ?? null,
+                        mcpCompatibilityVersion: mcpCompatibilityVersion ?? null,
                         requiredMcpVersion: versionInfo.mcpVersionRequirement,
+                        requiredMcpCompatibilityVersion: versionInfo.mcp.compatibilityRequirement,
                         releaseUrl: versionInfo.releaseUrl,
                     })
                     .end();

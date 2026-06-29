@@ -91,7 +91,13 @@ git push origin v0.3.1
 - PR merge list:
   `git log v<previous-version>..HEAD --merges --pretty=format:"%s"`
 
-3. Create the release PR from GitHub Actions
+3. Confirm MCP compatibility impact
+- Check whether the release contains an incompatible MCP contract change.
+- MCP contract changes include tool input/output shape changes, removed/renamed GraphQL fields used by MCP, required auth/header changes, or changed read/write behavior.
+- If MCP compatibility is not broken, do not change `oceanBrain.mcpCompatibilityVersion`.
+- If MCP compatibility is broken, update `oceanBrain.mcpCompatibilityVersion` in `packages/cli/package.json` intentionally and document the required MCP compatibility range in the release PR.
+
+4. Create the release PR from GitHub Actions
 - Go to **Actions → RELEASE PR → Run workflow**.
 - Select the semver release type:
   - `patch`: `0.7.3` → `0.7.4`
@@ -103,18 +109,19 @@ git push origin v0.3.1
 - The workflow opens a release PR titled `🔖 Bump version to <version>`.
 - Do not create the release branch or release bump commit from a local checkout in the normal release flow.
 
-4. Review the release PR
+5. Review the release PR
 - Confirm the expected tag is `v<version>`.
 - Confirm exactly one release impact label is applied: `release: patch`, `release: minor`, or `release: major`.
 - Confirm the release PR contains the verification plan.
+- Confirm `oceanBrain.mcpCompatibilityVersion` changed only when MCP compatibility is intentionally broken.
 
-5. Verify and merge the release PR to `main`
+6. Verify and merge the release PR to `main`
 - Required PR CI (`lint`, `type-check`, `build`) must pass.
 - `E2E` must pass on the `chore/release-v<version>` release PR branch.
 - `CLI_SMOKE` must pass on the `chore/release-v<version>` release PR branch.
 - Version bump must remain a separate PR. Direct release bumps on `main` are not allowed.
 
-6. Trigger release explicitly from merged `main`
+7. Trigger release explicitly from merged `main`
 
 ```bash
 git checkout main
@@ -126,7 +133,7 @@ git push origin v<version>
 - This tag push is the supported release trigger.
 - Do not treat PR merge itself as deployment.
 
-7. Monitor the `RELEASE` workflow
+8. Monitor the `RELEASE` workflow
 - Example:
 
 ```bash
@@ -135,7 +142,7 @@ gh run list --workflow RELEASE.yml --limit 5
 
 - Wait for npm publish, npm verification, Docker publish, manifest, and Docker verification jobs to finish.
 
-8. Finalize GitHub Release note
+9. Finalize GitHub Release note
 - Open the created release page after `verify-docker` creates it.
 - For patch releases, start from GitHub generated notes and preserve the PR-linked bullet format.
 - For minor and major releases, treat auto-generated notes as a draft and replace the body with the final note before sharing the release externally.

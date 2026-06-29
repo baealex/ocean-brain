@@ -30,6 +30,12 @@ const createMcpStatus = (overrides: Partial<McpAdminStatus> = {}): McpAdminStatu
         version: '0.7.3',
         releaseUrl: 'https://github.com/baealex/ocean-brain/releases',
         mcpVersionRequirement: '0.7.x',
+        mcp: {
+            compatibilityVersion: '0.7.0',
+            compatibilityRequirement: '0.7.x',
+            compatibilityVersionHeader: 'X-Ocean-Brain-MCP-Compatibility-Version',
+            clientVersionHeader: 'X-Ocean-Brain-MCP-Client-Version',
+        },
     },
     ...overrides,
 });

@@ -1,10 +1,11 @@
 import { createAppError } from '~/modules/error-handler.js';
 import type { Controller } from '~/types/index.js';
-import { fetchRemoteImage, type RemoteImage, RemoteImageFetchError } from '../services/remote-fetch.js';
 import { type PersistedImageSummary, type PersistImageInput, persistUploadedImage } from '../services/upload.js';
+import { ImageValidationError, normalizeImageContentType, validateImagePayload } from '../services/validation.js';
 
 type PersistImage = (input: PersistImageInput) => Promise<PersistedImageSummary>;
-type FetchImage = (src: string) => Promise<RemoteImage>;
+
+const IMAGE_DATA_URL_PATTERN = /^data:(image\/[a-z0-9.+-]+);base64,([A-Za-z0-9+/]+={0,2})$/i;
 
 const createUploadResponse = (image: PersistedImageSummary) => {
     return {
@@ -13,47 +14,61 @@ const createUploadResponse = (image: PersistedImageSummary) => {
     };
 };
 
+const parseImageDataUrl = (image: string) => {
+    const match = IMAGE_DATA_URL_PATTERN.exec(image);
+
+    if (!match || !match[2] || match[2].length % 4 !== 0) {
+        return null;
+    }
+
+    return {
+        base64: match[2],
+        contentType: normalizeImageContentType(match[1]),
+    };
+};
+
+const createUploadValidationError = (error: ImageValidationError) => {
+    if (error.code === 'IMAGE_UNSUPPORTED_CONTENT_TYPE') {
+        return createAppError(415, 'IMAGE_UPLOAD_UNSUPPORTED_TYPE', 'Uploaded image content type is not supported.');
+    }
+
+    return createAppError(400, 'INVALID_IMAGE_UPLOAD', 'Uploaded image content is invalid.');
+};
+
 export const createUploadImageHandler = (persistImage: PersistImage = persistUploadedImage): Controller => {
     return async (req, res) => {
         const { image } = req.body ?? {};
 
-        if (typeof image !== 'string' || !image.match(/data:image\/\s*(\w+);base64,/)) {
+        if (typeof image !== 'string') {
             throw createAppError(400, 'INVALID_IMAGE_UPLOAD', 'No image uploaded');
         }
 
-        const [info, data] = image.split(',');
-        const buffer = Buffer.from(data, 'base64');
-        const extension = info.split(';')[0]?.split('/')[1] ?? '';
-        const uploadedImage = await persistImage({
-            buffer,
-            extension,
-        });
+        const parsedImage = parseImageDataUrl(image);
 
-        res.status(200).json(createUploadResponse(uploadedImage)).end();
-    };
-};
+        if (!parsedImage) {
+            throw createAppError(400, 'INVALID_IMAGE_UPLOAD', 'No image uploaded');
+        }
 
-export const createUploadImageFromSrcHandler = (
-    fetchImage: FetchImage = fetchRemoteImage,
-    persistImage: PersistImage = persistUploadedImage,
-): Controller => {
-    return async (req, res) => {
-        const src = String(req.body?.src ?? '');
+        let validatedImage;
 
         try {
-            const remoteImage = await fetchImage(src);
-            const uploadedImage = await persistImage({
-                buffer: remoteImage.buffer,
-                extension: remoteImage.extension,
+            validatedImage = validateImagePayload({
+                buffer: Buffer.from(parsedImage.base64, 'base64'),
+                contentType: parsedImage.contentType,
             });
-
-            res.status(200).json(createUploadResponse(uploadedImage)).end();
         } catch (error) {
-            if (error instanceof RemoteImageFetchError) {
-                throw createAppError(error.status, error.code, error.message);
+            if (error instanceof ImageValidationError) {
+                throw createUploadValidationError(error);
             }
 
             throw error;
         }
+
+        const uploadedImage = await persistImage({
+            buffer: validatedImage.buffer,
+            extension: validatedImage.extension,
+        });
+
+        res.status(200).json(createUploadResponse(uploadedImage)).end();
     };
 };

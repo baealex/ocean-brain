@@ -360,8 +360,8 @@ test('mcp version guard blocks compatibility minor version differences', async (
     assert.equal(body.mcpCompatibilityVersion, createIncompatibleMcpVersion());
     assert.equal(body.mcpClientVersion, resolveOceanBrainVersion());
     assert.equal(body.serverVersion, resolveOceanBrainVersion());
-    assert.equal(body.requiredMcpVersion, '0.7.x');
-    assert.equal(body.requiredMcpCompatibilityVersion, '0.7.x');
+    assert.equal(body.requiredMcpVersion, '0.8.x');
+    assert.equal(body.requiredMcpCompatibilityVersion, '0.8.x');
     assert.match(String(body.message), /Please update Ocean Brain MCP/);
     assert.match(String(body.message), /https:\/\/github\.com\/baealex\/ocean-brain\/releases/);
 });

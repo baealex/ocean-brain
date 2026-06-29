@@ -51,6 +51,6 @@
         "zod": "^3.25.0"
     },
     "oceanBrain": {
-        "mcpCompatibilityVersion": "0.7.0"
+        "mcpCompatibilityVersion": "0.8.0"
     }
 }

@@ -34,7 +34,7 @@ test('resolveOceanBrainVersion prefers package metadata over environment overrid
 });
 
 test('resolveMcpCompatibilityVersion reads package compatibility metadata separately from app version', () => {
-    assert.equal(resolveMcpCompatibilityVersion(), '0.7.0');
+    assert.equal(resolveMcpCompatibilityVersion(), '0.8.0');
     assert.notEqual(resolveMcpCompatibilityVersion(), resolveOceanBrainVersion());
 });
 
@@ -57,13 +57,13 @@ test('resolveMcpCompatibilityVersion requires explicit compatibility metadata', 
 test('buildOceanBrainVersionInfo keeps app version and MCP compatibility requirement independent', () => {
     const info = buildOceanBrainVersionInfo({
         version: '0.8.0',
-        mcpCompatibilityVersion: '0.7.0',
+        mcpCompatibilityVersion: '0.8.0',
     });
 
     assert.equal(info.version, '0.8.0');
-    assert.equal(info.mcpVersionRequirement, '0.7.x');
-    assert.equal(info.mcp.compatibilityVersion, '0.7.0');
-    assert.equal(info.mcp.compatibilityRequirement, '0.7.x');
+    assert.equal(info.mcpVersionRequirement, '0.8.x');
+    assert.equal(info.mcp.compatibilityVersion, '0.8.0');
+    assert.equal(info.mcp.compatibilityRequirement, '0.8.x');
 });
 
 test('getOceanBrainVersionInfo returns server-owned release and MCP compatibility metadata', () => {

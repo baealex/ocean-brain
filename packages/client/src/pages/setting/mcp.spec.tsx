@@ -21,10 +21,10 @@ const createMcpStatus = (overrides: Partial<McpAdminStatus> = {}): McpAdminStatu
     server: {
         version: '0.7.3',
         releaseUrl: 'https://github.com/baealex/ocean-brain/releases',
-        mcpVersionRequirement: '0.7.x',
+        mcpVersionRequirement: '0.8.x',
         mcp: {
-            compatibilityVersion: '0.7.0',
-            compatibilityRequirement: '0.7.x',
+            compatibilityVersion: '0.8.0',
+            compatibilityRequirement: '0.8.x',
             compatibilityVersionHeader: 'X-Ocean-Brain-MCP-Compatibility-Version',
             clientVersionHeader: 'X-Ocean-Brain-MCP-Client-Version',
         },
@@ -65,10 +65,10 @@ describe('<McpSetting />', () => {
                 server: {
                     version: '0.8.0',
                     releaseUrl: 'https://github.com/baealex/ocean-brain/releases',
-                    mcpVersionRequirement: '0.7.x',
+                    mcpVersionRequirement: '0.8.x',
                     mcp: {
-                        compatibilityVersion: '0.7.0',
-                        compatibilityRequirement: '0.7.x',
+                        compatibilityVersion: '0.8.0',
+                        compatibilityRequirement: '0.8.x',
                         compatibilityVersionHeader: 'X-Ocean-Brain-MCP-Compatibility-Version',
                         clientVersionHeader: 'X-Ocean-Brain-MCP-Client-Version',
                     },
@@ -78,7 +78,7 @@ describe('<McpSetting />', () => {
 
         renderPage();
 
-        expect(await screen.findByText('MCP compatibility 0.7.x')).toBeInTheDocument();
+        expect(await screen.findByText('MCP compatibility 0.8.x')).toBeInTheDocument();
     });
 
     it('submits enabled toggle and refreshes status', async () => {

@@ -68,7 +68,7 @@ export const executeLocalDemoGraphQuery = async <TData extends object>(
     }) as GraphQueryResponse<TData>;
 };
 
-export const uploadLocalDemoImage = async ({ base64, externalSrc }: { base64?: string; externalSrc?: string }) => {
+export const uploadLocalDemoImage = async ({ base64 }: { base64?: string }) => {
     if (base64) {
         localDemoStore.update((state) => {
             state.images.unshift({ id: createLocalId('image'), url: base64 });
@@ -76,14 +76,7 @@ export const uploadLocalDemoImage = async ({ base64, externalSrc }: { base64?: s
         return base64;
     }
 
-    if (externalSrc) {
-        localDemoStore.update((state) => {
-            state.images.unshift({ id: createLocalId('image'), url: externalSrc });
-        });
-        return externalSrc;
-    }
-
-    throw new Error('No file or src provided');
+    throw new Error('No file provided');
 };
 
 export const fetchLocalDemoMcpAdminStatus = async (): Promise<McpAdminStatus> => {

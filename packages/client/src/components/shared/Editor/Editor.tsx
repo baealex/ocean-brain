@@ -3,12 +3,18 @@ import { useCreateBlockNote } from '@blocknote/react';
 import { forwardRef, useImperativeHandle } from 'react';
 import { uploadImage } from '~/apis/image.api';
 import schema, { CommandView, ReferenceView, TagView } from '~/components/schema';
+import { useToast } from '~/components/ui';
 import {
     type MarkdownBlock,
     prepareBlocksForMarkdown,
     restoreTagPlaceholdersInMarkdown,
 } from '~/modules/blocknote-markdown';
 import { fileToBase64 } from '~/modules/file';
+import {
+    FAILED_IMAGE_UPLOAD_MESSAGE,
+    isSupportedImageUploadType,
+    UNSUPPORTED_IMAGE_UPLOAD_MESSAGE,
+} from '~/modules/image-upload-policy';
 import { useTheme } from '~/store/theme';
 
 interface EditorProps {
@@ -26,14 +32,35 @@ export interface EditorRef {
 
 const Editor = forwardRef<EditorRef, EditorProps>(({ content, currentNoteId, editable, onChange }, ref) => {
     const { theme } = useTheme((state) => state);
+    const toast = useToast();
 
     const editor = useCreateBlockNote(
         {
             schema,
             initialContent: (content && JSON.parse(content)) || undefined,
-            uploadFile: async (file) => uploadImage({ base64: await fileToBase64(file) }),
+            uploadFile: async (file, blockId) => {
+                const removePendingBlock = () => {
+                    if (blockId && editor.getBlock(blockId)) {
+                        editor.removeBlocks([blockId]);
+                    }
+                };
+
+                if (!isSupportedImageUploadType(file.type)) {
+                    removePendingBlock();
+                    toast(UNSUPPORTED_IMAGE_UPLOAD_MESSAGE);
+                    throw new Error(UNSUPPORTED_IMAGE_UPLOAD_MESSAGE);
+                }
+
+                try {
+                    return await uploadImage({ base64: await fileToBase64(file) });
+                } catch (error) {
+                    removePendingBlock();
+                    toast(FAILED_IMAGE_UPLOAD_MESSAGE);
+                    throw error;
+                }
+            },
         },
-        [],
+        [toast],
     );
 
     useImperativeHandle(ref, () => {

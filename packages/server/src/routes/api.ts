@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { createLoginHandler, createLogoutHandler, createSessionStatusHandler } from '../features/auth/http/api.js';
-import { createUploadImageFromSrcHandler, createUploadImageHandler } from '../features/image/http/upload.js';
+import { createUploadImageHandler } from '../features/image/http/upload.js';
 import {
     createMcpAdminRevokeTokenHandler,
     createMcpAdminRotateTokenHandler,
@@ -65,12 +65,5 @@ export const createApiRouter = (authConfig: AuthConfig, mcpAdminService: McpAdmi
             useAsync(createMcpAdminRevokeTokenHandler(mcpAdminService)),
         )
         .post('/image', sessionAccessRateLimit, requireSession, csrfProtection, useAsync(createUploadImageHandler()))
-        .post(
-            '/image-from-src',
-            sessionAccessRateLimit,
-            requireSession,
-            csrfProtection,
-            useAsync(createUploadImageFromSrcHandler()),
-        )
         .get('/events', sessionAccessRateLimit, requireSession, csrfProtection, createServerEventsHandler());
 };

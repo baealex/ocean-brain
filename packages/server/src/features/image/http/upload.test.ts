@@ -2,8 +2,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { AppError } from '~/modules/error-handler.js';
-import { RemoteImageFetchError } from '../services/remote-fetch.js';
-import { createUploadImageFromSrcHandler, createUploadImageHandler } from './upload.js';
+import { createUploadImageHandler } from './upload.js';
+
+const PNG_BYTES = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIW2O4evXqfwAIgQN/QHwrfwAAAABJRU5ErkJggg==',
+    'base64',
+);
 
 const createResponse = () => {
     const response = {
@@ -59,14 +63,14 @@ test('upload image handler persists decoded image bytes', async () => {
     await handler(
         {
             body: {
-                image: `data:image/png;base64,${Buffer.from('image-bytes').toString('base64')}`,
+                image: `data:image/png;base64,${PNG_BYTES.toString('base64')}`,
             },
         } as never,
         response as never,
     );
 
     assert.equal(receivedExtension, 'png');
-    assert.deepEqual(receivedBuffer, Buffer.from('image-bytes'));
+    assert.deepEqual(receivedBuffer, PNG_BYTES);
     assert.equal(response.statusCode, 200);
     assert.deepEqual(response.body, {
         id: 14,
@@ -74,43 +78,52 @@ test('upload image handler persists decoded image bytes', async () => {
     });
 });
 
-test('upload image-from-src handler maps remote fetch errors into app errors', async () => {
-    const handler = createUploadImageFromSrcHandler(async () => {
-        throw new RemoteImageFetchError('REMOTE_URL_BLOCKED', 403, 'Remote image host is not allowed.');
-    });
+test('upload image handler rejects unsupported image data url content types', async () => {
+    const handler = createUploadImageHandler(async () => ({
+        id: 1,
+        url: '/assets/images/ignored.svg',
+    }));
 
     await assert.rejects(
-        () => handler({ body: { src: 'http://127.0.0.1/file.png' } } as never, createResponse() as never),
+        () =>
+            handler(
+                {
+                    body: {
+                        image: `data:image/svg+xml;base64,${Buffer.from('<svg></svg>').toString('base64')}`,
+                    },
+                } as never,
+                createResponse() as never,
+            ),
         (error: unknown) => {
             assert.ok(error instanceof AppError);
-            assert.equal(error.status, 403);
-            assert.equal(error.code, 'REMOTE_URL_BLOCKED');
-            assert.equal(error.message, 'Remote image host is not allowed.');
+            assert.equal(error.status, 415);
+            assert.equal(error.code, 'IMAGE_UPLOAD_UNSUPPORTED_TYPE');
             return true;
         },
     );
 });
 
-test('upload image-from-src handler returns the uploaded image payload', async () => {
-    const response = createResponse();
+test('upload image handler rejects data urls whose bytes do not match the declared type', async () => {
+    const handler = createUploadImageHandler(async () => ({
+        id: 1,
+        url: '/assets/images/ignored.png',
+    }));
 
-    const handler = createUploadImageFromSrcHandler(
-        async () => ({
-            buffer: Buffer.from('remote-image'),
-            contentType: 'image/png',
-            extension: 'png',
-        }),
-        async () => ({
-            id: 21,
-            url: '/assets/images/2026/4/15/remote.png',
-        }),
+    await assert.rejects(
+        () =>
+            handler(
+                {
+                    body: {
+                        image: `data:image/png;base64,${Buffer.from('not-a-png').toString('base64')}`,
+                    },
+                } as never,
+                createResponse() as never,
+            ),
+        (error: unknown) => {
+            assert.ok(error instanceof AppError);
+            assert.equal(error.status, 400);
+            assert.equal(error.code, 'INVALID_IMAGE_UPLOAD');
+            return true;
+        },
     );
-
-    await handler({ body: { src: 'https://cdn.example.com/file.png' } } as never, response as never);
-
-    assert.equal(response.statusCode, 200);
-    assert.deepEqual(response.body, {
-        id: 21,
-        url: '/assets/images/2026/4/15/remote.png',
-    });
 });

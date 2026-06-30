@@ -1,12 +1,5 @@
-import crypto from 'crypto';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-
-import {
-    confirmedMcpWriteFields,
-    type createMcpWriteSafetyCoordinator,
-    type PublicPendingWriteOperation
-} from './mcp-write-safety.js';
 
 interface IntentWriteToolNames {
     appendNoteMarkdown: string;
@@ -22,33 +15,16 @@ type JsonRequest = <TResponse extends Record<string, unknown>>(
     body: Record<string, unknown>
 ) => Promise<TResponse>;
 
-type FetchNoteWriteBaseline = (
-    id: string,
-    token: string
-) => Promise<{
-    id: string;
-    updatedAt: string;
-}>;
-
-type McpWriteSafetyCoordinator = ReturnType<typeof createMcpWriteSafetyCoordinator>;
 
 interface RegisterIntentWriteToolsInput {
-    fetchNoteWriteBaseline: FetchNoteWriteBaseline;
     jsonRequest: JsonRequest;
     requireWriteToken: (token: string | undefined, toolName: string) => string;
     serverUrl: string;
     token?: string;
     tools: IntentWriteToolNames;
-    writeSafety: McpWriteSafetyCoordinator;
 }
 
-interface ConfirmedWriteRequest {
-    dryRun?: boolean;
-    operationId?: string;
-    confirmToken?: string;
-}
-
-interface DryRunWriteResult extends Record<string, unknown> {
+interface DirectWriteResult extends Record<string, unknown> {
     status?: string;
     reason?: string;
     proposed?: {
@@ -102,9 +78,6 @@ const markdownAppendPlacementSchema = z.discriminatedUnion('type', [
 
 const markdownWritePolicySchema = z.object({
     allowNoop: z.boolean().optional(),
-    maxChangedChars: z.number().int().nonnegative().optional(),
-    maxChangedLines: z.number().int().nonnegative().optional(),
-    diffPreviewMaxChars: z.number().int().nonnegative().optional(),
     preserveTags: z.union([z.boolean(), z.literal('warn')]).optional(),
     preserveReferences: z.union([z.boolean(), z.literal('warn')]).optional()
 }).optional();
@@ -167,204 +140,31 @@ export const metadataPropertyPatchSchema = z.object({
     }
 }).optional();
 
-const sha256 = (value: string) => crypto.createHash('sha256').update(value).digest('hex');
-
-const isRecord = (value: unknown): value is Record<string, unknown> => {
-    return typeof value === 'object' && value !== null && !Array.isArray(value);
-};
-
-const stableJsonStringify = (value: unknown): string => {
-    if (Array.isArray(value)) {
-        return `[${value.map(stableJsonStringify).join(',')}]`;
-    }
-
-    if (isRecord(value)) {
-        const properties = Object.keys(value)
-            .filter((key) => value[key] !== undefined)
-            .sort()
-            .map((key) => `${JSON.stringify(key)}:${stableJsonStringify(value[key])}`);
-
-        return `{${properties.join(',')}}`;
-    }
-
-    return JSON.stringify(value) ?? 'null';
-};
-
-const normalizeServerUrl = (serverUrl: string) => {
-    try {
-        const url = new URL(serverUrl);
-        url.hash = '';
-        return url.toString().replace(/\/$/, '');
-    } catch {
-        return serverUrl.replace(/\/$/, '');
-    }
-};
-
-const normalizeIntentWritePayloadForFingerprint = (toolName: string, payload: Record<string, unknown>) => {
-    const normalizedPayload = { ...payload };
-
-    if (toolName === 'ocean_brain_append_note_markdown') {
-        normalizedPayload.placement ??= { type: 'end' };
-        normalizedPayload.separator ??= '\n\n';
-    }
-
-    return normalizedPayload;
-};
-
-export const createIntentWriteOperationFingerprint = (
-    serverUrl: string,
-    token: string | undefined,
-    toolName: string,
-    payload: Record<string, unknown>
-) => {
-    return sha256(stableJsonStringify({
-        payload: normalizeIntentWritePayloadForFingerprint(toolName, payload),
-        serverUrl: normalizeServerUrl(serverUrl),
-        tokenDigest: token ? sha256(token) : null,
-        toolName
-    }));
-};
-
-const getErrorDetail = (error: unknown) => {
-    return error instanceof Error ? error.message : 'Unknown MCP write error';
-};
-
-const requireCommitConfirmationFields = (request: ConfirmedWriteRequest) => {
-    if (request.dryRun !== false) {
-        return;
-    }
-
-    if (!request.operationId || !request.confirmToken) {
-        throw new Error('Commit mode requires both operationId and confirmToken from the dry-run response.');
-    }
-};
-
-const resolvePayloadWithBaseline = async (
-    fetchNoteWriteBaseline: FetchNoteWriteBaseline,
-    writeToken: string,
-    id: string,
-    payload: Record<string, unknown>
-) => {
-    if (typeof payload.expectedUpdatedAt === 'string' || typeof payload.baseMarkdownSha256 === 'string') {
-        return payload;
-    }
-
-    const baseline = await fetchNoteWriteBaseline(id, writeToken);
-
-    return {
-        ...payload,
-        expectedUpdatedAt: baseline.updatedAt
-    };
-};
-
-const prepareConfirmedWriteOperation = (
-    writeSafety: McpWriteSafetyCoordinator,
-    result: DryRunWriteResult,
-    input: {
-        affectedIds: string[];
-        operationFingerprint: string;
-        summary: string;
-        toolName: string;
-    }
-) => {
-    if (result.status !== 'dry_run') {
-        return result;
-    }
-
-    return {
-        ...result,
-        operation: writeSafety.prepareOperation({
-            actor: 'mcp-bearer',
-            affectedIds: input.affectedIds,
-            estimatedChangeCount: result.proposed?.changedLineCount ?? 1,
-            operationFingerprint: input.operationFingerprint,
-            risk: 'high-impact',
-            summary: input.summary,
-            toolName: input.toolName
-        })
-    };
-};
-
-const requireConfirmedWriteOperation = (
-    writeSafety: McpWriteSafetyCoordinator,
-    request: ConfirmedWriteRequest,
-    input: {
-        affectedIds: string[];
-        operationFingerprint: string;
-        summary: string;
-        toolName: string;
-    }
-) => {
-    const intent = writeSafety.ensureDestructiveWriteRequest(
-        request,
-        {
-            actor: 'mcp-bearer',
-            affectedIds: input.affectedIds,
-            estimatedChangeCount: 1,
-            operationFingerprint: input.operationFingerprint,
-            risk: 'high-impact',
-            summary: input.summary,
-            toolName: input.toolName
-        }
-    );
-
-    if (intent.kind !== 'confirmed') {
-        throw new Error('Expected a confirmed MCP write operation.');
-    }
-
-    return intent.operation;
-};
-
-const executeConfirmedWrite = async (
-    writeSafety: McpWriteSafetyCoordinator,
-    operation: PublicPendingWriteOperation,
-    request: () => Promise<DryRunWriteResult>
-) => {
-    try {
-        const result = await request();
-
-        writeSafety.recordWriteResult(
-            operation,
-            result.status === 'applied',
-            result.status === 'applied' ? undefined : result.reason
-        );
-
-        return result;
-    } catch (error) {
-        writeSafety.recordWriteResult(operation, false, getErrorDetail(error));
-        throw error;
-    }
-};
-
 export const registerIntentWriteTools = (
     server: McpServer,
     {
-        fetchNoteWriteBaseline,
         jsonRequest,
         requireWriteToken,
         serverUrl,
         token,
-        tools,
-        writeSafety
+        tools
     }: RegisterIntentWriteToolsInput
 ) => {
     server.tool(
         tools.patchNoteMarkdown,
-        'Patch a small part of an Ocean Brain note. Dry-run is the default; commit requires operationId and confirmToken from the dry-run result.',
+        'Patch a specific part of a note, like finding text with `rg` and editing only that match. Use for localized edits: fix one sentence, replace one paragraph, insert before/after exact text, or edit one section. Do not use for whole-note rewrites; use ocean_brain_replace_note_markdown instead.',
         {
             id: z.string().describe('Note ID to patch'),
-            expectedUpdatedAt: z.string().optional().describe('Expected note updatedAt from a prior read. Auto-fetched when omitted unless baseMarkdownSha256 is provided.'),
+            expectedUpdatedAt: z.string().optional().describe('Expected note updatedAt from the read you based this edit on. Required unless baseMarkdownSha256 is provided.'),
             baseMarkdownSha256: z.string().optional().describe('SHA-256 of the current markdown. Optional alternative to expectedUpdatedAt.'),
             intent: z.string().describe('Human-readable reason for the patch.'),
             selector: markdownPatchSelectorSchema.describe('Exact text or previously returned match candidate.'),
             operation: markdownPatchOperationSchema.describe('replace, insert_before, or insert_after.'),
-            policy: markdownWritePolicySchema,
-            ...confirmedMcpWriteFields
+            policy: markdownWritePolicySchema
         },
-        async ({ id, expectedUpdatedAt, baseMarkdownSha256, intent, selector, operation, policy, dryRun, operationId, confirmToken }) => {
+        async ({ id, expectedUpdatedAt, baseMarkdownSha256, intent, selector, operation, policy }) => {
             const writeToken = requireWriteToken(token, tools.patchNoteMarkdown);
-            requireCommitConfirmationFields({ dryRun, operationId, confirmToken });
-            const payload = await resolvePayloadWithBaseline(fetchNoteWriteBaseline, writeToken, id, {
+            const payload = {
                 id,
                 ...(expectedUpdatedAt ? { expectedUpdatedAt } : {}),
                 ...(baseMarkdownSha256 ? { baseMarkdownSha256 } : {}),
@@ -372,46 +172,8 @@ export const registerIntentWriteTools = (
                 selector,
                 operation,
                 ...(policy ? { policy } : {})
-            });
-            const operationFingerprint = createIntentWriteOperationFingerprint(serverUrl, writeToken, tools.patchNoteMarkdown, payload);
-
-            if (dryRun ?? true) {
-                const result = await jsonRequest<DryRunWriteResult>(serverUrl, writeToken, '/api/mcp/notes/patch-markdown', {
-                    ...payload,
-                    dryRun: true
-                });
-
-                return {
-                    content: [{
-                        type: 'text' as const,
-                        text: JSON.stringify(prepareConfirmedWriteOperation(writeSafety, result, {
-                            affectedIds: [id],
-                            operationFingerprint,
-                            summary: intent,
-                            toolName: tools.patchNoteMarkdown
-                        }), null, 2)
-                    }]
-                };
-            }
-
-            const confirmedOperation = requireConfirmedWriteOperation(
-                writeSafety,
-                { dryRun, operationId, confirmToken },
-                {
-                    affectedIds: [id],
-                    operationFingerprint,
-                    summary: intent,
-                    toolName: tools.patchNoteMarkdown
-                }
-            );
-            const result = await executeConfirmedWrite(
-                writeSafety,
-                confirmedOperation,
-                () => jsonRequest<DryRunWriteResult>(serverUrl, writeToken, '/api/mcp/notes/patch-markdown', {
-                    ...payload,
-                    dryRun: false
-                })
-            );
+            };
+            const result = await jsonRequest<DirectWriteResult>(serverUrl, writeToken, '/api/mcp/notes/patch-markdown', payload);
 
             return {
                 content: [{
@@ -424,22 +186,20 @@ export const registerIntentWriteTools = (
 
     server.tool(
         tools.appendNoteMarkdown,
-        'Append markdown to a note without replacing existing body content. Dry-run is the default; commit requires operationId and confirmToken.',
+        'Append markdown without changing existing content, like `cat addition.md >> note.md`. Use for adding logs, status updates, meeting notes, or new sections at the end or after a heading. Do not use to modify or replace existing body content.',
         {
             id: z.string().describe('Note ID to append to'),
-            expectedUpdatedAt: z.string().optional().describe('Expected note updatedAt from a prior read. Auto-fetched when omitted unless baseMarkdownSha256 is provided.'),
+            expectedUpdatedAt: z.string().optional().describe('Expected note updatedAt from the read you based this edit on. Required unless baseMarkdownSha256 is provided.'),
             baseMarkdownSha256: z.string().optional().describe('SHA-256 of the current markdown. Optional alternative to expectedUpdatedAt.'),
             intent: z.string().describe('Human-readable reason for the append.'),
             insertion: z.string().describe('Markdown to append. Tags are body tokens such as [@tag] or [#tag].'),
             placement: markdownAppendPlacementSchema.optional().describe('Default is end. after_heading requires one unique matching heading.'),
             separator: z.enum(['\n\n', '\n']).optional().describe('Separator inserted around appended markdown. Defaults to a blank line.'),
-            policy: markdownWritePolicySchema,
-            ...confirmedMcpWriteFields
+            policy: markdownWritePolicySchema
         },
-        async ({ id, expectedUpdatedAt, baseMarkdownSha256, intent, insertion, placement, separator, policy, dryRun, operationId, confirmToken }) => {
+        async ({ id, expectedUpdatedAt, baseMarkdownSha256, intent, insertion, placement, separator, policy }) => {
             const writeToken = requireWriteToken(token, tools.appendNoteMarkdown);
-            requireCommitConfirmationFields({ dryRun, operationId, confirmToken });
-            const payload = await resolvePayloadWithBaseline(fetchNoteWriteBaseline, writeToken, id, {
+            const payload = {
                 id,
                 ...(expectedUpdatedAt ? { expectedUpdatedAt } : {}),
                 ...(baseMarkdownSha256 ? { baseMarkdownSha256 } : {}),
@@ -448,46 +208,8 @@ export const registerIntentWriteTools = (
                 ...(placement ? { placement } : {}),
                 ...(separator ? { separator } : {}),
                 ...(policy ? { policy } : {})
-            });
-            const operationFingerprint = createIntentWriteOperationFingerprint(serverUrl, writeToken, tools.appendNoteMarkdown, payload);
-
-            if (dryRun ?? true) {
-                const result = await jsonRequest<DryRunWriteResult>(serverUrl, writeToken, '/api/mcp/notes/append-markdown', {
-                    ...payload,
-                    dryRun: true
-                });
-
-                return {
-                    content: [{
-                        type: 'text' as const,
-                        text: JSON.stringify(prepareConfirmedWriteOperation(writeSafety, result, {
-                            affectedIds: [id],
-                            operationFingerprint,
-                            summary: intent,
-                            toolName: tools.appendNoteMarkdown
-                        }), null, 2)
-                    }]
-                };
-            }
-
-            const confirmedOperation = requireConfirmedWriteOperation(
-                writeSafety,
-                { dryRun, operationId, confirmToken },
-                {
-                    affectedIds: [id],
-                    operationFingerprint,
-                    summary: intent,
-                    toolName: tools.appendNoteMarkdown
-                }
-            );
-            const result = await executeConfirmedWrite(
-                writeSafety,
-                confirmedOperation,
-                () => jsonRequest<DryRunWriteResult>(serverUrl, writeToken, '/api/mcp/notes/append-markdown', {
-                    ...payload,
-                    dryRun: false
-                })
-            );
+            };
+            const result = await jsonRequest<DirectWriteResult>(serverUrl, writeToken, '/api/mcp/notes/append-markdown', payload);
 
             return {
                 content: [{
@@ -500,65 +222,24 @@ export const registerIntentWriteTools = (
 
     server.tool(
         tools.updateNoteMetadata,
-        'Update note title/layout/properties. For properties, call ocean_brain_list_properties first. Use existing property key and string value only; do not send valueType. select=option.value, date=YYYY-MM-DD, boolean=true/false, number=finite string, url=http(s). Use deleteKeys to remove values. Definitions are not created.',
+        'Update note metadata only: title, layout, or properties. This does not edit the note body. For properties, call ocean_brain_list_properties first. Use existing property key and string value only; do not send valueType. select=option.value, date=YYYY-MM-DD, boolean=true/false, number=finite string, url=http(s). Use deleteKeys to remove values. Definitions are not created.',
         {
             id: z.string().describe('Note ID to update'),
-            expectedUpdatedAt: z.string().optional().describe('Expected note updatedAt from a prior read. Auto-fetched when omitted.'),
+            expectedUpdatedAt: z.string().describe('Expected note updatedAt from the read you based this metadata edit on. Required to prevent stale writes.'),
             title: z.string().optional().describe('New note title'),
             layout: z.enum(['narrow', 'wide', 'full']).optional().describe('New note layout'),
-            properties: metadataPropertyPatchSchema.describe('Patch existing shared property values. Include set and/or deleteKeys; empty patches are rejected.'),
-            ...confirmedMcpWriteFields
+            properties: metadataPropertyPatchSchema.describe('Patch existing shared property values. Include set and/or deleteKeys; empty patches are rejected.')
         },
-        async ({ id, expectedUpdatedAt, title, layout, properties, dryRun, operationId, confirmToken }) => {
+        async ({ id, expectedUpdatedAt, title, layout, properties }) => {
             const writeToken = requireWriteToken(token, tools.updateNoteMetadata);
-            requireCommitConfirmationFields({ dryRun, operationId, confirmToken });
-            const payload = await resolvePayloadWithBaseline(fetchNoteWriteBaseline, writeToken, id, {
+            const payload = {
                 id,
                 ...(expectedUpdatedAt ? { expectedUpdatedAt } : {}),
                 ...(title !== undefined ? { title } : {}),
                 ...(layout ? { layout } : {}),
                 ...(properties ? { properties } : {})
-            });
-            const summary = properties ? `Update note ${id} metadata and properties` : `Update note ${id} metadata`;
-            const operationFingerprint = createIntentWriteOperationFingerprint(serverUrl, writeToken, tools.updateNoteMetadata, payload);
-
-            if (dryRun ?? true) {
-                const result = await jsonRequest<DryRunWriteResult>(serverUrl, writeToken, '/api/mcp/notes/metadata', {
-                    ...payload,
-                    dryRun: true
-                });
-
-                return {
-                    content: [{
-                        type: 'text' as const,
-                        text: JSON.stringify(prepareConfirmedWriteOperation(writeSafety, result, {
-                            affectedIds: [id],
-                            operationFingerprint,
-                            summary,
-                            toolName: tools.updateNoteMetadata
-                        }), null, 2)
-                    }]
-                };
-            }
-
-            const confirmedOperation = requireConfirmedWriteOperation(
-                writeSafety,
-                { dryRun, operationId, confirmToken },
-                {
-                    affectedIds: [id],
-                    operationFingerprint,
-                    summary,
-                    toolName: tools.updateNoteMetadata
-                }
-            );
-            const result = await executeConfirmedWrite(
-                writeSafety,
-                confirmedOperation,
-                () => jsonRequest<DryRunWriteResult>(serverUrl, writeToken, '/api/mcp/notes/metadata', {
-                    ...payload,
-                    dryRun: false
-                })
-            );
+            };
+            const result = await jsonRequest<DirectWriteResult>(serverUrl, writeToken, '/api/mcp/notes/metadata', payload);
 
             return {
                 content: [{
@@ -571,66 +252,26 @@ export const registerIntentWriteTools = (
 
     server.tool(
         tools.replaceNoteMarkdown,
-        'Replace a note body as a high-impact full overwrite. Dry-run returns a full diff; commit requires operationId and confirmToken.',
+        'Replace the entire note body, like overwriting a markdown file with `cat new.md > note.md`. Use when the user explicitly asks to rewrite, replace, regenerate, restructure, or overwrite the whole note. Do not use for localized edits such as fixing one sentence, changing one paragraph, or inserting under a heading; use ocean_brain_patch_note_markdown instead.',
         {
             id: z.string().describe('Note ID to replace'),
-            expectedUpdatedAt: z.string().optional().describe('Expected note updatedAt from a prior read. Auto-fetched when omitted unless baseMarkdownSha256 is provided.'),
+            expectedUpdatedAt: z.string().optional().describe('Expected note updatedAt from the read you based this edit on. Required unless baseMarkdownSha256 is provided.'),
             baseMarkdownSha256: z.string().optional().describe('SHA-256 of the current markdown. Optional alternative to expectedUpdatedAt.'),
             intent: z.string().describe('Human-readable reason for the full replace.'),
             replacement: z.string().describe('Complete replacement markdown body. Tags are body tokens such as [@tag] or [#tag].'),
-            policy: markdownWritePolicySchema,
-            ...confirmedMcpWriteFields
+            policy: markdownWritePolicySchema
         },
-        async ({ id, expectedUpdatedAt, baseMarkdownSha256, intent, replacement, policy, dryRun, operationId, confirmToken }) => {
+        async ({ id, expectedUpdatedAt, baseMarkdownSha256, intent, replacement, policy }) => {
             const writeToken = requireWriteToken(token, tools.replaceNoteMarkdown);
-            requireCommitConfirmationFields({ dryRun, operationId, confirmToken });
-            const payload = await resolvePayloadWithBaseline(fetchNoteWriteBaseline, writeToken, id, {
+            const payload = {
                 id,
                 ...(expectedUpdatedAt ? { expectedUpdatedAt } : {}),
                 ...(baseMarkdownSha256 ? { baseMarkdownSha256 } : {}),
                 intent,
                 replacement,
                 ...(policy ? { policy } : {})
-            });
-            const operationFingerprint = createIntentWriteOperationFingerprint(serverUrl, writeToken, tools.replaceNoteMarkdown, payload);
-
-            if (dryRun ?? true) {
-                const result = await jsonRequest<DryRunWriteResult>(serverUrl, writeToken, '/api/mcp/notes/replace-markdown', {
-                    ...payload,
-                    dryRun: true
-                });
-
-                return {
-                    content: [{
-                        type: 'text' as const,
-                        text: JSON.stringify(prepareConfirmedWriteOperation(writeSafety, result, {
-                            affectedIds: [id],
-                            operationFingerprint,
-                            summary: intent,
-                            toolName: tools.replaceNoteMarkdown
-                        }), null, 2)
-                    }]
-                };
-            }
-
-            const confirmedOperation = requireConfirmedWriteOperation(
-                writeSafety,
-                { dryRun, operationId, confirmToken },
-                {
-                    affectedIds: [id],
-                    operationFingerprint,
-                    summary: intent,
-                    toolName: tools.replaceNoteMarkdown
-                }
-            );
-            const result = await executeConfirmedWrite(
-                writeSafety,
-                confirmedOperation,
-                () => jsonRequest<DryRunWriteResult>(serverUrl, writeToken, '/api/mcp/notes/replace-markdown', {
-                    ...payload,
-                    dryRun: false
-                })
-            );
+            };
+            const result = await jsonRequest<DirectWriteResult>(serverUrl, writeToken, '/api/mcp/notes/replace-markdown', payload);
 
             return {
                 content: [{

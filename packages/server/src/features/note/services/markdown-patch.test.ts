@@ -7,7 +7,6 @@ import {
     buildMarkdownReplacePlan,
     countExplicitTagTokens,
     countMarkdownReferenceTokens,
-    previewMarkdownPatch,
 } from './markdown-patch.js';
 
 const note = {
@@ -16,8 +15,8 @@ const note = {
     updatedAt: '2026-05-28T00:00:00.000Z',
 };
 
-test('markdown patch preview returns a dry-run diff when exact text is unique', () => {
-    const result = previewMarkdownPatch({
+test('markdown patch plan returns a planned change when exact text is unique', () => {
+    const result = buildMarkdownPatchPlan({
         note: {
             ...note,
             markdown: 'Goal\n\nOriginal sentence.\n\nDone',
@@ -34,10 +33,10 @@ test('markdown patch preview returns a dry-run diff when exact text is unique', 
         },
     });
 
-    assert.equal(result.status, 'dry_run');
+    assert.equal(result.status, 'planned');
 
-    if (result.status !== 'dry_run') {
-        throw new Error('expected dry_run result');
+    if (result.status !== 'planned') {
+        throw new Error('expected planned result');
     }
 
     assert.ok(result.match);
@@ -56,13 +55,11 @@ test('markdown patch preview returns a dry-run diff when exact text is unique', 
     assert.equal(result.proposed.changedCharCount, 'Original sentence.'.length + 'Updated sentence.'.length);
     assert.equal(result.proposed.beforeMarkdownSha256.length, 64);
     assert.equal(result.proposed.afterMarkdownSha256.length, 64);
-    assert.match(result.proposed.diff, /-Original sentence\./);
-    assert.match(result.proposed.diff, /\+Updated sentence\./);
     assert.deepEqual(result.warnings, []);
 });
 
-test('markdown patch preview fails when exact text is missing', () => {
-    const result = previewMarkdownPatch({
+test('markdown patch plan fails when exact text is missing', () => {
+    const result = buildMarkdownPatchPlan({
         note: {
             ...note,
             markdown: 'Goal\n\nDifferent sentence.',
@@ -86,8 +83,8 @@ test('markdown patch preview fails when exact text is missing', () => {
     });
 });
 
-test('markdown patch preview accepts epoch millisecond baselines from GraphQL clients', () => {
-    const result = previewMarkdownPatch({
+test('markdown patch plan accepts epoch millisecond baselines from GraphQL clients', () => {
+    const result = buildMarkdownPatchPlan({
         note: {
             ...note,
             markdown: 'Original sentence.',
@@ -104,7 +101,7 @@ test('markdown patch preview accepts epoch millisecond baselines from GraphQL cl
         },
     });
 
-    assert.equal(result.status, 'dry_run');
+    assert.equal(result.status, 'planned');
 });
 
 test('markdown token counters scan malformed bracket-heavy input without regex backtracking', () => {
@@ -114,8 +111,8 @@ test('markdown token counters scan malformed bracket-heavy input without regex b
     assert.equal(countMarkdownReferenceTokens(noisyMarkdown), 1);
 });
 
-test('markdown patch preview requires disambiguation when exact text appears more than once', () => {
-    const result = previewMarkdownPatch({
+test('markdown patch plan requires disambiguation when exact text appears more than once', () => {
+    const result = buildMarkdownPatchPlan({
         note: {
             ...note,
             markdown: 'Review\n\nMiddle content\n\nReview',
@@ -175,7 +172,7 @@ test('markdown patch preview requires disambiguation when exact text appears mor
 });
 
 test('markdown patch plan replaces a selected duplicate match candidate only', () => {
-    const firstPreview = previewMarkdownPatch({
+    const firstPlan = buildMarkdownPatchPlan({
         note: {
             ...note,
             markdown: 'Review\n\nMiddle content\n\nReview',
@@ -192,13 +189,13 @@ test('markdown patch plan replaces a selected duplicate match candidate only', (
         },
     });
 
-    assert.equal(firstPreview.status, 'needs_disambiguation');
+    assert.equal(firstPlan.status, 'needs_disambiguation');
 
-    if (firstPreview.status !== 'needs_disambiguation') {
+    if (firstPlan.status !== 'needs_disambiguation') {
         throw new Error('expected needs_disambiguation result');
     }
 
-    const selected = firstPreview.matches[1];
+    const selected = firstPlan.matches[1];
 
     assert.ok(selected);
 
@@ -224,10 +221,10 @@ test('markdown patch plan replaces a selected duplicate match candidate only', (
         },
     });
 
-    assert.equal(result.status, 'dry_run');
+    assert.equal(result.status, 'planned');
 
-    if (result.status !== 'dry_run') {
-        throw new Error('expected dry_run result');
+    if (result.status !== 'planned') {
+        throw new Error('expected planned result');
     }
 
     assert.equal(result.afterMarkdown, 'Review\n\nMiddle content\n\nSummary');
@@ -275,10 +272,10 @@ test('markdown append plan appends at the end without replacing existing body', 
         placement: { type: 'end' },
     });
 
-    assert.equal(result.status, 'dry_run');
+    assert.equal(result.status, 'planned');
 
-    if (result.status !== 'dry_run') {
-        throw new Error('expected dry_run result');
+    if (result.status !== 'planned') {
+        throw new Error('expected planned result');
     }
 
     assert.equal(result.afterMarkdown, 'Existing body\n\n- New log [@MCP]');
@@ -307,7 +304,7 @@ test('markdown append plan fails when the heading is ambiguous', () => {
     });
 });
 
-test('markdown replace plan returns a full diff for whole-note overwrite', () => {
+test('markdown replace plan returns a planned change for whole-note overwrite', () => {
     const result = buildMarkdownReplacePlan({
         note: {
             ...note,
@@ -318,15 +315,13 @@ test('markdown replace plan returns a full diff for whole-note overwrite', () =>
         replacement: 'X\nY',
     });
 
-    assert.equal(result.status, 'dry_run');
+    assert.equal(result.status, 'planned');
 
-    if (result.status !== 'dry_run') {
-        throw new Error('expected dry_run result');
+    if (result.status !== 'planned') {
+        throw new Error('expected planned result');
     }
 
-    assert.match(result.proposed.diff, /-A/);
-    assert.match(result.proposed.diff, /-B/);
-    assert.match(result.proposed.diff, /-C/);
-    assert.match(result.proposed.diff, /\+X/);
-    assert.match(result.proposed.diff, /\+Y/);
+    assert.equal(result.afterMarkdown, 'X\nY');
+    assert.equal(result.proposed.changedLineCount, 3);
+    assert.equal(result.proposed.changedCharCount, 'A\nB\nC'.length + 'X\nY'.length);
 });

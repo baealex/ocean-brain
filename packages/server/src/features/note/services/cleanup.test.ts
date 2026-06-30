@@ -100,7 +100,7 @@ test('note cleanup preview exposes reminders, backlinks, and orphaned tags', asy
         ],
         orphanedTagNames: ['temp'],
         requiresForce: true,
-        forceReasons: ['note_is_pinned', 'has_reminders', 'has_back_references', 'orphan_tags'],
+        forceReasons: ['note_is_pinned', 'has_reminders', 'has_back_references'],
     });
 });
 
@@ -149,7 +149,7 @@ test('note cleanup delete removes the note and prunes orphan tags', async () => 
         reminderCount: 0,
         backReferences: [],
         orphanedTagNames: ['temp'],
-        requiresForce: true,
-        forceReasons: ['orphan_tags'],
+        requiresForce: false,
+        forceReasons: [],
     });
 });

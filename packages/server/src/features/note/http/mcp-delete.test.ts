@@ -62,8 +62,8 @@ test('mcp delete note handler returns the deleted note payload', async () => {
         reminderCount: 0,
         backReferences: [],
         orphanedTagNames: ['temp'],
-        requiresForce: true,
-        forceReasons: ['orphan_tags'],
+        requiresForce: false,
+        forceReasons: [],
     }));
     const response = createResponse();
 
@@ -81,8 +81,8 @@ test('mcp delete note handler returns the deleted note payload', async () => {
             reminderCount: 0,
             backReferences: [],
             orphanedTagNames: ['temp'],
-            requiresForce: true,
-            forceReasons: ['orphan_tags'],
+            requiresForce: false,
+            forceReasons: [],
         },
     });
 });
@@ -99,8 +99,8 @@ test('mcp delete note handler emits a deleted server event', async () => {
             reminderCount: 0,
             backReferences: [],
             orphanedTagNames: ['temp'],
-            requiresForce: true,
-            forceReasons: ['orphan_tags'],
+            requiresForce: false,
+            forceReasons: [],
         }),
         (event) => {
             emittedEvents.push(event);

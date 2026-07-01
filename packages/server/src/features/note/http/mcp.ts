@@ -56,18 +56,6 @@ const resolveOptionalString = (value: unknown, code: string, message: string) =>
     throw createAppError(400, code, message);
 };
 
-const resolveOptionalBoolean = (value: unknown, code: string, message: string) => {
-    if (value === undefined) {
-        return undefined;
-    }
-
-    if (typeof value === 'boolean') {
-        return value;
-    }
-
-    throw createAppError(400, code, message);
-};
-
 const resolveMetadataPropertyPatch = (value: unknown): NotePropertiesByKeyPatchInput | undefined => {
     if (value === undefined) {
         return undefined;
@@ -165,27 +153,6 @@ const resolveMarkdownWritePolicy = (value: unknown): MarkdownChangePolicy | unde
             throw createAppError(400, 'INVALID_MARKDOWN_POLICY', 'allowNoop must be a boolean.');
         }
         policy.allowNoop = value.allowNoop;
-    }
-
-    if (value.maxChangedChars !== undefined) {
-        if (!isNonNegativeInteger(value.maxChangedChars)) {
-            throw createAppError(400, 'INVALID_MARKDOWN_POLICY', 'maxChangedChars must be a non-negative integer.');
-        }
-        policy.maxChangedChars = value.maxChangedChars;
-    }
-
-    if (value.maxChangedLines !== undefined) {
-        if (!isNonNegativeInteger(value.maxChangedLines)) {
-            throw createAppError(400, 'INVALID_MARKDOWN_POLICY', 'maxChangedLines must be a non-negative integer.');
-        }
-        policy.maxChangedLines = value.maxChangedLines;
-    }
-
-    if (value.diffPreviewMaxChars !== undefined) {
-        if (!isNonNegativeInteger(value.diffPreviewMaxChars)) {
-            throw createAppError(400, 'INVALID_MARKDOWN_POLICY', 'diffPreviewMaxChars must be a non-negative integer.');
-        }
-        policy.diffPreviewMaxChars = value.diffPreviewMaxChars;
     }
 
     if (value.preserveTags !== undefined) {
@@ -503,8 +470,7 @@ export const createMcpPatchNoteMarkdownHandler = (
     emitEvent: EmitServerEvent = emitServerEvent,
 ): Controller => {
     return async (req, res) => {
-        const { id, expectedUpdatedAt, baseMarkdownSha256, intent, selector, operation, policy, dryRun } =
-            req.body ?? {};
+        const { id, expectedUpdatedAt, baseMarkdownSha256, intent, selector, operation, policy } = req.body ?? {};
         const noteId = resolvePositiveNoteId(id);
         const resolvedExpectedUpdatedAt = resolveOptionalString(
             expectedUpdatedAt,
@@ -516,7 +482,6 @@ export const createMcpPatchNoteMarkdownHandler = (
             'INVALID_MARKDOWN_HASH',
             'baseMarkdownSha256 must be a string.',
         );
-        const resolvedDryRun = resolveOptionalBoolean(dryRun, 'INVALID_DRY_RUN', 'dryRun must be a boolean.');
 
         if (typeof intent !== 'string') {
             throw createAppError(400, 'INVALID_PATCH_INTENT', 'Patch intent must be a string.');
@@ -530,7 +495,6 @@ export const createMcpPatchNoteMarkdownHandler = (
             selector: resolvePatchSelector(selector),
             operation: resolvePatchOperation(operation),
             policy: resolveMarkdownWritePolicy(policy),
-            dryRun: resolvedDryRun,
         });
 
         if (result.status === 'applied') {
@@ -551,7 +515,7 @@ export const createMcpAppendNoteMarkdownHandler = (
     emitEvent: EmitServerEvent = emitServerEvent,
 ): Controller => {
     return async (req, res) => {
-        const { id, expectedUpdatedAt, baseMarkdownSha256, intent, insertion, placement, separator, policy, dryRun } =
+        const { id, expectedUpdatedAt, baseMarkdownSha256, intent, insertion, placement, separator, policy } =
             req.body ?? {};
         const noteId = resolvePositiveNoteId(id);
         const resolvedExpectedUpdatedAt = resolveOptionalString(
@@ -564,7 +528,6 @@ export const createMcpAppendNoteMarkdownHandler = (
             'INVALID_MARKDOWN_HASH',
             'baseMarkdownSha256 must be a string.',
         );
-        const resolvedDryRun = resolveOptionalBoolean(dryRun, 'INVALID_DRY_RUN', 'dryRun must be a boolean.');
 
         if (typeof intent !== 'string') {
             throw createAppError(400, 'INVALID_APPEND_INTENT', 'Append intent must be a string.');
@@ -583,7 +546,6 @@ export const createMcpAppendNoteMarkdownHandler = (
             placement: resolveAppendPlacement(placement),
             separator: resolveSeparator(separator),
             policy: resolveMarkdownWritePolicy(policy),
-            dryRun: resolvedDryRun,
         });
 
         if (result.status === 'applied') {
@@ -604,7 +566,7 @@ export const createMcpReplaceNoteMarkdownHandler = (
     emitEvent: EmitServerEvent = emitServerEvent,
 ): Controller => {
     return async (req, res) => {
-        const { id, expectedUpdatedAt, baseMarkdownSha256, intent, replacement, policy, dryRun } = req.body ?? {};
+        const { id, expectedUpdatedAt, baseMarkdownSha256, intent, replacement, policy } = req.body ?? {};
         const noteId = resolvePositiveNoteId(id);
         const resolvedExpectedUpdatedAt = resolveOptionalString(
             expectedUpdatedAt,
@@ -616,7 +578,6 @@ export const createMcpReplaceNoteMarkdownHandler = (
             'INVALID_MARKDOWN_HASH',
             'baseMarkdownSha256 must be a string.',
         );
-        const resolvedDryRun = resolveOptionalBoolean(dryRun, 'INVALID_DRY_RUN', 'dryRun must be a boolean.');
 
         if (typeof intent !== 'string') {
             throw createAppError(400, 'INVALID_REPLACE_INTENT', 'Replace intent must be a string.');
@@ -633,7 +594,6 @@ export const createMcpReplaceNoteMarkdownHandler = (
             intent,
             replacement,
             policy: resolveMarkdownWritePolicy(policy),
-            dryRun: resolvedDryRun,
         });
 
         if (result.status === 'applied') {
@@ -654,11 +614,10 @@ export const createMcpUpdateNoteMetadataHandler = (
     emitEvent: EmitServerEvent = emitServerEvent,
 ): Controller => {
     return async (req, res) => {
-        const { id, expectedUpdatedAt, title, layout, properties, dryRun } = req.body ?? {};
+        const { id, expectedUpdatedAt, title, layout, properties } = req.body ?? {};
         const noteId = resolvePositiveNoteId(id);
         const resolvedLayout = resolveNoteLayout(layout);
         const resolvedProperties = resolveMetadataPropertyPatch(properties);
-        const resolvedDryRun = resolveOptionalBoolean(dryRun, 'INVALID_DRY_RUN', 'dryRun must be a boolean.');
 
         if (typeof expectedUpdatedAt !== 'string') {
             throw createAppError(400, 'INVALID_NOTE_VERSION', 'expectedUpdatedAt must be a string.');
@@ -682,7 +641,6 @@ export const createMcpUpdateNoteMetadataHandler = (
             ...(title !== undefined ? { title } : {}),
             ...(resolvedLayout ? { layout: resolvedLayout } : {}),
             ...(resolvedProperties !== undefined ? { properties: resolvedProperties } : {}),
-            dryRun: resolvedDryRun,
         });
 
         if (result.status === 'applied') {

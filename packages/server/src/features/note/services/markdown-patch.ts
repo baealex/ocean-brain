@@ -2,7 +2,6 @@ import crypto from 'crypto';
 
 const HASH_ALGORITHM = 'sha256';
 const EXCERPT_CONTEXT_CHARS = 80;
-const DIFF_CONTEXT_LINES = 3;
 
 export interface MarkdownPatchNoteSnapshot {
     id: string;
@@ -52,14 +51,11 @@ export type MarkdownPatchOperation =
 
 export interface MarkdownChangePolicy {
     allowNoop?: boolean;
-    maxChangedChars?: number;
-    maxChangedLines?: number;
-    diffPreviewMaxChars?: number;
     preserveReferences?: boolean | 'warn';
     preserveTags?: boolean | 'warn';
 }
 
-export interface PreviewMarkdownPatchInput {
+export interface BuildMarkdownPatchPlanInput {
     note: MarkdownPatchNoteSnapshot;
     expectedUpdatedAt?: string;
     baseMarkdownSha256?: string;
@@ -81,7 +77,7 @@ export interface MarkdownAppendPlacementAfterHeading {
 
 export type MarkdownAppendPlacement = MarkdownAppendPlacementEnd | MarkdownAppendPlacementAfterHeading;
 
-export interface PreviewMarkdownAppendInput {
+export interface BuildMarkdownAppendPlanInput {
     note: MarkdownPatchNoteSnapshot;
     expectedUpdatedAt?: string;
     baseMarkdownSha256?: string;
@@ -92,7 +88,7 @@ export interface PreviewMarkdownAppendInput {
     policy?: MarkdownChangePolicy;
 }
 
-export interface PreviewMarkdownReplaceInput {
+export interface BuildMarkdownReplacePlanInput {
     note: MarkdownPatchNoteSnapshot;
     expectedUpdatedAt?: string;
     baseMarkdownSha256?: string;
@@ -113,8 +109,8 @@ export interface MarkdownPatchMatch {
     positionHint?: 'first' | 'last';
 }
 
-export interface MarkdownChangeDryRun {
-    status: 'dry_run';
+export interface MarkdownChangePlan {
+    status: 'planned';
     note: {
         id: string;
         title: string;
@@ -134,14 +130,8 @@ export interface MarkdownChangeDryRun {
         changedCharCount: number;
         beforeMarkdownSha256: string;
         afterMarkdownSha256: string;
-        diff: string;
-        diffTruncated?: boolean;
-        diffCharCount?: number;
     };
     warnings: string[];
-}
-
-export interface MarkdownChangePlan extends MarkdownChangeDryRun {
     afterMarkdown: string;
 }
 
@@ -157,7 +147,6 @@ export interface MarkdownChangeFailure {
         | 'ANCHOR_MISMATCH'
         | 'BASELINE_MISMATCH'
         | 'CANDIDATE_MISMATCH'
-        | 'CHANGE_LIMIT_EXCEEDED'
         | 'EMPTY_INSERTION'
         | 'EMPTY_REPLACEMENT'
         | 'EMPTY_TARGET'
@@ -176,11 +165,6 @@ export interface MarkdownChangeFailure {
     message: string;
     details?: Record<string, unknown>;
 }
-
-export type MarkdownPatchPreviewResult =
-    | MarkdownChangeDryRun
-    | MarkdownPatchNeedsDisambiguation
-    | MarkdownChangeFailure;
 
 export type MarkdownPatchPlanResult = MarkdownChangePlan | MarkdownPatchNeedsDisambiguation | MarkdownChangeFailure;
 export type MarkdownAppendPlanResult = MarkdownChangePlan | MarkdownChangeFailure;
@@ -303,55 +287,6 @@ const findSharedLineEdges = (beforeLines: string[], afterLines: string[]) => {
         prefix,
         suffix,
     };
-};
-
-const formatDiffRange = (lineIndex: number, lineCount: number) => {
-    const lineNumber = lineIndex + 1;
-
-    return lineCount === 1 ? String(lineNumber) : `${lineNumber},${lineCount}`;
-};
-
-export const createUnifiedMarkdownDiff = (
-    beforeMarkdown: string,
-    afterMarkdown: string,
-    contextLines: number | null = DIFF_CONTEXT_LINES,
-) => {
-    const beforeLines = splitLines(beforeMarkdown);
-    const afterLines = splitLines(afterMarkdown);
-    const { prefix, suffix } = findSharedLineEdges(beforeLines, afterLines);
-    const changedBeforeStart = prefix;
-    const changedBeforeEnd = beforeLines.length - suffix;
-    const changedAfterStart = prefix;
-    const changedAfterEnd = afterLines.length - suffix;
-    const displayBeforeStart = contextLines === null ? 0 : Math.max(0, changedBeforeStart - contextLines);
-    const displayBeforeEnd =
-        contextLines === null ? beforeLines.length : Math.min(beforeLines.length, changedBeforeEnd + contextLines);
-    const displayAfterStart = contextLines === null ? 0 : Math.max(0, changedAfterStart - contextLines);
-    const displayAfterEnd =
-        contextLines === null ? afterLines.length : Math.min(afterLines.length, changedAfterEnd + contextLines);
-    const diffLines = [
-        '--- before.md',
-        '+++ after.md',
-        `@@ -${formatDiffRange(displayBeforeStart, displayBeforeEnd - displayBeforeStart)} +${formatDiffRange(displayAfterStart, displayAfterEnd - displayAfterStart)} @@`,
-    ];
-
-    for (let index = displayBeforeStart; index < changedBeforeStart; index += 1) {
-        diffLines.push(` ${beforeLines[index]}`);
-    }
-
-    for (let index = changedBeforeStart; index < changedBeforeEnd; index += 1) {
-        diffLines.push(`-${beforeLines[index]}`);
-    }
-
-    for (let index = changedAfterStart; index < changedAfterEnd; index += 1) {
-        diffLines.push(`+${afterLines[index]}`);
-    }
-
-    for (let index = changedBeforeEnd; index < displayBeforeEnd; index += 1) {
-        diffLines.push(` ${beforeLines[index]}`);
-    }
-
-    return diffLines.join('\n');
 };
 
 const countChangedLines = (beforeMarkdown: string, afterMarkdown: string) => {
@@ -525,61 +460,11 @@ const validateBaseline = (
     return null;
 };
 
-const validateChangeLimits = (
-    beforeMarkdown: string,
-    afterMarkdown: string,
-    changedCharCount: number,
-    policy: MarkdownChangePolicy | undefined,
-): MarkdownChangeFailure | null => {
-    const changedLineCount = countChangedLines(beforeMarkdown, afterMarkdown);
-    const exceededLines = policy?.maxChangedLines !== undefined && changedLineCount > policy.maxChangedLines;
-    const exceededChars = policy?.maxChangedChars !== undefined && changedCharCount > policy.maxChangedChars;
-
-    if (exceededLines || exceededChars) {
-        return {
-            status: 'failed',
-            reason: 'CHANGE_LIMIT_EXCEEDED',
-            message:
-                'The markdown write exceeds the configured change limit. Increase maxChangedLines/maxChangedChars to at least the requiredMinimum values or omit them for this write.',
-            details: {
-                configured: {
-                    ...(policy?.maxChangedLines !== undefined ? { maxChangedLines: policy.maxChangedLines } : {}),
-                    ...(policy?.maxChangedChars !== undefined ? { maxChangedChars: policy.maxChangedChars } : {}),
-                },
-                requiredMinimum: {
-                    maxChangedLines: changedLineCount,
-                    maxChangedChars: changedCharCount,
-                },
-            },
-        };
-    }
-
-    return null;
-};
-
-const buildDiffPreview = (diff: string, policy: MarkdownChangePolicy | undefined) => {
-    const maxChars = policy?.diffPreviewMaxChars;
-
-    if (maxChars === undefined || diff.length <= maxChars) {
-        return {
-            diff,
-            ...(maxChars !== undefined ? { diffCharCount: diff.length } : {}),
-        };
-    }
-
-    return {
-        diff: diff.slice(0, maxChars),
-        diffTruncated: true,
-        diffCharCount: diff.length,
-    };
-};
-
 const createChangePlan = ({
     note,
     afterMarkdown,
     changedCharCount,
     policy,
-    diffContextLines = DIFF_CONTEXT_LINES,
     match,
     placement,
 }: {
@@ -587,8 +472,7 @@ const createChangePlan = ({
     afterMarkdown: string;
     changedCharCount: number;
     policy: MarkdownChangePolicy | undefined;
-    diffContextLines?: number | null;
-    match?: MarkdownChangeDryRun['match'];
+    match?: MarkdownChangePlan['match'];
     placement?: MarkdownAppendPlacement;
 }): MarkdownChangePlan | MarkdownChangeFailure => {
     if (!policy?.allowNoop && afterMarkdown === note.markdown) {
@@ -605,19 +489,8 @@ const createChangePlan = ({
         return preservationFailure;
     }
 
-    const limitFailure = validateChangeLimits(note.markdown, afterMarkdown, changedCharCount, policy);
-
-    if (limitFailure) {
-        return limitFailure;
-    }
-
-    const diffPreview = buildDiffPreview(
-        createUnifiedMarkdownDiff(note.markdown, afterMarkdown, diffContextLines),
-        policy,
-    );
-
     return {
-        status: 'dry_run',
+        status: 'planned',
         note: {
             id: note.id,
             title: note.title,
@@ -630,7 +503,6 @@ const createChangePlan = ({
             changedCharCount,
             beforeMarkdownSha256: calculateMarkdownSha256(note.markdown),
             afterMarkdownSha256: calculateMarkdownSha256(afterMarkdown),
-            ...diffPreview,
         },
         warnings: collectWarnings(note.markdown, afterMarkdown, policy),
         afterMarkdown,
@@ -775,7 +647,7 @@ const applyPatchOperation = (markdown: string, match: RawTextMatch, operation: M
     };
 };
 
-export const buildMarkdownPatchPlan = (input: PreviewMarkdownPatchInput): MarkdownPatchPlanResult => {
+export const buildMarkdownPatchPlan = (input: BuildMarkdownPatchPlanInput): MarkdownPatchPlanResult => {
     const baselineFailure = validateBaseline(input.note, input.expectedUpdatedAt, input.baseMarkdownSha256);
 
     if (baselineFailure) {
@@ -945,7 +817,7 @@ const applyAppendPlacement = (
     };
 };
 
-export const buildMarkdownAppendPlan = (input: PreviewMarkdownAppendInput): MarkdownAppendPlanResult => {
+export const buildMarkdownAppendPlan = (input: BuildMarkdownAppendPlanInput): MarkdownAppendPlanResult => {
     const baselineFailure = validateBaseline(input.note, input.expectedUpdatedAt, input.baseMarkdownSha256);
 
     if (baselineFailure) {
@@ -969,7 +841,7 @@ export const buildMarkdownAppendPlan = (input: PreviewMarkdownAppendInput): Mark
     });
 };
 
-export const buildMarkdownReplacePlan = (input: PreviewMarkdownReplaceInput): MarkdownReplacePlanResult => {
+export const buildMarkdownReplacePlan = (input: BuildMarkdownReplacePlanInput): MarkdownReplacePlanResult => {
     const baselineFailure = validateBaseline(input.note, input.expectedUpdatedAt, input.baseMarkdownSha256);
 
     if (baselineFailure) {
@@ -989,51 +861,5 @@ export const buildMarkdownReplacePlan = (input: PreviewMarkdownReplaceInput): Ma
         afterMarkdown: input.replacement,
         changedCharCount: input.note.markdown.length + input.replacement.length,
         policy: input.policy,
-        diffContextLines: null,
     });
-};
-
-const toPreviewResult = (plan: MarkdownChangePlan): MarkdownChangeDryRun => {
-    return {
-        status: 'dry_run',
-        note: plan.note,
-        ...(plan.match ? { match: plan.match } : {}),
-        ...(plan.placement ? { placement: plan.placement } : {}),
-        proposed: plan.proposed,
-        warnings: plan.warnings,
-    };
-};
-
-export const previewMarkdownPatch = (input: PreviewMarkdownPatchInput): MarkdownPatchPreviewResult => {
-    const plan = buildMarkdownPatchPlan(input);
-
-    if (plan.status !== 'dry_run') {
-        return plan;
-    }
-
-    return toPreviewResult(plan);
-};
-
-export const previewMarkdownAppend = (
-    input: PreviewMarkdownAppendInput,
-): MarkdownChangeDryRun | MarkdownChangeFailure => {
-    const plan = buildMarkdownAppendPlan(input);
-
-    if (plan.status !== 'dry_run') {
-        return plan;
-    }
-
-    return toPreviewResult(plan);
-};
-
-export const previewMarkdownReplace = (
-    input: PreviewMarkdownReplaceInput,
-): MarkdownChangeDryRun | MarkdownChangeFailure => {
-    const plan = buildMarkdownReplacePlan(input);
-
-    if (plan.status !== 'dry_run') {
-        return plan;
-    }
-
-    return toPreviewResult(plan);
 };

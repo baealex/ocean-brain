@@ -46,6 +46,21 @@ test('updateNoteWithVersionGuard updates using id and updatedAt when a version i
     assert.equal(updated?.title, 'Renamed');
     assert.deepEqual(calls, [
         {
+            captureBaseline: {
+                noteId: 7,
+                baseline: {
+                    id: 7,
+                    title: 'Existing',
+                    content: '[]',
+                    pinned: false,
+                    order: 0,
+                    layout: 'wide',
+                },
+                editSessionId: 'session-1',
+                meta: '{"label":"Web browser"}',
+            },
+        },
+        {
             updateNote: {
                 where: {
                     id: 7,
@@ -60,21 +75,6 @@ test('updateNoteWithVersionGuard updates using id and updatedAt when a version i
                         set: [{ id: 3 }],
                     },
                 },
-            },
-        },
-        {
-            captureBaseline: {
-                noteId: 7,
-                baseline: {
-                    id: 7,
-                    title: 'Existing',
-                    content: '[]',
-                    pinned: false,
-                    order: 0,
-                    layout: 'wide',
-                },
-                editSessionId: 'session-1',
-                meta: '{"label":"Web browser"}',
             },
         },
     ]);
@@ -126,16 +126,6 @@ test('updateNoteWithVersionGuard allows explicit forced overwrites and snapshots
 
     assert.deepEqual(calls, [
         {
-            updateNote: {
-                where: { id: 7 },
-                data: {
-                    title: 'Overwrite',
-                    searchableText: 'overwrite',
-                    searchableTextVersion: 1,
-                },
-            },
-        },
-        {
             captureBaseline: {
                 noteId: 7,
                 baseline: {
@@ -149,7 +139,48 @@ test('updateNoteWithVersionGuard allows explicit forced overwrites and snapshots
                 force: true,
             },
         },
+        {
+            updateNote: {
+                where: { id: 7 },
+                data: {
+                    title: 'Overwrite',
+                    searchableText: 'overwrite',
+                    searchableTextVersion: 1,
+                },
+            },
+        },
     ]);
+});
+
+test('updateNoteWithVersionGuard does not update when baseline snapshot capture fails', async () => {
+    let updateCalled = false;
+    const snapshotError = new Error('snapshot failed');
+    const service = createNoteWriteService({
+        findNoteForWrite: async () => createNoteRecord({ updatedAt: new Date(1770000000000) }),
+        findNoteVersion: async () => ({ updatedAt: new Date(1770000000000) }),
+        captureBaseline: async () => {
+            throw snapshotError;
+        },
+        updateNote: async () => {
+            updateCalled = true;
+            return createNoteRecord({ updatedAt: new Date(1770000001000) });
+        },
+        isRecordNotFoundError: () => false,
+    });
+
+    await assert.rejects(
+        () =>
+            service.updateNoteWithVersionGuard({
+                id: 7,
+                data: { title: 'Renamed' },
+                expectedUpdatedAt: '1770000000000',
+            }),
+        (error) => {
+            assert.equal(error, snapshotError);
+            return true;
+        },
+    );
+    assert.equal(updateCalled, false);
 });
 
 test('updateNoteWithVersionGuard maps stale conditional updates to domain conflicts', async () => {

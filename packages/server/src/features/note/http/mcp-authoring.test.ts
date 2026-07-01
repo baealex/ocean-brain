@@ -357,35 +357,17 @@ test('mcp update note handler rejects empty updates', async () => {
     );
 });
 
-test('mcp patch note markdown handler forwards validated dry-run input without emitting events', async () => {
+test('mcp patch note markdown handler forwards validated patch input and emits events after apply', async () => {
     const emittedEvents: unknown[] = [];
     let receivedInput: unknown;
     const handler = createMcpPatchNoteMarkdownHandler(
         async (input) => {
             receivedInput = input;
             return {
-                status: 'dry_run',
-                note: {
-                    id: '7',
-                    title: 'Patch target',
-                    updatedAt: '2026-04-01T00:00:00.000Z',
-                },
-                match: {
-                    count: 1,
-                    lineStart: 2,
-                    lineEnd: 2,
-                    selectorType: 'exact_text',
-                    matchedTextSha256: 'match-hash',
-                    surroundingHash: 'surrounding-hash',
-                },
-                proposed: {
-                    changedLineCount: 1,
-                    changedCharCount: 6,
-                    beforeMarkdownSha256: 'before-hash',
-                    afterMarkdownSha256: 'after-hash',
-                    diff: '-old\n+new',
-                },
-                warnings: [],
+                status: 'applied',
+                note: { id: '7', updatedAt: '2026-04-02T00:00:00.000Z' },
+                change: { summary: 'patched', changedLineCount: 1, changedCharCount: 6 },
+                snapshot: { id: '12', label: 'MCP', createdAt: '2026-04-02T00:00:00.000Z' },
             };
         },
         (event) => {
@@ -411,15 +393,21 @@ test('mcp patch note markdown handler forwards validated dry-run input without e
                 policy: {
                     preserveTags: 'warn',
                 },
-                dryRun: true,
             },
         } as never,
         response as never,
     );
 
     assert.equal(response.statusCode, 200);
-    assert.equal((response.body as { status: string }).status, 'dry_run');
-    assert.deepEqual(emittedEvents, []);
+    assert.equal((response.body as { status: string }).status, 'applied');
+    assert.deepEqual(emittedEvents, [
+        {
+            type: 'mcp.note.updated',
+            source: 'mcp',
+            noteId: '7',
+            updatedAt: '2026-04-02T00:00:00.000Z',
+        },
+    ]);
     assert.deepEqual(receivedInput, {
         id: 7,
         expectedUpdatedAt: '2026-04-01T00:00:00.000Z',
@@ -436,7 +424,6 @@ test('mcp patch note markdown handler forwards validated dry-run input without e
         policy: {
             preserveTags: 'warn',
         },
-        dryRun: true,
     });
 });
 
@@ -478,7 +465,6 @@ test('mcp patch note markdown handler emits an updated event only after apply', 
                     type: 'replace',
                     replacement: 'new',
                 },
-                dryRun: false,
             },
         } as never,
         createResponse() as never,
@@ -499,25 +485,10 @@ test('mcp append note markdown handler validates append placement and separator 
     const handler = createMcpAppendNoteMarkdownHandler(async (input) => {
         receivedInput = input;
         return {
-            status: 'dry_run',
-            note: {
-                id: '7',
-                title: 'Append target',
-                updatedAt: '2026-04-01T00:00:00.000Z',
-            },
-            placement: {
-                type: 'after_heading',
-                heading: 'Decisions',
-                level: 2,
-            },
-            proposed: {
-                changedLineCount: 1,
-                changedCharCount: 10,
-                beforeMarkdownSha256: 'before-hash',
-                afterMarkdownSha256: 'after-hash',
-                diff: '+New line',
-            },
-            warnings: [],
+            status: 'applied',
+            note: { id: '7', updatedAt: '2026-04-02T00:00:00.000Z' },
+            change: { summary: 'append', changedLineCount: 1, changedCharCount: 10 },
+            snapshot: { id: '13', label: 'MCP', createdAt: '2026-04-02T00:00:00.000Z' },
         };
     });
 
@@ -534,7 +505,6 @@ test('mcp append note markdown handler validates append placement and separator 
                     level: 2,
                 },
                 separator: '\n\n',
-                dryRun: true,
             },
         } as never,
         createResponse() as never,
@@ -553,29 +523,18 @@ test('mcp append note markdown handler validates append placement and separator 
         },
         separator: '\n\n',
         policy: undefined,
-        dryRun: true,
     });
 });
 
-test('mcp replace note markdown handler forwards full replacement dry-runs', async () => {
+test('mcp replace note markdown handler forwards full replacement input', async () => {
     let receivedInput: unknown;
     const handler = createMcpReplaceNoteMarkdownHandler(async (input) => {
         receivedInput = input;
         return {
-            status: 'dry_run',
-            note: {
-                id: '7',
-                title: 'Replace target',
-                updatedAt: '2026-04-01T00:00:00.000Z',
-            },
-            proposed: {
-                changedLineCount: 6,
-                changedCharCount: 42,
-                beforeMarkdownSha256: 'before-hash',
-                afterMarkdownSha256: 'after-hash',
-                diff: '-old\n+new',
-            },
-            warnings: ['Full replacement should be reviewed carefully.'],
+            status: 'applied',
+            note: { id: '7', updatedAt: '2026-04-02T00:00:00.000Z' },
+            change: { summary: 'replace', changedLineCount: 6, changedCharCount: 42 },
+            snapshot: { id: '14', label: 'MCP', createdAt: '2026-04-02T00:00:00.000Z' },
         };
     });
 
@@ -586,7 +545,6 @@ test('mcp replace note markdown handler forwards full replacement dry-runs', asy
                 expectedUpdatedAt: '2026-04-01T00:00:00.000Z',
                 intent: 'Rewrite note',
                 replacement: '# New note',
-                dryRun: true,
             },
         } as never,
         createResponse() as never,
@@ -599,28 +557,19 @@ test('mcp replace note markdown handler forwards full replacement dry-runs', asy
         intent: 'Rewrite note',
         replacement: '# New note',
         policy: undefined,
-        dryRun: true,
     });
 });
 
-test('mcp update note metadata handler requires a baseline and does not emit events for dry-run', async () => {
+test('mcp update note metadata handler requires a baseline and emits events after metadata apply', async () => {
     const emittedEvents: unknown[] = [];
     let receivedInput: unknown;
     const handler = createMcpUpdateNoteMetadataHandler(
         async (input) => {
             receivedInput = input;
             return {
-                status: 'dry_run',
-                note: {
-                    id: '7',
-                    title: 'Old title',
-                    updatedAt: '2026-04-01T00:00:00.000Z',
-                },
-                proposed: {
-                    title: 'New title',
-                    layout: 'full',
-                },
-                warnings: [],
+                status: 'applied',
+                note: { id: '7', title: 'New title', layout: 'full', updatedAt: '2026-04-02T00:00:00.000Z' },
+                snapshot: { id: '15', label: 'MCP', createdAt: '2026-04-02T00:00:00.000Z' },
             };
         },
         (event) => {
@@ -635,7 +584,6 @@ test('mcp update note metadata handler requires a baseline and does not emit eve
                 expectedUpdatedAt: '2026-04-01T00:00:00.000Z',
                 title: 'New title',
                 layout: 'full',
-                dryRun: true,
             },
         } as never,
         createResponse() as never,
@@ -646,9 +594,15 @@ test('mcp update note metadata handler requires a baseline and does not emit eve
         expectedUpdatedAt: '2026-04-01T00:00:00.000Z',
         title: 'New title',
         layout: 'full',
-        dryRun: true,
     });
-    assert.deepEqual(emittedEvents, []);
+    assert.deepEqual(emittedEvents, [
+        {
+            type: 'mcp.note.updated',
+            source: 'mcp',
+            noteId: '7',
+            updatedAt: '2026-04-02T00:00:00.000Z',
+        },
+    ]);
 });
 
 test('mcp update note metadata handler forwards property patches without value types', async () => {
@@ -656,19 +610,9 @@ test('mcp update note metadata handler forwards property patches without value t
     const handler = createMcpUpdateNoteMetadataHandler(async (input) => {
         receivedInput = input;
         return {
-            status: 'dry_run',
-            note: {
-                id: '7',
-                title: 'Old title',
-                updatedAt: '2026-04-01T00:00:00.000Z',
-            },
-            proposed: {
-                properties: {
-                    set: [{ key: 'state', name: 'State', value: 'todo', valueType: 'select' }],
-                    deleteKeys: ['project'],
-                },
-            },
-            warnings: [],
+            status: 'applied',
+            note: { id: '7', title: 'Old title', layout: 'wide', updatedAt: '2026-04-02T00:00:00.000Z' },
+            snapshot: { id: '16', label: 'MCP', createdAt: '2026-04-02T00:00:00.000Z' },
         };
     });
 
@@ -681,7 +625,6 @@ test('mcp update note metadata handler forwards property patches without value t
                     set: [{ key: 'state', value: 'todo' }],
                     deleteKeys: ['project'],
                 },
-                dryRun: true,
             },
         } as never,
         createResponse() as never,
@@ -694,6 +637,5 @@ test('mcp update note metadata handler forwards property patches without value t
             set: [{ key: 'state', value: 'todo' }],
             deleteKeys: ['project'],
         },
-        dryRun: true,
     });
 });

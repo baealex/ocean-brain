@@ -5,12 +5,6 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 
-import {
-    createMcpWriteSafetyCoordinator,
-    defaultMcpWriteSafetyDir,
-    destructiveMcpWriteFields,
-    formatMcpGraphqlError
-} from './mcp-write-safety.js';
 import { formatMcpReadNoteOutput } from './mcp-note-output.js';
 import { registerIntentWriteTools } from './mcp-intent-write-tools.js';
 import { formatPropertyQueryResponse, type PropertyQueryResult } from './mcp-property-query-output.js';
@@ -52,7 +46,6 @@ export const OCEAN_BRAIN_MCP_TOOLS = {
     listNotesByTag: 'ocean_brain_list_notes_by_tag',
     listNotesByTags: 'ocean_brain_list_notes_by_tags',
     listRecentNotes: 'ocean_brain_list_recent_notes',
-    writeSafetyStatus: 'ocean_brain_write_safety_status',
     findNoteCleanupCandidates: 'ocean_brain_find_note_cleanup_candidates',
     createTag: 'ocean_brain_create_tag',
     deleteNote: 'ocean_brain_delete_note'
@@ -64,6 +57,33 @@ const propertyValueTypeSchema = z.enum(['text', 'url', 'number', 'date', 'boolea
 const propertyFilterOperatorSchema = z.enum(['equals', 'before', 'after', 'exists', 'notExists']);
 const viewSortBySchema = z.enum(['updatedAt', 'createdAt', 'title']);
 const viewSortOrderSchema = z.enum(['asc', 'desc']);
+
+interface McpGraphqlErrorShape {
+    message: string;
+    extensions?: {
+        code?: string;
+        operationId?: string;
+    };
+}
+
+const formatMcpGraphqlError = (error: McpGraphqlErrorShape) => {
+    const suffix: string[] = [];
+
+    if (error.extensions?.code) {
+        suffix.push(`code=${error.extensions.code}`);
+    }
+
+    if (error.extensions?.operationId) {
+        suffix.push(`operationId=${error.extensions.operationId}`);
+    }
+
+    if (suffix.length === 0) {
+        return `GraphQL error: ${error.message}`;
+    }
+
+    return `GraphQL error: ${error.message} (${suffix.join(', ')})`;
+};
+
 const propertyFilterSchema = z.object({
     key: z.string().describe('Property key from ocean_brain_list_properties, e.g. state'),
     valueType: propertyValueTypeSchema.describe('Property value type from the property definition'),
@@ -187,22 +207,6 @@ async function jsonRequest<TResponse extends Record<string, unknown>>(
     return result;
 }
 
-export const fetchMcpNoteWriteBaseline = async (
-    serverUrl: string,
-    token: string | undefined,
-    id: string,
-    request: typeof jsonRequest = jsonRequest
-) => {
-    const result = await request<{
-        note: {
-            id: string;
-            updatedAt: string;
-        };
-    }>(serverUrl, token, '/api/mcp/notes/baseline', { id });
-
-    return result.note;
-};
-
 const requireWriteToken = (token: string | undefined, toolName: string) => {
     if (token) {
         return token;
@@ -213,17 +217,12 @@ const requireWriteToken = (token: string | undefined, toolName: string) => {
 
 export async function startMcpServer(
     serverUrl: string,
-    token?: string,
-    options: { writeSafetyDir?: string } = {}
+    token?: string
 ) {
     const server = new McpServer({
         name: 'ocean-brain',
         version: pkg.version,
     });
-    const writeSafety = createMcpWriteSafetyCoordinator({
-        rootDir: options.writeSafetyDir ?? defaultMcpWriteSafetyDir()
-    });
-
     server.tool(
         OCEAN_BRAIN_MCP_TOOLS.searchNotes,
         'Search Ocean Brain notes by keyword. Returns matching note titles and tags. Use ocean_brain_read_note to get full content for a specific note.',
@@ -374,7 +373,7 @@ export async function startMcpServer(
 
     server.tool(
         OCEAN_BRAIN_MCP_TOOLS.updateNote,
-        'Legacy full-field note update through the MCP write path. Prefer patch/append/metadata tools for small changes; use this only when intentionally replacing provided fields.',
+        'Legacy full-field note update kept for backward compatibility. Prefer ocean_brain_patch_note_markdown for localized body edits, ocean_brain_append_note_markdown for additions, ocean_brain_replace_note_markdown for whole-body rewrites, and ocean_brain_update_note_metadata for title/layout/properties. Use this only when a legacy client needs combined field updates.',
         {
             id: z.string().describe('Note ID to update'),
             title: z.string().optional().describe('New note title'),
@@ -410,13 +409,11 @@ export async function startMcpServer(
     );
 
     registerIntentWriteTools(server, {
-        fetchNoteWriteBaseline: (id, writeToken) => fetchMcpNoteWriteBaseline(serverUrl, writeToken, id),
         jsonRequest,
         requireWriteToken,
         serverUrl,
         token,
-        tools: OCEAN_BRAIN_MCP_TOOLS,
-        writeSafety
+        tools: OCEAN_BRAIN_MCP_TOOLS
     });
 
     server.tool(
@@ -811,36 +808,8 @@ export async function startMcpServer(
     );
 
     server.tool(
-        OCEAN_BRAIN_MCP_TOOLS.writeSafetyStatus,
-        'Inspect pending destructive write confirmations and local operation log state for enabled Ocean Brain MCP write tools.',
-        {},
-        async () => {
-            return {
-                content: [{
-                    type: 'text' as const,
-                    text: JSON.stringify({
-                        ...writeSafety.getStatus(),
-                        destructiveWriteTools: [OCEAN_BRAIN_MCP_TOOLS.deleteNote],
-                        writeTools: [
-                            OCEAN_BRAIN_MCP_TOOLS.createNote,
-                            OCEAN_BRAIN_MCP_TOOLS.updateNote,
-                            OCEAN_BRAIN_MCP_TOOLS.patchNoteMarkdown,
-                            OCEAN_BRAIN_MCP_TOOLS.appendNoteMarkdown,
-                            OCEAN_BRAIN_MCP_TOOLS.updateNoteMetadata,
-                            OCEAN_BRAIN_MCP_TOOLS.replaceNoteMarkdown,
-                            OCEAN_BRAIN_MCP_TOOLS.createTag,
-                            OCEAN_BRAIN_MCP_TOOLS.deleteNote
-                        ],
-                        writeToolsEnabled: true
-                    }, null, 2),
-                }],
-            };
-        },
-    );
-
-    server.tool(
         OCEAN_BRAIN_MCP_TOOLS.findNoteCleanupCandidates,
-        'Find Ocean Brain note cleanup candidates for temporary or draft notes before deletion. Use this before ocean_brain_delete_note.',
+        'Find Ocean Brain note cleanup candidates for temporary or draft notes before deletion. This is optional discovery; ocean_brain_delete_note moves a single note to trash directly.',
         {
             keywords: z.string().optional().default('temp tmp draft test wip')
                 .describe('Keywords that mark a note as a cleanup candidate. Comma or space separated.'),
@@ -934,111 +903,25 @@ export async function startMcpServer(
 
     server.tool(
         OCEAN_BRAIN_MCP_TOOLS.deleteNote,
-        'Delete an Ocean Brain note safely through a dry-run and confirmation flow. Start with dryRun=true, then call again with dryRun=false, operationId, and confirmToken.',
+        'Move an Ocean Brain note to trash, like `mv note.md trash/`. This is a recoverable trash move, not permanent deletion. Deleted-note tag names are kept as restore metadata; orphan tags are not a blocking condition.',
         {
-            id: z.string().describe('Note ID to delete'),
-            ...destructiveMcpWriteFields
+            id: z.string().describe('Note ID to move to trash')
         },
-        async ({ id, dryRun, operationId, confirmToken, force }) => {
+        async ({ id }) => {
             const writeToken = requireWriteToken(token, OCEAN_BRAIN_MCP_TOOLS.deleteNote);
-            const data = await graphql(serverUrl, writeToken, `
-                query ($id: ID!) {
-                    noteCleanupPreview(id: $id) {
-                        id
-                        title
-                        updatedAt
-                        pinned
-                        tagNames
-                        reminderCount
-                        backReferences {
-                            id
-                            title
-                        }
-                        orphanedTagNames
-                        requiresForce
-                        forceReasons
-                    }
-                }
-            `, { id });
-
-            const preview = data?.noteCleanupPreview as {
-                id: string;
-                title: string;
-                updatedAt: string;
-                pinned: boolean;
-                tagNames: string[];
-                reminderCount: number;
-                backReferences: Array<{ id: string; title: string }>;
-                orphanedTagNames: string[];
-                requiresForce: boolean;
-                forceReasons: string[];
-            } | null;
-
-            if (!preview) {
-                return {
-                    content: [{
-                        type: 'text' as const,
-                        text: JSON.stringify({
-                            deleted: false,
-                            reason: 'NOTE_NOT_FOUND',
-                            id
-                        }, null, 2)
-                    }]
-                };
-            }
-
-            const intent = writeSafety.ensureDestructiveWriteRequest(
-                { dryRun, operationId, confirmToken, force },
-                {
-                    actor: 'mcp-bearer',
-                    affectedIds: [preview.id],
-                    estimatedChangeCount: 1,
-                    force: preview.requiresForce,
-                    risk: 'destructive',
-                    summary: `Delete note ${preview.id} (${preview.title})`,
-                    toolName: OCEAN_BRAIN_MCP_TOOLS.deleteNote
-                }
-            );
-
-            if (intent.kind === 'dry-run') {
-                return {
-                    content: [{
-                        type: 'text' as const,
-                        text: JSON.stringify({
-                            mode: 'dry-run',
-                            preview,
-                            operation: intent.operation
-                        }, null, 2)
-                    }]
-                };
-            }
-
-            if (intent.operation.force && !force) {
-                throw new Error(`${OCEAN_BRAIN_MCP_TOOLS.deleteNote} requires force=true because ${preview.forceReasons.join(', ')}.`);
-            }
 
             try {
-                const result = await jsonRequest(serverUrl, writeToken, '/api/mcp/notes/delete', {
-                    id: preview.id
-                });
-
-                writeSafety.recordWriteResult(intent.operation, true);
+                const result = await jsonRequest(serverUrl, writeToken, '/api/mcp/notes/delete', { id });
 
                 return {
                     content: [{
                         type: 'text' as const,
-                        text: JSON.stringify({
-                            mode: 'commit',
-                            preview,
-                            operation: intent.operation,
-                            result
-                        }, null, 2)
+                        text: JSON.stringify(result, null, 2)
                     }]
                 };
             } catch (error) {
                 const message = error instanceof Error ? error.message : 'Unknown MCP note delete error';
-                writeSafety.recordWriteResult(intent.operation, false, message);
-                throw error;
+                throw new Error(message);
             }
         }
     );

@@ -53,7 +53,6 @@ test('markdown intent write applies an exact text patch through guarded update a
             type: 'replace',
             replacement: 'Updated sentence. [@MCP]',
         },
-        dryRun: false,
     });
 
     assert.equal(result.status, 'applied');
@@ -80,7 +79,7 @@ test('markdown intent write applies an exact text patch through guarded update a
     });
 });
 
-test('markdown intent write refuses apply when the note changed after preview baseline', async () => {
+test('markdown intent write refuses apply when the note changed after the expected baseline', async () => {
     const service = createMarkdownIntentWriteService({
         findNoteById: async () => createNote({ updatedAt: new Date('2026-05-28T00:00:02.000Z') }),
         renderMarkdown: async (content) => content,
@@ -105,7 +104,6 @@ test('markdown intent write refuses apply when the note changed after preview ba
             type: 'replace',
             replacement: 'Updated sentence.',
         },
-        dryRun: false,
     });
 
     assert.deepEqual(result, {
@@ -144,7 +142,6 @@ test('markdown intent write refuses markdown writes for unsupported BlockNote-on
             type: 'replace',
             replacement: 'Updated sentence.',
         },
-        dryRun: false,
     });
 
     assert.deepEqual(result, {
@@ -181,7 +178,6 @@ test('markdown intent write refuses apply when structured references would be lo
         policy: {
             preserveReferences: true,
         },
-        dryRun: false,
     });
 
     assert.deepEqual(result, {
@@ -215,7 +211,6 @@ test('markdown intent write refuses apply when Markdown import loses literal tex
             type: 'replace',
             replacement: '<MARKER> <MARKER> Updated sentence.',
         },
-        dryRun: false,
     });
 
     assert.deepEqual(result, {
@@ -249,7 +244,6 @@ test('markdown intent write refuses apply when Markdown import loses numeric til
             type: 'replace',
             replacement: 'Range is 1~3 and 4~5.',
         },
-        dryRun: false,
     });
 
     assert.deepEqual(result, {
@@ -285,7 +279,6 @@ test('markdown intent write maps guarded update conflicts to baseline mismatch f
             type: 'replace',
             replacement: 'Updated sentence.',
         },
-        dryRun: false,
     });
 
     assert.deepEqual(result, {
@@ -341,87 +334,10 @@ test('markdown intent write allows intentional reference loss when preserveRefer
         policy: {
             preserveReferences: false,
         },
-        dryRun: false,
     });
 
     assert.equal(result.status, 'applied');
     assert.equal(updates.length, 1);
-});
-
-test('markdown intent write reports required minimum limits when change limits are exceeded', async () => {
-    const service = createMarkdownIntentWriteService({
-        findNoteById: async () => createNote({ content: 'Original sentence.' }),
-        renderMarkdown: async (content) => content,
-        parseMarkdownToContentJson: async () => {
-            throw new Error('should not parse');
-        },
-        extractTagIds: () => [],
-        updateNote: async () => {
-            throw new Error('should not update');
-        },
-    });
-
-    const result = await service.appendNoteMarkdown({
-        id: 7,
-        expectedUpdatedAt: '2026-05-28T00:00:00.000Z',
-        intent: 'Append longer section',
-        insertion: 'Line 1\nLine 2\nLine 3',
-        policy: {
-            maxChangedLines: 1,
-            maxChangedChars: 5,
-        },
-    });
-
-    assert.deepEqual(result, {
-        status: 'failed',
-        reason: 'CHANGE_LIMIT_EXCEEDED',
-        message:
-            'The markdown write exceeds the configured change limit. Increase maxChangedLines/maxChangedChars to at least the requiredMinimum values or omit them for this write.',
-        details: {
-            configured: {
-                maxChangedLines: 1,
-                maxChangedChars: 5,
-            },
-            requiredMinimum: {
-                maxChangedLines: 4,
-                maxChangedChars: 20,
-            },
-        },
-    });
-});
-
-test('markdown intent write can truncate dry-run diff previews', async () => {
-    const service = createMarkdownIntentWriteService({
-        findNoteById: async () => createNote({ content: 'Original sentence.' }),
-        renderMarkdown: async (content) => content,
-        parseMarkdownToContentJson: async () => {
-            throw new Error('should not parse during dry run');
-        },
-        extractTagIds: () => [],
-        updateNote: async () => {
-            throw new Error('should not update');
-        },
-    });
-
-    const result = await service.appendNoteMarkdown({
-        id: 7,
-        expectedUpdatedAt: '2026-05-28T00:00:00.000Z',
-        intent: 'Append with short diff',
-        insertion: 'A long appended sentence that should be hidden from the short diff preview.',
-        policy: {
-            diffPreviewMaxChars: 24,
-        },
-    });
-
-    assert.equal(result.status, 'dry_run');
-
-    if (result.status !== 'dry_run') {
-        throw new Error('expected dry run');
-    }
-
-    assert.equal(result.proposed.diff.length, 24);
-    assert.equal(result.proposed.diffTruncated, true);
-    assert.ok((result.proposed.diffCharCount ?? 0) > result.proposed.diff.length);
 });
 
 test('metadata update accepts epoch millisecond note versions', async () => {
@@ -432,9 +348,23 @@ test('metadata update accepts epoch millisecond note versions', async () => {
             throw new Error('should not parse markdown for metadata');
         },
         extractTagIds: () => [],
-        updateNote: async () => {
-            throw new Error('should not update during preview');
-        },
+        updateNote: async (input) => ({
+            note: {
+                id: input.id,
+                title: input.data.title ?? 'Existing',
+                content: 'untouched',
+                layout: 'wide',
+                pinned: false,
+                order: 0,
+                createdAt: new Date('2026-05-28T00:00:00.000Z'),
+                updatedAt: new Date('2026-05-28T00:00:01.000Z'),
+            },
+            snapshot: {
+                id: '12',
+                createdAt: '2026-05-28T00:00:00.500Z',
+                meta: { label: 'MCP' },
+            },
+        }),
     });
 
     const result = await service.updateNoteMetadata({
@@ -443,7 +373,7 @@ test('metadata update accepts epoch millisecond note versions', async () => {
         title: 'Renamed',
     });
 
-    assert.equal(result.status, 'dry_run');
+    assert.equal(result.status, 'applied');
 });
 
 test('metadata update applies title and layout without content data', async () => {
@@ -477,7 +407,7 @@ test('metadata update applies title and layout without content data', async () =
         },
     });
 
-    const result = await service.applyNoteMetadata({
+    const result = await service.updateNoteMetadata({
         id: 7,
         expectedUpdatedAt: '2026-05-28T00:00:00.000Z',
         title: 'Renamed',
@@ -538,7 +468,7 @@ test('metadata update applies property patches through the property write path',
         },
     });
 
-    const result = await service.applyNoteMetadata({
+    const result = await service.updateNoteMetadata({
         id: 7,
         expectedUpdatedAt: '2026-05-28T00:00:00.000Z',
         title: 'Renamed',

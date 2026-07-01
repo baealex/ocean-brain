@@ -12,9 +12,7 @@ import {
 } from '~/modules/blocknote.js';
 import type {
     MarkdownAppendPlanResult,
-    MarkdownChangeDryRun,
     MarkdownChangeFailure,
-    MarkdownChangePlan,
     MarkdownPatchOperation,
     MarkdownPatchPlanResult,
     MarkdownPatchSelector,
@@ -94,9 +92,6 @@ interface MarkdownIntentWriteDeps {
 
 export interface MarkdownWritePolicy {
     allowNoop?: boolean;
-    maxChangedChars?: number;
-    maxChangedLines?: number;
-    diffPreviewMaxChars?: number;
     preserveReferences?: boolean | 'warn';
     preserveTags?: boolean | 'warn';
 }
@@ -109,7 +104,6 @@ export interface PatchNoteMarkdownInput {
     selector: MarkdownPatchSelector;
     operation: MarkdownPatchOperation;
     policy?: MarkdownWritePolicy;
-    dryRun?: boolean;
 }
 
 export interface AppendNoteMarkdownInput {
@@ -129,7 +123,6 @@ export interface AppendNoteMarkdownInput {
           };
     separator?: '\n\n' | '\n';
     policy?: MarkdownWritePolicy;
-    dryRun?: boolean;
 }
 
 export interface ReplaceNoteMarkdownInput {
@@ -139,7 +132,6 @@ export interface ReplaceNoteMarkdownInput {
     intent: string;
     replacement: string;
     policy?: MarkdownWritePolicy;
-    dryRun?: boolean;
 }
 
 export interface UpdateNoteMetadataInput {
@@ -168,21 +160,6 @@ export interface AppliedMarkdownWriteResult {
     };
 }
 
-export interface MetadataUpdatePreview {
-    status: 'dry_run';
-    note: {
-        id: string;
-        title: string;
-        updatedAt: string;
-    };
-    proposed: {
-        title?: string;
-        layout?: NoteLayout;
-        properties?: NotePropertiesPatchInput;
-    };
-    warnings: string[];
-}
-
 export interface AppliedMetadataUpdateResult {
     status: 'applied';
     note: {
@@ -199,12 +176,11 @@ export interface AppliedMetadataUpdateResult {
 }
 
 export type MarkdownIntentWriteResult =
-    | MarkdownChangeDryRun
     | AppliedMarkdownWriteResult
     | MarkdownChangeFailure
     | Extract<MarkdownPatchPlanResult, { status: 'needs_disambiguation' }>;
 
-export type MetadataUpdateResult = MetadataUpdatePreview | AppliedMetadataUpdateResult | MarkdownChangeFailure;
+export type MetadataUpdateResult = AppliedMetadataUpdateResult | MarkdownChangeFailure;
 
 const serializeNoteSnapshot = async (
     note: MarkdownIntentNoteRecord,
@@ -232,15 +208,6 @@ const serializeSnapshot = (snapshot: unknown) => {
         createdAt: isRecord(snapshot) && typeof snapshot.createdAt === 'string' ? snapshot.createdAt : '',
     };
 };
-
-const toDryRun = (plan: MarkdownChangePlan): MarkdownChangeDryRun => ({
-    status: 'dry_run',
-    note: plan.note,
-    ...(plan.match ? { match: plan.match } : {}),
-    ...(plan.placement ? { placement: plan.placement } : {}),
-    proposed: plan.proposed,
-    warnings: plan.warnings,
-});
 
 const toTagIds = (tagIds: string[]) => {
     return tagIds.map((tagId) => Number(tagId)).filter((tagId) => Number.isSafeInteger(tagId) && tagId > 0);
@@ -343,7 +310,7 @@ const applyMarkdownPlan = async (
         noteId: number;
         noteUpdatedAt: string;
         beforeContentJson: string;
-        plan: Extract<MarkdownPatchPlanResult, { status: 'dry_run' }>;
+        plan: Extract<MarkdownPatchPlanResult, { status: 'planned' }>;
         expectedUpdatedAt?: string;
         policy?: MarkdownWritePolicy;
         summary: string;
@@ -427,19 +394,14 @@ const mapPlanResult = async (
         noteUpdatedAt: string;
         beforeContentJson: string;
         plan: MarkdownPatchPlanResult | MarkdownAppendPlanResult | MarkdownReplacePlanResult;
-        dryRun?: boolean;
         expectedUpdatedAt?: string;
         policy?: MarkdownWritePolicy;
         summary: string;
         force?: boolean;
     },
 ): Promise<MarkdownIntentWriteResult> => {
-    if (input.plan.status !== 'dry_run') {
+    if (input.plan.status !== 'planned') {
         return input.plan;
-    }
-
-    if (input.dryRun ?? true) {
-        return toDryRun(input.plan);
     }
 
     return applyMarkdownPlan(deps, {
@@ -488,7 +450,6 @@ export const createMarkdownIntentWriteService = (deps: MarkdownIntentWriteDeps) 
             noteUpdatedAt: noteSnapshot.updatedAt,
             beforeContentJson: note.content,
             plan,
-            dryRun: input.dryRun,
             expectedUpdatedAt: input.expectedUpdatedAt,
             policy: input.policy,
             summary: input.intent,
@@ -529,7 +490,6 @@ export const createMarkdownIntentWriteService = (deps: MarkdownIntentWriteDeps) 
             noteUpdatedAt: noteSnapshot.updatedAt,
             beforeContentJson: note.content,
             plan,
-            dryRun: input.dryRun,
             expectedUpdatedAt: input.expectedUpdatedAt,
             policy: input.policy,
             summary: input.intent,
@@ -568,7 +528,6 @@ export const createMarkdownIntentWriteService = (deps: MarkdownIntentWriteDeps) 
             noteUpdatedAt: noteSnapshot.updatedAt,
             beforeContentJson: note.content,
             plan,
-            dryRun: input.dryRun,
             expectedUpdatedAt: input.expectedUpdatedAt,
             policy: input.policy,
             summary: input.intent,
@@ -622,28 +581,11 @@ export const createMarkdownIntentWriteService = (deps: MarkdownIntentWriteDeps) 
             };
         }
 
-        return {
-            status: 'dry_run',
-            note: {
-                id: String(note.id),
-                title: note.title,
-                updatedAt: note.updatedAt.toISOString(),
-            },
-            proposed: {
-                ...(nextTitle !== undefined ? { title: nextTitle } : {}),
-                ...(input.layout !== undefined ? { layout: input.layout } : {}),
-                ...(resolvedPropertyPatch ? { properties: resolvedPropertyPatch } : {}),
-            },
-            warnings: [],
+        const proposed = {
+            ...(nextTitle !== undefined ? { title: nextTitle } : {}),
+            ...(input.layout !== undefined ? { layout: input.layout } : {}),
+            ...(resolvedPropertyPatch ? { properties: resolvedPropertyPatch } : {}),
         };
-    },
-
-    applyNoteMetadata: async (input: UpdateNoteMetadataInput): Promise<MetadataUpdateResult> => {
-        const preview = await createMarkdownIntentWriteService(deps).updateNoteMetadata(input);
-
-        if (preview.status !== 'dry_run') {
-            return preview;
-        }
 
         if (input.properties !== undefined) {
             if (!deps.updateProperties) {
@@ -655,11 +597,11 @@ export const createMarkdownIntentWriteService = (deps: MarkdownIntentWriteDeps) 
             try {
                 updateResult = await deps.updateProperties({
                     id: input.id,
-                    patch: preview.proposed.properties ?? { set: [], deleteKeys: [] },
+                    patch: proposed.properties ?? { set: [], deleteKeys: [] },
                     expectedUpdatedAt: input.expectedUpdatedAt,
                     noteData: {
-                        ...(preview.proposed.title !== undefined ? { title: preview.proposed.title } : {}),
-                        ...(preview.proposed.layout !== undefined ? { layout: preview.proposed.layout } : {}),
+                        ...(proposed.title !== undefined ? { title: proposed.title } : {}),
+                        ...(proposed.layout !== undefined ? { layout: proposed.layout } : {}),
                     },
                     snapshotMeta: MCP_SNAPSHOT_META,
                 });
@@ -703,8 +645,8 @@ export const createMarkdownIntentWriteService = (deps: MarkdownIntentWriteDeps) 
             updateResult = await deps.updateNote({
                 id: input.id,
                 data: {
-                    ...(preview.proposed.title !== undefined ? { title: preview.proposed.title } : {}),
-                    ...(preview.proposed.layout !== undefined ? { layout: preview.proposed.layout } : {}),
+                    ...(proposed.title !== undefined ? { title: proposed.title } : {}),
+                    ...(proposed.layout !== undefined ? { layout: proposed.layout } : {}),
                 },
                 expectedUpdatedAt: input.expectedUpdatedAt,
                 snapshotMeta: MCP_SNAPSHOT_META,
@@ -775,12 +717,8 @@ export const replaceNoteMarkdown = async (input: ReplaceNoteMarkdownInput) => {
     return defaultMarkdownIntentWriteService.replaceNoteMarkdown(input);
 };
 
-export const updateNoteMetadata = async (input: UpdateNoteMetadataInput & { dryRun?: boolean }) => {
-    if (input.dryRun ?? true) {
-        return defaultMarkdownIntentWriteService.updateNoteMetadata(input);
-    }
-
-    return defaultMarkdownIntentWriteService.applyNoteMetadata(input);
+export const updateNoteMetadata = async (input: UpdateNoteMetadataInput) => {
+    return defaultMarkdownIntentWriteService.updateNoteMetadata(input);
 };
 
 export const calculateNoteMarkdownSha256 = (markdown: string) => {

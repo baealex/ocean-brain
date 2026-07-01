@@ -98,20 +98,6 @@ export const createNoteWriteService = (deps: NoteWriteDeps) => {
             : { id, updatedAt: new Date(expectedTimestamp ?? existingNote.updatedAt.getTime()) };
 
         try {
-            const updatedNote = await deps.updateNote({
-                where,
-                data: {
-                    ...(data.title !== undefined ? { title: data.title } : {}),
-                    ...(data.content !== undefined ? { content: data.content } : {}),
-                    ...(data.layout !== undefined ? { layout: data.layout } : {}),
-                    ...buildNoteSearchProjection({
-                        title: nextTitle,
-                        content: nextContent,
-                    }),
-                    ...(data.tagIds ? { tags: { set: data.tagIds.map((tagId) => ({ id: tagId })) } } : {}),
-                },
-            });
-
             const snapshot = await deps.captureBaseline({
                 noteId: id,
                 baseline: {
@@ -125,6 +111,20 @@ export const createNoteWriteService = (deps: NoteWriteDeps) => {
                 ...(editSessionId && !force ? { editSessionId } : {}),
                 ...(snapshotMeta ? { meta: snapshotMeta } : {}),
                 ...(force ? { force: true } : {}),
+            });
+
+            const updatedNote = await deps.updateNote({
+                where,
+                data: {
+                    ...(data.title !== undefined ? { title: data.title } : {}),
+                    ...(data.content !== undefined ? { content: data.content } : {}),
+                    ...(data.layout !== undefined ? { layout: data.layout } : {}),
+                    ...buildNoteSearchProjection({
+                        title: nextTitle,
+                        content: nextContent,
+                    }),
+                    ...(data.tagIds ? { tags: { set: data.tagIds.map((tagId) => ({ id: tagId })) } } : {}),
+                },
             });
 
             return {

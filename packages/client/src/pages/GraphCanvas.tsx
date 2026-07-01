@@ -33,8 +33,8 @@ export function GraphCanvas({
     const containerRef = useRef<HTMLDivElement>(null);
     const graphRef = useRef<ForceGraphInstance | null>(null);
     const [dimensions, setDimensions] = useState({
-        width: 800,
-        height: 600,
+        width: 0,
+        height: 420,
     });
 
     const { theme } = useTheme((state) => state);
@@ -55,16 +55,28 @@ export function GraphCanvas({
             }
 
             const rect = containerRef.current.getBoundingClientRect();
-            const isCompactLayout = rect.width < 768;
+            if (rect.width <= 0 || rect.height <= 0) {
+                return;
+            }
+
             setDimensions({
                 width: rect.width,
-                height: isCompactLayout ? Math.max(420, Math.min(520, rect.width * 1.25)) : Math.max(600, rect.height),
+                height: rect.height,
             });
         };
 
         updateDimensions();
+
+        const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(updateDimensions) : null;
+        if (resizeObserver && containerRef.current) {
+            resizeObserver.observe(containerRef.current);
+        }
+
         window.addEventListener('resize', updateDimensions);
-        return () => window.removeEventListener('resize', updateDimensions);
+        return () => {
+            resizeObserver?.disconnect();
+            window.removeEventListener('resize', updateDimensions);
+        };
     }, []);
 
     useEffect(() => {
@@ -198,7 +210,7 @@ export function GraphCanvas({
     return (
         <div
             ref={containerRef}
-            className="surface-base graph-canvas relative min-h-[420px] overflow-hidden md:min-h-[520px] xl:h-[min(44rem,calc(100vh-10rem))]"
+            className="surface-base graph-canvas relative h-[min(34rem,calc(100dvh-12rem))] min-h-[420px] w-full max-w-full overflow-hidden md:h-[520px] xl:h-[min(44rem,calc(100vh-10rem))]"
             style={{ '--graph-bg': graphTheme.background } as React.CSSProperties}
         >
             <div className="surface-floating absolute top-3 right-3 z-10 flex flex-col gap-1.5 px-3 py-2.5">

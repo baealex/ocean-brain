@@ -44,8 +44,6 @@ export function GraphExplorerPanel({
         overscan: 8,
     });
 
-    const visibleSelectedConnections = selectedConnectedNodes.slice(0, 4);
-    const remainingSelectedConnectionCount = selectedConnectedNodes.length - visibleSelectedConnections.length;
     const selectedNodeStatus = selectedNode
         ? `${selectedNode.title || 'Untitled'} selected, ${selectedNode.connections} links`
         : 'No graph node selected';
@@ -122,7 +120,7 @@ export function GraphExplorerPanel({
 
     return (
         <section
-            className="surface-base flex min-h-[420px] flex-col overflow-hidden md:min-h-[520px] xl:h-[min(44rem,calc(100vh-10rem))]"
+            className="surface-base flex h-[min(34rem,calc(100dvh-12rem))] min-h-[420px] w-full max-w-full flex-col overflow-hidden md:h-[520px] xl:h-[min(44rem,calc(100vh-10rem))]"
             aria-labelledby="graph-explorer-heading"
         >
             <div className="border-b border-border-subtle/80 px-4 py-3">
@@ -189,60 +187,41 @@ export function GraphExplorerPanel({
                     : selectedNodeStatus}
             </Text>
 
-            <div className="border-b border-border-subtle/80 px-4 py-2.5">
+            <div className="flex h-[76px] shrink-0 items-center overflow-hidden border-b border-border-subtle/80 px-4 py-2.5">
                 {selectedNode ? (
-                    <div className="min-w-0">
-                        <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                                <Text as="p" variant="body" weight="semibold" truncate>
-                                    {selectedNode.title || 'Untitled'}
-                                </Text>
-                                <Text as="p" variant="meta" tone="tertiary" className="mt-0.5">
-                                    {selectedNode.connections} links
-                                </Text>
-                            </div>
-                            <div className="flex shrink-0 items-center gap-1">
-                                <button
-                                    type="button"
-                                    onClick={onClearSelection}
-                                    className="focus-ring-soft inline-flex h-8 w-8 items-center justify-center rounded-[10px] text-fg-secondary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default"
-                                    aria-label="Deselect node"
-                                >
-                                    <Icon.Close className="h-3.5 w-3.5" aria-hidden="true" />
-                                </button>
-                                <Link
-                                    to={NOTE_ROUTE}
-                                    params={{ id: selectedNode.id }}
-                                    aria-label={`Open ${selectedNode.title || 'Untitled'}`}
-                                    className="focus-ring-soft inline-flex h-8 w-8 items-center justify-center rounded-[10px] text-fg-secondary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default"
-                                >
-                                    <Icon.ArrowRight className="h-4 w-4" aria-hidden="true" />
-                                </Link>
-                            </div>
+                    <div className="flex min-w-0 flex-1 items-center justify-between gap-3 overflow-hidden">
+                        <div className="min-w-0 flex-1">
+                            <Text as="p" variant="body" weight="semibold" truncate>
+                                {selectedNode.title || 'Untitled'}
+                            </Text>
+                            <Text as="p" variant="meta" tone="tertiary" className="mt-0.5">
+                                {selectedNode.connections} links
+                                {selectedConnectedNodes.length > 0
+                                    ? ` · ${selectedConnectedNodes.length} connected notes`
+                                    : ''}
+                            </Text>
                         </div>
-                        {visibleSelectedConnections.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-1.5">
-                                {visibleSelectedConnections.map((node) => (
-                                    <Link
-                                        key={node.id}
-                                        to={NOTE_ROUTE}
-                                        params={{ id: node.id }}
-                                        className="focus-ring-soft inline-flex max-w-full items-center gap-1 rounded-full border border-border-subtle bg-subtle px-2 py-0.5 text-xs font-medium text-fg-secondary outline-none transition-colors hover:border-border-secondary hover:bg-hover-subtle hover:text-fg-default"
-                                    >
-                                        <Icon.LinkIcon className="h-3 w-3 shrink-0" aria-hidden="true" />
-                                        <span className="truncate">{node.title || 'Untitled'}</span>
-                                    </Link>
-                                ))}
-                                {remainingSelectedConnectionCount > 0 && (
-                                    <span className="inline-flex items-center rounded-full border border-border-subtle px-2 py-0.5 text-xs font-medium text-fg-tertiary">
-                                        +{remainingSelectedConnectionCount}
-                                    </span>
-                                )}
-                            </div>
-                        )}
+                        <div className="flex shrink-0 items-center gap-1">
+                            <button
+                                type="button"
+                                onClick={onClearSelection}
+                                className="focus-ring-soft inline-flex h-8 w-8 items-center justify-center rounded-[10px] text-fg-secondary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default"
+                                aria-label="Deselect node"
+                            >
+                                <Icon.Close className="h-3.5 w-3.5" aria-hidden="true" />
+                            </button>
+                            <Link
+                                to={NOTE_ROUTE}
+                                params={{ id: selectedNode.id }}
+                                aria-label={`Open ${selectedNode.title || 'Untitled'}`}
+                                className="focus-ring-soft inline-flex h-8 w-8 items-center justify-center rounded-[10px] text-fg-secondary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default"
+                            >
+                                <Icon.ArrowRight className="h-4 w-4" aria-hidden="true" />
+                            </Link>
+                        </div>
                     </div>
                 ) : (
-                    <Text as="p" variant="meta" tone="secondary">
+                    <Text as="p" variant="meta" tone="secondary" className="line-clamp-2">
                         {graphNodes[0]?.title
                             ? `Select a node to preview links. Most linked: ${graphNodes[0].title}`
                             : 'Select a node to preview links.'}

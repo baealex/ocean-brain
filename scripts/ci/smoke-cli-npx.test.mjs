@@ -4,6 +4,7 @@ import { EventEmitter } from 'node:events';
 
 import {
     AUTH_SESSION_PATH,
+    assertLoginPageHtml,
     buildSmokeScenarios,
     expectAuthFailure,
     extractLocalAssetPaths,
@@ -75,6 +76,21 @@ test('extractLocalAssetPaths returns only local Vite assets from the client shel
         `),
         ['/assets/index.css', '/assets/index.js']
     );
+});
+
+
+test('assertLoginPageHtml accepts the minimal password login shell', () => {
+    assert.doesNotThrow(() => assertLoginPageHtml(`
+        <main>
+            <div class="brand"><img src="/icon.png" alt="" aria-hidden="true" />Ocean Brain</div>
+            <h1 class="sr-only">Sign in</h1>
+            <form method="post" action="/login">
+                <label for="password">Password</label>
+                <input id="password" name="password" type="password" />
+                <button type="submit">Sign in</button>
+            </form>
+        </main>
+    `));
 });
 
 test('expectAuthFailure reads the latest stderr through the provided getter', async () => {

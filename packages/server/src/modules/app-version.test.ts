@@ -33,9 +33,24 @@ test('resolveOceanBrainVersion prefers package metadata over environment overrid
     }
 });
 
-test('resolveMcpCompatibilityVersion reads package compatibility metadata separately from app version', () => {
-    assert.equal(resolveMcpCompatibilityVersion(), '0.8.0');
-    assert.notEqual(resolveMcpCompatibilityVersion(), resolveOceanBrainVersion());
+test('resolveMcpCompatibilityVersion reads explicit package compatibility metadata', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ocean-brain-version-'));
+    const packageJsonPath = path.join(tempDir, 'package.json');
+
+    try {
+        fs.writeFileSync(
+            packageJsonPath,
+            JSON.stringify({
+                version: '9.9.9',
+                oceanBrain: { mcpCompatibilityVersion: '0.8.0' },
+            }),
+        );
+
+        assert.equal(resolveMcpCompatibilityVersion(), '0.8.0');
+        assert.equal(resolveMcpCompatibilityVersionFromPaths([packageJsonPath]), '0.8.0');
+    } finally {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+    }
 });
 
 test('resolveMcpCompatibilityVersion requires explicit compatibility metadata', () => {

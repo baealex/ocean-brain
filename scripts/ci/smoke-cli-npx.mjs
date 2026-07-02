@@ -235,6 +235,22 @@ async function assertProtectedHomeRedirectsToLogin() {
     }
 }
 
+export function assertLoginPageHtml(html) {
+    const expectedFragments = [
+        'Ocean Brain',
+        '<form method="post" action="/login">',
+        'name="password"',
+        'type="password"',
+        'Sign in'
+    ];
+
+    for (const expectedText of expectedFragments) {
+        if (!html.includes(expectedText)) {
+            throw new Error(`/login response missing expected content: ${expectedText}`);
+        }
+    }
+}
+
 async function assertLoginPageLoads() {
     const response = await fetch(`${rootUrl}/login?next=%2F`, {
         redirect: 'manual',
@@ -245,16 +261,7 @@ async function assertLoginPageLoads() {
         throw new Error(`/login returned HTTP ${response.status} instead of 200`);
     }
 
-    const html = await response.text();
-    for (const expectedText of [
-        'Ocean Brain',
-        'Enter the workspace password to continue',
-        '<form method="post" action="/login">'
-    ]) {
-        if (!html.includes(expectedText)) {
-            throw new Error(`/login response missing expected content: ${expectedText}`);
-        }
-    }
+    assertLoginPageHtml(await response.text());
 }
 
 async function assertAuthSession(expected) {

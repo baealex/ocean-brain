@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { fetchNotes } from '~/apis/note.api';
@@ -17,8 +17,7 @@ vi.mock('~/apis/note.api', () => ({ fetchNotes: vi.fn() }));
 
 describe('<SidebarSearch />', () => {
     it('renders debounced note suggestions and labelled controls', async () => {
-        const user = userEvent.setup();
-
+        vi.useFakeTimers();
         vi.mocked(fetchNotes).mockResolvedValue({
             type: 'success',
             allNotes: {
@@ -33,19 +32,22 @@ describe('<SidebarSearch />', () => {
 
         render(<SidebarSearch />);
 
-        await user.type(screen.getByRole('textbox'), 'alpha');
+        fireEvent.change(screen.getByRole('textbox'), { target: { value: 'alpha' } });
+
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(501);
+            await Promise.resolve();
+        });
 
         expect(screen.getByRole('button', { name: 'Search notes' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Clear search' })).toBeInTheDocument();
 
-        await waitFor(() => {
-            expect(fetchNotes).toHaveBeenCalledWith({
-                query: 'alpha',
-                limit: 5,
-            });
+        expect(fetchNotes).toHaveBeenCalledWith({
+            query: 'alpha',
+            limit: 5,
         });
 
-        expect(await screen.findByText('Alpha note')).toBeInTheDocument();
+        expect(screen.getByText('Alpha note')).toBeInTheDocument();
     });
 
     it('navigates to the search route on submit', async () => {

@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="ocean-brain-session-generation" content="OCEAN_BRAIN_SESSION_GENERATION" />
     <title>Ocean Brain Sign In</title>
     <style>
         :root {
@@ -201,5 +202,63 @@
             </form>
         </section>
     </main>
+    <script>
+        (() => {
+            const generationMeta = document.querySelector('meta[name="ocean-brain-session-generation"]');
+            const pageGeneration = generationMeta?.getAttribute('content');
+            const generationHeader = 'X-Ocean-Brain-Session-Generation';
+            const sessionEndpoint = '/api/auth/session';
+            let checkPromise;
+            let submitting = false;
+
+            const checkForStaleLoginPage = async () => {
+                if (!pageGeneration) {
+                    return false;
+                }
+
+                checkPromise ??= fetch(sessionEndpoint, {
+                    cache: 'no-store',
+                    credentials: 'same-origin',
+                })
+                    .then((response) => {
+                        const currentGeneration = response.headers.get(generationHeader);
+                        const isStale = Boolean(currentGeneration && currentGeneration !== pageGeneration);
+
+                        if (isStale) {
+                            window.location.reload();
+                        }
+
+                        return isStale;
+                    })
+                    .catch(() => false)
+                    .finally(() => {
+                        checkPromise = undefined;
+                    });
+
+                return checkPromise;
+            };
+
+            void checkForStaleLoginPage();
+            window.addEventListener('pageshow', () => {
+                void checkForStaleLoginPage();
+            });
+
+            document.querySelector('form')?.addEventListener('submit', async (event) => {
+                if (submitting) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                const isStale = await checkForStaleLoginPage();
+                if (isStale) {
+                    return;
+                }
+
+                submitting = true;
+                event.currentTarget.submit();
+            });
+        })();
+    </script>
 </body>
 </html>

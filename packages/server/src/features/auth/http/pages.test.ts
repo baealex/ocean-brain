@@ -80,6 +80,11 @@ const extractCsrfTokenFromHtml = (html: string) => {
     return match?.[1];
 };
 
+const extractSessionGenerationFromHtml = (html: string) => {
+    const match = html.match(/name="ocean-brain-session-generation" content="([^"]*)"/);
+    return match?.[1];
+};
+
 const extractCsrfTokenFromCookie = (cookie?: string) => {
     const token = cookie
         ?.split(';')
@@ -90,7 +95,13 @@ const extractCsrfTokenFromCookie = (cookie?: string) => {
     return token ? decodeURIComponent(token) : undefined;
 };
 
-const formRequest = async (baseUrl: string, path: string, body: Record<string, string>, cookie?: string) => {
+const formRequest = async (
+    baseUrl: string,
+    path: string,
+    body: Record<string, string>,
+    cookie?: string,
+    options: { includeCsrfHeader?: boolean } = {},
+) => {
     const csrfToken = extractCsrfTokenFromCookie(cookie);
     const response = await fetch(`${baseUrl}${path}`, {
         method: 'POST',
@@ -98,7 +109,7 @@ const formRequest = async (baseUrl: string, path: string, body: Record<string, s
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
             ...(cookie ? { Cookie: cookie } : {}),
-            ...(csrfToken ? { 'X-XSRF-TOKEN': csrfToken } : {}),
+            ...(options.includeCsrfHeader !== false && csrfToken ? { 'X-XSRF-TOKEN': csrfToken } : {}),
         },
         body: new URLSearchParams(body).toString(),
     });
@@ -143,15 +154,19 @@ test('password mode blocks client routes until the server-side login form succee
     const loginPageHtml = await loginPage.text();
     const loginCookie = toCookieHeader(getSetCookies(loginPage.headers));
     const csrfToken = extractCsrfTokenFromHtml(loginPageHtml);
+    const pageSessionGeneration = extractSessionGenerationFromHtml(loginPageHtml);
 
     assert.equal(loginPage.status, 200);
+    assert.equal(loginPage.headers.get('cache-control'), 'no-store');
     assert.match(loginPageHtml, /Ocean Brain/);
     assert.doesNotMatch(loginPageHtml, /Enter the workspace password to continue/);
     assert.doesNotMatch(loginPageHtml, /This session must be authenticated/);
     assert.match(loginPageHtml, /<form method="post" action="\/login">/);
     assert.match(loginPageHtml, /name="_csrf"/);
     assert.match(loginPageHtml, /name="next" value="\/notes"/);
+    assert.match(loginPageHtml, /X-Ocean-Brain-Session-Generation/);
     assert.ok(csrfToken);
+    assert.ok(pageSessionGeneration);
 
     const invalidLogin = await formRequest(
         baseUrl,
@@ -166,6 +181,15 @@ test('password mode blocks client routes until the server-side login form succee
 
     assert.equal(invalidLogin.status, 401);
     assert.match(invalidLogin.text, /Invalid password/);
+    assert.match(invalidLogin.text, /name="ocean-brain-session-generation"/);
+
+    const preSubmitSession = await fetch(`${baseUrl}/api/auth/session`, {
+        headers: invalidLogin.cookie ? { Cookie: invalidLogin.cookie } : undefined,
+    });
+    const preSubmitCookie = mergeCookieHeaders(
+        invalidLogin.cookie,
+        toCookieHeader(getSetCookies(preSubmitSession.headers)),
+    );
 
     const validLogin = await formRequest(
         baseUrl,
@@ -175,7 +199,8 @@ test('password mode blocks client routes until the server-side login form succee
             password: 'secret',
             _csrf: csrfToken,
         },
-        invalidLogin.cookie,
+        preSubmitCookie,
+        { includeCsrfHeader: false },
     );
 
     assert.equal(validLogin.status, 303);
@@ -273,15 +298,26 @@ test('password login page redirects stale CSRF submissions to a fresh login page
     const authConfig = createPasswordAuthConfig();
     const firstServer = await startServer(t, authConfig);
     const loginPage = await fetch(`${firstServer.baseUrl}/login?next=%2Fnotes`);
-    const csrfToken = extractCsrfTokenFromHtml(await loginPage.text());
+    const loginPageHtml = await loginPage.text();
+    const csrfToken = extractCsrfTokenFromHtml(loginPageHtml);
+    const pageSessionGeneration = extractSessionGenerationFromHtml(loginPageHtml);
     const loginCookie = toCookieHeader(getSetCookies(loginPage.headers));
 
     assert.ok(csrfToken);
+    assert.ok(pageSessionGeneration);
     assert.ok(loginCookie);
 
     await firstServer.close();
 
     const secondServer = await startServer(t, authConfig);
+    const sessionStatus = await fetch(`${secondServer.baseUrl}/api/auth/session`, {
+        headers: { Cookie: loginCookie },
+    });
+    const currentSessionGeneration = sessionStatus.headers.get('x-ocean-brain-session-generation');
+
+    assert.ok(currentSessionGeneration);
+    assert.equal(currentSessionGeneration, pageSessionGeneration);
+
     const response = await formRequest(
         secondServer.baseUrl,
         '/login',

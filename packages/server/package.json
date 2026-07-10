@@ -16,7 +16,7 @@
     },
     "dependencies": {
         "@baejino/auth": "catalog:",
-        "@blocknote/server-util": "catalog:",
+        "@blocknote/core": "catalog:",
         "@graphql-tools/schema": "catalog:",
         "@graphql-tools/utils": "catalog:",
         "@prisma/client": "catalog:",
@@ -27,6 +27,7 @@
         "express-winston": "catalog:",
         "graphql-http": "catalog:",
         "lusca": "catalog:",
+        "jsdom": "catalog:",
         "prisma": "catalog:",
         "sqlite3": "catalog:",
         "winston": "catalog:"
@@ -35,6 +36,7 @@
         "@biomejs/biome": "2.4.11",
         "@types/express": "^5.0.6",
         "@types/express-session": "^1.18.2",
+        "@types/jsdom": "^21.1.7",
         "glob": "^13.0.6",
         "tsc-alias": "^1.8.16",
         "tsup": "^8.5.1",

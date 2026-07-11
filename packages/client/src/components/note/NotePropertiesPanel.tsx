@@ -1,7 +1,12 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { fetchNotePropertyKeys, type NotePropertyKeySummary, updateNoteProperties } from '~/apis/note.api';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import {
+    fetchNotePropertyKeys,
+    type NotePropertyKeySummary,
+    type UpdateNotePropertiesRequestData,
+    updateNoteProperties,
+} from '~/apis/note.api';
 import * as Icon from '~/components/icon';
 import { AuxiliaryPanel, Button } from '~/components/shared';
 import {
@@ -124,23 +129,40 @@ const getPropertyRowsPatchDraft = (
 const getPropertyRowsPatchSignature = (rows: EditableNotePropertyRow[], deletedKeys: string[] = []) =>
     JSON.stringify(getPropertyRowsPatchDraft(rows, deletedKeys));
 
+export type NotePropertySaveResult = 'idle' | 'saved' | 'error';
+
+export interface NotePropertiesPanelRef {
+    flushPendingSave: (options?: { expectedUpdatedAt?: string }) => Promise<NotePropertySaveResult>;
+    invalidateInFlightSave: () => void;
+    discardPendingChanges: () => void;
+}
+
 interface NotePropertiesPanelProps {
     noteId: string;
     properties?: NoteProperty[];
     expectedUpdatedAt: string;
     editSessionId: string;
     disabled?: boolean;
-    onSaved: (note: Pick<Note, 'id' | 'updatedAt' | 'properties'>) => void;
+    saveProperties?: (
+        input: UpdateNotePropertiesRequestData,
+    ) => Promise<Awaited<ReturnType<typeof updateNoteProperties>> | undefined>;
+    onPendingChange?: (hasPendingChanges: boolean) => void;
+    onSaved: (note: Pick<Note, 'id' | 'updatedAt' | 'properties'>) => void | Promise<void>;
 }
 
-const NotePropertiesPanel = ({
-    noteId,
-    properties = [],
-    expectedUpdatedAt,
-    editSessionId,
-    disabled,
-    onSaved,
-}: NotePropertiesPanelProps) => {
+const NotePropertiesPanel = forwardRef<NotePropertiesPanelRef, NotePropertiesPanelProps>(function NotePropertiesPanel(
+    {
+        noteId,
+        properties = [],
+        expectedUpdatedAt,
+        editSessionId,
+        disabled,
+        saveProperties = updateNoteProperties,
+        onPendingChange,
+        onSaved,
+    },
+    ref,
+) {
     const toast = useToast();
     const queryClient = useQueryClient();
     const [rows, setRows] = useState<EditableNotePropertyRow[]>(() => getNormalizedRows(properties));
@@ -152,7 +174,9 @@ const NotePropertiesPanel = ({
     const savedSignatureRef = useRef(getPropertyRowsPatchSignature(rows));
     const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isAutoSavingRef = useRef(false);
+    const inFlightSavePromiseRef = useRef<Promise<NotePropertySaveResult> | null>(null);
     const hasQueuedAutoSaveRef = useRef(false);
+    const saveGenerationRef = useRef(0);
 
     const propertyKeysQuery = useQuery({
         queryKey: queryKeys.notes.propertyKeys({ limit: 50 }),
@@ -193,63 +217,139 @@ const NotePropertiesPanel = ({
         (propertyKey) => !rows.some((row) => row.key === propertyKey.key),
     );
     const hasPropertyDefinitions = propertyKeySummaries.length > 0;
+    const hasPendingChanges = getPropertyRowsPatchSignature(rows, deletedKeys) !== savedSignatureRef.current;
 
-    const saveCurrentRows = useCallback(async () => {
-        const signature = getPropertyRowsPatchSignature(rowsRef.current, deletedKeysRef.current);
-
-        if (disabled || signature === savedSignatureRef.current) {
-            return;
-        }
-
-        if (isAutoSavingRef.current) {
-            hasQueuedAutoSaveRef.current = true;
-            return;
-        }
-
-        const patch = getPropertyRowsPatchDraft(rowsRef.current, deletedKeysRef.current);
-
-        if (patch.set.length === 0 && patch.deleteKeys.length === 0) {
-            return;
-        }
-
-        isAutoSavingRef.current = true;
-        hasQueuedAutoSaveRef.current = false;
-        setAutoSaveStatus('saving');
-
-        try {
-            const response = await updateNoteProperties({
-                id: noteId,
-                set: patch.set,
-                deleteKeys: patch.deleteKeys,
-                editSessionId,
-                expectedUpdatedAt: expectedUpdatedAtRef.current,
-            });
-
-            if (response.type === 'error') {
-                setAutoSaveStatus('error');
-                toast(response.errors[0]?.message ?? 'Failed to save properties.');
-                return;
+    const saveCurrentRows = useCallback(
+        async ({
+            ignoreDisabled = false,
+            expectedUpdatedAt: expectedUpdatedAtOverride,
+        }: {
+            ignoreDisabled?: boolean;
+            expectedUpdatedAt?: string;
+        } = {}): Promise<NotePropertySaveResult> => {
+            if (autoSaveTimerRef.current) {
+                clearTimeout(autoSaveTimerRef.current);
+                autoSaveTimerRef.current = null;
             }
 
-            expectedUpdatedAtRef.current = response.updateNoteProperties.updatedAt;
-            savedSignatureRef.current = getPropertyRowsPatchSignature(
-                getNormalizedRows(response.updateNoteProperties.properties ?? []),
-            );
-            onSaved(response.updateNoteProperties);
-            void queryClient.invalidateQueries({ queryKey: queryKeys.notes.propertyKeysAll(), exact: false });
-            setAutoSaveStatus('saved');
-        } catch {
-            setAutoSaveStatus('error');
-            toast('Failed to save properties.');
-        } finally {
-            isAutoSavingRef.current = false;
+            if (inFlightSavePromiseRef.current) {
+                hasQueuedAutoSaveRef.current = true;
+                const result = await inFlightSavePromiseRef.current;
+
+                if (result === 'error') {
+                    return result;
+                }
+
+                return saveCurrentRows({ ignoreDisabled });
+            }
+
+            const signature = getPropertyRowsPatchSignature(rowsRef.current, deletedKeysRef.current);
+
+            if ((!ignoreDisabled && disabled) || signature === savedSignatureRef.current) {
+                return 'idle';
+            }
+
+            const patch = getPropertyRowsPatchDraft(rowsRef.current, deletedKeysRef.current);
+
+            if (patch.set.length === 0 && patch.deleteKeys.length === 0) {
+                return 'idle';
+            }
+
+            isAutoSavingRef.current = true;
+            hasQueuedAutoSaveRef.current = false;
+            setAutoSaveStatus('saving');
+            const saveGeneration = saveGenerationRef.current;
+
+            const savePromise = (async (): Promise<NotePropertySaveResult> => {
+                try {
+                    const response = await saveProperties({
+                        id: noteId,
+                        set: patch.set,
+                        deleteKeys: patch.deleteKeys,
+                        editSessionId,
+                        expectedUpdatedAt: expectedUpdatedAtOverride ?? expectedUpdatedAtRef.current,
+                    });
+
+                    if (!response || saveGeneration !== saveGenerationRef.current) {
+                        setAutoSaveStatus('idle');
+                        return 'idle';
+                    }
+
+                    if (response.type === 'error') {
+                        setAutoSaveStatus('error');
+                        toast(response.errors[0]?.message ?? 'Failed to save properties.');
+                        return 'error';
+                    }
+
+                    expectedUpdatedAtRef.current = response.updateNoteProperties.updatedAt;
+                    savedSignatureRef.current = getPropertyRowsPatchSignature(
+                        getNormalizedRows(response.updateNoteProperties.properties ?? []),
+                    );
+                    await onSaved(response.updateNoteProperties);
+                    void queryClient.invalidateQueries({ queryKey: queryKeys.notes.propertyKeysAll(), exact: false });
+                    setAutoSaveStatus('saved');
+                    return 'saved';
+                } catch {
+                    setAutoSaveStatus('error');
+                    toast('Failed to save properties.');
+                    return 'error';
+                } finally {
+                    isAutoSavingRef.current = false;
+                }
+            })();
+
+            inFlightSavePromiseRef.current = savePromise;
+            const result = await savePromise;
+
+            if (inFlightSavePromiseRef.current === savePromise) {
+                inFlightSavePromiseRef.current = null;
+            }
 
             if (hasQueuedAutoSaveRef.current) {
                 hasQueuedAutoSaveRef.current = false;
-                void saveCurrentRows();
+                const queuedResult = await saveCurrentRows({
+                    ignoreDisabled,
+                });
+
+                return queuedResult === 'idle' ? result : queuedResult;
             }
-        }
-    }, [disabled, editSessionId, noteId, onSaved, queryClient, toast]);
+
+            return result;
+        },
+        [disabled, editSessionId, noteId, onSaved, queryClient, saveProperties, toast],
+    );
+
+    useImperativeHandle(
+        ref,
+        () => ({
+            flushPendingSave: ({ expectedUpdatedAt: nextExpectedUpdatedAt } = {}) =>
+                saveCurrentRows({ ignoreDisabled: true, expectedUpdatedAt: nextExpectedUpdatedAt }),
+            invalidateInFlightSave: () => {
+                saveGenerationRef.current += 1;
+
+                if (autoSaveTimerRef.current) {
+                    clearTimeout(autoSaveTimerRef.current);
+                    autoSaveTimerRef.current = null;
+                }
+            },
+            discardPendingChanges: () => {
+                saveGenerationRef.current += 1;
+                hasQueuedAutoSaveRef.current = false;
+                savedSignatureRef.current = getPropertyRowsPatchSignature(rowsRef.current, deletedKeysRef.current);
+                setAutoSaveStatus('idle');
+
+                if (autoSaveTimerRef.current) {
+                    clearTimeout(autoSaveTimerRef.current);
+                    autoSaveTimerRef.current = null;
+                }
+            },
+        }),
+        [saveCurrentRows],
+    );
+
+    useEffect(() => {
+        onPendingChange?.(hasPendingChanges || autoSaveStatus === 'saving');
+    }, [autoSaveStatus, hasPendingChanges, onPendingChange]);
 
     useEffect(() => {
         if (autoSaveTimerRef.current) {
@@ -533,6 +633,6 @@ const NotePropertiesPanel = ({
             </div>
         </AuxiliaryPanel>
     );
-};
+});
 
 export default NotePropertiesPanel;

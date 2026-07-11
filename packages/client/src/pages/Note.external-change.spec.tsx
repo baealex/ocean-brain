@@ -1,7 +1,17 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { StrictMode, Suspense } from 'react';
-import { createNote as createNoteApi, fetchNote, fetchNotePropertyKeys, updateNote } from '~/apis/note.api';
+import {
+    createNote as createNoteApi,
+    fetchNote,
+    fetchNotePropertyKeys,
+    fetchNoteSnapshots,
+    pinNote,
+    restoreNoteSnapshot,
+    updateNote,
+    updateNoteProperties,
+} from '~/apis/note.api';
 import { ToastProvider } from '~/components/ui';
 import type { Note } from '~/models/note.model';
 import { getDraftStorageKey, type NoteSaveDraft } from '~/modules/note-draft-storage';
@@ -35,6 +45,7 @@ vi.mock('~/apis/note.api', () => ({
     createNote: vi.fn(),
     fetchNote: vi.fn(),
     fetchNotePropertyKeys: vi.fn(),
+    pinNote: vi.fn(),
     updateNote: vi.fn(),
     updateNoteProperties: vi.fn(),
     fetchNoteSnapshot: vi.fn(),
@@ -497,6 +508,7 @@ describe('<NoteContent /> external change handling', () => {
     });
 
     it('saves a failed draft as a new note without retrying the failed original save', async () => {
+        const user = userEvent.setup();
         const initialNote = createNote({
             title: 'Initial title',
             content: createContent('Initial body'),
@@ -528,7 +540,7 @@ describe('<NoteContent /> external change handling', () => {
 
         expect(await screen.findByText(/Save failed. Your latest draft is still available here/)).toBeInTheDocument();
 
-        fireEvent.click(screen.getByRole('button', { name: 'Save as new note' }));
+        await user.click(screen.getByRole('button', { name: 'Save as new note' }));
 
         expect(createNoteApi).toHaveBeenCalledWith({
             title: 'Recovered title',
@@ -576,5 +588,291 @@ describe('<NoteContent /> external change handling', () => {
 
         expect(screen.getByPlaceholderText('Title')).toHaveValue('Browser draft title');
         expect(screen.getByLabelText('Editor')).toHaveValue('Browser draft body');
+    });
+
+    it('flushes pending property changes before allowing navigation', async () => {
+        const user = userEvent.setup();
+        const property = {
+            key: 'summary',
+            name: 'Summary',
+            value: 'Initial summary',
+            valueType: 'text' as const,
+            createdAt: '1779700000000',
+            updatedAt: '1779700000000',
+        };
+        const initialNote = createNote({
+            properties: [property],
+            updatedAt: '1779700000000',
+        });
+        vi.mocked(updateNoteProperties).mockResolvedValue({
+            type: 'success',
+            updateNoteProperties: {
+                id: initialNote.id,
+                updatedAt: '1779700001000',
+                properties: [{ ...property, value: 'Navigation-safe summary', updatedAt: '1779700001000' }],
+            },
+        });
+        renderNote(initialNote);
+
+        const propertyInput = await screen.findByRole('textbox', { name: 'Property value' });
+        await user.clear(propertyInput);
+        await user.type(propertyInput, 'Navigation-safe summary');
+        await waitFor(() => {
+            const blockerOptions = mockUseBlocker.mock.calls.at(-1)?.[0] as { disabled: boolean } | undefined;
+            expect(blockerOptions?.disabled).toBe(false);
+        });
+        const blockerOptions = mockUseBlocker.mock.calls.at(-1)?.[0] as
+            | { shouldBlockFn: () => Promise<boolean> }
+            | undefined;
+
+        let shouldBlock = true;
+
+        await act(async () => {
+            shouldBlock = (await blockerOptions?.shouldBlockFn()) ?? true;
+        });
+
+        expect(shouldBlock).toBe(false);
+        expect(updateNoteProperties).toHaveBeenCalledWith({
+            id: initialNote.id,
+            set: [
+                {
+                    key: 'summary',
+                    name: 'Summary',
+                    value: 'Navigation-safe summary',
+                    valueType: 'text',
+                },
+            ],
+            deleteKeys: [],
+            editSessionId: expect.any(String),
+            expectedUpdatedAt: initialNote.updatedAt,
+        });
+    });
+
+    it('uses the version returned by pinning for the next document save', async () => {
+        const user = userEvent.setup();
+        const initialNote = createNote({ updatedAt: '1779700000000' });
+        vi.mocked(pinNote).mockResolvedValue({
+            type: 'success',
+            pinNote: {
+                id: initialNote.id,
+                title: initialNote.title,
+                pinned: true,
+                createdAt: initialNote.createdAt,
+                updatedAt: '1779700001000',
+            },
+        });
+        vi.mocked(updateNote).mockResolvedValue({
+            type: 'success',
+            updateNote: createNote({ title: 'After pin', pinned: true, updatedAt: '1779700002000' }),
+        });
+        renderNote(initialNote);
+
+        await user.click(await screen.findByRole('button', { name: 'Note actions' }));
+        await user.click(screen.getByRole('menuitem', { name: 'Pin' }));
+        await waitFor(() => expect(pinNote).toHaveBeenCalledWith(initialNote.id, true));
+
+        const titleInput = screen.getByRole('textbox', { name: 'Note title' });
+        await user.clear(titleInput);
+        await user.type(titleInput, 'After pin');
+        await user.click(screen.getByRole('button', { name: 'Save' }));
+
+        await waitFor(() => {
+            expect(updateNote).toHaveBeenCalledWith({
+                id: initialNote.id,
+                title: 'After pin',
+                content: initialNote.content,
+                editSessionId: expect.any(String),
+                expectedUpdatedAt: '1779700001000',
+            });
+        });
+    });
+
+    it('waits for an active pin transaction before deleting the note', async () => {
+        const user = userEvent.setup();
+        const initialNote = createNote({ updatedAt: '1779700000000' });
+        const delayedPin = createDeferred<Awaited<ReturnType<typeof pinNote>>>();
+        vi.mocked(pinNote).mockReturnValue(delayedPin.promise);
+        renderNote(initialNote);
+
+        await user.click(await screen.findByRole('button', { name: 'Note actions' }));
+        await user.click(screen.getByRole('menuitem', { name: 'Pin' }));
+        await waitFor(() => expect(pinNote).toHaveBeenCalledTimes(1));
+
+        await user.click(screen.getByRole('button', { name: 'Note actions' }));
+        await user.click(screen.getByRole('menuitem', { name: 'Delete' }));
+        expect(mockUseNoteMutate.onDelete).not.toHaveBeenCalled();
+
+        await act(async () => {
+            delayedPin.resolve({
+                type: 'success',
+                pinNote: {
+                    id: initialNote.id,
+                    title: initialNote.title,
+                    pinned: true,
+                    createdAt: initialNote.createdAt,
+                    updatedAt: '1779700001000',
+                },
+            });
+            await delayedPin.promise;
+        });
+
+        await waitFor(() =>
+            expect(mockUseNoteMutate.onDelete).toHaveBeenCalledWith(initialNote.id, expect.any(Function)),
+        );
+    });
+
+    it('skips a queued property write when reloading an external version', async () => {
+        const user = userEvent.setup();
+        const property = {
+            key: 'summary',
+            name: 'Summary',
+            value: 'Initial summary',
+            valueType: 'text' as const,
+            createdAt: '1779700000000',
+            updatedAt: '1779700000000',
+        };
+        const initialNote = createNote({ properties: [property], updatedAt: '1779700000000' });
+        const remoteNote = createNote({
+            title: 'Remote title',
+            properties: [{ ...property, value: 'Remote summary', updatedAt: '1779700002000' }],
+            updatedAt: '1779700002000',
+        });
+        const delayedPin = createDeferred<Awaited<ReturnType<typeof pinNote>>>();
+        vi.mocked(pinNote).mockReturnValue(delayedPin.promise);
+        renderNote(initialNote);
+
+        await user.click(await screen.findByRole('button', { name: 'Note actions' }));
+        await user.click(screen.getByRole('menuitem', { name: 'Pin' }));
+        await waitFor(() => expect(pinNote).toHaveBeenCalledTimes(1));
+
+        const propertyInput = screen.getByRole('textbox', { name: 'Property value' });
+        await user.clear(propertyInput);
+        await user.type(propertyInput, 'Discarded summary');
+        expect(await screen.findByText('Saving...')).toBeInTheDocument();
+        expect(updateNoteProperties).not.toHaveBeenCalled();
+
+        act(() => {
+            publishServerEvent({
+                type: 'web.note.updated',
+                source: 'web',
+                noteId: initialNote.id,
+                updatedAt: remoteNote.updatedAt,
+                editSessionId: 'other-editor',
+                eventId: 'reload-skips-property-write',
+            });
+        });
+        vi.mocked(fetchNote).mockResolvedValue({ type: 'success', note: remoteNote });
+        await user.click(await screen.findByRole('button', { name: 'Reload latest' }));
+
+        await act(async () => {
+            delayedPin.resolve({
+                type: 'success',
+                pinNote: {
+                    id: initialNote.id,
+                    title: initialNote.title,
+                    pinned: true,
+                    createdAt: initialNote.createdAt,
+                    updatedAt: '1779700001000',
+                },
+            });
+            await delayedPin.promise;
+        });
+
+        await waitFor(() => expect(screen.getByRole('textbox', { name: 'Note title' })).toHaveValue('Remote title'));
+        expect(updateNoteProperties).not.toHaveBeenCalled();
+    });
+
+    it('restores a snapshot only after the active note save transaction finishes', async () => {
+        const user = userEvent.setup();
+        const initialNote = createNote({ updatedAt: '1779700000000' });
+        const delayedSave = createDeferred<Awaited<ReturnType<typeof updateNote>>>();
+        const restoredNote = createNote({
+            title: 'Snapshot title',
+            content: 'Snapshot content',
+            updatedAt: '1779700002000',
+        });
+        vi.mocked(updateNote).mockReturnValue(delayedSave.promise);
+        vi.mocked(fetchNoteSnapshots).mockResolvedValue({
+            type: 'success',
+            noteSnapshots: [
+                {
+                    id: 'snapshot-1',
+                    title: restoredNote.title,
+                    contentPreview: restoredNote.content,
+                    createdAt: '1779699999000',
+                    meta: { entrypoint: 'web', label: 'Web browser' },
+                },
+            ],
+        } as never);
+        vi.mocked(restoreNoteSnapshot).mockResolvedValue({
+            type: 'success',
+            restoreNoteSnapshot: restoredNote,
+        });
+        renderNote(initialNote);
+
+        const titleInput = await screen.findByRole('textbox', { name: 'Note title' });
+        await user.clear(titleInput);
+        await user.type(titleInput, 'Pending local title');
+        await user.click(screen.getByRole('button', { name: 'Save' }));
+        await waitFor(() => expect(updateNote).toHaveBeenCalledTimes(1));
+
+        await user.click(screen.getByRole('button', { name: 'Note actions' }));
+        await user.click(screen.getByRole('menuitem', { name: 'Restore previous version' }));
+        await user.click(await screen.findByRole('button', { name: 'Restore' }));
+        expect(restoreNoteSnapshot).not.toHaveBeenCalled();
+
+        await act(async () => {
+            delayedSave.resolve({
+                type: 'success',
+                updateNote: createNote({ title: 'Pending local title', updatedAt: '1779700001000' }),
+            });
+            await delayedSave.promise;
+        });
+
+        await waitFor(() => expect(restoreNoteSnapshot).toHaveBeenCalledWith('snapshot-1'));
+        await waitFor(() => expect(screen.getByRole('textbox', { name: 'Note title' })).toHaveValue('Snapshot title'));
+        expect(screen.getByLabelText('Editor')).toHaveValue('Snapshot content');
+    });
+
+    it('keeps a layout conflict blocking until the accepted version is committed', async () => {
+        const user = userEvent.setup();
+        const initialNote = createNote({ updatedAt: '1779700000000' });
+        vi.mocked(updateNote)
+            .mockResolvedValueOnce({
+                type: 'error',
+                category: 'graphql',
+                errors: [
+                    {
+                        code: 'NOTE_UPDATE_CONFLICT',
+                        message: 'The note changed elsewhere.',
+                        details: { extensions: { currentUpdatedAt: '1779700001000' } },
+                    },
+                ],
+            })
+            .mockResolvedValueOnce({
+                type: 'success',
+                updateNote: createNote({ layout: 'full', updatedAt: '1779700002000' }),
+            });
+        const queryClient = renderNote(initialNote);
+
+        await user.click(await screen.findByRole('button', { name: 'Note actions' }));
+        await user.click(screen.getByRole('menuitem', { name: 'Change layout' }));
+        await user.click(screen.getByText('Full Width'));
+        await user.click(screen.getByRole('button', { name: 'Apply' }));
+        expect(await screen.findByRole('dialog', { name: /Save paused/ })).toBeInTheDocument();
+
+        const cacheCommit = createDeferred<void>();
+        vi.spyOn(queryClient, 'cancelQueries').mockReturnValue(cacheCommit.promise);
+        await user.click(screen.getByRole('button', { name: 'Overwrite' }));
+        await waitFor(() => expect(updateNote).toHaveBeenCalledTimes(2));
+
+        expect(screen.getByRole('dialog', { name: /Save paused/ })).toBeInTheDocument();
+
+        await act(async () => {
+            cacheCommit.resolve();
+            await cacheCommit.promise;
+        });
+
+        await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     });
 });

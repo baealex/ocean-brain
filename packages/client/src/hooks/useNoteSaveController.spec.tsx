@@ -402,4 +402,112 @@ describe('useNoteSaveController', () => {
         expect(onError).toHaveBeenCalledWith('Failed to save note.');
         expect(storedDraft.title).toBe('Rejected draft');
     });
+
+    it('ignores a delayed save response after drafts are cleared', async () => {
+        const queryClient = createQueryClient();
+        const delayedSave = createDeferred<Awaited<ReturnType<typeof updateNote>>>();
+        const onSaved = vi.fn();
+        const serverVersionRef = { current: '1770000000000' };
+        queryClient.setQueryData(queryKeys.notes.detail('7'), {
+            title: 'Remote title',
+            content: 'remote content',
+            pinned: false,
+            layout: 'wide',
+            createdAt: '1769999999000',
+            updatedAt: '1770000002000',
+        });
+        vi.mocked(updateNote).mockReturnValue(delayedSave.promise);
+        const { result } = renderHook(
+            () =>
+                useNoteSaveController({
+                    noteId: '7',
+                    initialContent: 'initial',
+                    initialUpdatedAt: '1770000000000',
+                    editSessionIdRef: { current: 'session-1' },
+                    serverVersionRef,
+                    getContent: () => 'local content',
+                    onSaved,
+                    onConflict: vi.fn(),
+                    onError: vi.fn(),
+                }),
+            { wrapper: createWrapper(queryClient) },
+        );
+
+        act(() => {
+            result.current.queueSave(result.current.buildDraft('Local title'), { immediate: true });
+        });
+        await waitFor(() => expect(updateNote).toHaveBeenCalledTimes(1));
+        act(() => {
+            result.current.clearDrafts();
+            serverVersionRef.current = '1770000002000';
+        });
+
+        await act(async () => {
+            delayedSave.resolve({
+                type: 'success',
+                updateNote: {
+                    id: '7',
+                    title: 'Local title',
+                    updatedAt: '1770000001000',
+                },
+            } as never);
+            await delayedSave.promise;
+        });
+
+        expect(onSaved).not.toHaveBeenCalled();
+        expect(queryClient.getQueryData(queryKeys.notes.detail('7'))).toMatchObject({
+            title: 'Remote title',
+            content: 'remote content',
+            updatedAt: '1770000002000',
+        });
+        expect(result.current.saveStatus).toBe('saved');
+        expect(serverVersionRef.current).toBe('1770000002000');
+        expect(window.localStorage.getItem(getDraftStorageKey('7'))).toBeNull();
+    });
+
+    it('runs prerequisite writes before reading the expected note version', async () => {
+        const serverVersionRef = { current: '1770000000000' };
+        const beforeSave = vi.fn(async () => {
+            serverVersionRef.current = '1770000001000';
+            return 'saved' as const;
+        });
+        vi.mocked(updateNote).mockResolvedValue({
+            type: 'success',
+            updateNote: {
+                id: '7',
+                title: 'Draft title',
+                updatedAt: '1770000002000',
+            },
+        } as never);
+        const { result } = renderHook(
+            () =>
+                useNoteSaveController({
+                    noteId: '7',
+                    initialContent: 'initial',
+                    initialUpdatedAt: '1770000000000',
+                    editSessionIdRef: { current: 'session-1' },
+                    serverVersionRef,
+                    beforeSave,
+                    getContent: () => 'content',
+                    onSaved: vi.fn(),
+                    onConflict: vi.fn(),
+                    onError: vi.fn(),
+                }),
+            { wrapper: createWrapper() },
+        );
+
+        await act(async () => {
+            result.current.queueSave(result.current.buildDraft('Draft title'));
+            await result.current.flushPendingSave();
+        });
+
+        expect(beforeSave).toHaveBeenCalledOnce();
+        expect(updateNote).toHaveBeenCalledWith({
+            id: '7',
+            title: 'Draft title',
+            content: 'content',
+            editSessionId: 'session-1',
+            expectedUpdatedAt: '1770000001000',
+        });
+    });
 });

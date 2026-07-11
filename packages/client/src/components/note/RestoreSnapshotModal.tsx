@@ -12,6 +12,7 @@ interface RestoreSnapshotModalProps {
     isOpen: boolean;
     noteId: string;
     onClose: () => void;
+    restoreSnapshot?: (id: string) => Promise<Awaited<ReturnType<typeof restoreNoteSnapshot>> | undefined>;
     onRestored?: (note: Pick<Note, 'id' | 'updatedAt'>) => void;
 }
 
@@ -31,7 +32,13 @@ const formatSnapshotLabel = (label?: string, entrypoint?: string) => {
     return 'Web browser';
 };
 
-export default function RestoreSnapshotModal({ isOpen, noteId, onClose, onRestored }: RestoreSnapshotModalProps) {
+export default function RestoreSnapshotModal({
+    isOpen,
+    noteId,
+    onClose,
+    restoreSnapshot = restoreNoteSnapshot,
+    onRestored,
+}: RestoreSnapshotModalProps) {
     const toast = useToast();
     const queryClient = useQueryClient();
     const [selectedSnapshotId, setSelectedSnapshotId] = useState<string | null>(null);
@@ -51,8 +58,12 @@ export default function RestoreSnapshotModal({ isOpen, noteId, onClose, onRestor
     });
 
     const restoreMutation = useMutation({
-        mutationFn: restoreNoteSnapshot,
+        mutationFn: restoreSnapshot,
         onSuccess: async (response) => {
+            if (!response) {
+                return;
+            }
+
             if (response.type === 'error') {
                 toast(response.errors[0].message);
                 return;

@@ -3,5 +3,6 @@ export { default as NoteExportModal } from './NoteExportModal';
 export { default as NoteExternalChangeModal } from './NoteExternalChangeModal';
 export { default as NoteListCard } from './NoteListCard';
 export { default as NoteListItem } from './NoteListItem';
+export { default as NotePropertiesPanel } from './NotePropertiesPanel';
 export { default as NoteReferenceWarningModal } from './NoteReferenceWarningModal';
 export { default as RestoreSnapshotModal } from './RestoreSnapshotModal';

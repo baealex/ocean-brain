@@ -1,6 +1,6 @@
 # Ocean Brain Deployment and Release Strategy
 
-Updated: 2026-04-06
+Updated: 2026-07-03
 
 ## 1. Current Deployment Channels
 1. npm distribution
@@ -112,6 +112,7 @@ git push origin v0.3.1
 5. Review the release PR
 - Confirm the expected tag is `v<version>`.
 - Confirm exactly one release impact label is applied: `release: patch`, `release: minor`, or `release: major`.
+- Do not use `release: no-impact` for release PRs because release PRs intentionally publish artifacts.
 - Confirm the release PR contains the verification plan.
 - Confirm `oceanBrain.mcpCompatibilityVersion` changed only when MCP compatibility is intentionally broken.
 
@@ -146,6 +147,20 @@ gh run list --workflow RELEASE.yml --limit 5
 - Open the created release page after `verify-docker` creates it.
 - For patch releases, start from GitHub generated notes and preserve the PR-linked bullet format.
 - For minor and major releases, treat auto-generated notes as a draft and replace the body with the final note before sharing the release externally.
+
+## 6-1. No-Impact PRs
+No-impact PRs are allowed for repository operations that should not be included in a versioned npm or Docker release.
+
+Use `release: no-impact` when the change has no effect on released artifacts, runtime behavior, user-visible product behavior, public APIs, CLI/MCP contracts, or release notes.
+
+Typical examples:
+- CI speedups, CI-only workflow tuning, and test runner configuration.
+- Local development environment changes, editor/tooling setup, and contributor-only scripts.
+- Local demo-only changes that are not shipped as the default product behavior.
+- Documentation/process updates that do not describe a released product change.
+- Test-only refactors that do not change product code or release artifacts.
+
+Do not use `release: no-impact` when a change affects packaged CLI files, server/client runtime behavior, Docker/npm artifacts, public contracts, migrations, or user-visible behavior. Pick `release: patch`, `release: minor`, or `release: major` instead.
 
 ## 7. Recovery Guide
 Use this section when the version bump PR is merged but the release did not start cleanly.

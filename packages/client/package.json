@@ -10,7 +10,7 @@
         "format": "biome check --write .",
         "preview": "vite preview",
         "test": "vitest",
-        "test:ci": "vitest run --coverage --maxWorkers 1",
+        "test:ci": "vitest run --coverage",
         "type-check": "tsc --noEmit"
     },
     "dependencies": {

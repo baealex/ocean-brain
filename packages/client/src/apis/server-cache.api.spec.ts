@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { getServerCache, setServerCache } from '~/apis/server-cache.api';
 import { graphQuery } from '~/modules/graph-query';
 

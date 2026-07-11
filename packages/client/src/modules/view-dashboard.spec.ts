@@ -1,3 +1,4 @@
+// @vitest-environment node
 import {
     buildViewSectionInput,
     EMPTY_VIEWS_WORKSPACE,

@@ -1,6 +1,6 @@
 # Ocean Brain Git Convention
 
-Updated: 2026-06-15
+Updated: 2026-07-03
 
 ## 1. Scope
 - This document defines commit and PR conventions for the Ocean Brain repository.
@@ -74,20 +74,24 @@ Use these shortcode labels exactly:
 1. CI checks (`lint`, `type-check`, `build`) pass
 2. Local validation for the changed scope is complete
 3. Any docs/scripts/env changes are documented in PR body
-4. Exactly one release impact label is applied: `release: major`, `release: minor`, or `release: patch`, unless the maintainer explicitly declares the PR as no-release-impact operational work
+4. Exactly one release impact label is applied: `release: major`, `release: minor`, `release: patch`, or `release: no-impact`
 5. Release-impacting changes include version/tag plan
 
 ### 3-5. Release Impact Labels
-Every release-impacting PR must have exactly one release impact label before review/merge. Pick the highest applicable impact. Maintainer-declared no-release-impact operational PRs may intentionally omit the label.
+Every PR must have exactly one release impact label before review/merge. Pick the highest applicable impact.
 
 - `release: major`: breaking change, migration requirement, removed/renamed public behavior, or incompatible API/CLI/config change
 - `release: minor`: backward-compatible feature, new endpoint/tool/command, new user-visible capability, or backward-compatible output enrichment
-- `release: patch`: backward-compatible bug fix, documentation-only change, tests, refactor, maintenance, or performance improvement without a new capability
+- `release: patch`: backward-compatible bug fix, documentation-only change, tests, refactor, maintenance, or performance improvement that should be included in release notes
+- `release: no-impact`: operational or repository-only changes that do not affect released npm/Docker artifacts, runtime behavior, user-visible product behavior, public APIs, CLI/MCP contracts, or release notes
 
 Examples:
 - Preserving Markdown hard breaks: `release: patch`
 - Adding `[[title]](note:id)` reference Markdown support: `release: minor`
 - Removing or changing an existing MCP/CLI contract incompatibly: `release: major`
+- CI test speedups, CI-only workflow tuning, and test runner configuration with no released artifact behavior change: `release: no-impact`
+- Local demo-only changes that are not shipped as the default product behavior: `release: no-impact`
+- Local development environment, documentation process, editor/tooling, or repository maintenance changes with no runtime/release effect: `release: no-impact`
 
 ### 3-6. Release-Impact PR
 Changes in the files below are treated as release-impacting.
@@ -115,7 +119,7 @@ Before sharing a PR URL, confirm all of the following:
 3. PR body heading emojis must use shortcode form (`:dart:`, `:hammer_and_wrench:`, etc.).
 4. `Verification Guide` contains concrete commands and expected results.
 5. The `Checklist` state is intentionally set (not left ambiguous).
-6. Exactly one release impact label is applied: `release: major`, `release: minor`, or `release: patch`, or the PR body explicitly states that the maintainer declared it no-release-impact.
+6. Exactly one release impact label is applied: `release: major`, `release: minor`, `release: patch`, or `release: no-impact`.
 
 ## 4. PR Template Path
 - Use `.github/PULL_REQUEST_TEMPLATE.md` as the official PR template.

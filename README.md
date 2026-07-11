@@ -1,153 +1,127 @@
+<img src="./packages/client/public/icon.png" alt="Ocean Brain logo: a brain resting on ocean waves" width="112" />
+
 # Ocean Brain
 
 **A self-hosted writing space for connected notes.**
 
-Write in the browser, link notes together, and keep the workspace on your own server.
+The editor comes first. Capture a note in the browser, connect it to other notes as the thought develops, and keep writing. Incoming references become backlinks automatically. Tags, properties, saved views, and the graph are there when the notes need more structure.
 
-Ocean Brain is inspired by Zettelkasten-style note taking: small notes, deliberate links, and ideas that can build on each other over time.
+Ocean Brain works well for project decisions, research trails, meeting notes, learning notes, and ideas that are not finished yet.
 
-## What it is
+[Try the live demo](https://demo-ocean-brain.baejino.com/) · [Run Ocean Brain](#run-ocean-brain)
 
-Ocean Brain focuses on the writing experience first, then adds enough structure to keep notes connected: links, backlinks, tags, saved views, graph navigation, search, reminders, and calendar views.
+The demo keeps workspace edits in your browser. It does not include server-backed features such as note snapshots or MCP access.
 
-It is meant for project notes, decisions, research, learning notes, and ideas you expect to revisit.
+![Ocean Brain workspace showing a connected note with typed properties, inline references, and automatic backlinks](./docs/assets/ocean-brain-workspace.png)
 
-## Why connected notes?
+## How notes grow
 
-A note is easier to reuse when it points to related notes.
+- **Write first.** Use the block editor and `/` commands without deciding the final structure up front.
+- **Connect as you go.** Reference notes by title, follow backlinks, or step out into the graph when a thread gets larger.
+- **Add structure when it helps.** Use tags and typed properties, then filter notes into saved list or table views.
+- **Find the work again.** Search the workspace, pin active notes, set reminders, or find notes by date in the calendar.
 
-Ocean Brain keeps that connection close to the writing flow. You can write a note, link it to another note, and later follow backlinks or views to see where that idea has been used.
+Notes can be copied as Markdown or downloaded as Markdown or HTML. Local image assets can be bundled with an export when the document needs to stand on its own.
 
-## Try it now
+## Run Ocean Brain
 
-**[Live Demo](https://demo-ocean-brain.baejino.com/)** - Try the hosted demo
+One Ocean Brain instance is one shared workspace. Password mode protects the whole instance with a single shared password; it does not provide individual accounts, roles, or per-note permissions.
 
-The hosted demo runs in local-only mode: your edits stay in your browser, so feel free to create, edit, delete, and reset notes while testing.
+Ocean Brain will not start until you explicitly choose password mode or open mode. The two modes cannot be enabled together.
 
-## Quick Start
+### Private local trial
 
-`npx ocean-brain` / `docker run baealex/ocean-brain` now require explicit auth configuration.
-Choose one of the two modes below:
-
-### npx
+With Node.js 22 installed, the shortest path to a private local trial is `npx`. Open mode has no login, so keep it bound to your own machine:
 
 ```bash
+HOST=127.0.0.1 \
+PORT=6683 \
 npx ocean-brain serve --allow-insecure-no-auth
 ```
 
-Local/trusted only (no auth).  
-For password mode:
+Open <http://localhost:6683>. Notes and uploaded images are stored under `~/.ocean-brain` and remain there across restarts.
+
+### Password mode with npx
+
+Password mode needs both a workspace password and a separate session secret. Generate the session secret once, keep it private, and reuse it across restarts.
 
 ```bash
-OCEAN_BRAIN_PASSWORD=change-me \
-OCEAN_BRAIN_SESSION_SECRET=replace-with-long-random-secret \
+HOST=127.0.0.1 \
+PORT=6683 \
+OCEAN_BRAIN_PASSWORD='choose-a-strong-password' \
+OCEAN_BRAIN_SESSION_SECRET='paste-a-long-random-secret-here' \
 npx ocean-brain serve
 ```
 
-Open `http://localhost:6683` after startup.
+For example, `openssl rand -hex 32` generates a suitable random session secret.
 
 ### Docker
 
-The examples below use Docker's default floating tag (`latest`) for quick trials.
-For production, pin an exact image tag such as `baealex/ocean-brain:<version>`.
-
-No auth (local/trusted only):
+The Docker example uses password mode, persists the database and images on the host, and publishes the app on loopback only.
 
 ```bash
 docker run -d \
-    -e OCEAN_BRAIN_ALLOW_INSECURE_NO_AUTH=true \
-    -v ./assets:/assets \
-    -v ./data:/data \
-    -p 6683:6683 \
-    baealex/ocean-brain
+  --name ocean-brain \
+  --restart unless-stopped \
+  -e OCEAN_BRAIN_PASSWORD='choose-a-strong-password' \
+  -e OCEAN_BRAIN_SESSION_SECRET='paste-a-long-random-secret-here' \
+  -v "$PWD/data:/data" \
+  -v "$PWD/assets:/assets" \
+  -p 127.0.0.1:6683:6683 \
+  baealex/ocean-brain:latest
 ```
 
-Password mode:
+`latest` is convenient for evaluation. For an instance you intend to keep, use an exact tag from [GitHub Releases](https://github.com/baealex/ocean-brain/releases), written as `baealex/ocean-brain:<version>`.
 
-```bash
-docker run -d \
-    -e OCEAN_BRAIN_PASSWORD=change-me \
-    -e OCEAN_BRAIN_SESSION_SECRET=replace-with-long-random-secret \
-    -v ./assets:/assets \
-    -v ./data:/data \
-    -p 6683:6683 \
-    baealex/ocean-brain
-```
+Before exposing Ocean Brain beyond the host machine:
 
-If neither password env vars nor `OCEAN_BRAIN_ALLOW_INSECURE_NO_AUTH=true` is set, startup fails by design.
+- Keep password mode enabled.
+- Put the instance behind HTTPS.
+- Change the loopback bind only when your network or reverse proxy requires it.
+- Back up the database and images before upgrading.
 
-### From Source
+In password mode, uploaded image URLs are protected by the same authenticated session as the workspace.
 
-```bash
-pnpm install
-pnpm build
-OCEAN_BRAIN_ALLOW_INSECURE_NO_AUTH=true pnpm start
-```
+### Runtime settings
 
-Local/trusted only (no auth).  
-For password mode:
+| Setting | Purpose |
+|---|---|
+| `OCEAN_BRAIN_PASSWORD` | Shared password for the workspace |
+| `OCEAN_BRAIN_SESSION_SECRET` | Long, random secret used to protect login sessions |
+| `OCEAN_BRAIN_ALLOW_INSECURE_NO_AUTH=true` | Explicitly enable open mode; do not combine with a password |
+| `OCEAN_BRAIN_DATA_DIR` | Override the default npx data directory and its `db.sqlite3` path |
+| `OCEAN_BRAIN_IMAGE_DIR` | Override the uploaded image directory |
+| `DATABASE_URL` | Override the SQLite file URL; this takes precedence over `OCEAN_BRAIN_DATA_DIR` for the database path |
+| `HOST`, `PORT`, `--host`, `--port` | Change the bind address and port; environment values take precedence and defaults are `0.0.0.0` and `6683` |
 
-```bash
-pnpm install
-pnpm build
-OCEAN_BRAIN_PASSWORD=change-me \
-OCEAN_BRAIN_SESSION_SECRET=replace-with-long-random-secret \
-pnpm start
-```
+## Data and recovery
 
-### Local Development (5173 + 6683)
+Ocean Brain stores note data in SQLite and uploaded images separately on disk. Back up both locations together.
 
-When using `pnpm dev` in password mode, set password/session env values:
+| Run method | SQLite database | Uploaded images |
+|---|---|---|
+| `npx` | `~/.ocean-brain/data/db.sqlite3` | `~/.ocean-brain/assets/images` |
+| Docker example above | `./data/db.sqlite3` | `./assets/images` |
 
-```bash
-OCEAN_BRAIN_PASSWORD=change-me \
-OCEAN_BRAIN_SESSION_SECRET=replace-with-long-random-secret \
-pnpm dev
-```
+For a simple, consistent backup, stop Ocean Brain and copy both the database and image directory. Restore them while the instance is stopped, then start it again.
 
-PowerShell:
+Ocean Brain also has recovery paths for everyday mistakes:
 
-```powershell
-$env:OCEAN_BRAIN_PASSWORD="change-me"
-$env:OCEAN_BRAIN_SESSION_SECRET="replace-with-long-random-secret"
-pnpm dev
-```
+- Deleted notes remain in Trash for 30 days.
+- Note snapshots are retained for up to 7 days, with at most 10 snapshots per note.
 
-If you run server/client in separate terminals, only the server terminal needs password/session env values.
+Trash, snapshots, and individual note exports are useful recovery tools, but they are not full-instance backups.
 
-## Core features
+## Connect an MCP client
 
-| Area | What it does |
-|------|--------------|
-| Writing | Write and edit notes from a browser-based workspace with block editing and `/` commands |
-| Connected notes | Link notes with `[[Note Title]]`, backlinks, tags, saved views, and graph navigation |
-| Returning to notes | Use search, pinned notes, reminders, and calendar views to revisit past notes |
-| Self-hosted operation | Run the app yourself and keep the database and assets with your instance |
+Ocean Brain can expose the workspace to [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) clients. The MCP tools can search and read notes, query tags and properties, create notes, make targeted Markdown or metadata edits, and move notes to Trash.
 
-## Data, recovery, and backups
+1. Open `Settings > MCP` and turn MCP access on.
+2. Select **Issue token**. If a token already exists, the button reads **Rotate token**.
+3. Copy the token while it is visible and save it in a local file.
+4. Choose Codex, Claude, or JSON in the setup panel and copy the generated configuration.
 
-Ocean Brain provides everyday recovery paths, but it is not a replacement for regular backups.
-
-- Deleted notes can be recovered from Trash for a limited time.
-- Recent note snapshots can help recover from common editing mistakes.
-- Individual notes can be copied as Markdown or downloaded as Markdown/HTML, with local image assets optionally bundled.
-- In password mode, uploaded image asset URLs require an authenticated session, just like the workspace.
-- For full-instance safety, back up the database and assets used by your deployment.
-
-## MCP Server
-
-Ocean Brain includes a built-in [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server for AI tool integration.
-
-### Setup
-
-1. Open `Settings > MCP` in Ocean Brain.
-2. Turn on **Allow MCP access**.
-3. Click **Rotate token**.
-4. Recommended: save the token to a local file and use `--token-file`.
-5. Optional: for quick local setup, pass token directly with `--token`.
-6. If your public/proxy host differs from the current app origin, edit the server URL before registering.
-
-Example Claude Code `.mcp.json`:
+An equivalent `.mcp.json` entry looks like this:
 
 ```json
 {
@@ -161,29 +135,45 @@ Example Claude Code `.mcp.json`:
         "--server",
         "http://localhost:6683",
         "--token-file",
-        "/path/to/token.txt"
+        "/absolute/path/to/ocean-brain-mcp-token.txt"
       ]
     }
   }
 }
 ```
 
-> The service keeps a single active MCP token. Rotating token invalidates the previous token immediately.  
-> `--token-file` is recommended for safety, but `--token <value>` is also supported.
+Set `--server` to the Ocean Brain URL reachable from the machine running the MCP client; replace `localhost` when the instance is remote or behind a proxy.
 
-### Available Tools
+Ocean Brain keeps one active MCP token. Rotating or revoking it immediately invalidates the previous token. `--token-file` is preferred over placing the token directly in client configuration.
 
-| Tool | Description |
-|------|-------------|
-| `ocean_brain_search_notes` | Search notes by keyword |
-| `ocean_brain_read_note` | Read a note by ID, including tags, properties, and back references |
-| `ocean_brain_list_tags` | List tags with note counts |
-| `ocean_brain_list_properties` | List shared property definitions, types, and select options |
-| `ocean_brain_query_notes_by_properties` | Query notes with property filters |
-| `ocean_brain_list_recent_notes` | List recently updated notes |
-| `ocean_brain_create_note` / `ocean_brain_update_note` | Create or update notes |
-| `ocean_brain_create_tag` / `ocean_brain_delete_note` | Create tags or delete notes (safe write flow) |
+For a long-lived setup, pin the MCP CLI to a version compatible with the server by replacing `ocean-brain` in the command with `ocean-brain@<version>`.
+
+## Development
+
+The repository uses Node.js `22`, pnpm `10.25.0`, and a `packages/*` workspace.
+
+```bash
+pnpm install
+
+OCEAN_BRAIN_PASSWORD='development-password' \
+OCEAN_BRAIN_SESSION_SECRET='development-session-secret' \
+pnpm dev
+```
+
+The client normally runs at <http://localhost:5173> and the server at <http://localhost:6683>. Use the npm package or Docker image when you want a packaged instance; the source commands above are for development.
+
+Before opening a pull request, run the checks for the changed scope:
+
+```bash
+pnpm check:encoding
+pnpm lint
+pnpm test:ci
+pnpm type-check
+pnpm build
+```
+
+The repository-specific workflow is documented in [DEV_CONVENTION.md](./docs/process/DEV_CONVENTION.md) and [GIT_CONVENTION.md](./docs/process/GIT_CONVENTION.md).
 
 ## License
 
-Ocean Brain is licensed under the [MIT License](./LICENSE).
+Ocean Brain is available under the [MIT License](./LICENSE).

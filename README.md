@@ -12,6 +12,8 @@ Ocean Brain works well for project decisions, research trails, meeting notes, le
 
 The demo keeps workspace edits in your browser. It does not include server-backed features such as note snapshots or MCP access.
 
+![Ocean Brain workspace showing a connected note with typed properties, inline references, and automatic backlinks](./docs/assets/ocean-brain-workspace.png)
+
 ## How notes grow
 
 - **Write first.** Use the block editor and `/` commands without deciding the final structure up front.

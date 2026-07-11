@@ -41,10 +41,7 @@ export default function RestoreParentScroll() {
                 }
             });
 
-            const scrollTop = memo.get(pathname);
-            if (scrollTop) {
-                parentElement.scrollTop = scrollTop;
-            }
+            parentElement.scrollTop = memo.get(pathname) ?? 0;
 
             parentElement.addEventListener('scroll', handleScroll);
 

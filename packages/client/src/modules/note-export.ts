@@ -24,7 +24,6 @@ interface MarkdownDocumentExportOptions {
 
 const YAML_SPECIAL_CHAR_PATTERN = /[:{}[\],&*#?|<>=!%@`-]/;
 const LOCAL_IMAGE_ASSET_PREFIX = '/assets/images/';
-const LOCAL_IMAGE_OMITTED_COMMENT = '<!-- Local Ocean Brain image omitted from document-only export. -->';
 
 const normalizeTitleForFilename = (title: string) => {
     const normalized = title
@@ -337,32 +336,52 @@ const applyTextReplacements = (
 };
 
 const findMarkdownImageTags = (markdown: string) => {
-    const imagePattern = /!\[[^\]\n]*\]\([^)]+?\)/g;
     const ranges: Array<{
         end: number;
         source: { end: number; start: number; value: string };
         start: number;
     }> = [];
+    let searchIndex = 0;
 
-    for (const match of markdown.matchAll(imagePattern)) {
-        if (match.index === undefined) {
+    while (searchIndex < markdown.length) {
+        const start = markdown.indexOf('![', searchIndex);
+
+        if (start === -1) {
+            break;
+        }
+
+        let cursor = start + 2;
+        let altDepth = 1;
+
+        while (cursor < markdown.length && altDepth > 0 && markdown[cursor] !== '\n') {
+            if (markdown[cursor] === '\\') {
+                cursor += 2;
+                continue;
+            }
+
+            if (markdown[cursor] === '[') {
+                altDepth += 1;
+            } else if (markdown[cursor] === ']') {
+                altDepth -= 1;
+            }
+
+            cursor += 1;
+        }
+
+        if (altDepth !== 0 || markdown[cursor] !== '(') {
+            searchIndex = start + 2;
             continue;
         }
 
-        const fullMatch = match[0];
-        const openParenIndex = fullMatch.indexOf('(');
-        const closeParenIndex = fullMatch.lastIndexOf(')');
+        const sourceStartWithWhitespace = cursor + 1;
+        let sourceStart = sourceStartWithWhitespace;
 
-        if (openParenIndex < 0 || closeParenIndex < 0 || closeParenIndex <= openParenIndex) {
-            continue;
-        }
-
-        let sourceStart = openParenIndex + 1;
-        while (sourceStart < closeParenIndex && /\s/.test(fullMatch[sourceStart])) {
+        while (sourceStart < markdown.length && markdown[sourceStart] !== '\n' && /\s/.test(markdown[sourceStart])) {
             sourceStart += 1;
         }
 
-        if (sourceStart >= closeParenIndex) {
+        if (sourceStart >= markdown.length || markdown[sourceStart] === '\n') {
+            searchIndex = start + 2;
             continue;
         }
 
@@ -370,34 +389,105 @@ const findMarkdownImageTags = (markdown: string) => {
         let sourceValueStart = sourceStart;
         let sourceValueEnd = sourceStart;
 
-        if (fullMatch[sourceStart] === '<') {
-            const angleEnd = fullMatch.indexOf('>', sourceStart + 1);
+        if (markdown[sourceStart] === '<') {
+            cursor = sourceStart + 1;
 
-            if (angleEnd === -1 || angleEnd > closeParenIndex) {
+            while (cursor < markdown.length && markdown[cursor] !== '>' && markdown[cursor] !== '\n') {
+                cursor += markdown[cursor] === '\\' ? 2 : 1;
+            }
+
+            if (markdown[cursor] !== '>') {
+                searchIndex = start + 2;
                 continue;
             }
 
-            sourceEnd = angleEnd + 1;
+            sourceEnd = cursor + 1;
             sourceValueStart = sourceStart + 1;
-            sourceValueEnd = angleEnd;
+            sourceValueEnd = cursor;
         } else {
-            while (sourceEnd < closeParenIndex && !/\s/.test(fullMatch[sourceEnd])) {
-                sourceEnd += 1;
+            let parenDepth = 0;
+            cursor = sourceStart;
+
+            while (cursor < markdown.length && markdown[cursor] !== '\n') {
+                const character = markdown[cursor];
+
+                if (character === '\\') {
+                    cursor += 2;
+                    continue;
+                }
+
+                if (/\s/.test(character) && parenDepth === 0) {
+                    break;
+                }
+
+                if (character === '(') {
+                    parenDepth += 1;
+                } else if (character === ')') {
+                    if (parenDepth === 0) {
+                        break;
+                    }
+
+                    parenDepth -= 1;
+                }
+
+                cursor += 1;
             }
 
+            sourceEnd = cursor;
             sourceValueStart = sourceStart;
             sourceValueEnd = sourceEnd;
         }
 
+        if (sourceValueEnd <= sourceValueStart) {
+            searchIndex = start + 2;
+            continue;
+        }
+
+        cursor = sourceEnd;
+
+        while (cursor < markdown.length && markdown[cursor] !== '\n' && /\s/.test(markdown[cursor])) {
+            cursor += 1;
+        }
+
+        if (markdown[cursor] === '"' || markdown[cursor] === "'") {
+            const quote = markdown[cursor];
+            cursor += 1;
+
+            while (cursor < markdown.length && markdown[cursor] !== '\n') {
+                if (markdown[cursor] === '\\') {
+                    cursor += 2;
+                    continue;
+                }
+
+                if (markdown[cursor] === quote) {
+                    cursor += 1;
+                    break;
+                }
+
+                cursor += 1;
+            }
+        }
+
+        while (cursor < markdown.length && markdown[cursor] !== '\n' && /\s/.test(markdown[cursor])) {
+            cursor += 1;
+        }
+
+        if (markdown[cursor] !== ')') {
+            searchIndex = start + 2;
+            continue;
+        }
+
         ranges.push({
-            end: match.index + fullMatch.length,
+            end: cursor + 1,
             source: {
-                end: match.index + sourceEnd,
-                start: match.index + sourceStart,
-                value: fullMatch.slice(sourceValueStart, sourceValueEnd),
+                end: sourceEnd,
+                start: sourceStartWithWhitespace,
+                value: markdown.slice(sourceValueStart, sourceValueEnd),
             },
-            start: match.index,
+            start,
         });
+
+        searchIndex = cursor + 1;
     }
 
     return ranges;
@@ -444,7 +534,7 @@ export const createMarkdownDocumentExport = (
         .map((imageTag) => ({
             end: imageTag.end,
             start: imageTag.start,
-            value: LOCAL_IMAGE_OMITTED_COMMENT,
+            value: '',
         }));
 
     return applyTextReplacements(markdownExport, replacements);
@@ -473,7 +563,7 @@ export const createHtmlDocumentExport = (
         .map((imageTag) => ({
             end: imageTag.end,
             start: imageTag.start,
-            value: LOCAL_IMAGE_OMITTED_COMMENT,
+            value: '',
         }));
 
     return applyHtmlReplacements(htmlExport, replacements);

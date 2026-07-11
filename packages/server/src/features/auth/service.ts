@@ -9,6 +9,8 @@ import { createAppError } from '~/modules/error-handler.js';
 export const AUTH_SESSION_GENERATION_HEADER = 'X-Ocean-Brain-Session-Generation';
 const AUTH_SESSION_GENERATION = crypto.randomUUID();
 
+export const getSessionGeneration = () => AUTH_SESSION_GENERATION;
+
 export const createPasswordHash = async (password: string) => {
     const salt = crypto.randomBytes(16).toString('hex');
     const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
@@ -27,7 +29,7 @@ export const buildSessionResponse = (authConfig: AuthConfig, req: Request) =>
     buildAuthSessionResponse(authConfig, Boolean(req.session?.authenticated));
 
 export const setSessionStatusHeaders = (res: Response) => {
-    res.set(AUTH_SESSION_GENERATION_HEADER, AUTH_SESSION_GENERATION);
+    res.set(AUTH_SESSION_GENERATION_HEADER, getSessionGeneration());
     res.set('Cache-Control', 'no-store');
 };
 

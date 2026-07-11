@@ -1,6 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import { act, render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { StrictMode, Suspense } from 'react';
 import { createNote as createNoteApi, fetchNote, fetchNotePropertyKeys, updateNote } from '~/apis/note.api';
 import { ToastProvider } from '~/components/ui';
@@ -181,7 +180,6 @@ describe('<NoteContent /> external change handling', () => {
     });
 
     it('does not reopen the external-change modal when a stale detail refetch resolves after a local save', async () => {
-        const user = userEvent.setup();
         const initialNote = createNote({
             title: 'Accepted remote title',
             updatedAt: '1779700002000',
@@ -210,9 +208,8 @@ describe('<NoteContent /> external change handling', () => {
         });
 
         const titleInput = screen.getByPlaceholderText('Title');
-        await user.clear(titleInput);
-        await user.type(titleInput, 'Local title');
-        await user.click(screen.getByRole('button', { name: 'Save' }));
+        fireEvent.change(titleInput, { target: { value: 'Local title' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
         await waitFor(() => expect(updateNote).toHaveBeenCalledTimes(1));
 
@@ -231,7 +228,6 @@ describe('<NoteContent /> external change handling', () => {
     });
 
     it('ignores an older note value after reloading latest and saving a newer local edit', async () => {
-        const user = userEvent.setup();
         const remoteNote = createNote({
             title: 'Remote title',
             updatedAt: '1779700002000',
@@ -250,9 +246,8 @@ describe('<NoteContent /> external change handling', () => {
         });
 
         const titleInput = screen.getByPlaceholderText('Title');
-        await user.clear(titleInput);
-        await user.type(titleInput, 'Local title');
-        await user.click(screen.getByRole('button', { name: 'Save' }));
+        fireEvent.change(titleInput, { target: { value: 'Local title' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
         await waitFor(() => expect(updateNote).toHaveBeenCalledTimes(1));
 
@@ -267,7 +262,6 @@ describe('<NoteContent /> external change handling', () => {
     });
 
     it('does not block editing once an external update is already loaded', async () => {
-        const user = userEvent.setup();
         const initialNote = createNote({
             title: 'Initial title',
             updatedAt: '1779700001000',
@@ -312,9 +306,8 @@ describe('<NoteContent /> external change handling', () => {
         });
 
         const titleInput = screen.getByPlaceholderText('Title');
-        await user.clear(titleInput);
-        await user.type(titleInput, 'Local title');
-        await user.click(screen.getByRole('button', { name: 'Save' }));
+        fireEvent.change(titleInput, { target: { value: 'Local title' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
         await waitFor(() => expect(updateNote).toHaveBeenCalledTimes(1));
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -345,7 +338,6 @@ describe('<NoteContent /> external change handling', () => {
     });
 
     it('keeps local editor content after saving local content edits', async () => {
-        const user = userEvent.setup();
         const initialNote = createNote({
             content: createContent('Initial body'),
             updatedAt: '1779700001000',
@@ -364,16 +356,14 @@ describe('<NoteContent /> external change handling', () => {
             updateNote: savedNote,
         });
 
-        await user.clear(editor);
-        await user.type(editor, 'Local body');
-        await user.click(screen.getByRole('button', { name: 'Save' }));
+        fireEvent.change(editor, { target: { value: 'Local body' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
         await waitFor(() => expect(updateNote).toHaveBeenCalledTimes(1));
         expect(screen.getByLabelText('Editor')).toHaveValue('Local body');
     });
 
     it('flushes pending changes before allowing in-app navigation', async () => {
-        const user = userEvent.setup();
         const initialNote = createNote({
             title: 'Initial title',
             content: createContent('Initial body'),
@@ -387,8 +377,7 @@ describe('<NoteContent /> external change handling', () => {
         renderNote(initialNote);
 
         const titleInput = await screen.findByPlaceholderText('Title');
-        await user.clear(titleInput);
-        await user.type(titleInput, 'Route-safe title');
+        fireEvent.change(titleInput, { target: { value: 'Route-safe title' } });
 
         expect(screen.getByRole('status')).toHaveTextContent('Saving...');
 
@@ -420,7 +409,6 @@ describe('<NoteContent /> external change handling', () => {
     });
 
     it('blocks in-app navigation when the pending save fails', async () => {
-        const user = userEvent.setup();
         const initialNote = createNote({
             title: 'Initial title',
             updatedAt: '1779700001000',
@@ -429,8 +417,7 @@ describe('<NoteContent /> external change handling', () => {
         renderNote(initialNote);
 
         const titleInput = await screen.findByPlaceholderText('Title');
-        await user.clear(titleInput);
-        await user.type(titleInput, 'Unsaved title');
+        fireEvent.change(titleInput, { target: { value: 'Unsaved title' } });
 
         vi.mocked(updateNote).mockResolvedValue({
             type: 'error',
@@ -458,7 +445,6 @@ describe('<NoteContent /> external change handling', () => {
     });
 
     it('shows recovery actions after a save failure and retries the local draft', async () => {
-        const user = userEvent.setup();
         const initialNote = createNote({
             title: 'Initial title',
             updatedAt: '1779700001000',
@@ -487,9 +473,8 @@ describe('<NoteContent /> external change handling', () => {
         renderNote(initialNote);
 
         const titleInput = await screen.findByPlaceholderText('Title');
-        await user.clear(titleInput);
-        await user.type(titleInput, 'Recovered title');
-        await user.click(screen.getByRole('button', { name: 'Save' }));
+        fireEvent.change(titleInput, { target: { value: 'Recovered title' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
         expect(await screen.findByText(/Save failed. Your latest draft is still available here/)).toBeInTheDocument();
 
@@ -499,7 +484,7 @@ describe('<NoteContent /> external change handling', () => {
 
         expect(storedDraft.title).toBe('Recovered title');
 
-        await user.click(screen.getByRole('button', { name: 'Retry save' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Retry save' }));
 
         await waitFor(() => expect(updateNote).toHaveBeenCalledTimes(2));
         await waitFor(() => {
@@ -512,7 +497,6 @@ describe('<NoteContent /> external change handling', () => {
     });
 
     it('saves a failed draft as a new note without retrying the failed original save', async () => {
-        const user = userEvent.setup();
         const initialNote = createNote({
             title: 'Initial title',
             content: createContent('Initial body'),
@@ -539,13 +523,12 @@ describe('<NoteContent /> external change handling', () => {
         renderNote(initialNote);
 
         const titleInput = await screen.findByPlaceholderText('Title');
-        await user.clear(titleInput);
-        await user.type(titleInput, 'Recovered title');
-        await user.click(screen.getByRole('button', { name: 'Save' }));
+        fireEvent.change(titleInput, { target: { value: 'Recovered title' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
         expect(await screen.findByText(/Save failed. Your latest draft is still available here/)).toBeInTheDocument();
 
-        await user.click(screen.getByRole('button', { name: 'Save as new note' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Save as new note' }));
 
         expect(createNoteApi).toHaveBeenCalledWith({
             title: 'Recovered title',
@@ -553,7 +536,9 @@ describe('<NoteContent /> external change handling', () => {
             layout: 'wide',
         });
         expect(updateNote).toHaveBeenCalledTimes(1);
-        expect(window.localStorage.getItem(getDraftStorageKey(initialNote.id))).toBeNull();
+        await waitFor(() => {
+            expect(window.localStorage.getItem(getDraftStorageKey(initialNote.id))).toBeNull();
+        });
         expect(mockNavigate).toHaveBeenCalledWith({
             to: '/$id',
             params: { id: 'new-note-id' },
@@ -561,7 +546,6 @@ describe('<NoteContent /> external change handling', () => {
     });
 
     it('restores a saved browser draft into the editor', async () => {
-        const user = userEvent.setup();
         const initialNote = createNote({
             title: 'Initial title',
             content: createContent('Initial body'),
@@ -588,7 +572,7 @@ describe('<NoteContent /> external change handling', () => {
 
         expect(await screen.findByText(/A draft from/)).toBeInTheDocument();
 
-        await user.click(screen.getByRole('button', { name: 'Restore draft' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Restore draft' }));
 
         expect(screen.getByPlaceholderText('Title')).toHaveValue('Browser draft title');
         expect(screen.getByLabelText('Editor')).toHaveValue('Browser draft body');

@@ -4,7 +4,7 @@ import { useCallback, useRef } from 'react';
 import { CodeBlockCopyButton } from './CodeBlockCopyButton';
 
 type DefaultCodeBlockSpec = typeof defaultBlockSpecs.codeBlock;
-type CodeBlockProps = ReactCustomBlockRenderProps<'codeBlock', DefaultCodeBlockSpec['config']['propSchema'], 'inline'>;
+type CodeBlockProps = ReactCustomBlockRenderProps<DefaultCodeBlockSpec['config']>;
 
 export const CodeBlock = ({ contentRef }: CodeBlockProps) => {
     const codeRef = useRef<HTMLElement | null>(null);

@@ -38,6 +38,7 @@ import useNoteMutate from '~/hooks/resource/useNoteMutate';
 import { useNoteSaveController } from '~/hooks/useNoteSaveController';
 import type { Note, NoteLayout, NoteProperty, NotePropertyValueType } from '~/models/note.model';
 import { replaceFixedPlaceholder } from '~/modules/fixed-placeholder';
+import { createMarkdownDocumentExport } from '~/modules/note-export';
 import { queryKeys } from '~/modules/query-key-factory';
 import { publishClientNoteUpdatedEvent, subscribeServerEvent } from '~/modules/server-events';
 import { getRecentTimeSinceRefreshDelay, recentTimeSince } from '~/modules/time';
@@ -960,7 +961,7 @@ export function NoteContent({ id }: NoteContentProps) {
         }
 
         try {
-            await navigator.clipboard.writeText(markdown);
+            await navigator.clipboard.writeText(createMarkdownDocumentExport(markdown, getExportMetadata()));
             toast('Copied note as Markdown.');
         } catch {
             toast('Failed to copy Markdown.');

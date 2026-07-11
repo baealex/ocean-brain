@@ -34,13 +34,37 @@ describe('note-export', () => {
 
     it('omits local image assets from document-only markdown exports', () => {
         const markdown = createMarkdownDocumentExport(
-            'Before\n![Local](/assets/images/2026/4/15/photo.png)\n![External](https://example.com/external.png)',
+            [
+                'Before',
+                '![Local](/assets/images/2026/4/15/photo.png)',
+                '![(image) sample building photo.png](/assets/images/2024/8/13/1723517460089.png)',
+                '![[[[]]] ((()))](/assets/images/nested/alt.png)',
+                '![Title](/assets/images/with-title.png "Local title")',
+                '![Paren URL](/assets/images/path/image(foo).png)',
+                '![Angle URL](</assets/images/path/image(bar).png> "Angle title")',
+                '![External](https://example.com/external.png)',
+                '![External Paren](https://example.com/image(foo).png "External title")',
+            ].join('\n'),
             { id: '123', title: 'Hello' },
         );
 
-        expect(markdown).toContain('<!-- Local Ocean Brain image omitted from document-only export. -->');
+        expect(markdown).toBe(
+            [
+                'Before',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '![External](https://example.com/external.png)',
+                '![External Paren](https://example.com/image(foo).png "External title")',
+            ].join('\n'),
+        );
         expect(markdown).not.toContain('/assets/images/');
+        expect(markdown).not.toContain('![(image) sample building photo.png]');
         expect(markdown).toContain('![External](https://example.com/external.png)');
+        expect(markdown).toContain('![External Paren](https://example.com/image(foo).png "External title")');
     });
 
     it('exports local image assets into a markdown zip and rewrites markdown image paths', async () => {
@@ -73,7 +97,9 @@ describe('note-export', () => {
             { id: '123', title: 'Hello' },
         );
 
-        expect(html).toContain('<!-- Local Ocean Brain image omitted from document-only export. -->');
+        expect(html).toBe(
+            '<figure><figcaption>Local photo</figcaption></figure><img src="https://example.com/external.png" alt="External">',
+        );
         expect(html).not.toContain('/assets/images/');
         expect(html).toContain('<figcaption>Local photo</figcaption>');
         expect(html).toContain('src="https://example.com/external.png"');
@@ -85,7 +111,7 @@ describe('note-export', () => {
             { id: '123', title: 'Hello' },
         );
 
-        expect(html).toContain('<!-- Local Ocean Brain image omitted from document-only export. -->');
+        expect(html).toBe('<p data-copy="<img src=\'/assets/images/not-real.png\'>">Text</p>');
         expect(html).not.toContain('src=/assets/images/a/unquoted.png');
         expect(html).toContain('data-copy="<img src=\'/assets/images/not-real.png\'>"');
     });

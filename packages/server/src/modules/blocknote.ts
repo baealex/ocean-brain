@@ -749,7 +749,7 @@ function protectMarkdownLineEndHardBreakMarker(
 
     const placeholder = createHardBreakPlaceholder(placeholderToToken.size);
     const shouldPreserveAsHardBreak = hasContinuationLine && !hasUnclosedInlineCodeSpanAtLineEnd(line);
-    placeholderToToken.set(placeholder, shouldPreserveAsHardBreak ? '' : '\\');
+    placeholderToToken.set(placeholder, shouldPreserveAsHardBreak ? '\n' : '\\');
 
     return `${line.slice(0, -1)}${placeholder}`;
 }
@@ -912,6 +912,16 @@ function restoreProtectedText(text: string, placeholderToToken: Map<string, stri
     let restoredText = text;
 
     for (const [placeholder, token] of placeholderToToken.entries()) {
+        if (placeholder.startsWith(HARD_BREAK_PLACEHOLDER_PREFIX) && token === '\n') {
+            restoredText = restoredText
+                .split(`${placeholder} `)
+                .join(placeholder)
+                .split(`${placeholder}\n `)
+                .join(`${placeholder}\n`)
+                .split(`${placeholder}\r\n `)
+                .join(`${placeholder}\r\n`);
+        }
+
         restoredText = restoredText.split(placeholder).join(token);
     }
 

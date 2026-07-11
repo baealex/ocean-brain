@@ -16,7 +16,7 @@ test('unauthenticated users see the login page and authenticated users load the 
     await page.getByLabel('Password').fill('e2e-password');
     await page.getByRole('button', { name: 'Sign in' }).click();
 
-    await expect(page).toHaveURL('/');
+    await expect(page).toHaveURL((url) => url.pathname === '/');
     await expect(page.locator('#root')).not.toBeEmpty();
 
     expect(pageErrors).toEqual([]);

@@ -208,6 +208,7 @@
             const pageGeneration = generationMeta?.getAttribute('content');
             const generationHeader = 'X-Ocean-Brain-Session-Generation';
             const sessionEndpoint = '/api/auth/session';
+            const form = document.querySelector('form');
             let checkPromise;
             let submitting = false;
 
@@ -243,20 +244,21 @@
                 void checkForStaleLoginPage();
             });
 
-            document.querySelector('form')?.addEventListener('submit', async (event) => {
+            form?.addEventListener('submit', async (event) => {
+                event.preventDefault();
+
                 if (submitting) {
                     return;
                 }
 
-                event.preventDefault();
+                submitting = true;
 
                 const isStale = await checkForStaleLoginPage();
                 if (isStale) {
                     return;
                 }
 
-                submitting = true;
-                event.currentTarget.submit();
+                form.submit();
             });
         })();
     </script>

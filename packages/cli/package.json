@@ -32,7 +32,7 @@
     },
     "dependencies": {
         "@baejino/auth": "catalog:",
-        "@blocknote/server-util": "catalog:",
+        "@blocknote/core": "catalog:",
         "@graphql-tools/schema": "catalog:",
         "@graphql-tools/utils": "catalog:",
         "@modelcontextprotocol/sdk": "^1.29.0",
@@ -45,6 +45,7 @@
         "express-winston": "catalog:",
         "graphql-http": "catalog:",
         "lusca": "catalog:",
+        "jsdom": "catalog:",
         "prisma": "catalog:",
         "sqlite3": "catalog:",
         "winston": "catalog:",

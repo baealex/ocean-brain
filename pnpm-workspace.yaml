@@ -3,7 +3,7 @@ packages:
 
 catalog:
   '@baejino/auth': 0.1.1
-  '@blocknote/server-util': ^0.49.0
+  '@blocknote/core': ^0.49.0
   '@graphql-tools/schema': ^10.0.31
   '@graphql-tools/utils': ^11.0.0
   '@prisma/client': ^6.19.3
@@ -14,6 +14,7 @@ catalog:
   express-winston: ^4.2.0
   graphql-http: ^1.22.4
   lusca: ^1.7.0
+  jsdom: ^25.0.1
   prisma: ^6.19.3
   sqlite3: ^6.0.1
   winston: ^3.19.0

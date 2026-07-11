@@ -1,6 +1,6 @@
-import { ServerBlockNoteEditor } from '@blocknote/server-util';
 import { ensureTagByName } from '~/features/tag/services/organization.js';
 import models from '~/models.js';
+import { BlockNoteMarkdownEditor } from './blocknote-markdown-editor.js';
 
 interface BlockNote {
     id?: string;
@@ -1148,11 +1148,11 @@ function collectTagIds(blocks: BlockNote[]): string[] {
     return [...tagIds];
 }
 
-let editorInstance: ServerBlockNoteEditor | null = null;
+let editorInstance: BlockNoteMarkdownEditor | null = null;
 
-function getEditor(): ServerBlockNoteEditor {
+function getEditor(): BlockNoteMarkdownEditor {
     if (!editorInstance) {
-        editorInstance = ServerBlockNoteEditor.create();
+        editorInstance = BlockNoteMarkdownEditor.create();
     }
     return editorInstance;
 }
@@ -1222,7 +1222,7 @@ export async function markdownToBlocksJson(
 }
 
 async function parseMarkdownToContentJson(
-    editor: ServerBlockNoteEditor,
+    editor: BlockNoteMarkdownEditor,
     markdown: string,
     deps: MarkdownImportDeps,
     placeholderToTag: Map<string, string>,

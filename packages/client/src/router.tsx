@@ -220,6 +220,7 @@ const routeTree = rootRoute.addChildren([
 
 export const router = createRouter({
     routeTree,
+    defaultPreload: 'intent',
     defaultPendingComponent: () => <RoutePendingView title="Loading page" description="Preparing the next route." />,
 });
 

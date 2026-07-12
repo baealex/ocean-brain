@@ -3,7 +3,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 
 import { createNote, deleteNote, fetchBackReferences, pinNote } from '~/apis/note.api';
-import { NoteReferenceWarningModal } from '~/components/note';
+import NoteReferenceWarningModal from '~/components/note/NoteReferenceWarningModal';
 import { useConfirm, useToast } from '~/components/ui';
 import type { Note, NoteLayout } from '~/models/note.model';
 import { replaceFixedPlaceholder } from '~/modules/fixed-placeholder';

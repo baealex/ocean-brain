@@ -1,5 +1,6 @@
 import { BlockNoteView } from '@blocknote/mantine';
 import { useCreateBlockNote } from '@blocknote/react';
+import '@blocknote/mantine/style.css';
 import { forwardRef, type ClipboardEvent as ReactClipboardEvent, useImperativeHandle } from 'react';
 import { uploadImage } from '~/apis/image.api';
 import schema, { CommandView, ReferenceView, TagView } from '~/components/schema';

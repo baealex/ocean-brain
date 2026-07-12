@@ -1,6 +1,5 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import '@blocknote/mantine/style.css';
 
 import App from './App.tsx';
 import { installAuthRedirectInterceptor } from './modules/auth-redirect.ts';

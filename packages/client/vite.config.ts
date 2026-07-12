@@ -4,6 +4,7 @@ import path from 'path';
 import svgr from 'vite-plugin-svgr';
 import { defineConfig } from 'vitest/config';
 
+import { createClientRollupOptions, createRoutePreloadPlugin } from './build/client-bundling';
 import { createDevAuthGateMiddleware } from './src/dev-auth-gate';
 
 const backendOrigin = process.env.OCEAN_BRAIN_DEV_SERVER_URL || 'http://localhost:6683';
@@ -21,6 +22,7 @@ const imageUploadAdapterPath = isLocalOnlyDemoBuild
 // https://vitejs.dev/config/
 export default defineConfig({
     plugins: [
+        createRoutePreloadPlugin(),
         react(),
         svgr(),
         tailwindcss(),
@@ -50,15 +52,7 @@ export default defineConfig({
     },
     build: {
         sourcemap: false,
-        rollupOptions: {
-            output: {
-                manualChunks: {
-                    'graph-vendor': ['react-force-graph-2d'],
-                    'note-core': ['@blocknote/core'],
-                    'note-vendor': ['@blocknote/react', '@blocknote/mantine'],
-                },
-            },
-        },
+        rollupOptions: createClientRollupOptions(__dirname),
     },
     server: {
         host: '0.0.0.0',

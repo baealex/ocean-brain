@@ -197,6 +197,92 @@ describe('registerIntentWriteTools', () => {
         }]);
     });
 
+    test('forwards metadata and full replacement writes through their existing endpoints', async () => {
+        // Arrange
+        const { registeredTools, server } = createFakeMcpServer();
+        const tokenRequests: Array<{ token: string | undefined; toolName: string }> = [];
+        const requests: Array<{
+            serverUrl: string;
+            token: string | undefined;
+            pathName: string;
+            body: Record<string, unknown>;
+        }> = [];
+
+        registerIntentWriteTools(server, {
+            jsonRequest: async (serverUrl, token, pathName, body) => {
+                requests.push({ serverUrl, token, pathName, body });
+                return { status: 'applied', pathName };
+            },
+            requireWriteToken: (token, toolName) => {
+                tokenRequests.push({ token, toolName });
+                return 'write-token';
+            },
+            serverUrl: 'http://localhost:6683',
+            token: 'read-token',
+            tools: TOOL_NAMES
+        });
+        const metadataHandler = registeredTools.get(TOOL_NAMES.updateNoteMetadata)?.handler;
+        const replaceHandler = registeredTools.get(TOOL_NAMES.replaceNoteMarkdown)?.handler;
+
+        // Act
+        assert.ok(metadataHandler);
+        assert.ok(replaceHandler);
+        const metadataResult = parseToolText(await metadataHandler({
+            id: '7',
+            expectedUpdatedAt: '2026-06-04T10:00:00.000Z',
+            title: 'Updated title',
+            layout: 'wide',
+            properties: {
+                set: [{ key: 'state', value: 'done' }],
+                deleteKeys: ['project']
+            }
+        }));
+        const replaceResult = parseToolText(await replaceHandler({
+            id: '8',
+            baseMarkdownSha256: 'hash-a',
+            intent: 'Rewrite the whole note',
+            replacement: '# Replacement',
+            policy: { preserveTags: true }
+        }));
+
+        // Assert
+        assert.deepEqual(tokenRequests, [
+            { token: 'read-token', toolName: TOOL_NAMES.updateNoteMetadata },
+            { token: 'read-token', toolName: TOOL_NAMES.replaceNoteMarkdown }
+        ]);
+        assert.deepEqual(requests, [
+            {
+                serverUrl: 'http://localhost:6683',
+                token: 'write-token',
+                pathName: '/api/mcp/notes/metadata',
+                body: {
+                    id: '7',
+                    expectedUpdatedAt: '2026-06-04T10:00:00.000Z',
+                    title: 'Updated title',
+                    layout: 'wide',
+                    properties: {
+                        set: [{ key: 'state', value: 'done' }],
+                        deleteKeys: ['project']
+                    }
+                }
+            },
+            {
+                serverUrl: 'http://localhost:6683',
+                token: 'write-token',
+                pathName: '/api/mcp/notes/replace-markdown',
+                body: {
+                    id: '8',
+                    baseMarkdownSha256: 'hash-a',
+                    intent: 'Rewrite the whole note',
+                    replacement: '# Replacement',
+                    policy: { preserveTags: true }
+                }
+            }
+        ]);
+        assert.equal(metadataResult.pathName, '/api/mcp/notes/metadata');
+        assert.equal(replaceResult.pathName, '/api/mcp/notes/replace-markdown');
+    });
+
     test('describes write tools by edit unit instead of confirmation flow', () => {
         // Arrange
         const { registeredTools, server } = createFakeMcpServer();

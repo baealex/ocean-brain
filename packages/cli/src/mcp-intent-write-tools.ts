@@ -1,27 +1,17 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
+import {
+    createMcpJsonToolResult,
+    type McpWriteToolRegistrationInput,
+    noteLayoutSchema,
+} from './mcp-tool-support.js';
+
 interface IntentWriteToolNames {
     appendNoteMarkdown: string;
     patchNoteMarkdown: string;
     replaceNoteMarkdown: string;
     updateNoteMetadata: string;
-}
-
-type JsonRequest = <TResponse extends Record<string, unknown>>(
-    serverUrl: string,
-    token: string | undefined,
-    pathName: string,
-    body: Record<string, unknown>
-) => Promise<TResponse>;
-
-
-interface RegisterIntentWriteToolsInput {
-    jsonRequest: JsonRequest;
-    requireWriteToken: (token: string | undefined, toolName: string) => string;
-    serverUrl: string;
-    token?: string;
-    tools: IntentWriteToolNames;
 }
 
 interface DirectWriteResult extends Record<string, unknown> {
@@ -81,6 +71,11 @@ const markdownWritePolicySchema = z.object({
     preserveTags: z.union([z.boolean(), z.literal('warn')]).optional(),
     preserveReferences: z.union([z.boolean(), z.literal('warn')]).optional()
 }).optional();
+
+const markdownWriteBaselineFields = {
+    expectedUpdatedAt: z.string().optional().describe('Expected note updatedAt from the read you based this edit on. Required unless baseMarkdownSha256 is provided.'),
+    baseMarkdownSha256: z.string().optional().describe('SHA-256 of the current markdown. Optional alternative to expectedUpdatedAt.'),
+};
 
 export const MCP_METADATA_PROPERTY_PATCH_LIMIT = 50;
 
@@ -148,15 +143,14 @@ export const registerIntentWriteTools = (
         serverUrl,
         token,
         tools
-    }: RegisterIntentWriteToolsInput
+    }: McpWriteToolRegistrationInput<IntentWriteToolNames>
 ) => {
     server.tool(
         tools.patchNoteMarkdown,
         'Patch a specific part of a note, like finding text with `rg` and editing only that match. Use for localized edits: fix one sentence, replace one paragraph, insert before/after exact text, or edit one section. Do not use for whole-note rewrites; use ocean_brain_replace_note_markdown instead.',
         {
             id: z.string().describe('Note ID to patch'),
-            expectedUpdatedAt: z.string().optional().describe('Expected note updatedAt from the read you based this edit on. Required unless baseMarkdownSha256 is provided.'),
-            baseMarkdownSha256: z.string().optional().describe('SHA-256 of the current markdown. Optional alternative to expectedUpdatedAt.'),
+            ...markdownWriteBaselineFields,
             intent: z.string().describe('Human-readable reason for the patch.'),
             selector: markdownPatchSelectorSchema.describe('Exact text or previously returned match candidate.'),
             operation: markdownPatchOperationSchema.describe('replace, insert_before, or insert_after.'),
@@ -175,12 +169,7 @@ export const registerIntentWriteTools = (
             };
             const result = await jsonRequest<DirectWriteResult>(serverUrl, writeToken, '/api/mcp/notes/patch-markdown', payload);
 
-            return {
-                content: [{
-                    type: 'text' as const,
-                    text: JSON.stringify(result, null, 2)
-                }]
-            };
+            return createMcpJsonToolResult(result);
         }
     );
 
@@ -189,8 +178,7 @@ export const registerIntentWriteTools = (
         'Append markdown without changing existing content, like `cat addition.md >> note.md`. Use for adding logs, status updates, meeting notes, or new sections at the end or after a heading. Do not use to modify or replace existing body content.',
         {
             id: z.string().describe('Note ID to append to'),
-            expectedUpdatedAt: z.string().optional().describe('Expected note updatedAt from the read you based this edit on. Required unless baseMarkdownSha256 is provided.'),
-            baseMarkdownSha256: z.string().optional().describe('SHA-256 of the current markdown. Optional alternative to expectedUpdatedAt.'),
+            ...markdownWriteBaselineFields,
             intent: z.string().describe('Human-readable reason for the append.'),
             insertion: z.string().describe('Markdown to append. Tags are body tokens such as [@tag] or [#tag].'),
             placement: markdownAppendPlacementSchema.optional().describe('Default is end. after_heading requires one unique matching heading.'),
@@ -211,12 +199,7 @@ export const registerIntentWriteTools = (
             };
             const result = await jsonRequest<DirectWriteResult>(serverUrl, writeToken, '/api/mcp/notes/append-markdown', payload);
 
-            return {
-                content: [{
-                    type: 'text' as const,
-                    text: JSON.stringify(result, null, 2)
-                }]
-            };
+            return createMcpJsonToolResult(result);
         }
     );
 
@@ -227,7 +210,7 @@ export const registerIntentWriteTools = (
             id: z.string().describe('Note ID to update'),
             expectedUpdatedAt: z.string().describe('Expected note updatedAt from the read you based this metadata edit on. Required to prevent stale writes.'),
             title: z.string().optional().describe('New note title'),
-            layout: z.enum(['narrow', 'wide', 'full']).optional().describe('New note layout'),
+            layout: noteLayoutSchema.optional().describe('New note layout'),
             properties: metadataPropertyPatchSchema.describe('Patch existing shared property values. Include set and/or deleteKeys; empty patches are rejected.')
         },
         async ({ id, expectedUpdatedAt, title, layout, properties }) => {
@@ -241,12 +224,7 @@ export const registerIntentWriteTools = (
             };
             const result = await jsonRequest<DirectWriteResult>(serverUrl, writeToken, '/api/mcp/notes/metadata', payload);
 
-            return {
-                content: [{
-                    type: 'text' as const,
-                    text: JSON.stringify(result, null, 2)
-                }]
-            };
+            return createMcpJsonToolResult(result);
         }
     );
 
@@ -255,8 +233,7 @@ export const registerIntentWriteTools = (
         'Replace the entire note body, like overwriting a markdown file with `cat new.md > note.md`. Use when the user explicitly asks to rewrite, replace, regenerate, restructure, or overwrite the whole note. Do not use for localized edits such as fixing one sentence, changing one paragraph, or inserting under a heading; use ocean_brain_patch_note_markdown instead.',
         {
             id: z.string().describe('Note ID to replace'),
-            expectedUpdatedAt: z.string().optional().describe('Expected note updatedAt from the read you based this edit on. Required unless baseMarkdownSha256 is provided.'),
-            baseMarkdownSha256: z.string().optional().describe('SHA-256 of the current markdown. Optional alternative to expectedUpdatedAt.'),
+            ...markdownWriteBaselineFields,
             intent: z.string().describe('Human-readable reason for the full replace.'),
             replacement: z.string().describe('Complete replacement markdown body. Tags are body tokens such as [@tag] or [#tag].'),
             policy: markdownWritePolicySchema
@@ -273,12 +250,7 @@ export const registerIntentWriteTools = (
             };
             const result = await jsonRequest<DirectWriteResult>(serverUrl, writeToken, '/api/mcp/notes/replace-markdown', payload);
 
-            return {
-                content: [{
-                    type: 'text' as const,
-                    text: JSON.stringify(result, null, 2)
-                }]
-            };
+            return createMcpJsonToolResult(result);
         }
     );
 };

@@ -1,9 +1,14 @@
 import { BlockNoteView } from '@blocknote/mantine';
 import { useCreateBlockNote } from '@blocknote/react';
-import { forwardRef, useImperativeHandle } from 'react';
+import { forwardRef, type ClipboardEvent as ReactClipboardEvent, useImperativeHandle } from 'react';
 import { uploadImage } from '~/apis/image.api';
 import schema, { CommandView, ReferenceView, TagView } from '~/components/schema';
 import { useToast } from '~/components/ui';
+import {
+    formatBlockNoteMarkdownForExport,
+    handleBlockNotePaste,
+    normalizeBlockNoteCopy,
+} from '~/modules/blocknote-clipboard';
 import {
     type MarkdownBlock,
     prepareBlocksForMarkdown,
@@ -38,6 +43,7 @@ const Editor = forwardRef<EditorRef, EditorProps>(({ content, currentNoteId, edi
         {
             schema,
             initialContent: (content && JSON.parse(content)) || undefined,
+            pasteHandler: (context) => handleBlockNotePaste(context),
             uploadFile: async (file, blockId) => {
                 const removePendingBlock = () => {
                     if (blockId && editor.getBlock(blockId)) {
@@ -74,7 +80,9 @@ const Editor = forwardRef<EditorRef, EditorProps>(({ content, currentNoteId, edi
                     prepared.blocks as Parameters<typeof editor.blocksToMarkdownLossy>[0],
                 );
 
-                return restoreTagPlaceholdersInMarkdown(markdown, prepared.placeholderToTag);
+                return formatBlockNoteMarkdownForExport(
+                    restoreTagPlaceholdersInMarkdown(markdown, prepared.placeholderToTag),
+                );
             },
             getHtml: () => {
                 return editor.blocksToHTMLLossy(editor.document);
@@ -82,8 +90,20 @@ const Editor = forwardRef<EditorRef, EditorProps>(({ content, currentNoteId, edi
         };
     });
 
+    const handleClipboardWrite = (event: ReactClipboardEvent) => {
+        normalizeBlockNoteCopy(event.clipboardData);
+    };
+
     return (
-        <BlockNoteView slashMenu={false} theme={theme} editor={editor} editable={editable} onChange={onChange}>
+        <BlockNoteView
+            slashMenu={false}
+            theme={theme}
+            editor={editor}
+            editable={editable}
+            onChange={onChange}
+            onCopy={handleClipboardWrite}
+            onCut={handleClipboardWrite}
+        >
             <CommandView editor={editor} />
             <ReferenceView
                 currentNoteId={currentNoteId}

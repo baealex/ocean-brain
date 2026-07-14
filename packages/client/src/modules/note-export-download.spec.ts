@@ -1,5 +1,7 @@
+import { cleanHTMLToMarkdown, markdownToHTML } from '@blocknote/core';
 import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
+import { formatBlockNoteMarkdownForExport } from './blocknote-clipboard';
 import { createNoteExportBlob, getNoteExportOutputExtension } from './note-export-download';
 
 const metadata = {
@@ -53,6 +55,31 @@ describe('note-export-download', () => {
         expect(result.blob.type).toBe('text/markdown;charset=utf-8');
         expect(await result.blob.text()).toContain('Hello');
         expect(await result.blob.text()).not.toContain('/assets/images/');
+    });
+
+    it('keeps document-only markdown downloads portable at ambiguous emphasis boundaries', async () => {
+        const serialized = cleanHTMLToMarkdown(
+            '<p>Prefix <strong>value!</strong>suffix. <a href="https://example.com/?first=1&amp;second=2">Reference</a></p>',
+        );
+
+        const result = await createNoteExportBlob({
+            format: 'markdown',
+            includeAssets: false,
+            includeMetadata: false,
+            metadata,
+            source: {
+                getHtml: () => undefined,
+                getMarkdown: () => formatBlockNoteMarkdownForExport(serialized),
+            },
+        });
+
+        expect(result.type).toBe('success');
+        if (result.type !== 'success') return;
+        const markdown = await result.blob.text();
+        expect(markdown).toContain('&#x73;');
+        expect(markdownToHTML(markdown)).toContain('<strong>value!</strong>suffix.');
+        expect(markdown).toContain('[Reference](https://example.com/?first=1&second=2)');
+        expect(markdown).not.toContain('\\&');
     });
 
     it('creates a zip download blob when assets are included', async () => {

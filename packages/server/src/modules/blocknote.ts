@@ -375,7 +375,10 @@ function replaceExplicitReferenceTokens(
 }
 
 const MARKDOWN_ANGLE_BRACKET_TOKEN_PATTERN = /<([^<>\n]+)>/g;
-const MARKDOWN_NUMERIC_TILDE_RANGE_PATTERN = /(\d)~(?=\d)/g;
+const TILDE_RUN_PATTERN = /~+/g;
+const NUMERIC_ENDPOINT_TOKEN_CHARACTER_PATTERN = /[\p{L}\p{M}\p{N}\p{Sc}%‰.,+\-/:°℃℉µμ·²³^]/u;
+const NUMERIC_ENDPOINT_START_PATTERN = /^(?:[+-]?\p{Sc}?|\p{Sc}[+-]?)\p{N}/u;
+const NUMERIC_CHARACTER_REFERENCE_PATTERN = /&#(?:x[0-9a-f]+|\d+);/giu;
 const MARKDOWN_FENCED_CODE_PATTERN = /^ {0,3}(`{3,}|~{3,})/;
 const ANGLE_BRACKET_PLACEHOLDER_PREFIX = '\uE000OBANGLE';
 const ANGLE_BRACKET_PLACEHOLDER_SUFFIX = '\uE001';
@@ -432,23 +435,52 @@ export function hasLiteralAngleBracketTextTokenLoss(sourceMarkdown: string, rend
     return false;
 }
 
-function countNumericTildeRangeMarkers(markdown: string) {
-    return [...markdown.matchAll(MARKDOWN_NUMERIC_TILDE_RANGE_PATTERN)].length;
+function getNumericTildeRangeRunSignatures(markdown: string) {
+    const normalizedMarkdown = markdown.replace(/\\(?=~)/g, '');
+    return getNumericTildeRangeRuns(normalizedMarkdown).map((run) => {
+        const leftEndpoint = getNumericEndpointBefore(normalizedMarkdown, run.start);
+        const rightEndpoint = getNumericEndpointAfter(normalizedMarkdown, run.start + run.length);
+
+        return JSON.stringify([leftEndpoint, run.length, rightEndpoint]);
+    });
 }
 
 export function hasNumericTildeRangeMarkers(markdown: string) {
-    return countNumericTildeRangeMarkers(markdown) > 0;
+    return getNumericTildeRangeRunSignatures(markdown).length > 0;
 }
 
 export function hasNumericTildeRangeMarkerLoss(sourceMarkdown: string, renderedMarkdown: string) {
-    const sourceCount = countNumericTildeRangeMarkers(sourceMarkdown);
+    const sourceRunSignatures = getNumericTildeRangeRunSignatures(sourceMarkdown);
 
-    return sourceCount > 0 && countNumericTildeRangeMarkers(renderedMarkdown) < sourceCount;
+    if (sourceRunSignatures.length === 0) {
+        return false;
+    }
+
+    const renderedRunSignatures = getNumericTildeRangeRunSignatures(renderedMarkdown);
+    let renderedIndex = 0;
+
+    for (const sourceRunSignature of sourceRunSignatures) {
+        while (
+            renderedIndex < renderedRunSignatures.length &&
+            renderedRunSignatures[renderedIndex] !== sourceRunSignature
+        ) {
+            renderedIndex += 1;
+        }
+
+        if (renderedIndex === renderedRunSignatures.length) {
+            return true;
+        }
+
+        renderedIndex += 1;
+    }
+
+    return false;
 }
 
 function protectMarkdownNumericTildeRanges(markdown: string) {
     const protectedLines: string[] = [];
     const placeholderToToken = new Map<string, string>();
+    const createPlaceholder = createNumericTildeRangePlaceholderFactory(markdown);
     let activeFence: { marker: '`' | '~'; length: number } | null = null;
 
     for (const line of markdown.split(/(?<=\n)/)) {
@@ -480,7 +512,9 @@ function protectMarkdownNumericTildeRanges(markdown: string) {
             continue;
         }
 
-        protectedLines.push(`${protectMarkdownLineNumericTildeRanges(lineBody, placeholderToToken)}${lineEnding}`);
+        protectedLines.push(
+            `${protectMarkdownLineNumericTildeRanges(lineBody, placeholderToToken, createPlaceholder)}${lineEnding}`,
+        );
     }
 
     return {
@@ -492,6 +526,11 @@ function protectMarkdownNumericTildeRanges(markdown: string) {
 function protectMarkdownLineEndHardBreakMarkers(markdown: string) {
     const protectedLines: string[] = [];
     const placeholderToToken = new Map<string, string>();
+    const createPlaceholder = createProtectedTextPlaceholderFactory(
+        markdown,
+        HARD_BREAK_PLACEHOLDER_PREFIX,
+        HARD_BREAK_PLACEHOLDER_SUFFIX,
+    );
     let activeFence: { marker: '`' | '~'; length: number } | null = null;
     const lines = markdown.split(/(?<=\n)/);
 
@@ -531,6 +570,7 @@ function protectMarkdownLineEndHardBreakMarkers(markdown: string) {
                 lineEnding,
                 isMarkdownHardBreakContinuationLine(nextLineBody),
                 placeholderToToken,
+                createPlaceholder,
             )}${lineEnding}`,
         );
     }
@@ -544,6 +584,11 @@ function protectMarkdownLineEndHardBreakMarkers(markdown: string) {
 function protectMarkdownTextAngleBrackets(markdown: string) {
     const protectedLines: string[] = [];
     const placeholderToToken = new Map<string, string>();
+    const createPlaceholder = createProtectedTextPlaceholderFactory(
+        markdown,
+        ANGLE_BRACKET_PLACEHOLDER_PREFIX,
+        ANGLE_BRACKET_PLACEHOLDER_SUFFIX,
+    );
     let activeFence: { marker: '`' | '~'; length: number } | null = null;
 
     for (const line of markdown.split(/(?<=\n)/)) {
@@ -575,7 +620,9 @@ function protectMarkdownTextAngleBrackets(markdown: string) {
             continue;
         }
 
-        protectedLines.push(`${protectMarkdownLineTextAngleBrackets(lineBody, placeholderToToken)}${lineEnding}`);
+        protectedLines.push(
+            `${protectMarkdownLineTextAngleBrackets(lineBody, placeholderToToken, createPlaceholder)}${lineEnding}`,
+        );
     }
 
     return {
@@ -610,37 +657,39 @@ function isClosingFenceLine(line: string, fence: { marker: '`' | '~'; length: nu
     return new RegExp(`^ {0,3}${escapedMarker}{${fence.length},} *$`).test(line);
 }
 
-function protectMarkdownLineTextAngleBrackets(line: string, placeholderToToken: Map<string, string>) {
+function protectMarkdownLineTextAngleBrackets(
+    line: string,
+    placeholderToToken: Map<string, string>,
+    createPlaceholder: () => string,
+) {
     let result = '';
     let cursor = 0;
 
     while (cursor < line.length) {
-        const codeStart = line.indexOf('`', cursor);
+        const codeSpan = findNextInlineCodeSpan(line, cursor);
 
-        if (codeStart === -1) {
-            result += replaceLiteralAngleBracketTextTokens(line.slice(cursor), placeholderToToken);
+        if (!codeSpan) {
+            result += replaceLiteralAngleBracketTextTokens(line.slice(cursor), placeholderToToken, createPlaceholder);
             break;
         }
 
-        result += replaceLiteralAngleBracketTextTokens(line.slice(cursor, codeStart), placeholderToToken);
-
-        const delimiterLength = countRepeatedCharacter(line, codeStart, '`');
-        const codeEnd = line.indexOf('`'.repeat(delimiterLength), codeStart + delimiterLength);
-
-        if (codeEnd === -1) {
-            result += replaceLiteralAngleBracketTextTokens(line.slice(codeStart), placeholderToToken);
-            break;
-        }
-
-        const codeEndExclusive = codeEnd + delimiterLength;
-        result += line.slice(codeStart, codeEndExclusive);
-        cursor = codeEndExclusive;
+        result += replaceLiteralAngleBracketTextTokens(
+            line.slice(cursor, codeSpan.start),
+            placeholderToToken,
+            createPlaceholder,
+        );
+        result += line.slice(codeSpan.start, codeSpan.end);
+        cursor = codeSpan.end;
     }
 
     return result;
 }
 
-function protectMarkdownLineNumericTildeRanges(line: string, placeholderToToken: Map<string, string>) {
+function protectMarkdownLineNumericTildeRanges(
+    line: string,
+    placeholderToToken: Map<string, string>,
+    createPlaceholder: () => string,
+) {
     let result = '';
     let cursor = 0;
 
@@ -648,11 +697,15 @@ function protectMarkdownLineNumericTildeRanges(line: string, placeholderToToken:
         const protectedSpan = findNextMarkdownProtectedSpan(line, cursor);
 
         if (!protectedSpan) {
-            result += replaceNumericTildeRangeMarkers(line.slice(cursor), placeholderToToken);
+            result += replaceNumericTildeRangeMarkers(line.slice(cursor), placeholderToToken, createPlaceholder);
             break;
         }
 
-        result += replaceNumericTildeRangeMarkers(line.slice(cursor, protectedSpan.start), placeholderToToken);
+        result += replaceNumericTildeRangeMarkers(
+            line.slice(cursor, protectedSpan.start),
+            placeholderToToken,
+            createPlaceholder,
+        );
         result += line.slice(protectedSpan.start, protectedSpan.end);
         cursor = protectedSpan.end;
     }
@@ -661,38 +714,37 @@ function protectMarkdownLineNumericTildeRanges(line: string, placeholderToToken:
 }
 
 function findNextMarkdownProtectedSpan(line: string, cursor: number) {
-    const codeSpan = findNextInlineCodeSpan(line, cursor);
-    const linkDestinationSpan = findNextMarkdownLinkDestinationSpan(line, cursor);
+    return [
+        findNextInlineCodeSpan(line, cursor),
+        findNextMarkdownLinkDestinationSpan(line, cursor),
+        findNextMarkdownAngleBracketSpan(line, cursor),
+    ].reduce<{ start: number; end: number } | null>((nextSpan, span) => {
+        if (!span || (nextSpan && nextSpan.start <= span.start)) {
+            return nextSpan;
+        }
 
-    if (!codeSpan) {
-        return linkDestinationSpan;
-    }
-
-    if (!linkDestinationSpan) {
-        return codeSpan;
-    }
-
-    return codeSpan.start <= linkDestinationSpan.start ? codeSpan : linkDestinationSpan;
+        return span;
+    }, null);
 }
 
 function findNextInlineCodeSpan(line: string, cursor: number) {
-    const codeStart = line.indexOf('`', cursor);
+    let codeStart = line.indexOf('`', cursor);
 
-    if (codeStart === -1) {
-        return null;
+    while (codeStart !== -1) {
+        const delimiterLength = countRepeatedCharacter(line, codeStart, '`');
+
+        if (!isEscapedMarkdownCharacter(line, codeStart)) {
+            const end = findMatchingBacktickRunEnd(line, codeStart, delimiterLength);
+
+            if (end !== null) {
+                return { start: codeStart, end };
+            }
+        }
+
+        codeStart = line.indexOf('`', codeStart + delimiterLength);
     }
 
-    const delimiterLength = countRepeatedCharacter(line, codeStart, '`');
-    const codeEnd = line.indexOf('`'.repeat(delimiterLength), codeStart + delimiterLength);
-
-    if (codeEnd === -1) {
-        return null;
-    }
-
-    return {
-        start: codeStart,
-        end: codeEnd + delimiterLength,
-    };
+    return null;
 }
 
 function findNextMarkdownLinkDestinationSpan(line: string, cursor: number) {
@@ -703,37 +755,196 @@ function findNextMarkdownLinkDestinationSpan(line: string, cursor: number) {
     }
 
     const destinationStart = linkDestinationPrefix + 2;
-    const destinationEnd = line.indexOf(')', destinationStart);
+    let parenthesisDepth = 0;
 
-    if (destinationEnd === -1) {
+    for (let destinationEnd = destinationStart; destinationEnd < line.length; destinationEnd += 1) {
+        const character = line[destinationEnd];
+
+        if (character === '\\') {
+            destinationEnd += 1;
+            continue;
+        }
+
+        if (character === '(') {
+            parenthesisDepth += 1;
+            continue;
+        }
+
+        if (character !== ')') {
+            continue;
+        }
+
+        if (parenthesisDepth > 0) {
+            parenthesisDepth -= 1;
+            continue;
+        }
+
+        return {
+            start: destinationStart,
+            end: destinationEnd,
+        };
+    }
+
+    return null;
+}
+
+function findNextMarkdownAngleBracketSpan(line: string, cursor: number) {
+    const start = line.indexOf('<', cursor);
+
+    if (start === -1) {
         return null;
     }
 
-    return {
-        start: destinationStart,
-        end: destinationEnd,
-    };
+    const end = line.indexOf('>', start + 1);
+
+    if (end === -1) {
+        return null;
+    }
+
+    return { start, end: end + 1 };
 }
 
-function replaceLiteralAngleBracketTextTokens(text: string, placeholderToToken: Map<string, string>) {
+function replaceLiteralAngleBracketTextTokens(
+    text: string,
+    placeholderToToken: Map<string, string>,
+    createPlaceholder: () => string,
+) {
     return text.replace(MARKDOWN_ANGLE_BRACKET_TOKEN_PATTERN, (match, innerText: string) => {
         if (isMarkdownAutolinkAngleBracketText(innerText)) {
             return match;
         }
 
-        const placeholder = createAngleBracketPlaceholder(placeholderToToken.size);
+        const placeholder = createPlaceholder();
         placeholderToToken.set(placeholder, match);
 
         return placeholder;
     });
 }
 
-function replaceNumericTildeRangeMarkers(text: string, placeholderToToken: Map<string, string>) {
-    return text.replace(MARKDOWN_NUMERIC_TILDE_RANGE_PATTERN, (match, leadingDigit: string) => {
-        const placeholder = createNumericTildeRangePlaceholder(placeholderToToken.size);
-        placeholderToToken.set(placeholder, '~');
+function isPotentialNumericTildeRangeRun(value: string, start: number, end: number) {
+    if (end - start > 2) {
+        return false;
+    }
 
-        return `${leadingDigit}${placeholder}`;
+    return getNumericEndpointBefore(value, start) !== null && getNumericEndpointAfter(value, end) !== null;
+}
+
+function findEndpointTokenBefore(value: string, end: number) {
+    let start = end;
+
+    while (start > 0 && NUMERIC_ENDPOINT_TOKEN_CHARACTER_PATTERN.test(value[start - 1] ?? '')) {
+        start -= 1;
+    }
+
+    return {
+        start,
+        token: value.slice(start, end),
+    };
+}
+
+function findEndpointTokenAfter(value: string, start: number) {
+    let end = start;
+
+    while (end < value.length && NUMERIC_ENDPOINT_TOKEN_CHARACTER_PATTERN.test(value[end] ?? '')) {
+        end += 1;
+    }
+
+    return value.slice(start, end);
+}
+
+function getNumericEndpointBefore(value: string, end: number) {
+    const endpoint = findEndpointTokenBefore(value, end);
+
+    if (NUMERIC_ENDPOINT_START_PATTERN.test(endpoint.token)) {
+        return endpoint.token;
+    }
+
+    if (!endpoint.token) {
+        return null;
+    }
+
+    let previousEnd = endpoint.start;
+
+    while (previousEnd > 0 && (value[previousEnd - 1] === ' ' || value[previousEnd - 1] === '\t')) {
+        previousEnd -= 1;
+    }
+
+    if (previousEnd === endpoint.start) {
+        return null;
+    }
+
+    const previousEndpoint = findEndpointTokenBefore(value, previousEnd);
+
+    return NUMERIC_ENDPOINT_START_PATTERN.test(previousEndpoint.token)
+        ? value.slice(previousEndpoint.start, end)
+        : null;
+}
+
+function getNumericEndpointAfter(value: string, start: number) {
+    const endpoint = findEndpointTokenAfter(value, start);
+    return NUMERIC_ENDPOINT_START_PATTERN.test(endpoint) ? endpoint : null;
+}
+
+function getNumericTildeRangeRuns(value: string) {
+    const numericRuns: Array<{ length: number; start: number }> = [];
+    const pendingNumericBoundaryStrikeOpeners = new Set<number>();
+
+    for (const match of value.matchAll(TILDE_RUN_PATTERN)) {
+        const start = match.index;
+        const length = match[0].length;
+        const end = start + length;
+
+        if (length > 2) {
+            continue;
+        }
+
+        const canOpen = end < value.length && !/\s/u.test(value[end] ?? '');
+        const canClose = start > 0 && !/\s/u.test(value[start - 1] ?? '');
+        const isNumericRange = isPotentialNumericTildeRangeRun(value, start, end);
+
+        if (isNumericRange) {
+            // Preserve a valid legacy strike atomically when only its closing
+            // delimiter also resembles a numeric range, e.g. 1~deleted 2~3.
+            if (canClose && pendingNumericBoundaryStrikeOpeners.delete(length)) {
+                continue;
+            }
+
+            numericRuns.push({ length, start });
+            continue;
+        }
+
+        if (canClose && pendingNumericBoundaryStrikeOpeners.delete(length)) {
+            continue;
+        }
+
+        if (canOpen && getNumericEndpointBefore(value, start) !== null) {
+            pendingNumericBoundaryStrikeOpeners.add(length);
+        }
+    }
+
+    return numericRuns;
+}
+
+function replaceNumericTildeRangeMarkers(
+    text: string,
+    placeholderToToken: Map<string, string>,
+    createPlaceholder: () => string,
+) {
+    const numericRunStarts = new Set(getNumericTildeRangeRuns(text).map((run) => run.start));
+
+    return text.replace(TILDE_RUN_PATTERN, (tildeRun: string, offset: number) => {
+        if (!numericRunStarts.has(offset)) {
+            return tildeRun;
+        }
+
+        return [...tildeRun]
+            .map(() => {
+                const placeholder = createPlaceholder();
+                placeholderToToken.set(placeholder, '~');
+
+                return placeholder;
+            })
+            .join('');
     });
 }
 
@@ -742,12 +953,13 @@ function protectMarkdownLineEndHardBreakMarker(
     lineEnding: string,
     hasContinuationLine: boolean,
     placeholderToToken: Map<string, string>,
+    createPlaceholder: () => string,
 ) {
     if (!lineEnding || !line.endsWith('\\')) {
         return line;
     }
 
-    const placeholder = createHardBreakPlaceholder(placeholderToToken.size);
+    const placeholder = createPlaceholder();
     const shouldPreserveAsHardBreak = hasContinuationLine && !hasUnclosedInlineCodeSpanAtLineEnd(line);
     placeholderToToken.set(placeholder, shouldPreserveAsHardBreak ? '\n' : '\\');
 
@@ -804,16 +1016,46 @@ function hasUnclosedInlineCodeSpanAtLineEnd(line: string) {
     return openDelimiter !== null;
 }
 
-function createAngleBracketPlaceholder(index: number) {
-    return `${ANGLE_BRACKET_PLACEHOLDER_PREFIX}${index}${ANGLE_BRACKET_PLACEHOLDER_SUFFIX}`;
+function decodeNumericCharacterReference(reference: string) {
+    const value = reference.slice(2, -1);
+    const isHexadecimal = value[0]?.toLowerCase() === 'x';
+    const codePoint = Number.parseInt(isHexadecimal ? value.slice(1) : value, isHexadecimal ? 16 : 10);
+
+    if (!Number.isSafeInteger(codePoint) || codePoint < 0 || codePoint > 0x10ffff) {
+        return reference;
+    }
+
+    return String.fromCodePoint(codePoint);
 }
 
-function createNumericTildeRangePlaceholder(index: number) {
-    return `${NUMERIC_TILDE_RANGE_PLACEHOLDER_PREFIX}${index}${NUMERIC_TILDE_RANGE_PLACEHOLDER_SUFFIX}`;
+function createNumericTildeRangePlaceholderFactory(markdown: string) {
+    return createProtectedTextPlaceholderFactory(
+        markdown,
+        NUMERIC_TILDE_RANGE_PLACEHOLDER_PREFIX,
+        NUMERIC_TILDE_RANGE_PLACEHOLDER_SUFFIX,
+    );
 }
 
-function createHardBreakPlaceholder(index: number) {
-    return `${HARD_BREAK_PLACEHOLDER_PREFIX}${index}${HARD_BREAK_PLACEHOLDER_SUFFIX}`;
+function createProtectedTextPlaceholderFactory(markdown: string, prefix: string, suffix: string) {
+    const decodedMarkdown = markdown.replace(NUMERIC_CHARACTER_REFERENCE_PATTERN, decodeNumericCharacterReference);
+    const lowercaseMarkdown = markdown.toLowerCase();
+    let index = 0;
+
+    return () => {
+        let placeholder = `${prefix}${index}${suffix}`;
+
+        while (
+            markdown.includes(placeholder) ||
+            lowercaseMarkdown.includes(encodeURIComponent(placeholder).toLowerCase()) ||
+            decodedMarkdown.includes(placeholder)
+        ) {
+            index += 1;
+            placeholder = `${prefix}${index}${suffix}`;
+        }
+
+        index += 1;
+        return placeholder;
+    };
 }
 
 function countRepeatedCharacter(value: string, start: number, character: string) {
@@ -824,6 +1066,38 @@ function countRepeatedCharacter(value: string, start: number, character: string)
     }
 
     return cursor - start;
+}
+
+function isEscapedMarkdownCharacter(value: string, index: number) {
+    let precedingBackslashes = 0;
+
+    for (let cursor = index - 1; cursor >= 0 && value[cursor] === '\\'; cursor -= 1) {
+        precedingBackslashes += 1;
+    }
+
+    return precedingBackslashes % 2 === 1;
+}
+
+function findMatchingBacktickRunEnd(line: string, start: number, delimiterLength: number) {
+    let cursor = start + delimiterLength;
+
+    while (cursor < line.length) {
+        const candidate = line.indexOf('`', cursor);
+
+        if (candidate === -1) {
+            return null;
+        }
+
+        const candidateLength = countRepeatedCharacter(line, candidate, '`');
+
+        if (candidateLength === delimiterLength) {
+            return candidate + candidateLength;
+        }
+
+        cursor = candidate + candidateLength;
+    }
+
+    return null;
 }
 
 function findTagPlaceholderAtCursor(text: string, cursor: number, placeholderToTag: Map<string, string>) {
@@ -882,12 +1156,7 @@ function restoreProtectedTextPlaceholders(blocks: BlockNote[], placeholderToToke
         return blocks;
     }
 
-    return mapBlocks(blocks, (content) =>
-        mapBlockContent(
-            content,
-            (inline) => restoreProtectedTextInValue(inline, placeholderToToken) as BlockNoteInline,
-        ),
-    );
+    return restoreProtectedTextInValue(blocks, placeholderToToken) as BlockNote[];
 }
 
 function restoreProtectedTextInValue(value: unknown, placeholderToToken: Map<string, string>): unknown {
@@ -922,6 +1191,10 @@ function restoreProtectedText(text: string, placeholderToToken: Map<string, stri
                 .join(`${placeholder}\r\n`);
         }
 
+        restoredText = restoredText.replace(
+            new RegExp(encodeURIComponent(placeholder), 'gi'),
+            encodeURIComponent(token),
+        );
         restoredText = restoredText.split(placeholder).join(token);
     }
 

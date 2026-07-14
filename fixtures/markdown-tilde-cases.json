@@ -1,0 +1,93 @@
+{
+	"literalNumericRanges": [
+		{
+			"name": "preserves spaced numeric ranges",
+			"markdown": "Range is 1~3 and 4~5."
+		},
+		{
+			"name": "preserves numeric ranges separated by punctuation",
+			"markdown": "Ranges are 1~3,4~5 and 6~7/8~9."
+		},
+		{
+			"name": "preserves double-tilde comma-separated ranges",
+			"markdown": "Ranges are 41,590~~41,677 and 4,970~~4,980."
+		},
+		{
+			"name": "preserves single-tilde comma-separated ranges",
+			"markdown": "Ranges are 41,590~41,677 and 4,970~4,980."
+		},
+		{
+			"name": "preserves date and percentage ranges",
+			"markdown": "Window: 2026-07-13~2026-07-14 and 99.9%~100.1%."
+		},
+		{
+			"name": "preserves temperature ranges",
+			"markdown": "Temperatures: 10°C~20°C and 30°C~40°C."
+		},
+		{
+			"name": "preserves compound-unit ranges",
+			"markdown": "Speeds: 10m/s~20m/s and 30m/s~40m/s."
+		},
+		{
+			"name": "preserves spaced-unit ranges",
+			"markdown": "Weights: 10 kg~20 kg and 30 kg~40 kg."
+		}
+	],
+	"strikethrough": [
+		{
+			"name": "preserves double-tilde strikethrough",
+			"markdown": "Keep ~~removed~~ text",
+			"struckText": "removed"
+		},
+		{
+			"name": "preserves boundary single-tilde strikethrough",
+			"markdown": "Keep ~removed~ text",
+			"struckText": "removed"
+		},
+		{
+			"name": "preserves prefixed single-tilde strikethrough",
+			"markdown": "prefix~deleted~ text",
+			"struckText": "deleted"
+		},
+		{
+			"name": "preserves suffixed single-tilde strikethrough",
+			"markdown": "이것은 ~삭제~입니다.",
+			"struckText": "삭제"
+		},
+		{
+			"name": "preserves compact single-tilde strikethrough",
+			"markdown": "앞~삭제~뒤",
+			"struckText": "삭제"
+		},
+		{
+			"name": "preserves compact single-tilde strikethrough containing spaces",
+			"markdown": "앞~삭제 내용~뒤",
+			"struckText": "삭제 내용"
+		},
+		{
+			"name": "preserves version-like compact strikethrough",
+			"markdown": "v1~old2~v3",
+			"struckText": "old2"
+		},
+		{
+			"name": "preserves numeric-boundary compact strikethrough",
+			"markdown": "1~삭제2~3",
+			"struckText": "삭제2"
+		},
+		{
+			"name": "preserves version-like double-tilde strikethrough",
+			"markdown": "v1~~deprecated 2~~v3",
+			"struckText": "deprecated 2"
+		},
+		{
+			"name": "preserves numeric-outer single-tilde strikethrough",
+			"markdown": "1~deleted 2~3",
+			"struckText": "deleted 2"
+		},
+		{
+			"name": "preserves numeric-outer double-tilde strikethrough",
+			"markdown": "1~~deleted 2~~3",
+			"struckText": "deleted 2"
+		}
+	]
+}

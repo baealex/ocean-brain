@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import {
@@ -6,9 +7,20 @@ import {
     countReferenceInlinesFromContentJson,
     extractLiteralAngleBracketTextTokens,
     extractTagIdsFromContentJson,
+    hasNumericTildeRangeMarkerLoss,
+    hasNumericTildeRangeMarkers,
     hasUnsupportedMarkdownBlocks,
     markdownToBlocksJson,
 } from '../src/modules/blocknote.js';
+
+interface TildeContractCases {
+    literalNumericRanges: Array<{ markdown: string; name: string }>;
+    strikethrough: Array<{ markdown: string; name: string; struckText: string }>;
+}
+
+const tildeContractCases = JSON.parse(
+    readFileSync(new URL('../../../fixtures/markdown-tilde-cases.json', import.meta.url), 'utf8'),
+) as TildeContractCases;
 
 const noopMarkdownImportDeps = {
     ensureTag: async () => {
@@ -692,17 +704,40 @@ test('markdownToBlocksJson preserves Markdown autolinks while protecting spaced 
     assert.doesNotMatch(roundTripMarkdown, /&lt;/);
 });
 
-test('markdownToBlocksJson preserves numeric tilde ranges as plain text', async () => {
-    const markdown = 'Range is 1~3 and 4~5.';
+test('markdownToBlocksJson preserves numeric ranges inside angle-bracket text', async () => {
+    const markdown = '<1~3> before <4~5>';
 
-    const contentJson = await markdownToBlocksJson(markdown, {
-        ensureTag: async () => {
-            throw new Error('should not ensure tags');
-        },
-        findNotesByTitle: async () => [],
-    });
+    const contentJson = await markdownToBlocksJson(markdown, noopMarkdownImportDeps);
     const blocks = JSON.parse(contentJson);
     const roundTripMarkdown = await blocksToMarkdown(contentJson);
+
+    assert.equal(blocks[0].content[0].text, markdown);
+    assert.equal(blocks[0].content[0].styles.strike, undefined);
+    assert.equal(roundTripMarkdown.trim(), markdown);
+});
+
+for (const { markdown, name } of tildeContractCases.literalNumericRanges) {
+    test(`markdownToBlocksJson ${name} as plain text`, async () => {
+        const contentJson = await markdownToBlocksJson(markdown, noopMarkdownImportDeps);
+        const blocks = JSON.parse(contentJson);
+        const roundTripMarkdown = await blocksToMarkdown(contentJson);
+
+        assert.deepEqual(blocks[0].content, [
+            {
+                type: 'text',
+                text: markdown,
+                styles: {},
+            },
+        ]);
+        assert.equal(roundTripMarkdown.trim(), markdown);
+    });
+}
+
+test('markdownToBlocksJson preserves text matching its internal tilde placeholder', async () => {
+    const markdown = 'literal \uE000OBTILDE0\uE001 and 1~3 and 4~5';
+
+    const contentJson = await markdownToBlocksJson(markdown, noopMarkdownImportDeps);
+    const blocks = JSON.parse(contentJson);
 
     assert.deepEqual(blocks[0].content, [
         {
@@ -711,7 +746,64 @@ test('markdownToBlocksJson preserves numeric tilde ranges as plain text', async 
             styles: {},
         },
     ]);
-    assert.equal(roundTripMarkdown.trim(), markdown);
+});
+
+test('markdownToBlocksJson preserves encoded text matching its internal tilde placeholder', async () => {
+    const encodedPlaceholder = '%ee%80%80OBTILDE0%ee%80%81';
+    const markdown = `1~3 [literal](https://example.com/${encodedPlaceholder})`;
+
+    const contentJson = await markdownToBlocksJson(markdown, noopMarkdownImportDeps);
+    const blocks = JSON.parse(contentJson);
+
+    assert.equal(blocks[0].content[1].href, `https://example.com/${encodedPlaceholder}`);
+    assert.equal(blocks[0].content[0].text, '1~3 ');
+});
+
+test('markdownToBlocksJson restores numeric ranges in bare URL destinations', async () => {
+    const markdown = 'https://example.com/?range=1~3&other=4~5';
+
+    const contentJson = await markdownToBlocksJson(markdown, noopMarkdownImportDeps);
+    const blocks = JSON.parse(contentJson);
+    const roundTripMarkdown = await blocksToMarkdown(contentJson);
+
+    assert.equal(blocks[0].content[0].href, markdown);
+    assert.doesNotMatch(JSON.stringify(blocks), /OBTILDE/);
+    assert.doesNotMatch(roundTripMarkdown, /OBTILDE/);
+});
+
+test('markdownToBlocksJson protects balanced link destinations containing numeric ranges', async () => {
+    const destination = 'https://example.com/a(b)c/1~3/4~5';
+    const markdown = `[Range](${destination})`;
+
+    const contentJson = await markdownToBlocksJson(markdown, noopMarkdownImportDeps);
+    const blocks = JSON.parse(contentJson);
+    const roundTripMarkdown = await blocksToMarkdown(contentJson);
+
+    assert.equal(blocks[0].content[0].href, destination);
+    assert.doesNotMatch(JSON.stringify(blocks), /OBTILDE/);
+    assert.doesNotMatch(roundTripMarkdown, /OBTILDE/);
+});
+
+test('markdownToBlocksJson keeps angle placeholder-shaped image names literal', async () => {
+    const placeholder = '\uE000OBANGLE0\uE001';
+    const markdown = `![literal ${placeholder}](https://example.com/x.png)\n\nKeep <MARKER> text.`;
+
+    const contentJson = await markdownToBlocksJson(markdown, noopMarkdownImportDeps);
+    const blocks = JSON.parse(contentJson);
+
+    assert.equal(blocks[0].props.name, `literal ${placeholder}`);
+    assert.equal(blocks[1].content[0].text, 'Keep <MARKER> text.');
+});
+
+test('markdownToBlocksJson keeps hard-break placeholder-shaped image names literal', async () => {
+    const placeholder = '\uE000OBHARDBREAK0\uE001';
+    const markdown = `![literal ${placeholder}](https://example.com/x.png)\n\nline one\\\nline two`;
+
+    const contentJson = await markdownToBlocksJson(markdown, noopMarkdownImportDeps);
+    const blocks = JSON.parse(contentJson);
+
+    assert.equal(blocks[0].props.name, `literal ${placeholder}`);
+    assert.equal(blocks[1].content[0].text, 'line one\nline two');
 });
 
 test('markdownToBlocksJson preserves numeric tilde ranges across hard break lines', async () => {
@@ -825,39 +917,19 @@ test('markdownToBlocksJson preserves trailing backslashes inside multiline inlin
     assert.match(renderedMarkdown, /foo\\ bar/);
 });
 
-test('markdownToBlocksJson preserves double-tilde strikethrough', async () => {
-    const markdown = 'Keep ~~strike~~ text';
+for (const { markdown, name, struckText } of tildeContractCases.strikethrough) {
+    test(`markdownToBlocksJson ${name}`, async () => {
+        const contentJson = await markdownToBlocksJson(markdown, noopMarkdownImportDeps);
+        const blocks = JSON.parse(contentJson);
+        const roundTripMarkdown = await blocksToMarkdown(contentJson);
+        const struckContent = blocks[0].content.find(
+            (inline: { styles?: { strike?: boolean }; text?: string }) => inline.styles?.strike,
+        );
 
-    const contentJson = await markdownToBlocksJson(markdown, {
-        ensureTag: async () => {
-            throw new Error('should not ensure tags');
-        },
-        findNotesByTitle: async () => [],
+        assert.equal(struckContent?.text, struckText);
+        assert.ok(roundTripMarkdown.includes(`~~${struckText}~~`));
     });
-    const blocks = JSON.parse(contentJson);
-    const roundTripMarkdown = await blocksToMarkdown(contentJson);
-
-    assert.deepEqual(blocks[0].content, [
-        {
-            type: 'text',
-            text: 'Keep ',
-            styles: {},
-        },
-        {
-            type: 'text',
-            text: 'strike',
-            styles: {
-                strike: true,
-            },
-        },
-        {
-            type: 'text',
-            text: ' text',
-            styles: {},
-        },
-    ]);
-    assert.equal(roundTripMarkdown.trim(), markdown);
-});
+}
 
 test('markdownToBlocksJson leaves numeric tilde ranges unchanged inside code', async () => {
     const markdown = ['Code is `1~3 and 4~5`.', '', '~~~', '1~3 and 4~5', '~~~'].join('\n');
@@ -889,6 +961,82 @@ test('markdownToBlocksJson restores numeric tilde ranges in link destinations', 
 
     assert.equal(blocks[0].content[0].href, 'https://example.com/range/1~3');
     assert.equal(roundTripMarkdown.trim(), markdown);
+});
+
+test('markdownToBlocksJson restores numeric tilde ranges in image names', async () => {
+    const markdown = '![1~3 and 4~5](https://example.com/ranges.png)';
+
+    const contentJson = await markdownToBlocksJson(markdown, noopMarkdownImportDeps);
+    const blocks = JSON.parse(contentJson);
+    const roundTripMarkdown = await blocksToMarkdown(contentJson);
+
+    assert.equal(blocks[0].props.name, '1~3 and 4~5');
+    assert.doesNotMatch(blocks[0].props.name, /OBTILDE/);
+    assert.doesNotMatch(roundTripMarkdown, /OBTILDE/);
+    assert.equal(hasNumericTildeRangeMarkerLoss(markdown, roundTripMarkdown), false);
+});
+
+test('numeric tilde range loss detection accepts portable backslash escapes', () => {
+    assert.equal(hasNumericTildeRangeMarkerLoss('1~3 and 4~5', '1\\~3 and 4\\~5'), false);
+    assert.equal(hasNumericTildeRangeMarkerLoss('1~~3 and 4~~5', '1\\~\\~3 and 4\\~\\~5'), false);
+});
+
+test('numeric tilde range loss detection rejects changed delimiter lengths', () => {
+    assert.equal(hasNumericTildeRangeMarkerLoss('1~3 and 4~5', '1~~3 and 4~~5'), true);
+    assert.equal(hasNumericTildeRangeMarkerLoss('1~~3 and 4~~5', '1~3 and 4~5'), true);
+    assert.equal(hasNumericTildeRangeMarkerLoss('1~3 and 4~~5', '1~~3 and 4~5'), true);
+});
+
+test('numeric tilde range loss detection rejects changed endpoints', () => {
+    assert.equal(hasNumericTildeRangeMarkerLoss('1~3 and 4~5', '1~4 and 4~5'), true);
+    assert.equal(hasNumericTildeRangeMarkerLoss('10 kg~20 kg', '10 kg~30 kg'), true);
+});
+
+test('numeric tilde range loss detection accepts duplicated link representations', () => {
+    const sourceMarkdown = 'https://example.com/?range=1~3';
+
+    assert.equal(hasNumericTildeRangeMarkers(sourceMarkdown), true);
+    assert.equal(
+        hasNumericTildeRangeMarkerLoss(
+            sourceMarkdown,
+            '[https://example.com/?range=1~3](https://example.com/?range=1~3)',
+        ),
+        false,
+    );
+});
+
+test('markdownToBlocksJson leaves nonnumeric tildes in image names unchanged', async () => {
+    const markdown = '![a~b](https://example.com/ranges.png)';
+
+    const contentJson = await markdownToBlocksJson(markdown, noopMarkdownImportDeps);
+    const blocks = JSON.parse(contentJson);
+
+    assert.equal(blocks[0].props.name, 'a~b');
+    assert.doesNotMatch(JSON.stringify(blocks), /OBTILDE/);
+});
+
+test('markdownToBlocksJson preserves email autolinks containing tildes', async () => {
+    const markdown = '<a1~b2@example.com>';
+
+    const contentJson = await markdownToBlocksJson(markdown, noopMarkdownImportDeps);
+    const blocks = JSON.parse(contentJson);
+    const roundTripMarkdown = await blocksToMarkdown(contentJson);
+
+    assert.equal(blocks[0].content[0].type, 'link');
+    assert.equal(blocks[0].content[0].href, 'mailto:a1~b2@example.com');
+    assert.equal(roundTripMarkdown.trim(), markdown);
+});
+
+test('markdownToBlocksJson matches inline-code delimiters by exact backtick-run length', async () => {
+    const markdown = '`a```b 1~3 and 4~5` outside 6~7 and 8~9';
+
+    const contentJson = await markdownToBlocksJson(markdown, noopMarkdownImportDeps);
+    const blocks = JSON.parse(contentJson);
+
+    assert.equal(blocks[0].content[0].text, 'a```b 1~3 and 4~5');
+    assert.equal(blocks[0].content[0].styles.code, true);
+    assert.equal(blocks[0].content.at(-1).text, ' outside 6~7 and 8~9');
+    assert.equal(blocks[0].content.at(-1).styles.strike, undefined);
 });
 
 test('extractLiteralAngleBracketTextTokens ignores Markdown autolinks', () => {

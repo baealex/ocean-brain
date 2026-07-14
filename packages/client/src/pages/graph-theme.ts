@@ -75,12 +75,59 @@ const DARK_THEME: GraphTheme = {
     legendHub: '#d6dce3',
 };
 
-export function getGraphTheme(theme: Theme): GraphTheme {
-    return theme === 'dark' ? DARK_THEME : LIGHT_THEME;
+const GRAPH_VARIABLES = {
+    background: '--ob-graph-background',
+    nodeHub: '--ob-graph-node-hub',
+    nodeSelected: '--ob-graph-node-selected',
+    nodeConnected: '--ob-graph-node-connected',
+    nodeHubDimmed: '--ob-graph-node-hub-dimmed',
+    nodeStroke: '--ob-graph-node-stroke',
+    nodeSelectedStroke: '--ob-graph-node-selected-stroke',
+    labelBackground: '--ob-graph-label-background',
+    labelText: '--ob-graph-label-text',
+    linkIdle: '--ob-graph-link-idle',
+    linkConnected: '--ob-graph-link-connected',
+    linkDimmed: '--ob-graph-link-dimmed',
+    legendHub: '--ob-graph-legend-hub',
+} as const;
+
+function readThemeVariable(styles: CSSStyleDeclaration, name: string, fallback: string) {
+    return styles.getPropertyValue(name).trim() || fallback;
 }
 
-export function getGraphNodeFill(theme: Theme, options: GraphNodeFillOptions): string {
-    const palette = getGraphTheme(theme);
+function readGraphTheme(fallback: GraphTheme): GraphTheme {
+    if (typeof document === 'undefined' || typeof getComputedStyle !== 'function') return fallback;
+    const styles = getComputedStyle(document.documentElement);
+    const read = <Key extends keyof typeof GRAPH_VARIABLES>(key: Key) =>
+        readThemeVariable(styles, GRAPH_VARIABLES[key], fallback[key]);
+    const readArray = (prefix: string, values: string[]) =>
+        values.map((value, index) => readThemeVariable(styles, `${prefix}-${index + 1}`, value));
+
+    return {
+        background: read('background'),
+        nodeHub: read('nodeHub'),
+        nodeSelected: read('nodeSelected'),
+        nodeConnected: read('nodeConnected'),
+        nodeDefault: readArray('--ob-graph-node-default', fallback.nodeDefault),
+        nodeDimmed: readArray('--ob-graph-node-dimmed', fallback.nodeDimmed),
+        nodeHubDimmed: read('nodeHubDimmed'),
+        nodeStroke: read('nodeStroke'),
+        nodeSelectedStroke: read('nodeSelectedStroke'),
+        labelBackground: read('labelBackground'),
+        labelText: read('labelText'),
+        labelFontFamily: readThemeVariable(styles, '--ob-font-graph', fallback.labelFontFamily),
+        linkIdle: read('linkIdle'),
+        linkConnected: read('linkConnected'),
+        linkDimmed: read('linkDimmed'),
+        legendHub: read('legendHub'),
+    };
+}
+
+export function getGraphTheme(theme: Theme): GraphTheme {
+    return readGraphTheme(theme === 'dark' ? DARK_THEME : LIGHT_THEME);
+}
+
+export function getGraphNodeFill(palette: GraphTheme, options: GraphNodeFillOptions): string {
     const { connections, colorIndex, selectedNodeId, nodeId, isConnected } = options;
 
     const isSelected = selectedNodeId === nodeId;
@@ -105,9 +152,7 @@ export function getGraphNodeFill(theme: Theme, options: GraphNodeFillOptions): s
     return palette.nodeDefault[colorIndex % palette.nodeDefault.length];
 }
 
-export function getGraphLinkColor(theme: Theme, options: GraphLinkColorOptions): string {
-    const palette = getGraphTheme(theme);
-
+export function getGraphLinkColor(palette: GraphTheme, options: GraphLinkColorOptions): string {
     if (options.selectedNodeId !== null && !options.isConnected) {
         return palette.linkDimmed;
     }
@@ -119,8 +164,7 @@ export function getGraphLinkColor(theme: Theme, options: GraphLinkColorOptions):
     return palette.linkIdle;
 }
 
-export function getGraphLabelFont(theme: Theme, options: GraphLabelFontOptions): string {
-    const palette = getGraphTheme(theme);
+export function getGraphLabelFont(palette: GraphTheme, options: GraphLabelFontOptions): string {
     const weight = options.emphasize ? '700' : '400';
 
     return `${weight} ${options.fontSize}px ${palette.labelFontFamily}`;

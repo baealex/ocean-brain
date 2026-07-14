@@ -12,7 +12,7 @@ import { NOTE_ROUTE, SEARCH_ROUTE } from '~/modules/url';
 
 const formClassName = 'flex flex-col gap-2.5';
 const searchSurfaceClassName =
-    'overflow-hidden rounded-[14px] border border-border-subtle bg-elevated transition-colors focus-within:border-border-focus focus-within:shadow-[0_0_0_4px_color-mix(in_srgb,var(--accent-soft-primary)_90%,transparent)]';
+    'overflow-hidden rounded-[14px] border border-border-subtle bg-elevated transition-colors focus-within:border-border-focus focus-within:shadow-[0_0_0_4px_color-mix(in_srgb,var(--border-focus)_90%,transparent)]';
 const searchRowClassName =
     'grid-search-bar grid items-center border-b border-transparent px-2.5 py-1.5 transition-colors';
 const searchRowWithResultsClassName = 'border-border-subtle/70';

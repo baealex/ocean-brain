@@ -37,7 +37,7 @@ export function GraphCanvas({
         height: 420,
     });
 
-    const { theme } = useTheme((state) => state);
+    const { activeTheme, theme } = useTheme((state) => state);
     const graphTheme = getGraphTheme(theme);
     const graphThemeRef = useRef(graphTheme);
     graphThemeRef.current = graphTheme;
@@ -136,7 +136,7 @@ export function GraphCanvas({
             ctx.beginPath();
             ctx.arc(nx, ny, nodeSize, 0, Math.PI * 2);
 
-            ctx.fillStyle = getGraphNodeFill(theme, {
+            ctx.fillStyle = getGraphNodeFill(palette, {
                 connections: node.connections,
                 colorIndex,
                 selectedNodeId: selectedId,
@@ -165,7 +165,7 @@ export function GraphCanvas({
             if (isSelected || isHubConnected || globalScale > 2.5) {
                 const label = node.title || 'Untitled';
                 const fontSize = Math.max(10 / globalScale, 2.5);
-                ctx.font = getGraphLabelFont(theme, {
+                ctx.font = getGraphLabelFont(palette, {
                     fontSize,
                     emphasize: isSelected,
                 });
@@ -183,7 +183,7 @@ export function GraphCanvas({
                 ctx.fillText(label, nx, labelY + padding);
             }
         },
-        [selectedNodeId, theme],
+        [activeTheme, selectedNodeId],
     );
 
     const linkCanvasObject = useCallback(
@@ -197,14 +197,14 @@ export function GraphCanvas({
             ctx.moveTo(source.x || 0, source.y || 0);
             ctx.lineTo(target.x || 0, target.y || 0);
 
-            ctx.strokeStyle = getGraphLinkColor(theme, {
+            ctx.strokeStyle = getGraphLinkColor(graphThemeRef.current, {
                 selectedNodeId: selectedId,
                 isConnected,
             });
             ctx.lineWidth = isConnected ? 2 / globalScale : 0.5 / globalScale;
             ctx.stroke();
         },
-        [selectedNodeId, theme],
+        [activeTheme, selectedNodeId],
     );
 
     return (

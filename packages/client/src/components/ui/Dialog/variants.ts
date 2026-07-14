@@ -7,7 +7,7 @@ export const dialogContentVariants = cva(
         'w-full',
         'max-h-[calc(100dvh-2rem)]',
         'overflow-y-auto',
-        'border',
+        'theme-surface-frame',
         'border-border-subtle',
         'overscroll-contain',
         'data-[state=open]:animate-in',
@@ -20,11 +20,11 @@ export const dialogContentVariants = cva(
     {
         variants: {
             variant: {
-                default: 'max-w-[640px] rounded-[20px] bg-elevated shadow-[0_24px_64px_-32px_rgba(15,18,24,0.36)]',
-                compact: 'max-w-[480px] rounded-[18px] bg-surface shadow-[0_18px_44px_-28px_rgba(15,18,24,0.28)]',
-                form: 'max-w-[560px] rounded-[20px] bg-elevated shadow-[0_22px_56px_-30px_rgba(15,18,24,0.32)]',
-                inspect: 'max-w-[640px] rounded-[20px] bg-elevated shadow-[0_24px_64px_-30px_rgba(15,18,24,0.34)]',
-                confirm: 'max-w-[336px] rounded-[18px] bg-surface shadow-[0_16px_36px_-24px_rgba(15,18,24,0.24)]',
+                default: 'theme-dialog-default max-w-[640px] bg-elevated',
+                compact: 'theme-dialog-compact max-w-[480px] bg-surface',
+                form: 'theme-dialog-form max-w-[560px] bg-elevated',
+                inspect: 'theme-dialog-inspect max-w-[640px] bg-elevated',
+                confirm: 'theme-dialog-confirm max-w-[336px] bg-surface',
             },
         },
         defaultVariants: { variant: 'default' },
@@ -84,11 +84,11 @@ export const dialogCloseButtonVariants = cva(
     {
         variants: {
             variant: {
-                default: 'h-10 w-10 rounded-[14px]',
-                compact: 'h-9 w-9 rounded-[12px]',
-                form: 'h-9 w-9 rounded-[12px]',
-                inspect: 'h-10 w-10 rounded-[14px]',
-                confirm: 'h-9 w-9 rounded-[12px]',
+                default: 'theme-radius-control-md h-10 w-10',
+                compact: 'theme-radius-control-sm h-9 w-9',
+                form: 'theme-radius-control-sm h-9 w-9',
+                inspect: 'theme-radius-control-md h-10 w-10',
+                confirm: 'theme-radius-control-sm h-9 w-9',
             },
         },
         defaultVariants: { variant: 'default' },

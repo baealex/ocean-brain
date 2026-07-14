@@ -6,6 +6,7 @@ import { PageLayout } from '~/components/shared';
 import { Text } from '~/components/ui';
 import { formatVersionLabel, OCEAN_BRAIN_RELEASES_URL } from '~/modules/app-version';
 import {
+    SETTINGS_APPEARANCE_ROUTE,
     SETTINGS_MANAGE_IMAGE_ROUTE,
     SETTINGS_MCP_ROUTE,
     SETTINGS_PLACEHOLDER_ROUTE,
@@ -17,7 +18,7 @@ import { useTheme } from '~/store/theme';
 const mcpAdminStatusQueryKey = ['mcp-admin', 'status'] as const;
 
 const Setting = () => {
-    const { theme, toggleTheme } = useTheme((state) => state);
+    const { activeTheme, colorMode, theme } = useTheme((state) => state);
     const { data: status, isLoading: isStatusLoading } = useQuery({
         queryKey: mcpAdminStatusQueryKey,
         queryFn: fetchMcpAdminStatus,
@@ -44,7 +45,7 @@ const Setting = () => {
                     <Text as="p" variant="label" weight="medium" className={sectionLabelClassName}>
                         Appearance
                     </Text>
-                    <button type="button" className={itemClassName} onClick={toggleTheme}>
+                    <Link to={SETTINGS_APPEARANCE_ROUTE} className={itemClassName}>
                         <div className="flex min-w-0 items-start gap-3">
                             <span className={leadingClassName}>
                                 <Icon.Palette className={iconClassName} />
@@ -54,13 +55,14 @@ const Setting = () => {
                                     Theme
                                 </Text>
                                 <Text as="div" variant="meta" tone="secondary">
-                                    Switch between light and dark mode.
+                                    Choose, customize, import, and export themes.
                                 </Text>
                             </div>
                         </div>
                         <div className="mt-0.5 flex shrink-0 items-center gap-2 text-fg-tertiary">
                             <Text as="span" variant="meta" weight="medium" tone="secondary">
-                                {theme === 'dark' ? 'Dark' : 'Light'}
+                                {activeTheme.label} ·{' '}
+                                {colorMode === 'system' ? 'System' : theme === 'dark' ? 'Dark' : 'Light'}
                             </Text>
                             {theme === 'dark' ? (
                                 <Icon.Moon className="h-4 w-4" weight="fill" />
@@ -68,7 +70,7 @@ const Setting = () => {
                                 <Icon.Sun className="h-4 w-4" weight="fill" />
                             )}
                         </div>
-                    </button>
+                    </Link>
                 </section>
 
                 <section className="flex flex-col gap-3">

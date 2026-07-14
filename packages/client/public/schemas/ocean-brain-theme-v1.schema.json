@@ -1,0 +1,177 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://raw.githubusercontent.com/baealex/ocean-brain/main/packages/client/public/schemas/ocean-brain-theme-v1.schema.json",
+    "title": "Ocean Brain Theme Package v1",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["schemaVersion", "id", "name", "version", "themes"],
+    "properties": {
+        "$schema": {
+            "const": "https://raw.githubusercontent.com/baealex/ocean-brain/main/packages/client/public/schemas/ocean-brain-theme-v1.schema.json"
+        },
+        "schemaVersion": { "const": 1 },
+        "id": {
+            "type": "string",
+            "maxLength": 96,
+            "pattern": "^[a-z0-9][a-z0-9-]*(\\.[a-z0-9][a-z0-9-]*)+$"
+        },
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "version": {
+            "type": "string",
+            "maxLength": 48,
+            "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+        },
+        "author": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 320 },
+        "themes": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": { "$ref": "#/$defs/theme" },
+            "allOf": [
+                {
+                    "contains": {
+                        "type": "object",
+                        "required": ["appearance"],
+                        "properties": { "appearance": { "const": "light" } }
+                    }
+                },
+                {
+                    "contains": {
+                        "type": "object",
+                        "required": ["appearance"],
+                        "properties": { "appearance": { "const": "dark" } }
+                    }
+                }
+            ]
+        }
+    },
+    "$defs": {
+        "theme": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "label", "appearance"],
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "maxLength": 64,
+                    "pattern": "^[a-z0-9][a-z0-9-]*$"
+                },
+                "label": { "type": "string", "minLength": 1, "maxLength": 80 },
+                "description": { "type": "string", "minLength": 1, "maxLength": 240 },
+                "appearance": { "enum": ["light", "dark"] },
+                "texture": { "enum": ["none", "paper", "grid", "dots"] },
+                "variables": { "$ref": "#/$defs/variables" }
+            }
+        },
+        "variables": {
+            "type": "object",
+            "propertyNames": {
+                "enum": [
+                    "--page-bg",
+                    "--surface",
+                    "--muted",
+                    "--subtle",
+                    "--elevated",
+                    "--emphasis",
+                    "--hover",
+                    "--hover-subtle",
+                    "--active",
+                    "--ghost",
+                    "--fg",
+                    "--fg-default",
+                    "--fg-muted",
+                    "--fg-secondary",
+                    "--fg-tertiary",
+                    "--fg-disabled",
+                    "--fg-placeholder",
+                    "--fg-error",
+                    "--fg-on-accent",
+                    "--fg-on-filled",
+                    "--fg-weekend",
+                    "--border",
+                    "--border-secondary",
+                    "--border-subtle",
+                    "--border-focus",
+                    "--border-error",
+                    "--accent-primary",
+                    "--accent-primary-hover",
+                    "--accent-secondary",
+                    "--accent-secondary-hover",
+                    "--accent-danger",
+                    "--accent-danger-hover",
+                    "--accent-success",
+                    "--accent-success-hover",
+                    "--accent-soft-primary",
+                    "--accent-soft-primary-hover",
+                    "--accent-soft-danger",
+                    "--accent-soft-danger-hover",
+                    "--accent-soft-success",
+                    "--accent-soft-success-hover",
+                    "--cta",
+                    "--cta-hover",
+                    "--overlay",
+                    "--highlight",
+                    "--highlight-fg",
+                    "--divider",
+                    "--palette-yellow",
+                    "--palette-green",
+                    "--palette-pink",
+                    "--palette-orange",
+                    "--palette-blue",
+                    "--palette-purple",
+                    "--palette-teal",
+                    "--palette-lavender",
+                    "--priority-high",
+                    "--priority-medium",
+                    "--priority-low",
+                    "--ob-graph-background",
+                    "--ob-graph-node-hub",
+                    "--ob-graph-node-selected",
+                    "--ob-graph-node-connected",
+                    "--ob-graph-node-default-1",
+                    "--ob-graph-node-default-2",
+                    "--ob-graph-node-default-3",
+                    "--ob-graph-node-default-4",
+                    "--ob-graph-node-dimmed-1",
+                    "--ob-graph-node-dimmed-2",
+                    "--ob-graph-node-dimmed-3",
+                    "--ob-graph-node-dimmed-4",
+                    "--ob-graph-node-hub-dimmed",
+                    "--ob-graph-node-stroke",
+                    "--ob-graph-node-selected-stroke",
+                    "--ob-graph-label-background",
+                    "--ob-graph-label-text",
+                    "--ob-graph-link-idle",
+                    "--ob-graph-link-connected",
+                    "--ob-graph-link-dimmed",
+                    "--ob-graph-legend-hub",
+                    "--ob-radius-control-sm",
+                    "--ob-radius-control-md",
+                    "--ob-radius-control-lg",
+                    "--ob-radius-item",
+                    "--ob-radius-surface",
+                    "--ob-radius-floating",
+                    "--ob-radius-dialog",
+                    "--ob-radius-dialog-compact",
+                    "--ob-shadow-control",
+                    "--ob-shadow-surface",
+                    "--ob-shadow-floating",
+                    "--ob-shadow-dialog",
+                    "--ob-shadow-dialog-compact",
+                    "--ob-shadow-dialog-form",
+                    "--ob-shadow-dialog-inspect",
+                    "--ob-shadow-dialog-confirm",
+                    "--ob-shadow-shell-control",
+                    "--ob-border-control-width",
+                    "--ob-border-surface-width",
+                    "--ob-font-ui",
+                    "--ob-font-editor",
+                    "--ob-font-graph",
+                    "--ob-border-style"
+                ]
+            },
+            "additionalProperties": { "type": "string", "minLength": 1, "maxLength": 400 }
+        }
+    }
+}

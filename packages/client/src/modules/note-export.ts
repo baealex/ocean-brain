@@ -1,5 +1,7 @@
 import JSZip from 'jszip';
 
+export { downloadBlobFile, downloadTextFile } from './file-download';
+
 export interface NoteExportMetadata {
     id: string;
     title: string;
@@ -665,20 +667,4 @@ export const createMarkdownAssetsZipExport = async (
     zip.file('note.md', applyTextReplacements(markdownExport, replacements));
 
     return zip.generateAsync({ type: 'blob' });
-};
-
-export const downloadBlobFile = (blob: Blob, filename: string) => {
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-
-    anchor.href = url;
-    anchor.download = filename;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
-};
-
-export const downloadTextFile = (content: string, filename: string, type: string) => {
-    downloadBlobFile(new Blob([content], { type }), filename);
 };

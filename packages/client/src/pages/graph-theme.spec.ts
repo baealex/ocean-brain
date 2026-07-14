@@ -16,7 +16,7 @@ describe('getGraphTheme', () => {
 
     it('maps node fills through selected, connected, hub, dimmed, and default states', () => {
         expect(
-            getGraphNodeFill('light', {
+            getGraphNodeFill(getGraphTheme('light'), {
                 connections: 2,
                 colorIndex: 1,
                 selectedNodeId: 'node-1',
@@ -26,7 +26,7 @@ describe('getGraphTheme', () => {
         ).toBe('#111318');
 
         expect(
-            getGraphNodeFill('light', {
+            getGraphNodeFill(getGraphTheme('light'), {
                 connections: 2,
                 colorIndex: 1,
                 selectedNodeId: 'node-1',
@@ -36,7 +36,7 @@ describe('getGraphTheme', () => {
         ).toBe(getGraphTheme('light').nodeConnected);
 
         expect(
-            getGraphNodeFill('light', {
+            getGraphNodeFill(getGraphTheme('light'), {
                 connections: 4,
                 colorIndex: 2,
                 selectedNodeId: null,
@@ -46,7 +46,7 @@ describe('getGraphTheme', () => {
         ).toBe(getGraphTheme('light').nodeHub);
 
         expect(
-            getGraphNodeFill('dark', {
+            getGraphNodeFill(getGraphTheme('dark'), {
                 connections: 1,
                 colorIndex: 3,
                 selectedNodeId: 'node-1',
@@ -56,7 +56,7 @@ describe('getGraphTheme', () => {
         ).toBe(getGraphTheme('dark').nodeDimmed[3]);
 
         expect(
-            getGraphNodeFill('dark', {
+            getGraphNodeFill(getGraphTheme('dark'), {
                 connections: 2,
                 colorIndex: 0,
                 selectedNodeId: null,
@@ -68,21 +68,21 @@ describe('getGraphTheme', () => {
 
     it('maps link colors for idle, connected, and dimmed states', () => {
         expect(
-            getGraphLinkColor('light', {
+            getGraphLinkColor(getGraphTheme('light'), {
                 selectedNodeId: null,
                 isConnected: false,
             }),
         ).toBe(getGraphTheme('light').linkIdle);
 
         expect(
-            getGraphLinkColor('light', {
+            getGraphLinkColor(getGraphTheme('light'), {
                 selectedNodeId: 'node-1',
                 isConnected: true,
             }),
         ).toBe(getGraphTheme('light').linkConnected);
 
         expect(
-            getGraphLinkColor('dark', {
+            getGraphLinkColor(getGraphTheme('dark'), {
                 selectedNodeId: 'node-1',
                 isConnected: false,
             }),
@@ -91,14 +91,14 @@ describe('getGraphTheme', () => {
 
     it('maps label font weights to shipped Pretendard weights', () => {
         expect(
-            getGraphLabelFont('light', {
+            getGraphLabelFont(getGraphTheme('light'), {
                 fontSize: 12,
                 emphasize: false,
             }),
         ).toBe('400 12px Pretendard Variable, Pretendard, system-ui, sans-serif');
 
         expect(
-            getGraphLabelFont('dark', {
+            getGraphLabelFont(getGraphTheme('dark'), {
                 fontSize: 12,
                 emphasize: true,
             }),

@@ -1,4 +1,4 @@
-import type { Theme } from './theme';
+import type { Theme } from '~/models/theme.model';
 
 const THEME_STORAGE_KEY = 'theme';
 const THEME_QUERY = '(prefers-color-scheme: dark)';
@@ -29,11 +29,12 @@ function getThemeRoot() {
 }
 
 function getThemeStorage() {
-    if (typeof window === 'undefined') {
+    if (typeof window === 'undefined') return null;
+    try {
+        return window.localStorage;
+    } catch {
         return null;
     }
-
-    return window.localStorage;
 }
 
 function syncThemeClass(theme: Theme) {
@@ -48,15 +49,39 @@ function syncThemeClass(theme: Theme) {
 }
 
 export function getStoredTheme(): Theme | null {
-    const theme = getThemeStorage()?.getItem(THEME_STORAGE_KEY) ?? null;
+    let theme: string | null = null;
+    try {
+        theme = getThemeStorage()?.getItem(THEME_STORAGE_KEY) ?? null;
+    } catch {
+        return null;
+    }
 
     return isTheme(theme) ? theme : null;
+}
+
+export function saveStoredTheme(theme: Theme | null) {
+    try {
+        if (theme) getThemeStorage()?.setItem(THEME_STORAGE_KEY, theme);
+        else getThemeStorage()?.removeItem(THEME_STORAGE_KEY);
+    } catch {
+        return;
+    }
 }
 
 export function resolveTheme({ storedTheme, systemPrefersDark }: ThemeResolverOptions): Theme {
     if (storedTheme) {
         return storedTheme;
     }
+
+    return systemPrefersDark ? 'dark' : 'light';
+}
+
+export function getSystemTheme(options: ThemeInitializerOptions = {}): Theme {
+    const systemPrefersDark = options.matchMedia
+        ? options.matchMedia(THEME_QUERY).matches
+        : typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+          ? window.matchMedia(THEME_QUERY).matches
+          : false;
 
     return systemPrefersDark ? 'dark' : 'light';
 }
@@ -68,18 +93,13 @@ export function applyThemeClass(theme: Theme, options: ApplyThemeClassOptions = 
         return;
     }
 
-    getThemeStorage()?.setItem(THEME_STORAGE_KEY, theme);
+    saveStoredTheme(theme);
 }
 
 export function initializeTheme(options: ThemeInitializerOptions = {}): Theme {
-    const systemPrefersDark = options.matchMedia
-        ? options.matchMedia(THEME_QUERY).matches
-        : typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-          ? window.matchMedia(THEME_QUERY).matches
-          : false;
     const theme = resolveTheme({
         storedTheme: getStoredTheme(),
-        systemPrefersDark,
+        systemPrefersDark: getSystemTheme(options) === 'dark',
     });
 
     syncThemeClass(theme);

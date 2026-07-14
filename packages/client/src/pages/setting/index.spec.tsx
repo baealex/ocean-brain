@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import type { McpAdminStatus } from '~/apis/mcp-admin.api';
 import * as mcpAdminApi from '~/apis/mcp-admin.api';
+import { SETTINGS_APPEARANCE_ROUTE } from '~/modules/url';
 import { createTestQueryClient } from '~/test/test-utils';
 import Setting from './index';
 
@@ -59,5 +60,13 @@ describe('<Setting />', () => {
             'href',
             'https://github.com/baealex/ocean-brain/releases',
         );
+    });
+
+    it('links the theme summary to appearance settings', async () => {
+        vi.mocked(mcpAdminApi.fetchMcpAdminStatus).mockResolvedValue(createMcpStatus());
+
+        renderPage();
+
+        expect(await screen.findByRole('link', { name: /Theme/ })).toHaveAttribute('href', SETTINGS_APPEARANCE_ROUTE);
     });
 });

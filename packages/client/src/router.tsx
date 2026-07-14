@@ -18,6 +18,7 @@ import {
     NOTE_ROUTE,
     REMINDERS_ROUTE,
     SEARCH_ROUTE,
+    SETTINGS_APPEARANCE_ROUTE,
     SETTINGS_MANAGE_IMAGE_DETAIL_ROUTE,
     SETTINGS_MANAGE_IMAGE_ROUTE,
     SETTINGS_MCP_ROUTE,
@@ -140,6 +141,15 @@ const settingsRoute = createRoute({
     ),
 });
 
+const appearanceRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: SETTINGS_APPEARANCE_ROUTE,
+    component: lazyRouteComponent(() => import('~/pages/setting/appearance')),
+    pendingComponent: () => (
+        <RoutePendingView title="Loading appearance" description="Preparing installed themes and preferences." />
+    ),
+});
+
 const mcpRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: SETTINGS_MCP_ROUTE,
@@ -210,6 +220,7 @@ const routeTree = rootRoute.addChildren([
     tagNotesRoute,
     viewNotesRoute,
     settingsRoute,
+    appearanceRoute,
     mcpRoute,
     trashRoute,
     manageImageRoute,

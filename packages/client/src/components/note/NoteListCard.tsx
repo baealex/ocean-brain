@@ -20,12 +20,14 @@ export default function NoteListCard({ id, title, tags, pinned, updatedAt, onPin
     return (
         <div
             key={id}
-            className={classNames('surface-base group relative flex h-full flex-col px-4 py-3.5 transition-colors')}
+            className={classNames(
+                'note-card surface-base group relative flex h-full flex-col px-4 py-3.5 transition-colors',
+            )}
         >
             {pinned && (
-                <div className="absolute left-1/2 top-0 z-[1] -translate-x-1/2 -translate-y-[38%]">
-                    <div className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border-secondary/70 bg-elevated text-fg-tertiary shadow-[0_8px_18px_-14px_rgba(23,29,38,0.32)]">
-                        <Icon.Pin className="h-3.5 w-3.5" weight="fill" />
+                <div className="note-pin-decoration absolute left-1/2 top-0 z-[1] -translate-x-1/2 -translate-y-[38%]">
+                    <div className="note-pin-decoration__marker inline-flex h-7 w-7 items-center justify-center rounded-full border border-border-secondary/70 bg-elevated text-fg-tertiary shadow-[0_8px_18px_-14px_rgba(23,29,38,0.32)]">
+                        <Icon.Pin className="note-pin-decoration__icon h-3.5 w-3.5" weight="fill" />
                         <span className="sr-only">Pinned note</span>
                     </div>
                 </div>

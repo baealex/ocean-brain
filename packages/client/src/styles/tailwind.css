@@ -56,6 +56,61 @@
     --highlight-fg: #202631;
     --divider: #d9e1e8;
     --page-bg: #f2f5f8;
+    --palette-yellow: #d8c4a8;
+    --palette-green: #9fb39d;
+    --palette-pink: #d6a3a0;
+    --palette-orange: #cfa88d;
+    --palette-blue: #9cafb9;
+    --palette-purple: #b5aabd;
+    --palette-teal: #90aba3;
+    --palette-lavender: #c0b7c6;
+    --priority-high: #e4a29f;
+    --priority-medium: #deb07e;
+    --priority-low: #dec988;
+    --ob-font-ui: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
+    --ob-font-editor: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --ob-font-graph: "Pretendard Variable", "Pretendard", system-ui, sans-serif;
+    --ob-radius-control-sm: 12px;
+    --ob-radius-control-md: 14px;
+    --ob-radius-control-lg: 16px;
+    --ob-radius-item: 10px;
+    --ob-radius-surface: 16px;
+    --ob-radius-floating: 18px;
+    --ob-radius-dialog: 20px;
+    --ob-radius-dialog-compact: 18px;
+    --ob-border-control-width: 1px;
+    --ob-border-surface-width: 1px;
+    --ob-border-style: solid;
+    --ob-shadow-control: none;
+    --ob-shadow-surface: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 1px 4px -2px rgba(23, 29, 38, 0.04);
+    --ob-shadow-floating: 0 12px 24px -22px rgba(23, 29, 38, 0.14);
+    --ob-shadow-dialog: 0 24px 64px -32px rgba(15, 18, 24, 0.36);
+    --ob-shadow-dialog-compact: 0 18px 44px -28px rgba(15, 18, 24, 0.28);
+    --ob-shadow-dialog-form: 0 22px 56px -30px rgba(15, 18, 24, 0.32);
+    --ob-shadow-dialog-inspect: 0 24px 64px -30px rgba(15, 18, 24, 0.34);
+    --ob-shadow-dialog-confirm: 0 16px 36px -24px rgba(15, 18, 24, 0.24);
+    --ob-shadow-shell-control: 0 12px 24px -18px rgba(0, 0, 0, 0.35);
+    --ob-graph-background: #f4f6f8;
+    --ob-graph-node-hub: #2c2f36;
+    --ob-graph-node-selected: #111318;
+    --ob-graph-node-connected: #636b76;
+    --ob-graph-node-default-1: #d6dbe1;
+    --ob-graph-node-default-2: #c8ced6;
+    --ob-graph-node-default-3: #b7bec7;
+    --ob-graph-node-default-4: #a7afb9;
+    --ob-graph-node-dimmed-1: rgba(214, 219, 225, 0.28);
+    --ob-graph-node-dimmed-2: rgba(200, 206, 214, 0.24);
+    --ob-graph-node-dimmed-3: rgba(183, 190, 199, 0.24);
+    --ob-graph-node-dimmed-4: rgba(167, 175, 185, 0.2);
+    --ob-graph-node-hub-dimmed: rgba(44, 47, 54, 0.16);
+    --ob-graph-node-stroke: #eef1f4;
+    --ob-graph-node-selected-stroke: #a6b0bc;
+    --ob-graph-label-background: rgba(246, 248, 250, 0.92);
+    --ob-graph-label-text: #222831;
+    --ob-graph-link-idle: rgba(99, 107, 117, 0.34);
+    --ob-graph-link-connected: #68717c;
+    --ob-graph-link-dimmed: rgba(127, 136, 146, 0.12);
+    --ob-graph-legend-hub: #2c2f36;
 }
 
 html.dark {
@@ -106,21 +161,44 @@ html.dark {
     --highlight-fg: #eef2f7;
     --divider: #2b3440;
     --page-bg: #101318;
+    --ob-shadow-surface: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 1px 4px -2px rgba(0, 0, 0, 0.18);
+    --ob-shadow-floating: 0 18px 36px -28px rgba(0, 0, 0, 0.42);
+    --ob-graph-background: #121316;
+    --ob-graph-node-hub: #d6dce3;
+    --ob-graph-node-selected: #eef1f5;
+    --ob-graph-node-connected: #9099a4;
+    --ob-graph-node-default-1: #343a43;
+    --ob-graph-node-default-2: #2d333c;
+    --ob-graph-node-default-3: #262c35;
+    --ob-graph-node-default-4: #20262f;
+    --ob-graph-node-dimmed-1: rgba(52, 58, 67, 0.28);
+    --ob-graph-node-dimmed-2: rgba(45, 51, 60, 0.24);
+    --ob-graph-node-dimmed-3: rgba(38, 44, 53, 0.22);
+    --ob-graph-node-dimmed-4: rgba(32, 38, 47, 0.2);
+    --ob-graph-node-hub-dimmed: rgba(214, 220, 227, 0.16);
+    --ob-graph-node-stroke: #171c23;
+    --ob-graph-node-selected-stroke: #7f8a97;
+    --ob-graph-label-background: rgba(16, 18, 22, 0.9);
+    --ob-graph-label-text: #eef2f6;
+    --ob-graph-link-idle: rgba(118, 127, 138, 0.42);
+    --ob-graph-link-connected: #a2abb6;
+    --ob-graph-link-dimmed: rgba(118, 127, 138, 0.1);
+    --ob-graph-legend-hub: #d6dce3;
 }
 
 @theme {
-    --font-sans: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    --color-pastel-yellow-200: #d8c4a8;
-    --color-pastel-green-200: #9fb39d;
-    --color-pastel-pink-200: #d6a3a0;
-    --color-pastel-orange-200: #cfa88d;
-    --color-pastel-blue-200: #9cafb9;
-    --color-pastel-purple-200: #b5aabd;
-    --color-pastel-teal-200: #90aba3;
-    --color-pastel-lavender-200: #c0b7c6;
-    --color-priority-high: #e4a29f;
-    --color-priority-medium: #deb07e;
-    --color-priority-low: #dec988;
+    --font-sans: var(--ob-font-ui);
+    --color-pastel-yellow-200: var(--palette-yellow);
+    --color-pastel-green-200: var(--palette-green);
+    --color-pastel-pink-200: var(--palette-pink);
+    --color-pastel-orange-200: var(--palette-orange);
+    --color-pastel-blue-200: var(--palette-blue);
+    --color-pastel-purple-200: var(--palette-purple);
+    --color-pastel-teal-200: var(--palette-teal);
+    --color-pastel-lavender-200: var(--palette-lavender);
+    --color-priority-high: var(--priority-high);
+    --color-priority-medium: var(--priority-medium);
+    --color-priority-low: var(--priority-low);
     --color-surface: var(--surface);
     --color-muted: var(--muted);
     --color-subtle: var(--subtle);
@@ -348,11 +426,9 @@ html.dark {
 
 .surface-base {
     background: var(--surface);
-    border: 1px solid var(--border-subtle);
-    border-radius: 16px;
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.1),
-        0 1px 4px -2px rgba(23, 29, 38, 0.04);
+    border: var(--ob-border-surface-width) var(--ob-border-style) var(--border-subtle);
+    border-radius: var(--ob-radius-surface);
+    box-shadow: var(--ob-shadow-surface);
 }
 
 .surface-elevated {
@@ -361,22 +437,148 @@ html.dark {
 
 .surface-floating {
     background: color-mix(in srgb, var(--elevated) 90%, transparent);
-    border: 1px solid color-mix(in srgb, var(--border-secondary) 45%, transparent);
-    border-radius: 18px;
-    box-shadow: 0 12px 24px -22px rgba(23, 29, 38, 0.14);
+    border: var(--ob-border-surface-width) var(--ob-border-style)
+        color-mix(in srgb, var(--border-secondary) 45%, transparent);
+    border-radius: var(--ob-radius-floating);
+    box-shadow: var(--ob-shadow-floating);
     backdrop-filter: blur(10px);
+}
+
+html[data-theme-texture="paper"] .surface-base {
+    border-color: color-mix(in srgb, var(--border) 82%, transparent);
+}
+
+html[data-theme-texture="paper"] .surface-floating {
+    border-color: color-mix(in srgb, var(--border) 76%, transparent);
+}
+
+.theme-control-frame {
+    border-width: var(--ob-border-control-width);
+    border-style: var(--ob-border-style);
+    box-shadow: var(--ob-shadow-control);
+}
+
+.theme-surface-frame {
+    border-width: var(--ob-border-surface-width);
+    border-style: var(--ob-border-style);
+}
+
+.theme-shell-control {
+    border-width: var(--ob-border-control-width);
+    border-style: var(--ob-border-style);
+    box-shadow: var(--ob-shadow-shell-control);
+}
+
+html[data-theme-texture="paper"] .theme-control-frame,
+html[data-theme-texture="paper"] .theme-shell-control {
+    border-color: color-mix(in srgb, var(--border) 88%, transparent);
+}
+
+html[data-theme-texture="paper"] .note-card:nth-child(4n + 1) {
+    background-color: color-mix(in srgb, var(--palette-yellow) 18%, var(--surface));
+}
+
+html[data-theme-texture="paper"] .note-card:nth-child(4n + 2) {
+    background-color: color-mix(in srgb, var(--palette-pink) 14%, var(--surface));
+}
+
+html[data-theme-texture="paper"] .note-card:nth-child(4n + 3) {
+    background-color: color-mix(in srgb, var(--palette-blue) 16%, var(--surface));
+}
+
+html[data-theme-texture="paper"] .note-card:nth-child(4n) {
+    background-color: color-mix(in srgb, var(--palette-green) 16%, var(--surface));
+}
+
+html[data-theme-texture="paper"] .note-pin-decoration__marker {
+    position: relative;
+    width: 68px;
+    height: 24px;
+    border: 1px solid color-mix(in srgb, var(--border-secondary) 58%, transparent);
+    border-radius: 2px;
+    background: color-mix(in srgb, var(--palette-yellow) 84%, transparent);
+    box-shadow: 0 2px 3px color-mix(in srgb, var(--border) 18%, transparent);
+    clip-path: polygon(0 12%, 4% 0, 96% 4%, 100% 15%, 98% 86%, 93% 100%, 5% 96%, 0 82%);
+    transform: rotate(-2deg);
+}
+
+html[data-theme-texture="paper"] .note-pin-decoration__marker::before,
+html[data-theme-texture="paper"] .note-pin-decoration__marker::after {
+    position: absolute;
+    top: 2px;
+    bottom: 2px;
+    width: 3px;
+    background: repeating-linear-gradient(
+        to bottom,
+        transparent,
+        transparent 2px,
+        color-mix(in srgb, var(--border-secondary) 38%, transparent) 2px,
+        color-mix(in srgb, var(--border-secondary) 38%, transparent) 4px
+    );
+    content: "";
+}
+
+html[data-theme-texture="paper"] .note-pin-decoration__marker::before {
+    left: 3px;
+}
+
+html[data-theme-texture="paper"] .note-pin-decoration__marker::after {
+    right: 3px;
+}
+
+html[data-theme-texture="paper"] .note-pin-decoration__icon {
+    display: none;
+}
+
+html.dark[data-theme-texture="paper"] .note-pin-decoration__marker {
+    background: color-mix(in srgb, var(--palette-yellow) 48%, transparent);
+}
+
+.theme-radius-control-sm {
+    border-radius: var(--ob-radius-control-sm);
+}
+
+.theme-radius-control-md {
+    border-radius: var(--ob-radius-control-md);
+}
+
+.theme-radius-control-lg {
+    border-radius: var(--ob-radius-control-lg);
+}
+
+.theme-radius-item {
+    border-radius: var(--ob-radius-item);
+}
+
+.theme-dialog-default {
+    border-radius: var(--ob-radius-dialog);
+    box-shadow: var(--ob-shadow-dialog);
+}
+
+.theme-dialog-compact {
+    border-radius: var(--ob-radius-dialog-compact);
+    box-shadow: var(--ob-shadow-dialog-compact);
+}
+
+.theme-dialog-form {
+    border-radius: var(--ob-radius-dialog);
+    box-shadow: var(--ob-shadow-dialog-form);
+}
+
+.theme-dialog-inspect {
+    border-radius: var(--ob-radius-dialog);
+    box-shadow: var(--ob-shadow-dialog-inspect);
+}
+
+.theme-dialog-confirm {
+    border-radius: var(--ob-radius-dialog-compact);
+    box-shadow: var(--ob-shadow-dialog-confirm);
 }
 
 .focus-ring-soft:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-soft-primary) 90%, transparent);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--border-focus) 90%, transparent);
     border-color: var(--border-focus);
-}
-
-html.dark .surface-base {
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.03),
-        0 1px 4px -2px rgba(0, 0, 0, 0.18);
 }
 
 /* Grid layouts */
@@ -447,8 +649,4 @@ html.dark .surface-base {
 /* Legend dot */
 .legend-dot {
     background: var(--legend-color);
-}
-
-html.dark .surface-floating {
-    box-shadow: 0 18px 36px -28px rgba(0, 0, 0, 0.42);
 }

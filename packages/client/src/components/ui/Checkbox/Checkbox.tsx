@@ -48,7 +48,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
                         'peer-checked:border-cta',
                         'focus-ring-soft',
                         'peer-focus-visible:border-border-focus',
-                        'peer-focus-visible:shadow-[0_0_0_4px_color-mix(in_srgb,var(--accent-soft-primary)_90%,transparent)]',
+                        'peer-focus-visible:shadow-[0_0_0_4px_color-mix(in_srgb,var(--border-focus)_90%,transparent)]',
                     )}
                 >
                     {checked && (

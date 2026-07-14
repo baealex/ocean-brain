@@ -5,7 +5,7 @@ import { forwardRef } from 'react';
 const textareaVariants = cva(
     [
         'w-full',
-        'border',
+        'theme-control-frame',
         'border-border-subtle',
         'bg-elevated',
         'text-fg-default',
@@ -25,9 +25,9 @@ const textareaVariants = cva(
                 error: ['border-border-error', 'bg-accent-soft-danger/40', 'text-fg-default'],
             },
             size: {
-                sm: 'min-h-[60px] p-3 text-sm rounded-[12px]',
-                md: 'min-h-[80px] p-3 text-sm rounded-[14px]',
-                lg: 'min-h-[100px] p-4 text-base rounded-[16px]',
+                sm: 'theme-radius-control-sm min-h-[60px] p-3 text-sm',
+                md: 'theme-radius-control-md min-h-[80px] p-3 text-sm',
+                lg: 'theme-radius-control-lg min-h-[100px] p-4 text-base',
             },
         },
         defaultVariants: {

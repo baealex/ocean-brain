@@ -3,7 +3,15 @@
     "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
     "files": {
         "ignoreUnknown": true,
-        "includes": ["src/**", "vite.config.ts", "tsconfig.json", "tsconfig.node.json", "biome.json", "package.json"]
+        "includes": [
+            "src/**",
+            "build/**",
+            "vite.config.ts",
+            "tsconfig.json",
+            "tsconfig.node.json",
+            "biome.json",
+            "package.json"
+        ]
     },
     "formatter": {
         "enabled": true,
@@ -99,7 +107,7 @@
                 "useNamespaceKeyword": "error"
             }
         },
-        "includes": ["src/**", "vite.config.ts"]
+        "includes": ["src/**", "build/**", "vite.config.ts"]
     },
     "javascript": {
         "formatter": {
@@ -127,7 +135,7 @@
     },
     "overrides": [
         {
-            "includes": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts"],
+            "includes": ["src/**/*.ts", "src/**/*.tsx", "build/**/*.ts", "vite.config.ts"],
             "linter": {
                 "rules": {
                     "complexity": { "noArguments": "error" },
@@ -159,7 +167,7 @@
             }
         },
         {
-            "includes": ["src/**/*.{js,jsx,ts,tsx}", "vite.config.ts"],
+            "includes": ["src/**/*.{js,jsx,ts,tsx}", "build/**/*.ts", "vite.config.ts"],
             "javascript": { "globals": [] },
             "linter": {
                 "rules": { "correctness": { "useHookAtTopLevel": "error" } }

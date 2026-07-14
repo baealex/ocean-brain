@@ -61,8 +61,8 @@ vi.mock('~/components/app', () => ({
     QueryErrorView: () => <div>Error</div>,
 }));
 
-vi.mock('~/components/entities', () => ({
-    PinnedNotes: ({ render }: { render: (notes: MockPinnedNote[]) => ReactNode }) => <>{render(mockPinnedNotes)}</>,
+vi.mock('~/components/entities/PinnedNotes', () => ({
+    default: ({ render }: { render: (notes: MockPinnedNote[]) => ReactNode }) => <>{render(mockPinnedNotes)}</>,
 }));
 
 vi.mock('~/components/ui', async () => {

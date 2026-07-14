@@ -16,7 +16,7 @@ import { useEffect, useState } from 'react';
 
 import { reorderNotes } from '~/apis/note.api';
 import { QueryBoundary, QueryErrorView } from '~/components/app';
-import { PinnedNotes } from '~/components/entities';
+import PinnedNotes from '~/components/entities/PinnedNotes';
 import * as Icon from '~/components/icon';
 import { Skeleton } from '~/components/shared';
 import { Text } from '~/components/ui';

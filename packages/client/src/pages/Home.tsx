@@ -1,8 +1,8 @@
 import { getRouteApi } from '@tanstack/react-router';
 
 import { QueryBoundary } from '~/components/app';
-import { Notes } from '~/components/entities';
-import { NoteListCard } from '~/components/note';
+import Notes from '~/components/entities/Notes';
+import NoteListCard from '~/components/note/NoteListCard';
 import { Empty, FallbackRender, NoteFilters, PageLayout, Pagination, Skeleton } from '~/components/shared';
 
 import useNoteMutate from '~/hooks/resource/useNoteMutate';

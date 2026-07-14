@@ -7,7 +7,13 @@ import { z } from 'zod';
 
 import { formatMcpReadNoteOutput } from './mcp-note-output.js';
 import { registerIntentWriteTools } from './mcp-intent-write-tools.js';
+import { registerLegacyWriteTools } from './mcp-legacy-write-tools.js';
 import { formatPropertyQueryResponse, type PropertyQueryResult } from './mcp-property-query-output.js';
+import {
+    createMcpJsonToolResult,
+    createMcpTextToolResult,
+    noteLayoutSchema,
+} from './mcp-tool-support.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
@@ -51,7 +57,6 @@ export const OCEAN_BRAIN_MCP_TOOLS = {
     deleteNote: 'ocean_brain_delete_note'
 } as const;
 
-const noteLayoutSchema = z.enum(['narrow', 'wide', 'full']);
 const tagMatchModeSchema = z.enum(['and', 'or']);
 const propertyValueTypeSchema = z.enum(['text', 'url', 'number', 'date', 'boolean', 'select']);
 const propertyFilterOperatorSchema = z.enum(['equals', 'before', 'after', 'exists', 'notExists']);
@@ -215,14 +220,11 @@ const requireWriteToken = (token: string | undefined, toolName: string) => {
     throw new Error(`${toolName} requires an MCP bearer token. Set --token or --token-file.`);
 };
 
-export async function startMcpServer(
+const registerMcpTools = (
+    server: McpServer,
     serverUrl: string,
     token?: string
-) {
-    const server = new McpServer({
-        name: 'ocean-brain',
-        version: pkg.version,
-    });
+) => {
     server.tool(
         OCEAN_BRAIN_MCP_TOOLS.searchNotes,
         'Search Ocean Brain notes by keyword. Returns matching note titles and tags. Use ocean_brain_read_note to get full content for a specific note.',
@@ -268,12 +270,7 @@ export async function startMcpServer(
                 preview: note.contentAsMarkdown.slice(0, 100),
             }));
 
-            return {
-                content: [{
-                    type: 'text' as const,
-                    text: JSON.stringify({ totalCount: result.totalCount, notes }, null, 2),
-                }],
-            };
+            return createMcpJsonToolResult({ totalCount: result.totalCount, notes });
         },
     );
 
@@ -328,12 +325,7 @@ export async function startMcpServer(
                 maxLength
             });
 
-            return {
-                content: [{
-                    type: 'text' as const,
-                    text: output,
-                }],
-            };
+            return createMcpTextToolResult(output);
         },
     );
 
@@ -362,51 +354,17 @@ export async function startMcpServer(
                 ...(layout ? { layout } : {})
             });
 
-            return {
-                content: [{
-                    type: 'text' as const,
-                    text: JSON.stringify(result, null, 2)
-                }]
-            };
+            return createMcpJsonToolResult(result);
         }
     );
 
-    server.tool(
-        OCEAN_BRAIN_MCP_TOOLS.updateNote,
-        'Legacy full-field note update kept for backward compatibility. Prefer ocean_brain_patch_note_markdown for localized body edits, ocean_brain_append_note_markdown for additions, ocean_brain_replace_note_markdown for whole-body rewrites, and ocean_brain_update_note_metadata for title/layout/properties. Use this only when a legacy client needs combined field updates.',
-        {
-            id: z.string().describe('Note ID to update'),
-            title: z.string().optional().describe('New note title'),
-            markdown: z.string().optional().describe('Replacement markdown body. In MCP markdown, tags must use [@tag] or [#tag].'),
-            layout: noteLayoutSchema.optional().describe('Optional note layout: narrow, wide, or full. Prefer wide for most notes unless the user explicitly wants narrow or full.')
-        },
-        async ({ id, title, markdown, layout }) => {
-            const writeToken = requireWriteToken(token, OCEAN_BRAIN_MCP_TOOLS.updateNote);
-            const result = await jsonRequest<{
-                updated?: boolean;
-                code?: string;
-                note?: {
-                    id: string;
-                    title: string;
-                    layout: 'narrow' | 'wide' | 'full';
-                    createdAt: string;
-                    updatedAt: string;
-                };
-            }>(serverUrl, writeToken, '/api/mcp/notes/update', {
-                id,
-                ...(title !== undefined ? { title } : {}),
-                ...(markdown !== undefined ? { markdown } : {}),
-                ...(layout ? { layout } : {})
-            });
-
-            return {
-                content: [{
-                    type: 'text' as const,
-                    text: JSON.stringify(result, null, 2)
-                }]
-            };
-        }
-    );
+    registerLegacyWriteTools(server, {
+        jsonRequest,
+        requireWriteToken,
+        serverUrl,
+        token,
+        tools: OCEAN_BRAIN_MCP_TOOLS,
+    });
 
     registerIntentWriteTools(server, {
         jsonRequest,
@@ -442,12 +400,7 @@ export async function startMcpServer(
                 tags: Array<{ id: string; name: string; referenceCount: number }>;
             };
 
-            return {
-                content: [{
-                    type: 'text' as const,
-                    text: JSON.stringify(result, null, 2),
-                }],
-            };
+            return createMcpJsonToolResult(result);
         },
     );
 
@@ -497,15 +450,10 @@ export async function startMcpServer(
                 }>;
             };
 
-            return {
-                content: [{
-                    type: 'text' as const,
-                    text: JSON.stringify({
-                        totalCount: result.totalCount,
-                        propertyKeys: result.keys
-                    }, null, 2),
-                }],
-            };
+            return createMcpJsonToolResult({
+                totalCount: result.totalCount,
+                propertyKeys: result.keys
+            });
         }
     );
 
@@ -523,18 +471,13 @@ export async function startMcpServer(
             const exactMatches = tagResult.tags.filter((item) => item.name === normalizedTag);
 
             if (exactMatches.length === 0) {
-                return {
-                    content: [{
-                        type: 'text' as const,
-                        text: JSON.stringify({
-                            requestedTag: tag,
-                            normalizedTag,
-                            tagFound: false,
-                            noteCount: 0,
-                            notes: []
-                        }, null, 2),
-                    }],
-                };
+                return createMcpJsonToolResult({
+                    requestedTag: tag,
+                    normalizedTag,
+                    tagFound: false,
+                    noteCount: 0,
+                    notes: []
+                });
             }
 
             const selectedTag = exactMatches[0];
@@ -565,25 +508,20 @@ export async function startMcpServer(
                 }>;
             };
 
-            return {
-                content: [{
-                    type: 'text' as const,
-                    text: JSON.stringify({
-                        requestedTag: tag,
-                        normalizedTag,
-                        tagFound: true,
-                        duplicateExactMatchCount: exactMatches.length,
-                        tag: selectedTag,
-                        totalCount: noteResult.totalCount,
-                        notes: noteResult.notes.map((note) => ({
-                            id: note.id,
-                            title: note.title,
-                            updatedAt: note.updatedAt,
-                            tags: note.tags.map((item) => item.name)
-                        }))
-                    }, null, 2),
-                }],
-            };
+            return createMcpJsonToolResult({
+                requestedTag: tag,
+                normalizedTag,
+                tagFound: true,
+                duplicateExactMatchCount: exactMatches.length,
+                tag: selectedTag,
+                totalCount: noteResult.totalCount,
+                notes: noteResult.notes.map((note) => ({
+                    id: note.id,
+                    title: note.title,
+                    updatedAt: note.updatedAt,
+                    tags: note.tags.map((item) => item.name)
+                }))
+            });
         }
     );
 
@@ -664,26 +602,21 @@ export async function startMcpServer(
                 noteResult = notesData?.notesByTagNames as typeof noteResult;
             }
 
-            return {
-                content: [{
-                    type: 'text' as const,
-                    text: JSON.stringify({
-                        requestedTags: tags,
-                        normalizedTags,
-                        mode,
-                        allTagsFound: missingTags.length === 0,
-                        missingTags,
-                        tags: matchedTags,
-                        totalCount: noteResult.totalCount,
-                        notes: noteResult.notes.map((note) => ({
-                            id: note.id,
-                            title: note.title,
-                            updatedAt: note.updatedAt,
-                            tags: note.tags.map((item) => item.name)
-                        }))
-                    }, null, 2),
-                }],
-            };
+            return createMcpJsonToolResult({
+                requestedTags: tags,
+                normalizedTags,
+                mode,
+                allTagsFound: missingTags.length === 0,
+                missingTags,
+                tags: matchedTags,
+                totalCount: noteResult.totalCount,
+                notes: noteResult.notes.map((note) => ({
+                    id: note.id,
+                    title: note.title,
+                    updatedAt: note.updatedAt,
+                    tags: note.tags.map((item) => item.name)
+                }))
+            });
         }
     );
 
@@ -731,29 +664,20 @@ export async function startMcpServer(
 
             const result = data?.notesByProperties as PropertyQueryResult;
 
-            return {
-                content: [{
-                    type: 'text' as const,
-                    text: JSON.stringify(
-                        formatPropertyQueryResponse({
-                            result,
-                            query: {
-                                propertyFilters,
-                                tagNames,
-                                mode,
-                                sortBy,
-                                sortOrder,
-                                limit,
-                                offset
-                            },
-                            includeProperties: shouldIncludeProperties,
-                            propertyKeys
-                        }),
-                        null,
-                        2
-                    ),
-                }],
-            };
+            return createMcpJsonToolResult(formatPropertyQueryResponse({
+                result,
+                query: {
+                    propertyFilters,
+                    tagNames,
+                    mode,
+                    sortBy,
+                    sortOrder,
+                    limit,
+                    offset
+                },
+                includeProperties: shouldIncludeProperties,
+                propertyKeys
+            }));
         }
     );
 
@@ -798,12 +722,7 @@ export async function startMcpServer(
                 tags: note.tags.map((t) => t.name),
             }));
 
-            return {
-                content: [{
-                    type: 'text' as const,
-                    text: JSON.stringify({ totalCount: result.totalCount, notes }, null, 2),
-                }],
-            };
+            return createMcpJsonToolResult({ totalCount: result.totalCount, notes });
         },
     );
 
@@ -856,18 +775,13 @@ export async function startMcpServer(
                 forceReasons: string[];
             }>;
 
-            return {
-                content: [{
-                    type: 'text' as const,
-                    text: JSON.stringify({
-                        keywords: normalizedKeywords,
-                        limit,
-                        offset,
-                        candidateCount: result.length,
-                        notes: result
-                    }, null, 2),
-                }],
-            };
+            return createMcpJsonToolResult({
+                keywords: normalizedKeywords,
+                limit,
+                offset,
+                candidateCount: result.length,
+                notes: result
+            });
         }
     );
 
@@ -892,12 +806,7 @@ export async function startMcpServer(
                 name
             });
 
-            return {
-                content: [{
-                    type: 'text' as const,
-                    text: JSON.stringify(result, null, 2)
-                }]
-            };
+            return createMcpJsonToolResult(result);
         }
     );
 
@@ -913,18 +822,24 @@ export async function startMcpServer(
             try {
                 const result = await jsonRequest(serverUrl, writeToken, '/api/mcp/notes/delete', { id });
 
-                return {
-                    content: [{
-                        type: 'text' as const,
-                        text: JSON.stringify(result, null, 2)
-                    }]
-                };
+                return createMcpJsonToolResult(result);
             } catch (error) {
                 const message = error instanceof Error ? error.message : 'Unknown MCP note delete error';
                 throw new Error(message);
             }
         }
     );
+};
+
+export async function startMcpServer(
+    serverUrl: string,
+    token?: string
+) {
+    const server = new McpServer({
+        name: 'ocean-brain',
+        version: pkg.version,
+    });
+    registerMcpTools(server, serverUrl, token);
 
     const transport = new StdioServerTransport();
     await server.connect(transport);

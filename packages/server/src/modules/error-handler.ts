@@ -18,6 +18,9 @@ export const createAppError = (status: number, code: string, message: string, de
     return new AppError(status, code, message, details);
 };
 
+const hasErrorType = (error: unknown, type: string) =>
+    error instanceof Error && 'type' in error && (error as Error & { type?: unknown }).type === type;
+
 export const createErrorHandler = (): ErrorRequestHandler => {
     return (error, _req, res, next) => {
         if (res.headersSent) {
@@ -31,6 +34,16 @@ export const createErrorHandler = (): ErrorRequestHandler => {
                     code: error.code,
                     message: error.message,
                     ...(error.details ? { details: error.details } : {}),
+                })
+                .end();
+            return;
+        }
+
+        if (hasErrorType(error, 'encoding.unsupported')) {
+            res.status(415)
+                .json({
+                    code: 'UNSUPPORTED_CONTENT_ENCODING',
+                    message: 'Compressed request bodies are not supported.',
                 })
                 .end();
             return;

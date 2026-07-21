@@ -1,0 +1,112 @@
+import assert from 'node:assert/strict';
+import type { AddressInfo } from 'node:net';
+import test from 'node:test';
+import type { Response } from 'express';
+import { createApp } from '~/app.js';
+import { AUTH_SESSION_COOKIE_NAME, type AuthConfig } from '~/modules/auth-mode.js';
+import { createSearchAdminSaveConfigHandler, createSearchAdminTestConnectionHandler } from './handlers.js';
+
+const createResponse = () => {
+    const response = {
+        statusCode: 0,
+        body: null as unknown,
+        status(code: number) {
+            this.statusCode = code;
+            return this;
+        },
+        json(body: unknown) {
+            this.body = body;
+            return this;
+        },
+        end() {
+            return this;
+        },
+    };
+
+    return response as typeof response & Response;
+};
+
+const passwordAuthConfig: AuthConfig = {
+    mode: 'password',
+    password: 'secret',
+    sessionSecret: 'session-secret',
+    cookieName: AUTH_SESSION_COOKIE_NAME,
+    source: 'password',
+};
+
+test('semantic search administration endpoints require an authenticated session', async (t) => {
+    const server = createApp(passwordAuthConfig).listen(0);
+    await new Promise<void>((resolve, reject) => {
+        server.once('listening', resolve);
+        server.once('error', reject);
+    });
+    t.after(() => server.close());
+
+    const address = server.address() as AddressInfo;
+    const response = await fetch(`http://127.0.0.1:${address.port}/api/search-admin/status`);
+    const body = (await response.json()) as { code?: unknown };
+
+    assert.equal(response.status, 401);
+    assert.equal(body.code, 'UNAUTHORIZED');
+});
+
+test('search config handler rejects incomplete external input', async () => {
+    const handler = createSearchAdminSaveConfigHandler({
+        getStatus: async () => {
+            throw new Error('not used');
+        },
+        saveConfig: async () => {
+            throw new Error('must not be called');
+        },
+        testConnection: async () => {
+            throw new Error('not used');
+        },
+        startReindex: async () => {
+            throw new Error('not used');
+        },
+    });
+
+    await assert.rejects(
+        handler({ body: { enabled: true } } as never, createResponse()),
+        (error: { status?: number; code?: string }) => error.status === 400 || error.code === 'INVALID_SEARCH_CONFIG',
+    );
+});
+
+test('connection test forces validation without persisting the supplied settings', async () => {
+    let receivedConfig: unknown;
+    const handler = createSearchAdminTestConnectionHandler({
+        getStatus: async () => {
+            throw new Error('not used');
+        },
+        saveConfig: async () => {
+            throw new Error('must not be called');
+        },
+        testConnection: async (config) => {
+            receivedConfig = config;
+            return { ok: true as const, dimensions: 2, model: config?.model ?? '' };
+        },
+        startReindex: async () => {
+            throw new Error('not used');
+        },
+    });
+    const response = createResponse();
+
+    await handler(
+        {
+            body: {
+                baseUrl: 'http://127.0.0.1:1234/v1',
+                model: 'qwen-embedding',
+                queryInstruction: 'Retrieve relevant notes.',
+            },
+        } as never,
+        response,
+    );
+
+    assert.deepEqual(receivedConfig, {
+        enabled: true,
+        baseUrl: 'http://127.0.0.1:1234/v1',
+        model: 'qwen-embedding',
+        queryInstruction: 'Retrieve relevant notes.',
+    });
+    assert.equal(response.statusCode, 200);
+});

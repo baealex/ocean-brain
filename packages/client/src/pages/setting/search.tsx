@@ -142,11 +142,11 @@ const SearchSetting = () => {
             <div className="flex flex-col gap-5">
                 <section className="surface-base flex flex-col gap-4 p-4" aria-labelledby="search-mode-heading">
                     <div className="flex flex-wrap items-start justify-between gap-4">
-                        <div className="min-w-0 space-y-1">
+                        <div className="min-w-0 flex-1 basis-[28rem] space-y-1">
                             <Text id="search-mode-heading" as="h2" variant="label" weight="medium">
                                 Meaning search
                             </Text>
-                            <Text as="p" variant="meta" tone="secondary" className="max-w-2xl leading-relaxed">
+                            <Text as="p" variant="meta" tone="secondary" className="max-w-[42rem] leading-relaxed">
                                 Keyword search always stays inside Ocean Brain. Enable this when you also want to find
                                 notes from a vague memory or paraphrased idea.
                             </Text>
@@ -258,7 +258,7 @@ const SearchSetting = () => {
 
                 <section className="surface-base flex flex-col gap-4 p-4" aria-labelledby="search-index-heading">
                     <div className="flex flex-wrap items-start justify-between gap-4">
-                        <div className="min-w-0 space-y-1">
+                        <div className="min-w-0 flex-1 basis-[28rem] space-y-1">
                             <Text id="search-index-heading" as="h2" variant="label" weight="medium">
                                 Local search index
                             </Text>

@@ -59,9 +59,11 @@ describe('<Search />', () => {
                         content: JSON.stringify([
                             {
                                 type: 'paragraph',
-                                content: [
-                                    { type: 'text', text: '무당이 자기 운명을 보면 오래 살지 못한다는 이야기였다.' },
-                                ],
+                                content: [{ type: 'text', text: '늦은 시간에 오락실을 돌아다녔다.' }],
+                            },
+                            {
+                                type: 'paragraph',
+                                content: [{ type: 'text', text: '누군가 내 귀에 6년 안에 죽는 거라고 속삭였다.' }],
                             },
                         ]),
                         pinned: false,
@@ -77,7 +79,8 @@ describe('<Search />', () => {
 
         expect(await screen.findByText('Keyword + meaning')).toBeInTheDocument();
         expect(screen.getByRole('link', { name: '그날 들은 불길한 이야기' })).toHaveAttribute('href', '/17');
-        expect(screen.getByText(/무당이 자기 운명을 보면/)).toBeInTheDocument();
+        expect(screen.getByText(/6년 안에 죽는 거라고/)).toBeInTheDocument();
+        expect(screen.queryByText(/늦은 시간에 오락실/)).not.toBeInTheDocument();
         expect(searchApi.fetchSearchNotes).toHaveBeenCalledWith({
             query: '점쟁이 죽는',
             limit: 10,

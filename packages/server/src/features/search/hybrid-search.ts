@@ -51,10 +51,26 @@ const buildLexicalWhere = (query: string): Prisma.NoteWhereInput | undefined => 
     return {
         AND: [
             { searchableTextVersion: NOTE_SEARCH_TEXT_SCHEMA_VERSION },
-            ...parsedQuery.included.map((term) => ({ searchableText: { contains: term } })),
+            ...(parsedQuery.included.length > 0
+                ? [
+                      {
+                          OR: parsedQuery.included.map((term) => ({ searchableText: { contains: term } })),
+                      },
+                  ]
+                : []),
             ...parsedQuery.excluded.map((term) => ({ NOT: { searchableText: { contains: term } } })),
         ],
     };
+};
+
+export const matchesHybridLexicalQuery = (searchableText: string, query: string) => {
+    const parsedQuery = parseNoteSearchQuery(query);
+    const normalizedSearchableText = searchableText.toLowerCase();
+    const includesAnyTerm =
+        parsedQuery.included.length === 0 ||
+        parsedQuery.included.some((term) => normalizedSearchableText.includes(term));
+
+    return includesAnyTerm && parsedQuery.excluded.every((term) => !normalizedSearchableText.includes(term));
 };
 
 const scoreLexicalCandidate = (candidate: LexicalCandidate, query: string) => {
@@ -62,6 +78,7 @@ const scoreLexicalCandidate = (candidate: LexicalCandidate, query: string) => {
     const phrase = parsedQuery.included.join(' ');
     const title = candidate.title.toLowerCase();
     const searchableText = candidate.searchableText.toLowerCase();
+    const matchingTermCount = parsedQuery.included.filter((term) => searchableText.includes(term)).length;
     let score = 0;
 
     if (phrase && title === phrase) {
@@ -72,6 +89,10 @@ const scoreLexicalCandidate = (candidate: LexicalCandidate, query: string) => {
 
     if (phrase && searchableText.includes(phrase)) {
         score += 15;
+    }
+
+    if (parsedQuery.included.length > 1 && matchingTermCount === parsedQuery.included.length) {
+        score += 20;
     }
 
     for (const term of parsedQuery.included) {
@@ -130,17 +151,12 @@ const listDefaultLexicalNoteIds = async (query: string, limit: number) => {
         void runDataMaintenanceInBackground();
     }
 
-    const parsedQuery = parseNoteSearchQuery(query);
     const matchingStaleCandidates = (staleCandidates as StaleLexicalCandidate[])
         .map((candidate) => ({
             ...candidate,
             searchableText: buildNoteSearchText(candidate),
         }))
-        .filter(
-            (candidate) =>
-                parsedQuery.included.every((term) => candidate.searchableText.includes(term)) &&
-                parsedQuery.excluded.every((term) => !candidate.searchableText.includes(term)),
-        );
+        .filter((candidate) => matchesHybridLexicalQuery(candidate.searchableText, query));
 
     return rankLexicalCandidates([...freshCandidates, ...matchingStaleCandidates], query)
         .slice(0, limit)

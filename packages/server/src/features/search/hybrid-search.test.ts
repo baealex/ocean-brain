@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Note } from '~/models.js';
-import { createHybridNoteSearch, rankLexicalCandidates } from './hybrid-search.js';
+import { createHybridNoteSearch, matchesHybridLexicalQuery, rankLexicalCandidates } from './hybrid-search.js';
 
 const createNote = (id: number): Note =>
     ({
@@ -30,6 +30,37 @@ test('ranks exact title and phrase matches ahead of content-only matches', () =>
                 id: 2,
                 title: '점쟁이 죽는',
                 searchableText: '점쟁이 죽는',
+                updatedAt: new Date('2020-01-01T00:00:00.000Z'),
+            },
+        ],
+        '점쟁이 죽는',
+    );
+
+    assert.deepEqual(
+        candidates.map((candidate) => candidate.id),
+        [2, 1],
+    );
+});
+
+test('keeps partial lexical candidates for a vague multi-word query', () => {
+    assert.equal(matchesHybridLexicalQuery('6년 안에 죽는거야 점집에서 들은 꿈', '점쟁이 죽는'), true);
+    assert.equal(matchesHybridLexicalQuery('완전히 다른 기록', '점쟁이 죽는'), false);
+    assert.equal(matchesHybridLexicalQuery('6년 안에 죽는거야 제외할 내용', '점쟁이 죽는 -제외할'), false);
+});
+
+test('ranks candidates containing every term ahead of partial content matches', () => {
+    const candidates = rankLexicalCandidates(
+        [
+            {
+                id: 1,
+                title: '죽는 이야기',
+                searchableText: '죽는 이야기',
+                updatedAt: new Date('2026-07-21T00:00:00.000Z'),
+            },
+            {
+                id: 2,
+                title: '다른 제목',
+                searchableText: '점쟁이와 죽는 이야기를 흐릿하게 기억한다',
                 updatedAt: new Date('2020-01-01T00:00:00.000Z'),
             },
         ],

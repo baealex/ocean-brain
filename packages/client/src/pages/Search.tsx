@@ -13,6 +13,7 @@ const Route = getRouteApi(SEARCH_ROUTE);
 const MAX_SEARCH_SNIPPET_LENGTH = 180;
 
 const normalizeSearchText = (value: string) => value.replace(/\s+/g, ' ').trim();
+const getNormalizedSearchTerms = (query: string) => normalizeSearchText(query).toLowerCase().split(' ').filter(Boolean);
 
 const buildSearchExcerpt = (text: string, query: string) => {
     const normalizedText = normalizeSearchText(text);
@@ -22,7 +23,21 @@ const buildSearchExcerpt = (text: string, query: string) => {
         return normalizedText;
     }
 
-    const matchIndex = normalizedText.toLowerCase().indexOf(normalizedQuery);
+    const lowerText = normalizedText.toLowerCase();
+    let matchedText = normalizedQuery;
+    let matchIndex = lowerText.indexOf(normalizedQuery);
+
+    if (matchIndex === -1) {
+        const fallbackMatch = getNormalizedSearchTerms(query)
+            .map((term) => ({ term, index: lowerText.indexOf(term) }))
+            .filter((match) => match.index >= 0)
+            .sort((left, right) => left.index - right.index || right.term.length - left.term.length)[0];
+
+        if (fallbackMatch) {
+            matchedText = fallbackMatch.term;
+            matchIndex = fallbackMatch.index;
+        }
+    }
 
     if (matchIndex === -1) {
         return normalizedText.length > MAX_SEARCH_SNIPPET_LENGTH
@@ -31,7 +46,7 @@ const buildSearchExcerpt = (text: string, query: string) => {
     }
 
     const excerptStart = Math.max(0, matchIndex - 56);
-    const excerptEnd = Math.min(normalizedText.length, matchIndex + normalizedQuery.length + 84);
+    const excerptEnd = Math.min(normalizedText.length, matchIndex + matchedText.length + 84);
 
     let snippet = normalizedText.slice(excerptStart, excerptEnd).trim();
 
@@ -140,10 +155,11 @@ const getSearchPreviewBlocks = (content: string, query: string) => {
             return [];
         }
 
-        const normalizedQuery = normalizeSearchText(query).toLowerCase();
-        const matchingBlocks = normalizedQuery
-            ? blocks.filter((block) => block.text.toLowerCase().includes(normalizedQuery))
-            : blocks;
+        const normalizedTerms = getNormalizedSearchTerms(query);
+        const matchingBlocks =
+            normalizedTerms.length > 0
+                ? blocks.filter((block) => normalizedTerms.some((term) => block.text.toLowerCase().includes(term)))
+                : blocks;
         const selectedBlocks = (matchingBlocks.length > 0 ? matchingBlocks : blocks).slice(0, 2);
 
         return selectedBlocks.map((block) => ({

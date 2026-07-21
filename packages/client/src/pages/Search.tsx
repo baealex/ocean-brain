@@ -1,10 +1,12 @@
+import { useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi, Link } from '@tanstack/react-router';
 
+import { type FetchSearchNotesParams, fetchSearchNotes, type SearchNotesResult } from '~/apis/search.api';
 import { QueryBoundary } from '~/components/app';
-import { Notes } from '~/components/entities';
 import { Empty, Highlight, PageLayout, Pagination, Skeleton } from '~/components/shared';
 import { Text } from '~/components/ui';
 
+import { queryKeys } from '~/modules/query-key-factory';
 import { NOTE_ROUTE, SEARCH_ROUTE } from '~/modules/url';
 
 const Route = getRouteApi(SEARCH_ROUTE);
@@ -158,6 +160,34 @@ const formatResultCount = (count: number) => (count === 1 ? '1 result' : `${coun
 const getSearchFallbackPreview = () => 'Open the note to inspect matching content.';
 const getSearchDescription = (query: string, totalCount: number) => `${formatResultCount(totalCount)} for "${query}"`;
 
+interface HybridSearchNotesProps {
+    searchParams: FetchSearchNotesParams;
+    render: (data: SearchNotesResult) => React.ReactNode;
+}
+
+const HybridSearchNotes = ({ searchParams, render }: HybridSearchNotesProps) => {
+    const { data } = useSuspenseQuery({
+        queryKey: queryKeys.search.results(searchParams),
+        async queryFn() {
+            const response = await fetchSearchNotes(searchParams);
+            if (response.type === 'error') {
+                throw response;
+            }
+            return response.searchNotes;
+        },
+    });
+
+    return render(data);
+};
+
+const getSearchModeLabel = ({ semanticUsed, semanticError }: SearchNotesResult) => {
+    if (semanticUsed) {
+        return 'Keyword + meaning';
+    }
+
+    return semanticError ? 'Keyword fallback' : 'Keyword only';
+};
+
 const SearchResultsSkeleton = () => (
     <PageLayout
         title="Search"
@@ -218,23 +248,43 @@ export default function Search() {
             errorDescription={`Retry loading results for "${normalizedQuery}".`}
             resetKeys={[normalizedQuery, page]}
         >
-            <Notes
+            <HybridSearchNotes
                 searchParams={{
                     query: normalizedQuery,
                     limit,
                     offset: (page - 1) * limit,
-                    fields: ['content'],
                 }}
-                render={({ notes, totalCount }) => (
+                render={(result) => (
                     <PageLayout
                         title="Search"
-                        description={getSearchDescription(normalizedQuery, totalCount)}
+                        description={getSearchDescription(normalizedQuery, result.totalCount)}
                         variant="default"
+                        headerRight={
+                            <Text
+                                as="span"
+                                variant="meta"
+                                weight="medium"
+                                tone="secondary"
+                                className="rounded-full border border-border-subtle bg-muted px-3 py-1.5"
+                            >
+                                {getSearchModeLabel(result)}
+                            </Text>
+                        }
                     >
                         <main className="flex flex-col gap-4">
-                            {notes.length > 0 ? (
+                            {result.semanticError && (
+                                <Text
+                                    as="p"
+                                    variant="meta"
+                                    tone="tertiary"
+                                    className="rounded-[14px] border border-border-subtle bg-muted px-3.5 py-2.5"
+                                >
+                                    Meaning search is temporarily unavailable. These results use keyword search only.
+                                </Text>
+                            )}
+                            {result.notes.length > 0 ? (
                                 <div className="flex flex-col gap-3">
-                                    {notes.map((note) => {
+                                    {result.notes.map((note) => {
                                         const previewBlocks = getSearchPreviewBlocks(note.content, normalizedQuery);
 
                                         return (
@@ -306,10 +356,10 @@ export default function Search() {
                                     description="Try searching for a different word or phrase"
                                 />
                             )}
-                            {totalCount > limit && (
+                            {result.totalCount > limit && (
                                 <Pagination
                                     page={page}
-                                    last={Math.ceil(totalCount / limit)}
+                                    last={Math.ceil(result.totalCount / limit)}
                                     onChange={(page) => {
                                         navigate({
                                             search: (prev) => ({

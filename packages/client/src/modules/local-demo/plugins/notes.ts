@@ -32,6 +32,21 @@ export const notesLocalPlugin: LocalDemoPlugin = {
             );
             return success({ allNotes: { totalCount: filtered.length, notes: paginate(filtered, variables) } });
         },
+        FetchSearchNotes: ({ state, variables }) => {
+            const filtered = sortNotes(
+                state.notes.filter((note) => noteMatchesQuery(note, getQueryText(variables))),
+                { ...variables, searchFilter: { sortBy: 'updatedAt', sortOrder: 'desc' } },
+            );
+            return success({
+                searchNotes: {
+                    totalCount: filtered.length,
+                    notes: paginate(filtered, variables),
+                    semanticAvailable: false,
+                    semanticUsed: false,
+                    semanticError: null,
+                },
+            });
+        },
         FetchTagNotes: ({ state, variables }) => {
             const tagId = getQueryText(variables);
             const filtered = sortNotes(

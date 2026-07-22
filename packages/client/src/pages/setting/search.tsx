@@ -16,9 +16,6 @@ import { Button, PageLayout, Progress } from '~/components/shared';
 import { Input, Label, Select, SelectItem, Switch, Text, Textarea, useToast } from '~/components/ui';
 import { queryKeys } from '~/modules/query-key-factory';
 
-const PERSONAL_NOTE_QUERY_INSTRUCTION =
-    'Given a vague Korean memory query, retrieve relevant passages from personal notes.';
-
 const EMPTY_CONFIG: SemanticSearchConfig = {
     enabled: false,
     baseUrl: '',
@@ -165,11 +162,7 @@ const SearchSetting = () => {
     const canBuildIndex = Boolean(status?.config.enabled && !isDirty && !isIndexing);
     const progress = status?.progress;
     const phaseLabel = status ? phaseLabels[status.phase] : isLoading ? 'Loading' : 'Unavailable';
-    const queryInstructionLabel = !form.queryInstruction.trim()
-        ? 'Optional'
-        : form.queryInstruction.trim() === PERSONAL_NOTE_QUERY_INSTRUCTION
-          ? 'Personal-note preset'
-          : 'Customized';
+    const queryInstructionLabel = form.queryInstruction.trim() ? 'Customized' : 'Optional';
 
     const modelOptions = useMemo(() => {
         const models = [...availableModels];
@@ -437,8 +430,8 @@ const SearchSetting = () => {
                             </summary>
                             <div className="space-y-3 border-t border-border-subtle px-3 py-3">
                                 <Text as="p" variant="meta" tone="secondary" className="leading-relaxed">
-                                    Most models work with this left blank. Some instruction-aware embedding models can
-                                    use a short retrieval instruction to improve vague-memory queries.
+                                    Leave this blank unless your embedding model documentation explicitly recommends a
+                                    query instruction. Ocean Brain does not assume a language or retrieval prompt.
                                 </Text>
                                 <div className="space-y-2">
                                     <Label
@@ -456,17 +449,8 @@ const SearchSetting = () => {
                                         onChange={(event) => updateForm('queryInstruction', event.target.value)}
                                     />
                                 </div>
-                                <div className="flex flex-wrap gap-2">
-                                    <Button
-                                        type="button"
-                                        size="sm"
-                                        variant="subtle"
-                                        disabled={isIndexing || isCheckingProvider}
-                                        onClick={() => updateForm('queryInstruction', PERSONAL_NOTE_QUERY_INSTRUCTION)}
-                                    >
-                                        Use personal-note preset
-                                    </Button>
-                                    {form.queryInstruction && (
+                                {form.queryInstruction && (
+                                    <div className="flex flex-wrap gap-2">
                                         <Button
                                             type="button"
                                             size="sm"
@@ -476,8 +460,8 @@ const SearchSetting = () => {
                                         >
                                             Clear
                                         </Button>
-                                    )}
-                                </div>
+                                    </div>
+                                )}
                                 <Text as="p" variant="meta" tone="tertiary" className="leading-relaxed">
                                     This is added only to the search query, never to note chunks. Changing it does not
                                     require rebuilding the index.

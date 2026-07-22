@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import * as searchApi from '~/apis/search.api';
@@ -213,5 +213,66 @@ describe('<Search />', () => {
                 mode: 'hybrid',
             },
         });
+    });
+
+    it('searches automatically after the user pauses typing', async () => {
+        const user = userEvent.setup();
+        routeState.search = {
+            page: 1,
+            query: '',
+            mode: 'hybrid',
+        };
+
+        renderPage();
+
+        const input = await screen.findByRole('searchbox', { name: 'Search notes' });
+        await user.type(input, 'half remembered meeting');
+
+        expect(routeState.navigate).not.toHaveBeenCalled();
+        await waitFor(
+            () => {
+                expect(routeState.navigate).toHaveBeenCalledWith({
+                    search: {
+                        query: 'half remembered meeting',
+                        page: 1,
+                        mode: 'hybrid',
+                    },
+                    replace: true,
+                });
+            },
+            { timeout: 1_000 },
+        );
+    });
+
+    it('waits for text composition to finish before starting the debounce', async () => {
+        const user = userEvent.setup();
+        routeState.search = {
+            page: 1,
+            query: '',
+            mode: 'hybrid',
+        };
+
+        renderPage();
+
+        const input = await screen.findByRole('searchbox', { name: 'Search notes' });
+        fireEvent.compositionStart(input);
+        await user.type(input, 'composing text');
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        expect(routeState.navigate).not.toHaveBeenCalled();
+        fireEvent.compositionEnd(input);
+        await waitFor(
+            () => {
+                expect(routeState.navigate).toHaveBeenCalledWith({
+                    search: {
+                        query: 'composing text',
+                        page: 1,
+                        mode: 'hybrid',
+                    },
+                    replace: true,
+                });
+            },
+            { timeout: 1_000 },
+        );
     });
 });

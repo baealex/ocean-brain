@@ -8,6 +8,7 @@ interface SearchInputProps {
     onChange: (value: string) => void;
     onSubmit: () => void;
     onClear?: () => void;
+    onCompositionChange?: (isComposing: boolean) => void;
     autoFocus?: boolean;
     placeholder?: string;
 }
@@ -17,6 +18,7 @@ const SearchInput = ({
     onChange,
     onSubmit,
     onClear,
+    onCompositionChange,
     autoFocus = false,
     placeholder = 'Describe what you remember',
 }: SearchInputProps) => {
@@ -40,6 +42,11 @@ const SearchInput = ({
                     placeholder={placeholder}
                     value={value}
                     onChange={(event) => onChange(event.target.value)}
+                    onCompositionStart={() => onCompositionChange?.(true)}
+                    onCompositionEnd={(event) => {
+                        onChange(event.currentTarget.value);
+                        onCompositionChange?.(false);
+                    }}
                     className="h-11 min-w-0 bg-transparent px-1 text-base text-fg-default outline-none placeholder:text-fg-placeholder"
                 />
                 {value && (

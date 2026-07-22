@@ -89,12 +89,12 @@ describe('<SearchSetting />', () => {
         await user.click(screen.getByText('Advanced query instruction'));
         expect(instruction).toBeVisible();
         expect(instruction).toHaveValue('');
+        expect(screen.queryByRole('button', { name: /preset/i })).not.toBeInTheDocument();
 
-        await user.click(screen.getByRole('button', { name: 'Use personal-note preset' }));
-        expect(instruction).toHaveValue(
-            'Given a vague Korean memory query, retrieve relevant passages from personal notes.',
-        );
-        expect(screen.getByText(/Personal-note preset/)).toBeInTheDocument();
+        await user.type(instruction, 'Retrieve related passages.');
+        expect(screen.getByText(/Customized/)).toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'Clear' }));
+        expect(instruction).toHaveValue('');
         expect(screen.getByText(/changing it does not require rebuilding the index/i)).toBeInTheDocument();
     });
 

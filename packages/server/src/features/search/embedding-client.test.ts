@@ -87,7 +87,7 @@ test('adds the configured instruction only to query embeddings', async () => {
         {
             baseUrl: 'http://127.0.0.1:1234/v1',
             model: 'qwen-embedding',
-            queryInstruction: 'Retrieve relevant Korean personal notes.',
+            queryInstruction: 'Retrieve relevant personal notes.',
         },
         {
             fetch: async (_input, init) => {
@@ -101,7 +101,7 @@ test('adds the configured instruction only to query embeddings', async () => {
     await client.embedDocuments(['문서']);
     await client.embedQuery('점쟁이 죽는');
 
-    assert.deepEqual(inputs, [['문서'], ['Instruct: Retrieve relevant Korean personal notes.\nQuery: 점쟁이 죽는']]);
+    assert.deepEqual(inputs, [['문서'], ['Instruct: Retrieve relevant personal notes.\nQuery: 점쟁이 죽는']]);
 });
 
 test('rejects malformed embedding vectors instead of storing them', async () => {

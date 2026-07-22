@@ -1,6 +1,8 @@
 import { normalizeEmbeddingApiUrl } from './embedding-client.js';
 
 export const SEMANTIC_SEARCH_CONFIG_CACHE_KEY = 'SEMANTIC_SEARCH_CONFIG_V1';
+const LEGACY_KOREAN_QUERY_INSTRUCTION =
+    'Given a vague Korean memory query, retrieve relevant passages from personal notes.';
 
 export interface SemanticSearchConfig {
     enabled: boolean;
@@ -84,7 +86,16 @@ export class SemanticSearchConfigStore {
 
     async get() {
         const row = await this.cache.findUnique({ where: { key: SEMANTIC_SEARCH_CONFIG_CACHE_KEY } });
-        return row ? (parseStoredConfig(row.value) ?? DEFAULT_SEMANTIC_SEARCH_CONFIG) : DEFAULT_SEMANTIC_SEARCH_CONFIG;
+        const config = row ? parseStoredConfig(row.value) : null;
+        if (!config) {
+            return DEFAULT_SEMANTIC_SEARCH_CONFIG;
+        }
+
+        if (config.queryInstruction.trim() === LEGACY_KOREAN_QUERY_INSTRUCTION) {
+            return this.set({ ...config, queryInstruction: '' });
+        }
+
+        return config;
     }
 
     async set(input: SemanticSearchConfig) {

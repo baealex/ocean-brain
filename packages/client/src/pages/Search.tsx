@@ -1,6 +1,6 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi, Link } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
     type FetchSearchNotesParams,
@@ -19,6 +19,7 @@ import { NOTE_ROUTE, SEARCH_ROUTE } from '~/modules/url';
 
 const Route = getRouteApi(SEARCH_ROUTE);
 const SEARCH_PAGE_LIMIT = 10;
+const SEARCH_DEBOUNCE_MS = 400;
 
 const formatResultCount = (count: number) => (count === 1 ? '1 result' : `${count} results`);
 
@@ -82,6 +83,8 @@ export default function Search() {
     const navigate = Route.useNavigate();
     const { page, query, mode } = Route.useSearch();
     const [draftQuery, setDraftQuery] = useState(query);
+    const [isComposing, setIsComposing] = useState(false);
+    const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const normalizedQuery = query.trim();
     const { isLoading: isCapabilityLoading, isSemanticSearchEnabled } = useSemanticSearchCapability();
     const activeMode: SearchMode = isCapabilityLoading || isSemanticSearchEnabled ? mode : 'lexical';
@@ -90,17 +93,56 @@ export default function Search() {
         setDraftQuery(query);
     }, [query]);
 
-    const updateSearch = (nextQuery: string, nextMode: SearchMode = activeMode) => {
-        navigate({
-            search: {
+    const clearPendingSearch = useCallback(() => {
+        if (debounceTimerRef.current) {
+            clearTimeout(debounceTimerRef.current);
+            debounceTimerRef.current = null;
+        }
+    }, []);
+
+    const updateSearch = useCallback(
+        (nextQuery: string, nextMode: SearchMode = activeMode, replace = false) => {
+            const search = {
                 query: nextQuery.trim(),
                 page: 1,
                 mode: nextMode,
-            },
-        });
+            };
+
+            if (replace) {
+                navigate({ search, replace: true });
+                return;
+            }
+
+            navigate({ search });
+        },
+        [activeMode, navigate],
+    );
+
+    useEffect(() => {
+        clearPendingSearch();
+        if (isComposing || draftQuery.trim() === normalizedQuery) {
+            return;
+        }
+
+        debounceTimerRef.current = setTimeout(() => {
+            debounceTimerRef.current = null;
+            updateSearch(draftQuery, activeMode, true);
+        }, SEARCH_DEBOUNCE_MS);
+
+        return clearPendingSearch;
+    }, [activeMode, clearPendingSearch, draftQuery, isComposing, normalizedQuery, updateSearch]);
+
+    const handleSubmit = () => {
+        if (isComposing) {
+            return;
+        }
+
+        clearPendingSearch();
+        updateSearch(draftQuery);
     };
 
     const handleModeChange = (nextMode: SearchMode) => {
+        clearPendingSearch();
         updateSearch(draftQuery, nextMode);
     };
 
@@ -111,8 +153,12 @@ export default function Search() {
                     <SearchInput
                         value={draftQuery}
                         onChange={setDraftQuery}
-                        onSubmit={() => updateSearch(draftQuery)}
-                        onClear={() => updateSearch('')}
+                        onCompositionChange={setIsComposing}
+                        onSubmit={handleSubmit}
+                        onClear={() => {
+                            clearPendingSearch();
+                            updateSearch('');
+                        }}
                         autoFocus={!normalizedQuery}
                     />
                     {isSemanticSearchEnabled && (

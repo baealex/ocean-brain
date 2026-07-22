@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
     DEFAULT_SEMANTIC_SEARCH_CONFIG,
     normalizeSemanticSearchConfig,
+    SEMANTIC_SEARCH_CONFIG_CACHE_KEY,
     SemanticSearchConfigStore,
 } from './search-config.js';
 
@@ -55,6 +56,25 @@ test('persists a normalized OpenAI-compatible embedding configuration', async ()
         model: 'qwen-embedding',
         queryInstruction: 'Retrieve relevant notes.',
     });
+});
+
+test('removes the retired Korean-specific default instruction from stored settings', async () => {
+    const { cache, values } = createCache();
+    const store = new SemanticSearchConfigStore(cache);
+    values.set(
+        SEMANTIC_SEARCH_CONFIG_CACHE_KEY,
+        JSON.stringify({
+            enabled: true,
+            baseUrl: 'http://127.0.0.1:1234/v1',
+            model: 'qwen-embedding',
+            queryInstruction: 'Given a vague Korean memory query, retrieve relevant passages from personal notes.',
+        }),
+    );
+
+    const config = await store.get();
+
+    assert.equal(config.queryInstruction, '');
+    assert.equal(JSON.parse(values.get(SEMANTIC_SEARCH_CONFIG_CACHE_KEY) ?? '{}').queryInstruction, '');
 });
 
 test('requires an API URL and model only when semantic search is enabled', () => {

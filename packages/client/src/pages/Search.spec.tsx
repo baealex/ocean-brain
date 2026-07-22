@@ -1,8 +1,9 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import * as searchApi from '~/apis/search.api';
+import { fetchSearchAdminStatus } from '~/apis/search-admin.api';
 import { createTestQueryClient } from '~/test/test-utils';
 import Search from './Search';
 
@@ -28,6 +29,27 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('~/apis/search.api', () => ({
     fetchSearchNotes: vi.fn(),
 }));
+vi.mock('~/apis/search-admin.api', () => ({
+    fetchSearchAdminStatus: vi.fn(),
+}));
+
+const createStatus = (enabled: boolean) => ({
+    config: {
+        enabled,
+        baseUrl: enabled ? 'http://127.0.0.1:1234/v1' : '',
+        model: enabled ? 'text-embedding-qwen' : '',
+        queryInstruction: '',
+    },
+    phase: enabled ? ('ready' as const) : ('disabled' as const),
+    available: enabled,
+    needsReindex: false,
+    noteCount: enabled ? 1 : 0,
+    chunkCount: enabled ? 1 : 0,
+    indexedAt: enabled ? '2026-01-01T00:00:00.000Z' : null,
+    dimensions: enabled ? 1024 : null,
+    progress: null,
+    error: null,
+});
 
 const renderPage = () => {
     render(
@@ -45,6 +67,7 @@ describe('<Search />', () => {
             query: '점쟁이 죽는',
             mode: 'hybrid',
         };
+        vi.mocked(fetchSearchAdminStatus).mockResolvedValue(createStatus(true));
     });
 
     it('shows a meaning-only result even when the literal query is absent', async () => {
@@ -126,7 +149,7 @@ describe('<Search />', () => {
         });
 
         renderPage();
-        await user.click(screen.getByRole('radio', { name: 'Keywords' }));
+        await user.click(await screen.findByRole('radio', { name: 'Keywords' }));
 
         expect(routeState.navigate).toHaveBeenCalledWith({
             search: {
@@ -135,5 +158,44 @@ describe('<Search />', () => {
                 mode: 'lexical',
             },
         });
+    });
+
+    it('keeps the common search page lexical when embedding is not configured', async () => {
+        vi.mocked(fetchSearchAdminStatus).mockResolvedValue(createStatus(false));
+        vi.mocked(searchApi.fetchSearchNotes).mockResolvedValue({
+            type: 'success',
+            searchNotes: {
+                totalCount: 0,
+                notes: [],
+                matches: [],
+                semanticAvailable: false,
+                semanticUsed: false,
+                semanticError: null,
+            },
+        });
+
+        renderPage();
+
+        await waitFor(() => {
+            expect(searchApi.fetchSearchNotes).toHaveBeenCalledWith({
+                query: '점쟁이 죽는',
+                limit: 10,
+                offset: 0,
+                mode: 'lexical',
+            });
+        });
+        expect(screen.queryByRole('radiogroup', { name: 'Search method' })).not.toBeInTheDocument();
+    });
+
+    it('focuses the common search input when opened without a query', async () => {
+        routeState.search = {
+            page: 1,
+            query: '',
+            mode: 'hybrid',
+        };
+
+        renderPage();
+
+        expect(await screen.findByRole('searchbox', { name: 'Search notes' })).toHaveFocus();
     });
 });

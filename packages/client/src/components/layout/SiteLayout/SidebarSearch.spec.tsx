@@ -1,8 +1,8 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 
-import { fetchSearchNotes } from '~/apis/search.api';
+import { fetchNotes } from '~/apis/note.api';
+import { fetchSearchAdminStatus } from '~/apis/search-admin.api';
 import { SEARCH_ROUTE } from '~/modules/url';
 import { createTestQueryClient } from '~/test/test-utils';
 
@@ -15,7 +15,26 @@ vi.mock('@tanstack/react-router', () => ({
     useNavigate: () => mockNavigate,
 }));
 
-vi.mock('~/apis/search.api', () => ({ fetchSearchNotes: vi.fn() }));
+vi.mock('~/apis/note.api', () => ({ fetchNotes: vi.fn() }));
+vi.mock('~/apis/search-admin.api', () => ({ fetchSearchAdminStatus: vi.fn() }));
+
+const createStatus = (enabled: boolean) => ({
+    config: {
+        enabled,
+        baseUrl: enabled ? 'http://127.0.0.1:1234/v1' : '',
+        model: enabled ? 'text-embedding-qwen' : '',
+        queryInstruction: '',
+    },
+    phase: enabled ? ('needs-index' as const) : ('disabled' as const),
+    available: false,
+    needsReindex: enabled,
+    noteCount: 0,
+    chunkCount: 0,
+    indexedAt: null,
+    dimensions: null,
+    progress: null,
+    error: null,
+});
 
 const renderSearch = () =>
     render(
@@ -25,80 +44,49 @@ const renderSearch = () =>
     );
 
 describe('<SidebarSearch />', () => {
-    it('opens one unified search dialog and runs the default combined search', async () => {
-        vi.mocked(fetchSearchNotes).mockResolvedValue({
-            type: 'success',
-            searchNotes: {
-                totalCount: 1,
-                semanticAvailable: true,
-                semanticUsed: true,
-                semanticError: null,
-                matches: [{ noteId: 'note-1', lexical: false, semantic: true }],
-                notes: [
-                    {
-                        id: 'note-1',
-                        title: 'A half-remembered story',
-                        content: '[]',
-                        pinned: false,
-                        tags: [],
-                        createdAt: '2026-01-01T00:00:00.000Z',
-                        updatedAt: '2026-01-01T00:00:00.000Z',
-                    },
-                ],
-            },
-        });
-
-        renderSearch();
-
-        fireEvent.click(screen.getByRole('button', { name: 'Open note search' }));
-        expect(screen.getByRole('dialog', { name: 'Search notes' })).toBeInTheDocument();
-        expect(screen.getByRole('radio', { name: 'All' })).toHaveAttribute('aria-checked', 'true');
-
-        fireEvent.change(screen.getByRole('searchbox', { name: 'Search notes' }), {
-            target: { value: 'vague memory' },
-        });
-
-        await waitFor(() => {
-            expect(fetchSearchNotes).toHaveBeenCalledWith({
-                query: 'vague memory',
-                limit: 8,
-                offset: 0,
-                mode: 'hybrid',
-            });
-        });
-        expect(await screen.findByText('A half-remembered story')).toBeInTheDocument();
-        expect(screen.getByText('Meaning match')).toBeInTheDocument();
-
-        fireEvent.click(screen.getByRole('radio', { name: 'Meaning' }));
-        await waitFor(() => {
-            expect(fetchSearchNotes).toHaveBeenCalledWith({
-                query: 'vague memory',
-                limit: 8,
-                offset: 0,
-                mode: 'semantic',
-            });
-        });
-        expect(screen.getByText(/related ideas even when your note uses different words/i)).toBeInTheDocument();
+    beforeEach(() => {
+        vi.mocked(fetchSearchAdminStatus).mockResolvedValue(createStatus(false));
     });
 
-    it('opens the dedicated search page directly on mobile', async () => {
-        const user = userEvent.setup();
-        vi.mocked(window.matchMedia).mockImplementation(
-            (query) =>
-                ({
-                    matches: query === '(max-width: 767px)',
-                    media: query,
-                    onchange: null,
-                    addListener: vi.fn(),
-                    removeListener: vi.fn(),
-                    addEventListener: vi.fn(),
-                    removeEventListener: vi.fn(),
-                    dispatchEvent: vi.fn(),
-                }) as MediaQueryList,
-        );
+    it('keeps the existing quick keyword search when embedding is not configured', async () => {
+        vi.mocked(fetchNotes).mockResolvedValue({
+            type: 'success',
+            allNotes: {
+                notes: [{ id: 'note-1', title: 'Alpha note' }],
+            },
+        } as never);
 
         renderSearch();
-        await user.click(screen.getByRole('button', { name: 'Open note search' }));
+
+        const input = await screen.findByRole('textbox', { name: 'Quick search notes' });
+        fireEvent.change(input, { target: { value: 'alpha' } });
+
+        await waitFor(
+            () => {
+                expect(fetchNotes).toHaveBeenCalledWith({ query: 'alpha', limit: 5 });
+            },
+            { timeout: 1_500 },
+        );
+        expect(await screen.findByText('Alpha note')).toBeInTheDocument();
+
+        fireEvent.submit(input.closest('form') as HTMLFormElement);
+        expect(mockNavigate).toHaveBeenCalledWith({
+            to: SEARCH_ROUTE,
+            search: {
+                query: 'alpha',
+                page: 1,
+                mode: 'lexical',
+            },
+        });
+    });
+
+    it('uses a compact route button once embedding is enabled', async () => {
+        vi.mocked(fetchSearchAdminStatus).mockResolvedValue(createStatus(true));
+
+        renderSearch();
+
+        const button = await screen.findByRole('button', { name: 'Go to note search' });
+        fireEvent.click(button);
 
         expect(mockNavigate).toHaveBeenCalledWith({
             to: SEARCH_ROUTE,
@@ -108,6 +96,7 @@ describe('<SidebarSearch />', () => {
                 mode: 'hybrid',
             },
         });
+        expect(screen.queryByRole('textbox', { name: 'Quick search notes' })).not.toBeInTheDocument();
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
 });

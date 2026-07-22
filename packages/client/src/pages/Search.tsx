@@ -12,6 +12,7 @@ import { QueryBoundary } from '~/components/app';
 import { SearchInput, SearchMatchBadge, SearchModeControl } from '~/components/search';
 import { Empty, Highlight, PageLayout, Pagination, Skeleton } from '~/components/shared';
 import { Text } from '~/components/ui';
+import useSemanticSearchCapability from '~/hooks/useSemanticSearchCapability';
 import { queryKeys } from '~/modules/query-key-factory';
 import { getSearchPreviewBlocks } from '~/modules/search-preview';
 import { NOTE_ROUTE, SEARCH_ROUTE } from '~/modules/url';
@@ -82,12 +83,14 @@ export default function Search() {
     const { page, query, mode } = Route.useSearch();
     const [draftQuery, setDraftQuery] = useState(query);
     const normalizedQuery = query.trim();
+    const { isLoading: isCapabilityLoading, isSemanticSearchEnabled } = useSemanticSearchCapability();
+    const activeMode: SearchMode = isSemanticSearchEnabled ? mode : 'lexical';
 
     useEffect(() => {
         setDraftQuery(query);
     }, [query]);
 
-    const updateSearch = (nextQuery: string, nextMode: SearchMode = mode) => {
+    const updateSearch = (nextQuery: string, nextMode: SearchMode = activeMode) => {
         navigate({
             search: {
                 query: nextQuery.trim(),
@@ -112,7 +115,9 @@ export default function Search() {
                         onClear={() => updateSearch('')}
                         autoFocus={!normalizedQuery}
                     />
-                    <SearchModeControl value={mode} onChange={handleModeChange} className="mt-3" />
+                    {isSemanticSearchEnabled && (
+                        <SearchModeControl value={activeMode} onChange={handleModeChange} className="mt-3" />
+                    )}
                 </section>
 
                 {!normalizedQuery ? (
@@ -122,19 +127,21 @@ export default function Search() {
                             description="Try a name, a rough date, a phrase, or simply describe what you remember."
                         />
                     </div>
+                ) : isCapabilityLoading ? (
+                    <SearchResultsSkeleton />
                 ) : (
                     <QueryBoundary
                         fallback={<SearchResultsSkeleton />}
                         errorTitle="Failed to load search results"
                         errorDescription={`Retry loading results for "${normalizedQuery}".`}
-                        resetKeys={[normalizedQuery, page, mode]}
+                        resetKeys={[normalizedQuery, page, activeMode]}
                     >
                         <SearchNotes
                             searchParams={{
                                 query: normalizedQuery,
                                 limit: SEARCH_PAGE_LIMIT,
                                 offset: (page - 1) * SEARCH_PAGE_LIMIT,
-                                mode,
+                                mode: activeMode,
                             }}
                             render={(result) => (
                                 <div className="mt-5 flex flex-col gap-4">
@@ -144,7 +151,7 @@ export default function Search() {
                                         </Text>
                                     </div>
 
-                                    <SearchAvailabilityNotice result={result} mode={mode} />
+                                    <SearchAvailabilityNotice result={result} mode={activeMode} />
 
                                     {result.notes.length > 0 ? (
                                         <div className="flex flex-col gap-3">
@@ -234,7 +241,7 @@ export default function Search() {
                                         <Empty
                                             title="No results found"
                                             description={
-                                                mode === 'semantic' && !result.semanticAvailable
+                                                activeMode === 'semantic' && !result.semanticAvailable
                                                     ? 'Meaning search must be configured before it can find related notes.'
                                                     : 'Try another phrase or a different search method.'
                                             }
@@ -250,6 +257,7 @@ export default function Search() {
                                                     search: (prev) => ({
                                                         ...prev,
                                                         page: nextPage,
+                                                        mode: activeMode,
                                                     }),
                                                 });
                                             }}

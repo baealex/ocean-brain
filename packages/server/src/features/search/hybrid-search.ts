@@ -30,11 +30,21 @@ interface HybridNoteSearchInput {
     query: string;
     limit: number;
     offset: number;
+    mode?: SearchMode;
+}
+
+export type SearchMode = 'hybrid' | 'lexical' | 'semantic';
+
+export interface SearchNoteMatch {
+    noteId: number;
+    lexical: boolean;
+    semantic: boolean;
 }
 
 export interface HybridNoteSearchResult {
     totalCount: number;
     notes: Note[];
+    matches: SearchNoteMatch[];
     semanticAvailable: boolean;
     semanticUsed: boolean;
     semanticError: string | null;
@@ -170,12 +180,18 @@ const defaultDependencies: HybridNoteSearchDependencies = {
 };
 
 export const createHybridNoteSearch = (dependencies: HybridNoteSearchDependencies = defaultDependencies) => {
-    return async ({ query, limit, offset }: HybridNoteSearchInput): Promise<HybridNoteSearchResult> => {
+    return async ({
+        query,
+        limit,
+        offset,
+        mode = 'hybrid',
+    }: HybridNoteSearchInput): Promise<HybridNoteSearchResult> => {
         const normalizedQuery = query.trim();
         if (!normalizedQuery || limit <= 0 || offset < 0) {
             return {
                 totalCount: 0,
                 notes: [],
+                matches: [],
                 semanticAvailable: false,
                 semanticUsed: false,
                 semanticError: null,
@@ -184,8 +200,17 @@ export const createHybridNoteSearch = (dependencies: HybridNoteSearchDependencie
 
         const candidateLimit = Math.min(MAX_HYBRID_CANDIDATES, Math.max(40, offset + limit));
         const [lexicalNoteIds, semanticAttempt] = await Promise.all([
-            dependencies.listLexicalNoteIds(normalizedQuery, candidateLimit),
-            dependencies.trySemanticSearch(normalizedQuery, candidateLimit),
+            mode === 'semantic'
+                ? Promise.resolve([])
+                : dependencies.listLexicalNoteIds(normalizedQuery, candidateLimit),
+            mode === 'lexical'
+                ? Promise.resolve({
+                      available: false,
+                      used: false,
+                      matches: [],
+                      error: null,
+                  } satisfies SemanticSearchAttempt)
+                : dependencies.trySemanticSearch(normalizedQuery, candidateLimit),
         ]);
         const rankedCandidates = fuseHybridSearchRanks({
             lexicalNoteIds,
@@ -194,12 +219,16 @@ export const createHybridNoteSearch = (dependencies: HybridNoteSearchDependencie
         const pageCandidates = rankedCandidates.slice(offset, offset + limit);
         const notes = await dependencies.findNotesByIds(pageCandidates.map((candidate) => candidate.noteId));
         const notesById = new Map(notes.map((note) => [note.id, note]));
+        const existingCandidates = pageCandidates.filter((candidate) => notesById.has(candidate.noteId));
 
         return {
             totalCount: rankedCandidates.length,
-            notes: pageCandidates
-                .map((candidate) => notesById.get(candidate.noteId))
-                .filter((note): note is Note => Boolean(note)),
+            notes: existingCandidates.map((candidate) => notesById.get(candidate.noteId) as Note),
+            matches: existingCandidates.map((candidate) => ({
+                noteId: candidate.noteId,
+                lexical: candidate.lexicalRank !== null,
+                semantic: candidate.semanticRank !== null,
+            })),
             semanticAvailable: semanticAttempt.available,
             semanticUsed: semanticAttempt.used,
             semanticError: semanticAttempt.error,

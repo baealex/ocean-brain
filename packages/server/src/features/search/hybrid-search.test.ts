@@ -115,3 +115,55 @@ test('keeps lexical search usable when the embedding API is unavailable', async 
     assert.equal(result.semanticUsed, false);
     assert.equal(result.semanticError, 'Embedding API is offline.');
 });
+
+test('lexical mode does not call the embedding search dependency', async () => {
+    let semanticCalls = 0;
+    const search = createHybridNoteSearch({
+        listLexicalNoteIds: async () => [2],
+        trySemanticSearch: async () => {
+            semanticCalls += 1;
+            return {
+                available: true,
+                used: true,
+                matches: [{ noteId: 7, distance: 0.2 }],
+                error: null,
+            };
+        },
+        findNotesByIds: async (ids) => ids.map(createNote),
+    });
+
+    const result = await search({ query: 'exact words', limit: 10, offset: 0, mode: 'lexical' });
+
+    assert.equal(semanticCalls, 0);
+    assert.deepEqual(
+        result.notes.map((note) => note.id),
+        [2],
+    );
+    assert.deepEqual(result.matches, [{ noteId: 2, lexical: true, semantic: false }]);
+});
+
+test('semantic mode does not call the lexical search dependency', async () => {
+    let lexicalCalls = 0;
+    const search = createHybridNoteSearch({
+        listLexicalNoteIds: async () => {
+            lexicalCalls += 1;
+            return [2];
+        },
+        trySemanticSearch: async () => ({
+            available: true,
+            used: true,
+            matches: [{ noteId: 7, distance: 0.2 }],
+            error: null,
+        }),
+        findNotesByIds: async (ids) => ids.map(createNote),
+    });
+
+    const result = await search({ query: 'vague memory', limit: 10, offset: 0, mode: 'semantic' });
+
+    assert.equal(lexicalCalls, 0);
+    assert.deepEqual(
+        result.notes.map((note) => note.id),
+        [7],
+    );
+    assert.deepEqual(result.matches, [{ noteId: 7, lexical: false, semantic: true }]);
+});

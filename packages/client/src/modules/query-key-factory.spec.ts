@@ -10,8 +10,13 @@ describe('queryKeys.search', () => {
                 query: '흐릿한 기억',
                 limit: 25,
                 offset: 0,
+                mode: 'hybrid',
             },
         ]);
+
+        expect(queryKeys.search.results({ query: '흐릿한 기억', mode: 'semantic' })).not.toEqual(
+            queryKeys.search.results({ query: '흐릿한 기억', mode: 'lexical' }),
+        );
     });
 
     it('keeps search settings status separate from result pages', () => {

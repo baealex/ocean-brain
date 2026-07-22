@@ -9,6 +9,7 @@ test('searchNotes resolver passes a bounded page request to hybrid search', asyn
         return {
             totalCount: 0,
             notes: [],
+            matches: [],
             semanticAvailable: false,
             semanticUsed: false,
             semanticError: null,
@@ -24,5 +25,34 @@ test('searchNotes resolver passes a bounded page request to hybrid search', asyn
         query: '점쟁이 죽는',
         limit: 50,
         offset: 0,
+        mode: 'hybrid',
+    });
+});
+
+test('searchNotes resolver maps an explicit GraphQL search mode', async () => {
+    let receivedInput: unknown;
+    const resolver = createSearchNotesResolver(async (input) => {
+        receivedInput = input;
+        return {
+            totalCount: 0,
+            notes: [],
+            matches: [],
+            semanticAvailable: true,
+            semanticUsed: true,
+            semanticError: null,
+        };
+    });
+
+    await resolver(null, {
+        query: 'vague memory',
+        pagination: { limit: 10, offset: 0 },
+        mode: 'SEMANTIC',
+    });
+
+    assert.deepEqual(receivedInput, {
+        query: 'vague memory',
+        limit: 10,
+        offset: 0,
+        mode: 'semantic',
     });
 });

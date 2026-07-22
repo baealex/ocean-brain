@@ -1,5 +1,6 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import * as searchApi from '~/apis/search.api';
 import { createTestQueryClient } from '~/test/test-utils';
@@ -10,6 +11,7 @@ const routeState = vi.hoisted(() => ({
     search: {
         page: 1,
         query: '점쟁이 죽는',
+        mode: 'hybrid' as const,
     },
 }));
 
@@ -41,6 +43,7 @@ describe('<Search />', () => {
         routeState.search = {
             page: 1,
             query: '점쟁이 죽는',
+            mode: 'hybrid',
         };
     });
 
@@ -52,6 +55,7 @@ describe('<Search />', () => {
                 semanticAvailable: true,
                 semanticUsed: true,
                 semanticError: null,
+                matches: [{ noteId: '17', lexical: false, semantic: true }],
                 notes: [
                     {
                         id: '17',
@@ -77,7 +81,7 @@ describe('<Search />', () => {
 
         renderPage();
 
-        expect(await screen.findByText('Keyword + meaning')).toBeInTheDocument();
+        expect(await screen.findByText('Meaning match')).toBeInTheDocument();
         expect(screen.getByRole('link', { name: '그날 들은 불길한 이야기' })).toHaveAttribute('href', '/17');
         expect(screen.getByText(/6년 안에 죽는 거라고/)).toBeInTheDocument();
         expect(screen.queryByText(/늦은 시간에 오락실/)).not.toBeInTheDocument();
@@ -85,6 +89,7 @@ describe('<Search />', () => {
             query: '점쟁이 죽는',
             limit: 10,
             offset: 0,
+            mode: 'hybrid',
         });
     });
 
@@ -94,6 +99,7 @@ describe('<Search />', () => {
             searchNotes: {
                 totalCount: 0,
                 notes: [],
+                matches: [],
                 semanticAvailable: true,
                 semanticUsed: false,
                 semanticError: 'Embedding API timed out.',
@@ -102,7 +108,32 @@ describe('<Search />', () => {
 
         renderPage();
 
-        expect(await screen.findByText('Keyword fallback')).toBeInTheDocument();
-        expect(screen.getByText(/results use keyword search only/i)).toBeInTheDocument();
+        expect(await screen.findByText(/results use keyword search only/i)).toBeInTheDocument();
+    });
+
+    it('puts the selected search method in the route', async () => {
+        const user = userEvent.setup();
+        vi.mocked(searchApi.fetchSearchNotes).mockResolvedValue({
+            type: 'success',
+            searchNotes: {
+                totalCount: 0,
+                notes: [],
+                matches: [],
+                semanticAvailable: true,
+                semanticUsed: true,
+                semanticError: null,
+            },
+        });
+
+        renderPage();
+        await user.click(screen.getByRole('radio', { name: 'Keywords' }));
+
+        expect(routeState.navigate).toHaveBeenCalledWith({
+            search: {
+                query: '점쟁이 죽는',
+                page: 1,
+                mode: 'lexical',
+            },
+        });
     });
 });

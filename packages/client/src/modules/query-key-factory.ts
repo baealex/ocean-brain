@@ -231,6 +231,7 @@ export const queryKeys = {
                     query: params.query.trim(),
                     limit: params.limit ?? 25,
                     offset: params.offset ?? 0,
+                    mode: params.mode ?? 'hybrid',
                 },
             ] as const,
         adminStatus: () => ['search', 'admin-status'] as const,

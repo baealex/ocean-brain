@@ -50,11 +50,15 @@ describe('route-search validators', () => {
             validateSearchPageSearch({
                 page: '3',
                 query: 'ocean',
+                mode: 'semantic',
             }),
         ).toEqual({
             page: 3,
             query: 'ocean',
+            mode: 'semantic',
         });
+
+        expect(validateSearchPageSearch({ mode: 'unknown' }).mode).toBe('hybrid');
     });
 
     it('reads tag page query and page', () => {

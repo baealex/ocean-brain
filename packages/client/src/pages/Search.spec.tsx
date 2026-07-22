@@ -188,6 +188,7 @@ describe('<Search />', () => {
     });
 
     it('focuses the common search input when opened without a query', async () => {
+        const user = userEvent.setup();
         routeState.search = {
             page: 1,
             query: '',
@@ -196,6 +197,21 @@ describe('<Search />', () => {
 
         renderPage();
 
-        expect(await screen.findByRole('searchbox', { name: 'Search notes' })).toHaveFocus();
+        const input = await screen.findByRole('searchbox', { name: 'Search notes' });
+        const searchButton = screen.getByRole('button', { name: 'Search' });
+
+        expect(input).toHaveFocus();
+        expect(searchButton).toBeDisabled();
+
+        await user.type(input, 'ocean memory');
+        await user.click(searchButton);
+
+        expect(routeState.navigate).toHaveBeenCalledWith({
+            search: {
+                query: 'ocean memory',
+                page: 1,
+                mode: 'hybrid',
+            },
+        });
     });
 });

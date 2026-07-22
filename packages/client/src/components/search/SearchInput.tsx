@@ -1,6 +1,7 @@
 import type { FormEvent } from 'react';
 
 import * as Icon from '~/components/icon';
+import { Button } from '~/components/ui';
 
 interface SearchInputProps {
     value: string;
@@ -25,15 +26,11 @@ const SearchInput = ({
     };
 
     return (
-        <form role="search" onSubmit={handleSubmit}>
-            <div className="grid-search-bar grid min-h-12 items-center rounded-[15px] border border-border-subtle bg-elevated px-2.5 transition-colors focus-within:border-border-focus focus-within:shadow-[0_0_0_4px_color-mix(in_srgb,var(--accent-soft-primary)_90%,transparent)]">
-                <button
-                    type="submit"
-                    aria-label="Search notes"
-                    className="focus-ring-soft flex h-10 items-center justify-center rounded-[10px] text-fg-tertiary transition-colors hover:text-fg-default"
-                >
+        <form role="search" className="flex items-stretch gap-2" onSubmit={handleSubmit}>
+            <div className="grid-search-bar grid min-h-12 min-w-0 flex-1 items-center rounded-[15px] border border-border-subtle bg-elevated px-2.5 transition-colors focus-within:border-border-focus focus-within:shadow-[0_0_0_4px_color-mix(in_srgb,var(--accent-soft-primary)_90%,transparent)]">
+                <span className="flex h-10 items-center justify-center text-fg-tertiary" aria-hidden="true">
                     <Icon.Search className="h-[18px] w-[18px]" weight="bold" />
-                </button>
+                </span>
                 <input
                     type="text"
                     role="searchbox"
@@ -59,6 +56,14 @@ const SearchInput = ({
                     </button>
                 )}
             </div>
+            <Button
+                type="submit"
+                size="lg"
+                disabled={!value.trim()}
+                className="h-12 shrink-0 rounded-[15px] px-4 sm:px-5"
+            >
+                Search
+            </Button>
         </form>
     );
 };

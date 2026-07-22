@@ -84,7 +84,7 @@ export default function Search() {
     const [draftQuery, setDraftQuery] = useState(query);
     const normalizedQuery = query.trim();
     const { isLoading: isCapabilityLoading, isSemanticSearchEnabled } = useSemanticSearchCapability();
-    const activeMode: SearchMode = isSemanticSearchEnabled ? mode : 'lexical';
+    const activeMode: SearchMode = isCapabilityLoading || isSemanticSearchEnabled ? mode : 'lexical';
 
     useEffect(() => {
         setDraftQuery(query);

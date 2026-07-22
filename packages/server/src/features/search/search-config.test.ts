@@ -59,6 +59,14 @@ test('persists a normalized OpenAI-compatible embedding configuration', async ()
 
 test('requires an API URL and model only when semantic search is enabled', () => {
     assert.doesNotThrow(() => normalizeSemanticSearchConfig(DEFAULT_SEMANTIC_SEARCH_CONFIG));
+    assert.doesNotThrow(() =>
+        normalizeSemanticSearchConfig({
+            ...DEFAULT_SEMANTIC_SEARCH_CONFIG,
+            enabled: true,
+            baseUrl: 'http://127.0.0.1:1234/v1',
+            model: 'qwen-embedding',
+        }),
+    );
     assert.throws(
         () => normalizeSemanticSearchConfig({ ...DEFAULT_SEMANTIC_SEARCH_CONFIG, enabled: true }),
         /URL and model are required/,

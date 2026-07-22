@@ -122,6 +122,22 @@ test('builds an index in the background and enables semantic queries when comple
     assert.deepEqual(search.matches, [{ noteId: 1, distance: 0.1 }]);
 });
 
+test('changing only the optional query instruction keeps the document index usable', async () => {
+    const { manager } = createManagerFixture();
+    await manager.saveConfig(enabledConfig);
+    await manager.startReindex();
+    await manager.waitForActiveReindex();
+
+    const status = await manager.saveConfig({
+        ...enabledConfig,
+        queryInstruction: 'Find a related personal memory.',
+    });
+
+    assert.equal(status.phase, 'ready');
+    assert.equal(status.available, true);
+    assert.equal(status.needsReindex, false);
+});
+
 test('does not allow embedding settings to change during a running rebuild', async () => {
     const { manager, releaseEmbedding, setBlockEmbedding } = createManagerFixture();
     await manager.saveConfig(enabledConfig);

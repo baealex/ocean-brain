@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createOpenAiCompatibleEmbeddingClient, normalizeEmbeddingApiUrl } from './embedding-client.js';
+import {
+    createOpenAiCompatibleEmbeddingClient,
+    listOpenAiCompatibleEmbeddingModels,
+    normalizeEmbeddingApiUrl,
+    normalizeEmbeddingModelsUrl,
+} from './embedding-client.js';
 
 test('normalizes an OpenAI-compatible base URL to the embeddings endpoint', () => {
     assert.equal(normalizeEmbeddingApiUrl('http://127.0.0.1:1234/v1'), 'http://127.0.0.1:1234/v1/embeddings');
@@ -8,6 +13,36 @@ test('normalizes an OpenAI-compatible base URL to the embeddings endpoint', () =
         normalizeEmbeddingApiUrl('http://127.0.0.1:1234/v1/embeddings'),
         'http://127.0.0.1:1234/v1/embeddings',
     );
+});
+
+test('normalizes an OpenAI-compatible base URL to the models endpoint', () => {
+    assert.equal(normalizeEmbeddingModelsUrl('http://127.0.0.1:1234/v1'), 'http://127.0.0.1:1234/v1/models');
+    assert.equal(normalizeEmbeddingModelsUrl('http://127.0.0.1:1234/v1/embeddings'), 'http://127.0.0.1:1234/v1/models');
+    assert.throws(() => normalizeEmbeddingModelsUrl('file:///tmp/models'), /must use http or https/);
+});
+
+test('discovers and prioritizes likely embedding models', async () => {
+    let requestUrl = '';
+    const models = await listOpenAiCompatibleEmbeddingModels('http://127.0.0.1:1234/v1', {
+        fetch: async (input) => {
+            requestUrl = String(input);
+            return Response.json({
+                data: [
+                    { id: 'chat-model' },
+                    { id: 'text-embedding-qwen3' },
+                    { id: 'nomic-embed-text' },
+                    { id: 'text-embedding-qwen3' },
+                ],
+            });
+        },
+    });
+
+    assert.equal(requestUrl, 'http://127.0.0.1:1234/v1/models');
+    assert.deepEqual(models, [
+        { id: 'nomic-embed-text', likelyEmbedding: true },
+        { id: 'text-embedding-qwen3', likelyEmbedding: true },
+        { id: 'chat-model', likelyEmbedding: false },
+    ]);
 });
 
 test('sends document text unchanged and preserves response index order', async () => {

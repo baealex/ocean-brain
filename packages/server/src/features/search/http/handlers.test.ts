@@ -4,7 +4,11 @@ import test from 'node:test';
 import type { Response } from 'express';
 import { createApp } from '~/app.js';
 import { AUTH_SESSION_COOKIE_NAME, type AuthConfig } from '~/modules/auth-mode.js';
-import { createSearchAdminSaveConfigHandler, createSearchAdminTestConnectionHandler } from './handlers.js';
+import {
+    createSearchAdminListModelsHandler,
+    createSearchAdminSaveConfigHandler,
+    createSearchAdminTestConnectionHandler,
+} from './handlers.js';
 
 const createResponse = () => {
     const response = {
@@ -43,11 +47,21 @@ test('semantic search administration endpoints require an authenticated session'
     t.after(() => server.close());
 
     const address = server.address() as AddressInfo;
-    const response = await fetch(`http://127.0.0.1:${address.port}/api/search-admin/status`);
-    const body = (await response.json()) as { code?: unknown };
+    const statusResponse = await fetch(`http://127.0.0.1:${address.port}/api/search-admin/status`);
+    const statusBody = (await statusResponse.json()) as { code?: unknown };
 
-    assert.equal(response.status, 401);
-    assert.equal(body.code, 'UNAUTHORIZED');
+    assert.equal(statusResponse.status, 401);
+    assert.equal(statusBody.code, 'UNAUTHORIZED');
+
+    const modelsResponse = await fetch(`http://127.0.0.1:${address.port}/api/search-admin/models`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ baseUrl: 'http://127.0.0.1:1234/v1' }),
+    });
+    const modelsBody = (await modelsResponse.json()) as { code?: unknown };
+
+    assert.equal(modelsResponse.status, 401);
+    assert.equal(modelsBody.code, 'UNAUTHORIZED');
 });
 
 test('search config handler rejects incomplete external input', async () => {
@@ -107,6 +121,23 @@ test('connection test forces validation without persisting the supplied settings
         baseUrl: 'http://127.0.0.1:1234/v1',
         model: 'qwen-embedding',
         queryInstruction: 'Retrieve relevant notes.',
+    });
+    assert.equal(response.statusCode, 200);
+});
+
+test('model discovery validates the URL before listing provider models', async () => {
+    let receivedBaseUrl = '';
+    const handler = createSearchAdminListModelsHandler(async (baseUrl) => {
+        receivedBaseUrl = baseUrl;
+        return [{ id: 'text-embedding-qwen3', likelyEmbedding: true }];
+    });
+    const response = createResponse();
+
+    await handler({ body: { baseUrl: ' http://127.0.0.1:1234/v1/ ' } } as never, response);
+
+    assert.equal(receivedBaseUrl, 'http://127.0.0.1:1234/v1');
+    assert.deepEqual(response.body, {
+        models: [{ id: 'text-embedding-qwen3', likelyEmbedding: true }],
     });
     assert.equal(response.statusCode, 200);
 });

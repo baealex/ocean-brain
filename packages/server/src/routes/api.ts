@@ -9,6 +9,7 @@ import {
 } from '../features/mcp-admin/http/handlers.js';
 import type { McpAdminService } from '../features/mcp-admin/service.js';
 import {
+    createSearchAdminListModelsHandler,
     createSearchAdminReindexHandler,
     createSearchAdminSaveConfigHandler,
     createSearchAdminStatusHandler,
@@ -83,6 +84,13 @@ export const createApiRouter = (authConfig: AuthConfig, mcpAdminService: McpAdmi
             requireSession,
             csrfProtection,
             useAsync(createSearchAdminSaveConfigHandler()),
+        )
+        .post(
+            '/search-admin/models',
+            sessionAccessRateLimit,
+            requireSession,
+            csrfProtection,
+            useAsync(createSearchAdminListModelsHandler()),
         )
         .post(
             '/search-admin/test',

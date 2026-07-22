@@ -31,6 +31,15 @@ export interface SemanticSearchConnectionResult {
     model: string;
 }
 
+export interface EmbeddingModelDescriptor {
+    id: string;
+    likelyEmbedding: boolean;
+}
+
+export interface SemanticSearchModelsResult {
+    models: EmbeddingModelDescriptor[];
+}
+
 export interface SemanticSearchReindexResult {
     started: boolean;
     status: SearchAdminStatus;

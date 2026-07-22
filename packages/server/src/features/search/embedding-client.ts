@@ -1,6 +1,3 @@
-export const DEFAULT_QUERY_INSTRUCTION =
-    'Given a vague Korean memory query, retrieve relevant passages from personal notes.';
-
 export interface EmbeddingProviderConfig {
     baseUrl: string;
     model: string;
@@ -18,14 +15,20 @@ interface EmbeddingClientOptions {
     timeoutMs?: number;
 }
 
+export interface EmbeddingModelDescriptor {
+    id: string;
+    likelyEmbedding: boolean;
+}
+
 interface EmbeddingResponseItem {
     embedding?: unknown;
     index?: unknown;
 }
 
 const DEFAULT_EMBEDDING_TIMEOUT_MS = 60_000;
+const DEFAULT_MODEL_DISCOVERY_TIMEOUT_MS = 10_000;
 
-const buildEmbeddingsUrl = (baseUrl: string) => {
+const buildOpenAiCompatibleUrl = (baseUrl: string, resource: 'embeddings' | 'models') => {
     let parsedUrl: URL;
 
     try {
@@ -39,14 +42,16 @@ const buildEmbeddingsUrl = (baseUrl: string) => {
     }
 
     const normalizedPath = parsedUrl.pathname.replace(/\/+$/, '');
-    parsedUrl.pathname = normalizedPath.endsWith('/embeddings')
-        ? normalizedPath
-        : `${normalizedPath || '/v1'}/embeddings`;
+    const basePath = normalizedPath.replace(/\/(?:embeddings|models)$/i, '');
+    parsedUrl.pathname = `${basePath || '/v1'}/${resource}`;
     parsedUrl.search = '';
     parsedUrl.hash = '';
 
     return parsedUrl.toString();
 };
+
+const buildEmbeddingsUrl = (baseUrl: string) => buildOpenAiCompatibleUrl(baseUrl, 'embeddings');
+const buildModelsUrl = (baseUrl: string) => buildOpenAiCompatibleUrl(baseUrl, 'models');
 
 const validateEmbedding = (value: unknown, expectedIndex: number) => {
     if (!Array.isArray(value) || value.length === 0) {
@@ -97,6 +102,61 @@ const readApiErrorMessage = async (response: Response) => {
     } catch {
         return undefined;
     }
+};
+
+const looksLikeEmbeddingModel = (modelId: string) => /(^|[-_/])(embed|embedding|bge|e5|gte)([-_/.]|$)/i.test(modelId);
+
+export const listOpenAiCompatibleEmbeddingModels = async (
+    baseUrl: string,
+    options: EmbeddingClientOptions = {},
+): Promise<EmbeddingModelDescriptor[]> => {
+    const endpoint = buildModelsUrl(baseUrl);
+    const fetchImpl = options.fetch ?? fetch;
+    const timeoutMs = options.timeoutMs ?? DEFAULT_MODEL_DISCOVERY_TIMEOUT_MS;
+    const response = await fetchImpl(endpoint, {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(timeoutMs),
+    });
+
+    if (!response.ok) {
+        const apiMessage = await readApiErrorMessage(response);
+        throw new Error(
+            apiMessage
+                ? `Model discovery failed (${response.status}): ${apiMessage}`
+                : `Model discovery failed with status ${response.status}.`,
+        );
+    }
+
+    const payload = (await response.json()) as { data?: unknown };
+    if (!Array.isArray(payload.data)) {
+        throw new Error('Model discovery response does not contain a data array.');
+    }
+
+    const modelIds = [
+        ...new Set(
+            payload.data
+                .map((item) => {
+                    if (!item || typeof item !== 'object') return '';
+                    const id = (item as { id?: unknown }).id;
+                    return typeof id === 'string' ? id.trim() : '';
+                })
+                .filter(Boolean),
+        ),
+    ];
+
+    if (modelIds.length === 0) {
+        throw new Error('The API returned no models.');
+    }
+
+    return modelIds
+        .map((id) => ({ id, likelyEmbedding: looksLikeEmbeddingModel(id) }))
+        .sort((left, right) => {
+            if (left.likelyEmbedding !== right.likelyEmbedding) {
+                return left.likelyEmbedding ? -1 : 1;
+            }
+            return left.id.localeCompare(right.id);
+        });
 };
 
 const buildQueryInput = (query: string, instruction?: string) => {
@@ -167,3 +227,4 @@ export const createOpenAiCompatibleEmbeddingClient = (
 };
 
 export const normalizeEmbeddingApiUrl = buildEmbeddingsUrl;
+export const normalizeEmbeddingModelsUrl = buildModelsUrl;

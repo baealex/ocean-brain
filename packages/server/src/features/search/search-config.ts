@@ -1,4 +1,4 @@
-import { DEFAULT_QUERY_INSTRUCTION, normalizeEmbeddingApiUrl } from './embedding-client.js';
+import { normalizeEmbeddingApiUrl } from './embedding-client.js';
 
 export const SEMANTIC_SEARCH_CONFIG_CACHE_KEY = 'SEMANTIC_SEARCH_CONFIG_V1';
 
@@ -22,7 +22,7 @@ export const DEFAULT_SEMANTIC_SEARCH_CONFIG: SemanticSearchConfig = {
     enabled: false,
     baseUrl: '',
     model: '',
-    queryInstruction: DEFAULT_QUERY_INSTRUCTION,
+    queryInstruction: '',
 };
 
 const parseStoredConfig = (value: string): SemanticSearchConfig | null => {

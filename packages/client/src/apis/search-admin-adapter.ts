@@ -3,6 +3,7 @@ import type {
     SearchAdminStatus,
     SemanticSearchConfig,
     SemanticSearchConnectionResult,
+    SemanticSearchModelsResult,
     SemanticSearchReindexResult,
 } from './search-admin.types';
 
@@ -13,6 +14,11 @@ export const fetchSearchAdminStatus = async () => {
 
 export const saveSemanticSearchConfig = async (config: SemanticSearchConfig) => {
     const { data } = await axios.post<SearchAdminStatus>('/api/search-admin/config', config);
+    return data;
+};
+
+export const fetchSemanticSearchModels = async (baseUrl: string) => {
+    const { data } = await axios.post<SemanticSearchModelsResult>('/api/search-admin/models', { baseUrl });
     return data;
 };
 

@@ -1,9 +1,15 @@
 import { createAppError } from '~/modules/error-handler.js';
 import type { Controller } from '~/types/index.js';
+import {
+    type EmbeddingModelDescriptor,
+    listOpenAiCompatibleEmbeddingModels,
+    normalizeEmbeddingModelsUrl,
+} from '../embedding-client.js';
 import { normalizeSemanticSearchConfig, type SemanticSearchConfig } from '../search-config.js';
 import { getDefaultSemanticSearchManager, type SemanticSearchManager } from '../search-manager.js';
 
 type SearchAdminManager = Pick<SemanticSearchManager, 'getStatus' | 'saveConfig' | 'testConnection' | 'startReindex'>;
+type ListEmbeddingModels = (baseUrl: string) => Promise<EmbeddingModelDescriptor[]>;
 
 const parseConfig = (value: unknown): SemanticSearchConfig => {
     if (!value || typeof value !== 'object') {
@@ -35,6 +41,25 @@ const parseConfig = (value: unknown): SemanticSearchConfig => {
     }
 };
 
+const parseBaseUrl = (value: unknown) => {
+    if (!value || typeof value !== 'object' || typeof (value as { baseUrl?: unknown }).baseUrl !== 'string') {
+        throw createAppError(400, 'INVALID_EMBEDDING_API_URL', 'Embedding API URL is required.');
+    }
+
+    const baseUrl = (value as { baseUrl: string }).baseUrl.trim().replace(/\/+$/, '');
+    try {
+        normalizeEmbeddingModelsUrl(baseUrl);
+    } catch (error) {
+        throw createAppError(
+            400,
+            'INVALID_EMBEDDING_API_URL',
+            error instanceof Error ? error.message : 'Embedding API URL is invalid.',
+        );
+    }
+
+    return baseUrl;
+};
+
 export const createSearchAdminStatusHandler = (
     manager: SearchAdminManager = getDefaultSemanticSearchManager(),
 ): Controller => {
@@ -61,6 +86,15 @@ export const createSearchAdminTestConnectionHandler = (
         const config = parseConfig({ ...req.body, enabled: true });
         const result = await manager.testConnection(config);
         res.status(200).json(result).end();
+    };
+};
+
+export const createSearchAdminListModelsHandler = (
+    listModels: ListEmbeddingModels = listOpenAiCompatibleEmbeddingModels,
+): Controller => {
+    return async (req, res) => {
+        const models = await listModels(parseBaseUrl(req.body));
+        res.status(200).json({ models }).end();
     };
 };
 

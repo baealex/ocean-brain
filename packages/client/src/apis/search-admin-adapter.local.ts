@@ -7,7 +7,7 @@ let status: SearchAdminStatus = {
         enabled: false,
         baseUrl: '',
         model: '',
-        queryInstruction: 'Given a vague Korean memory query, retrieve relevant passages from personal notes.',
+        queryInstruction: '',
     },
     phase: 'disabled',
     available: false,
@@ -38,6 +38,10 @@ export const saveSemanticSearchConfig = async (config: SemanticSearchConfig) => 
         error: null,
     };
     return cloneStatus();
+};
+
+export const fetchSemanticSearchModels = async (_baseUrl: string) => {
+    throw new Error(LOCAL_DEMO_ERROR);
 };
 
 export const testSemanticSearchConnection = async (_config: SemanticSearchConfig) => {

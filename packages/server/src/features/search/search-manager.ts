@@ -47,10 +47,7 @@ const profileMatchesConfig = (
     config: SemanticSearchConfig,
 ) => {
     return Boolean(
-        profile &&
-            profile.model === config.model &&
-            profile.queryInstruction === config.queryInstruction &&
-            profile.textSchemaVersion === NOTE_EMBEDDING_TEXT_SCHEMA_VERSION,
+        profile && profile.model === config.model && profile.textSchemaVersion === NOTE_EMBEDDING_TEXT_SCHEMA_VERSION,
     );
 };
 

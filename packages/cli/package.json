@@ -44,12 +44,12 @@
         "express-session": "catalog:",
         "express-winston": "catalog:",
         "graphql-http": "catalog:",
-        "lusca": "catalog:",
         "jsdom": "catalog:",
+        "lusca": "catalog:",
         "prisma": "catalog:",
         "sqlite3": "catalog:",
         "winston": "catalog:",
-        "zod": "^3.25.0"
+        "zod": "^3.25.76"
     },
     "oceanBrain": {
         "mcpCompatibilityVersion": "0.8.0"

@@ -1,36 +1,35 @@
 {
-    "name": "ocean-brain-workspace",
-    "private": true,
-    "license": "MIT",
-    "scripts": {
-        "check:encoding": "node scripts/ci/check-encoding.mjs",
-        "dev": "pnpm --parallel --filter @ocean-brain/client --filter @ocean-brain/server dev",
-        "dev:client": "pnpm --filter @ocean-brain/client dev",
-        "dev:server": "pnpm --filter @ocean-brain/server dev",
-        "build": "pnpm --filter @ocean-brain/client build && pnpm --filter @ocean-brain/server build",
-        "build:client": "pnpm --filter @ocean-brain/client build",
-        "build:server": "pnpm --filter @ocean-brain/server build",
-        "format": "pnpm --parallel -r run --if-present format",
-        "start": "pnpm --filter @ocean-brain/server start",
-        "lint": "pnpm --filter @ocean-brain/client lint && pnpm --filter @ocean-brain/server lint",
-        "test": "pnpm --parallel -r run --if-present test",
-        "test:ci": "pnpm check:deps && pnpm --parallel -r run --if-present test:ci",
-        "test:e2e": "playwright test",
-        "type-check": "pnpm --filter @ocean-brain/client type-check && pnpm --filter @ocean-brain/server type-check",
-        "cli": "node scripts/release/prepublish.mjs && node packages/cli/dist/index.js",
-        "release:bump": "node scripts/release/bump-version.mjs",
-        "prepublish": "node scripts/release/prepublish.mjs",
-        "check:deps": "node scripts/ci/check-cli-server-runtime-deps.mjs"
-    },
-    "devDependencies": {
-        "@playwright/test": "^1.59.1",
-        "@types/lusca": "^1.7.5"
-    },
-    "pnpm": {
-        "overrides": {
-            "hono": "4.12.26",
-            "undici": "7.28.0",
-            "esbuild": "0.28.1"
-        }
+  "name": "ocean-brain-workspace",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "check:encoding": "node scripts/ci/check-encoding.mjs",
+    "dev": "pnpm --parallel --filter @ocean-brain/client --filter @ocean-brain/server dev",
+    "dev:client": "pnpm --filter @ocean-brain/client dev",
+    "dev:server": "pnpm --filter @ocean-brain/server dev",
+    "build": "pnpm --filter @ocean-brain/client build && pnpm --filter @ocean-brain/server build",
+    "build:client": "pnpm --filter @ocean-brain/client build",
+    "build:server": "pnpm --filter @ocean-brain/server build",
+    "format": "pnpm --parallel -r run --if-present format",
+    "start": "pnpm --filter @ocean-brain/server start",
+    "lint": "pnpm --filter @ocean-brain/client lint && pnpm --filter @ocean-brain/server lint",
+    "test": "pnpm --parallel -r run --if-present test",
+    "test:ci": "pnpm check:deps && pnpm --parallel -r run --if-present test:ci",
+    "test:e2e": "playwright test",
+    "type-check": "pnpm --filter @ocean-brain/client type-check && pnpm --filter @ocean-brain/server type-check",
+    "cli": "node scripts/release/prepublish.mjs && node packages/cli/dist/index.js",
+    "release:bump": "node scripts/release/bump-version.mjs",
+    "prepublish": "node scripts/release/prepublish.mjs",
+    "check:deps": "node scripts/ci/check-cli-server-runtime-deps.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@types/lusca": "^1.7.5"
+  },
+  "pnpm": {
+    "overrides": {
+      "@hono/node-server": "2.0.11",
+      "esbuild": "0.28.1"
     }
+  }
 }

@@ -3,19 +3,19 @@ import { queryKeys } from './query-key-factory';
 
 describe('queryKeys.search', () => {
     it('normalizes search pagination defaults and surrounding whitespace', () => {
-        expect(queryKeys.search.results({ query: '  흐릿한 기억  ' })).toEqual([
+        expect(queryKeys.search.results({ query: '  vague memory  ' })).toEqual([
             'search',
             'results',
             {
-                query: '흐릿한 기억',
+                query: 'vague memory',
                 limit: 25,
                 offset: 0,
                 mode: 'hybrid',
             },
         ]);
 
-        expect(queryKeys.search.results({ query: '흐릿한 기억', mode: 'semantic' })).not.toEqual(
-            queryKeys.search.results({ query: '흐릿한 기억', mode: 'lexical' }),
+        expect(queryKeys.search.results({ query: 'vague memory', mode: 'semantic' })).not.toEqual(
+            queryKeys.search.results({ query: 'vague memory', mode: 'lexical' }),
         );
     });
 

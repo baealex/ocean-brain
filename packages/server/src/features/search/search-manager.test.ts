@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type { EmbeddingClient } from './embedding-client.js';
+import type { EmbeddingClient, EmbeddingProviderConfig } from './embedding-client.js';
 import {
     DEFAULT_SEMANTIC_SEARCH_CONFIG,
     SEMANTIC_SEARCH_CONFIG_CACHE_KEY,
@@ -16,7 +16,7 @@ import type {
     SemanticNoteSyncStore,
 } from './sqlite-vector-index.js';
 
-const createManagerFixture = () => {
+const createManagerFixture = (options: { embeddingApiKey?: string } = {}) => {
     const cacheValues = new Map<string, string>([
         [SEMANTIC_SEARCH_CONFIG_CACHE_KEY, JSON.stringify(DEFAULT_SEMANTIC_SEARCH_CONFIG)],
     ]);
@@ -36,6 +36,8 @@ const createManagerFixture = () => {
     let blockEmbedding = false;
     let embeddingCallCount = 0;
     let embeddingError: Error | null = null;
+    let lastEmbeddingProviderConfig: EmbeddingProviderConfig | null = null;
+    let embeddingApiKey = options.embeddingApiKey;
     let now = Date.parse('2026-07-21T00:00:00.000Z');
     let lastSyncedAt: string | null = null;
     let lastReconciledAt: string | null = null;
@@ -171,7 +173,13 @@ const createManagerFixture = () => {
         vectorIndex,
         listNotes: async () => (note ? [note] : []),
         findNotes: async (noteIds) => (note && noteIds.includes(note.id) ? [note] : []),
-        createEmbeddingClient: () => embeddingClient,
+        createEmbeddingClient: (config) => {
+            lastEmbeddingProviderConfig = config;
+            return embeddingClient;
+        },
+        get embeddingApiKey() {
+            return embeddingApiKey;
+        },
         now: () => now,
     });
 
@@ -198,6 +206,12 @@ const createManagerFixture = () => {
         getEmbeddingCallCount() {
             return embeddingCallCount;
         },
+        getLastEmbeddingProviderConfig() {
+            return lastEmbeddingProviderConfig;
+        },
+        setEmbeddingApiKey(value?: string) {
+            embeddingApiKey = value;
+        },
     };
 };
 
@@ -223,6 +237,34 @@ test('requires a successful connection test before first activation', async () =
     assert.equal(status.connectionValidated, true);
     assert.equal(status.available, false);
     assert.equal(status.needsReindex, true);
+});
+
+test('uses a server-side API key without exposing it in search status', async () => {
+    const { manager, getLastEmbeddingProviderConfig } = createManagerFixture({
+        embeddingApiKey: 'provider-secret',
+    });
+
+    await manager.testConnection(enabledConfig);
+    const status = await manager.saveConfig(enabledConfig);
+
+    assert.equal(getLastEmbeddingProviderConfig()?.apiKey, 'provider-secret');
+    assert.equal(status.apiKeyConfigured, true);
+    assert.equal('apiKey' in status.config, false);
+});
+
+test('requires another connection test after removing a server-side API key', async () => {
+    const { manager, setEmbeddingApiKey } = createManagerFixture({
+        embeddingApiKey: 'provider-secret',
+    });
+    await validateAndSaveConfig(manager);
+
+    setEmbeddingApiKey();
+    const status = await manager.getStatus();
+
+    assert.equal(status.connectionValidated, false);
+    assert.equal(status.phase, 'needs-connection');
+    assert.equal(status.needsReindex, false);
+    await assert.rejects(manager.saveConfig(enabledConfig), /Test this embedding API/);
 });
 
 test('builds an index in the background and enables semantic queries when complete', async () => {

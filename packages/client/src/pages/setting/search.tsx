@@ -25,6 +25,7 @@ const EMPTY_CONFIG: SemanticSearchConfig = {
 
 const phaseLabels: Record<SemanticSearchPhase, string> = {
     disabled: 'Meaning search off',
+    'needs-connection': 'Connection test needed',
     'needs-index': 'Index needed',
     indexing: 'Building index',
     ready: 'Meaning search ready',
@@ -37,7 +38,14 @@ const configsMatch = (left: SemanticSearchConfig, right: SemanticSearchConfig) =
     left.model === right.model &&
     left.queryInstruction === right.queryInstruction;
 
-const normalizeBaseUrl = (baseUrl: string) => baseUrl.trim().replace(/\/+$/, '');
+const normalizeBaseUrl = (baseUrl: string) => {
+    const value = baseUrl.trim();
+    let end = value.length;
+    while (end > 0 && value.charCodeAt(end - 1) === 47) {
+        end -= 1;
+    }
+    return end === value.length ? value : value.slice(0, end);
+};
 
 const looksLikeEmbeddingModel = (modelId: string) => /(^|[-_/])(embed|embedding|bge|e5|gte)([-_/.]|$)/i.test(modelId);
 
@@ -163,9 +171,7 @@ const SearchSetting = () => {
             normalizeBaseUrl(status.config.baseUrl) === normalizedFormBaseUrl &&
             status.config.model.trim() === form.model.trim(),
     );
-    const isSavedValidatedConnection = Boolean(
-        savedConnectionMatches && (status?.connectionValidated || status?.config.enabled),
-    );
+    const isSavedValidatedConnection = Boolean(savedConnectionMatches && status?.connectionValidated);
     const connectionNeedsTest = hasConnectionFields && !isSavedValidatedConnection;
     const canEnableMeaningSearch = hasConnectionFields && (isCurrentConnectionTested || isSavedValidatedConnection);
     const canSave = Boolean(
@@ -301,7 +307,14 @@ const SearchSetting = () => {
                         </div>
                         <Text as="p" variant="meta" tone="tertiary" className="leading-relaxed">
                             If Ocean Brain runs in Docker and LM Studio runs on the host, try
-                            {' http://host.docker.internal:1234/v1'}.
+                            {' http://host.docker.internal:1234/v1'} and allow that origin in the server environment.
+                        </Text>
+                        <Text as="p" variant="meta" tone="tertiary" className="leading-relaxed">
+                            Provider authentication:{' '}
+                            {status?.apiKeyConfigured
+                                ? 'a Bearer API key is configured on the server.'
+                                : 'no API key is configured. Set OCEAN_BRAIN_EMBEDDING_API_KEY before startup when the provider requires one.'}
+                            {' The key is never sent to this page or stored in the notes database.'}
                         </Text>
 
                         {hasDiscoveredCurrentUrl && (

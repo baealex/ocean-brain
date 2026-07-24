@@ -18,16 +18,16 @@ describe('search.api', () => {
             },
         } as never);
 
-        await fetchSearchNotes({ query: '점쟁이 죽는', limit: 10, offset: 20, mode: 'semantic' });
+        await fetchSearchNotes({ query: 'fortune teller death', limit: 10, offset: 20, mode: 'semantic' });
 
         const [query, variables] = vi.mocked(graphQuery).mock.calls[0];
         expect(query).toContain('query FetchSearchNotes');
         expect(query).toContain('semanticUsed');
         expect(query).toContain('matches');
         expect(query).toContain('content');
-        expect(query).not.toContain('점쟁이 죽는');
+        expect(query).not.toContain('fortune teller death');
         expect(variables).toEqual({
-            query: '점쟁이 죽는',
+            query: 'fortune teller death',
             mode: 'SEMANTIC',
             pagination: {
                 limit: 10,

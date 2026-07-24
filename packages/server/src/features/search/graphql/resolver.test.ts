@@ -17,12 +17,12 @@ test('searchNotes resolver passes a bounded page request to hybrid search', asyn
     });
 
     await resolver(null, {
-        query: '점쟁이 죽는',
+        query: 'fortune teller death',
         pagination: { limit: 100, offset: -2 },
     });
 
     assert.deepEqual(receivedInput, {
-        query: '점쟁이 죽는',
+        query: 'fortune teller death',
         limit: 50,
         offset: 0,
         mode: 'hybrid',

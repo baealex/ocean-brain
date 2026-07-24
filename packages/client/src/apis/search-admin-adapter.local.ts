@@ -10,6 +10,7 @@ let status: SearchAdminStatus = {
         queryInstruction: '',
     },
     connectionValidated: false,
+    apiKeyConfigured: false,
     phase: 'disabled',
     available: false,
     needsReindex: false,

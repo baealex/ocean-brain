@@ -1,4 +1,5 @@
 import { normalizeEmbeddingApiUrl } from './embedding-client.js';
+import { stripTrailingSlashes } from './url-normalization.js';
 
 export const SEMANTIC_SEARCH_CONFIG_CACHE_KEY = 'SEMANTIC_SEARCH_CONFIG_V1';
 export const SEMANTIC_SEARCH_VALIDATED_CONNECTION_CACHE_KEY = 'SEMANTIC_SEARCH_VALIDATED_CONNECTION_V1';
@@ -16,6 +17,7 @@ export interface ValidatedSemanticSearchConnection {
     baseUrl: string;
     model: string;
     validatedAt: string;
+    authFingerprint: string;
 }
 
 export interface SearchConfigCache {
@@ -72,6 +74,7 @@ const parseValidatedConnection = (value: string): ValidatedSemanticSearchConnect
             baseUrl: parsed.baseUrl,
             model: parsed.model,
             validatedAt: parsed.validatedAt,
+            authFingerprint: typeof parsed.authFingerprint === 'string' ? parsed.authFingerprint : '',
         };
     } catch {
         return null;
@@ -79,9 +82,13 @@ const parseValidatedConnection = (value: string): ValidatedSemanticSearchConnect
 };
 
 export const normalizeSemanticSearchConfig = (input: SemanticSearchConfig): SemanticSearchConfig => {
+    if (input.baseUrl.length > 2_048) {
+        throw new Error('Embedding API URL is too long.');
+    }
+
     const config = {
         enabled: input.enabled,
-        baseUrl: input.baseUrl.trim().replace(/\/+$/, ''),
+        baseUrl: stripTrailingSlashes(input.baseUrl.trim()),
         model: input.model.trim(),
         queryInstruction: input.queryInstruction.trim(),
     };
@@ -92,10 +99,6 @@ export const normalizeSemanticSearchConfig = (input: SemanticSearchConfig): Sema
 
     if (config.enabled && (!config.baseUrl || !config.model)) {
         throw new Error('Embedding API URL and model are required when semantic search is enabled.');
-    }
-
-    if (config.baseUrl.length > 2_048) {
-        throw new Error('Embedding API URL is too long.');
     }
 
     if (config.model.length > 200) {
@@ -146,17 +149,22 @@ export class SemanticSearchConfigStore {
         return row ? parseValidatedConnection(row.value) : null;
     }
 
-    async isConnectionValidated(input: Pick<SemanticSearchConfig, 'baseUrl' | 'model'>) {
+    async isConnectionValidated(input: Pick<SemanticSearchConfig, 'baseUrl' | 'model'>, authFingerprint = '') {
         const config = normalizeSemanticSearchConfig({
             ...DEFAULT_SEMANTIC_SEARCH_CONFIG,
             baseUrl: input.baseUrl,
             model: input.model,
         });
         const validated = await this.getValidatedConnection();
-        return Boolean(validated && validated.baseUrl === config.baseUrl && validated.model === config.model);
+        return Boolean(
+            validated &&
+                validated.baseUrl === config.baseUrl &&
+                validated.model === config.model &&
+                validated.authFingerprint === authFingerprint,
+        );
     }
 
-    async markConnectionValidated(input: Pick<SemanticSearchConfig, 'baseUrl' | 'model'>) {
+    async markConnectionValidated(input: Pick<SemanticSearchConfig, 'baseUrl' | 'model'>, authFingerprint = '') {
         const config = normalizeSemanticSearchConfig({
             ...DEFAULT_SEMANTIC_SEARCH_CONFIG,
             baseUrl: input.baseUrl,
@@ -166,6 +174,7 @@ export class SemanticSearchConfigStore {
             baseUrl: config.baseUrl,
             model: config.model,
             validatedAt: new Date().toISOString(),
+            authFingerprint,
         };
         const value = JSON.stringify(validated);
 

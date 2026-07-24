@@ -23,9 +23,14 @@ test('normalizes an OpenAI-compatible base URL to the models endpoint', () => {
 
 test('discovers and prioritizes likely embedding models', async () => {
     let requestUrl = '';
+    let authorization = '';
+    let redirect: RequestRedirect | undefined;
     const models = await listOpenAiCompatibleEmbeddingModels('http://127.0.0.1:1234/v1', {
-        fetch: async (input) => {
+        apiKey: 'provider-secret',
+        fetch: async (input, init) => {
             requestUrl = String(input);
+            authorization = new Headers(init?.headers).get('Authorization') ?? '';
+            redirect = init?.redirect;
             return Response.json({
                 data: [
                     { id: 'chat-model' },
@@ -38,6 +43,8 @@ test('discovers and prioritizes likely embedding models', async () => {
     });
 
     assert.equal(requestUrl, 'http://127.0.0.1:1234/v1/models');
+    assert.equal(authorization, 'Bearer provider-secret');
+    assert.equal(redirect, 'error');
     assert.deepEqual(models, [
         { id: 'nomic-embed-text', likelyEmbedding: true },
         { id: 'text-embedding-qwen3', likelyEmbedding: true },
@@ -48,15 +55,18 @@ test('discovers and prioritizes likely embedding models', async () => {
 test('sends document text unchanged and preserves response index order', async () => {
     let requestUrl = '';
     let requestBody: unknown;
+    let authorization = '';
     const client = createOpenAiCompatibleEmbeddingClient(
         {
             baseUrl: 'http://127.0.0.1:1234/v1',
             model: 'qwen-embedding',
+            apiKey: 'provider-secret',
         },
         {
             fetch: async (input, init) => {
                 requestUrl = String(input);
                 requestBody = JSON.parse(String(init?.body));
+                authorization = new Headers(init?.headers).get('Authorization') ?? '';
                 return Response.json({
                     data: [
                         { index: 1, embedding: [0, 1] },
@@ -67,12 +77,13 @@ test('sends document text unchanged and preserves response index order', async (
         },
     );
 
-    const embeddings = await client.embedDocuments(['첫 문서', '둘째 문서']);
+    const embeddings = await client.embedDocuments(['First document', 'Second document']);
 
     assert.equal(requestUrl, 'http://127.0.0.1:1234/v1/embeddings');
+    assert.equal(authorization, 'Bearer provider-secret');
     assert.deepEqual(requestBody, {
         model: 'qwen-embedding',
-        input: ['첫 문서', '둘째 문서'],
+        input: ['First document', 'Second document'],
         encoding_format: 'float',
     });
     assert.deepEqual(embeddings, [
@@ -98,10 +109,13 @@ test('adds the configured instruction only to query embeddings', async () => {
         },
     );
 
-    await client.embedDocuments(['문서']);
-    await client.embedQuery('점쟁이 죽는');
+    await client.embedDocuments(['Document']);
+    await client.embedQuery('fortune teller death');
 
-    assert.deepEqual(inputs, [['문서'], ['Instruct: Retrieve relevant personal notes.\nQuery: 점쟁이 죽는']]);
+    assert.deepEqual(inputs, [
+        ['Document'],
+        ['Instruct: Retrieve relevant personal notes.\nQuery: fortune teller death'],
+    ]);
 });
 
 test('rejects malformed embedding vectors instead of storing them', async () => {
@@ -115,5 +129,81 @@ test('rejects malformed embedding vectors instead of storing them', async () => 
         },
     );
 
-    await assert.rejects(client.embedDocuments(['문서']), /invalid vector value/);
+    await assert.rejects(client.embedDocuments(['Document']), /invalid vector value/);
+});
+
+test('blocks private network providers unless their hostname is explicitly trusted', async () => {
+    let requested = false;
+    const client = createOpenAiCompatibleEmbeddingClient(
+        {
+            baseUrl: 'http://embedding.internal/v1',
+            model: 'qwen-embedding',
+        },
+        {
+            resolveHost: async () => ['192.168.1.20'],
+            fetch: async () => {
+                requested = true;
+                return Response.json({ data: [{ index: 0, embedding: [1, 0] }] });
+            },
+        },
+    );
+
+    await assert.rejects(client.embedDocuments(['Document']), /private network/);
+    assert.equal(requested, false);
+});
+
+test('allows an explicitly trusted private provider and rejects redirects', async () => {
+    let redirect: RequestRedirect | undefined;
+    const client = createOpenAiCompatibleEmbeddingClient(
+        {
+            baseUrl: 'http://embedding.internal/v1',
+            model: 'qwen-embedding',
+            allowedOrigins: ['http://embedding.internal'],
+        },
+        {
+            resolveHost: async () => ['192.168.1.20'],
+            fetch: async (_input, init) => {
+                redirect = init?.redirect;
+                return Response.json({ data: [{ index: 0, embedding: [1, 0] }] });
+            },
+        },
+    );
+
+    await client.embedDocuments(['Document']);
+    assert.equal(redirect, 'error');
+});
+
+test('always blocks link-local provider addresses', async () => {
+    const client = createOpenAiCompatibleEmbeddingClient(
+        {
+            baseUrl: 'http://metadata.internal/v1',
+            model: 'qwen-embedding',
+            allowedOrigins: ['http://metadata.internal'],
+        },
+        {
+            resolveHost: async () => ['169.254.169.254'],
+            fetch: async () => Response.json({ data: [{ index: 0, embedding: [1, 0] }] }),
+        },
+    );
+
+    await assert.rejects(client.embedDocuments(['Document']), /blocked network address/);
+});
+
+test('redacts a provider API key from upstream error messages', async () => {
+    const client = createOpenAiCompatibleEmbeddingClient(
+        {
+            baseUrl: 'http://127.0.0.1:1234/v1',
+            model: 'qwen-embedding',
+            apiKey: 'provider-secret',
+        },
+        {
+            fetch: async () =>
+                Response.json({ error: { message: 'Rejected credential provider-secret' } }, { status: 401 }),
+        },
+    );
+
+    await assert.rejects(
+        client.embedDocuments(['Document']),
+        (error: Error) => error.message.includes('[redacted]') && !error.message.includes('provider-secret'),
+    );
 });

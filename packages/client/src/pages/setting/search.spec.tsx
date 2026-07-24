@@ -28,6 +28,7 @@ const embeddingModel = 'text-embedding-qwen3-embedding-0.6b';
 const createStatus = (overrides: Partial<SearchAdminStatus> = {}): SearchAdminStatus => ({
     config: defaultConfig,
     connectionValidated: false,
+    apiKeyConfigured: false,
     phase: 'disabled',
     available: false,
     needsReindex: false,
@@ -189,6 +190,15 @@ describe('<SearchSetting />', () => {
         });
         expect(screen.getByRole('switch', { name: 'Meaning search' })).toBeDisabled();
         expect(screen.getByText('Test the selected model first.')).toBeInTheDocument();
+    });
+
+    it('shows whether provider authentication is configured on the server', async () => {
+        vi.mocked(searchAdminApi.fetchSearchAdminStatus).mockResolvedValue(createStatus({ apiKeyConfigured: true }));
+
+        renderPage();
+
+        expect(await screen.findByText(/a Bearer API key is configured on the server/)).toBeInTheDocument();
+        expect(screen.queryByText('provider-secret')).not.toBeInTheDocument();
     });
 
     it('shows queued note synchronization without offering a full index rebuild', async () => {

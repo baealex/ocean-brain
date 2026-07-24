@@ -16,19 +16,22 @@ const paragraphContent = (text: string) =>
 test('builds embedding text from visible note content without internal JSON metadata', () => {
     const [chunk] = buildNoteEmbeddingChunks({
         id: 7,
-        title: '죽음에 대한 이야기',
-        content: paragraphContent('점쟁이가 6년 안에 죽는다고 말했다.'),
+        title: 'A story about death',
+        content: paragraphContent('A fortune teller said I would die within six years.'),
     });
 
     assert.equal(chunk.noteId, 7);
     assert.equal(chunk.chunkIndex, 0);
-    assert.equal(chunk.text, 'Title: 죽음에 대한 이야기\nContent: 점쟁이가 6년 안에 죽는다고 말했다.');
+    assert.equal(
+        chunk.text,
+        'Title: A story about death\nContent: A fortune teller said I would die within six years.',
+    );
     assert.doesNotMatch(chunk.text, /internal-block-id|internalMetadata|do-not-index/);
     assert.match(chunk.sourceHash, /^[a-f0-9]{64}$/);
 });
 
 test('splits long note text into overlapping deterministic windows', () => {
-    const text = Array.from({ length: 80 }, (_, index) => `문장${index}`).join(' ');
+    const text = Array.from({ length: 80 }, (_, index) => `sentence${index}`).join(' ');
     const chunks = splitSearchText(text, { maxLength: 100, overlap: 20 });
 
     assert.ok(chunks.length > 1);
@@ -40,10 +43,10 @@ test('splits long note text into overlapping deterministic windows', () => {
 });
 
 test('indexes a title-only note instead of dropping it', () => {
-    const chunks = buildNoteEmbeddingChunks({ id: 3, title: '제목만 있는 노트', content: '[]' });
+    const chunks = buildNoteEmbeddingChunks({ id: 3, title: 'A title-only note', content: '[]' });
 
     assert.deepEqual(
         chunks.map(({ noteId, chunkIndex, text }) => ({ noteId, chunkIndex, text })),
-        [{ noteId: 3, chunkIndex: 0, text: 'Title: 제목만 있는 노트\nContent:' }],
+        [{ noteId: 3, chunkIndex: 0, text: 'Title: A title-only note\nContent:' }],
     );
 });

@@ -66,6 +66,30 @@ docker run --rm \
 | SQLite database | `/data/db.sqlite3` | `./data/db.sqlite3` |
 | Uploaded images | `/assets/images` | `./assets/images` |
 
+## Authenticated embedding providers
+
+Pass an optional OpenAI-compatible provider key only to the container. The key stays on the server and is sent as a Bearer token for model discovery and embedding requests.
+
+```bash
+docker run -d \
+  --name ocean-brain \
+  -e OCEAN_BRAIN_PASSWORD='choose-a-strong-password' \
+  -e OCEAN_BRAIN_SESSION_SECRET='paste-the-generated-session-secret-here' \
+  -e OCEAN_BRAIN_EMBEDDING_API_KEY='provider-api-key' \
+  -v "$PWD/data:/data" \
+  -v "$PWD/assets:/assets" \
+  -p 127.0.0.1:6683:6683 \
+  baealex/ocean-brain:latest
+```
+
+Public remote providers must use HTTPS. For a trusted private provider, add its exact origin, including its scheme and port but no path. Docker Desktop users connecting to a host-side provider can use:
+
+```bash
+-e OCEAN_BRAIN_EMBEDDING_ALLOWED_ORIGINS='http://host.docker.internal:1234'
+```
+
+Loopback is allowed automatically; redirects and link-local destinations remain blocked.
+
 Stop the container and back up `./data` and `./assets` together before changing versions. Restore both while the container remains stopped. Trash, note snapshots, and individual exports are useful recovery tools, but they do not replace a full backup.
 
 The image is published for `linux/amd64` and `linux/arm64`.

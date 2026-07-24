@@ -1,7 +1,12 @@
 import models from '~/models.js';
 import { subscribeServerEvents } from '~/modules/server-events.js';
 import { paths } from '~/paths.js';
-import { createOpenAiCompatibleEmbeddingClient, type EmbeddingClient } from './embedding-client.js';
+import {
+    createOpenAiCompatibleEmbeddingClient,
+    type EmbeddingClient,
+    type EmbeddingProviderConfig,
+} from './embedding-client.js';
+import { createEmbeddingAuthFingerprint, resolveEmbeddingRuntimeConfig } from './embedding-runtime-config.js';
 import { subscribeSemanticSearchNoteChanges } from './note-change.js';
 import {
     buildNoteEmbeddingChunks,
@@ -23,11 +28,12 @@ import {
     SqliteSemanticVectorIndex,
 } from './sqlite-vector-index.js';
 
-export type SemanticSearchPhase = 'disabled' | 'needs-index' | 'indexing' | 'ready' | 'error';
+export type SemanticSearchPhase = 'disabled' | 'needs-connection' | 'needs-index' | 'indexing' | 'ready' | 'error';
 
 export interface SemanticSearchStatus {
     config: SemanticSearchConfig;
     connectionValidated: boolean;
+    apiKeyConfigured: boolean;
     phase: SemanticSearchPhase;
     available: boolean;
     needsReindex: boolean;
@@ -47,7 +53,9 @@ interface SearchManagerDependencies {
     vectorIndex: SemanticVectorIndex & SemanticNoteSyncStore;
     listNotes: () => Promise<SemanticSearchNoteInput[]>;
     findNotes: (noteIds: number[]) => Promise<SemanticSearchNoteInput[]>;
-    createEmbeddingClient?: (config: SemanticSearchConfig) => EmbeddingClient;
+    createEmbeddingClient?: (config: EmbeddingProviderConfig) => EmbeddingClient;
+    embeddingApiKey?: string;
+    embeddingAllowedOrigins?: readonly string[];
     now?: () => number;
 }
 
@@ -104,7 +112,15 @@ export class SemanticSearchManager {
 
     private createClient(config: SemanticSearchConfig) {
         const factory = this.dependencies.createEmbeddingClient ?? createOpenAiCompatibleEmbeddingClient;
-        return factory(config);
+        return factory({
+            ...config,
+            apiKey: this.dependencies.embeddingApiKey,
+            allowedOrigins: this.dependencies.embeddingAllowedOrigins,
+        });
+    }
+
+    private getAuthFingerprint() {
+        return createEmbeddingAuthFingerprint(this.dependencies.embeddingApiKey);
     }
 
     private now() {
@@ -117,10 +133,14 @@ export class SemanticSearchManager {
             this.dependencies.vectorIndex.getStatus(),
             this.dependencies.vectorIndex.getNoteSyncQueueStatus(),
         ]);
-        const connectionValidated = await this.dependencies.configStore.isConnectionValidated(config);
+        const connectionValidated = await this.dependencies.configStore.isConnectionValidated(
+            config,
+            this.getAuthFingerprint(),
+        );
         const profileMatches = profileMatchesConfig(indexStatus.profile, config);
-        const available = config.enabled && indexStatus.ready && profileMatches;
-        const needsReindex = config.enabled && !available;
+        const indexReady = indexStatus.ready && profileMatches;
+        const available = config.enabled && connectionValidated && indexReady;
+        const needsReindex = config.enabled && connectionValidated && !indexReady;
 
         let phase: SemanticSearchPhase;
         if (this.activeReindex) {
@@ -129,6 +149,8 @@ export class SemanticSearchManager {
             phase = 'error';
         } else if (!config.enabled) {
             phase = 'disabled';
+        } else if (!connectionValidated) {
+            phase = 'needs-connection';
         } else if (available) {
             phase = 'ready';
         } else {
@@ -138,6 +160,7 @@ export class SemanticSearchManager {
         return {
             config,
             connectionValidated,
+            apiKeyConfigured: Boolean(this.dependencies.embeddingApiKey),
             phase,
             available,
             needsReindex,
@@ -160,10 +183,19 @@ export class SemanticSearchManager {
 
         const currentConfig = await this.dependencies.configStore.get();
         const keepsActiveConnection = currentConfig.enabled && connectionMatches(currentConfig, config);
-        let connectionValidated = await this.dependencies.configStore.isConnectionValidated(config);
+        const authFingerprint = this.getAuthFingerprint();
+        let connectionValidated = await this.dependencies.configStore.isConnectionValidated(config, authFingerprint);
+        const validatedConnection = connectionValidated
+            ? null
+            : await this.dependencies.configStore.getValidatedConnection();
 
-        if (keepsActiveConnection && !connectionValidated) {
-            await this.dependencies.configStore.markConnectionValidated(config);
+        if (
+            keepsActiveConnection &&
+            !connectionValidated &&
+            !validatedConnection &&
+            !this.dependencies.embeddingApiKey
+        ) {
+            await this.dependencies.configStore.markConnectionValidated(config, authFingerprint);
             connectionValidated = true;
         }
 
@@ -181,7 +213,7 @@ export class SemanticSearchManager {
         const config = configInput ?? (await this.dependencies.configStore.get());
         const client = this.createClient({ ...config, enabled: true });
         const [embedding] = await client.embedDocuments(['Ocean Brain embedding connection test']);
-        await this.dependencies.configStore.markConnectionValidated(config);
+        await this.dependencies.configStore.markConnectionValidated(config, this.getAuthFingerprint());
 
         return {
             ok: true as const,
@@ -474,6 +506,7 @@ let defaultSemanticSearchManager: SemanticSearchManager | null = null;
 
 export const getDefaultSemanticSearchManager = () => {
     if (!defaultSemanticSearchManager) {
+        const embeddingRuntimeConfig = resolveEmbeddingRuntimeConfig();
         defaultSemanticSearchManager = new SemanticSearchManager({
             configStore: new SemanticSearchConfigStore({
                 findUnique: (args) => models.cache.findUnique(args),
@@ -498,6 +531,8 @@ export const getDefaultSemanticSearchManager = () => {
                         content: true,
                     },
                 }),
+            embeddingApiKey: embeddingRuntimeConfig.apiKey,
+            embeddingAllowedOrigins: embeddingRuntimeConfig.allowedOrigins,
         });
         subscribeServerEvents((event) => {
             void defaultSemanticSearchManager?.scheduleNoteSync(Number(event.noteId)).catch(() => undefined);

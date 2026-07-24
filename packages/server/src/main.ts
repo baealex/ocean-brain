@@ -12,10 +12,10 @@ try {
     logAuthConfig(authConfig);
 
     const app = createApp(authConfig);
+    getDefaultSemanticSearchManager();
 
     app.listen(PORT, HOST, () => {
         process.stdout.write(`http server listen on ${HOST}:${PORT} (auth: ${authConfig.mode})\n`);
-        getDefaultSemanticSearchManager();
 
         startDataMaintenanceScheduler({
             onResults: (results) => {

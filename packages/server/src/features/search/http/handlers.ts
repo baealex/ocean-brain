@@ -5,12 +5,14 @@ import {
     listOpenAiCompatibleEmbeddingModels,
     normalizeEmbeddingModelsUrl,
 } from '../embedding-client.js';
+import { resolveEmbeddingRuntimeConfig } from '../embedding-runtime-config.js';
 import { normalizeSemanticSearchConfig, type SemanticSearchConfig } from '../search-config.js';
 import {
     getDefaultSemanticSearchManager,
     SemanticSearchConnectionNotValidatedError,
     type SemanticSearchManager,
 } from '../search-manager.js';
+import { stripTrailingSlashes } from '../url-normalization.js';
 
 type SearchAdminManager = Pick<SemanticSearchManager, 'getStatus' | 'saveConfig' | 'testConnection' | 'startReindex'>;
 type ListEmbeddingModels = (baseUrl: string) => Promise<EmbeddingModelDescriptor[]>;
@@ -50,7 +52,11 @@ const parseBaseUrl = (value: unknown) => {
         throw createAppError(400, 'INVALID_EMBEDDING_API_URL', 'Embedding API URL is required.');
     }
 
-    const baseUrl = (value as { baseUrl: string }).baseUrl.trim().replace(/\/+$/, '');
+    const inputBaseUrl = (value as { baseUrl: string }).baseUrl;
+    if (inputBaseUrl.length > 2_048) {
+        throw createAppError(400, 'INVALID_EMBEDDING_API_URL', 'Embedding API URL is too long.');
+    }
+    const baseUrl = stripTrailingSlashes(inputBaseUrl.trim());
     try {
         normalizeEmbeddingModelsUrl(baseUrl);
     } catch (error) {
@@ -102,7 +108,13 @@ export const createSearchAdminTestConnectionHandler = (
 };
 
 export const createSearchAdminListModelsHandler = (
-    listModels: ListEmbeddingModels = listOpenAiCompatibleEmbeddingModels,
+    listModels: ListEmbeddingModels = (baseUrl) => {
+        const runtimeConfig = resolveEmbeddingRuntimeConfig();
+        return listOpenAiCompatibleEmbeddingModels(baseUrl, {
+            apiKey: runtimeConfig.apiKey,
+            allowedOrigins: runtimeConfig.allowedOrigins,
+        });
+    },
 ): Controller => {
     return async (req, res) => {
         const models = await listModels(parseBaseUrl(req.body));

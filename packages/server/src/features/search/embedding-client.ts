@@ -1,8 +1,12 @@
+import { assertEmbeddingRequestAllowed, type ResolveEmbeddingHost } from './embedding-request-policy.js';
+import { stripTrailingSlashes } from './url-normalization.js';
+
 export interface EmbeddingProviderConfig {
     baseUrl: string;
     model: string;
     apiKey?: string;
     queryInstruction?: string;
+    allowedOrigins?: readonly string[];
 }
 
 export interface EmbeddingClient {
@@ -13,6 +17,9 @@ export interface EmbeddingClient {
 interface EmbeddingClientOptions {
     fetch?: typeof fetch;
     timeoutMs?: number;
+    apiKey?: string;
+    allowedOrigins?: readonly string[];
+    resolveHost?: ResolveEmbeddingHost;
 }
 
 export interface EmbeddingModelDescriptor {
@@ -41,8 +48,10 @@ const buildOpenAiCompatibleUrl = (baseUrl: string, resource: 'embeddings' | 'mod
         throw new Error('Embedding API URL must use http or https.');
     }
 
-    const normalizedPath = parsedUrl.pathname.replace(/\/+$/, '');
-    const basePath = normalizedPath.replace(/\/(?:embeddings|models)$/i, '');
+    const normalizedPath = stripTrailingSlashes(parsedUrl.pathname);
+    const normalizedPathLower = normalizedPath.toLowerCase();
+    const resourceSuffix = ['/embeddings', '/models'].find((suffix) => normalizedPathLower.endsWith(suffix));
+    const basePath = resourceSuffix ? normalizedPath.slice(0, -resourceSuffix.length) : normalizedPath;
     parsedUrl.pathname = `${basePath || '/v1'}/${resource}`;
     parsedUrl.search = '';
     parsedUrl.hash = '';
@@ -94,11 +103,18 @@ const parseEmbeddingResponse = (payload: unknown, expectedCount: number) => {
     return embeddings;
 };
 
-const readApiErrorMessage = async (response: Response) => {
+const redactSecret = (message: string, secret?: string) => {
+    if (!secret || !message.includes(secret)) {
+        return message;
+    }
+    return message.split(secret).join('[redacted]');
+};
+
+const readApiErrorMessage = async (response: Response, secret?: string) => {
     try {
         const payload = (await response.json()) as { error?: { message?: unknown }; message?: unknown };
         const message = payload.error?.message ?? payload.message;
-        return typeof message === 'string' && message.trim() ? message.trim() : undefined;
+        return typeof message === 'string' && message.trim() ? redactSecret(message.trim(), secret) : undefined;
     } catch {
         return undefined;
     }
@@ -113,14 +129,23 @@ export const listOpenAiCompatibleEmbeddingModels = async (
     const endpoint = buildModelsUrl(baseUrl);
     const fetchImpl = options.fetch ?? fetch;
     const timeoutMs = options.timeoutMs ?? DEFAULT_MODEL_DISCOVERY_TIMEOUT_MS;
+    await assertEmbeddingRequestAllowed(endpoint, {
+        allowedOrigins: options.allowedOrigins,
+        resolveHost: options.resolveHost,
+    });
+    // The destination is validated above and redirects are disabled. lgtm[js/request-forgery]
     const response = await fetchImpl(endpoint, {
         method: 'GET',
-        headers: { Accept: 'application/json' },
+        headers: {
+            Accept: 'application/json',
+            ...(options.apiKey ? { Authorization: `Bearer ${options.apiKey}` } : {}),
+        },
+        redirect: 'error',
         signal: AbortSignal.timeout(timeoutMs),
     });
 
     if (!response.ok) {
-        const apiMessage = await readApiErrorMessage(response);
+        const apiMessage = await readApiErrorMessage(response, options.apiKey);
         throw new Error(
             apiMessage
                 ? `Model discovery failed (${response.status}): ${apiMessage}`
@@ -186,6 +211,11 @@ export const createOpenAiCompatibleEmbeddingClient = (
             return [];
         }
 
+        await assertEmbeddingRequestAllowed(endpoint, {
+            allowedOrigins: config.allowedOrigins,
+            resolveHost: options.resolveHost,
+        });
+        // The destination is validated above and redirects are disabled. lgtm[js/request-forgery]
         const response = await fetchImpl(endpoint, {
             method: 'POST',
             headers: {
@@ -197,11 +227,12 @@ export const createOpenAiCompatibleEmbeddingClient = (
                 input: inputs,
                 encoding_format: 'float',
             }),
+            redirect: 'error',
             signal: AbortSignal.timeout(timeoutMs),
         });
 
         if (!response.ok) {
-            const apiMessage = await readApiErrorMessage(response);
+            const apiMessage = await readApiErrorMessage(response, config.apiKey);
             throw new Error(
                 apiMessage
                     ? `Embedding API request failed (${response.status}): ${apiMessage}`

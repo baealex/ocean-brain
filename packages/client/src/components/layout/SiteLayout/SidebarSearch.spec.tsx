@@ -26,6 +26,7 @@ const createStatus = (enabled: boolean, available = enabled) => ({
         queryInstruction: '',
     },
     connectionValidated: enabled,
+    apiKeyConfigured: false,
     phase: available ? ('ready' as const) : enabled ? ('needs-index' as const) : ('disabled' as const),
     available,
     needsReindex: enabled && !available,

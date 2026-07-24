@@ -5,7 +5,7 @@ export interface SemanticSearchConfig {
     queryInstruction: string;
 }
 
-export type SemanticSearchPhase = 'disabled' | 'needs-index' | 'indexing' | 'ready' | 'error';
+export type SemanticSearchPhase = 'disabled' | 'needs-connection' | 'needs-index' | 'indexing' | 'ready' | 'error';
 
 export interface SemanticSearchBuildProgress {
     processedChunks: number;
@@ -15,6 +15,7 @@ export interface SemanticSearchBuildProgress {
 export interface SearchAdminStatus {
     config: SemanticSearchConfig;
     connectionValidated: boolean;
+    apiKeyConfigured: boolean;
     phase: SemanticSearchPhase;
     available: boolean;
     needsReindex: boolean;

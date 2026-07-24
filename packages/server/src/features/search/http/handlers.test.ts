@@ -48,21 +48,30 @@ test('semantic search administration endpoints require an authenticated session'
     t.after(() => server.close());
 
     const address = server.address() as AddressInfo;
-    const statusResponse = await fetch(`http://127.0.0.1:${address.port}/api/search-admin/status`);
-    const statusBody = (await statusResponse.json()) as { code?: unknown };
+    const providerConfig = {
+        enabled: true,
+        baseUrl: 'http://127.0.0.1:1234/v1',
+        model: 'qwen-embedding',
+        queryInstruction: '',
+    };
+    const requests: Array<[string, RequestInit?]> = [
+        ['/api/search-admin/status'],
+        ['/api/search-admin/config', { method: 'POST', body: JSON.stringify(providerConfig) }],
+        ['/api/search-admin/models', { method: 'POST', body: JSON.stringify({ baseUrl: providerConfig.baseUrl }) }],
+        ['/api/search-admin/test', { method: 'POST', body: JSON.stringify(providerConfig) }],
+        ['/api/search-admin/reindex', { method: 'POST' }],
+    ];
 
-    assert.equal(statusResponse.status, 401);
-    assert.equal(statusBody.code, 'UNAUTHORIZED');
+    for (const [path, init] of requests) {
+        const response = await fetch(`http://127.0.0.1:${address.port}${path}`, {
+            ...init,
+            headers: init?.body ? { 'Content-Type': 'application/json' } : undefined,
+        });
+        const body = (await response.json()) as { code?: unknown };
 
-    const modelsResponse = await fetch(`http://127.0.0.1:${address.port}/api/search-admin/models`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ baseUrl: 'http://127.0.0.1:1234/v1' }),
-    });
-    const modelsBody = (await modelsResponse.json()) as { code?: unknown };
-
-    assert.equal(modelsResponse.status, 401);
-    assert.equal(modelsBody.code, 'UNAUTHORIZED');
+        assert.equal(response.status, 401, path);
+        assert.equal(body.code, 'UNAUTHORIZED', path);
+    }
 });
 
 test('search config handler rejects incomplete external input', async () => {
@@ -174,4 +183,19 @@ test('model discovery validates the URL before listing provider models', async (
         models: [{ id: 'text-embedding-qwen3', likelyEmbedding: true }],
     });
     assert.equal(response.statusCode, 200);
+});
+
+test('model discovery rejects an oversized URL before provider access', async () => {
+    let called = false;
+    const handler = createSearchAdminListModelsHandler(async () => {
+        called = true;
+        return [];
+    });
+
+    await assert.rejects(
+        handler({ body: { baseUrl: `https://embedding.example.com/${'a'.repeat(2_048)}` } } as never, createResponse()),
+        (error: { status?: number; code?: string }) =>
+            error.status === 400 && error.code === 'INVALID_EMBEDDING_API_URL',
+    );
+    assert.equal(called, false);
 });

@@ -1,6 +1,7 @@
 import { normalizeEmbeddingApiUrl } from './embedding-client.js';
 
 export const SEMANTIC_SEARCH_CONFIG_CACHE_KEY = 'SEMANTIC_SEARCH_CONFIG_V1';
+export const SEMANTIC_SEARCH_VALIDATED_CONNECTION_CACHE_KEY = 'SEMANTIC_SEARCH_VALIDATED_CONNECTION_V1';
 const LEGACY_KOREAN_QUERY_INSTRUCTION =
     'Given a vague Korean memory query, retrieve relevant passages from personal notes.';
 
@@ -9,6 +10,12 @@ export interface SemanticSearchConfig {
     baseUrl: string;
     model: string;
     queryInstruction: string;
+}
+
+export interface ValidatedSemanticSearchConnection {
+    baseUrl: string;
+    model: string;
+    validatedAt: string;
 }
 
 export interface SearchConfigCache {
@@ -44,6 +51,27 @@ const parseStoredConfig = (value: string): SemanticSearchConfig | null => {
             baseUrl: parsed.baseUrl,
             model: parsed.model,
             queryInstruction: parsed.queryInstruction,
+        };
+    } catch {
+        return null;
+    }
+};
+
+const parseValidatedConnection = (value: string): ValidatedSemanticSearchConnection | null => {
+    try {
+        const parsed = JSON.parse(value) as Partial<ValidatedSemanticSearchConnection>;
+        if (
+            typeof parsed.baseUrl !== 'string' ||
+            typeof parsed.model !== 'string' ||
+            typeof parsed.validatedAt !== 'string'
+        ) {
+            return null;
+        }
+
+        return {
+            baseUrl: parsed.baseUrl,
+            model: parsed.model,
+            validatedAt: parsed.validatedAt,
         };
     } catch {
         return null;
@@ -109,5 +137,44 @@ export class SemanticSearchConfigStore {
         });
 
         return config;
+    }
+
+    async getValidatedConnection() {
+        const row = await this.cache.findUnique({
+            where: { key: SEMANTIC_SEARCH_VALIDATED_CONNECTION_CACHE_KEY },
+        });
+        return row ? parseValidatedConnection(row.value) : null;
+    }
+
+    async isConnectionValidated(input: Pick<SemanticSearchConfig, 'baseUrl' | 'model'>) {
+        const config = normalizeSemanticSearchConfig({
+            ...DEFAULT_SEMANTIC_SEARCH_CONFIG,
+            baseUrl: input.baseUrl,
+            model: input.model,
+        });
+        const validated = await this.getValidatedConnection();
+        return Boolean(validated && validated.baseUrl === config.baseUrl && validated.model === config.model);
+    }
+
+    async markConnectionValidated(input: Pick<SemanticSearchConfig, 'baseUrl' | 'model'>) {
+        const config = normalizeSemanticSearchConfig({
+            ...DEFAULT_SEMANTIC_SEARCH_CONFIG,
+            baseUrl: input.baseUrl,
+            model: input.model,
+        });
+        const validated: ValidatedSemanticSearchConnection = {
+            baseUrl: config.baseUrl,
+            model: config.model,
+            validatedAt: new Date().toISOString(),
+        };
+        const value = JSON.stringify(validated);
+
+        await this.cache.upsert({
+            where: { key: SEMANTIC_SEARCH_VALIDATED_CONNECTION_CACHE_KEY },
+            create: { key: SEMANTIC_SEARCH_VALIDATED_CONNECTION_CACHE_KEY, value },
+            update: { value },
+        });
+
+        return validated;
     }
 }

@@ -9,6 +9,7 @@ let status: SearchAdminStatus = {
         model: '',
         queryInstruction: '',
     },
+    connectionValidated: false,
     phase: 'disabled',
     available: false,
     needsReindex: false,
@@ -16,6 +17,9 @@ let status: SearchAdminStatus = {
     chunkCount: 0,
     indexedAt: null,
     dimensions: null,
+    pendingNoteCount: 0,
+    lastSyncedAt: null,
+    syncError: null,
     progress: null,
     error: null,
 };
@@ -32,6 +36,7 @@ export const saveSemanticSearchConfig = async (config: SemanticSearchConfig) => 
     status = {
         ...status,
         config: { ...config },
+        connectionValidated: false,
         phase: 'disabled',
         available: false,
         needsReindex: false,

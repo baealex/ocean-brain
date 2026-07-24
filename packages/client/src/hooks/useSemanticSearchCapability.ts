@@ -15,6 +15,7 @@ const useSemanticSearchCapability = () => {
         status: query.data,
         isLoading: query.isPending,
         isSemanticSearchEnabled: query.data?.config.enabled === true,
+        isSemanticSearchAvailable: query.data?.available === true,
     };
 };
 

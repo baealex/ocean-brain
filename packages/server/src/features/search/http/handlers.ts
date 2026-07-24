@@ -6,7 +6,11 @@ import {
     normalizeEmbeddingModelsUrl,
 } from '../embedding-client.js';
 import { normalizeSemanticSearchConfig, type SemanticSearchConfig } from '../search-config.js';
-import { getDefaultSemanticSearchManager, type SemanticSearchManager } from '../search-manager.js';
+import {
+    getDefaultSemanticSearchManager,
+    SemanticSearchConnectionNotValidatedError,
+    type SemanticSearchManager,
+} from '../search-manager.js';
 
 type SearchAdminManager = Pick<SemanticSearchManager, 'getStatus' | 'saveConfig' | 'testConnection' | 'startReindex'>;
 type ListEmbeddingModels = (baseUrl: string) => Promise<EmbeddingModelDescriptor[]>;
@@ -74,7 +78,15 @@ export const createSearchAdminSaveConfigHandler = (
     manager: SearchAdminManager = getDefaultSemanticSearchManager(),
 ): Controller => {
     return async (req, res) => {
-        const status = await manager.saveConfig(parseConfig(req.body));
+        let status;
+        try {
+            status = await manager.saveConfig(parseConfig(req.body));
+        } catch (error) {
+            if (error instanceof SemanticSearchConnectionNotValidatedError) {
+                throw createAppError(409, 'SEARCH_CONNECTION_NOT_VALIDATED', error.message);
+            }
+            throw error;
+        }
         res.status(200).json(status).end();
     };
 };

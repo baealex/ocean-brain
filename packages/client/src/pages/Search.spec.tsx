@@ -11,7 +11,7 @@ const routeState = vi.hoisted(() => ({
     navigate: vi.fn(),
     search: {
         page: 1,
-        query: '점쟁이 죽는',
+        query: 'fortune teller death',
         mode: 'hybrid' as const,
     },
 }));
@@ -40,6 +40,7 @@ const createStatus = (enabled: boolean) => ({
         model: enabled ? 'text-embedding-qwen' : '',
         queryInstruction: '',
     },
+    connectionValidated: enabled,
     phase: enabled ? ('ready' as const) : ('disabled' as const),
     available: enabled,
     needsReindex: false,
@@ -47,6 +48,9 @@ const createStatus = (enabled: boolean) => ({
     chunkCount: enabled ? 1 : 0,
     indexedAt: enabled ? '2026-01-01T00:00:00.000Z' : null,
     dimensions: enabled ? 1024 : null,
+    pendingNoteCount: 0,
+    lastSyncedAt: enabled ? '2026-01-01T00:00:00.000Z' : null,
+    syncError: null,
     progress: null,
     error: null,
 });
@@ -64,7 +68,7 @@ describe('<Search />', () => {
         vi.clearAllMocks();
         routeState.search = {
             page: 1,
-            query: '점쟁이 죽는',
+            query: 'fortune teller death',
             mode: 'hybrid',
         };
         vi.mocked(fetchSearchAdminStatus).mockResolvedValue(createStatus(true));
@@ -82,15 +86,20 @@ describe('<Search />', () => {
                 notes: [
                     {
                         id: '17',
-                        title: '그날 들은 불길한 이야기',
+                        title: 'The ominous story I heard that day',
                         content: JSON.stringify([
                             {
                                 type: 'paragraph',
-                                content: [{ type: 'text', text: '늦은 시간에 오락실을 돌아다녔다.' }],
+                                content: [{ type: 'text', text: 'I wandered around the arcade late at night.' }],
                             },
                             {
                                 type: 'paragraph',
-                                content: [{ type: 'text', text: '누군가 내 귀에 6년 안에 죽는 거라고 속삭였다.' }],
+                                content: [
+                                    {
+                                        type: 'text',
+                                        text: 'A fortune teller warned me about death within six years.',
+                                    },
+                                ],
                             },
                         ]),
                         pinned: false,
@@ -105,11 +114,11 @@ describe('<Search />', () => {
         renderPage();
 
         expect(await screen.findByText('Meaning match')).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: '그날 들은 불길한 이야기' })).toHaveAttribute('href', '/17');
-        expect(screen.getByText(/6년 안에 죽는 거라고/)).toBeInTheDocument();
-        expect(screen.queryByText(/늦은 시간에 오락실/)).not.toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'The ominous story I heard that day' })).toHaveAttribute('href', '/17');
+        expect(screen.getByText(/death within six years/)).toBeInTheDocument();
+        expect(screen.queryByText(/wandered around the arcade/)).not.toBeInTheDocument();
         expect(searchApi.fetchSearchNotes).toHaveBeenCalledWith({
-            query: '점쟁이 죽는',
+            query: 'fortune teller death',
             limit: 10,
             offset: 0,
             mode: 'hybrid',
@@ -153,7 +162,7 @@ describe('<Search />', () => {
 
         expect(routeState.navigate).toHaveBeenCalledWith({
             search: {
-                query: '점쟁이 죽는',
+                query: 'fortune teller death',
                 page: 1,
                 mode: 'lexical',
             },
@@ -178,7 +187,7 @@ describe('<Search />', () => {
 
         await waitFor(() => {
             expect(searchApi.fetchSearchNotes).toHaveBeenCalledWith({
-                query: '점쟁이 죽는',
+                query: 'fortune teller death',
                 limit: 10,
                 offset: 0,
                 mode: 'lexical',

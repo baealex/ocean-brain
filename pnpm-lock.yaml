@@ -123,6 +123,9 @@ importers:
       prisma:
         specifier: 'catalog:'
         version: 6.19.3(typescript@5.9.3)
+      sqlite-vec:
+        specifier: 'catalog:'
+        version: 0.1.9
       sqlite3:
         specifier: 'catalog:'
         version: 6.0.1

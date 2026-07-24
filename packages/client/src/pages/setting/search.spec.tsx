@@ -27,6 +27,7 @@ const embeddingModel = 'text-embedding-qwen3-embedding-0.6b';
 
 const createStatus = (overrides: Partial<SearchAdminStatus> = {}): SearchAdminStatus => ({
     config: defaultConfig,
+    connectionValidated: false,
     phase: 'disabled',
     available: false,
     needsReindex: false,
@@ -34,6 +35,9 @@ const createStatus = (overrides: Partial<SearchAdminStatus> = {}): SearchAdminSt
     chunkCount: 0,
     indexedAt: null,
     dimensions: null,
+    pendingNoteCount: 0,
+    lastSyncedAt: null,
+    syncError: null,
     progress: null,
     error: null,
     ...overrides,
@@ -74,38 +78,23 @@ describe('<SearchSetting />', () => {
         });
     });
 
-    it('presents setup in API, model, activation order and keeps the query instruction optional', async () => {
+    it('requires a connection test before first activation and then saves the enabled search', async () => {
         const user = userEvent.setup();
-        renderPage();
+        vi.mocked(searchAdminApi.saveSemanticSearchConfig).mockImplementation(async (config) =>
+            createStatus({
+                config,
+                connectionValidated: true,
+                phase: 'needs-index',
+                needsReindex: true,
+            }),
+        );
 
-        expect(await screen.findByLabelText('API base URL')).toBeInTheDocument();
-        expect(screen.getByRole('heading', { name: 'Connect an embedding API' })).toBeInTheDocument();
-        expect(screen.getByRole('heading', { name: 'Choose and test a model' })).toBeInTheDocument();
-        expect(screen.getByRole('heading', { name: 'Turn on meaning search' })).toBeInTheDocument();
-        expect(screen.getByText(/keyword search works without this index/i)).toBeInTheDocument();
-
-        const instruction = screen.getByLabelText('Query instruction');
-        expect(instruction).not.toBeVisible();
-        await user.click(screen.getByText('Advanced query instruction'));
-        expect(instruction).toBeVisible();
-        expect(instruction).toHaveValue('');
-        expect(screen.queryByRole('button', { name: /preset/i })).not.toBeInTheDocument();
-
-        await user.type(instruction, 'Retrieve related passages.');
-        expect(screen.getByText(/Customized/)).toBeInTheDocument();
-        await user.click(screen.getByRole('button', { name: 'Clear' }));
-        expect(instruction).toHaveValue('');
-        expect(screen.getByText(/changing it does not require rebuilding the index/i)).toBeInTheDocument();
-    });
-
-    it('discovers a model before testing the selected embedding endpoint', async () => {
-        const user = userEvent.setup();
         renderPage();
 
         expect(await screen.findByRole('switch', { name: 'Meaning search' })).toBeDisabled();
         await discoverSingleModel(user);
 
-        expect(await screen.findByText('API connected. Found 1 model.')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Save settings' })).toBeDisabled();
         await user.click(screen.getByRole('button', { name: 'Test selected model' }));
 
         await waitFor(() => {
@@ -115,25 +104,9 @@ describe('<SearchSetting />', () => {
                 model: embeddingModel,
             });
         });
-        expect(await screen.findByText('This model works · 1024 dimensions')).toBeInTheDocument();
-        expect(screen.getByRole('switch', { name: 'Meaning search' })).toBeEnabled();
-    });
-
-    it('enables and saves meaning search only after the selected model passes its test', async () => {
-        const user = userEvent.setup();
-        vi.mocked(searchAdminApi.saveSemanticSearchConfig).mockImplementation(async (config) =>
-            createStatus({
-                config,
-                phase: 'needs-index',
-                needsReindex: true,
-            }),
-        );
-
-        renderPage();
-        await discoverSingleModel(user);
-        await user.click(screen.getByRole('button', { name: 'Test selected model' }));
-        await screen.findByText('This model works · 1024 dimensions');
-        await user.click(screen.getByRole('switch', { name: 'Meaning search' }));
+        const meaningSearchSwitch = screen.getByRole('switch', { name: 'Meaning search' });
+        expect(meaningSearchSwitch).toBeEnabled();
+        await user.click(meaningSearchSwitch);
         await user.click(screen.getByRole('button', { name: 'Save settings' }));
 
         await waitFor(() => {
@@ -145,6 +118,104 @@ describe('<SearchSetting />', () => {
             });
         });
         expect(screen.getByRole('button', { name: 'Build search index' })).toBeEnabled();
-        expect(await screen.findByText('Index needed')).toBeInTheDocument();
+    });
+
+    it('re-enables a previously saved connection without testing the same model again', async () => {
+        const user = userEvent.setup();
+        const savedConfig: SemanticSearchConfig = {
+            enabled: true,
+            baseUrl: 'http://127.0.0.1:1234/v1',
+            model: embeddingModel,
+            queryInstruction: '',
+        };
+
+        vi.mocked(searchAdminApi.fetchSearchAdminStatus).mockResolvedValue(
+            createStatus({
+                config: savedConfig,
+                connectionValidated: true,
+                phase: 'ready',
+                available: true,
+                indexedAt: '2026-07-24T00:00:00.000Z',
+                dimensions: 1024,
+            }),
+        );
+        vi.mocked(searchAdminApi.saveSemanticSearchConfig).mockImplementation(async (config) =>
+            createStatus({
+                config,
+                connectionValidated: true,
+                phase: config.enabled ? 'ready' : 'disabled',
+                available: config.enabled,
+                indexedAt: '2026-07-24T00:00:00.000Z',
+                dimensions: 1024,
+            }),
+        );
+
+        renderPage();
+
+        const meaningSearchSwitch = await screen.findByRole('switch', { name: 'Meaning search' });
+        await waitFor(() => expect(meaningSearchSwitch).toBeChecked());
+        await user.click(meaningSearchSwitch);
+        await user.click(screen.getByRole('button', { name: 'Save settings' }));
+
+        await waitFor(() => expect(meaningSearchSwitch).not.toBeChecked());
+        expect(meaningSearchSwitch).toBeEnabled();
+
+        await user.click(meaningSearchSwitch);
+        await user.click(screen.getByRole('button', { name: 'Save settings' }));
+
+        await waitFor(() => {
+            expect(vi.mocked(searchAdminApi.saveSemanticSearchConfig).mock.calls[1]?.[0]).toEqual(savedConfig);
+        });
+        expect(searchAdminApi.testSemanticSearchConnection).not.toHaveBeenCalled();
+    });
+
+    it('does not trust a connection that was only saved while meaning search was disabled', async () => {
+        vi.mocked(searchAdminApi.fetchSearchAdminStatus).mockResolvedValue(
+            createStatus({
+                config: {
+                    enabled: false,
+                    baseUrl: 'http://127.0.0.1:1234/v1',
+                    model: embeddingModel,
+                    queryInstruction: '',
+                },
+                connectionValidated: false,
+            }),
+        );
+
+        renderPage();
+
+        await waitFor(() => {
+            expect(screen.getByLabelText('API base URL')).toHaveValue('http://127.0.0.1:1234/v1');
+        });
+        expect(screen.getByRole('switch', { name: 'Meaning search' })).toBeDisabled();
+        expect(screen.getByText('Test the selected model first.')).toBeInTheDocument();
+    });
+
+    it('shows queued note synchronization without offering a full index rebuild', async () => {
+        vi.mocked(searchAdminApi.fetchSearchAdminStatus).mockResolvedValue(
+            createStatus({
+                config: {
+                    enabled: true,
+                    baseUrl: 'http://127.0.0.1:1234/v1',
+                    model: embeddingModel,
+                    queryInstruction: '',
+                },
+                connectionValidated: true,
+                phase: 'ready',
+                available: true,
+                noteCount: 3,
+                chunkCount: 5,
+                indexedAt: '2026-07-25T00:00:00.000Z',
+                dimensions: 1024,
+                pendingNoteCount: 2,
+                lastSyncedAt: '2026-07-25T00:00:00.000Z',
+            }),
+        );
+
+        renderPage();
+
+        expect(await screen.findByText(/2 notes are waiting to sync/)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Index is up to date' })).toBeDisabled();
+        expect(screen.queryByText(/Build the index once/)).not.toBeInTheDocument();
     });
 });

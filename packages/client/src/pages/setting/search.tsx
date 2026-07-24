@@ -75,7 +75,8 @@ const SearchSetting = () => {
     } = useQuery({
         queryKey: statusQueryKey,
         queryFn: fetchSearchAdminStatus,
-        refetchInterval: (query) => (query.state.data?.phase === 'indexing' ? 1_000 : false),
+        refetchInterval: (query) =>
+            query.state.data?.phase === 'indexing' || (query.state.data?.pendingNoteCount ?? 0) > 0 ? 1_000 : false,
     });
 
     useEffect(() => {
@@ -135,7 +136,13 @@ const SearchSetting = () => {
         mutationFn: startSemanticSearchReindex,
         onSuccess: ({ started, status: nextStatus }) => {
             queryClient.setQueryData(statusQueryKey, nextStatus);
-            toast(started ? 'Search index build started.' : 'Search index is already building.');
+            toast(
+                started
+                    ? 'Search index build started.'
+                    : nextStatus.needsReindex
+                      ? 'Search index is already updating.'
+                      : 'Search index is already up to date.',
+            );
         },
         onError: (error) => {
             toast(getRequestErrorMessage(error, 'Could not start the search index build.'));
@@ -150,19 +157,40 @@ const SearchSetting = () => {
     const hasConnectionFields = Boolean(normalizedFormBaseUrl && form.model.trim());
     const hasDiscoveredCurrentUrl = Boolean(availableModels.length) && discoveredBaseUrl === normalizedFormBaseUrl;
     const isCurrentConnectionTested = hasConnectionFields && testedConnectionKey === currentConnectionKey;
-    const isSavedEnabledConnection = Boolean(
-        status?.config.enabled &&
+    const savedConnectionMatches = Boolean(
+        hasConnectionFields &&
+            status &&
             normalizeBaseUrl(status.config.baseUrl) === normalizedFormBaseUrl &&
             status.config.model.trim() === form.model.trim(),
     );
-    const canEnableMeaningSearch = hasConnectionFields && (isCurrentConnectionTested || isSavedEnabledConnection);
-    const canSave = Boolean(
-        hasInitialized && isDirty && !isIndexing && !isCheckingProvider && (!form.enabled || canEnableMeaningSearch),
+    const isSavedValidatedConnection = Boolean(
+        savedConnectionMatches && (status?.connectionValidated || status?.config.enabled),
     );
-    const canBuildIndex = Boolean(status?.config.enabled && !isDirty && !isIndexing);
+    const connectionNeedsTest = hasConnectionFields && !isSavedValidatedConnection;
+    const canEnableMeaningSearch = hasConnectionFields && (isCurrentConnectionTested || isSavedValidatedConnection);
+    const canSave = Boolean(
+        hasInitialized &&
+            isDirty &&
+            !isIndexing &&
+            !isCheckingProvider &&
+            (!connectionNeedsTest || isCurrentConnectionTested) &&
+            (!form.enabled || canEnableMeaningSearch),
+    );
+    const canBuildIndex = Boolean(status?.config.enabled && status.needsReindex && !isDirty && !isIndexing);
     const progress = status?.progress;
     const phaseLabel = status ? phaseLabels[status.phase] : isLoading ? 'Loading' : 'Unavailable';
     const queryInstructionLabel = form.queryInstruction.trim() ? 'Customized' : 'Optional';
+    const meaningSearchHint = !hasConnectionFields
+        ? 'Connect an API and choose a model first.'
+        : !canEnableMeaningSearch && !form.enabled
+          ? 'Test the selected model first.'
+          : !form.enabled && isSavedValidatedConnection
+            ? 'Your saved connection is ready to turn on again.'
+            : !form.enabled
+              ? 'The model works. Turn on meaning search to continue.'
+              : status?.available && !isDirty
+                ? 'Meaning search is active.'
+                : 'Save this setting, then build the local index.';
 
     const modelOptions = useMemo(() => {
         const models = [...availableModels];
@@ -494,11 +522,7 @@ const SearchSetting = () => {
                                     Meaning search
                                 </Text>
                                 <Text as="p" variant="meta" tone="tertiary">
-                                    {!hasConnectionFields
-                                        ? 'Connect an API and choose a model first.'
-                                        : !canEnableMeaningSearch && !form.enabled
-                                          ? 'Test the selected model first.'
-                                          : 'Ready to save and build the local index.'}
+                                    {meaningSearchHint}
                                 </Text>
                             </div>
                             <div className="flex items-center gap-3">
@@ -545,8 +569,15 @@ const SearchSetting = () => {
                                     : 'Keyword search works without this index.'}
                             </Text>
                             <Text as="p" variant="meta" tone="tertiary">
-                                Last built: {formatIndexedAt(status?.indexedAt ?? null)}
+                                Last synced: {formatIndexedAt(status?.lastSyncedAt ?? status?.indexedAt ?? null)}
                             </Text>
+                            {(status?.pendingNoteCount ?? 0) > 0 && (
+                                <Text as="p" variant="meta" tone="tertiary" role="status">
+                                    {status?.pendingNoteCount}{' '}
+                                    {status?.pendingNoteCount === 1 ? 'note is' : 'notes are'} waiting to sync. Recent
+                                    edits are grouped before embedding.
+                                </Text>
+                            )}
                         </div>
                         <Button
                             type="button"
@@ -556,7 +587,7 @@ const SearchSetting = () => {
                             disabled={!canBuildIndex}
                         >
                             <Icon.Refresh className="h-4 w-4" />
-                            Build search index
+                            {status?.available && !status.needsReindex ? 'Index is up to date' : 'Build search index'}
                         </Button>
                     </div>
 
@@ -599,12 +630,21 @@ const SearchSetting = () => {
                         </div>
                     )}
 
+                    {status?.syncError && (
+                        <div className="rounded-[14px] border border-border-error bg-accent-soft-danger/40 px-3.5 py-3">
+                            <Text as="p" variant="meta" tone="error" className="leading-relaxed">
+                                Automatic note sync will retry: {status.syncError}
+                            </Text>
+                        </div>
+                    )}
+
                     <div className="flex items-start gap-2.5 rounded-[14px] border border-border-subtle bg-muted px-3.5 py-3">
                         <Icon.Info className="mt-0.5 h-4 w-4 shrink-0 text-fg-tertiary" />
                         <Text as="p" variant="meta" tone="secondary" className="leading-relaxed">
-                            Ocean Brain sends note text to the embedding API during indexing. A local LM Studio URL
-                            keeps that traffic on your machine; a remote URL sends it to that service. Only the
-                            resulting vectors are stored in Ocean Brain&apos;s separate search database.
+                            Ocean Brain sends note text during indexing and your search text when meaning search runs. A
+                            local LM Studio URL keeps that traffic on your machine; a remote URL sends it to that
+                            service. Only the resulting vectors are stored in Ocean Brain&apos;s separate search
+                            database.
                         </Text>
                     </div>
 

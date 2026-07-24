@@ -4,6 +4,7 @@ import test from 'node:test';
 import type { Response } from 'express';
 import { createApp } from '~/app.js';
 import { AUTH_SESSION_COOKIE_NAME, type AuthConfig } from '~/modules/auth-mode.js';
+import { SemanticSearchConnectionNotValidatedError } from '../search-manager.js';
 import {
     createSearchAdminListModelsHandler,
     createSearchAdminSaveConfigHandler,
@@ -83,6 +84,39 @@ test('search config handler rejects incomplete external input', async () => {
     await assert.rejects(
         handler({ body: { enabled: true } } as never, createResponse()),
         (error: { status?: number; code?: string }) => error.status === 400 || error.code === 'INVALID_SEARCH_CONFIG',
+    );
+});
+
+test('search config handler rejects enabling a connection that was never tested', async () => {
+    const handler = createSearchAdminSaveConfigHandler({
+        getStatus: async () => {
+            throw new Error('not used');
+        },
+        saveConfig: async () => {
+            throw new SemanticSearchConnectionNotValidatedError();
+        },
+        testConnection: async () => {
+            throw new Error('not used');
+        },
+        startReindex: async () => {
+            throw new Error('not used');
+        },
+    });
+
+    await assert.rejects(
+        handler(
+            {
+                body: {
+                    enabled: true,
+                    baseUrl: 'http://127.0.0.1:1234/v1',
+                    model: 'qwen-embedding',
+                    queryInstruction: '',
+                },
+            } as never,
+            createResponse(),
+        ),
+        (error: { status?: number; code?: string }) =>
+            error.status === 409 && error.code === 'SEARCH_CONNECTION_NOT_VALIDATED',
     );
 });
 

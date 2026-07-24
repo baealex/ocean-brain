@@ -22,18 +22,18 @@ test('ranks exact title and phrase matches ahead of content-only matches', () =>
         [
             {
                 id: 1,
-                title: '다른 제목',
-                searchableText: '다른 제목 점쟁이 죽는 이야기',
+                title: 'Another title',
+                searchableText: 'Another title fortune teller death story',
                 updatedAt: new Date('2026-07-21T00:00:00.000Z'),
             },
             {
                 id: 2,
-                title: '점쟁이 죽는',
-                searchableText: '점쟁이 죽는',
+                title: 'Fortune teller death',
+                searchableText: 'Fortune teller death',
                 updatedAt: new Date('2020-01-01T00:00:00.000Z'),
             },
         ],
-        '점쟁이 죽는',
+        'fortune teller death',
     );
 
     assert.deepEqual(
@@ -43,9 +43,18 @@ test('ranks exact title and phrase matches ahead of content-only matches', () =>
 });
 
 test('keeps partial lexical candidates for a vague multi-word query', () => {
-    assert.equal(matchesHybridLexicalQuery('6년 안에 죽는거야 점집에서 들은 꿈', '점쟁이 죽는'), true);
-    assert.equal(matchesHybridLexicalQuery('완전히 다른 기록', '점쟁이 죽는'), false);
-    assert.equal(matchesHybridLexicalQuery('6년 안에 죽는거야 제외할 내용', '점쟁이 죽는 -제외할'), false);
+    assert.equal(
+        matchesHybridLexicalQuery(
+            'A dream about dying in six years after visiting a fortune teller',
+            'fortune teller death',
+        ),
+        true,
+    );
+    assert.equal(matchesHybridLexicalQuery('A completely unrelated record', 'fortune teller death'), false);
+    assert.equal(
+        matchesHybridLexicalQuery('A fortune teller death story with spoilers', 'fortune teller death -spoilers'),
+        false,
+    );
 });
 
 test('ranks candidates containing every term ahead of partial content matches', () => {
@@ -53,18 +62,18 @@ test('ranks candidates containing every term ahead of partial content matches', 
         [
             {
                 id: 1,
-                title: '죽는 이야기',
-                searchableText: '죽는 이야기',
+                title: 'A story about death',
+                searchableText: 'A story about death',
                 updatedAt: new Date('2026-07-21T00:00:00.000Z'),
             },
             {
                 id: 2,
-                title: '다른 제목',
-                searchableText: '점쟁이와 죽는 이야기를 흐릿하게 기억한다',
+                title: 'Another title',
+                searchableText: 'A vague memory about a fortune teller and death',
                 updatedAt: new Date('2020-01-01T00:00:00.000Z'),
             },
         ],
-        '점쟁이 죽는',
+        'fortune teller death',
     );
 
     assert.deepEqual(
@@ -85,7 +94,7 @@ test('returns a semantic-only note through the same Ocean Brain note result surf
         findNotesByIds: async (ids) => ids.map(createNote),
     });
 
-    const result = await search({ query: '점쟁이 죽는', limit: 10, offset: 0 });
+    const result = await search({ query: 'fortune teller death', limit: 10, offset: 0 });
 
     assert.deepEqual(
         result.notes.map((note) => note.id),
@@ -106,7 +115,7 @@ test('keeps lexical search usable when the embedding API is unavailable', async 
         findNotesByIds: async (ids) => [...ids].reverse().map(createNote),
     });
 
-    const result = await search({ query: '검색', limit: 10, offset: 0 });
+    const result = await search({ query: 'search', limit: 10, offset: 0 });
 
     assert.deepEqual(
         result.notes.map((note) => note.id),
@@ -166,4 +175,30 @@ test('semantic mode does not call the lexical search dependency', async () => {
         [7],
     );
     assert.deepEqual(result.matches, [{ noteId: 7, lexical: false, semantic: true }]);
+});
+
+test('keeps every result within the ranked candidate window reachable through pagination', async () => {
+    let requestedCandidateLimit = 0;
+    const search = createHybridNoteSearch({
+        listLexicalNoteIds: async (_query, limit) => {
+            requestedCandidateLimit = limit;
+            return Array.from({ length: limit }, (_, index) => index + 1);
+        },
+        trySemanticSearch: async () => ({
+            available: false,
+            used: false,
+            matches: [],
+            error: null,
+        }),
+        findNotesByIds: async (ids) => ids.map(createNote),
+    });
+
+    const result = await search({ query: 'common term', limit: 10, offset: 40, mode: 'lexical' });
+
+    assert.equal(requestedCandidateLimit, 80);
+    assert.equal(result.totalCount, 80);
+    assert.deepEqual(
+        result.notes.map((note) => note.id),
+        [41, 42, 43, 44, 45, 46, 47, 48, 49, 50],
+    );
 });

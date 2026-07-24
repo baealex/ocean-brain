@@ -1,4 +1,5 @@
 import { createApp } from './app.js';
+import { getDefaultSemanticSearchManager } from './features/search/search-manager.js';
 import { logAuthConfig, resolveAuthConfig } from './modules/auth-mode.js';
 import { startDataMaintenanceScheduler } from './modules/data-maintenance.js';
 
@@ -14,6 +15,7 @@ try {
 
     app.listen(PORT, HOST, () => {
         process.stdout.write(`http server listen on ${HOST}:${PORT} (auth: ${authConfig.mode})\n`);
+        getDefaultSemanticSearchManager();
 
         startDataMaintenanceScheduler({
             onResults: (results) => {

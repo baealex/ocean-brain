@@ -147,9 +147,9 @@ export default function Search() {
     };
 
     return (
-        <PageLayout title="Search" description="Find exact words or describe a half-remembered note" variant="default">
+        <PageLayout title="Search" description="Use exact words or describe a half-remembered note" variant="default">
             <main>
-                <section aria-label="Search controls" className="surface-base p-3 sm:p-4">
+                <section aria-label="Search controls" className="border-b border-border-subtle pb-5">
                     <SearchInput
                         value={draftQuery}
                         onChange={setDraftQuery}
@@ -162,15 +162,15 @@ export default function Search() {
                         autoFocus={!normalizedQuery}
                     />
                     {isSemanticSearchEnabled && (
-                        <SearchModeControl value={activeMode} onChange={handleModeChange} className="mt-3" />
+                        <SearchModeControl value={activeMode} onChange={handleModeChange} className="mt-2.5" />
                     )}
                 </section>
 
                 {!normalizedQuery ? (
                     <div className="py-10">
                         <Empty
-                            title="Throw a memory into the ocean"
-                            description="Try a name, a rough date, a phrase, or simply describe what you remember."
+                            title="Start with anything you remember"
+                            description="A name, phrase, rough date, or description all work."
                         />
                     </div>
                 ) : isCapabilityLoading ? (
@@ -190,17 +190,17 @@ export default function Search() {
                                 mode: activeMode,
                             }}
                             render={(result) => (
-                                <div className="mt-5 flex flex-col gap-4">
-                                    <div className="flex items-center justify-between gap-3">
+                                <div className="mt-5 flex flex-col gap-3">
+                                    <div className="flex min-h-7 items-center justify-between gap-3">
                                         <Text as="p" variant="meta" weight="semibold" tone="secondary">
-                                            {formatResultCount(result.totalCount)} for "{normalizedQuery}"
+                                            {formatResultCount(result.totalCount)}
                                         </Text>
                                     </div>
 
                                     <SearchAvailabilityNotice result={result} mode={activeMode} />
 
                                     {result.notes.length > 0 ? (
-                                        <div className="flex flex-col gap-3">
+                                        <div className="surface-base divide-y divide-border-subtle overflow-hidden">
                                             {result.notes.map((note) => {
                                                 const previewBlocks = getSearchPreviewBlocks(
                                                     note.content,
@@ -211,9 +211,9 @@ export default function Search() {
                                                 return (
                                                     <article
                                                         key={note.id}
-                                                        className="surface-base flex flex-col gap-3 p-4"
+                                                        className="flex flex-col gap-2.5 px-4 py-4 transition-colors hover:bg-hover-subtle/40 sm:px-5"
                                                     >
-                                                        <div className="flex min-w-0 items-center justify-between gap-3">
+                                                        <div className="flex min-w-0 items-start justify-between gap-3">
                                                             <Text
                                                                 as="h2"
                                                                 variant="body"
@@ -234,40 +234,38 @@ export default function Search() {
                                                             <SearchMatchBadge match={match} />
                                                         </div>
                                                         {previewBlocks.length > 0 ? (
-                                                            <div className="rounded-[14px] bg-muted px-3 py-3">
-                                                                <div className="flex flex-col gap-2">
-                                                                    {previewBlocks.map((block, index) => (
-                                                                        <div
-                                                                            key={`${note.id}:${block.label}:${index}`}
-                                                                            className={
-                                                                                index > 0
-                                                                                    ? 'border-t border-border-subtle pt-2'
-                                                                                    : undefined
-                                                                            }
+                                                            <div className="border-l-2 border-border-subtle pl-3">
+                                                                {previewBlocks.map((block, index) => (
+                                                                    <div
+                                                                        key={`${note.id}:${block.label}:${index}`}
+                                                                        className={
+                                                                            index > 0
+                                                                                ? 'mt-2 border-t border-border-subtle pt-2'
+                                                                                : undefined
+                                                                        }
+                                                                    >
+                                                                        <Text
+                                                                            as="div"
+                                                                            variant="micro"
+                                                                            weight="semibold"
+                                                                            tracking="wider"
+                                                                            transform="uppercase"
+                                                                            tone="tertiary"
                                                                         >
-                                                                            <Text
-                                                                                as="div"
-                                                                                variant="micro"
-                                                                                weight="semibold"
-                                                                                tracking="wider"
-                                                                                transform="uppercase"
-                                                                                tone="tertiary"
-                                                                            >
-                                                                                {block.label}
-                                                                            </Text>
-                                                                            <Text
-                                                                                as="p"
-                                                                                variant="meta"
-                                                                                tone="secondary"
-                                                                                className="mt-1 leading-[1.65]"
-                                                                            >
-                                                                                <Highlight match={normalizedQuery}>
-                                                                                    {block.text}
-                                                                                </Highlight>
-                                                                            </Text>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
+                                                                            {block.label}
+                                                                        </Text>
+                                                                        <Text
+                                                                            as="p"
+                                                                            variant="meta"
+                                                                            tone="secondary"
+                                                                            className="mt-1 leading-[1.65]"
+                                                                        >
+                                                                            <Highlight match={normalizedQuery}>
+                                                                                {block.text}
+                                                                            </Highlight>
+                                                                        </Text>
+                                                                    </div>
+                                                                ))}
                                                             </div>
                                                         ) : (
                                                             <Text

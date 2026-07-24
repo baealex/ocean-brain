@@ -58,6 +58,31 @@ test('persists a normalized OpenAI-compatible embedding configuration', async ()
     });
 });
 
+test('persists successful connection validation separately from editable settings', async () => {
+    const { cache } = createCache();
+    const store = new SemanticSearchConfigStore(cache);
+
+    await store.markConnectionValidated({
+        baseUrl: ' http://127.0.0.1:1234/v1/ ',
+        model: ' qwen-embedding ',
+    });
+
+    assert.equal(
+        await store.isConnectionValidated({
+            baseUrl: 'http://127.0.0.1:1234/v1',
+            model: 'qwen-embedding',
+        }),
+        true,
+    );
+    assert.equal(
+        await store.isConnectionValidated({
+            baseUrl: 'http://127.0.0.1:5678/v1',
+            model: 'qwen-embedding',
+        }),
+        false,
+    );
+});
+
 test('removes the retired Korean-specific default instruction from stored settings', async () => {
     const { cache, values } = createCache();
     const store = new SemanticSearchConfigStore(cache);

@@ -198,7 +198,7 @@ export const createHybridNoteSearch = (dependencies: HybridNoteSearchDependencie
             };
         }
 
-        const candidateLimit = Math.min(MAX_HYBRID_CANDIDATES, Math.max(40, offset + limit));
+        const candidateLimit = MAX_HYBRID_CANDIDATES;
         const [lexicalNoteIds, semanticAttempt] = await Promise.all([
             mode === 'semantic'
                 ? Promise.resolve([])

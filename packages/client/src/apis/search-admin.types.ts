@@ -14,6 +14,7 @@ export interface SemanticSearchBuildProgress {
 
 export interface SearchAdminStatus {
     config: SemanticSearchConfig;
+    connectionValidated: boolean;
     phase: SemanticSearchPhase;
     available: boolean;
     needsReindex: boolean;
@@ -21,6 +22,9 @@ export interface SearchAdminStatus {
     chunkCount: number;
     indexedAt: string | null;
     dimensions: number | null;
+    pendingNoteCount: number;
+    lastSyncedAt: string | null;
+    syncError: string | null;
     progress: SemanticSearchBuildProgress | null;
     error: string | null;
 }

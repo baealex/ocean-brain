@@ -22,7 +22,7 @@ const SearchMatchBadge = ({ match }: SearchMatchBadgeProps) => {
             variant="micro"
             weight="semibold"
             tone="tertiary"
-            className="shrink-0 rounded-full border border-border-subtle bg-muted px-2 py-1"
+            className="shrink-0 rounded-full bg-muted px-2 py-1"
         >
             {label}
         </Text>

@@ -22,6 +22,7 @@ import {
     isMissingNoteVersionError,
     isNoteVersionConflictError,
 } from '~/features/note/services/write-conflict.js';
+import { notifySemanticSearchNoteChanged } from '~/features/search/note-change.js';
 import models from '~/models.js';
 import type { NoteInput } from '~/types/index.js';
 
@@ -99,14 +100,14 @@ export const noteMutationResolvers: NoteMutationResolvers = {
             },
         });
 
-        if (!replacedContent) {
-            return createdNote;
-        }
-
-        return models.note.update({
-            where: { id: createdNote.id },
-            data: { tags: { set: toTagConnections(blocks) } },
-        });
+        const noteResult = replacedContent
+            ? await models.note.update({
+                  where: { id: createdNote.id },
+                  data: { tags: { set: toTagConnections(blocks) } },
+              })
+            : createdNote;
+        notifySemanticSearchNoteChanged(createdNote.id);
+        return noteResult;
     },
     updateNote: async (
         _,
@@ -148,6 +149,7 @@ export const noteMutationResolvers: NoteMutationResolvers = {
                 throw 'NOT FOUND';
             }
 
+            notifySemanticSearchNoteChanged(updatedNote.id);
             return updatedNote;
         } catch (error) {
             if (isNoteVersionConflictError(error)) {
@@ -186,6 +188,7 @@ export const noteMutationResolvers: NoteMutationResolvers = {
             throw 'NOT FOUND';
         }
 
+        notifySemanticSearchNoteChanged(Number(id));
         return true;
     },
     restoreNoteSnapshot: async (
@@ -203,6 +206,7 @@ export const noteMutationResolvers: NoteMutationResolvers = {
             throw 'NOT FOUND';
         }
 
+        notifySemanticSearchNoteChanged(note.id);
         return note;
     },
     restoreTrashedNote: async (_, { id }: { id: string }) => {
@@ -212,6 +216,7 @@ export const noteMutationResolvers: NoteMutationResolvers = {
             throw 'NOT FOUND';
         }
 
+        notifySemanticSearchNoteChanged(note.id);
         return note;
     },
     purgeTrashedNote: async (_, { id }: { id: string }) => {
@@ -221,6 +226,7 @@ export const noteMutationResolvers: NoteMutationResolvers = {
             throw 'NOT FOUND';
         }
 
+        notifySemanticSearchNoteChanged(Number(id));
         return true;
     },
     createNotePropertyKey: async (_, { input }: { input: NotePropertyDefinitionInput }) => {

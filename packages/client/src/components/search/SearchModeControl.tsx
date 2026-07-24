@@ -32,11 +32,11 @@ const SearchModeControl = ({ value, onChange, showDescription = true, className 
     const selectedOption = SEARCH_MODE_OPTIONS.find((option) => option.value === value) ?? SEARCH_MODE_OPTIONS[0];
 
     return (
-        <div className={className}>
+        <div className={`flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3 ${className ?? ''}`}>
             <div
                 role="radiogroup"
                 aria-label="Search method"
-                className="inline-flex max-w-full gap-1 rounded-[13px] border border-border-subtle bg-muted p-1"
+                className="inline-flex max-w-full self-start gap-1 rounded-[12px] bg-muted p-1"
             >
                 {SEARCH_MODE_OPTIONS.map((option) => {
                     const isSelected = option.value === value;
@@ -48,10 +48,10 @@ const SearchModeControl = ({ value, onChange, showDescription = true, className 
                             role="radio"
                             aria-checked={isSelected}
                             className={classNames(
-                                'focus-ring-soft min-h-9 rounded-[10px] px-3 text-sm font-semibold outline-none transition-colors',
+                                'focus-ring-soft min-h-8 rounded-[9px] border px-3 text-sm font-semibold outline-none transition-colors',
                                 isSelected
-                                    ? 'bg-elevated text-fg-default shadow-[0_8px_18px_-16px_rgba(15,18,24,0.3)]'
-                                    : 'text-fg-secondary hover:bg-hover-subtle hover:text-fg-default',
+                                    ? 'border-border-subtle bg-elevated text-fg-default'
+                                    : 'border-transparent text-fg-secondary hover:bg-hover-subtle hover:text-fg-default',
                             )}
                             onClick={() => onChange(option.value)}
                         >
@@ -61,7 +61,7 @@ const SearchModeControl = ({ value, onChange, showDescription = true, className 
                 })}
             </div>
             {showDescription && (
-                <Text as="p" variant="micro" tone="tertiary" className="mt-1.5 leading-relaxed">
+                <Text as="p" variant="micro" tone="tertiary" className="min-w-0 leading-relaxed">
                     {selectedOption.description}
                 </Text>
             )}

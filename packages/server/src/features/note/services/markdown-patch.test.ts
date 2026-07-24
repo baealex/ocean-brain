@@ -83,6 +83,92 @@ test('markdown patch plan fails when exact text is missing', () => {
     });
 });
 
+test('markdown patch plan matches displayed text across encoded and special spaces', () => {
+    const result = buildMarkdownPatchPlan({
+        note: {
+            ...note,
+            markdown: '* [[Example]](note:1) — **Search\u00a0result&#x20;line**',
+        },
+        expectedUpdatedAt: note.updatedAt,
+        intent: 'Replace the displayed bold text',
+        selector: {
+            type: 'exact_text',
+            text: '**Search result line**',
+        },
+        operation: {
+            type: 'replace',
+            replacement: '**Updated result line**',
+        },
+    });
+
+    assert.equal(result.status, 'planned');
+
+    if (result.status !== 'planned') {
+        throw new Error('expected planned result');
+    }
+
+    assert.equal(result.afterMarkdown, '* [[Example]](note:1) — **Updated result line**');
+});
+
+test('markdown patch plan keeps visually identical normalized matches ambiguous', () => {
+    const firstPlan = buildMarkdownPatchPlan({
+        note: {
+            ...note,
+            markdown: 'Same text\nSame\u00a0text',
+        },
+        expectedUpdatedAt: note.updatedAt,
+        intent: 'Replace only the second displayed line',
+        selector: {
+            type: 'exact_text',
+            text: 'Same text',
+        },
+        operation: {
+            type: 'replace',
+            replacement: 'Updated text',
+        },
+    });
+
+    assert.equal(firstPlan.status, 'needs_disambiguation');
+
+    if (firstPlan.status !== 'needs_disambiguation') {
+        throw new Error('expected needs_disambiguation result');
+    }
+
+    const selected = firstPlan.matches[1];
+
+    assert.ok(selected);
+
+    const result = buildMarkdownPatchPlan({
+        note: {
+            ...note,
+            markdown: 'Same text\nSame\u00a0text',
+        },
+        expectedUpdatedAt: note.updatedAt,
+        intent: 'Replace only the second displayed line',
+        selector: {
+            type: 'match_candidate',
+            text: selected.text,
+            matchIndex: selected.matchIndex,
+            lineStart: selected.lineStart,
+            matchSha256: selected.matchSha256,
+            surroundingHash: selected.surroundingHash,
+            positionHint: selected.positionHint,
+        },
+        operation: {
+            type: 'replace',
+            replacement: 'Updated text',
+        },
+    });
+
+    assert.equal(result.status, 'planned');
+
+    if (result.status !== 'planned') {
+        throw new Error('expected planned result');
+    }
+
+    assert.equal(result.afterMarkdown, 'Same text\nUpdated text');
+});
+
 test('markdown patch plan accepts epoch millisecond baselines from GraphQL clients', () => {
     const result = buildMarkdownPatchPlan({
         note: {

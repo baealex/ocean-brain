@@ -6,7 +6,7 @@ import {
     type EmbeddingClient,
     type EmbeddingProviderConfig,
 } from './embedding-client.js';
-import { createEmbeddingAuthFingerprint, resolveEmbeddingRuntimeConfig } from './embedding-runtime-config.js';
+import { resolveEmbeddingRuntimeConfig } from './embedding-runtime-config.js';
 import { subscribeSemanticSearchNoteChanges } from './note-change.js';
 import {
     buildNoteEmbeddingChunks,
@@ -119,8 +119,8 @@ export class SemanticSearchManager {
         });
     }
 
-    private getAuthFingerprint() {
-        return createEmbeddingAuthFingerprint(this.dependencies.embeddingApiKey);
+    private usesBearerAuth() {
+        return Boolean(this.dependencies.embeddingApiKey);
     }
 
     private now() {
@@ -135,7 +135,7 @@ export class SemanticSearchManager {
         ]);
         const connectionValidated = await this.dependencies.configStore.isConnectionValidated(
             config,
-            this.getAuthFingerprint(),
+            this.usesBearerAuth(),
         );
         const profileMatches = profileMatchesConfig(indexStatus.profile, config);
         const indexReady = indexStatus.ready && profileMatches;
@@ -183,8 +183,8 @@ export class SemanticSearchManager {
 
         const currentConfig = await this.dependencies.configStore.get();
         const keepsActiveConnection = currentConfig.enabled && connectionMatches(currentConfig, config);
-        const authFingerprint = this.getAuthFingerprint();
-        let connectionValidated = await this.dependencies.configStore.isConnectionValidated(config, authFingerprint);
+        const usesBearerAuth = this.usesBearerAuth();
+        let connectionValidated = await this.dependencies.configStore.isConnectionValidated(config, usesBearerAuth);
         const validatedConnection = connectionValidated
             ? null
             : await this.dependencies.configStore.getValidatedConnection();
@@ -195,7 +195,7 @@ export class SemanticSearchManager {
             !validatedConnection &&
             !this.dependencies.embeddingApiKey
         ) {
-            await this.dependencies.configStore.markConnectionValidated(config, authFingerprint);
+            await this.dependencies.configStore.markConnectionValidated(config, usesBearerAuth);
             connectionValidated = true;
         }
 
@@ -213,7 +213,7 @@ export class SemanticSearchManager {
         const config = configInput ?? (await this.dependencies.configStore.get());
         const client = this.createClient({ ...config, enabled: true });
         const [embedding] = await client.embedDocuments(['Ocean Brain embedding connection test']);
-        await this.dependencies.configStore.markConnectionValidated(config, this.getAuthFingerprint());
+        await this.dependencies.configStore.markConnectionValidated(config, this.usesBearerAuth());
 
         return {
             ok: true as const,

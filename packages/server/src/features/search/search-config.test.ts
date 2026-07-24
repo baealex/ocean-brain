@@ -83,7 +83,7 @@ test('persists successful connection validation separately from editable setting
     );
 });
 
-test('invalidates a saved connection when the server-side API key changes', async () => {
+test('invalidates a saved connection when the provider authentication mode changes', async () => {
     const { cache } = createCache();
     const store = new SemanticSearchConfigStore(cache);
     const connection = {
@@ -91,10 +91,10 @@ test('invalidates a saved connection when the server-side API key changes', asyn
         model: 'qwen-embedding',
     };
 
-    await store.markConnectionValidated(connection, 'first-key-fingerprint');
+    await store.markConnectionValidated(connection, true);
 
-    assert.equal(await store.isConnectionValidated(connection, 'first-key-fingerprint'), true);
-    assert.equal(await store.isConnectionValidated(connection, 'rotated-key-fingerprint'), false);
+    assert.equal(await store.isConnectionValidated(connection, true), true);
+    assert.equal(await store.isConnectionValidated(connection, false), false);
 });
 
 test('removes the retired Korean-specific default instruction from stored settings', async () => {

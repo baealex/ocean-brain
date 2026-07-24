@@ -80,7 +80,7 @@ Public remote providers must use HTTPS. Loopback providers such as `127.0.0.1` a
 OCEAN_BRAIN_EMBEDDING_ALLOWED_ORIGINS='http://embedding.internal:1234,http://192.168.1.20:8080'
 ```
 
-Redirects and link-local destinations remain blocked. Restart Ocean Brain after changing the API key or allowed origins; a rotated API key requires one successful connection test but does not require rebuilding an otherwise compatible index.
+Redirects and link-local destinations remain blocked. Restart Ocean Brain after changing the API key or allowed origins. Switching between authenticated and unauthenticated provider access requires one successful connection test but does not require rebuilding an otherwise compatible index.
 
 Deleted notes remain in Trash for 30 days. Note snapshots are retained for up to 7 days, with at most 10 snapshots per note. These recovery tools and individual exports do not replace a full backup.
 

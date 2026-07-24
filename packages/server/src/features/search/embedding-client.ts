@@ -133,7 +133,8 @@ export const listOpenAiCompatibleEmbeddingModels = async (
         allowedOrigins: options.allowedOrigins,
         resolveHost: options.resolveHost,
     });
-    // The destination is validated above and redirects are disabled. lgtm[js/request-forgery]
+    // The destination is validated above and redirects are disabled.
+    // codeql[js/request-forgery]
     const response = await fetchImpl(endpoint, {
         method: 'GET',
         headers: {
@@ -215,7 +216,8 @@ export const createOpenAiCompatibleEmbeddingClient = (
             allowedOrigins: config.allowedOrigins,
             resolveHost: options.resolveHost,
         });
-        // The destination is validated above and redirects are disabled. lgtm[js/request-forgery]
+        // The destination is validated above and redirects are disabled.
+        // codeql[js/request-forgery]
         const response = await fetchImpl(endpoint, {
             method: 'POST',
             headers: {

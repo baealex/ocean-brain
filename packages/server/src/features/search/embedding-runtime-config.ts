@@ -1,5 +1,3 @@
-import { createHash } from 'node:crypto';
-
 const MAX_EMBEDDING_API_KEY_LENGTH = 8_192;
 
 export interface EmbeddingRuntimeEnvironment {
@@ -52,11 +50,4 @@ export const resolveEmbeddingRuntimeConfig = (
     ];
 
     return { apiKey, allowedOrigins };
-};
-
-export const createEmbeddingAuthFingerprint = (apiKey?: string) => {
-    if (!apiKey) {
-        return '';
-    }
-    return createHash('sha256').update(apiKey).digest('hex');
 };

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createEmbeddingAuthFingerprint, resolveEmbeddingRuntimeConfig } from './embedding-runtime-config.js';
+import { resolveEmbeddingRuntimeConfig } from './embedding-runtime-config.js';
 
 test('reads provider credentials and trusted private origins from the server environment', () => {
     assert.deepEqual(
@@ -14,16 +14,6 @@ test('reads provider credentials and trusted private origins from the server env
             allowedOrigins: ['http://embedding.internal:1234', 'http://192.168.1.20:8080'],
         },
     );
-});
-
-test('creates a stable non-secret fingerprint for connection validation', () => {
-    const fingerprint = createEmbeddingAuthFingerprint('provider-secret');
-
-    assert.equal(fingerprint.length, 64);
-    assert.notEqual(fingerprint, 'provider-secret');
-    assert.equal(fingerprint, createEmbeddingAuthFingerprint('provider-secret'));
-    assert.notEqual(fingerprint, createEmbeddingAuthFingerprint('rotated-secret'));
-    assert.equal(createEmbeddingAuthFingerprint(), '');
 });
 
 test('rejects paths and credentials in the trusted origin list', () => {

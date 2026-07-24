@@ -17,7 +17,7 @@ export interface ValidatedSemanticSearchConnection {
     baseUrl: string;
     model: string;
     validatedAt: string;
-    authFingerprint: string;
+    usesBearerAuth: boolean;
 }
 
 export interface SearchConfigCache {
@@ -61,7 +61,9 @@ const parseStoredConfig = (value: string): SemanticSearchConfig | null => {
 
 const parseValidatedConnection = (value: string): ValidatedSemanticSearchConnection | null => {
     try {
-        const parsed = JSON.parse(value) as Partial<ValidatedSemanticSearchConnection>;
+        const parsed = JSON.parse(value) as Partial<ValidatedSemanticSearchConnection> & {
+            authFingerprint?: unknown;
+        };
         if (
             typeof parsed.baseUrl !== 'string' ||
             typeof parsed.model !== 'string' ||
@@ -74,7 +76,10 @@ const parseValidatedConnection = (value: string): ValidatedSemanticSearchConnect
             baseUrl: parsed.baseUrl,
             model: parsed.model,
             validatedAt: parsed.validatedAt,
-            authFingerprint: typeof parsed.authFingerprint === 'string' ? parsed.authFingerprint : '',
+            usesBearerAuth:
+                typeof parsed.usesBearerAuth === 'boolean'
+                    ? parsed.usesBearerAuth
+                    : typeof parsed.authFingerprint === 'string' && parsed.authFingerprint.length > 0,
         };
     } catch {
         return null;
@@ -149,7 +154,7 @@ export class SemanticSearchConfigStore {
         return row ? parseValidatedConnection(row.value) : null;
     }
 
-    async isConnectionValidated(input: Pick<SemanticSearchConfig, 'baseUrl' | 'model'>, authFingerprint = '') {
+    async isConnectionValidated(input: Pick<SemanticSearchConfig, 'baseUrl' | 'model'>, usesBearerAuth = false) {
         const config = normalizeSemanticSearchConfig({
             ...DEFAULT_SEMANTIC_SEARCH_CONFIG,
             baseUrl: input.baseUrl,
@@ -160,11 +165,11 @@ export class SemanticSearchConfigStore {
             validated &&
                 validated.baseUrl === config.baseUrl &&
                 validated.model === config.model &&
-                validated.authFingerprint === authFingerprint,
+                validated.usesBearerAuth === usesBearerAuth,
         );
     }
 
-    async markConnectionValidated(input: Pick<SemanticSearchConfig, 'baseUrl' | 'model'>, authFingerprint = '') {
+    async markConnectionValidated(input: Pick<SemanticSearchConfig, 'baseUrl' | 'model'>, usesBearerAuth = false) {
         const config = normalizeSemanticSearchConfig({
             ...DEFAULT_SEMANTIC_SEARCH_CONFIG,
             baseUrl: input.baseUrl,
@@ -174,7 +179,7 @@ export class SemanticSearchConfigStore {
             baseUrl: config.baseUrl,
             model: config.model,
             validatedAt: new Date().toISOString(),
-            authFingerprint,
+            usesBearerAuth,
         };
         const value = JSON.stringify(validated);
 

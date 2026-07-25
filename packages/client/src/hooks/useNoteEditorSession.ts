@@ -23,6 +23,7 @@ import {
 } from '~/modules/note-external-change';
 import { compareNoteVersions, toNoteVersionTime } from '~/modules/note-version';
 import { queryKeys } from '~/modules/query-key-factory';
+import { invalidateQueriesForNoteChange } from '~/modules/server-event-invalidation';
 import { publishClientNoteUpdatedEvent, subscribeServerEvent } from '~/modules/server-events';
 import { useNoteNavigationGuard } from './useNoteNavigationGuard';
 import { useNoteSaveController } from './useNoteSaveController';
@@ -152,6 +153,7 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
                 updatedAt,
                 editSessionId: editSessionIdRef.current,
             });
+            void invalidateQueriesForNoteChange(queryClient);
             return true;
         },
         [commitAcceptedVersion, noteId, queryClient],
@@ -445,13 +447,8 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
             }
 
             setIsPinned(nextPinned);
-            await Promise.all([
-                queryClient.invalidateQueries({ queryKey: queryKeys.notes.listAll(), exact: false }),
-                queryClient.invalidateQueries({ queryKey: queryKeys.notes.tagListAll(), exact: false }),
-                queryClient.invalidateQueries({ queryKey: queryKeys.notes.pinned(), exact: true }),
-            ]);
         });
-    }, [applyAcceptedWrite, executeWrite, flushPendingSave, isPinned, noteId, notify, queryClient]);
+    }, [applyAcceptedWrite, executeWrite, flushPendingSave, isPinned, noteId, notify]);
 
     const getExportMetadata = useCallback(
         () => ({

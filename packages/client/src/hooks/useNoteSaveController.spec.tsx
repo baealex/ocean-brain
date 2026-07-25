@@ -226,6 +226,51 @@ describe('useNoteSaveController', () => {
         });
     });
 
+    it('invalidates every note-derived collection after a same-tab save', async () => {
+        const queryClient = createQueryClient();
+        const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries');
+        vi.mocked(updateNote).mockResolvedValue({
+            type: 'success',
+            updateNote: {
+                id: '7',
+                title: 'Saved draft',
+                updatedAt: '1770000001000',
+            },
+        } as never);
+        const { result } = renderHook(
+            () =>
+                useNoteSaveController({
+                    noteId: '7',
+                    initialContent: 'initial',
+                    initialUpdatedAt: '1770000000000',
+                    editSessionIdRef: { current: 'session-1' },
+                    getContent: () => 'content',
+                    onSaved: vi.fn(),
+                    onConflict: vi.fn(),
+                    onError: vi.fn(),
+                }),
+            { wrapper: createWrapper(queryClient) },
+        );
+
+        await act(async () => {
+            result.current.queueSave(result.current.buildDraft('Saved draft'));
+            await result.current.flushPendingSave();
+        });
+
+        expect(invalidateQueries).toHaveBeenCalledWith({
+            queryKey: queryKeys.notes.tagNameListAll(),
+            exact: false,
+        });
+        expect(invalidateQueries).toHaveBeenCalledWith({
+            queryKey: queryKeys.views.sectionNotesAll(),
+            exact: false,
+        });
+        expect(invalidateQueries).toHaveBeenCalledWith({
+            queryKey: queryKeys.tags.all(),
+            exact: false,
+        });
+    });
+
     it('uses an explicit force flag when overwriting a conflict', async () => {
         vi.mocked(updateNote).mockResolvedValue({
             type: 'success',

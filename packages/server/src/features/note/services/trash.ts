@@ -4,6 +4,7 @@ import {
     RECOVERY_CLEANUP_BATCH_LIMIT,
     TRASH_RETENTION_DAYS,
 } from '~/modules/recovery-retention.js';
+import { resolveRestoredPropertyTarget } from './property-restore.js';
 import { buildNoteSearchProjection, extractVisibleSearchTextFromContent } from './search.js';
 
 const TRASHED_NOTE_CONTENT_PREVIEW_MAX_LENGTH = 240;
@@ -489,46 +490,28 @@ const noteTrashService = createNoteTrashService({
             });
 
             for (const property of deletedNote.properties ?? []) {
-                const definition = await tx.propertyDefinition.upsert({
-                    where: { key: property.key },
-                    create: {
-                        key: property.key,
-                        name: property.name,
-                        valueType: property.valueType,
-                    },
-                    update: {
-                        name: property.name,
-                        valueType: property.valueType,
-                    },
+                const target = await resolveRestoredPropertyTarget(property, {
+                    findDefinitionByKey: (key) => tx.propertyDefinition.findUnique({ where: { key } }),
+                    findOptionByValue: (propertyDefinitionId, value) =>
+                        tx.propertyOption.findUnique({
+                            where: {
+                                propertyDefinitionId_value: {
+                                    propertyDefinitionId,
+                                    value,
+                                },
+                            },
+                        }),
                 });
 
-                const option =
-                    property.valueType === 'select' && property.optionValue
-                        ? await tx.propertyOption.upsert({
-                              where: {
-                                  propertyDefinitionId_value: {
-                                      propertyDefinitionId: definition.id,
-                                      value: property.optionValue,
-                                  },
-                              },
-                              create: {
-                                  propertyDefinitionId: definition.id,
-                                  value: property.optionValue,
-                                  label: property.optionLabel ?? property.optionValue,
-                                  color: property.optionColor,
-                              },
-                              update: {
-                                  label: property.optionLabel ?? property.optionValue,
-                                  color: property.optionColor,
-                              },
-                          })
-                        : null;
+                if (!target) {
+                    continue;
+                }
 
                 await tx.noteProperty.create({
                     data: {
                         noteId: note.id,
-                        propertyDefinitionId: definition.id,
-                        optionId: option?.id ?? null,
+                        propertyDefinitionId: target.propertyDefinitionId,
+                        optionId: target.optionId,
                         textValue: property.textValue,
                         textValueNormalized: property.textValueNormalized,
                         numberValue: property.numberValue,

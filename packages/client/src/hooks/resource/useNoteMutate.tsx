@@ -8,6 +8,7 @@ import { useConfirm, useToast } from '~/components/ui';
 import type { Note, NoteLayout } from '~/models/note.model';
 import { replaceFixedPlaceholder } from '~/modules/fixed-placeholder';
 import { queryKeys } from '~/modules/query-key-factory';
+import { invalidateQueriesForNoteChange, invalidateQueriesForNoteDelete } from '~/modules/server-event-invalidation';
 import { NOTE_ROUTE } from '~/modules/url';
 
 const MOVE_TO_TRASH_REFERENCE_WARNING = {
@@ -43,6 +44,7 @@ const useNoteMutate = () => {
             toast(response.errors[0].message);
             return null;
         }
+        void invalidateQueriesForNoteChange(queryClient);
         navigate({
             to: NOTE_ROUTE,
             params: { id: response.createNote.id },
@@ -57,20 +59,7 @@ const useNoteMutate = () => {
                 toast(response.errors[0].message);
                 return;
             }
-            await Promise.all([
-                queryClient.invalidateQueries({
-                    queryKey: queryKeys.notes.listAll(),
-                    exact: false,
-                }),
-                queryClient.invalidateQueries({
-                    queryKey: queryKeys.notes.tagListAll(),
-                    exact: false,
-                }),
-                queryClient.invalidateQueries({
-                    queryKey: queryKeys.notes.pinned(),
-                    exact: true,
-                }),
-            ]);
+            await invalidateQueriesForNoteChange(queryClient);
             callback?.();
         } catch {
             toast('Failed to update note pin status');
@@ -83,28 +72,7 @@ const useNoteMutate = () => {
             toast(response.errors[0].message);
             return;
         }
-        await Promise.all([
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.notes.all(),
-                exact: false,
-            }),
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.tags.all(),
-                exact: false,
-            }),
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.reminders.all(),
-                exact: false,
-            }),
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.images.all(),
-                exact: false,
-            }),
-            queryClient.invalidateQueries({
-                queryKey: ['calendar'],
-                exact: false,
-            }),
-        ]);
+        await invalidateQueriesForNoteDelete(queryClient);
         toast('The note has been moved to trash.');
         callback?.();
     };

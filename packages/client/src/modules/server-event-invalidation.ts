@@ -45,10 +45,16 @@ const propertyKeysInvalidation: QueryInvalidation = {
 };
 
 const noteDeleteInvalidations: QueryInvalidation[] = [
-    ...noteChangeInvalidations,
-    propertyKeysInvalidation,
     {
-        queryKey: queryKeys.notes.trashAll(),
+        queryKey: queryKeys.notes.all(),
+        exact: false,
+    },
+    {
+        queryKey: queryKeys.views.sectionNotesAll(),
+        exact: false,
+    },
+    {
+        queryKey: queryKeys.tags.all(),
         exact: false,
     },
     {
@@ -69,17 +75,25 @@ const invalidateMany = async (queryClient: QueryClient, invalidations: QueryInva
     await Promise.all(invalidations.map((invalidation) => queryClient.invalidateQueries(invalidation)));
 };
 
+export const invalidateQueriesForNoteChange = async (queryClient: QueryClient) => {
+    await invalidateMany(queryClient, noteChangeInvalidations);
+};
+
+export const invalidateQueriesForNoteDelete = async (queryClient: QueryClient) => {
+    await invalidateMany(queryClient, noteDeleteInvalidations);
+};
+
 export const invalidateQueriesForServerEvent = async (queryClient: QueryClient, event: ServerEvent) => {
     switch (event.type) {
         case 'mcp.note.created':
         case 'web.note.updated':
-            await invalidateMany(queryClient, noteChangeInvalidations);
+            await invalidateQueriesForNoteChange(queryClient);
             return;
         case 'mcp.note.updated':
             await invalidateMany(queryClient, [...noteChangeInvalidations, propertyKeysInvalidation]);
             return;
         case 'mcp.note.deleted':
-            await invalidateMany(queryClient, noteDeleteInvalidations);
+            await invalidateQueriesForNoteDelete(queryClient);
             return;
     }
 };

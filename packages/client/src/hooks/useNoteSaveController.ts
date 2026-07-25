@@ -10,6 +10,7 @@ import {
     writeLocalNoteDraft,
 } from '~/modules/note-draft-storage';
 import { queryKeys } from '~/modules/query-key-factory';
+import { invalidateQueriesForNoteChange } from '~/modules/server-event-invalidation';
 import { publishClientNoteUpdatedEvent } from '~/modules/server-events';
 import type { NoteWriteExecutor } from './useNoteWriteCoordinator';
 
@@ -285,27 +286,15 @@ export function useNoteSaveController({
                         clearLocalNoteDraft(noteId);
                     }
 
+                    if (!pendingDraftRef.current) {
+                        void invalidateQueriesForNoteChange(queryClient);
+                    }
+
                     if (shouldNotifySave) {
                         if (pendingDraftRef.current) {
                             setSaveStatus('pending');
                         } else {
                             setSaveStatus('saved');
-                            void queryClient.invalidateQueries({
-                                queryKey: queryKeys.notes.listAll(),
-                                exact: false,
-                            });
-                            void queryClient.invalidateQueries({
-                                queryKey: queryKeys.notes.tagListAll(),
-                                exact: false,
-                            });
-                            void queryClient.invalidateQueries({
-                                queryKey: queryKeys.notes.backReferencesAll(),
-                                exact: false,
-                            });
-                            void queryClient.invalidateQueries({
-                                queryKey: queryKeys.notes.graph(),
-                                exact: true,
-                            });
                         }
                     }
 

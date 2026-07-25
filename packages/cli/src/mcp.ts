@@ -132,9 +132,10 @@ const normalizeOceanBrainTagNames = (names: string[]) => {
 const fetchOceanBrainTags = async (
     serverUrl: string,
     token: string | undefined,
-    query: string
+    query: string,
+    graphqlRequest: typeof graphql = graphql,
 ) => {
-    const data = await graphql(serverUrl, token, `
+    const data = await graphqlRequest(serverUrl, token, `
         query ($searchFilter: SearchFilterInput, $pagination: PaginationInput) {
             allTags(searchFilter: $searchFilter, pagination: $pagination) {
                 totalCount
@@ -234,7 +235,8 @@ interface McpSearchNote {
     title: string;
     updatedAt: string;
     tags: Array<{ id: string; name: string }>;
-    contentAsMarkdown: string;
+    contentAsMarkdown?: string;
+    contentPreview?: string;
 }
 
 const formatMcpSearchNotes = (notes: McpSearchNote[]) => notes.map((note) => ({
@@ -242,25 +244,61 @@ const formatMcpSearchNotes = (notes: McpSearchNote[]) => notes.map((note) => ({
     title: note.title,
     updatedAt: note.updatedAt,
     tags: note.tags.map((t) => t.name),
-    preview: note.contentAsMarkdown.slice(0, 100),
+    preview: typeof note.contentPreview === 'string'
+        ? note.contentPreview
+        : note.contentAsMarkdown?.slice(0, 100) ?? '',
 }));
+
+interface RegisterMcpToolsOptions {
+    graphqlRequest?: typeof graphql;
+}
 
 export const registerMcpTools = (
     server: McpServer,
     serverUrl: string,
-    token?: string
+    token?: string,
+    options: RegisterMcpToolsOptions = {},
 ) => {
+    const graphqlRequest = options.graphqlRequest ?? graphql;
+    let noteContentPreviewSupport: Promise<boolean> | undefined;
+    const supportsNoteContentPreview = () => {
+        if (!noteContentPreviewSupport) {
+            noteContentPreviewSupport = graphqlRequest(serverUrl, token, `
+                query {
+                    __type(name: "Note") {
+                        fields { name }
+                    }
+                }
+            `).then((data) => {
+                const noteType = data?.__type;
+                if (!noteType || typeof noteType !== 'object') {
+                    return false;
+                }
+
+                const fields = (noteType as { fields?: unknown }).fields;
+                return Array.isArray(fields) && fields.some((field) => (
+                    field !== null &&
+                    typeof field === 'object' &&
+                    (field as { name?: unknown }).name === 'contentPreview'
+                ));
+            });
+        }
+
+        return noteContentPreviewSupport;
+    };
+
     server.tool(
         OCEAN_BRAIN_MCP_TOOLS.searchNotes,
-        'Search Ocean Brain notes by keyword or meaning. Hybrid search combines both; use lexical for exact terms and semantic for meaning-based recall. Returns matching note titles, tags, previews, and search status. Use ocean_brain_read_note to get full content for a specific note.',
+        'Search Ocean Brain notes by keyword or meaning. Lexical uses words only, hybrid combines words and meaning, and semantic uses meaning only. Omit mode to keep the legacy keyword behavior and response. Explicit modes return one ranked result shape with match and semantic-search status. Use ocean_brain_read_note to get full content for a specific note.',
         {
             query: z.string().describe('Search words or a natural-language description'),
-            limit: z.number().optional().default(10).describe('Max results (default: 10)'),
-            mode: searchModeSchema.optional().describe('Optional search mode: hybrid or semantic enables meaning search; omit for the legacy keyword search'),
+            limit: z.number().optional().default(10).describe('Results per page. Explicit modes return at most 50 per page. (default: 10)'),
+            offset: z.number().int().min(0).optional().default(0).describe('Results to skip for pagination (default: 0)'),
+            mode: searchModeSchema.optional().describe('Optional mode. Omit for the legacy keyword request and response; explicit modes use the unified ranked result contract'),
         },
-        async ({ query, limit, mode }) => {
-            if (!mode || mode === 'lexical') {
-                const data = await graphql(serverUrl, token, `
+        async ({ query, limit, offset, mode }) => {
+            if (!mode) {
+                const data = await graphqlRequest(serverUrl, token, `
                     query ($searchFilter: SearchFilterInput, $pagination: PaginationInput) {
                         allNotes(searchFilter: $searchFilter, pagination: $pagination) {
                             totalCount
@@ -275,7 +313,7 @@ export const registerMcpTools = (
                     }
                 `, {
                     searchFilter: { query, sortBy: 'updatedAt', sortOrder: 'desc' },
-                    pagination: { limit, offset: 0 },
+                    pagination: { limit, offset },
                 });
 
                 const result = data?.allNotes as {
@@ -289,7 +327,10 @@ export const registerMcpTools = (
                 });
             }
 
-            const data = await graphql(serverUrl, token, `
+            const previewField = await supportsNoteContentPreview()
+                ? 'contentPreview'
+                : 'contentAsMarkdown';
+            const data = await graphqlRequest(serverUrl, token, `
                 query ($query: String!, $mode: SearchMode!, $pagination: PaginationInput!) {
                     searchNotes(query: $query, mode: $mode, pagination: $pagination) {
                         totalCount
@@ -306,14 +347,14 @@ export const registerMcpTools = (
                             title
                             updatedAt
                             tags { id name }
-                            contentAsMarkdown
+                            ${previewField}
                         }
                     }
                 }
             `, {
                 query,
                 mode: graphqlSearchModes[mode],
-                pagination: { limit, offset: 0 },
+                pagination: { limit, offset },
             });
 
             const result = data?.searchNotes as {
@@ -348,7 +389,7 @@ export const registerMcpTools = (
             maxLength: z.number().optional().default(1000).describe('Max content length in characters. 0 for full content. (default: 1000)'),
         },
         async ({ id, maxLength }) => {
-            const data = await graphql(serverUrl, token, `
+            const data = await graphqlRequest(serverUrl, token, `
                 query ($id: ID!) {
                     note(id: $id) {
                         id
@@ -437,7 +478,7 @@ export const registerMcpTools = (
         'List Ocean Brain tags with their note counts.',
         {},
         async () => {
-            const data = await graphql(serverUrl, token, `
+            const data = await graphqlRequest(serverUrl, token, `
                 query ($searchFilter: SearchFilterInput, $pagination: PaginationInput) {
                     allTags(searchFilter: $searchFilter, pagination: $pagination) {
                         totalCount
@@ -471,7 +512,7 @@ export const registerMcpTools = (
             offset: z.number().optional().default(0).describe('Pagination offset (default: 0)')
         },
         async ({ query, limit, offset }) => {
-            const data = await graphql(serverUrl, token, `
+            const data = await graphqlRequest(serverUrl, token, `
                 query ($query: String, $pagination: PaginationInput) {
                     notePropertyKeys(query: $query, pagination: $pagination) {
                         totalCount
@@ -525,7 +566,7 @@ export const registerMcpTools = (
         },
         async ({ tag, limit, offset }) => {
             const normalizedTag = normalizeOceanBrainTagName(tag);
-            const tagResult = await fetchOceanBrainTags(serverUrl, token, normalizedTag);
+            const tagResult = await fetchOceanBrainTags(serverUrl, token, normalizedTag, graphqlRequest);
             const exactMatches = tagResult.tags.filter((item) => item.name === normalizedTag);
 
             if (exactMatches.length === 0) {
@@ -539,7 +580,7 @@ export const registerMcpTools = (
             }
 
             const selectedTag = exactMatches[0];
-            const notesData = await graphql(serverUrl, token, `
+            const notesData = await graphqlRequest(serverUrl, token, `
                 query ($searchFilter: SearchFilterInput, $pagination: PaginationInput) {
                     tagNotes(searchFilter: $searchFilter, pagination: $pagination) {
                         totalCount
@@ -596,7 +637,7 @@ export const registerMcpTools = (
             const normalizedTags = normalizeOceanBrainTagNames(tags);
             const tagResults = await Promise.all(
                 normalizedTags.map(async (normalizedTag) => {
-                    const result = await fetchOceanBrainTags(serverUrl, token, normalizedTag);
+                    const result = await fetchOceanBrainTags(serverUrl, token, normalizedTag, graphqlRequest);
                     const exactMatches = result.tags.filter((item) => item.name === normalizedTag);
 
                     return {
@@ -639,7 +680,7 @@ export const registerMcpTools = (
                 (mode === 'and' && missingTags.length === 0)
                 || (mode === 'or' && matchedTags.length > 0)
             ) {
-                const notesData = await graphql(serverUrl, token, `
+                const notesData = await graphqlRequest(serverUrl, token, `
                     query ($tagNames: [String!]!, $mode: TagMatchMode!, $pagination: PaginationInput) {
                         notesByTagNames(tagNames: $tagNames, mode: $mode, pagination: $pagination) {
                             totalCount
@@ -695,7 +736,7 @@ export const registerMcpTools = (
         async ({ propertyFilters, tagNames, mode, sortBy, sortOrder, includeProperties, propertyKeys, limit, offset }) => {
             const shouldIncludeProperties = includeProperties || propertyKeys.length > 0;
             const normalizedTagNames = normalizeOceanBrainTagNames(tagNames);
-            const data = await graphql(serverUrl, token, `
+            const data = await graphqlRequest(serverUrl, token, `
                 query ($input: NotesByPropertiesInput!, $pagination: PaginationInput, $includeProperties: Boolean!) {
                     notesByProperties(input: $input, pagination: $pagination) {
                         totalCount
@@ -747,7 +788,7 @@ export const registerMcpTools = (
             limit: z.number().optional().default(10).describe('Max results (default: 10)'),
         },
         async ({ limit }) => {
-            const data = await graphql(serverUrl, token, `
+            const data = await graphqlRequest(serverUrl, token, `
                 query ($searchFilter: SearchFilterInput, $pagination: PaginationInput) {
                     allNotes(searchFilter: $searchFilter, pagination: $pagination) {
                         totalCount
@@ -799,7 +840,7 @@ export const registerMcpTools = (
                 .split(/[,\s]+/)
                 .map((keyword) => keyword.trim())
                 .filter(Boolean);
-            const data = await graphql(serverUrl, token, `
+            const data = await graphqlRequest(serverUrl, token, `
                 query ($query: String, $pagination: PaginationInput) {
                     noteCleanupCandidates(query: $query, pagination: $pagination) {
                         id

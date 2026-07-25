@@ -207,6 +207,12 @@ export const extractVisibleSearchTextFromContent = (content: string) => {
     }
 };
 
+const NOTE_CONTENT_PREVIEW_MAX_LENGTH = 100;
+
+export const buildNoteContentPreview = (content: string) => {
+    return extractVisibleSearchTextFromContent(content).slice(0, NOTE_CONTENT_PREVIEW_MAX_LENGTH);
+};
+
 export const matchesNoteSearchQuery = (note: SearchableNoteLike, query: string | NoteSearchQuery) => {
     const parsedQuery = typeof query === 'string' ? parseNoteSearchQuery(query) : query;
 

@@ -32,41 +32,150 @@ test('normalizeOceanBrainTagName rejects hash-prefixed tags', () => {
     assert.equal(normalizeOceanBrainTagName('@project'), '@project');
 });
 
-test('MCP note search forwards the unified search mode and exposes semantic status', async () => {
-    const requests: Array<{ query: string; variables: Record<string, unknown> }> = [];
-    const originalFetch = globalThis.fetch;
+test('MCP note search gives every explicit mode one result contract with pagination', async () => {
+    const requests: Array<{ query: string; variables?: Record<string, unknown> }> = [];
+    const graphqlRequest = async (
+        _serverUrl: string,
+        _token: string | undefined,
+        query: string,
+        variables?: Record<string, unknown>,
+    ) => {
+        requests.push({ query, variables });
 
-    globalThis.fetch = (async (_input, init) => {
-        requests.push(JSON.parse(String(init?.body)) as (typeof requests)[number]);
-
-        return new Response(JSON.stringify({
-            data: {
-                searchNotes: {
-                    totalCount: 1,
-                    semanticAvailable: true,
-                    semanticUsed: true,
-                    semanticError: null,
-                    matches: [{ noteId: '17', lexical: false, semantic: true }],
-                    notes: [{
-                        id: '17',
-                        title: 'Deployment decision',
-                        updatedAt: '2026-07-26T00:00:00.000Z',
-                        tags: [{ id: '1', name: '@project' }],
-                        contentAsMarkdown: 'Use the hybrid search path.',
-                    }],
+        if (query.includes('__type')) {
+            return {
+                __type: {
+                    fields: [{ name: 'contentPreview' }],
                 },
+            };
+        }
+
+        return {
+            searchNotes: {
+                totalCount: 1,
+                semanticAvailable: true,
+                semanticUsed: true,
+                semanticError: null,
+                matches: [{ noteId: '17', lexical: false, semantic: true }],
+                notes: [{
+                    id: '17',
+                    title: 'Deployment decision',
+                    updatedAt: '2026-07-26T00:00:00.000Z',
+                    tags: [{ id: '1', name: '@project' }],
+                    contentPreview: 'Use the hybrid search path.',
+                }],
             },
-        }), {
-            headers: { 'content-type': 'application/json' },
-        });
-    }) as typeof fetch;
+        };
+    };
 
     const server = new McpServer({ name: 'ocean-brain-test', version: '0.0.0' });
     const client = new Client({ name: 'ocean-brain-test-client', version: '0.0.0' });
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
 
     try {
-        registerMcpTools(server, 'http://localhost:6683', 'test-token');
+        registerMcpTools(server, 'http://localhost:6683', 'test-token', { graphqlRequest });
+        await Promise.all([
+            server.connect(serverTransport),
+            client.connect(clientTransport),
+        ]);
+
+        for (const mode of ['hybrid', 'lexical', 'semantic'] as const) {
+            const result = await client.callTool({
+                name: OCEAN_BRAIN_MCP_TOOLS.searchNotes,
+                arguments: {
+                    query: 'deployment decision',
+                    mode,
+                    limit: 20,
+                    offset: 5,
+                },
+            });
+
+            const content = result.content[0];
+            assert.equal(content?.type, 'text');
+            if (content?.type !== 'text') {
+                throw new Error('Expected a text MCP result.');
+            }
+
+            assert.deepEqual(JSON.parse(content.text), {
+                totalCount: 1,
+                semanticAvailable: true,
+                semanticUsed: true,
+                semanticError: null,
+                matches: [{ noteId: '17', lexical: false, semantic: true }],
+                notes: [{
+                    id: '17',
+                    title: 'Deployment decision',
+                    updatedAt: '2026-07-26T00:00:00.000Z',
+                    tags: ['@project'],
+                    preview: 'Use the hybrid search path.',
+                }],
+            });
+        }
+
+        assert.equal(requests.length, 4);
+        assert.match(requests[0].query, /__type\(name: "Note"\)/);
+        assert.deepEqual(
+            requests.slice(1).map((request) => request.variables),
+            ['HYBRID', 'LEXICAL', 'SEMANTIC'].map((mode) => ({
+                query: 'deployment decision',
+                mode,
+                pagination: { limit: 20, offset: 5 },
+            })),
+        );
+        for (const request of requests.slice(1)) {
+            assert.match(request.query, /searchNotes\(query: \$query, mode: \$mode, pagination: \$pagination\)/);
+            assert.match(request.query, /contentPreview/);
+            assert.doesNotMatch(request.query, /contentAsMarkdown/);
+        }
+    } finally {
+        await client.close();
+        await server.close();
+    }
+});
+
+test('MCP note search falls back to Markdown previews for compatible older servers', async () => {
+    const markdown = 'x'.repeat(120);
+    const requests: Array<{ query: string; variables?: Record<string, unknown> }> = [];
+    const graphqlRequest = async (
+        _serverUrl: string,
+        _token: string | undefined,
+        query: string,
+        variables?: Record<string, unknown>,
+    ) => {
+        requests.push({ query, variables });
+
+        if (query.includes('__type')) {
+            return {
+                __type: {
+                    fields: [{ name: 'contentAsMarkdown' }],
+                },
+            };
+        }
+
+        return {
+            searchNotes: {
+                totalCount: 1,
+                semanticAvailable: true,
+                semanticUsed: true,
+                semanticError: null,
+                matches: [{ noteId: '17', lexical: false, semantic: true }],
+                notes: [{
+                    id: '17',
+                    title: 'Older server',
+                    updatedAt: '2026-07-26T00:00:00.000Z',
+                    tags: [],
+                    contentAsMarkdown: markdown,
+                }],
+            },
+        };
+    };
+
+    const server = new McpServer({ name: 'ocean-brain-test', version: '0.0.0' });
+    const client = new Client({ name: 'ocean-brain-test-client', version: '0.0.0' });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+
+    try {
+        registerMcpTools(server, 'http://localhost:6683', 'test-token', { graphqlRequest });
         await Promise.all([
             server.connect(serverTransport),
             client.connect(clientTransport),
@@ -74,75 +183,55 @@ test('MCP note search forwards the unified search mode and exposes semantic stat
 
         const result = await client.callTool({
             name: OCEAN_BRAIN_MCP_TOOLS.searchNotes,
-            arguments: { query: 'deployment decision', mode: 'semantic' },
+            arguments: { query: 'older server', mode: 'semantic' },
         });
 
-        assert.equal(requests.length, 1);
-        assert.match(requests[0].query, /searchNotes\(query: \$query, mode: \$mode, pagination: \$pagination\)/);
-        assert.deepEqual(requests[0].variables, {
-            query: 'deployment decision',
-            mode: 'SEMANTIC',
-            pagination: { limit: 10, offset: 0 },
-        });
+        assert.equal(requests.length, 2);
+        assert.match(requests[1].query, /contentAsMarkdown/);
+        assert.doesNotMatch(requests[1].query, /contentPreview/);
 
         const content = result.content[0];
         assert.equal(content?.type, 'text');
         if (content?.type !== 'text') {
             throw new Error('Expected a text MCP result.');
         }
-
-        assert.deepEqual(JSON.parse(content.text), {
-            totalCount: 1,
-            semanticAvailable: true,
-            semanticUsed: true,
-            semanticError: null,
-            matches: [{ noteId: '17', lexical: false, semantic: true }],
-            notes: [{
-                id: '17',
-                title: 'Deployment decision',
-                updatedAt: '2026-07-26T00:00:00.000Z',
-                tags: ['@project'],
-                preview: 'Use the hybrid search path.',
-            }],
-        });
+        assert.equal(JSON.parse(content.text).notes[0].preview, 'x'.repeat(100));
     } finally {
         await client.close();
         await server.close();
-        globalThis.fetch = originalFetch;
     }
 });
 
-test('MCP note search keeps the legacy lexical path when mode is omitted', async () => {
-    const requests: Array<{ query: string; variables: Record<string, unknown> }> = [];
-    const originalFetch = globalThis.fetch;
+test('MCP note search keeps the legacy request and response when mode is omitted', async () => {
+    const requests: Array<{ query: string; variables?: Record<string, unknown> }> = [];
+    const graphqlRequest = async (
+        _serverUrl: string,
+        _token: string | undefined,
+        query: string,
+        variables?: Record<string, unknown>,
+    ) => {
+        requests.push({ query, variables });
 
-    globalThis.fetch = (async (_input, init) => {
-        requests.push(JSON.parse(String(init?.body)) as (typeof requests)[number]);
-
-        return new Response(JSON.stringify({
-            data: {
-                allNotes: {
-                    totalCount: 1,
-                    notes: [{
-                        id: '23',
-                        title: 'Legacy search',
-                        updatedAt: '2026-07-26T00:00:00.000Z',
-                        tags: [{ id: '2', name: '@legacy' }],
-                        contentAsMarkdown: 'Keep the old search behavior.',
-                    }],
-                },
+        return {
+            allNotes: {
+                totalCount: 1,
+                notes: [{
+                    id: '23',
+                    title: 'Legacy search',
+                    updatedAt: '2026-07-26T00:00:00.000Z',
+                    tags: [{ id: '2', name: '@legacy' }],
+                    contentAsMarkdown: 'Keep the old search behavior.',
+                }],
             },
-        }), {
-            headers: { 'content-type': 'application/json' },
-        });
-    }) as typeof fetch;
+        };
+    };
 
     const server = new McpServer({ name: 'ocean-brain-test', version: '0.0.0' });
     const client = new Client({ name: 'ocean-brain-test-client', version: '0.0.0' });
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
 
     try {
-        registerMcpTools(server, 'http://localhost:6683', 'test-token');
+        registerMcpTools(server, 'http://localhost:6683', 'test-token', { graphqlRequest });
         await Promise.all([
             server.connect(serverTransport),
             client.connect(clientTransport),
@@ -180,6 +269,5 @@ test('MCP note search keeps the legacy lexical path when mode is omitted', async
     } finally {
         await client.close();
         await server.close();
-        globalThis.fetch = originalFetch;
     }
 });

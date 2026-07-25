@@ -5,6 +5,7 @@ import {
     OCEAN_BRAIN_CUSTOM_INLINE_CONTENT_TYPES,
 } from '../../../../../client/src/components/schema/custom-types.js';
 import {
+    buildNoteContentPreview,
     buildNoteSearchProjection,
     buildNoteSearchText,
     extractVisibleSearchTextFromContent,
@@ -46,6 +47,29 @@ test('buildNoteSearchProjection stores normalized lowercase title and visible co
         searchableText: 'roadmap 123 visible content',
         searchableTextVersion: NOTE_SEARCH_TEXT_SCHEMA_VERSION,
     });
+});
+
+test('buildNoteContentPreview returns bounded visible text without Markdown conversion', () => {
+    const content = JSON.stringify([
+        {
+            id: 'paragraph-1',
+            type: 'paragraph',
+            props: {},
+            content: [
+                {
+                    type: 'text',
+                    text: `Visible ${'content '.repeat(20)}`,
+                    styles: {},
+                },
+            ],
+            children: [],
+        },
+    ]);
+
+    const preview = buildNoteContentPreview(content);
+
+    assert.equal(preview.length, 100);
+    assert.match(preview, /^Visible content/);
 });
 
 test('note search explicitly classifies every Ocean Brain custom BlockNote type', () => {

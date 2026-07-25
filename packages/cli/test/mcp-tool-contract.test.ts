@@ -48,7 +48,7 @@ const EXPECTED_TOOL_ORDER = [
 ];
 
 const EXPECTED_SCHEMA_KEYS: Record<string, string[]> = {
-    [OCEAN_BRAIN_MCP_TOOLS.searchNotes]: ['limit', 'mode', 'query'],
+    [OCEAN_BRAIN_MCP_TOOLS.searchNotes]: ['limit', 'mode', 'offset', 'query'],
     [OCEAN_BRAIN_MCP_TOOLS.readNote]: ['id', 'maxLength'],
     [OCEAN_BRAIN_MCP_TOOLS.createNote]: ['layout', 'markdown', 'title'],
     [OCEAN_BRAIN_MCP_TOOLS.patchNoteMarkdown]: [
@@ -183,6 +183,8 @@ describe('Ocean Brain MCP stdio contract', () => {
             };
 
             assert.equal(property(OCEAN_BRAIN_MCP_TOOLS.searchNotes, 'limit').default, 10);
+            assert.equal(property(OCEAN_BRAIN_MCP_TOOLS.searchNotes, 'offset').default, 0);
+            assert.equal(property(OCEAN_BRAIN_MCP_TOOLS.searchNotes, 'offset').minimum, 0);
             assert.equal(property(OCEAN_BRAIN_MCP_TOOLS.searchNotes, 'mode').default, undefined);
             assert.deepEqual(property(OCEAN_BRAIN_MCP_TOOLS.searchNotes, 'mode').enum, [
                 'hybrid',

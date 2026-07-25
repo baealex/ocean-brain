@@ -1,5 +1,6 @@
 import type { IResolvers } from '@graphql-tools/utils';
 import { listNoteProperties } from '~/features/note/services/properties.js';
+import { buildNoteContentPreview } from '~/features/note/services/search.js';
 import { renderNoteSnapshotContentAsMarkdown } from '~/features/note/services/snapshot.js';
 import type { Note } from '~/models.js';
 import models from '~/models.js';
@@ -15,6 +16,7 @@ interface NoteSnapshotSource {
 export const noteFieldResolvers: NoteFieldResolvers = {
     tags: async (note: Note) => models.tag.findMany({ where: { notes: { some: { id: note.id } } } }),
     properties: async (note: Note) => listNoteProperties(note.id),
+    contentPreview: (note: Note) => buildNoteContentPreview(note.content),
     contentAsMarkdown: async (note: Note) => {
         const { blocksToMarkdown } = await import('~/modules/blocknote.js');
         return blocksToMarkdown(note.content);

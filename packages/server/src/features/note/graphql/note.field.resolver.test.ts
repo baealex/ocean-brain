@@ -7,3 +7,7 @@ test('note field resolvers leave date fields on the GraphQL default serializer',
     assert.equal(Object.hasOwn(noteFieldResolvers, 'createdAt'), false);
     assert.equal(Object.hasOwn(noteFieldResolvers, 'updatedAt'), false);
 });
+
+test('note field resolvers expose a bounded content preview', () => {
+    assert.equal(Object.hasOwn(noteFieldResolvers, 'contentPreview'), true);
+});

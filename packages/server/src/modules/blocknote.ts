@@ -291,7 +291,7 @@ function restoreTagPlaceholdersInMarkdown(markdown: string, placeholderToTag: Ma
 function preprocessMarkdownExplicitTags(markdown: string) {
     const placeholderToTag = new Map<string, string>();
     let nextPlaceholderIndex = 0;
-    const preprocessedMarkdown = markdown.replace(/\[([@#][^\s[\]]+)\]/g, (_match, tagToken: string) => {
+    const preprocessedMarkdown = markdown.replace(/\[(@[^\s[\]]+)\]/g, (_match, tagToken: string) => {
         const placeholder = createTagPlaceholder(nextPlaceholderIndex++);
         placeholderToTag.set(placeholder, tagToken);
         return placeholder;
@@ -1237,15 +1237,14 @@ async function restoreCustomInlineContent(
     const noteByIdCache = new Map<string, Promise<{ id: string; title: string } | null>>();
 
     const getTag = (token: string) => {
-        const normalizedToken = token.startsWith('#') ? `@${token.slice(1)}` : token;
-        let existing = tagCache.get(normalizedToken);
+        let existing = tagCache.get(token);
 
         if (!existing) {
-            existing = deps.ensureTag(normalizedToken.slice(1)).then((result) => ({
+            existing = deps.ensureTag(token.slice(1)).then((result) => ({
                 id: 'tag' in result ? result.tag.id : result.id,
                 tag: 'tag' in result ? result.tag.name : result.name,
             }));
-            tagCache.set(normalizedToken, existing);
+            tagCache.set(token, existing);
         }
 
         return existing;

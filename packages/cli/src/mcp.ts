@@ -94,11 +94,15 @@ const propertyFilterSchema = z.object({
     value: z.string().nullable().optional().describe('Filter value. Required unless operator is exists or notExists. select=option.value, date=YYYY-MM-DD, boolean=true/false, number=finite, url=http(s).')
 });
 
-const normalizeOceanBrainTagName = (name: string) => {
+export const normalizeOceanBrainTagName = (name: string) => {
     const trimmedName = name.trim();
 
     if (!trimmedName) {
         throw new Error('Tag name is required.');
+    }
+
+    if (trimmedName.startsWith('#')) {
+        throw new Error('Ocean Brain tags use @, not #. Example: @project');
     }
 
     const normalizedName = trimmedName.startsWith('@')
@@ -332,7 +336,7 @@ const registerMcpTools = (
         'Create an Ocean Brain note from markdown. Search/read first to avoid duplicates; prefer patching an existing note when the intent is a local change.',
         {
             title: z.string().describe('Note title'),
-            markdown: z.string().optional().default('').describe('Markdown body for the new note. In MCP markdown, tags must use [@tag] or [#tag]. Defaults to an empty note body.'),
+            markdown: z.string().optional().default('').describe('Markdown body for the new note. In MCP markdown, tags must use [@tag]. Defaults to an empty note body.'),
             layout: noteLayoutSchema.optional().describe('Optional note layout: narrow, wide, or full. Prefer wide for most notes unless the user explicitly wants narrow or full.')
         },
         async ({ title, markdown, layout }) => {
@@ -615,7 +619,7 @@ const registerMcpTools = (
         'Call ocean_brain_list_properties first. Requires >=1 propertyFilter; use search/recent for broad lists. Use key/valueType from the property definition. Values are strings: select=option.value, date=YYYY-MM-DD, boolean=true/false, number=finite, url=http(s). exists/notExists need no value. Property filters use AND; tagNames use mode. Summaries are returned by default; use propertyKeys for needed property details.',
         {
             propertyFilters: z.array(propertyFilterSchema).min(1).max(10).describe('Required property filters. Multiple property filters are combined with AND.'),
-            tagNames: z.array(z.string()).optional().default([]).describe('Optional tag filters. You can pass @project, #project, or project.'),
+            tagNames: z.array(z.string()).optional().default([]).describe('Optional tag filters. You can pass @project or project.'),
             mode: tagMatchModeSchema.optional().default('and').describe('Tag match mode for tagNames only. Property filters are always combined with AND.'),
             sortBy: viewSortBySchema.optional().default('updatedAt').describe('Sort field (default: updatedAt)'),
             sortOrder: viewSortOrderSchema.optional().default('desc').describe('Sort order (default: desc)'),
@@ -626,6 +630,7 @@ const registerMcpTools = (
         },
         async ({ propertyFilters, tagNames, mode, sortBy, sortOrder, includeProperties, propertyKeys, limit, offset }) => {
             const shouldIncludeProperties = includeProperties || propertyKeys.length > 0;
+            const normalizedTagNames = normalizeOceanBrainTagNames(tagNames);
             const data = await graphql(serverUrl, token, `
                 query ($input: NotesByPropertiesInput!, $pagination: PaginationInput, $includeProperties: Boolean!) {
                     notesByProperties(input: $input, pagination: $pagination) {
@@ -642,7 +647,7 @@ const registerMcpTools = (
                 }
             `, {
                 input: {
-                    tagNames,
+                    tagNames: normalizedTagNames,
                     mode,
                     propertyFilters,
                     sortBy,
@@ -658,7 +663,7 @@ const registerMcpTools = (
                 result,
                 query: {
                     propertyFilters,
-                    tagNames,
+                    tagNames: normalizedTagNames,
                     mode,
                     sortBy,
                     sortOrder,
@@ -783,6 +788,7 @@ const registerMcpTools = (
         },
         async ({ name }) => {
             const writeToken = requireWriteToken(token, OCEAN_BRAIN_MCP_TOOLS.createTag);
+            const normalizedName = normalizeOceanBrainTagName(name);
             const result = await jsonRequest<{
                 created: boolean;
                 normalizedName: string;
@@ -793,7 +799,7 @@ const registerMcpTools = (
                     updatedAt: string;
                 };
             }>(serverUrl, writeToken, '/api/mcp/tags/create', {
-                name
+                name: normalizedName
             });
 
             return createMcpJsonToolResult(result);

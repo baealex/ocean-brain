@@ -153,7 +153,7 @@ const normalizeTagName = (value: string) => {
     }
 
     if (trimmedValue.startsWith('#')) {
-        return `@${trimmedValue.slice(1)}`;
+        throw new Error('View tag names must use @, not #.');
     }
 
     return `@${trimmedValue}`;

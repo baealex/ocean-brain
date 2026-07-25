@@ -6,7 +6,6 @@ import { normalizeSemanticSearchConfig, type SemanticSearchConfig } from '../sea
 import {
     type EmbeddingApiKeyInput,
     getDefaultSemanticSearchManager,
-    SemanticSearchConnectionNotValidatedError,
     type SemanticSearchManager,
 } from '../search-manager.js';
 import { stripTrailingSlashes } from '../url-normalization.js';
@@ -105,15 +104,7 @@ export const createSearchAdminSaveConfigHandler = (
     manager: SearchAdminManager = getDefaultSemanticSearchManager(),
 ): Controller => {
     return async (req, res) => {
-        let status;
-        try {
-            status = await manager.saveConfig(parseConfig(req.body), parseApiKeyInput(req.body));
-        } catch (error) {
-            if (error instanceof SemanticSearchConnectionNotValidatedError) {
-                throw createAppError(409, 'SEARCH_CONNECTION_NOT_VALIDATED', error.message);
-            }
-            throw error;
-        }
+        const status = await manager.saveConfig(parseConfig(req.body), parseApiKeyInput(req.body));
         res.status(200).json(status).end();
     };
 };

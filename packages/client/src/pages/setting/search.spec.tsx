@@ -85,7 +85,7 @@ describe('<SearchSetting />', () => {
         });
     });
 
-    it('requires a connection test before first activation and then saves the enabled search', async () => {
+    it('saves and enables a provider before its connection test', async () => {
         const user = userEvent.setup();
         vi.mocked(searchAdminApi.saveSemanticSearchConfig).mockImplementation(async (input) =>
             createStatus({
@@ -96,9 +96,9 @@ describe('<SearchSetting />', () => {
                     queryInstruction: input.queryInstruction,
                 },
                 apiKeyConfigured: Boolean(input.apiKey),
-                connectionValidated: true,
-                phase: 'needs-index',
-                needsReindex: true,
+                connectionValidated: false,
+                phase: 'needs-connection',
+                needsReindex: false,
             }),
         );
 
@@ -107,17 +107,6 @@ describe('<SearchSetting />', () => {
         expect(await screen.findByRole('switch', { name: 'Meaning search' })).toBeDisabled();
         await discoverSingleModel(user, 'provider-secret');
 
-        expect(screen.getByRole('button', { name: 'Save settings' })).toBeDisabled();
-        await user.click(screen.getByRole('button', { name: 'Test selected model' }));
-
-        await waitFor(() => {
-            expect(vi.mocked(searchAdminApi.testSemanticSearchConnection).mock.calls[0]?.[0]).toEqual({
-                ...defaultConfig,
-                baseUrl: 'http://127.0.0.1:1234/v1',
-                model: embeddingModel,
-                apiKey: 'provider-secret',
-            });
-        });
         const meaningSearchSwitch = screen.getByRole('switch', { name: 'Meaning search' });
         expect(meaningSearchSwitch).toBeEnabled();
         await user.click(meaningSearchSwitch);
@@ -132,7 +121,8 @@ describe('<SearchSetting />', () => {
                 apiKey: 'provider-secret',
             });
         });
-        expect(screen.getByRole('button', { name: 'Build search index' })).toBeEnabled();
+        expect(searchAdminApi.testSemanticSearchConnection).not.toHaveBeenCalled();
+        expect(screen.getByRole('button', { name: 'Build search index' })).toBeDisabled();
     });
 
     it('re-enables a previously saved connection without testing the same model again', async () => {
@@ -184,7 +174,7 @@ describe('<SearchSetting />', () => {
         expect(searchAdminApi.testSemanticSearchConnection).not.toHaveBeenCalled();
     });
 
-    it('does not trust a connection that was only saved while meaning search was disabled', async () => {
+    it('allows enabling a saved provider that has not been tested yet', async () => {
         vi.mocked(searchAdminApi.fetchSearchAdminStatus).mockResolvedValue(
             createStatus({
                 config: {
@@ -202,8 +192,24 @@ describe('<SearchSetting />', () => {
         await waitFor(() => {
             expect(screen.getByLabelText('API base URL')).toHaveValue('http://127.0.0.1:1234/v1');
         });
-        expect(screen.getByRole('switch', { name: 'Meaning search' })).toBeDisabled();
-        expect(screen.getByText('Test the selected model first.')).toBeInTheDocument();
+        expect(screen.getByRole('switch', { name: 'Meaning search' })).toBeEnabled();
+        expect(screen.getByText('You can save this provider now and test it when you are ready.')).toBeInTheDocument();
+    });
+
+    it('warns without blocking a remote plain HTTP provider', async () => {
+        const user = userEvent.setup();
+        renderPage();
+
+        const baseUrlInput = await screen.findByLabelText('API base URL');
+        await waitFor(() => expect(baseUrlInput).toBeEnabled());
+        await user.type(baseUrlInput, 'http://192.168.1.20:1234/v1');
+
+        expect(
+            screen.getByText(
+                'This provider uses unencrypted HTTP. API credentials and note text can be read on the network.',
+            ),
+        ).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Find models' })).toBeEnabled();
     });
 
     it('shows a saved API key without returning its value or provider-specific setup guides', async () => {

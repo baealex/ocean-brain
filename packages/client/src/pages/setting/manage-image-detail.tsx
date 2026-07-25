@@ -11,6 +11,7 @@ import { Image as ImageComponent, Skeleton, SurfaceCard } from '~/components/sha
 import { Button, Text, Tooltip, useConfirm, useToast } from '~/components/ui';
 import { queryKeys } from '~/modules/query-key-factory';
 import { SETTINGS_MANAGE_IMAGE_DETAIL_ROUTE, SETTINGS_MANAGE_IMAGE_ROUTE } from '~/modules/url';
+import { getImageDeleteConfirmation } from './image-delete-confirmation';
 
 const Route = getRouteApi(SETTINGS_MANAGE_IMAGE_DETAIL_ROUTE);
 const DETAIL_PREVIEW_HEIGHT = 352;
@@ -112,7 +113,6 @@ const ManageImageDetailContent = ({ id }: ManageImageDetailContentProps) => {
 
     const referenceCount = imageNotes.length;
     const referenceText = getReferenceText(referenceCount);
-    const canDelete = referenceCount === 0;
 
     const deleteImageMutation = useMutation({
         mutationFn: async () => {
@@ -161,11 +161,11 @@ const ManageImageDetailContent = ({ id }: ManageImageDetailContentProps) => {
     });
 
     const handleDelete = async () => {
-        if (!canDelete || deleteImageMutation.isPending) {
+        if (deleteImageMutation.isPending) {
             return;
         }
 
-        if (await confirm('Delete this image? It is not referenced by any notes.')) {
+        if (await confirm(getImageDeleteConfirmation(referenceCount))) {
             deleteImageMutation.mutate();
         }
     };
@@ -186,21 +186,17 @@ const ManageImageDetailContent = ({ id }: ManageImageDetailContentProps) => {
                                 </Text>
                             </div>
                             <Text as="p" variant="meta" tone="tertiary">
-                                {canDelete
-                                    ? 'Delete is available because no notes reference this image'
-                                    : 'Remove this image from notes before deleting it'}
+                                {referenceCount > 0
+                                    ? 'Deleting this image will break it in the referenced notes'
+                                    : 'No notes currently reference this image'}
                             </Text>
                         </div>
                         <div className="flex gap-2">
-                            <Tooltip
-                                content={canDelete ? 'Delete this image' : 'Cannot delete while referenced by notes'}
-                                side="bottom"
-                            >
+                            <Tooltip content="Delete this image" side="bottom">
                                 <Button
                                     variant="soft-danger"
                                     size="sm"
                                     className="flex-1"
-                                    disabled={!canDelete}
                                     isLoading={deleteImageMutation.isPending}
                                     onClick={handleDelete}
                                 >

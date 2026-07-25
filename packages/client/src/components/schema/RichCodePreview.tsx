@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { type RichCodeKind, renderRichCode } from '~/modules/rich-code-renderer';
+import { useTheme } from '~/store/theme';
 
 interface RichCodePreviewProps {
     kind: RichCodeKind;
@@ -14,6 +15,7 @@ type PreviewState =
 export const RichCodePreview = ({ kind, source }: RichCodePreviewProps) => {
     const renderId = useId();
     const rootRef = useRef<HTMLDivElement>(null);
+    const theme = useTheme((state) => state.theme);
     const [shouldRender, setShouldRender] = useState(() => typeof IntersectionObserver === 'undefined');
     const [state, setState] = useState<PreviewState>({ status: 'idle' });
 
@@ -47,7 +49,7 @@ export const RichCodePreview = ({ kind, source }: RichCodePreviewProps) => {
         let cancelled = false;
         setState({ status: 'loading' });
 
-        renderRichCode(kind, source, renderId)
+        renderRichCode(kind, source, renderId, theme)
             .then((result) => {
                 if (!cancelled) {
                     setState({ status: 'success', ...result });
@@ -62,7 +64,7 @@ export const RichCodePreview = ({ kind, source }: RichCodePreviewProps) => {
         return () => {
             cancelled = true;
         };
-    }, [kind, renderId, shouldRender, source]);
+    }, [kind, renderId, shouldRender, source, theme]);
 
     useEffect(() => {
         if (state.status === 'success' && state.bindFunctions && rootRef.current) {
@@ -74,7 +76,7 @@ export const RichCodePreview = ({ kind, source }: RichCodePreviewProps) => {
         <div
             ref={rootRef}
             data-rich-code-preview
-            className="min-h-24 w-full overflow-auto bg-white px-4 py-5 text-black sm:px-6 sm:py-6"
+            className="min-h-24 w-full overflow-auto bg-surface px-4 py-5 text-fg-default sm:px-6 sm:py-6"
             contentEditable={false}
             aria-label={kind === 'mermaid' ? 'Mermaid diagram preview' : 'Math formula preview'}
         >

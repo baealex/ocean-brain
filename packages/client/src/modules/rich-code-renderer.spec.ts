@@ -23,12 +23,13 @@ describe('rich-code-renderer', () => {
     });
 
     it('renders Mermaid with strict security and a safe DOM id', async () => {
-        const result = await renderRichCode('mermaid', 'graph TD; A-->B', ':r/1:');
+        const result = await renderRichCode('mermaid', 'graph TD; A-->B', ':r/1:', 'dark');
 
         expect(mermaidMocks.initialize).toHaveBeenCalledWith({
             securityLevel: 'strict',
             startOnLoad: false,
             suppressErrorRendering: true,
+            theme: 'dark',
         });
         expect(mermaidMocks.render).toHaveBeenCalledWith('ocean-brain-mermaid-r1', 'graph TD; A-->B');
         expect(result.html).toContain('<svg');

@@ -140,7 +140,7 @@ export const CodeBlock = ({ block, contentRef }: CodeBlockProps) => {
                     </div>
                 </div>
             )}
-            <pre className={showPreview ? 'hidden' : undefined}>
+            <pre className={classNames(showPreview && 'hidden', kind && 'bg-[#181b20]')}>
                 <code ref={setCodeRef} />
             </pre>
             {kind && showPreview && <RichCodePreview kind={kind} source={source} />}

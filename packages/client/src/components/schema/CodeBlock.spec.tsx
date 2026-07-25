@@ -44,6 +44,7 @@ describe('CodeBlock', () => {
         await user.click(editButton);
 
         expect(screen.queryByLabelText('rich preview')).not.toBeInTheDocument();
+        expect(container.querySelector('pre')).toHaveClass('bg-[#181b20]');
         expect(container.querySelector('pre')).not.toHaveClass('hidden');
         expect(editButton).toHaveAttribute('aria-pressed', 'true');
         expect(previewButton).toHaveAttribute('aria-pressed', 'false');

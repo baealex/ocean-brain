@@ -71,11 +71,18 @@ test('Diagram slash commands remain editable and render after a hard refresh', a
     await diagramToolbar.getByRole('button', { name: 'Edit' }).click();
     await expect(codeBlock.locator('pre')).toBeVisible();
     await expect(codeBlock.locator('code')).toContainText('graph TD; A-->B');
+    const sourceColors = await codeBlock.locator('pre').evaluate((element) => ({
+        background: getComputedStyle(element).backgroundColor,
+        foreground: getComputedStyle(element).color,
+    }));
+    expect(sourceColors.background).toBe('rgb(24, 27, 32)');
+    expect(sourceColors.foreground).not.toBe(sourceColors.background);
     expect(runtimeErrors).toEqual([]);
 });
 
 test('Math formula slash commands render accessible formulas after a hard refresh', async ({ page }) => {
     const runtimeErrors = collectRuntimeErrors(page);
+    await page.addInitScript(() => window.localStorage.setItem('theme', 'dark'));
     await signIn(page);
 
     await page.getByRole('button', { name: /Open a new note/ }).click();
@@ -95,6 +102,8 @@ test('Math formula slash commands render accessible formulas after a hard refres
     const preview = page.getByLabel('Math formula preview');
     await expect(preview.locator('.katex')).toBeVisible();
     await expect(preview.locator('math')).toHaveCount(1);
+    await expect(page.locator('html')).toHaveClass(/dark/);
+    await expect(preview).not.toHaveCSS('background-color', 'rgb(255, 255, 255)');
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(page.getByRole('status')).toContainText('Saved');
 

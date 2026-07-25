@@ -60,6 +60,13 @@ const propertyValueTypeSchema = z.enum(['text', 'url', 'number', 'date', 'boolea
 const propertyFilterOperatorSchema = z.enum(['equals', 'before', 'after', 'exists', 'notExists']);
 const viewSortBySchema = z.enum(['updatedAt', 'createdAt', 'title']);
 const viewSortOrderSchema = z.enum(['asc', 'desc']);
+const searchModeSchema = z.enum(['hybrid', 'lexical', 'semantic']);
+
+const graphqlSearchModes = {
+    hybrid: 'HYBRID',
+    lexical: 'LEXICAL',
+    semantic: 'SEMANTIC',
+} as const;
 
 interface McpGraphqlErrorShape {
     message: string;
@@ -222,23 +229,78 @@ const requireWriteToken = (token: string | undefined, toolName: string) => {
     throw new Error(`${toolName} requires an MCP bearer token. Set --token or --token-file.`);
 };
 
-const registerMcpTools = (
+interface McpSearchNote {
+    id: string;
+    title: string;
+    updatedAt: string;
+    tags: Array<{ id: string; name: string }>;
+    contentAsMarkdown: string;
+}
+
+const formatMcpSearchNotes = (notes: McpSearchNote[]) => notes.map((note) => ({
+    id: note.id,
+    title: note.title,
+    updatedAt: note.updatedAt,
+    tags: note.tags.map((t) => t.name),
+    preview: note.contentAsMarkdown.slice(0, 100),
+}));
+
+export const registerMcpTools = (
     server: McpServer,
     serverUrl: string,
     token?: string
 ) => {
     server.tool(
         OCEAN_BRAIN_MCP_TOOLS.searchNotes,
-        'Search Ocean Brain notes by keyword. Returns matching note titles and tags. Use ocean_brain_read_note to get full content for a specific note.',
+        'Search Ocean Brain notes by keyword or meaning. Hybrid search combines both; use lexical for exact terms and semantic for meaning-based recall. Returns matching note titles, tags, previews, and search status. Use ocean_brain_read_note to get full content for a specific note.',
         {
-            query: z.string().describe('Search keyword'),
+            query: z.string().describe('Search words or a natural-language description'),
             limit: z.number().optional().default(10).describe('Max results (default: 10)'),
+            mode: searchModeSchema.optional().describe('Optional search mode: hybrid or semantic enables meaning search; omit for the legacy keyword search'),
         },
-        async ({ query, limit }) => {
+        async ({ query, limit, mode }) => {
+            if (!mode || mode === 'lexical') {
+                const data = await graphql(serverUrl, token, `
+                    query ($searchFilter: SearchFilterInput, $pagination: PaginationInput) {
+                        allNotes(searchFilter: $searchFilter, pagination: $pagination) {
+                            totalCount
+                            notes {
+                                id
+                                title
+                                updatedAt
+                                tags { id name }
+                                contentAsMarkdown
+                            }
+                        }
+                    }
+                `, {
+                    searchFilter: { query, sortBy: 'updatedAt', sortOrder: 'desc' },
+                    pagination: { limit, offset: 0 },
+                });
+
+                const result = data?.allNotes as {
+                    totalCount: number;
+                    notes: McpSearchNote[];
+                };
+
+                return createMcpJsonToolResult({
+                    totalCount: result.totalCount,
+                    notes: formatMcpSearchNotes(result.notes),
+                });
+            }
+
             const data = await graphql(serverUrl, token, `
-                query ($searchFilter: SearchFilterInput, $pagination: PaginationInput) {
-                    allNotes(searchFilter: $searchFilter, pagination: $pagination) {
+                query ($query: String!, $mode: SearchMode!, $pagination: PaginationInput!) {
+                    searchNotes(query: $query, mode: $mode, pagination: $pagination) {
                         totalCount
+                        semanticAvailable
+                        semanticUsed
+                        semanticError
+                        matches {
+                            noteId
+                            lexical
+                            semantic
+                        }
                         notes {
                             id
                             title
@@ -249,30 +311,32 @@ const registerMcpTools = (
                     }
                 }
             `, {
-                searchFilter: { query, sortBy: 'updatedAt', sortOrder: 'desc' },
+                query,
+                mode: graphqlSearchModes[mode],
                 pagination: { limit, offset: 0 },
             });
 
-            const result = data?.allNotes as {
+            const result = data?.searchNotes as {
                 totalCount: number;
-                notes: Array<{
-                    id: string;
-                    title: string;
-                    updatedAt: string;
-                    tags: Array<{ id: string; name: string }>;
-                    contentAsMarkdown: string;
+                semanticAvailable: boolean;
+                semanticUsed: boolean;
+                semanticError: string | null;
+                matches: Array<{
+                    noteId: string;
+                    lexical: boolean;
+                    semantic: boolean;
                 }>;
+                notes: McpSearchNote[];
             };
 
-            const notes = result.notes.map((note) => ({
-                id: note.id,
-                title: note.title,
-                updatedAt: note.updatedAt,
-                tags: note.tags.map((t) => t.name),
-                preview: note.contentAsMarkdown.slice(0, 100),
-            }));
-
-            return createMcpJsonToolResult({ totalCount: result.totalCount, notes });
+            return createMcpJsonToolResult({
+                totalCount: result.totalCount,
+                semanticAvailable: result.semanticAvailable,
+                semanticUsed: result.semanticUsed,
+                semanticError: result.semanticError,
+                matches: result.matches,
+                notes: formatMcpSearchNotes(result.notes),
+            });
         },
     );
 

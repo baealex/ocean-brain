@@ -18,8 +18,51 @@ interface ImageDeleteDeps {
     resolveImagePath: (url: string) => string;
 }
 
+const PUBLIC_IMAGE_PATH_PREFIX = '/assets/images/';
+const INVALID_STORED_IMAGE_PATH_MESSAGE = 'Stored image URL must point to a file inside the image directory.';
+
+const invalidStoredImagePath = () => new Error(INVALID_STORED_IMAGE_PATH_MESSAGE);
+
 export const resolveStoredImagePath = (url: string) => {
-    return path.resolve(paths.imageDir, url.replace('/assets/images/', ''));
+    if (!url.startsWith(PUBLIC_IMAGE_PATH_PREFIX)) {
+        throw invalidStoredImagePath();
+    }
+
+    let relativePath: string;
+
+    try {
+        relativePath = decodeURIComponent(url.slice(PUBLIC_IMAGE_PATH_PREFIX.length));
+    } catch {
+        throw invalidStoredImagePath();
+    }
+
+    const pathSegments = relativePath.split('/');
+    const isCanonicalRelativePath =
+        relativePath.length > 0 &&
+        !relativePath.includes('\\') &&
+        !relativePath.includes('\0') &&
+        !relativePath.includes('?') &&
+        !relativePath.includes('#') &&
+        pathSegments.every((segment) => segment.length > 0 && segment !== '.' && segment !== '..');
+
+    if (!isCanonicalRelativePath) {
+        throw invalidStoredImagePath();
+    }
+
+    const imageDir = path.resolve(paths.imageDir);
+    const imagePath = path.resolve(imageDir, relativePath);
+    const relativeImagePath = path.relative(imageDir, imagePath);
+    const isInsideImageDir =
+        relativeImagePath.length > 0 &&
+        relativeImagePath !== '..' &&
+        !relativeImagePath.startsWith(`..${path.sep}`) &&
+        !path.isAbsolute(relativeImagePath);
+
+    if (!isInsideImageDir) {
+        throw invalidStoredImagePath();
+    }
+
+    return imagePath;
 };
 
 export const createImageDeleteService = (deps: ImageDeleteDeps) => {

@@ -24,6 +24,7 @@ import {
     SETTINGS_PLACEHOLDER_ROUTE,
     SETTINGS_PROPERTIES_ROUTE,
     SETTINGS_ROUTE,
+    SETTINGS_SEARCH_ROUTE,
     SETTINGS_TRASH_ROUTE,
     TAG_NOTES_ROUTE,
     TAG_ROUTE,
@@ -149,6 +150,15 @@ const mcpRoute = createRoute({
     ),
 });
 
+const searchSettingsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: SETTINGS_SEARCH_ROUTE,
+    component: lazyRouteComponent(() => import('~/pages/setting/search')),
+    pendingComponent: () => (
+        <RoutePendingView title="Loading search settings" description="Preparing semantic search controls." />
+    ),
+});
+
 const trashRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: SETTINGS_TRASH_ROUTE,
@@ -210,6 +220,7 @@ const routeTree = rootRoute.addChildren([
     tagNotesRoute,
     viewNotesRoute,
     settingsRoute,
+    searchSettingsRoute,
     mcpRoute,
     trashRoute,
     manageImageRoute,

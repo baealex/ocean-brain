@@ -32,6 +32,37 @@ export const notesLocalPlugin: LocalDemoPlugin = {
             );
             return success({ allNotes: { totalCount: filtered.length, notes: paginate(filtered, variables) } });
         },
+        FetchSearchNotes: ({ state, variables }) => {
+            const mode = variables.mode as 'HYBRID' | 'LEXICAL' | 'SEMANTIC' | undefined;
+            if (mode === 'SEMANTIC') {
+                return success({
+                    searchNotes: {
+                        totalCount: 0,
+                        notes: [],
+                        matches: [],
+                        semanticAvailable: false,
+                        semanticUsed: false,
+                        semanticError: 'Meaning search is not available in local demo mode.',
+                    },
+                });
+            }
+
+            const filtered = sortNotes(
+                state.notes.filter((note) => noteMatchesQuery(note, getQueryText(variables))),
+                { ...variables, searchFilter: { sortBy: 'updatedAt', sortOrder: 'desc' } },
+            );
+            const notes = paginate(filtered, variables);
+            return success({
+                searchNotes: {
+                    totalCount: filtered.length,
+                    notes,
+                    matches: notes.map((note) => ({ noteId: note.id, lexical: true, semantic: false })),
+                    semanticAvailable: false,
+                    semanticUsed: false,
+                    semanticError: null,
+                },
+            });
+        },
         FetchTagNotes: ({ state, variables }) => {
             const tagId = getQueryText(variables);
             const filtered = sortNotes(

@@ -7,6 +7,7 @@ import type {
 } from '~/apis/note.api';
 import type { FetchPlaceholdersParams } from '~/apis/placeholder.api';
 import type { ReminderPaginationParams } from '~/apis/reminder.api';
+import type { FetchSearchNotesParams } from '~/apis/search.api';
 import type { FetchTagsParams } from '~/apis/tag.api';
 
 const normalizeFields = (fields?: FetchNotesParams['fields']) => {
@@ -218,6 +219,22 @@ export const queryKeys = {
                     offset: params.offset ?? 0,
                 },
             ] as const,
+    },
+    search: {
+        all: () => ['search'] as const,
+        resultsAll: () => ['search', 'results'] as const,
+        results: (params: FetchSearchNotesParams) =>
+            [
+                'search',
+                'results',
+                {
+                    query: params.query.trim(),
+                    limit: params.limit ?? 25,
+                    offset: params.offset ?? 0,
+                    mode: params.mode ?? 'hybrid',
+                },
+            ] as const,
+        adminStatus: () => ['search', 'admin-status'] as const,
     },
     ui: { heroBanner: () => ['ui', 'hero-banner'] as const },
 } as const;

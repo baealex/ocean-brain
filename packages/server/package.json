@@ -30,6 +30,7 @@
         "lusca": "catalog:",
         "prisma": "catalog:",
         "sqlite3": "catalog:",
+        "sqlite-vec": "catalog:",
         "winston": "catalog:"
     },
     "devDependencies": {

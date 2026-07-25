@@ -5,3 +5,5 @@
 
 db.sqlite3*
 test.sqlite3*
+search.sqlite3*
+embedding-api-key

@@ -18,6 +18,9 @@ const mcpAdminAdapterPath = isLocalOnlyDemoBuild
 const imageUploadAdapterPath = isLocalOnlyDemoBuild
     ? './src/apis/image-upload-adapter.local.ts'
     : './src/apis/image-upload-adapter.ts';
+const searchAdminAdapterPath = isLocalOnlyDemoBuild
+    ? './src/apis/search-admin-adapter.local.ts'
+    : './src/apis/search-admin-adapter.ts';
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -46,6 +49,10 @@ export default defineConfig({
             {
                 find: '~/apis/image-upload-adapter',
                 replacement: path.resolve(__dirname, imageUploadAdapterPath),
+            },
+            {
+                find: '~/apis/search-admin-adapter',
+                replacement: path.resolve(__dirname, searchAdminAdapterPath),
             },
             { find: '~', replacement: path.resolve(__dirname, './src') },
         ],

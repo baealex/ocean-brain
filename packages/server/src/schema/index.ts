@@ -4,6 +4,7 @@ import { imageResolvers, imageTypeDefs } from '../features/image/graphql/index.j
 import { noteResolvers, noteTypeDefs } from '../features/note/graphql/index.js';
 import { placeholderResolvers, placeholderTypeDefs } from '../features/placeholder/graphql/index.js';
 import { reminderResolvers, reminderTypeDefs } from '../features/reminder/graphql/index.js';
+import { searchResolvers, searchTypeDefs } from '../features/search/graphql/index.js';
 import { tagResolvers, tagTypeDefs } from '../features/tag/graphql/index.js';
 import { viewResolvers, viewTypeDefs } from '../features/view/graphql/index.js';
 
@@ -15,6 +16,7 @@ const schema = makeExecutableSchema({
         tagTypeDefs,
         placeholderTypeDefs,
         reminderTypeDefs,
+        searchTypeDefs,
         viewTypeDefs,
     ],
     resolvers: [
@@ -24,6 +26,7 @@ const schema = makeExecutableSchema({
         tagResolvers,
         placeholderResolvers,
         reminderResolvers,
+        searchResolvers,
         viewResolvers,
     ],
 });

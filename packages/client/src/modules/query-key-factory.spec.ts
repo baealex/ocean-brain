@@ -1,0 +1,26 @@
+// @vitest-environment node
+import { queryKeys } from './query-key-factory';
+
+describe('queryKeys.search', () => {
+    it('normalizes search pagination defaults and surrounding whitespace', () => {
+        expect(queryKeys.search.results({ query: '  vague memory  ' })).toEqual([
+            'search',
+            'results',
+            {
+                query: 'vague memory',
+                limit: 25,
+                offset: 0,
+                mode: 'hybrid',
+            },
+        ]);
+
+        expect(queryKeys.search.results({ query: 'vague memory', mode: 'semantic' })).not.toEqual(
+            queryKeys.search.results({ query: 'vague memory', mode: 'lexical' }),
+        );
+    });
+
+    it('keeps search settings status separate from result pages', () => {
+        expect(queryKeys.search.adminStatus()).toEqual(['search', 'admin-status']);
+        expect(queryKeys.search.resultsAll()).toEqual(['search', 'results']);
+    });
+});

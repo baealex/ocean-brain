@@ -8,6 +8,13 @@ import {
     createMcpAdminStatusHandler,
 } from '../features/mcp-admin/http/handlers.js';
 import type { McpAdminService } from '../features/mcp-admin/service.js';
+import {
+    createSearchAdminListModelsHandler,
+    createSearchAdminReindexHandler,
+    createSearchAdminSaveConfigHandler,
+    createSearchAdminStatusHandler,
+    createSearchAdminTestConnectionHandler,
+} from '../features/search/http/handlers.js';
 import { createCsrfProtection, requireSessionForWrite } from '../modules/auth-guard.js';
 import type { AuthConfig } from '../modules/auth-mode.js';
 import { createAuthAttemptRateLimit, createSessionAccessRateLimit } from '../modules/rate-limit.js';
@@ -63,6 +70,41 @@ export const createApiRouter = (authConfig: AuthConfig, mcpAdminService: McpAdmi
             requireSession,
             csrfProtection,
             useAsync(createMcpAdminRevokeTokenHandler(mcpAdminService)),
+        )
+        .get(
+            '/search-admin/status',
+            sessionAccessRateLimit,
+            requireSession,
+            csrfProtection,
+            useAsync(createSearchAdminStatusHandler()),
+        )
+        .post(
+            '/search-admin/config',
+            sessionAccessRateLimit,
+            requireSession,
+            csrfProtection,
+            useAsync(createSearchAdminSaveConfigHandler()),
+        )
+        .post(
+            '/search-admin/models',
+            sessionAccessRateLimit,
+            requireSession,
+            csrfProtection,
+            useAsync(createSearchAdminListModelsHandler()),
+        )
+        .post(
+            '/search-admin/test',
+            sessionAccessRateLimit,
+            requireSession,
+            csrfProtection,
+            useAsync(createSearchAdminTestConnectionHandler()),
+        )
+        .post(
+            '/search-admin/reindex',
+            sessionAccessRateLimit,
+            requireSession,
+            csrfProtection,
+            useAsync(createSearchAdminReindexHandler()),
         )
         .post('/image', sessionAccessRateLimit, requireSession, csrfProtection, useAsync(createUploadImageHandler()))
         .get('/events', sessionAccessRateLimit, requireSession, csrfProtection, createServerEventsHandler());

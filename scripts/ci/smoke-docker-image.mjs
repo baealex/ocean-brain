@@ -93,6 +93,28 @@ async function assertClientShell() {
     }
 }
 
+async function assertSearchAdminStatus() {
+    const response = await fetch(`${rootUrl}/api/search-admin/status`, {
+        signal: AbortSignal.timeout(5000)
+    });
+    const bodyText = await response.text();
+
+    if (response.status !== 200) {
+        throw new Error(`/api/search-admin/status returned HTTP ${response.status}: ${bodyText}`);
+    }
+
+    let body;
+    try {
+        body = JSON.parse(bodyText);
+    } catch {
+        throw new Error(`/api/search-admin/status returned invalid JSON: ${bodyText}`);
+    }
+
+    if (typeof body.phase !== 'string' || typeof body.available !== 'boolean') {
+        throw new Error(`/api/search-admin/status returned unexpected payload: ${bodyText}`);
+    }
+}
+
 async function assertGraphql() {
     const response = await fetch(`${rootUrl}/graphql`, {
         method: 'POST',
@@ -142,6 +164,7 @@ async function main() {
         await waitForReady();
         await assertOpenMode();
         await assertClientShell();
+        await assertSearchAdminStatus();
         await assertGraphql();
         console.log(`Docker smoke test passed: ${image}`);
     } finally {

@@ -91,7 +91,7 @@ export const CodeBlock = ({ block, contentRef }: CodeBlockProps) => {
                         }}
                     >
                         {showPreview ? <Icon.Edit className="h-3.5 w-3.5" /> : <Icon.Eye className="h-3.5 w-3.5" />}
-                        {showPreview ? 'Edit source' : 'Show preview'}
+                        {showPreview ? 'Edit' : 'Preview'}
                     </button>
                 </div>
             )}

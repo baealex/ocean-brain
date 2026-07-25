@@ -40,7 +40,7 @@ test('production note chunks render after navigation and a direct hard refresh',
     expect(runtimeErrors).toEqual([]);
 });
 
-test('Mermaid code fences remain editable and render after a hard refresh', async ({ page }) => {
+test('Diagram slash commands remain editable and render after a hard refresh', async ({ page }) => {
     const runtimeErrors = collectRuntimeErrors(page);
     await signIn(page);
 
@@ -49,13 +49,14 @@ test('Mermaid code fences remain editable and render after a hard refresh', asyn
 
     const editor = page.locator('.bn-editor[contenteditable="true"]');
     await editor.click();
-    await page.keyboard.type('```mermaid ');
+    await page.keyboard.type('/diagram');
+    await page.getByText('Diagram', { exact: true }).click();
 
-    await expect(page.getByRole('button', { name: 'Show preview' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Preview' })).toBeVisible();
     const codeBlock = page.locator('[data-content-type="codeBlock"]');
     await codeBlock.locator('code').click();
     await page.keyboard.type('graph TD; A-->B');
-    await page.getByRole('button', { name: 'Show preview' }).click();
+    await page.getByRole('button', { name: 'Preview' }).click();
 
     const preview = page.getByLabel('Mermaid diagram preview');
     await expect(preview.locator('svg')).toBeVisible();
@@ -68,7 +69,7 @@ test('Mermaid code fences remain editable and render after a hard refresh', asyn
     expect(runtimeErrors).toEqual([]);
 });
 
-test('KaTeX code fences render accessible formulas after a hard refresh', async ({ page }) => {
+test('Math formula slash commands render accessible formulas after a hard refresh', async ({ page }) => {
     const runtimeErrors = collectRuntimeErrors(page);
     await signIn(page);
 
@@ -77,13 +78,14 @@ test('KaTeX code fences render accessible formulas after a hard refresh', async 
 
     const editor = page.locator('.bn-editor[contenteditable="true"]');
     await editor.click();
-    await page.keyboard.type('```math ');
+    await page.keyboard.type('/math');
+    await page.getByText('Math Formula', { exact: true }).click();
 
-    await expect(page.getByRole('button', { name: 'Show preview' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Preview' })).toBeVisible();
     const codeBlock = page.locator('[data-content-type="codeBlock"]');
     await codeBlock.locator('code').click();
     await page.keyboard.type('E = mc^2');
-    await page.getByRole('button', { name: 'Show preview' }).click();
+    await page.getByRole('button', { name: 'Preview' }).click();
 
     const preview = page.getByLabel('Math formula preview');
     await expect(preview.locator('.katex')).toBeVisible();

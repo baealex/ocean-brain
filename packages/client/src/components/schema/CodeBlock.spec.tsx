@@ -34,18 +34,18 @@ describe('CodeBlock', () => {
         expect(container.querySelector('pre')).toHaveClass('hidden');
         expect(contentRef).toHaveBeenCalledWith(expect.any(HTMLElement));
 
-        await user.click(screen.getByRole('button', { name: 'Edit source' }));
+        await user.click(screen.getByRole('button', { name: 'Edit' }));
 
         expect(screen.queryByLabelText('rich preview')).not.toBeInTheDocument();
         expect(container.querySelector('pre')).not.toHaveClass('hidden');
-        expect(screen.getByRole('button', { name: 'Show preview' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Preview' })).toBeInTheDocument();
     });
 
     it('leaves ordinary code blocks unchanged', () => {
         const { container } = renderCodeBlock('typescript', 'const value = 1;');
 
         expect(screen.queryByLabelText('rich preview')).not.toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: 'Edit source' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
         expect(container.querySelector('pre')).not.toHaveClass('hidden');
     });
 
@@ -55,7 +55,7 @@ describe('CodeBlock', () => {
 
         expect(screen.queryByLabelText('rich preview')).not.toBeInTheDocument();
         expect(container.querySelector('pre')).not.toHaveClass('hidden');
-        expect(screen.getByRole('button', { name: 'Show preview' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Preview' })).toBeInTheDocument();
 
         act(() => {
             const code = container.querySelector('code');
@@ -64,7 +64,7 @@ describe('CodeBlock', () => {
                 code.textContent = 'graph TD; Live-->Preview';
             }
         });
-        await user.click(screen.getByRole('button', { name: 'Show preview' }));
+        await user.click(screen.getByRole('button', { name: 'Preview' }));
 
         expect(screen.getByLabelText('rich preview')).toHaveTextContent('graph TD; Live-->Preview');
     });

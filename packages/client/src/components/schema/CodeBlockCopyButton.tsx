@@ -8,10 +8,15 @@ type CopyStatus = 'idle' | 'copied' | 'failed';
 interface CodeBlockCopyButtonProps {
     getText: () => string;
     resetDelayMs?: number;
+    variant?: 'floating' | 'toolbar';
 }
 
-const copyButtonBaseClassName =
-    'pointer-events-auto inline-flex h-7 cursor-pointer select-none items-center gap-1.5 rounded-[8px] border border-white/10 bg-white/10 px-2.5 text-xs font-medium text-white/60 opacity-75 shadow-[0_8px_18px_-14px_rgba(0,0,0,0.45)] backdrop-blur-sm transition-colors hover:bg-white/20 hover:text-white/90 hover:opacity-100 focus-ring-soft focus:text-white/90 focus:opacity-100';
+const copyButtonClassName = {
+    floating:
+        'pointer-events-auto inline-flex h-7 cursor-pointer select-none items-center gap-1.5 rounded-[8px] border border-white/10 bg-white/10 px-2.5 text-xs font-medium text-white/60 opacity-75 shadow-[0_8px_18px_-14px_rgba(0,0,0,0.45)] backdrop-blur-sm transition-colors hover:bg-white/20 hover:text-white/90 hover:opacity-100 focus-ring-soft focus:text-white/90 focus:opacity-100',
+    toolbar:
+        'focus-ring-soft inline-flex h-8 cursor-pointer select-none items-center gap-1.5 rounded-[8px] border border-transparent px-2.5 text-xs font-semibold text-fg-secondary outline-none transition-colors hover:border-border-subtle hover:bg-hover-subtle hover:text-fg-default',
+};
 
 const copyButtonStatusClassName: Record<CopyStatus, string> = {
     idle: '',
@@ -25,7 +30,11 @@ const copyStatusLabel: Record<CopyStatus, string> = {
     failed: 'Copy failed',
 };
 
-export const CodeBlockCopyButton = ({ getText, resetDelayMs = 2000 }: CodeBlockCopyButtonProps) => {
+export const CodeBlockCopyButton = ({
+    getText,
+    resetDelayMs = 2000,
+    variant = 'floating',
+}: CodeBlockCopyButtonProps) => {
     const [status, setStatus] = useState<CopyStatus>('idle');
     const resetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -70,13 +79,13 @@ export const CodeBlockCopyButton = ({ getText, resetDelayMs = 2000 }: CodeBlockC
 
     return (
         <div
-            className="pointer-events-none absolute right-3 top-2 z-[1]"
+            className={classNames(variant === 'floating' && 'pointer-events-none absolute right-3 top-2 z-[1]')}
             contentEditable={false}
             onMouseDown={preventEditorFocus}
         >
             <button
                 type="button"
-                className={classNames(copyButtonBaseClassName, copyButtonStatusClassName[status])}
+                className={classNames(copyButtonClassName[variant], copyButtonStatusClassName[status])}
                 contentEditable={false}
                 onClick={handleCopy}
             >

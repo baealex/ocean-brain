@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { CodeBlock } from './CodeBlock';
@@ -34,18 +34,27 @@ describe('CodeBlock', () => {
         expect(container.querySelector('pre')).toHaveClass('hidden');
         expect(contentRef).toHaveBeenCalledWith(expect.any(HTMLElement));
 
-        await user.click(screen.getByRole('button', { name: 'Edit source' }));
+        const toolbar = screen.getByRole('toolbar', { name: 'Diagram controls' });
+        const editButton = within(toolbar).getByRole('button', { name: 'Edit' });
+        const previewButton = within(toolbar).getByRole('button', { name: 'Preview' });
+
+        expect(editButton).toHaveAttribute('aria-pressed', 'false');
+        expect(previewButton).toHaveAttribute('aria-pressed', 'true');
+
+        await user.click(editButton);
 
         expect(screen.queryByLabelText('rich preview')).not.toBeInTheDocument();
+        expect(container.querySelector('pre')).toHaveClass('bg-[#181b20]');
         expect(container.querySelector('pre')).not.toHaveClass('hidden');
-        expect(screen.getByRole('button', { name: 'Show preview' })).toBeInTheDocument();
+        expect(editButton).toHaveAttribute('aria-pressed', 'true');
+        expect(previewButton).toHaveAttribute('aria-pressed', 'false');
     });
 
     it('leaves ordinary code blocks unchanged', () => {
         const { container } = renderCodeBlock('typescript', 'const value = 1;');
 
         expect(screen.queryByLabelText('rich preview')).not.toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: 'Edit source' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
         expect(container.querySelector('pre')).not.toHaveClass('hidden');
     });
 
@@ -55,7 +64,11 @@ describe('CodeBlock', () => {
 
         expect(screen.queryByLabelText('rich preview')).not.toBeInTheDocument();
         expect(container.querySelector('pre')).not.toHaveClass('hidden');
-        expect(screen.getByRole('button', { name: 'Show preview' })).toBeInTheDocument();
+        const toolbar = screen.getByRole('toolbar', { name: 'Diagram controls' });
+        const previewButton = within(toolbar).getByRole('button', { name: 'Preview' });
+
+        expect(within(toolbar).getByRole('button', { name: 'Edit' })).toHaveAttribute('aria-pressed', 'true');
+        expect(previewButton).toHaveAttribute('aria-pressed', 'false');
 
         act(() => {
             const code = container.querySelector('code');
@@ -64,8 +77,9 @@ describe('CodeBlock', () => {
                 code.textContent = 'graph TD; Live-->Preview';
             }
         });
-        await user.click(screen.getByRole('button', { name: 'Show preview' }));
+        await user.click(previewButton);
 
         expect(screen.getByLabelText('rich preview')).toHaveTextContent('graph TD; Live-->Preview');
+        expect(previewButton).toHaveAttribute('aria-pressed', 'true');
     });
 });

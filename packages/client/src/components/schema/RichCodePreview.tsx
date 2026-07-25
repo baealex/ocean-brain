@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { type RichCodeKind, renderRichCode } from '~/modules/rich-code-renderer';
+import { useTheme } from '~/store/theme';
 
 interface RichCodePreviewProps {
     kind: RichCodeKind;
@@ -14,6 +15,7 @@ type PreviewState =
 export const RichCodePreview = ({ kind, source }: RichCodePreviewProps) => {
     const renderId = useId();
     const rootRef = useRef<HTMLDivElement>(null);
+    const theme = useTheme((state) => state.theme);
     const [shouldRender, setShouldRender] = useState(() => typeof IntersectionObserver === 'undefined');
     const [state, setState] = useState<PreviewState>({ status: 'idle' });
 
@@ -47,7 +49,7 @@ export const RichCodePreview = ({ kind, source }: RichCodePreviewProps) => {
         let cancelled = false;
         setState({ status: 'loading' });
 
-        renderRichCode(kind, source, renderId)
+        renderRichCode(kind, source, renderId, theme)
             .then((result) => {
                 if (!cancelled) {
                     setState({ status: 'success', ...result });
@@ -62,7 +64,7 @@ export const RichCodePreview = ({ kind, source }: RichCodePreviewProps) => {
         return () => {
             cancelled = true;
         };
-    }, [kind, renderId, shouldRender, source]);
+    }, [kind, renderId, shouldRender, source, theme]);
 
     useEffect(() => {
         if (state.status === 'success' && state.bindFunctions && rootRef.current) {
@@ -73,13 +75,14 @@ export const RichCodePreview = ({ kind, source }: RichCodePreviewProps) => {
     return (
         <div
             ref={rootRef}
-            className="min-h-24 w-full overflow-x-auto rounded-[8px] bg-white px-6 py-8 text-black"
+            data-rich-code-preview
+            className="min-h-24 w-full overflow-auto bg-surface px-4 py-5 text-fg-default sm:px-6 sm:py-6"
             contentEditable={false}
             aria-label={kind === 'mermaid' ? 'Mermaid diagram preview' : 'Math formula preview'}
         >
             {state.status === 'success' && (
                 <div
-                    className="[&_.katex-display]:m-0 [&_svg]:mx-auto [&_svg]:max-w-full"
+                    className="[&_.katex-display]:m-0 [&_svg]:mx-auto [&_svg]:block [&_svg]:h-auto [&_svg]:max-h-[min(68vh,640px)] [&_svg]:max-w-full"
                     // Mermaid runs in strict mode and KaTeX runs with trust disabled.
                     // Both libraries return the HTML required for their visual output.
                     dangerouslySetInnerHTML={{ __html: state.html }}

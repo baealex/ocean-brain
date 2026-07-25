@@ -1,5 +1,6 @@
-import { act, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { act, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { useTheme } from '~/store/theme';
 import { RichCodePreview } from './RichCodePreview';
 
 const renderRichCodeMock = vi.hoisted(() => vi.fn());
@@ -9,6 +10,10 @@ vi.mock('~/modules/rich-code-renderer', () => ({
 }));
 
 const originalIntersectionObserver = globalThis.IntersectionObserver;
+
+beforeEach(() => {
+    useTheme.setState({ theme: 'light', explicitTheme: 'light' });
+});
 
 afterEach(() => {
     Object.defineProperty(globalThis, 'IntersectionObserver', {
@@ -44,7 +49,7 @@ describe('RichCodePreview', () => {
         });
 
         expect(await screen.findByTestId('rendered-diagram')).toBeInTheDocument();
-        expect(renderRichCodeMock).toHaveBeenCalledWith('mermaid', 'graph TD; A-->B', expect.any(String));
+        expect(renderRichCodeMock).toHaveBeenCalledWith('mermaid', 'graph TD; A-->B', expect.any(String), 'light');
         expect(disconnect).toHaveBeenCalled();
     });
 
@@ -59,5 +64,35 @@ describe('RichCodePreview', () => {
 
         expect(await screen.findByText('Preview could not be rendered. The source is preserved.')).toBeInTheDocument();
         expect(screen.getByText(String.raw`\frac{`)).toBeInTheDocument();
+    });
+
+    it('rerenders previews when the application theme changes', async () => {
+        Object.defineProperty(globalThis, 'IntersectionObserver', {
+            configurable: true,
+            value: undefined,
+        });
+        renderRichCodeMock.mockResolvedValue({ html: '<svg data-testid="themed-diagram"></svg>' });
+
+        render(<RichCodePreview kind="mermaid" source="graph TD; A-->B" />);
+
+        await waitFor(() =>
+            expect(renderRichCodeMock).toHaveBeenLastCalledWith(
+                'mermaid',
+                'graph TD; A-->B',
+                expect.any(String),
+                'light',
+            ),
+        );
+
+        act(() => useTheme.setState({ theme: 'dark', explicitTheme: 'dark' }));
+
+        await waitFor(() =>
+            expect(renderRichCodeMock).toHaveBeenLastCalledWith(
+                'mermaid',
+                'graph TD; A-->B',
+                expect.any(String),
+                'dark',
+            ),
+        );
     });
 });

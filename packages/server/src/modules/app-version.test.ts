@@ -46,7 +46,7 @@ test('resolveMcpCompatibilityVersion reads explicit package compatibility metada
             }),
         );
 
-        assert.equal(resolveMcpCompatibilityVersion(), '0.8.0');
+        assert.equal(resolveMcpCompatibilityVersion(), '0.9.0');
         assert.equal(resolveMcpCompatibilityVersionFromPaths([packageJsonPath]), '0.8.0');
     } finally {
         fs.rmSync(tempDir, { recursive: true, force: true });

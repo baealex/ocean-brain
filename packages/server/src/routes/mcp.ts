@@ -7,7 +7,6 @@ import {
     createMcpNoteWriteBaselineHandler,
     createMcpPatchNoteMarkdownHandler,
     createMcpReplaceNoteMarkdownHandler,
-    createMcpUpdateNoteHandler,
     createMcpUpdateNoteMetadataHandler,
 } from '../features/note/http/mcp.js';
 import { createMcpCreateTagHandler } from '../features/tag/http/mcp.js';
@@ -23,11 +22,6 @@ export const createMcpRouter = (authConfig: AuthConfig, mcpAdminService: McpRout
             '/notes/create',
             createMcpAuthMiddleware(authConfig, mcpAdminService),
             useAsync(createMcpCreateNoteHandler()),
-        )
-        .post(
-            '/notes/update',
-            createMcpAuthMiddleware(authConfig, mcpAdminService),
-            useAsync(createMcpUpdateNoteHandler()),
         )
         .post(
             '/notes/baseline',

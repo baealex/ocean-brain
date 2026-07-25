@@ -7,7 +7,6 @@ import { z } from 'zod';
 
 import { formatMcpReadNoteOutput } from './mcp-note-output.js';
 import { registerIntentWriteTools } from './mcp-intent-write-tools.js';
-import { registerLegacyWriteTools } from './mcp-legacy-write-tools.js';
 import { formatPropertyQueryResponse, type PropertyQueryResult } from './mcp-property-query-output.js';
 import {
     createMcpJsonToolResult,
@@ -41,7 +40,6 @@ export const OCEAN_BRAIN_MCP_TOOLS = {
     searchNotes: 'ocean_brain_search_notes',
     readNote: 'ocean_brain_read_note',
     createNote: 'ocean_brain_create_note',
-    updateNote: 'ocean_brain_update_note',
     patchNoteMarkdown: 'ocean_brain_patch_note_markdown',
     appendNoteMarkdown: 'ocean_brain_append_note_markdown',
     updateNoteMetadata: 'ocean_brain_update_note_metadata',
@@ -357,14 +355,6 @@ const registerMcpTools = (
             return createMcpJsonToolResult(result);
         }
     );
-
-    registerLegacyWriteTools(server, {
-        jsonRequest,
-        requireWriteToken,
-        serverUrl,
-        token,
-        tools: OCEAN_BRAIN_MCP_TOOLS,
-    });
 
     registerIntentWriteTools(server, {
         jsonRequest,

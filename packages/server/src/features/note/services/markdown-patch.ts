@@ -177,6 +177,12 @@ interface RawTextMatch {
     text: string;
 }
 
+interface NormalizedMarkdownPatchText {
+    text: string;
+    rawStarts: number[];
+    rawEnds: number[];
+}
+
 interface HeadingMatch {
     heading: string;
     level: number;
@@ -211,6 +217,86 @@ const getLineRange = (markdown: string, match: RawTextMatch) => {
     };
 };
 
+const MARKDOWN_PATCH_WHITESPACE_PATTERN = /\p{Zs}|&nbsp;|&#(?:x[0-9a-f]+|\d+);/giu;
+const SPACE_SEPARATOR_PATTERN = /^\p{Zs}$/u;
+
+const normalizePatchWhitespaceToken = (value: string) => {
+    if (!value.startsWith('&')) {
+        return ' ';
+    }
+
+    if (/^&nbsp;$/i.test(value)) {
+        return ' ';
+    }
+
+    const numericValue = value.slice(2, -1);
+    const isHexadecimal = numericValue.toLowerCase().startsWith('x');
+    const codePoint = Number.parseInt(isHexadecimal ? numericValue.slice(1) : numericValue, isHexadecimal ? 16 : 10);
+
+    if (!Number.isSafeInteger(codePoint) || codePoint < 0 || codePoint > 0x10ffff) {
+        return value;
+    }
+
+    return SPACE_SEPARATOR_PATTERN.test(String.fromCodePoint(codePoint)) ? ' ' : value;
+};
+
+const normalizeMarkdownPatchText = (value: string): NormalizedMarkdownPatchText => {
+    let text = '';
+    const rawStarts: number[] = [];
+    const rawEnds: number[] = [];
+
+    const appendText = (appendValue: string, rawStart: number, rawEnd: number) => {
+        text += appendValue;
+
+        for (let index = 0; index < appendValue.length; index += 1) {
+            rawStarts.push(rawStart);
+            rawEnds.push(rawEnd);
+        }
+    };
+
+    const appendRawRange = (start: number, end: number) => {
+        for (let index = start; index < end; ) {
+            const codePoint = value.codePointAt(index);
+
+            if (codePoint === undefined) {
+                break;
+            }
+
+            const character = String.fromCodePoint(codePoint);
+            appendText(character, index, index + character.length);
+            index += character.length;
+        }
+    };
+
+    let sourceCursor = 0;
+
+    for (const match of value.matchAll(MARKDOWN_PATCH_WHITESPACE_PATTERN)) {
+        const start = match.index;
+        const token = match[0];
+        const end = start + token.length;
+
+        appendRawRange(sourceCursor, start);
+
+        const normalizedToken = normalizePatchWhitespaceToken(token);
+
+        if (normalizedToken === token) {
+            appendRawRange(start, end);
+        } else {
+            appendText(normalizedToken, start, end);
+        }
+
+        sourceCursor = end;
+    }
+
+    appendRawRange(sourceCursor, value.length);
+
+    return {
+        text,
+        rawStarts,
+        rawEnds,
+    };
+};
+
 const buildExcerpt = (markdown: string, start: number, end: number) => {
     const excerpt = markdown.slice(start, end).trim();
 
@@ -240,22 +326,32 @@ const toPatchMatch = (markdown: string, match: RawTextMatch, totalMatches: numbe
 
 const findExactTextMatches = (markdown: string, text: string) => {
     const matches: RawTextMatch[] = [];
+    const normalizedMarkdown = normalizeMarkdownPatchText(markdown);
+    const normalizedText = normalizeMarkdownPatchText(text).text;
     let searchStart = 0;
 
-    while (searchStart <= markdown.length) {
-        const start = markdown.indexOf(text, searchStart);
+    while (searchStart <= normalizedMarkdown.text.length) {
+        const start = normalizedMarkdown.text.indexOf(normalizedText, searchStart);
 
         if (start === -1) {
             break;
         }
 
+        const end = start + normalizedText.length;
+        const rawStart = normalizedMarkdown.rawStarts[start];
+        const rawEnd = normalizedMarkdown.rawEnds[end - 1];
+
+        if (rawStart === undefined || rawEnd === undefined) {
+            break;
+        }
+
         matches.push({
             matchIndex: matches.length,
-            start,
-            end: start + text.length,
-            text,
+            start: rawStart,
+            end: rawEnd,
+            text: markdown.slice(rawStart, rawEnd),
         });
-        searchStart = start + text.length;
+        searchStart = end;
     }
 
     return matches;
@@ -510,11 +606,21 @@ const createChangePlan = ({
 };
 
 const matchHasAnchors = (markdown: string, match: RawTextMatch, selector: ExactTextMarkdownPatchSelector) => {
-    if (selector.before !== undefined && !markdown.slice(0, match.start).endsWith(selector.before)) {
+    if (
+        selector.before !== undefined &&
+        !normalizeMarkdownPatchText(markdown.slice(0, match.start)).text.endsWith(
+            normalizeMarkdownPatchText(selector.before).text,
+        )
+    ) {
         return false;
     }
 
-    if (selector.after !== undefined && !markdown.slice(match.end).startsWith(selector.after)) {
+    if (
+        selector.after !== undefined &&
+        !normalizeMarkdownPatchText(markdown.slice(match.end)).text.startsWith(
+            normalizeMarkdownPatchText(selector.after).text,
+        )
+    ) {
         return false;
     }
 

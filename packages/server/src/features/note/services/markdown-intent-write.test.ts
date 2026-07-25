@@ -79,6 +79,63 @@ test('markdown intent write applies an exact text patch through guarded update a
     });
 });
 
+test('markdown intent write patches displayed text when stored Markdown contains hidden spaces', async () => {
+    const updates: unknown[] = [];
+    const service = createMarkdownIntentWriteService({
+        findNoteById: async () => createNote({ content: '* [[Example]](note:1) — **Search\u00a0result&#x20;line**' }),
+        renderMarkdown: async (content) => content,
+        parseMarkdownToContentJson: async (markdown) => `json:${markdown}`,
+        extractTagIds: () => [],
+        updateNote: async (input) => {
+            updates.push(input);
+            return {
+                note: {
+                    id: input.id,
+                    title: 'Existing',
+                    content: input.data.content ?? '',
+                    layout: 'wide',
+                    pinned: false,
+                    order: 0,
+                    createdAt: new Date('2026-05-28T00:00:00.000Z'),
+                    updatedAt: new Date('2026-05-28T00:00:01.000Z'),
+                },
+                snapshot: {
+                    id: '12',
+                    createdAt: new Date('2026-05-28T00:00:00.500Z'),
+                    meta: { label: 'MCP' },
+                },
+            };
+        },
+    });
+
+    const result = await service.patchNoteMarkdown({
+        id: 7,
+        expectedUpdatedAt: '2026-05-28T00:00:00.000Z',
+        intent: 'Replace displayed text',
+        selector: {
+            type: 'exact_text',
+            text: '**Search result line**',
+        },
+        operation: {
+            type: 'replace',
+            replacement: '**Updated result line**',
+        },
+    });
+
+    assert.equal(result.status, 'applied');
+    assert.deepEqual(updates, [
+        {
+            id: 7,
+            data: {
+                content: 'json:* [[Example]](note:1) — **Updated result line**',
+                tagIds: [],
+            },
+            expectedUpdatedAt: '2026-05-28T00:00:00.000Z',
+            snapshotMeta: '{"entrypoint":"mcp","label":"MCP"}',
+        },
+    ]);
+});
+
 test('markdown intent write refuses apply when the note changed after the expected baseline', async () => {
     const service = createMarkdownIntentWriteService({
         findNoteById: async () => createNote({ updatedAt: new Date('2026-05-28T00:00:02.000Z') }),

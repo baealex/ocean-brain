@@ -52,6 +52,13 @@ export interface HybridNoteSearchResult {
 
 const MAX_HYBRID_CANDIDATES = 80;
 
+const unavailableSemanticAttempt = (error: unknown): SemanticSearchAttempt => ({
+    available: false,
+    used: false,
+    matches: [],
+    error: error instanceof Error ? error.message : 'Semantic search is unavailable.',
+});
+
 const buildLexicalWhere = (query: string): Prisma.NoteWhereInput | undefined => {
     const parsedQuery = parseNoteSearchQuery(query);
     if (!parsedQuery.hasFilters) {
@@ -210,7 +217,9 @@ export const createHybridNoteSearch = (dependencies: HybridNoteSearchDependencie
                       matches: [],
                       error: null,
                   } satisfies SemanticSearchAttempt)
-                : dependencies.trySemanticSearch(normalizedQuery, candidateLimit),
+                : dependencies
+                      .trySemanticSearch(normalizedQuery, candidateLimit)
+                      .catch((error) => unavailableSemanticAttempt(error)),
         ]);
         const rankedCandidates = fuseHybridSearchRanks({
             lexicalNoteIds,

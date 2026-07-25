@@ -125,6 +125,26 @@ test('keeps lexical search usable when the embedding API is unavailable', async 
     assert.equal(result.semanticError, 'Embedding API is offline.');
 });
 
+test('keeps lexical search usable when semantic search initialization throws', async () => {
+    const search = createHybridNoteSearch({
+        listLexicalNoteIds: async () => [2, 1],
+        trySemanticSearch: async () => {
+            throw new Error('SQLite vector extension is unavailable.');
+        },
+        findNotesByIds: async (ids) => ids.map(createNote),
+    });
+
+    const result = await search({ query: 'search', limit: 10, offset: 0 });
+
+    assert.deepEqual(
+        result.notes.map((note) => note.id),
+        [2, 1],
+    );
+    assert.equal(result.semanticAvailable, false);
+    assert.equal(result.semanticUsed, false);
+    assert.equal(result.semanticError, 'SQLite vector extension is unavailable.');
+});
+
 test('lexical mode does not call the embedding search dependency', async () => {
     let semanticCalls = 0;
     const search = createHybridNoteSearch({

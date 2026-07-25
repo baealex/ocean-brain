@@ -40,6 +40,63 @@ test('production note chunks render after navigation and a direct hard refresh',
     expect(runtimeErrors).toEqual([]);
 });
 
+test('Mermaid code fences remain editable and render after a hard refresh', async ({ page }) => {
+    const runtimeErrors = collectRuntimeErrors(page);
+    await signIn(page);
+
+    await page.getByRole('button', { name: /Open a new note/ }).click();
+    await page.getByRole('textbox', { name: 'Note title' }).fill('Mermaid production smoke');
+
+    const editor = page.locator('.bn-editor[contenteditable="true"]');
+    await editor.click();
+    await page.keyboard.type('```mermaid ');
+
+    await expect(page.getByRole('button', { name: 'Show preview' })).toBeVisible();
+    const codeBlock = page.locator('[data-content-type="codeBlock"]');
+    await codeBlock.locator('code').click();
+    await page.keyboard.type('graph TD; A-->B');
+    await page.getByRole('button', { name: 'Show preview' }).click();
+
+    const preview = page.getByLabel('Mermaid diagram preview');
+    await expect(preview.locator('svg')).toBeVisible();
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(page.getByRole('status')).toContainText('Saved');
+
+    await page.reload();
+    await expect(page.getByRole('textbox', { name: 'Note title' })).toHaveValue('Mermaid production smoke');
+    await expect(page.getByLabel('Mermaid diagram preview').locator('svg')).toBeVisible();
+    expect(runtimeErrors).toEqual([]);
+});
+
+test('KaTeX code fences render accessible formulas after a hard refresh', async ({ page }) => {
+    const runtimeErrors = collectRuntimeErrors(page);
+    await signIn(page);
+
+    await page.getByRole('button', { name: /Open a new note/ }).click();
+    await page.getByRole('textbox', { name: 'Note title' }).fill('KaTeX production smoke');
+
+    const editor = page.locator('.bn-editor[contenteditable="true"]');
+    await editor.click();
+    await page.keyboard.type('```math ');
+
+    await expect(page.getByRole('button', { name: 'Show preview' })).toBeVisible();
+    const codeBlock = page.locator('[data-content-type="codeBlock"]');
+    await codeBlock.locator('code').click();
+    await page.keyboard.type('E = mc^2');
+    await page.getByRole('button', { name: 'Show preview' }).click();
+
+    const preview = page.getByLabel('Math formula preview');
+    await expect(preview.locator('.katex')).toBeVisible();
+    await expect(preview.locator('math')).toHaveCount(1);
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(page.getByRole('status')).toContainText('Saved');
+
+    await page.reload();
+    await expect(page.getByRole('textbox', { name: 'Note title' })).toHaveValue('KaTeX production smoke');
+    await expect(page.getByLabel('Math formula preview').locator('.katex')).toBeVisible();
+    expect(runtimeErrors).toEqual([]);
+});
+
 test('production graph chunks render after a direct hard refresh', async ({ page }) => {
     const runtimeErrors = collectRuntimeErrors(page);
     await signIn(page);

@@ -42,9 +42,12 @@ import {
     buildViewSectionInput,
     EMPTY_VIEWS_WORKSPACE,
     getActiveViewTab,
+    moveViewSectionInWorkspace,
+    moveViewTabInWorkspace,
     reorderViewSectionsInWorkspace,
     reorderViewTabsInWorkspace,
     setActiveViewTabInWorkspace,
+    type ViewMoveDirection,
 } from '~/modules/view-dashboard';
 
 const pageDescription = 'Save reusable note queries with tags, shared properties, and sorting.';
@@ -60,9 +63,18 @@ interface SortableViewSectionProps {
     onEdit: () => void;
     onDuplicate: () => void;
     onDelete: () => void;
+    onMoveUp?: () => void;
+    onMoveDown?: () => void;
 }
 
-const SortableViewSection = ({ section, onEdit, onDuplicate, onDelete }: SortableViewSectionProps) => {
+const SortableViewSection = ({
+    section,
+    onEdit,
+    onDuplicate,
+    onDelete,
+    onMoveUp,
+    onMoveDown,
+}: SortableViewSectionProps) => {
     const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
         id: section.id,
     });
@@ -81,6 +93,8 @@ const SortableViewSection = ({ section, onEdit, onDuplicate, onDelete }: Sortabl
                 onEdit={onEdit}
                 onDuplicate={onDuplicate}
                 onDelete={onDelete}
+                onMoveUp={onMoveUp}
+                onMoveDown={onMoveDown}
                 dragHandle={
                     <button
                         type="button"
@@ -125,6 +139,7 @@ export default function Views() {
 
     const workspace = workspaceData ?? EMPTY_VIEWS_WORKSPACE;
     const activeTab = getActiveViewTab(workspace);
+    const activeTabIndex = activeTab ? workspace.tabs.findIndex((tab) => tab.id === activeTab.id) : -1;
 
     const { data: tagData, isPending: isTagsLoading } = useQuery({
         queryKey: queryKeys.tags.list({ limit: 200 }),
@@ -172,14 +187,7 @@ export default function Views() {
         });
     };
 
-    const handleTabDragEnd = async ({ active, over }: DragEndEvent) => {
-        if (!over || active.id === over.id) {
-            return;
-        }
-
-        const previousWorkspace = queryClient.getQueryData<ViewsWorkspace>(queryKeys.views.workspace()) ?? workspace;
-        const nextWorkspace = reorderViewTabsInWorkspace(previousWorkspace, String(active.id), String(over.id));
-
+    const persistTabOrder = async (previousWorkspace: ViewsWorkspace, nextWorkspace: ViewsWorkspace) => {
         syncWorkspace(nextWorkspace);
 
         const response = await reorderViewTabs(nextWorkspace.tabs.map((tab) => tab.id));
@@ -191,6 +199,29 @@ export default function Views() {
         }
 
         await invalidateViews();
+    };
+
+    const handleTabDragEnd = async ({ active, over }: DragEndEvent) => {
+        if (!over || active.id === over.id) {
+            return;
+        }
+
+        const previousWorkspace = queryClient.getQueryData<ViewsWorkspace>(queryKeys.views.workspace()) ?? workspace;
+        const nextWorkspace = reorderViewTabsInWorkspace(previousWorkspace, String(active.id), String(over.id));
+        await persistTabOrder(previousWorkspace, nextWorkspace);
+    };
+
+    const handleMoveActiveTab = async (direction: ViewMoveDirection) => {
+        if (!activeTab) {
+            return;
+        }
+
+        const previousWorkspace = queryClient.getQueryData<ViewsWorkspace>(queryKeys.views.workspace()) ?? workspace;
+        const nextWorkspace = moveViewTabInWorkspace(previousWorkspace, activeTab.id, direction);
+
+        if (nextWorkspace !== previousWorkspace) {
+            await persistTabOrder(previousWorkspace, nextWorkspace);
+        }
     };
 
     const handleSelectTab = async (tab: ViewTab) => {
@@ -210,18 +241,10 @@ export default function Views() {
         syncWorkspace(response.setActiveViewTab);
     };
 
-    const handleSectionDragEnd = async ({ active, over }: DragEndEvent) => {
-        if (!activeTab || !over || active.id === over.id) {
+    const persistSectionOrder = async (previousWorkspace: ViewsWorkspace, nextWorkspace: ViewsWorkspace) => {
+        if (!activeTab) {
             return;
         }
-
-        const previousWorkspace = queryClient.getQueryData<ViewsWorkspace>(queryKeys.views.workspace()) ?? workspace;
-        const nextWorkspace = reorderViewSectionsInWorkspace(
-            previousWorkspace,
-            activeTab.id,
-            String(active.id),
-            String(over.id),
-        );
 
         syncWorkspace(nextWorkspace);
 
@@ -237,6 +260,34 @@ export default function Views() {
         }
 
         await invalidateViews();
+    };
+
+    const handleSectionDragEnd = async ({ active, over }: DragEndEvent) => {
+        if (!activeTab || !over || active.id === over.id) {
+            return;
+        }
+
+        const previousWorkspace = queryClient.getQueryData<ViewsWorkspace>(queryKeys.views.workspace()) ?? workspace;
+        const nextWorkspace = reorderViewSectionsInWorkspace(
+            previousWorkspace,
+            activeTab.id,
+            String(active.id),
+            String(over.id),
+        );
+        await persistSectionOrder(previousWorkspace, nextWorkspace);
+    };
+
+    const handleMoveSection = async (sectionId: string, direction: ViewMoveDirection) => {
+        if (!activeTab) {
+            return;
+        }
+
+        const previousWorkspace = queryClient.getQueryData<ViewsWorkspace>(queryKeys.views.workspace()) ?? workspace;
+        const nextWorkspace = moveViewSectionInWorkspace(previousWorkspace, activeTab.id, sectionId, direction);
+
+        if (nextWorkspace !== previousWorkspace) {
+            await persistSectionOrder(previousWorkspace, nextWorkspace);
+        }
     };
 
     const handleCreateTab = async (title: string) => {
@@ -426,6 +477,23 @@ export default function Views() {
                                         <Dropdown
                                             button={<MoreButton label="View tab actions" />}
                                             items={[
+                                                ...(activeTabIndex > 0
+                                                    ? [
+                                                          {
+                                                              name: 'Move tab left',
+                                                              onClick: () => void handleMoveActiveTab('previous'),
+                                                          },
+                                                      ]
+                                                    : []),
+                                                ...(activeTabIndex >= 0 && activeTabIndex < workspace.tabs.length - 1
+                                                    ? [
+                                                          {
+                                                              name: 'Move tab right',
+                                                              onClick: () => void handleMoveActiveTab('next'),
+                                                          },
+                                                      ]
+                                                    : []),
+                                                ...(workspace.tabs.length > 1 ? [{ type: 'separator' as const }] : []),
                                                 {
                                                     name: 'Rename tab',
                                                     onClick: () => setTabDialogState({ mode: 'edit', tab: activeTab }),
@@ -459,7 +527,7 @@ export default function Views() {
                                                 strategy={verticalListSortingStrategy}
                                             >
                                                 <div className="flex flex-col gap-4">
-                                                    {activeTab.sections.map((section) => (
+                                                    {activeTab.sections.map((section, index) => (
                                                         <SortableViewSection
                                                             key={section.id}
                                                             section={section}
@@ -468,6 +536,17 @@ export default function Views() {
                                                             }
                                                             onDuplicate={() => void handleDuplicateSection(section)}
                                                             onDelete={() => void handleDeleteSection(section.id)}
+                                                            onMoveUp={
+                                                                index > 0
+                                                                    ? () =>
+                                                                          void handleMoveSection(section.id, 'previous')
+                                                                    : undefined
+                                                            }
+                                                            onMoveDown={
+                                                                index < activeTab.sections.length - 1
+                                                                    ? () => void handleMoveSection(section.id, 'next')
+                                                                    : undefined
+                                                            }
                                                         />
                                                     ))}
                                                 </div>

@@ -19,19 +19,23 @@ import {
     type ViewSectionRecord,
 } from './workspace.js';
 
-test('normalizeViewTagNames trims values and canonicalizes plain or hash-prefixed tags', () => {
-    assert.deepEqual(normalizeViewTagNames([' project ', '#doing', '@todo', '', '@todo']), [
+test('normalizeViewTagNames trims values and canonicalizes plain or @-prefixed tags', () => {
+    assert.deepEqual(normalizeViewTagNames([' project ', '@doing', '@todo', '', '@todo']), [
         '@project',
         '@doing',
         '@todo',
     ]);
 });
 
+test('normalizeViewTagNames rejects hash-prefixed tags', () => {
+    assert.throws(() => normalizeViewTagNames(['#doing']), /use @, not #/);
+});
+
 test('normalizeViewSectionInput derives a default title and clamps invalid limits', () => {
     assert.deepEqual(
         normalizeViewSectionInput({
             title: '   ',
-            tagNames: ['project', '#review'],
+            tagNames: ['project', '@review'],
             mode: 'or',
             limit: 999,
         }),
@@ -151,7 +155,7 @@ test('normalizeViewPropertyFilters validates typed filter values', () => {
 test('normalizeViewNotesQueryInput normalizes property query filters without section-only fields', () => {
     assert.deepEqual(
         normalizeViewNotesQueryInput({
-            tagNames: ['project', '#doing'],
+            tagNames: ['project', '@doing'],
             mode: 'or',
             propertyFilters: [{ key: ' State ', valueType: 'select', operator: 'equals', value: 'doing' }],
             sortBy: 'title',

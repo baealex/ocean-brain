@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { Note } from '~/models/note.model';
 import type { LocalDemoState } from '../types';
+import { normalizeTagName } from '../utils';
 import { notesLocalPlugin } from './notes';
 
 const createNote = (input: Pick<Note, 'id' | 'title' | 'tags'>): Note => ({
@@ -61,6 +62,10 @@ const createState = (): LocalDemoState => {
 };
 
 describe('notesLocalPlugin', () => {
+    it('rejects hash-prefixed tags instead of normalizing them', () => {
+        expect(() => normalizeTagName('#guide')).toThrow('use @, not #');
+    });
+
     it('filters tagged notes by tag id for the tag notes page', () => {
         const handler = notesLocalPlugin.graphHandlers?.FetchTagNotes;
         expect(handler).toBeDefined();

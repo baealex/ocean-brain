@@ -32,7 +32,7 @@ const normalizeTagName = (value: string) => {
     }
 
     if (trimmedValue.startsWith('#')) {
-        return `@${trimmedValue.slice(1)}`;
+        return '';
     }
 
     return `@${trimmedValue}`;

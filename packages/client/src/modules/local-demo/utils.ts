@@ -59,7 +59,12 @@ export const findNote = (state: LocalDemoState, noteId: unknown) => {
 export const normalizeTagName = (name: string) => {
     const trimmed = name.trim();
     if (!trimmed) return '';
-    return `@${trimmed.replace(/^[@#]+/, '')}`;
+
+    if (trimmed.startsWith('#')) {
+        throw new Error('Tag names must use @, not #.');
+    }
+
+    return trimmed.startsWith('@') ? trimmed : `@${trimmed}`;
 };
 
 export const ensureTag = (state: LocalDemoState, name: string) => {

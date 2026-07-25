@@ -8,8 +8,9 @@ test('normalizeTagName trims input and prefixes Ocean Brain tags with @', () => 
     assert.equal(normalizeTagName('  @project  '), '@project');
 });
 
-test('normalizeTagName rejects empty or multi-token tag names', () => {
+test('normalizeTagName rejects empty, hash-prefixed, or multi-token tag names', () => {
     assert.throws(() => normalizeTagName('   '), InvalidTagNameError);
+    assert.throws(() => normalizeTagName('#project'), InvalidTagNameError);
     assert.throws(() => normalizeTagName('project alpha'), InvalidTagNameError);
 });
 

@@ -37,6 +37,10 @@ export const normalizeTagName = (name: string) => {
         throw new InvalidTagNameError('A tag name is required.');
     }
 
+    if (trimmedName.startsWith('#')) {
+        throw new InvalidTagNameError('Tag names must use @, not #. Example: @project.');
+    }
+
     const normalizedName = trimmedName.startsWith('@') ? trimmedName : `@${trimmedName}`;
 
     if (normalizedName === '@' || /\s/.test(normalizedName.slice(1))) {

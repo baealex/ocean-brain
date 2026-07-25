@@ -180,7 +180,7 @@ export const registerIntentWriteTools = (
             id: z.string().describe('Note ID to append to'),
             ...markdownWriteBaselineFields,
             intent: z.string().describe('Human-readable reason for the append.'),
-            insertion: z.string().describe('Markdown to append. Tags are body tokens such as [@tag] or [#tag].'),
+            insertion: z.string().describe('Markdown to append. Tags are body tokens such as [@tag].'),
             placement: markdownAppendPlacementSchema.optional().describe('Default is end. after_heading requires one unique matching heading.'),
             separator: z.enum(['\n\n', '\n']).optional().describe('Separator inserted around appended markdown. Defaults to a blank line.'),
             policy: markdownWritePolicySchema
@@ -235,7 +235,7 @@ export const registerIntentWriteTools = (
             id: z.string().describe('Note ID to replace'),
             ...markdownWriteBaselineFields,
             intent: z.string().describe('Human-readable reason for the full replace.'),
-            replacement: z.string().describe('Complete replacement markdown body. Tags are body tokens such as [@tag] or [#tag].'),
+            replacement: z.string().describe('Complete replacement markdown body. Tags are body tokens such as [@tag].'),
             policy: markdownWritePolicySchema
         },
         async ({ id, expectedUpdatedAt, baseMarkdownSha256, intent, replacement, policy }) => {

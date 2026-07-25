@@ -38,8 +38,8 @@ const createSection = (section: {
 });
 
 describe('view-dashboard helpers', () => {
-    it('normalizes hash-prefixed or plain tags to the canonical @ form', () => {
-        expect(normalizeViewTagNames([' project ', '#doing', '@todo', ''])).toEqual(['@project', '@doing', '@todo']);
+    it('normalizes plain or @-prefixed tags and ignores hash-prefixed tags', () => {
+        expect(normalizeViewTagNames([' project ', '#doing', '@todo', ''])).toEqual(['@project', '@todo']);
     });
 
     it('returns the first tab when the active id is missing', () => {

@@ -582,11 +582,12 @@ test('markdownToBlocksJson restores custom tag and reference inline content from
     ]);
 });
 
-test('markdownToBlocksJson restores custom tag and reference inline content from explicit # tags', async () => {
+test('markdownToBlocksJson leaves explicit # tag syntax as text', async () => {
+    let ensureTagCalls = 0;
     const contentJson = await markdownToBlocksJson('[#project] [[Reference Note]]', {
         ensureTag: async () => ({
-            id: '12',
-            name: '@project',
+            id: String(++ensureTagCalls),
+            name: '@should-not-exist',
         }),
         findNotesByTitle: async (title) => {
             if (title === 'Reference Note') {
@@ -604,17 +605,11 @@ test('markdownToBlocksJson restores custom tag and reference inline content from
 
     const blocks = JSON.parse(contentJson);
 
+    assert.equal(ensureTagCalls, 0);
     assert.deepEqual(blocks[0].content, [
         {
-            type: 'tag',
-            props: {
-                id: '12',
-                tag: '@project',
-            },
-        },
-        {
             type: 'text',
-            text: ' ',
+            text: '[#project] ',
             styles: {},
         },
         {

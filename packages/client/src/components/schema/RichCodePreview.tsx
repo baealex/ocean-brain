@@ -73,13 +73,14 @@ export const RichCodePreview = ({ kind, source }: RichCodePreviewProps) => {
     return (
         <div
             ref={rootRef}
-            className="min-h-24 w-full overflow-x-auto rounded-[8px] bg-white px-6 py-8 text-black"
+            data-rich-code-preview
+            className="min-h-24 w-full overflow-auto bg-white px-4 py-5 text-black sm:px-6 sm:py-6"
             contentEditable={false}
             aria-label={kind === 'mermaid' ? 'Mermaid diagram preview' : 'Math formula preview'}
         >
             {state.status === 'success' && (
                 <div
-                    className="[&_.katex-display]:m-0 [&_svg]:mx-auto [&_svg]:max-w-full"
+                    className="[&_.katex-display]:m-0 [&_svg]:mx-auto [&_svg]:block [&_svg]:h-auto [&_svg]:max-h-[min(68vh,640px)] [&_svg]:max-w-full"
                     // Mermaid runs in strict mode and KaTeX runs with trust disabled.
                     // Both libraries return the HTML required for their visual output.
                     dangerouslySetInnerHTML={{ __html: state.html }}

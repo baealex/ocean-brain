@@ -66,6 +66,11 @@ test('Diagram slash commands remain editable and render after a hard refresh', a
     await page.reload();
     await expect(page.getByRole('textbox', { name: 'Note title' })).toHaveValue('Mermaid production smoke');
     await expect(page.getByLabel('Mermaid diagram preview').locator('svg')).toBeVisible();
+    const diagramToolbar = page.getByRole('toolbar', { name: 'Diagram controls' });
+    await expect(diagramToolbar).toBeVisible();
+    await diagramToolbar.getByRole('button', { name: 'Edit' }).click();
+    await expect(codeBlock.locator('pre')).toBeVisible();
+    await expect(codeBlock.locator('code')).toContainText('graph TD; A-->B');
     expect(runtimeErrors).toEqual([]);
 });
 
@@ -96,6 +101,11 @@ test('Math formula slash commands render accessible formulas after a hard refres
     await page.reload();
     await expect(page.getByRole('textbox', { name: 'Note title' })).toHaveValue('KaTeX production smoke');
     await expect(page.getByLabel('Math formula preview').locator('.katex')).toBeVisible();
+    const formulaToolbar = page.getByRole('toolbar', { name: 'Math formula controls' });
+    await expect(formulaToolbar).toBeVisible();
+    await formulaToolbar.getByRole('button', { name: 'Edit' }).click();
+    await expect(codeBlock.locator('pre')).toBeVisible();
+    await expect(codeBlock.locator('code')).toContainText('E = mc^2');
     expect(runtimeErrors).toEqual([]);
 });
 

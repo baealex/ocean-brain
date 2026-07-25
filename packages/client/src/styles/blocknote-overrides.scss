@@ -256,6 +256,18 @@ html.dark .bn-mantine .bn-menu-dropdown {
     border-radius: 10px;
 }
 
+.bn-block-content[data-content-type="codeBlock"]:has(> [data-rich-code-toolbar]) {
+    flex-direction: column;
+    overflow: hidden;
+    background-color: var(--elevated);
+    border-color: var(--border-subtle);
+    color: var(--fg-default);
+}
+
+.bn-block-content[data-content-type="codeBlock"]:has(> [data-rich-code-toolbar]) > div > select {
+    display: none;
+}
+
 .bn-block-content[data-content-type="codeBlock"] > pre {
     color: rgba(255, 255, 255, 0.84);
     font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
@@ -488,4 +500,3 @@ html.dark .bn-mantine .bn-menu-dropdown {
 .bn-side-menu[data-block-type='heading'][data-level='6'] {
     height: 30px;
 }
-

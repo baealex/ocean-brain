@@ -56,6 +56,19 @@ const reorderArrayItems = <TValue extends { id: string }>(items: TValue[], activ
     return nextItems;
 };
 
+export type ViewMoveDirection = 'previous' | 'next';
+
+const getAdjacentItemId = <TValue extends { id: string }>(
+    items: TValue[],
+    itemId: string,
+    direction: ViewMoveDirection,
+) => {
+    const currentIndex = items.findIndex((item) => item.id === itemId);
+    const nextIndex = currentIndex + (direction === 'previous' ? -1 : 1);
+
+    return currentIndex >= 0 && nextIndex >= 0 && nextIndex < items.length ? items[nextIndex]?.id : undefined;
+};
+
 export const normalizeViewTagNames = (values: unknown[]) => {
     const normalizedTagNames = values.flatMap((value) => {
         if (typeof value === 'string') {
@@ -116,6 +129,28 @@ export const reorderViewSectionsInWorkspace = (
             : tab,
     ),
 });
+
+export const moveViewTabInWorkspace = (
+    workspace: ViewsWorkspace,
+    tabId: string,
+    direction: ViewMoveDirection,
+): ViewsWorkspace => {
+    const adjacentTabId = getAdjacentItemId(workspace.tabs, tabId, direction);
+    return adjacentTabId ? reorderViewTabsInWorkspace(workspace, tabId, adjacentTabId) : workspace;
+};
+
+export const moveViewSectionInWorkspace = (
+    workspace: ViewsWorkspace,
+    tabId: string,
+    sectionId: string,
+    direction: ViewMoveDirection,
+): ViewsWorkspace => {
+    const sections = workspace.tabs.find((tab) => tab.id === tabId)?.sections ?? [];
+    const adjacentSectionId = getAdjacentItemId(sections, sectionId, direction);
+    return adjacentSectionId
+        ? reorderViewSectionsInWorkspace(workspace, tabId, sectionId, adjacentSectionId)
+        : workspace;
+};
 
 export const getViewTagMatchLabel = (mode: ViewTagMatchMode) => {
     return mode === 'or' ? 'OR — any selected tag' : 'AND — all selected tags';

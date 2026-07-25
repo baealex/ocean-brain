@@ -1,7 +1,12 @@
 import type { DragEndEvent } from '@dnd-kit/core';
-import { closestCenter, DndContext, MouseSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { closestCenter, DndContext, KeyboardSensor, MouseSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { restrictToHorizontalAxis } from '@dnd-kit/modifiers';
-import { horizontalListSortingStrategy, SortableContext, useSortable } from '@dnd-kit/sortable';
+import {
+    horizontalListSortingStrategy,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+} from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import classNames from 'classnames';
 
@@ -73,7 +78,10 @@ interface ViewTabBarProps {
 }
 
 export default function ViewTabBar({ tabs, activeTabId, onSelectTab, onReorderTabs, onCreateTab }: ViewTabBarProps) {
-    const sensors = useSensors(useSensor(MouseSensor, { activationConstraint: { distance: 8 } }));
+    const sensors = useSensors(
+        useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    );
 
     return (
         <div className="-mx-1 rounded-[16px] border border-border-subtle/75 bg-subtle/50 p-1 sm:mx-0">

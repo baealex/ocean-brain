@@ -9,6 +9,8 @@ import {
     getViewTableColumnLabel,
     getViewTagMatchLabel,
     getViewTagMatchToken,
+    moveViewSectionInWorkspace,
+    moveViewTabInWorkspace,
     normalizeViewTableColumns,
     normalizeViewTagNames,
     reorderViewSectionsInWorkspace,
@@ -148,6 +150,45 @@ describe('view-dashboard helpers', () => {
                 'section-1',
             ).tabs[0]?.sections.map((section) => section.id),
         ).toEqual(['section-3', 'section-1', 'section-2']);
+    });
+
+    it('moves tabs and sections one position for non-drag reorder controls', () => {
+        const sectionOne = createSection({
+            id: 'section-1',
+            tabId: 'tab-1',
+            title: 'One',
+            tagNames: [],
+            mode: 'and',
+            limit: 5,
+            order: 0,
+        });
+        const sectionTwo = createSection({
+            id: 'section-2',
+            tabId: 'tab-1',
+            title: 'Two',
+            tagNames: [],
+            mode: 'and',
+            limit: 5,
+            order: 1,
+        });
+        const workspace = {
+            activeTabId: 'tab-1',
+            tabs: [
+                { id: 'tab-1', title: 'Now', order: 0, sections: [sectionOne, sectionTwo] },
+                { id: 'tab-2', title: 'Later', order: 1, sections: [] },
+            ],
+        };
+
+        expect(moveViewTabInWorkspace(workspace, 'tab-1', 'next').tabs.map((tab) => tab.id)).toEqual([
+            'tab-2',
+            'tab-1',
+        ]);
+        expect(
+            moveViewSectionInWorkspace(workspace, 'tab-1', 'section-2', 'previous').tabs[0]?.sections.map(
+                (section) => section.id,
+            ),
+        ).toEqual(['section-2', 'section-1']);
+        expect(moveViewTabInWorkspace(workspace, 'tab-1', 'previous')).toBe(workspace);
     });
 
     it('returns clear labels and short conjunction tokens for tag matching', () => {

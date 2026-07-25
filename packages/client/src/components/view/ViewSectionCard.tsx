@@ -22,10 +22,20 @@ interface ViewSectionCardProps {
     onEdit: () => void;
     onDuplicate: () => void;
     onDelete: () => void;
+    onMoveUp?: () => void;
+    onMoveDown?: () => void;
     dragHandle?: React.ReactNode;
 }
 
-export default function ViewSectionCard({ section, onEdit, onDuplicate, onDelete, dragHandle }: ViewSectionCardProps) {
+export default function ViewSectionCard({
+    section,
+    onEdit,
+    onDuplicate,
+    onDelete,
+    onMoveUp,
+    onMoveDown,
+    dragHandle,
+}: ViewSectionCardProps) {
     const queryClient = useQueryClient();
     const toast = useToast();
     const [isSortPending, setIsSortPending] = useState(false);
@@ -141,6 +151,9 @@ export default function ViewSectionCard({ section, onEdit, onDuplicate, onDelete
                 <Dropdown
                     button={<MoreButton label="Section actions" />}
                     items={[
+                        ...(onMoveUp ? [{ name: 'Move up', onClick: onMoveUp }] : []),
+                        ...(onMoveDown ? [{ name: 'Move down', onClick: onMoveDown }] : []),
+                        ...(onMoveUp || onMoveDown ? [{ type: 'separator' as const }] : []),
                         {
                             name: 'Edit section',
                             onClick: onEdit,

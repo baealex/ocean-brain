@@ -1,7 +1,17 @@
+import type { Note } from '~/models/note.model';
 import type { ViewSection } from '~/models/view.model';
 import { localError, success } from '../response';
 import type { LocalDemoPlugin } from '../types';
 import { applyPropertyFilters, createLocalId, listNotesByTags, paginate } from '../utils';
+
+const sortSectionNotes = (notes: Note[], section: ViewSection) => {
+    const direction = section.sortOrder === 'asc' ? 1 : -1;
+
+    return [...notes].sort((left, right) => {
+        const comparison = left[section.sortBy].localeCompare(right[section.sortBy]) * direction;
+        return comparison || left.id.localeCompare(right.id);
+    });
+};
 
 export const viewsLocalPlugin: LocalDemoPlugin = {
     name: 'views',
@@ -18,7 +28,13 @@ export const viewsLocalPlugin: LocalDemoPlugin = {
                 .flatMap((tab) => tab.sections)
                 .find((item) => item.id === String(variables.id));
             const notes = section
-                ? applyPropertyFilters(listNotesByTags(state, section.tagNames, section.mode), section.propertyFilters)
+                ? sortSectionNotes(
+                      applyPropertyFilters(
+                          listNotesByTags(state, section.tagNames, section.mode),
+                          section.propertyFilters,
+                      ),
+                      section,
+                  )
                 : [];
             return success({ viewSectionNotes: { totalCount: notes.length, notes: paginate(notes, variables) } });
         },

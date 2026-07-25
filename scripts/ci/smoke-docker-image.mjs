@@ -137,6 +137,42 @@ async function assertGraphql() {
     }
 }
 
+function assertSqliteVectorExtension() {
+    const appModules = '/usr/local/lib/node_modules/ocean-brain/node_modules';
+    const script = `
+        const sqlite3 = require('${appModules}/sqlite3');
+        const { getLoadablePath } = require('${appModules}/sqlite-vec');
+        const database = new sqlite3.Database(':memory:');
+
+        database.loadExtension(getLoadablePath(), loadError => {
+            if (loadError) throw loadError;
+
+            database.get(
+                "SELECT vec_version() AS version, vec_distance_cosine('[1,0]', '[0,1]') AS distance",
+                (queryError, row) => {
+                    if (queryError) throw queryError;
+                    if (!row.version || row.distance !== 1) {
+                        throw new Error('Unexpected sqlite-vec result: ' + JSON.stringify(row));
+                    }
+
+                    console.log('sqlite-vec verification passed: ' + JSON.stringify(row));
+                    database.close(closeError => {
+                        if (closeError) throw closeError;
+                    });
+                }
+            );
+        });
+    `;
+
+    run('docker', [
+        'run',
+        '--rm',
+        '--entrypoint', '/nodejs/bin/node',
+        image,
+        '-e', script
+    ]);
+}
+
 function cleanup() {
     spawnSync('docker', ['logs', containerName], { stdio: 'inherit' });
     spawnSync('docker', ['rm', '-f', containerName], { stdio: 'ignore' });
@@ -151,6 +187,7 @@ async function main() {
     await pullWithRetry();
 
     try {
+        assertSqliteVectorExtension();
         run('docker', [
             'run',
             '--rm',

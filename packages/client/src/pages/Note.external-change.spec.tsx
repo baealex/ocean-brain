@@ -612,7 +612,8 @@ describe('<NoteContent /> external change handling', () => {
                 properties: [{ ...property, value: 'Navigation-safe summary', updatedAt: '1779700001000' }],
             },
         });
-        renderNote(initialNote);
+        const queryClient = renderNote(initialNote);
+        const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries');
 
         const propertyInput = await screen.findByRole('textbox', { name: 'Property value' });
         await user.clear(propertyInput);
@@ -645,6 +646,14 @@ describe('<NoteContent /> external change handling', () => {
             deleteKeys: [],
             editSessionId: expect.any(String),
             expectedUpdatedAt: initialNote.updatedAt,
+        });
+        expect(invalidateQueries).toHaveBeenCalledWith({
+            queryKey: queryKeys.views.sectionNotesAll(),
+            exact: false,
+        });
+        expect(invalidateQueries).toHaveBeenCalledWith({
+            queryKey: queryKeys.notes.tagNameListAll(),
+            exact: false,
         });
     });
 

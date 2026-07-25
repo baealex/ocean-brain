@@ -17,6 +17,7 @@ import { Button, Empty, Modal, PageLayout, Pagination, Skeleton, SurfaceCard } f
 import { Text, useConfirm, useToast } from '~/components/ui';
 import type { Note } from '~/models/note.model';
 import { queryKeys } from '~/modules/query-key-factory';
+import { invalidateQueriesForNoteDelete } from '~/modules/server-event-invalidation';
 import { NOTE_ROUTE, SETTINGS_TRASH_ROUTE } from '~/modules/url';
 
 const PAGE_SIZE = 25;
@@ -176,28 +177,7 @@ const TrashContent = () => {
                 throw response;
             }
 
-            await Promise.all([
-                queryClient.invalidateQueries({
-                    queryKey: queryKeys.notes.all(),
-                    exact: false,
-                }),
-                queryClient.invalidateQueries({
-                    queryKey: queryKeys.tags.all(),
-                    exact: false,
-                }),
-                queryClient.invalidateQueries({
-                    queryKey: queryKeys.reminders.all(),
-                    exact: false,
-                }),
-                queryClient.invalidateQueries({
-                    queryKey: queryKeys.images.all(),
-                    exact: false,
-                }),
-                queryClient.invalidateQueries({
-                    queryKey: queryKeys.calendar.all(),
-                    exact: false,
-                }),
-            ]);
+            await invalidateQueriesForNoteDelete(queryClient);
 
             toast('The note has been restored.');
             navigate({

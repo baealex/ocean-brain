@@ -10,6 +10,7 @@ import {
     SNAPSHOT_RETENTION_DAYS,
 } from '~/modules/recovery-retention.js';
 import { calculateMarkdownSha256 } from './markdown-patch.js';
+import { resolveRestoredPropertyTarget } from './property-restore.js';
 import { buildNoteSearchProjection, extractVisibleSearchTextFromContent } from './search.js';
 import { createNoteVersionConflictError, MissingNoteVersionError, parseNoteVersion } from './write-conflict.js';
 
@@ -105,11 +106,6 @@ interface TagRecord {
 interface ResolvedRestoredSnapshotTags {
     content: string;
     tagIds: number[];
-}
-
-interface RestoredSnapshotPropertyTargetDeps {
-    findDefinitionByKey: (key: string) => Promise<{ id: number; valueType: PropertyValueType } | null>;
-    findOptionByValue: (definitionId: number, value: string) => Promise<{ id: number } | null>;
 }
 
 interface ResolveRestoredSnapshotTagsDeps {
@@ -225,39 +221,6 @@ const serializePayload = (note: NoteRecord): string => {
 
 const hasSameSnapshotPayload = (snapshot: NoteSnapshotRecord | null, payload: string) => {
     return snapshot?.payload === payload;
-};
-
-export const resolveRestoredSnapshotPropertyTarget = async (
-    property: Pick<SnapshotNoteProperty, 'key' | 'valueType' | 'optionValue'>,
-    deps: RestoredSnapshotPropertyTargetDeps,
-) => {
-    const definition = await deps.findDefinitionByKey(property.key);
-
-    if (!definition || definition.valueType !== property.valueType) {
-        return null;
-    }
-
-    if (property.valueType !== 'select') {
-        return {
-            propertyDefinitionId: definition.id,
-            optionId: null,
-        };
-    }
-
-    if (!property.optionValue) {
-        return null;
-    }
-
-    const option = await deps.findOptionByValue(definition.id, property.optionValue);
-
-    if (!option) {
-        return null;
-    }
-
-    return {
-        propertyDefinitionId: definition.id,
-        optionId: option.id,
-    };
 };
 
 const parsePayload = (payload: string): NoteSnapshotPayload => {
@@ -889,7 +852,7 @@ export const defaultNoteSnapshotService = createNoteSnapshotService({
                     await tx.noteProperty.deleteMany({ where: { noteId: id } });
 
                     for (const property of properties) {
-                        const target = await resolveRestoredSnapshotPropertyTarget(property, {
+                        const target = await resolveRestoredPropertyTarget(property, {
                             findDefinitionByKey: (key) => tx.propertyDefinition.findUnique({ where: { key } }),
                             findOptionByValue: (propertyDefinitionId, value) =>
                                 tx.propertyOption.findUnique({

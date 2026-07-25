@@ -88,6 +88,7 @@ describe('useNoteMutate', () => {
         } as never);
 
         const queryClient = createTestQueryClient();
+        const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined);
         const { Wrapper } = createQueryClientWrapper(queryClient);
         const { result } = renderHook(() => useNoteMutate(), { wrapper: Wrapper });
 
@@ -102,6 +103,14 @@ describe('useNoteMutate', () => {
         expect(mockNavigate).toHaveBeenCalledWith({
             to: NOTE_ROUTE,
             params: { id: 'note-1' },
+        });
+        expect(invalidateSpy).toHaveBeenCalledWith({
+            queryKey: queryKeys.notes.tagNameListAll(),
+            exact: false,
+        });
+        expect(invalidateSpy).toHaveBeenCalledWith({
+            queryKey: queryKeys.views.sectionNotesAll(),
+            exact: false,
         });
     });
 
@@ -197,7 +206,11 @@ describe('useNoteMutate', () => {
                 exact: false,
             });
             expect(invalidateSpy).toHaveBeenCalledWith({
-                queryKey: ['calendar'],
+                queryKey: queryKeys.calendar.all(),
+                exact: false,
+            });
+            expect(invalidateSpy).toHaveBeenCalledWith({
+                queryKey: queryKeys.views.sectionNotesAll(),
                 exact: false,
             });
         });

@@ -102,15 +102,7 @@ describe('server-event-invalidation', () => {
 
         // Assert
         expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
-            queryKey: queryKeys.notes.trashAll(),
-            exact: false,
-        });
-        expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
-            queryKey: queryKeys.notes.tagNameListAll(),
-            exact: false,
-        });
-        expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
-            queryKey: queryKeys.notes.propertyKeysAll(),
+            queryKey: queryKeys.notes.all(),
             exact: false,
         });
         expect(queryClient.invalidateQueries).toHaveBeenCalledWith({

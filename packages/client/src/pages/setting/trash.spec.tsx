@@ -130,6 +130,24 @@ describe('<Trash />', () => {
         expect(screen.getByText(/Second line/)).toBeInTheDocument();
     });
 
+    it('refreshes live note collections and trash data after restoring a note', async () => {
+        const { invalidateSpy } = renderPage();
+
+        await userEvent.click(await screen.findByRole('button', { name: /restore/i }));
+
+        await waitFor(() => {
+            expect(restoreTrashedNote).toHaveBeenCalledWith('7', expect.anything());
+            expect(invalidateSpy).toHaveBeenCalledWith({
+                queryKey: queryKeys.notes.all(),
+                exact: false,
+            });
+            expect(invalidateSpy).toHaveBeenCalledWith({
+                queryKey: queryKeys.views.sectionNotesAll(),
+                exact: false,
+            });
+        });
+    });
+
     it('permanently deletes a trashed note after basic confirmation when there are no back references', async () => {
         vi.mocked(purgeTrashedNote).mockResolvedValue({
             type: 'success',

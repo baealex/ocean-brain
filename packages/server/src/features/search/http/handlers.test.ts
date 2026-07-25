@@ -4,7 +4,6 @@ import test from 'node:test';
 import type { Response } from 'express';
 import { createApp } from '~/app.js';
 import { AUTH_SESSION_COOKIE_NAME, type AuthConfig } from '~/modules/auth-mode.js';
-import { SemanticSearchConnectionNotValidatedError } from '../search-manager.js';
 import {
     createSearchAdminListModelsHandler,
     createSearchAdminSaveConfigHandler,
@@ -96,13 +95,15 @@ test('search config handler rejects incomplete external input', async () => {
     );
 });
 
-test('search config handler rejects enabling a connection that was never tested', async () => {
+test('search config handler saves an enabled connection without requiring a prior test', async () => {
+    let receivedConfig: unknown;
     const handler = createSearchAdminSaveConfigHandler({
         getStatus: async () => {
             throw new Error('not used');
         },
-        saveConfig: async () => {
-            throw new SemanticSearchConnectionNotValidatedError();
+        saveConfig: async (config) => {
+            receivedConfig = config;
+            return { config } as never;
         },
         testConnection: async () => {
             throw new Error('not used');
@@ -112,21 +113,23 @@ test('search config handler rejects enabling a connection that was never tested'
         },
     });
 
-    await assert.rejects(
-        handler(
-            {
-                body: {
-                    enabled: true,
-                    baseUrl: 'http://127.0.0.1:1234/v1',
-                    model: 'qwen-embedding',
-                    queryInstruction: '',
-                },
-            } as never,
-            createResponse(),
-        ),
-        (error: { status?: number; code?: string }) =>
-            error.status === 409 && error.code === 'SEARCH_CONNECTION_NOT_VALIDATED',
+    const response = createResponse();
+    const config = {
+        enabled: true,
+        baseUrl: 'http://127.0.0.1:1234/v1',
+        model: 'qwen-embedding',
+        queryInstruction: '',
+    };
+
+    await handler(
+        {
+            body: config,
+        } as never,
+        response,
     );
+
+    assert.deepEqual(receivedConfig, config);
+    assert.equal(response.statusCode, 200);
 });
 
 test('connection test forces validation without persisting the supplied settings', async () => {

@@ -50,6 +50,54 @@ const normalizeBaseUrl = (baseUrl: string) => {
 
 const looksLikeEmbeddingModel = (modelId: string) => /(^|[-_/])(embed|embedding|bge|e5|gte)([-_/.]|$)/i.test(modelId);
 
+const isRemotePlainHttpUrl = (baseUrl: string) => {
+    try {
+        const url = new URL(baseUrl);
+        const hostname = url.hostname.toLowerCase();
+        const isLoopback =
+            hostname === 'localhost' || hostname === '::1' || hostname === '[::1]' || hostname.startsWith('127.');
+        return url.protocol === 'http:' && !isLoopback;
+    } catch {
+        return false;
+    }
+};
+
+const getMeaningSearchHint = ({
+    hasConnectionFields,
+    enabled,
+    savedConnectionValidated,
+    dirty,
+    phase,
+    available,
+}: {
+    hasConnectionFields: boolean;
+    enabled: boolean;
+    savedConnectionValidated: boolean;
+    dirty: boolean;
+    phase?: SemanticSearchPhase;
+    available?: boolean;
+}) => {
+    if (!hasConnectionFields) {
+        return 'Connect an API and choose a model first.';
+    }
+    if (!enabled) {
+        if (savedConnectionValidated) {
+            return 'Your saved connection is ready to turn on again.';
+        }
+        return 'You can save this provider now and test it when you are ready.';
+    }
+    if (dirty) {
+        return 'Save this setting. You can test the model before or after saving.';
+    }
+    if (phase === 'needs-connection') {
+        return 'Test the selected model to make meaning search available.';
+    }
+    if (available) {
+        return 'Meaning search is active.';
+    }
+    return 'Build the local index to activate meaning search.';
+};
+
 const getRequestErrorMessage = (error: unknown, fallback: string) => {
     if (axios.isAxiosError<{ message?: string }>(error)) {
         return error.response?.data?.message ?? error.message ?? fallback;
@@ -149,9 +197,10 @@ const SearchSetting = () => {
     const connectionMutation = useMutation({
         mutationFn: ({ input }: { input: SemanticSearchConfigInput; connectionKey: string }) =>
             testSemanticSearchConnection(input),
-        onSuccess: ({ dimensions, model }, { connectionKey }) => {
+        onSuccess: async ({ dimensions, model }, { connectionKey }) => {
             setTestedConnectionKey(connectionKey);
             toast(`Connected to ${model} (${dimensions} dimensions).`);
+            await queryClient.invalidateQueries({ queryKey: statusQueryKey });
         },
         onError: (error) => {
             toast(getRequestErrorMessage(error, 'Could not connect to the embedding API.'));
@@ -193,31 +242,23 @@ const SearchSetting = () => {
     const isSavedValidatedConnection = Boolean(
         savedConnectionMatches && status?.connectionValidated && !credentialDirty,
     );
-    const connectionNeedsTest = hasConnectionFields && !isSavedValidatedConnection;
-    const canEnableMeaningSearch = hasConnectionFields && (isCurrentConnectionTested || isSavedValidatedConnection);
+    const canEnableMeaningSearch = hasConnectionFields;
     const canSave = Boolean(
-        hasInitialized &&
-            isDirty &&
-            !isIndexing &&
-            !isCheckingProvider &&
-            (!connectionNeedsTest || isCurrentConnectionTested) &&
-            (!form.enabled || canEnableMeaningSearch),
+        hasInitialized && isDirty && !isIndexing && !isCheckingProvider && (!form.enabled || canEnableMeaningSearch),
     );
     const canBuildIndex = Boolean(status?.config.enabled && status.needsReindex && !isDirty && !isIndexing);
+    const showRemoteHttpWarning = isRemotePlainHttpUrl(normalizedFormBaseUrl);
     const progress = status?.progress;
     const phaseLabel = status ? phaseLabels[status.phase] : isLoading ? 'Loading' : 'Unavailable';
     const queryInstructionLabel = form.queryInstruction.trim() ? 'Customized' : 'Optional';
-    const meaningSearchHint = !hasConnectionFields
-        ? 'Connect an API and choose a model first.'
-        : !canEnableMeaningSearch && !form.enabled
-          ? 'Test the selected model first.'
-          : !form.enabled && isSavedValidatedConnection
-            ? 'Your saved connection is ready to turn on again.'
-            : !form.enabled
-              ? 'The model works. Turn on meaning search to continue.'
-              : status?.available && !isDirty
-                ? 'Meaning search is active.'
-                : 'Save this setting, then build the local index.';
+    const meaningSearchHint = getMeaningSearchHint({
+        hasConnectionFields,
+        enabled: form.enabled,
+        savedConnectionValidated: isSavedValidatedConnection,
+        dirty: isDirty,
+        phase: status?.phase,
+        available: status?.available,
+    });
 
     const modelOptions = useMemo(() => {
         const models = [...availableModels];
@@ -345,6 +386,15 @@ const SearchSetting = () => {
                                 Find models
                             </Button>
                         </div>
+
+                        {showRemoteHttpWarning && (
+                            <div className="rounded-[12px] border border-border-secondary/70 bg-muted px-3 py-2.5">
+                                <Text as="p" variant="meta" tone="secondary" className="leading-relaxed">
+                                    This provider uses unencrypted HTTP. API credentials and note text can be read on
+                                    the network.
+                                </Text>
+                            </div>
+                        )}
 
                         <div className="space-y-2 pt-1">
                             <Label htmlFor="semantic-search-api-key" className="font-medium text-fg-tertiary">

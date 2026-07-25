@@ -3,7 +3,16 @@ import { mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { FileEmbeddingApiKeyStore } from './embedding-api-key-store.js';
+import { createEmbeddingApiKeyFingerprint, FileEmbeddingApiKeyStore } from './embedding-api-key-store.js';
+
+test('creates stable fingerprints without storing the API key value', () => {
+    const fingerprint = createEmbeddingApiKeyFingerprint('provider-secret');
+
+    assert.equal(fingerprint, createEmbeddingApiKeyFingerprint('provider-secret'));
+    assert.notEqual(fingerprint, createEmbeddingApiKeyFingerprint('different-secret'));
+    assert.equal(fingerprint.includes('provider-secret'), false);
+    assert.equal(createEmbeddingApiKeyFingerprint(), '');
+});
 
 test('persists an embedding API key in a server-only file and supports removal', (t) => {
     const directory = mkdtempSync(path.join(os.tmpdir(), 'ocean-brain-embedding-key-'));

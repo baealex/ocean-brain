@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
@@ -15,6 +15,13 @@ export const normalizeEmbeddingApiKey = (value: string) => {
         throw new Error('Embedding API key is too long.');
     }
     return apiKey || undefined;
+};
+
+export const createEmbeddingApiKeyFingerprint = (apiKey?: string) => {
+    if (!apiKey) {
+        return '';
+    }
+    return createHash('sha256').update(apiKey).digest('hex');
 };
 
 export class FileEmbeddingApiKeyStore implements EmbeddingApiKeyStore {

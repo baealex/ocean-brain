@@ -132,37 +132,17 @@ test('rejects malformed embedding vectors instead of storing them', async () => 
     await assert.rejects(client.embedDocuments(['Document']), /invalid vector value/);
 });
 
-test('blocks private network providers unless their hostname is explicitly trusted', async () => {
-    let requested = false;
-    const client = createOpenAiCompatibleEmbeddingClient(
-        {
-            baseUrl: 'http://embedding.internal/v1',
-            model: 'qwen-embedding',
-        },
-        {
-            resolveHost: async () => ['192.168.1.20'],
-            fetch: async () => {
-                requested = true;
-                return Response.json({ data: [{ index: 0, embedding: [1, 0] }] });
-            },
-        },
-    );
-
-    await assert.rejects(client.embedDocuments(['Document']), /private network/);
-    assert.equal(requested, false);
-});
-
-test('allows an explicitly trusted private provider and rejects redirects', async () => {
+test('allows operator-configured private and plain HTTP providers while rejecting redirects', async () => {
+    let requestedUrl = '';
     let redirect: RequestRedirect | undefined;
     const client = createOpenAiCompatibleEmbeddingClient(
         {
-            baseUrl: 'http://embedding.internal/v1',
+            baseUrl: 'http://192.168.1.20:1234/v1',
             model: 'qwen-embedding',
-            allowedOrigins: ['http://embedding.internal'],
         },
         {
-            resolveHost: async () => ['192.168.1.20'],
-            fetch: async (_input, init) => {
+            fetch: async (input, init) => {
+                requestedUrl = String(input);
                 redirect = init?.redirect;
                 return Response.json({ data: [{ index: 0, embedding: [1, 0] }] });
             },
@@ -170,23 +150,19 @@ test('allows an explicitly trusted private provider and rejects redirects', asyn
     );
 
     await client.embedDocuments(['Document']);
+    assert.equal(requestedUrl, 'http://192.168.1.20:1234/v1/embeddings');
     assert.equal(redirect, 'error');
 });
 
-test('always blocks link-local provider addresses', async () => {
-    const client = createOpenAiCompatibleEmbeddingClient(
-        {
-            baseUrl: 'http://metadata.internal/v1',
-            model: 'qwen-embedding',
-            allowedOrigins: ['http://metadata.internal'],
-        },
-        {
-            resolveHost: async () => ['169.254.169.254'],
-            fetch: async () => Response.json({ data: [{ index: 0, embedding: [1, 0] }] }),
-        },
+test('rejects credentials embedded in operator-configured provider URLs', () => {
+    assert.throws(
+        () =>
+            createOpenAiCompatibleEmbeddingClient({
+                baseUrl: 'https://user:secret@embedding.example.com/v1',
+                model: 'qwen-embedding',
+            }),
+        /must not contain credentials/,
     );
-
-    await assert.rejects(client.embedDocuments(['Document']), /blocked network address/);
 });
 
 test('redacts a provider API key from upstream error messages', async () => {

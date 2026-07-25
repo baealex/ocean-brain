@@ -40,7 +40,7 @@ test('production note chunks render after navigation and a direct hard refresh',
     expect(runtimeErrors).toEqual([]);
 });
 
-test('Mermaid code fences remain editable and render after a hard refresh', async ({ page }) => {
+test('Diagram slash commands remain editable and render after a hard refresh', async ({ page }) => {
     const runtimeErrors = collectRuntimeErrors(page);
     await signIn(page);
 
@@ -49,27 +49,61 @@ test('Mermaid code fences remain editable and render after a hard refresh', asyn
 
     const editor = page.locator('.bn-editor[contenteditable="true"]');
     await editor.click();
-    await page.keyboard.type('```mermaid ');
+    await page.keyboard.type('/diagram');
+    await page.getByText('Diagram', { exact: true }).click();
 
-    await expect(page.getByRole('button', { name: 'Show preview' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Preview' })).toBeVisible();
     const codeBlock = page.locator('[data-content-type="codeBlock"]');
     await codeBlock.locator('code').click();
-    await page.keyboard.type('graph TD; A-->B');
-    await page.getByRole('button', { name: 'Show preview' }).click();
+    await page.keyboard.type('flowchart LR; A[Hard] --> B(Round)');
+    await page.getByRole('button', { name: 'Preview' }).click();
 
     const preview = page.getByLabel('Mermaid diagram preview');
     await expect(preview.locator('svg')).toBeVisible();
+    const roundLabel = preview.locator('.nodeLabel', { hasText: 'Round' });
+    await expect(roundLabel).toBeVisible();
+    const roundLabelBounds = await roundLabel.evaluate((element) => {
+        const foreignObject = element.closest('foreignObject');
+
+        if (!foreignObject) {
+            throw new Error('Expected Mermaid HTML label container');
+        }
+
+        const labelRect = element.getBoundingClientRect();
+        const containerRect = foreignObject.getBoundingClientRect();
+
+        return {
+            labelWidth: labelRect.width,
+            labelHeight: labelRect.height,
+            containerWidth: containerRect.width,
+            containerHeight: containerRect.height,
+        };
+    });
+    expect(roundLabelBounds.labelWidth).toBeLessThanOrEqual(roundLabelBounds.containerWidth + 0.5);
+    expect(roundLabelBounds.labelHeight).toBeLessThanOrEqual(roundLabelBounds.containerHeight + 0.5);
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(page.getByRole('status')).toContainText('Saved');
 
     await page.reload();
     await expect(page.getByRole('textbox', { name: 'Note title' })).toHaveValue('Mermaid production smoke');
     await expect(page.getByLabel('Mermaid diagram preview').locator('svg')).toBeVisible();
+    const diagramToolbar = page.getByRole('toolbar', { name: 'Diagram controls' });
+    await expect(diagramToolbar).toBeVisible();
+    await diagramToolbar.getByRole('button', { name: 'Edit' }).click();
+    await expect(codeBlock.locator('pre')).toBeVisible();
+    await expect(codeBlock.locator('code')).toContainText('flowchart LR; A[Hard] --> B(Round)');
+    const sourceColors = await codeBlock.locator('pre').evaluate((element) => ({
+        background: getComputedStyle(element).backgroundColor,
+        foreground: getComputedStyle(element).color,
+    }));
+    expect(sourceColors.background).toBe('rgb(24, 27, 32)');
+    expect(sourceColors.foreground).not.toBe(sourceColors.background);
     expect(runtimeErrors).toEqual([]);
 });
 
-test('KaTeX code fences render accessible formulas after a hard refresh', async ({ page }) => {
+test('Math formula slash commands render accessible formulas after a hard refresh', async ({ page }) => {
     const runtimeErrors = collectRuntimeErrors(page);
+    await page.addInitScript(() => window.localStorage.setItem('theme', 'dark'));
     await signIn(page);
 
     await page.getByRole('button', { name: /Open a new note/ }).click();
@@ -77,23 +111,31 @@ test('KaTeX code fences render accessible formulas after a hard refresh', async 
 
     const editor = page.locator('.bn-editor[contenteditable="true"]');
     await editor.click();
-    await page.keyboard.type('```math ');
+    await page.keyboard.type('/math');
+    await page.getByText('Math Formula', { exact: true }).click();
 
-    await expect(page.getByRole('button', { name: 'Show preview' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Preview' })).toBeVisible();
     const codeBlock = page.locator('[data-content-type="codeBlock"]');
     await codeBlock.locator('code').click();
     await page.keyboard.type('E = mc^2');
-    await page.getByRole('button', { name: 'Show preview' }).click();
+    await page.getByRole('button', { name: 'Preview' }).click();
 
     const preview = page.getByLabel('Math formula preview');
     await expect(preview.locator('.katex')).toBeVisible();
     await expect(preview.locator('math')).toHaveCount(1);
+    await expect(page.locator('html')).toHaveClass(/dark/);
+    await expect(preview).not.toHaveCSS('background-color', 'rgb(255, 255, 255)');
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(page.getByRole('status')).toContainText('Saved');
 
     await page.reload();
     await expect(page.getByRole('textbox', { name: 'Note title' })).toHaveValue('KaTeX production smoke');
     await expect(page.getByLabel('Math formula preview').locator('.katex')).toBeVisible();
+    const formulaToolbar = page.getByRole('toolbar', { name: 'Math formula controls' });
+    await expect(formulaToolbar).toBeVisible();
+    await formulaToolbar.getByRole('button', { name: 'Edit' }).click();
+    await expect(codeBlock.locator('pre')).toBeVisible();
+    await expect(codeBlock.locator('code')).toContainText('E = mc^2');
     expect(runtimeErrors).toEqual([]);
 });
 

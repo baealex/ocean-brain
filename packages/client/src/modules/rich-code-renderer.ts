@@ -1,4 +1,5 @@
 export type RichCodeKind = 'mermaid' | 'math';
+export type RichCodeTheme = 'light' | 'dark';
 
 export interface RichCodeRenderResult {
     html: string;
@@ -9,15 +10,7 @@ let mermaidPromise: Promise<typeof import('mermaid')['default']> | undefined;
 let katexPromise: Promise<typeof import('katex')['default']> | undefined;
 
 const loadMermaid = () => {
-    mermaidPromise ??= import('mermaid').then(({ default: mermaid }) => {
-        mermaid.initialize({
-            securityLevel: 'strict',
-            startOnLoad: false,
-            suppressErrorRendering: true,
-        });
-
-        return mermaid;
-    });
+    mermaidPromise ??= import('mermaid').then(({ default: mermaid }) => mermaid);
 
     return mermaidPromise;
 };
@@ -53,9 +46,16 @@ export const renderRichCode = async (
     kind: RichCodeKind,
     source: string,
     renderId: string,
+    theme: RichCodeTheme = 'light',
 ): Promise<RichCodeRenderResult> => {
     if (kind === 'mermaid') {
         const mermaid = await loadMermaid();
+        mermaid.initialize({
+            securityLevel: 'strict',
+            startOnLoad: false,
+            suppressErrorRendering: true,
+            theme: theme === 'dark' ? 'dark' : 'default',
+        });
         const result = await mermaid.render(getSafeMermaidId(renderId), source);
 
         return {

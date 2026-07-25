@@ -55,11 +55,32 @@ test('Diagram slash commands remain editable and render after a hard refresh', a
     await expect(page.getByRole('button', { name: 'Preview' })).toBeVisible();
     const codeBlock = page.locator('[data-content-type="codeBlock"]');
     await codeBlock.locator('code').click();
-    await page.keyboard.type('graph TD; A-->B');
+    await page.keyboard.type('flowchart LR; A[Hard] --> B(Round)');
     await page.getByRole('button', { name: 'Preview' }).click();
 
     const preview = page.getByLabel('Mermaid diagram preview');
     await expect(preview.locator('svg')).toBeVisible();
+    const roundLabel = preview.locator('.nodeLabel', { hasText: 'Round' });
+    await expect(roundLabel).toBeVisible();
+    const roundLabelBounds = await roundLabel.evaluate((element) => {
+        const foreignObject = element.closest('foreignObject');
+
+        if (!foreignObject) {
+            throw new Error('Expected Mermaid HTML label container');
+        }
+
+        const labelRect = element.getBoundingClientRect();
+        const containerRect = foreignObject.getBoundingClientRect();
+
+        return {
+            labelWidth: labelRect.width,
+            labelHeight: labelRect.height,
+            containerWidth: containerRect.width,
+            containerHeight: containerRect.height,
+        };
+    });
+    expect(roundLabelBounds.labelWidth).toBeLessThanOrEqual(roundLabelBounds.containerWidth + 0.5);
+    expect(roundLabelBounds.labelHeight).toBeLessThanOrEqual(roundLabelBounds.containerHeight + 0.5);
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(page.getByRole('status')).toContainText('Saved');
 
@@ -70,7 +91,7 @@ test('Diagram slash commands remain editable and render after a hard refresh', a
     await expect(diagramToolbar).toBeVisible();
     await diagramToolbar.getByRole('button', { name: 'Edit' }).click();
     await expect(codeBlock.locator('pre')).toBeVisible();
-    await expect(codeBlock.locator('code')).toContainText('graph TD; A-->B');
+    await expect(codeBlock.locator('code')).toContainText('flowchart LR; A[Hard] --> B(Round)');
     const sourceColors = await codeBlock.locator('pre').evaluate((element) => ({
         background: getComputedStyle(element).backgroundColor,
         foreground: getComputedStyle(element).color,

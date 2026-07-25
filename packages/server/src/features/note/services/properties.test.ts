@@ -11,6 +11,7 @@ import {
     renamePropertyFiltersInViewQuery,
     resolveNotePropertiesPatchValueTypes,
     updateNotePropertiesWithVersionGuard,
+    viewQueryReferencesProperty,
 } from './properties.js';
 import { MissingNoteVersionError } from './write-conflict.js';
 
@@ -168,6 +169,24 @@ test('property option updates keep values referenced by saved views', () => {
         }),
         null,
     );
+});
+
+test('property definition deletion detects references from saved views', () => {
+    const query = JSON.stringify({
+        propertyFilters: [
+            {
+                key: 'state',
+                name: 'State',
+                valueType: 'select',
+                operator: 'equals',
+                value: 'doing',
+            },
+        ],
+    });
+
+    assert.equal(viewQueryReferencesProperty({ query, key: 'state' }), true);
+    assert.equal(viewQueryReferencesProperty({ query, key: 'project' }), false);
+    assert.equal(viewQueryReferencesProperty({ query: '{invalid', key: 'state' }), false);
 });
 
 test('property definition rename refreshes saved view filter labels', () => {

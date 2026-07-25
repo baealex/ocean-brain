@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createNoteSnapshotService, resolveRestoredSnapshotTags } from './snapshot.js';
+import {
+    createNoteSnapshotService,
+    resolveRestoredSnapshotPropertyTarget,
+    resolveRestoredSnapshotTags,
+} from './snapshot.js';
+import { isNoteVersionConflictError } from './write-conflict.js';
 
 test('captureBaseline stores one snapshot per note edit session', async () => {
     const snapshots: Array<{
@@ -201,6 +206,106 @@ test('captureBaseline creates a new snapshot when the payload changed in a new s
     assert.deepEqual(trimCalls, [{ noteId: 7, keep: 10, limit: 100 }]);
 });
 
+test('restoreSnapshot rejects a stale note version before creating a safety snapshot', async () => {
+    let createSnapshotCallCount = 0;
+    let updateNoteCallCount = 0;
+    const service = createNoteSnapshotService({
+        findNoteById: async () => ({
+            id: 7,
+            title: 'Current title',
+            content: '{"type":"current"}',
+            pinned: false,
+            order: 0,
+            layout: 'wide',
+            updatedAt: new Date('2026-03-31T00:00:01.000Z'),
+        }),
+        findSnapshotByEditSessionId: async () => null,
+        findLatestSnapshot: async () => null,
+        createSnapshot: async () => {
+            createSnapshotCallCount += 1;
+            throw new Error('should not create a safety snapshot');
+        },
+        purgeExpiredSnapshots: async () => 0,
+        trimOverflowSnapshots: async () => 0,
+        listSnapshots: async () => [],
+        findSnapshotById: async () => ({
+            id: 3,
+            noteId: 7,
+            title: 'Previous title',
+            payload: JSON.stringify({
+                title: 'Previous title',
+                content: '{"type":"previous"}',
+                pinned: false,
+                order: 0,
+                layout: 'wide',
+            }),
+            editSessionId: null,
+            meta: null,
+            createdAt: new Date('2026-03-30T00:00:00.000Z'),
+        }),
+        updateNote: async () => {
+            updateNoteCallCount += 1;
+            throw new Error('should not restore a stale snapshot');
+        },
+    });
+
+    await assert.rejects(
+        () => service.restoreSnapshot(3, { expectedUpdatedAt: '2026-03-31T00:00:00.000Z' }),
+        (error: unknown) => isNoteVersionConflictError(error),
+    );
+    assert.equal(createSnapshotCallCount, 0);
+    assert.equal(updateNoteCallCount, 0);
+});
+
+test('snapshot property restore keeps only values compatible with the current shared schema', async () => {
+    const definitions = new Map([
+        ['memo', { id: 10, valueType: 'text' as const }],
+        ['state', { id: 20, valueType: 'select' as const }],
+    ]);
+    const options = new Map([['20:doing', { id: 30 }]]);
+    const dependencies = {
+        findDefinitionByKey: async (key: string) => definitions.get(key) ?? null,
+        findOptionByValue: async (definitionId: number, value: string) =>
+            options.get(`${definitionId}:${value}`) ?? null,
+    };
+
+    assert.deepEqual(
+        await resolveRestoredSnapshotPropertyTarget(
+            { key: 'memo', valueType: 'text', optionValue: null },
+            dependencies,
+        ),
+        { propertyDefinitionId: 10, optionId: null },
+    );
+    assert.deepEqual(
+        await resolveRestoredSnapshotPropertyTarget(
+            { key: 'state', valueType: 'select', optionValue: 'doing' },
+            dependencies,
+        ),
+        { propertyDefinitionId: 20, optionId: 30 },
+    );
+    assert.equal(
+        await resolveRestoredSnapshotPropertyTarget(
+            { key: 'removed', valueType: 'text', optionValue: null },
+            dependencies,
+        ),
+        null,
+    );
+    assert.equal(
+        await resolveRestoredSnapshotPropertyTarget(
+            { key: 'memo', valueType: 'number', optionValue: null },
+            dependencies,
+        ),
+        null,
+    );
+    assert.equal(
+        await resolveRestoredSnapshotPropertyTarget(
+            { key: 'state', valueType: 'select', optionValue: 'removed-option' },
+            dependencies,
+        ),
+        null,
+    );
+});
+
 test('restoreSnapshot reapplies payload and stores the current state first', async () => {
     const calls: string[] = [];
     const createdSnapshots: Array<{
@@ -231,6 +336,7 @@ test('restoreSnapshot reapplies payload and stores the current state first', asy
             pinned: true,
             order: 2,
             layout: 'full',
+            updatedAt: new Date('2026-03-31T00:00:00.000Z'),
         }),
         findSnapshotByEditSessionId: async () => null,
         findLatestSnapshot: async () => null,
@@ -286,7 +392,10 @@ test('restoreSnapshot reapplies payload and stores the current state first', asy
         },
     });
 
-    const restored = await service.restoreSnapshot(3, { meta: '{"label":"Web browser"}' });
+    const restored = await service.restoreSnapshot(3, {
+        expectedUpdatedAt: '2026-03-31T00:00:00.000Z',
+        meta: '{"label":"Web browser"}',
+    });
 
     assert.equal(createdSnapshots.length, 1);
     assert.equal(createdSnapshots[0]?.title, 'Current title');
@@ -300,6 +409,7 @@ test('restoreSnapshot reapplies payload and stores the current state first', asy
                 pinned: false,
                 order: 0,
                 layout: 'wide',
+                expectedUpdatedAt: '2026-03-31T00:00:00.000Z',
             },
         },
     ]);
@@ -334,6 +444,7 @@ test('restoreSnapshot skips saving a safety snapshot when the latest snapshot al
             pinned: true,
             order: 2,
             layout: 'full',
+            updatedAt: new Date('2026-03-31T00:00:00.000Z'),
         }),
         findSnapshotByEditSessionId: async () => null,
         findLatestSnapshot: async () => ({
@@ -379,7 +490,10 @@ test('restoreSnapshot skips saving a safety snapshot when the latest snapshot al
         },
     });
 
-    const restored = await service.restoreSnapshot(3, { meta: '{"label":"Web browser"}' });
+    const restored = await service.restoreSnapshot(3, {
+        expectedUpdatedAt: '2026-03-31T00:00:00.000Z',
+        meta: '{"label":"Web browser"}',
+    });
 
     assert.deepEqual(updated, [
         {
@@ -390,6 +504,7 @@ test('restoreSnapshot skips saving a safety snapshot when the latest snapshot al
                 pinned: false,
                 order: 0,
                 layout: 'wide',
+                expectedUpdatedAt: '2026-03-31T00:00:00.000Z',
             },
         },
     ]);
@@ -406,6 +521,7 @@ test('restoreSnapshot keeps existing snapshots when note update fails', async ()
             pinned: false,
             order: 0,
             layout: 'wide',
+            updatedAt: new Date('2026-03-31T00:00:00.000Z'),
         }),
         findSnapshotByEditSessionId: async () => null,
         findLatestSnapshot: async () => null,
@@ -444,7 +560,10 @@ test('restoreSnapshot keeps existing snapshots when note update fails', async ()
         },
     });
 
-    await assert.rejects(() => service.restoreSnapshot(3), /UPDATE_FAILED/);
+    await assert.rejects(
+        () => service.restoreSnapshot(3, { expectedUpdatedAt: '2026-03-31T00:00:00.000Z' }),
+        /UPDATE_FAILED/,
+    );
     assert.equal(trimCallCount, 0);
 });
 
@@ -479,6 +598,7 @@ test('restoreSnapshot syncs tag relations from restored content', async () => {
             pinned: false,
             order: 0,
             layout: 'wide',
+            updatedAt: new Date('2026-03-31T00:00:00.000Z'),
         }),
         findSnapshotByEditSessionId: async () => null,
         findLatestSnapshot: async () => null,
@@ -522,7 +642,10 @@ test('restoreSnapshot syncs tag relations from restored content', async () => {
         },
     });
 
-    await service.restoreSnapshot(3, { meta: '{"label":"Web browser"}' });
+    await service.restoreSnapshot(3, {
+        expectedUpdatedAt: '2026-03-31T00:00:00.000Z',
+        meta: '{"label":"Web browser"}',
+    });
 
     assert.deepEqual(updated, [
         {
@@ -534,6 +657,7 @@ test('restoreSnapshot syncs tag relations from restored content', async () => {
                 order: 0,
                 layout: 'wide',
                 tagIds: [5, 7],
+                expectedUpdatedAt: '2026-03-31T00:00:00.000Z',
             },
         },
     ]);
@@ -571,6 +695,7 @@ test('restoreSnapshot clears tag relations when restored content has no tags', a
             pinned: false,
             order: 0,
             layout: 'wide',
+            updatedAt: new Date('2026-03-31T00:00:00.000Z'),
         }),
         findSnapshotByEditSessionId: async () => null,
         findLatestSnapshot: async () => null,
@@ -614,7 +739,10 @@ test('restoreSnapshot clears tag relations when restored content has no tags', a
         },
     });
 
-    await service.restoreSnapshot(3, { meta: '{"label":"Web browser"}' });
+    await service.restoreSnapshot(3, {
+        expectedUpdatedAt: '2026-03-31T00:00:00.000Z',
+        meta: '{"label":"Web browser"}',
+    });
 
     assert.deepEqual(updated[0]?.input.tagIds, []);
 });

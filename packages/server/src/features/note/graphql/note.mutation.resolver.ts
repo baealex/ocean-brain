@@ -193,21 +193,44 @@ export const noteMutationResolvers: NoteMutationResolvers = {
     },
     restoreNoteSnapshot: async (
         _,
-        { id }: { id: string },
+        { id, expectedUpdatedAt }: { id: string; expectedUpdatedAt: string },
         context: {
             req?: Request;
         },
     ) => {
-        const note = await restoreNoteSnapshot(Number(id), {
-            meta: createSnapshotMetaFromUserAgent(getRequestUserAgent(context.req)),
-        });
+        try {
+            const note = await restoreNoteSnapshot(Number(id), {
+                expectedUpdatedAt,
+                meta: createSnapshotMetaFromUserAgent(getRequestUserAgent(context.req)),
+            });
 
-        if (!note) {
-            throw 'NOT FOUND';
+            if (!note) {
+                throw 'NOT FOUND';
+            }
+
+            notifySemanticSearchNoteChanged(note.id);
+            return note;
+        } catch (error) {
+            if (isNoteVersionConflictError(error)) {
+                throw new GraphQLError(error.message, {
+                    extensions: {
+                        code: error.code,
+                        currentUpdatedAt: error.currentUpdatedAt,
+                        expectedUpdatedAt: error.expectedUpdatedAt,
+                    },
+                });
+            }
+
+            if (isInvalidNoteVersionError(error) || isMissingNoteVersionError(error)) {
+                throw new GraphQLError(error.message, {
+                    extensions: {
+                        code: error.code,
+                    },
+                });
+            }
+
+            throw error;
         }
-
-        notifySemanticSearchNoteChanged(note.id);
-        return note;
     },
     restoreTrashedNote: async (_, { id }: { id: string }) => {
         const note = await restoreTrashedNoteById(Number(id));

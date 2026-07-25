@@ -2,7 +2,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { useEffect, useRef, useState } from 'react';
 
-import { fetchNoteSnapshot, fetchNoteSnapshotDiff, fetchNoteSnapshots, restoreNoteSnapshot } from '~/apis/note.api';
+import {
+    fetchNoteSnapshot,
+    fetchNoteSnapshotDiff,
+    fetchNoteSnapshots,
+    type restoreNoteSnapshot,
+} from '~/apis/note.api';
 import { Button, Modal, ModalActionRow, SurfaceCard } from '~/components/shared';
 import { Text, useToast } from '~/components/ui';
 import type { Note } from '~/models/note.model';
@@ -12,7 +17,7 @@ interface RestoreSnapshotModalProps {
     isOpen: boolean;
     noteId: string;
     onClose: () => void;
-    restoreSnapshot?: (id: string) => Promise<Awaited<ReturnType<typeof restoreNoteSnapshot>> | undefined>;
+    restoreSnapshot: (id: string) => Promise<Awaited<ReturnType<typeof restoreNoteSnapshot>> | undefined>;
     onRestored?: (note: Pick<Note, 'id' | 'updatedAt'>) => void;
 }
 
@@ -36,7 +41,7 @@ export default function RestoreSnapshotModal({
     isOpen,
     noteId,
     onClose,
-    restoreSnapshot = restoreNoteSnapshot,
+    restoreSnapshot,
     onRestored,
 }: RestoreSnapshotModalProps) {
     const toast = useToast();

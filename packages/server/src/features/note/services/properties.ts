@@ -527,6 +527,16 @@ export const findReferencedRemovedPropertyOptionValue = ({
     return null;
 };
 
+export const viewQueryReferencesProperty = ({ query, key }: { query: string | null; key: string }) => {
+    const parsed = parseViewQueryRecord(query);
+
+    if (!parsed || !Array.isArray(parsed.propertyFilters)) {
+        return false;
+    }
+
+    return parsed.propertyFilters.some((filter) => isRecord(filter) && getNormalizedViewFilterKey(filter) === key);
+};
+
 const buildTypedValueData = async (
     input: NotePropertySetInput,
     definitionId: number,
@@ -985,6 +995,20 @@ export const deleteNotePropertyDefinition = async ({
 
         if (!definition) {
             return null;
+        }
+
+        const referencingViewSections = await tx.viewSection.findMany({
+            where: { query: { contains: definition.key } },
+            select: { title: true, query: true },
+        });
+        const referencingView = referencingViewSections.find((section) =>
+            viewQueryReferencesProperty({ query: section.query, key: definition.key }),
+        );
+
+        if (referencingView) {
+            throw new InvalidNotePropertyInputError(
+                `Property ${definition.key} is used by view ${referencingView.title} and cannot be deleted.`,
+            );
         }
 
         const affectedNoteCount = definition._count.properties;

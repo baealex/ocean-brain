@@ -829,7 +829,7 @@ describe('<NoteContent /> external change handling', () => {
             await delayedSave.promise;
         });
 
-        await waitFor(() => expect(restoreNoteSnapshot).toHaveBeenCalledWith('snapshot-1'));
+        await waitFor(() => expect(restoreNoteSnapshot).toHaveBeenCalledWith('snapshot-1', '1779700001000'));
         await waitFor(() => expect(screen.getByRole('textbox', { name: 'Note title' })).toHaveValue('Snapshot title'));
         expect(screen.getByLabelText('Editor')).toHaveValue('Snapshot content');
     });

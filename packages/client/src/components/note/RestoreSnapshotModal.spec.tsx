@@ -35,7 +35,14 @@ const renderModal = (props: Partial<ComponentProps<typeof RestoreSnapshotModal>>
     render(
         <QueryClientProvider client={queryClient}>
             <ToastProvider>
-                <RestoreSnapshotModal isOpen noteId="7" onClose={onClose} onRestored={onRestored} {...props} />
+                <RestoreSnapshotModal
+                    isOpen
+                    noteId="7"
+                    onClose={onClose}
+                    onRestored={onRestored}
+                    restoreSnapshot={(id) => restoreNoteSnapshot(id, '1774915199000')}
+                    {...props}
+                />
             </ToastProvider>
         </QueryClientProvider>,
     );
@@ -121,7 +128,7 @@ describe('<RestoreSnapshotModal />', () => {
         await user.click(screen.getByRole('button', { name: /view content/i }));
         await user.click(screen.getByRole('button', { name: /restore this version/i }));
 
-        await waitFor(() => expect(restoreNoteSnapshot).toHaveBeenCalledWith('snapshot-1', expect.anything()));
+        await waitFor(() => expect(restoreNoteSnapshot).toHaveBeenCalledWith('snapshot-1', '1774915199000'));
         expect(onRestored).toHaveBeenCalledWith(expect.objectContaining({ id: '7' }));
         expect(onClose).toHaveBeenCalledTimes(1);
     });

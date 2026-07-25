@@ -706,15 +706,15 @@ export function fetchNoteSnapshotDiff(id: string, target: 'next' | 'previous' | 
     );
 }
 
-export function restoreNoteSnapshot(id: string) {
+export function restoreNoteSnapshot(id: string, expectedUpdatedAt: string) {
     return graphQuery<
         {
             restoreNoteSnapshot: Pick<Note, 'id' | 'title' | 'updatedAt' | 'layout' | 'pinned' | 'content'>;
         },
-        { id: string }
+        { id: string; expectedUpdatedAt: string }
     >(
-        `mutation RestoreNoteSnapshot($id: ID!) {
-            restoreNoteSnapshot(id: $id) {
+        `mutation RestoreNoteSnapshot($id: ID!, $expectedUpdatedAt: String!) {
+            restoreNoteSnapshot(id: $id, expectedUpdatedAt: $expectedUpdatedAt) {
                 id
                 title
                 pinned
@@ -723,7 +723,7 @@ export function restoreNoteSnapshot(id: string) {
                 updatedAt
             }
         }`,
-        { id },
+        { id, expectedUpdatedAt },
     );
 }
 

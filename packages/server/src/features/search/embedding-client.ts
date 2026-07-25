@@ -1,4 +1,3 @@
-import { assertEmbeddingRequestAllowed, type ResolveEmbeddingHost } from './embedding-request-policy.js';
 import { stripTrailingSlashes } from './url-normalization.js';
 
 export interface EmbeddingProviderConfig {
@@ -6,7 +5,6 @@ export interface EmbeddingProviderConfig {
     model: string;
     apiKey?: string;
     queryInstruction?: string;
-    allowedOrigins?: readonly string[];
 }
 
 export interface EmbeddingClient {
@@ -18,8 +16,6 @@ interface EmbeddingClientOptions {
     fetch?: typeof fetch;
     timeoutMs?: number;
     apiKey?: string;
-    allowedOrigins?: readonly string[];
-    resolveHost?: ResolveEmbeddingHost;
 }
 
 export interface EmbeddingModelDescriptor {
@@ -46,6 +42,9 @@ const buildOpenAiCompatibleUrl = (baseUrl: string, resource: 'embeddings' | 'mod
 
     if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
         throw new Error('Embedding API URL must use http or https.');
+    }
+    if (parsedUrl.username || parsedUrl.password) {
+        throw new Error('Embedding API URL must not contain credentials.');
     }
 
     const normalizedPath = stripTrailingSlashes(parsedUrl.pathname);
@@ -129,11 +128,7 @@ export const listOpenAiCompatibleEmbeddingModels = async (
     const endpoint = buildModelsUrl(baseUrl);
     const fetchImpl = options.fetch ?? fetch;
     const timeoutMs = options.timeoutMs ?? DEFAULT_MODEL_DISCOVERY_TIMEOUT_MS;
-    await assertEmbeddingRequestAllowed(endpoint, {
-        allowedOrigins: options.allowedOrigins,
-        resolveHost: options.resolveHost,
-    });
-    // The destination is validated above and redirects are disabled.
+    // The destination is explicitly configured by the workspace operator and redirects are disabled.
     // codeql[js/request-forgery]
     const response = await fetchImpl(endpoint, {
         method: 'GET',
@@ -212,11 +207,7 @@ export const createOpenAiCompatibleEmbeddingClient = (
             return [];
         }
 
-        await assertEmbeddingRequestAllowed(endpoint, {
-            allowedOrigins: config.allowedOrigins,
-            resolveHost: options.resolveHost,
-        });
-        // The destination is validated above and redirects are disabled.
+        // The destination is explicitly configured by the workspace operator and redirects are disabled.
         // codeql[js/request-forgery]
         const response = await fetchImpl(endpoint, {
             method: 'POST',

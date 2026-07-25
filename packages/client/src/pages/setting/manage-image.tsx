@@ -9,6 +9,7 @@ import { Button, Text, useConfirm } from '~/components/ui';
 import { useGridLimit } from '~/hooks/useGridLimit';
 import { queryKeys } from '~/modules/query-key-factory';
 import { SETTINGS_MANAGE_IMAGE_DETAIL_ROUTE, SETTINGS_MANAGE_IMAGE_ROUTE } from '~/modules/url';
+import { getImageDeleteConfirmation } from './image-delete-confirmation';
 
 const IMAGE_MIN_WIDTH = 240;
 const IMAGE_GAP = 20;
@@ -41,8 +42,8 @@ const ManageImage = () => {
         },
     });
 
-    const handleDelete = async (id: string) => {
-        if (await confirm('Delete this image? It is not referenced by any notes.')) {
+    const handleDelete = async (id: string, referenceCount: number) => {
+        if (await confirm(getImageDeleteConfirmation(referenceCount))) {
             deleteImageMutation.mutate(id);
         }
     };
@@ -150,9 +151,9 @@ const ManageImage = () => {
                                                     <Button
                                                         variant="ghost"
                                                         size="icon-sm"
-                                                        disabled={image.referenceCount > 0}
+                                                        disabled={deleteImageMutation.isPending}
                                                         aria-label={`Delete image ${image.id}`}
-                                                        onClick={() => handleDelete(image.id)}
+                                                        onClick={() => handleDelete(image.id, image.referenceCount)}
                                                     >
                                                         <Icon.TrashCan className="h-4 w-4" />
                                                     </Button>

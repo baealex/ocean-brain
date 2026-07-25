@@ -57,7 +57,6 @@ npx -y ocean-brain serve \
 | `OCEAN_BRAIN_ALLOW_INSECURE_NO_AUTH=true` | Environment equivalent of the open-mode flag |
 | `OCEAN_BRAIN_DATA_DIR` | Data directory; defaults to `~/.ocean-brain/data` |
 | `OCEAN_BRAIN_IMAGE_DIR` | Uploaded-image directory; defaults to `~/.ocean-brain/assets/images` |
-| `OCEAN_BRAIN_EMBEDDING_ALLOWED_ORIGINS` | Comma-separated private provider origins that Ocean Brain may contact |
 | `DATABASE_URL` | SQLite file URL; takes precedence over the database path derived from the data directory |
 
 By default, notes are stored in `~/.ocean-brain/data/db.sqlite3` and uploaded images in `~/.ocean-brain/assets/images`. The CLI creates the directories and applies bundled database migrations at startup. Stop Ocean Brain and back up both paths together; restore them while the server remains stopped.

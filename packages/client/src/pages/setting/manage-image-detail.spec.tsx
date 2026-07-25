@@ -119,4 +119,32 @@ describe('<ManageImageDetail />', () => {
             expect(mockToast).toHaveBeenCalledWith('Hero banner updated');
         });
     });
+
+    it('allows deleting a referenced image after showing the affected notes', async () => {
+        mockConfirm.mockResolvedValue(true);
+        vi.mocked(fetchImageNotes).mockResolvedValue({
+            type: 'success',
+            imageNotes: [
+                {
+                    id: 'note-1',
+                    title: 'Referenced note',
+                    createdAt: '1767225600000',
+                    updatedAt: '1767225600000',
+                },
+            ],
+        });
+        await renderPage();
+
+        expect(await screen.findByText('Referenced note')).toBeInTheDocument();
+        const deleteButton = screen.getByRole('button', { name: 'Delete' });
+        expect(deleteButton).toBeEnabled();
+        await userEvent.click(deleteButton);
+
+        await waitFor(() => {
+            expect(mockConfirm).toHaveBeenCalledWith(
+                'Delete this image? It is referenced by 1 note, which will show a broken image. This cannot be undone.',
+            );
+            expect(deleteImage).toHaveBeenCalledWith('image-1');
+        });
+    });
 });

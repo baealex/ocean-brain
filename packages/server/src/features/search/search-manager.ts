@@ -1,7 +1,11 @@
 import models from '~/models.js';
 import { subscribeServerEvents } from '~/modules/server-events.js';
 import { paths } from '~/paths.js';
-import { type EmbeddingApiKeyStore, FileEmbeddingApiKeyStore } from './embedding-api-key-store.js';
+import {
+    createEmbeddingApiKeyFingerprint,
+    type EmbeddingApiKeyStore,
+    FileEmbeddingApiKeyStore,
+} from './embedding-api-key-store.js';
 import {
     createOpenAiCompatibleEmbeddingClient,
     type EmbeddingClient,
@@ -9,7 +13,6 @@ import {
     type EmbeddingProviderConfig,
     listOpenAiCompatibleEmbeddingModels,
 } from './embedding-client.js';
-import { resolveEmbeddingRuntimeConfig } from './embedding-runtime-config.js';
 import { subscribeSemanticSearchNoteChanges } from './note-change.js';
 import {
     buildNoteEmbeddingChunks,
@@ -63,7 +66,6 @@ interface SearchManagerDependencies {
     findNotes: (noteIds: number[]) => Promise<SemanticSearchNoteInput[]>;
     apiKeyStore: EmbeddingApiKeyStore;
     createEmbeddingClient?: (config: EmbeddingProviderConfig) => EmbeddingClient;
-    embeddingAllowedOrigins?: readonly string[];
     now?: () => number;
 }
 
@@ -96,16 +98,6 @@ const profileMatchesConfig = (
     );
 };
 
-const connectionMatches = (left: SemanticSearchConfig, right: SemanticSearchConfig) =>
-    left.baseUrl === right.baseUrl && left.model === right.model;
-
-export class SemanticSearchConnectionNotValidatedError extends Error {
-    constructor() {
-        super('Test this embedding API and model before enabling semantic search.');
-        this.name = 'SemanticSearchConnectionNotValidatedError';
-    }
-}
-
 export class SemanticSearchManager {
     private activeReindex: Promise<void> | null = null;
     private activeNoteSync: Promise<{ failed: boolean; processed: boolean }> | null = null;
@@ -127,12 +119,11 @@ export class SemanticSearchManager {
         return factory({
             ...config,
             apiKey: this.resolveApiKey(apiKeyInput),
-            allowedOrigins: this.dependencies.embeddingAllowedOrigins,
         });
     }
 
-    private usesBearerAuth(apiKeyInput?: EmbeddingApiKeyInput) {
-        return Boolean(this.resolveApiKey(apiKeyInput));
+    private getAuthFingerprint(apiKeyInput?: EmbeddingApiKeyInput) {
+        return createEmbeddingApiKeyFingerprint(this.resolveApiKey(apiKeyInput));
     }
 
     private now() {
@@ -147,7 +138,7 @@ export class SemanticSearchManager {
         ]);
         const connectionValidated = await this.dependencies.configStore.isConnectionValidated(
             config,
-            this.usesBearerAuth(),
+            this.getAuthFingerprint(),
         );
         const profileMatches = profileMatchesConfig(indexStatus.profile, config);
         const indexReady = indexStatus.ready && profileMatches;
@@ -193,29 +184,8 @@ export class SemanticSearchManager {
             throw new Error('Semantic search settings cannot change while indexing is running.');
         }
 
-        const currentConfig = await this.dependencies.configStore.get();
-        const keepsActiveConnection = currentConfig.enabled && connectionMatches(currentConfig, config);
         const nextApiKey = this.resolveApiKey(apiKeyInput);
         const apiKeyChanged = Boolean(apiKeyInput?.provided && nextApiKey !== this.dependencies.apiKeyStore.get());
-        const usesBearerAuth = Boolean(nextApiKey);
-
-        if (apiKeyChanged && config.baseUrl && config.model) {
-            await this.validateConnection(config, { provided: true, apiKey: nextApiKey });
-        }
-
-        let connectionValidated = await this.dependencies.configStore.isConnectionValidated(config, usesBearerAuth);
-        const validatedConnection = connectionValidated
-            ? null
-            : await this.dependencies.configStore.getValidatedConnection();
-
-        if (keepsActiveConnection && !connectionValidated && !validatedConnection && !nextApiKey) {
-            await this.dependencies.configStore.markConnectionValidated(config, usesBearerAuth);
-            connectionValidated = true;
-        }
-
-        if (config.enabled && !connectionValidated) {
-            throw new SemanticSearchConnectionNotValidatedError();
-        }
 
         this.lastError = null;
         this.progress = null;
@@ -229,7 +199,7 @@ export class SemanticSearchManager {
     private async validateConnection(config: SemanticSearchConfig, apiKeyInput?: EmbeddingApiKeyInput) {
         const client = this.createClient({ ...config, enabled: true }, apiKeyInput);
         const [embedding] = await client.embedDocuments(['Ocean Brain embedding connection test']);
-        await this.dependencies.configStore.markConnectionValidated(config, this.usesBearerAuth(apiKeyInput));
+        await this.dependencies.configStore.markConnectionValidated(config, this.getAuthFingerprint(apiKeyInput));
         return embedding;
     }
 
@@ -247,7 +217,6 @@ export class SemanticSearchManager {
     async listModels(baseUrl: string, apiKeyInput?: EmbeddingApiKeyInput): Promise<EmbeddingModelDescriptor[]> {
         return listOpenAiCompatibleEmbeddingModels(baseUrl, {
             apiKey: this.resolveApiKey(apiKeyInput),
-            allowedOrigins: this.dependencies.embeddingAllowedOrigins,
         });
     }
 
@@ -535,7 +504,6 @@ let defaultSemanticSearchManager: SemanticSearchManager | null = null;
 
 export const getDefaultSemanticSearchManager = () => {
     if (!defaultSemanticSearchManager) {
-        const embeddingRuntimeConfig = resolveEmbeddingRuntimeConfig();
         defaultSemanticSearchManager = new SemanticSearchManager({
             configStore: new SemanticSearchConfigStore({
                 findUnique: (args) => models.cache.findUnique(args),
@@ -561,7 +529,6 @@ export const getDefaultSemanticSearchManager = () => {
                     },
                 }),
             apiKeyStore: new FileEmbeddingApiKeyStore(paths.embeddingApiKey),
-            embeddingAllowedOrigins: embeddingRuntimeConfig.allowedOrigins,
         });
         subscribeServerEvents((event) => {
             void defaultSemanticSearchManager?.scheduleNoteSync(Number(event.noteId)).catch(() => undefined);

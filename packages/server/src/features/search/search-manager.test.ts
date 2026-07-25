@@ -232,16 +232,26 @@ const validateAndSaveConfig = async (manager: SemanticSearchManager, config = en
     return manager.saveConfig(config);
 };
 
-test('requires a successful connection test before first activation', async () => {
-    const { manager } = createManagerFixture();
+test('saves enabled search before a provider is reachable', async () => {
+    const { getEmbeddingCallCount, manager, setEmbeddingError } = createManagerFixture();
+    setEmbeddingError(new Error('provider offline'));
 
-    await assert.rejects(manager.saveConfig(enabledConfig), /Test this embedding API/);
-    const status = await validateAndSaveConfig(manager);
+    const status = await manager.saveConfig(enabledConfig);
 
-    assert.equal(status.phase, 'needs-index');
-    assert.equal(status.connectionValidated, true);
+    assert.equal(status.config.enabled, true);
+    assert.equal(status.phase, 'needs-connection');
+    assert.equal(status.connectionValidated, false);
     assert.equal(status.available, false);
-    assert.equal(status.needsReindex, true);
+    assert.equal(status.needsReindex, false);
+    assert.equal(getEmbeddingCallCount(), 0);
+
+    const updatedStatus = await manager.saveConfig({
+        ...enabledConfig,
+        queryInstruction: 'Updated while the provider is still offline.',
+    });
+    assert.equal(updatedStatus.connectionValidated, false);
+    assert.equal(updatedStatus.phase, 'needs-connection');
+    assert.equal(getEmbeddingCallCount(), 0);
 });
 
 test('uses a server-side API key without exposing it in search status', async () => {
@@ -257,7 +267,7 @@ test('uses a server-side API key without exposing it in search status', async ()
     assert.equal('apiKey' in status.config, false);
 });
 
-test('validates and persists an API key supplied with search settings', async () => {
+test('keeps a successful test when the same API key is saved', async () => {
     const { manager, getLastEmbeddingProviderConfig } = createManagerFixture();
     const apiKeyInput = { provided: true, apiKey: 'provider-secret' };
 
@@ -266,9 +276,10 @@ test('validates and persists an API key supplied with search settings', async ()
 
     assert.equal(getLastEmbeddingProviderConfig()?.apiKey, 'provider-secret');
     assert.equal(status.apiKeyConfigured, true);
+    assert.equal(status.connectionValidated, true);
 });
 
-test('requires another connection test after removing a server-side API key', async () => {
+test('allows removing a server-side API key and marks the connection for another test', async () => {
     const { manager, setEmbeddingApiKey } = createManagerFixture({
         embeddingApiKey: 'provider-secret',
     });
@@ -280,7 +291,22 @@ test('requires another connection test after removing a server-side API key', as
     assert.equal(status.connectionValidated, false);
     assert.equal(status.phase, 'needs-connection');
     assert.equal(status.needsReindex, false);
-    await assert.rejects(manager.saveConfig(enabledConfig), /Test this embedding API/);
+    const savedStatus = await manager.saveConfig(enabledConfig);
+    assert.equal(savedStatus.phase, 'needs-connection');
+});
+
+test('saving a different API key does not contact the provider and invalidates the previous test', async () => {
+    const { getEmbeddingCallCount, manager } = createManagerFixture();
+    await manager.testConnection(enabledConfig, { provided: true, apiKey: 'provider-secret-a' });
+    await manager.saveConfig(enabledConfig, { provided: true, apiKey: 'provider-secret-a' });
+    const callsAfterTest = getEmbeddingCallCount();
+
+    const status = await manager.saveConfig(enabledConfig, { provided: true, apiKey: 'provider-secret-b' });
+
+    assert.equal(getEmbeddingCallCount(), callsAfterTest);
+    assert.equal(status.apiKeyConfigured, true);
+    assert.equal(status.connectionValidated, false);
+    assert.equal(status.phase, 'needs-connection');
 });
 
 test('builds an index in the background and enables semantic queries when complete', async () => {

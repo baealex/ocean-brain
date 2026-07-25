@@ -131,6 +131,7 @@ test('search config handler rejects enabling a connection that was never tested'
 
 test('connection test forces validation without persisting the supplied settings', async () => {
     let receivedConfig: unknown;
+    let receivedApiKeyInput: unknown;
     const handler = createSearchAdminTestConnectionHandler({
         getStatus: async () => {
             throw new Error('not used');
@@ -138,8 +139,9 @@ test('connection test forces validation without persisting the supplied settings
         saveConfig: async () => {
             throw new Error('must not be called');
         },
-        testConnection: async (config) => {
+        testConnection: async (config, apiKeyInput) => {
             receivedConfig = config;
+            receivedApiKeyInput = apiKeyInput;
             return { ok: true as const, dimensions: 2, model: config?.model ?? '' };
         },
         startReindex: async () => {
@@ -154,6 +156,7 @@ test('connection test forces validation without persisting the supplied settings
                 baseUrl: 'http://127.0.0.1:1234/v1',
                 model: 'qwen-embedding',
                 queryInstruction: 'Retrieve relevant notes.',
+                apiKey: 'provider-secret',
             },
         } as never,
         response,
@@ -165,20 +168,24 @@ test('connection test forces validation without persisting the supplied settings
         model: 'qwen-embedding',
         queryInstruction: 'Retrieve relevant notes.',
     });
+    assert.deepEqual(receivedApiKeyInput, { provided: true, apiKey: 'provider-secret' });
     assert.equal(response.statusCode, 200);
 });
 
 test('model discovery validates the URL before listing provider models', async () => {
     let receivedBaseUrl = '';
-    const handler = createSearchAdminListModelsHandler(async (baseUrl) => {
+    let receivedApiKeyInput: unknown;
+    const handler = createSearchAdminListModelsHandler(async (baseUrl, apiKeyInput) => {
         receivedBaseUrl = baseUrl;
+        receivedApiKeyInput = apiKeyInput;
         return [{ id: 'text-embedding-qwen3', likelyEmbedding: true }];
     });
     const response = createResponse();
 
-    await handler({ body: { baseUrl: ' http://127.0.0.1:1234/v1/ ' } } as never, response);
+    await handler({ body: { baseUrl: ' http://127.0.0.1:1234/v1/ ', apiKey: 'provider-secret' } } as never, response);
 
     assert.equal(receivedBaseUrl, 'http://127.0.0.1:1234/v1');
+    assert.deepEqual(receivedApiKeyInput, { provided: true, apiKey: 'provider-secret' });
     assert.deepEqual(response.body, {
         models: [{ id: 'text-embedding-qwen3', likelyEmbedding: true }],
     });

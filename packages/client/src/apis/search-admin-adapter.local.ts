@@ -1,4 +1,4 @@
-import type { SearchAdminStatus, SemanticSearchConfig } from './search-admin.types';
+import type { SearchAdminStatus, SemanticSearchConfigInput, SemanticSearchModelsInput } from './search-admin.types';
 
 const LOCAL_DEMO_ERROR = 'Semantic search requires a server-backed Ocean Brain instance.';
 
@@ -29,14 +29,20 @@ const cloneStatus = () => structuredClone(status);
 
 export const fetchSearchAdminStatus = async () => cloneStatus();
 
-export const saveSemanticSearchConfig = async (config: SemanticSearchConfig) => {
+export const saveSemanticSearchConfig = async (config: SemanticSearchConfigInput) => {
     if (config.enabled) {
         throw new Error(LOCAL_DEMO_ERROR);
     }
 
     status = {
         ...status,
-        config: { ...config },
+        config: {
+            enabled: config.enabled,
+            baseUrl: config.baseUrl,
+            model: config.model,
+            queryInstruction: config.queryInstruction,
+        },
+        apiKeyConfigured: config.apiKey === undefined ? status.apiKeyConfigured : Boolean(config.apiKey),
         connectionValidated: false,
         phase: 'disabled',
         available: false,
@@ -46,11 +52,11 @@ export const saveSemanticSearchConfig = async (config: SemanticSearchConfig) => 
     return cloneStatus();
 };
 
-export const fetchSemanticSearchModels = async (_baseUrl: string) => {
+export const fetchSemanticSearchModels = async (_input: SemanticSearchModelsInput) => {
     throw new Error(LOCAL_DEMO_ERROR);
 };
 
-export const testSemanticSearchConnection = async (_config: SemanticSearchConfig) => {
+export const testSemanticSearchConnection = async (_config: SemanticSearchConfigInput) => {
     throw new Error(LOCAL_DEMO_ERROR);
 };
 

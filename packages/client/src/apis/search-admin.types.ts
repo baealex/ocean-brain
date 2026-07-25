@@ -5,6 +5,15 @@ export interface SemanticSearchConfig {
     queryInstruction: string;
 }
 
+export interface SemanticSearchConfigInput extends SemanticSearchConfig {
+    apiKey?: string | null;
+}
+
+export interface SemanticSearchModelsInput {
+    baseUrl: string;
+    apiKey?: string | null;
+}
+
 export type SemanticSearchPhase = 'disabled' | 'needs-connection' | 'needs-index' | 'indexing' | 'ready' | 'error';
 
 export interface SemanticSearchBuildProgress {

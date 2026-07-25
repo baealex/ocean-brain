@@ -177,8 +177,13 @@ const createManagerFixture = (options: { embeddingApiKey?: string } = {}) => {
             lastEmbeddingProviderConfig = config;
             return embeddingClient;
         },
-        get embeddingApiKey() {
-            return embeddingApiKey;
+        apiKeyStore: {
+            get() {
+                return embeddingApiKey;
+            },
+            set(value) {
+                embeddingApiKey = value;
+            },
         },
         now: () => now,
     });
@@ -250,6 +255,17 @@ test('uses a server-side API key without exposing it in search status', async ()
     assert.equal(getLastEmbeddingProviderConfig()?.apiKey, 'provider-secret');
     assert.equal(status.apiKeyConfigured, true);
     assert.equal('apiKey' in status.config, false);
+});
+
+test('validates and persists an API key supplied with search settings', async () => {
+    const { manager, getLastEmbeddingProviderConfig } = createManagerFixture();
+    const apiKeyInput = { provided: true, apiKey: 'provider-secret' };
+
+    await manager.testConnection(enabledConfig, apiKeyInput);
+    const status = await manager.saveConfig(enabledConfig, apiKeyInput);
+
+    assert.equal(getLastEmbeddingProviderConfig()?.apiKey, 'provider-secret');
+    assert.equal(status.apiKeyConfigured, true);
 });
 
 test('requires another connection test after removing a server-side API key', async () => {

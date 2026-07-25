@@ -6,6 +6,7 @@ import {
     fetchSearchAdminStatus,
     fetchSemanticSearchModels,
     type SemanticSearchConfig,
+    type SemanticSearchConfigInput,
     type SemanticSearchPhase,
     saveSemanticSearchConfig,
     startSemanticSearchReindex,
@@ -75,6 +76,20 @@ const SearchSetting = () => {
     const [availableModels, setAvailableModels] = useState<EmbeddingModelDescriptor[]>([]);
     const [discoveredBaseUrl, setDiscoveredBaseUrl] = useState('');
     const [testedConnectionKey, setTestedConnectionKey] = useState('');
+    const [apiKeyDraft, setApiKeyDraft] = useState('');
+    const [removeSavedApiKey, setRemoveSavedApiKey] = useState(false);
+    const [credentialRevision, setCredentialRevision] = useState(0);
+
+    const addApiKeyInput = <Input extends object>(input: Input) => {
+        const apiKey = apiKeyDraft.trim();
+        if (apiKey) {
+            return { ...input, apiKey };
+        }
+        if (removeSavedApiKey) {
+            return { ...input, apiKey: null };
+        }
+        return input;
+    };
 
     const {
         data: status,
@@ -99,6 +114,8 @@ const SearchSetting = () => {
         onSuccess: (nextStatus) => {
             queryClient.setQueryData(statusQueryKey, nextStatus);
             setForm(nextStatus.config);
+            setApiKeyDraft('');
+            setRemoveSavedApiKey(false);
             toast('Search settings saved.');
         },
         onError: (error) => {
@@ -108,8 +125,8 @@ const SearchSetting = () => {
 
     const modelsMutation = useMutation({
         mutationFn: fetchSemanticSearchModels,
-        onSuccess: ({ models }, requestedBaseUrl) => {
-            const normalizedRequestedUrl = normalizeBaseUrl(requestedBaseUrl);
+        onSuccess: ({ models }, input) => {
+            const normalizedRequestedUrl = normalizeBaseUrl(input.baseUrl);
             setAvailableModels(models);
             setDiscoveredBaseUrl(normalizedRequestedUrl);
             setForm((current) => {
@@ -130,9 +147,10 @@ const SearchSetting = () => {
     });
 
     const connectionMutation = useMutation({
-        mutationFn: testSemanticSearchConnection,
-        onSuccess: ({ dimensions, model }, testedConfig) => {
-            setTestedConnectionKey(`${normalizeBaseUrl(testedConfig.baseUrl)}::${testedConfig.model.trim()}`);
+        mutationFn: ({ input }: { input: SemanticSearchConfigInput; connectionKey: string }) =>
+            testSemanticSearchConnection(input),
+        onSuccess: ({ dimensions, model }, { connectionKey }) => {
+            setTestedConnectionKey(connectionKey);
             toast(`Connected to ${model} (${dimensions} dimensions).`);
         },
         onError: (error) => {
@@ -158,8 +176,9 @@ const SearchSetting = () => {
     });
 
     const normalizedFormBaseUrl = normalizeBaseUrl(form.baseUrl);
-    const currentConnectionKey = `${normalizedFormBaseUrl}::${form.model.trim()}`;
-    const isDirty = Boolean(status && !configsMatch(form, status.config));
+    const currentConnectionKey = `${normalizedFormBaseUrl}::${form.model.trim()}::${credentialRevision}`;
+    const credentialDirty = Boolean(apiKeyDraft.trim() || removeSavedApiKey);
+    const isDirty = Boolean(status && (!configsMatch(form, status.config) || credentialDirty));
     const isIndexing = status?.phase === 'indexing';
     const isCheckingProvider = modelsMutation.isPending || connectionMutation.isPending;
     const hasConnectionFields = Boolean(normalizedFormBaseUrl && form.model.trim());
@@ -171,7 +190,9 @@ const SearchSetting = () => {
             normalizeBaseUrl(status.config.baseUrl) === normalizedFormBaseUrl &&
             status.config.model.trim() === form.model.trim(),
     );
-    const isSavedValidatedConnection = Boolean(savedConnectionMatches && status?.connectionValidated);
+    const isSavedValidatedConnection = Boolean(
+        savedConnectionMatches && status?.connectionValidated && !credentialDirty,
+    );
     const connectionNeedsTest = hasConnectionFields && !isSavedValidatedConnection;
     const canEnableMeaningSearch = hasConnectionFields && (isCurrentConnectionTested || isSavedValidatedConnection);
     const canSave = Boolean(
@@ -211,6 +232,18 @@ const SearchSetting = () => {
         setForm((current) => ({ ...current, [key]: value }));
     };
 
+    const resetConnectionTest = () => {
+        setTestedConnectionKey('');
+        connectionMutation.reset();
+    };
+
+    const resetProviderChecks = () => {
+        setAvailableModels([]);
+        setDiscoveredBaseUrl('');
+        resetConnectionTest();
+        modelsMutation.reset();
+    };
+
     const handleBaseUrlChange = (baseUrl: string) => {
         const connectionChanged = normalizedFormBaseUrl !== normalizeBaseUrl(baseUrl);
         setForm((current) => ({ ...current, baseUrl, model: connectionChanged ? '' : current.model }));
@@ -218,25 +251,33 @@ const SearchSetting = () => {
             return;
         }
 
-        setAvailableModels([]);
-        setDiscoveredBaseUrl('');
-        setTestedConnectionKey('');
-        modelsMutation.reset();
-        connectionMutation.reset();
+        resetProviderChecks();
+    };
+
+    const handleApiKeyChange = (apiKey: string) => {
+        setApiKeyDraft(apiKey);
+        setRemoveSavedApiKey(false);
+        setCredentialRevision((current) => current + 1);
+        resetProviderChecks();
+    };
+
+    const handleSavedApiKeyRemoval = () => {
+        setApiKeyDraft('');
+        setRemoveSavedApiKey((current) => !current);
+        setCredentialRevision((current) => current + 1);
+        resetProviderChecks();
     };
 
     const handleFindModels = () => {
         const baseUrl = normalizeBaseUrl(form.baseUrl);
         setForm((current) => ({ ...current, baseUrl }));
-        setTestedConnectionKey('');
-        connectionMutation.reset();
-        modelsMutation.mutate(baseUrl);
+        resetConnectionTest();
+        modelsMutation.mutate(addApiKeyInput({ baseUrl }));
     };
 
     const handleModelChange = (model: string) => {
         updateForm('model', model);
-        setTestedConnectionKey('');
-        connectionMutation.reset();
+        resetConnectionTest();
     };
 
     const handleMeaningSearchChange = (enabled: boolean) => {
@@ -273,8 +314,7 @@ const SearchSetting = () => {
                                 Connect an embedding API
                             </Text>
                             <Text as="p" variant="meta" tone="secondary" className="leading-relaxed">
-                                Enter an OpenAI-compatible base URL. Ocean Brain checks the API and asks it which models
-                                are available before you choose one.
+                                Enter an OpenAI-compatible API URL and an API key when the provider requires one.
                             </Text>
                         </div>
                     </div>
@@ -305,17 +345,46 @@ const SearchSetting = () => {
                                 Find models
                             </Button>
                         </div>
-                        <Text as="p" variant="meta" tone="tertiary" className="leading-relaxed">
-                            If Ocean Brain runs in Docker and LM Studio runs on the host, try
-                            {' http://host.docker.internal:1234/v1'} and allow that origin in the server environment.
-                        </Text>
-                        <Text as="p" variant="meta" tone="tertiary" className="leading-relaxed">
-                            Provider authentication:{' '}
-                            {status?.apiKeyConfigured
-                                ? 'a Bearer API key is configured on the server.'
-                                : 'no API key is configured. Set OCEAN_BRAIN_EMBEDDING_API_KEY before startup when the provider requires one.'}
-                            {' The key is never sent to this page or stored in the notes database.'}
-                        </Text>
+
+                        <div className="space-y-2 pt-1">
+                            <Label htmlFor="semantic-search-api-key" className="font-medium text-fg-tertiary">
+                                API key <span className="font-normal text-fg-tertiary">(optional)</span>
+                            </Label>
+                            <div className="flex flex-col gap-2 sm:flex-row">
+                                <Input
+                                    id="semantic-search-api-key"
+                                    type="password"
+                                    autoComplete="new-password"
+                                    placeholder={
+                                        removeSavedApiKey
+                                            ? 'No API key'
+                                            : status?.apiKeyConfigured
+                                              ? 'Saved API key'
+                                              : 'Enter API key'
+                                    }
+                                    value={apiKeyDraft}
+                                    disabled={!hasInitialized || isIndexing || isCheckingProvider || removeSavedApiKey}
+                                    onChange={(event) => handleApiKeyChange(event.target.value)}
+                                    className="min-w-0 flex-1"
+                                />
+                                {status?.apiKeyConfigured && (
+                                    <Button
+                                        type="button"
+                                        variant="subtle"
+                                        onClick={handleSavedApiKeyRemoval}
+                                        disabled={isIndexing || isCheckingProvider}
+                                        className="w-full sm:w-auto"
+                                    >
+                                        {removeSavedApiKey ? 'Keep saved key' : 'Remove saved key'}
+                                    </Button>
+                                )}
+                            </div>
+                            {removeSavedApiKey && (
+                                <Text as="p" variant="meta" tone="tertiary">
+                                    The saved key will be removed when you save.
+                                </Text>
+                            )}
+                        </div>
 
                         {hasDiscoveredCurrentUrl && (
                             <div
@@ -353,8 +422,7 @@ const SearchSetting = () => {
                                 Choose and test a model
                             </Text>
                             <Text as="p" variant="meta" tone="secondary" className="leading-relaxed">
-                                Models that look suitable for embeddings appear first. The final test sends a short
-                                sample and verifies that the API returns a vector.
+                                Choose an embedding model and verify the connection.
                             </Text>
                         </div>
                     </div>
@@ -386,7 +454,12 @@ const SearchSetting = () => {
                                 <Button
                                     type="button"
                                     variant="subtle"
-                                    onClick={() => connectionMutation.mutate(form)}
+                                    onClick={() =>
+                                        connectionMutation.mutate({
+                                            input: addApiKeyInput(form),
+                                            connectionKey: currentConnectionKey,
+                                        })
+                                    }
                                     isLoading={connectionMutation.isPending}
                                     disabled={!hasConnectionFields || isIndexing || modelsMutation.isPending}
                                     className="w-full sm:w-auto"
@@ -561,7 +634,7 @@ const SearchSetting = () => {
                         <Button
                             type="button"
                             variant="primary"
-                            onClick={() => saveMutation.mutate(form)}
+                            onClick={() => saveMutation.mutate(addApiKeyInput(form))}
                             isLoading={saveMutation.isPending}
                             disabled={!canSave}
                         >
@@ -651,15 +724,9 @@ const SearchSetting = () => {
                         </div>
                     )}
 
-                    <div className="flex items-start gap-2.5 rounded-[14px] border border-border-subtle bg-muted px-3.5 py-3">
-                        <Icon.Info className="mt-0.5 h-4 w-4 shrink-0 text-fg-tertiary" />
-                        <Text as="p" variant="meta" tone="secondary" className="leading-relaxed">
-                            Ocean Brain sends note text during indexing and your search text when meaning search runs. A
-                            local LM Studio URL keeps that traffic on your machine; a remote URL sends it to that
-                            service. Only the resulting vectors are stored in Ocean Brain&apos;s separate search
-                            database.
-                        </Text>
-                    </div>
+                    <Text as="p" variant="meta" tone="tertiary" className="leading-relaxed">
+                        Note and query text is sent to the embedding API you configure.
+                    </Text>
 
                     {statusQueryError && (
                         <Text as="p" variant="meta" tone="error">

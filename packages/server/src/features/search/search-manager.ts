@@ -1,10 +1,13 @@
 import models from '~/models.js';
 import { subscribeServerEvents } from '~/modules/server-events.js';
 import { paths } from '~/paths.js';
+import { type EmbeddingApiKeyStore, FileEmbeddingApiKeyStore } from './embedding-api-key-store.js';
 import {
     createOpenAiCompatibleEmbeddingClient,
     type EmbeddingClient,
+    type EmbeddingModelDescriptor,
     type EmbeddingProviderConfig,
+    listOpenAiCompatibleEmbeddingModels,
 } from './embedding-client.js';
 import { resolveEmbeddingRuntimeConfig } from './embedding-runtime-config.js';
 import { subscribeSemanticSearchNoteChanges } from './note-change.js';
@@ -48,13 +51,18 @@ export interface SemanticSearchStatus {
     error: string | null;
 }
 
+export interface EmbeddingApiKeyInput {
+    provided: boolean;
+    apiKey?: string;
+}
+
 interface SearchManagerDependencies {
     configStore: SemanticSearchConfigStore;
     vectorIndex: SemanticVectorIndex & SemanticNoteSyncStore;
     listNotes: () => Promise<SemanticSearchNoteInput[]>;
     findNotes: (noteIds: number[]) => Promise<SemanticSearchNoteInput[]>;
+    apiKeyStore: EmbeddingApiKeyStore;
     createEmbeddingClient?: (config: EmbeddingProviderConfig) => EmbeddingClient;
-    embeddingApiKey?: string;
     embeddingAllowedOrigins?: readonly string[];
     now?: () => number;
 }
@@ -110,17 +118,21 @@ export class SemanticSearchManager {
 
     constructor(private readonly dependencies: SearchManagerDependencies) {}
 
-    private createClient(config: SemanticSearchConfig) {
+    private resolveApiKey(input?: EmbeddingApiKeyInput) {
+        return input?.provided ? input.apiKey : this.dependencies.apiKeyStore.get();
+    }
+
+    private createClient(config: SemanticSearchConfig, apiKeyInput?: EmbeddingApiKeyInput) {
         const factory = this.dependencies.createEmbeddingClient ?? createOpenAiCompatibleEmbeddingClient;
         return factory({
             ...config,
-            apiKey: this.dependencies.embeddingApiKey,
+            apiKey: this.resolveApiKey(apiKeyInput),
             allowedOrigins: this.dependencies.embeddingAllowedOrigins,
         });
     }
 
-    private usesBearerAuth() {
-        return Boolean(this.dependencies.embeddingApiKey);
+    private usesBearerAuth(apiKeyInput?: EmbeddingApiKeyInput) {
+        return Boolean(this.resolveApiKey(apiKeyInput));
     }
 
     private now() {
@@ -160,7 +172,7 @@ export class SemanticSearchManager {
         return {
             config,
             connectionValidated,
-            apiKeyConfigured: Boolean(this.dependencies.embeddingApiKey),
+            apiKeyConfigured: Boolean(this.dependencies.apiKeyStore.get()),
             phase,
             available,
             needsReindex,
@@ -176,25 +188,27 @@ export class SemanticSearchManager {
         };
     }
 
-    async saveConfig(config: SemanticSearchConfig) {
+    async saveConfig(config: SemanticSearchConfig, apiKeyInput?: EmbeddingApiKeyInput) {
         if (this.activeReindex) {
             throw new Error('Semantic search settings cannot change while indexing is running.');
         }
 
         const currentConfig = await this.dependencies.configStore.get();
         const keepsActiveConnection = currentConfig.enabled && connectionMatches(currentConfig, config);
-        const usesBearerAuth = this.usesBearerAuth();
+        const nextApiKey = this.resolveApiKey(apiKeyInput);
+        const apiKeyChanged = Boolean(apiKeyInput?.provided && nextApiKey !== this.dependencies.apiKeyStore.get());
+        const usesBearerAuth = Boolean(nextApiKey);
+
+        if (apiKeyChanged && config.baseUrl && config.model) {
+            await this.validateConnection(config, { provided: true, apiKey: nextApiKey });
+        }
+
         let connectionValidated = await this.dependencies.configStore.isConnectionValidated(config, usesBearerAuth);
         const validatedConnection = connectionValidated
             ? null
             : await this.dependencies.configStore.getValidatedConnection();
 
-        if (
-            keepsActiveConnection &&
-            !connectionValidated &&
-            !validatedConnection &&
-            !this.dependencies.embeddingApiKey
-        ) {
+        if (keepsActiveConnection && !connectionValidated && !validatedConnection && !nextApiKey) {
             await this.dependencies.configStore.markConnectionValidated(config, usesBearerAuth);
             connectionValidated = true;
         }
@@ -205,21 +219,36 @@ export class SemanticSearchManager {
 
         this.lastError = null;
         this.progress = null;
+        if (apiKeyChanged) {
+            this.dependencies.apiKeyStore.set(nextApiKey);
+        }
         await this.dependencies.configStore.set(config);
         return this.getStatus();
     }
 
-    async testConnection(configInput?: SemanticSearchConfig) {
-        const config = configInput ?? (await this.dependencies.configStore.get());
-        const client = this.createClient({ ...config, enabled: true });
+    private async validateConnection(config: SemanticSearchConfig, apiKeyInput?: EmbeddingApiKeyInput) {
+        const client = this.createClient({ ...config, enabled: true }, apiKeyInput);
         const [embedding] = await client.embedDocuments(['Ocean Brain embedding connection test']);
-        await this.dependencies.configStore.markConnectionValidated(config, this.usesBearerAuth());
+        await this.dependencies.configStore.markConnectionValidated(config, this.usesBearerAuth(apiKeyInput));
+        return embedding;
+    }
+
+    async testConnection(configInput?: SemanticSearchConfig, apiKeyInput?: EmbeddingApiKeyInput) {
+        const config = configInput ?? (await this.dependencies.configStore.get());
+        const embedding = await this.validateConnection(config, apiKeyInput);
 
         return {
             ok: true as const,
             dimensions: embedding.length,
             model: config.model,
         };
+    }
+
+    async listModels(baseUrl: string, apiKeyInput?: EmbeddingApiKeyInput): Promise<EmbeddingModelDescriptor[]> {
+        return listOpenAiCompatibleEmbeddingModels(baseUrl, {
+            apiKey: this.resolveApiKey(apiKeyInput),
+            allowedOrigins: this.dependencies.embeddingAllowedOrigins,
+        });
     }
 
     async startReindex() {
@@ -531,7 +560,7 @@ export const getDefaultSemanticSearchManager = () => {
                         content: true,
                     },
                 }),
-            embeddingApiKey: embeddingRuntimeConfig.apiKey,
+            apiKeyStore: new FileEmbeddingApiKeyStore(paths.embeddingApiKey),
             embeddingAllowedOrigins: embeddingRuntimeConfig.allowedOrigins,
         });
         subscribeServerEvents((event) => {

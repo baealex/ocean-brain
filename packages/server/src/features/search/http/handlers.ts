@@ -1,13 +1,10 @@
 import { createAppError } from '~/modules/error-handler.js';
 import type { Controller } from '~/types/index.js';
-import {
-    type EmbeddingModelDescriptor,
-    listOpenAiCompatibleEmbeddingModels,
-    normalizeEmbeddingModelsUrl,
-} from '../embedding-client.js';
-import { resolveEmbeddingRuntimeConfig } from '../embedding-runtime-config.js';
+import { normalizeEmbeddingApiKey } from '../embedding-api-key-store.js';
+import { type EmbeddingModelDescriptor, normalizeEmbeddingModelsUrl } from '../embedding-client.js';
 import { normalizeSemanticSearchConfig, type SemanticSearchConfig } from '../search-config.js';
 import {
+    type EmbeddingApiKeyInput,
     getDefaultSemanticSearchManager,
     SemanticSearchConnectionNotValidatedError,
     type SemanticSearchManager,
@@ -15,7 +12,31 @@ import {
 import { stripTrailingSlashes } from '../url-normalization.js';
 
 type SearchAdminManager = Pick<SemanticSearchManager, 'getStatus' | 'saveConfig' | 'testConnection' | 'startReindex'>;
-type ListEmbeddingModels = (baseUrl: string) => Promise<EmbeddingModelDescriptor[]>;
+type ListEmbeddingModels = (baseUrl: string, apiKeyInput: EmbeddingApiKeyInput) => Promise<EmbeddingModelDescriptor[]>;
+
+const parseApiKeyInput = (value: unknown): EmbeddingApiKeyInput => {
+    if (!value || typeof value !== 'object' || !Object.hasOwn(value, 'apiKey')) {
+        return { provided: false };
+    }
+
+    const rawApiKey = (value as { apiKey?: unknown }).apiKey;
+    if (rawApiKey !== null && typeof rawApiKey !== 'string') {
+        throw createAppError(400, 'INVALID_EMBEDDING_API_KEY', 'Embedding API key must be a string or null.');
+    }
+
+    try {
+        return {
+            provided: true,
+            apiKey: rawApiKey === null ? undefined : normalizeEmbeddingApiKey(rawApiKey),
+        };
+    } catch (error) {
+        throw createAppError(
+            400,
+            'INVALID_EMBEDDING_API_KEY',
+            error instanceof Error ? error.message : 'Embedding API key is invalid.',
+        );
+    }
+};
 
 const parseConfig = (value: unknown): SemanticSearchConfig => {
     if (!value || typeof value !== 'object') {
@@ -86,7 +107,7 @@ export const createSearchAdminSaveConfigHandler = (
     return async (req, res) => {
         let status;
         try {
-            status = await manager.saveConfig(parseConfig(req.body));
+            status = await manager.saveConfig(parseConfig(req.body), parseApiKeyInput(req.body));
         } catch (error) {
             if (error instanceof SemanticSearchConnectionNotValidatedError) {
                 throw createAppError(409, 'SEARCH_CONNECTION_NOT_VALIDATED', error.message);
@@ -102,22 +123,17 @@ export const createSearchAdminTestConnectionHandler = (
 ): Controller => {
     return async (req, res) => {
         const config = parseConfig({ ...req.body, enabled: true });
-        const result = await manager.testConnection(config);
+        const result = await manager.testConnection(config, parseApiKeyInput(req.body));
         res.status(200).json(result).end();
     };
 };
 
 export const createSearchAdminListModelsHandler = (
-    listModels: ListEmbeddingModels = (baseUrl) => {
-        const runtimeConfig = resolveEmbeddingRuntimeConfig();
-        return listOpenAiCompatibleEmbeddingModels(baseUrl, {
-            apiKey: runtimeConfig.apiKey,
-            allowedOrigins: runtimeConfig.allowedOrigins,
-        });
-    },
+    listModels: ListEmbeddingModels = (baseUrl, apiKeyInput) =>
+        getDefaultSemanticSearchManager().listModels(baseUrl, apiKeyInput),
 ): Controller => {
     return async (req, res) => {
-        const models = await listModels(parseBaseUrl(req.body));
+        const models = await listModels(parseBaseUrl(req.body), parseApiKeyInput(req.body));
         res.status(200).json({ models }).end();
     };
 };

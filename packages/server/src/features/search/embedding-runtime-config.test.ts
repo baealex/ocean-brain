@@ -2,15 +2,13 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { resolveEmbeddingRuntimeConfig } from './embedding-runtime-config.js';
 
-test('reads provider credentials and trusted private origins from the server environment', () => {
+test('reads trusted private origins from the server environment', () => {
     assert.deepEqual(
         resolveEmbeddingRuntimeConfig({
-            OCEAN_BRAIN_EMBEDDING_API_KEY: ' provider-secret ',
             OCEAN_BRAIN_EMBEDDING_ALLOWED_ORIGINS:
                 'http://embedding.internal:1234, http://192.168.1.20:8080, http://embedding.internal:1234',
         }),
         {
-            apiKey: 'provider-secret',
             allowedOrigins: ['http://embedding.internal:1234', 'http://192.168.1.20:8080'],
         },
     );

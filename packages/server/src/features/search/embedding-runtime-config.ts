@@ -1,13 +1,9 @@
-const MAX_EMBEDDING_API_KEY_LENGTH = 8_192;
-
 export interface EmbeddingRuntimeEnvironment {
     [key: string]: string | undefined;
-    OCEAN_BRAIN_EMBEDDING_API_KEY?: string;
     OCEAN_BRAIN_EMBEDDING_ALLOWED_ORIGINS?: string;
 }
 
 export interface EmbeddingRuntimeConfig {
-    apiKey?: string;
     allowedOrigins: string[];
 }
 
@@ -38,16 +34,11 @@ const normalizeAllowedOrigin = (value: string) => {
 export const resolveEmbeddingRuntimeConfig = (
     env: EmbeddingRuntimeEnvironment = process.env,
 ): EmbeddingRuntimeConfig => {
-    const apiKey = env.OCEAN_BRAIN_EMBEDDING_API_KEY?.trim() || undefined;
-    if (apiKey && apiKey.length > MAX_EMBEDDING_API_KEY_LENGTH) {
-        throw new Error('Embedding API key is too long.');
-    }
-
     const allowedOrigins = [
         ...new Set(
             (env.OCEAN_BRAIN_EMBEDDING_ALLOWED_ORIGINS ?? '').split(',').map(normalizeAllowedOrigin).filter(Boolean),
         ),
     ];
 
-    return { apiKey, allowedOrigins };
+    return { allowedOrigins };
 };

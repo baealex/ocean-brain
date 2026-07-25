@@ -54,14 +54,20 @@ const renderPage = () => {
     );
 };
 
-const discoverSingleModel = async (user: ReturnType<typeof userEvent.setup>) => {
+const discoverSingleModel = async (user: ReturnType<typeof userEvent.setup>, apiKey?: string) => {
     const baseUrlInput = await screen.findByLabelText('API base URL');
     await waitFor(() => expect(baseUrlInput).toBeEnabled());
     await user.type(baseUrlInput, 'http://127.0.0.1:1234/v1');
+    if (apiKey) {
+        await user.type(screen.getByLabelText('API key (optional)'), apiKey);
+    }
     await user.click(screen.getByRole('button', { name: 'Find models' }));
 
     await waitFor(() => {
-        expect(vi.mocked(searchAdminApi.fetchSemanticSearchModels).mock.calls[0]?.[0]).toBe('http://127.0.0.1:1234/v1');
+        expect(vi.mocked(searchAdminApi.fetchSemanticSearchModels).mock.calls[0]?.[0]).toEqual({
+            baseUrl: 'http://127.0.0.1:1234/v1',
+            ...(apiKey ? { apiKey } : {}),
+        });
         expect(screen.getByRole('combobox', { name: 'Embedding model' })).toHaveTextContent(embeddingModel);
     });
 };
@@ -81,9 +87,15 @@ describe('<SearchSetting />', () => {
 
     it('requires a connection test before first activation and then saves the enabled search', async () => {
         const user = userEvent.setup();
-        vi.mocked(searchAdminApi.saveSemanticSearchConfig).mockImplementation(async (config) =>
+        vi.mocked(searchAdminApi.saveSemanticSearchConfig).mockImplementation(async (input) =>
             createStatus({
-                config,
+                config: {
+                    enabled: input.enabled,
+                    baseUrl: input.baseUrl,
+                    model: input.model,
+                    queryInstruction: input.queryInstruction,
+                },
+                apiKeyConfigured: Boolean(input.apiKey),
                 connectionValidated: true,
                 phase: 'needs-index',
                 needsReindex: true,
@@ -93,7 +105,7 @@ describe('<SearchSetting />', () => {
         renderPage();
 
         expect(await screen.findByRole('switch', { name: 'Meaning search' })).toBeDisabled();
-        await discoverSingleModel(user);
+        await discoverSingleModel(user, 'provider-secret');
 
         expect(screen.getByRole('button', { name: 'Save settings' })).toBeDisabled();
         await user.click(screen.getByRole('button', { name: 'Test selected model' }));
@@ -103,6 +115,7 @@ describe('<SearchSetting />', () => {
                 ...defaultConfig,
                 baseUrl: 'http://127.0.0.1:1234/v1',
                 model: embeddingModel,
+                apiKey: 'provider-secret',
             });
         });
         const meaningSearchSwitch = screen.getByRole('switch', { name: 'Meaning search' });
@@ -116,6 +129,7 @@ describe('<SearchSetting />', () => {
                 baseUrl: 'http://127.0.0.1:1234/v1',
                 model: embeddingModel,
                 queryInstruction: '',
+                apiKey: 'provider-secret',
             });
         });
         expect(screen.getByRole('button', { name: 'Build search index' })).toBeEnabled();
@@ -192,13 +206,15 @@ describe('<SearchSetting />', () => {
         expect(screen.getByText('Test the selected model first.')).toBeInTheDocument();
     });
 
-    it('shows whether provider authentication is configured on the server', async () => {
+    it('shows a saved API key without returning its value or provider-specific setup guides', async () => {
         vi.mocked(searchAdminApi.fetchSearchAdminStatus).mockResolvedValue(createStatus({ apiKeyConfigured: true }));
 
         renderPage();
 
-        expect(await screen.findByText(/a Bearer API key is configured on the server/)).toBeInTheDocument();
+        const apiKeyInput = await screen.findByLabelText('API key (optional)');
+        await waitFor(() => expect(apiKeyInput).toHaveAttribute('placeholder', 'Saved API key'));
         expect(screen.queryByText('provider-secret')).not.toBeInTheDocument();
+        expect(screen.queryByText(/LM Studio|Docker/)).not.toBeInTheDocument();
     });
 
     it('shows queued note synchronization without offering a full index rebuild', async () => {

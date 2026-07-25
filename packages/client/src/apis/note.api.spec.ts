@@ -5,6 +5,7 @@ import {
     fetchTrashedNote,
     fetchTrashedNotes,
     purgeTrashedNote,
+    restoreNoteSnapshot,
     updateNote,
 } from '~/apis/note.api';
 import { graphQuery } from '~/modules/graph-query';
@@ -234,6 +235,24 @@ describe('note.api', () => {
                     label: 'Web browser',
                 },
             },
+        });
+    });
+
+    it('sends the current note version when restoring a snapshot', async () => {
+        vi.mocked(graphQuery).mockResolvedValue({
+            type: 'success',
+            restoreNoteSnapshot: {
+                id: '7',
+                title: 'Restored note',
+                updatedAt: '1770000001000',
+            },
+        } as never);
+
+        await restoreNoteSnapshot('snapshot-1', '1770000000000');
+
+        expect(graphQuery).toHaveBeenCalledWith(expect.stringContaining('$expectedUpdatedAt: String!'), {
+            id: 'snapshot-1',
+            expectedUpdatedAt: '1770000000000',
         });
     });
 });

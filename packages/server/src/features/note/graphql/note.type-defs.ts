@@ -294,7 +294,7 @@ export const noteMutation = gql`
         createNote(note: NoteInput!): Note!
         updateNote(id: ID!, note: NoteInput!, editSessionId: String, expectedUpdatedAt: String, force: Boolean): Note!
         deleteNote(id: ID!): Boolean!
-        restoreNoteSnapshot(id: ID!): Note!
+        restoreNoteSnapshot(id: ID!, expectedUpdatedAt: String!): Note!
         restoreTrashedNote(id: ID!): Note!
         purgeTrashedNote(id: ID!): Boolean!
         createNotePropertyKey(input: NotePropertyDefinitionInput!): NotePropertyKey!

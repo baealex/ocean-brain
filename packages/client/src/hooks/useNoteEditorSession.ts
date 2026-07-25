@@ -608,7 +608,7 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
             await drainWrites();
             sessionGenerationRef.current += 1;
             return executeWrite(async () => {
-                const response = await restoreNoteSnapshot(snapshotId);
+                const response = await restoreNoteSnapshot(snapshotId, serverUpdatedAtRef.current);
 
                 if (response.type === 'error') {
                     return response;

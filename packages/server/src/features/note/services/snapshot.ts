@@ -1,6 +1,6 @@
 import { FILE_HEADERS_ONLY, formatPatch, structuredPatch } from 'diff';
 import { ensureTagByName } from '~/features/tag/services/organization.js';
-import models, { type NoteLayout, type PropertyValueType } from '~/models.js';
+import models, { type NoteLayout, Prisma, type PropertyValueType } from '~/models.js';
 import { blocksToMarkdown, extractTagIdsFromContentJson } from '~/modules/blocknote.js';
 import { type BlockNoteTreeNode, parseBlockNoteContent, walkBlockNoteTree } from '~/modules/blocknote-tree.js';
 import {
@@ -11,6 +11,7 @@ import {
 } from '~/modules/recovery-retention.js';
 import { calculateMarkdownSha256 } from './markdown-patch.js';
 import { buildNoteSearchProjection, extractVisibleSearchTextFromContent } from './search.js';
+import { createNoteVersionConflictError, MissingNoteVersionError, parseNoteVersion } from './write-conflict.js';
 
 const SNAPSHOT_CONTENT_PREVIEW_MAX_LENGTH = 240;
 
@@ -77,6 +78,7 @@ interface NoteSnapshotDeps {
             layout: NoteLayout;
             tagIds?: number[];
             properties?: SnapshotNoteProperty[];
+            expectedUpdatedAt: string;
         },
     ) => Promise<NoteRecord>;
 }
@@ -103,6 +105,11 @@ interface TagRecord {
 interface ResolvedRestoredSnapshotTags {
     content: string;
     tagIds: number[];
+}
+
+interface RestoredSnapshotPropertyTargetDeps {
+    findDefinitionByKey: (key: string) => Promise<{ id: number; valueType: PropertyValueType } | null>;
+    findOptionByValue: (definitionId: number, value: string) => Promise<{ id: number } | null>;
 }
 
 interface ResolveRestoredSnapshotTagsDeps {
@@ -218,6 +225,39 @@ const serializePayload = (note: NoteRecord): string => {
 
 const hasSameSnapshotPayload = (snapshot: NoteSnapshotRecord | null, payload: string) => {
     return snapshot?.payload === payload;
+};
+
+export const resolveRestoredSnapshotPropertyTarget = async (
+    property: Pick<SnapshotNoteProperty, 'key' | 'valueType' | 'optionValue'>,
+    deps: RestoredSnapshotPropertyTargetDeps,
+) => {
+    const definition = await deps.findDefinitionByKey(property.key);
+
+    if (!definition || definition.valueType !== property.valueType) {
+        return null;
+    }
+
+    if (property.valueType !== 'select') {
+        return {
+            propertyDefinitionId: definition.id,
+            optionId: null,
+        };
+    }
+
+    if (!property.optionValue) {
+        return null;
+    }
+
+    const option = await deps.findOptionByValue(definition.id, property.optionValue);
+
+    if (!option) {
+        return null;
+    }
+
+    return {
+        propertyDefinitionId: definition.id,
+        optionId: option.id,
+    };
 };
 
 const parsePayload = (payload: string): NoteSnapshotPayload => {
@@ -635,7 +675,7 @@ export const createNoteSnapshotService = (deps: NoteSnapshotDeps) => ({
         });
     },
 
-    restoreSnapshot: async (snapshotId: number, options?: { meta?: string }) => {
+    restoreSnapshot: async (snapshotId: number, options: { expectedUpdatedAt: string; meta?: string }) => {
         await deps.purgeExpiredSnapshots(createRetentionCutoff(SNAPSHOT_RETENTION_DAYS), RECOVERY_CLEANUP_BATCH_LIMIT);
 
         const snapshot = await deps.findSnapshotById(snapshotId);
@@ -648,6 +688,23 @@ export const createNoteSnapshotService = (deps: NoteSnapshotDeps) => ({
 
         if (!note) {
             return null;
+        }
+
+        if (!note.updatedAt) {
+            throw new Error('Note update time is required to restore a snapshot.');
+        }
+
+        const expectedTimestamp = parseNoteVersion(options.expectedUpdatedAt);
+
+        if (expectedTimestamp === null) {
+            throw new MissingNoteVersionError();
+        }
+
+        if (note.updatedAt.getTime() !== expectedTimestamp) {
+            throw createNoteVersionConflictError({
+                expectedUpdatedAt: expectedTimestamp,
+                currentUpdatedAt: note.updatedAt.getTime(),
+            });
         }
 
         const payload = parsePayload(snapshot.payload);
@@ -678,6 +735,7 @@ export const createNoteSnapshotService = (deps: NoteSnapshotDeps) => ({
         const restoredNote = await deps.updateNote(snapshot.noteId, {
             ...restoredPayload,
             ...(restoredTagIds !== undefined ? { tagIds: restoredTagIds } : {}),
+            expectedUpdatedAt: options.expectedUpdatedAt,
         });
 
         await deps.trimOverflowSnapshots(note.id, SNAPSHOT_MAX_PER_NOTE, RECOVERY_CLEANUP_BATCH_LIMIT);
@@ -806,77 +864,82 @@ export const defaultNoteSnapshotService = createNoteSnapshotService({
         });
     },
     updateNote: async (id, input) => {
-        const { tagIds, properties, ...noteInput } = input;
+        const { tagIds, properties, expectedUpdatedAt, ...noteInput } = input;
+        const expectedTimestamp = parseNoteVersion(expectedUpdatedAt);
 
-        return models.$transaction(async (tx) => {
-            const note = await tx.note.update({
-                where: { id },
-                data: {
-                    ...noteInput,
-                    ...buildNoteSearchProjection({
-                        title: noteInput.title,
-                        content: noteInput.content,
-                    }),
-                    ...(tagIds !== undefined ? { tags: { set: tagIds.map((tagId) => ({ id: tagId })) } } : {}),
-                },
+        if (expectedTimestamp === null) {
+            throw new MissingNoteVersionError();
+        }
+
+        try {
+            return await models.$transaction(async (tx) => {
+                const note = await tx.note.update({
+                    where: { id, updatedAt: new Date(expectedTimestamp) },
+                    data: {
+                        ...noteInput,
+                        ...buildNoteSearchProjection({
+                            title: noteInput.title,
+                            content: noteInput.content,
+                        }),
+                        ...(tagIds !== undefined ? { tags: { set: tagIds.map((tagId) => ({ id: tagId })) } } : {}),
+                    },
+                });
+
+                if (properties !== undefined) {
+                    await tx.noteProperty.deleteMany({ where: { noteId: id } });
+
+                    for (const property of properties) {
+                        const target = await resolveRestoredSnapshotPropertyTarget(property, {
+                            findDefinitionByKey: (key) => tx.propertyDefinition.findUnique({ where: { key } }),
+                            findOptionByValue: (propertyDefinitionId, value) =>
+                                tx.propertyOption.findUnique({
+                                    where: {
+                                        propertyDefinitionId_value: {
+                                            propertyDefinitionId,
+                                            value,
+                                        },
+                                    },
+                                }),
+                        });
+
+                        if (!target) {
+                            continue;
+                        }
+
+                        await tx.noteProperty.create({
+                            data: {
+                                noteId: id,
+                                propertyDefinitionId: target.propertyDefinitionId,
+                                optionId: target.optionId,
+                                textValue: property.textValue ?? null,
+                                textValueNormalized: property.textValueNormalized ?? null,
+                                numberValue: property.numberValue ?? null,
+                                dateValue: property.dateValue ? new Date(property.dateValue) : null,
+                                boolValue: property.boolValue ?? null,
+                            },
+                        });
+                    }
+                }
+
+                return note;
             });
+        } catch (error) {
+            if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+                const currentNote = await models.note.findUnique({
+                    where: { id },
+                    select: { updatedAt: true },
+                });
 
-            if (properties !== undefined) {
-                await tx.noteProperty.deleteMany({ where: { noteId: id } });
-
-                for (const property of properties) {
-                    const definition = await tx.propertyDefinition.upsert({
-                        where: { key: property.key },
-                        create: {
-                            key: property.key,
-                            name: property.name,
-                            valueType: property.valueType,
-                        },
-                        update: {
-                            name: property.name,
-                            valueType: property.valueType,
-                        },
-                    });
-
-                    const option =
-                        property.valueType === 'select' && property.optionValue
-                            ? await tx.propertyOption.upsert({
-                                  where: {
-                                      propertyDefinitionId_value: {
-                                          propertyDefinitionId: definition.id,
-                                          value: property.optionValue,
-                                      },
-                                  },
-                                  create: {
-                                      propertyDefinitionId: definition.id,
-                                      value: property.optionValue,
-                                      label: property.optionLabel ?? property.optionValue,
-                                      color: property.optionColor ?? null,
-                                  },
-                                  update: {
-                                      label: property.optionLabel ?? property.optionValue,
-                                      color: property.optionColor ?? null,
-                                  },
-                              })
-                            : null;
-
-                    await tx.noteProperty.create({
-                        data: {
-                            noteId: id,
-                            propertyDefinitionId: definition.id,
-                            optionId: option?.id ?? null,
-                            textValue: property.textValue ?? null,
-                            textValueNormalized: property.textValueNormalized ?? null,
-                            numberValue: property.numberValue ?? null,
-                            dateValue: property.dateValue ? new Date(property.dateValue) : null,
-                            boolValue: property.boolValue ?? null,
-                        },
+                if (currentNote && currentNote.updatedAt.getTime() !== expectedTimestamp) {
+                    throw createNoteVersionConflictError({
+                        expectedUpdatedAt: expectedTimestamp,
+                        currentUpdatedAt: currentNote.updatedAt.getTime(),
                     });
                 }
             }
 
-            return note;
-        });
+            throw error;
+        }
     },
 });
 
@@ -909,7 +972,10 @@ export const diffNoteSnapshot = async (
     return defaultNoteSnapshotService.diffSnapshot(snapshotId, options);
 };
 
-export const restoreNoteSnapshot = async (snapshotId: number, options?: { meta?: string }) => {
+export const restoreNoteSnapshot = async (
+    snapshotId: number,
+    options: { expectedUpdatedAt: string; meta?: string },
+) => {
     return defaultNoteSnapshotService.restoreSnapshot(snapshotId, options);
 };
 

@@ -14,6 +14,7 @@ test('createMcpRequestHeaders includes MCP compatibility and client version head
 
     assert.equal(headers['Content-Type'], 'application/json');
     assert.equal(headers.Authorization, 'Bearer token-a');
+    assert.equal(OCEAN_BRAIN_MCP_COMPATIBILITY_VERSION, '0.9.0');
     assert.equal(headers[OCEAN_BRAIN_MCP_VERSION_HEADER], OCEAN_BRAIN_MCP_COMPATIBILITY_VERSION);
     assert.equal(headers[OCEAN_BRAIN_MCP_COMPATIBILITY_VERSION_HEADER], OCEAN_BRAIN_MCP_COMPATIBILITY_VERSION);
     assert.match(headers[OCEAN_BRAIN_MCP_CLIENT_VERSION_HEADER], /^\d+\.\d+\.\d+/);

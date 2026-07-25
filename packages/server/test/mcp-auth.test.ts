@@ -138,19 +138,6 @@ const connectServerEvents = async (baseUrl: string) => {
     });
 };
 
-const updateNoteRequest = async (baseUrl: string, body: Record<string, unknown>, bearerToken?: string) => {
-    const response = await fetch(`${baseUrl}/api/mcp/notes/update`, {
-        method: 'POST',
-        headers: createMcpHeaders(bearerToken),
-        body: JSON.stringify(body),
-    });
-
-    return {
-        status: response.status,
-        body: (await response.json()) as Record<string, unknown>,
-    };
-};
-
 const noteWriteBaselineRequest = async (baseUrl: string, body: Record<string, unknown>, bearerToken?: string) => {
     const response = await fetch(`${baseUrl}/api/mcp/notes/baseline`, {
         method: 'POST',
@@ -360,8 +347,8 @@ test('mcp version guard blocks compatibility minor version differences', async (
     assert.equal(body.mcpCompatibilityVersion, createIncompatibleMcpVersion());
     assert.equal(body.mcpClientVersion, resolveOceanBrainVersion());
     assert.equal(body.serverVersion, resolveOceanBrainVersion());
-    assert.equal(body.requiredMcpVersion, '0.8.x');
-    assert.equal(body.requiredMcpCompatibilityVersion, '0.8.x');
+    assert.equal(body.requiredMcpVersion, '0.9.x');
+    assert.equal(body.requiredMcpCompatibilityVersion, '0.9.x');
     assert.match(String(body.message), /Please update Ocean Brain MCP/);
     assert.match(String(body.message), /https:\/\/github\.com\/baealex\/ocean-brain\/releases/);
 });
@@ -426,26 +413,6 @@ test('enabled state still requires a valid bearer token on the MCP note create e
     assert.equal(authorized.body.code, 'INVALID_NOTE_TITLE');
 });
 
-test('enabled state still requires a valid bearer token on the MCP note update endpoint', async (t) => {
-    const { baseUrl } = await startServer(
-        t,
-        createOpenAuthConfig(),
-        createMcpAdminAuth({ enabled: true, expectedToken: 'mcp-secret' }),
-    );
-
-    const unauthorized = await updateNoteRequest(baseUrl, { id: 'abc' });
-    assert.equal(unauthorized.status, 401);
-    assert.equal(unauthorized.body.code, 'UNAUTHORIZED');
-
-    const forbidden = await updateNoteRequest(baseUrl, { id: 'abc' }, 'wrong-token');
-    assert.equal(forbidden.status, 403);
-    assert.equal(forbidden.body.code, 'FORBIDDEN');
-
-    const authorized = await updateNoteRequest(baseUrl, { id: 'abc' }, 'mcp-secret');
-    assert.equal(authorized.status, 400);
-    assert.equal(authorized.body.code, 'INVALID_NOTE_ID');
-});
-
 test('enabled state still requires a valid bearer token on the MCP note write baseline endpoint', async (t) => {
     const { baseUrl } = await startServer(
         t,
@@ -506,18 +473,6 @@ test('password mode returns configuration error on the MCP note create endpoint 
     );
 
     const response = await createNoteRequest(baseUrl, { title: 'Draft' }, 'mcp-secret');
-    assert.equal(response.status, 503);
-    assert.equal(response.body.code, 'MCP_AUTH_NOT_CONFIGURED');
-});
-
-test('password mode returns configuration error on the MCP note update endpoint when no bearer token is configured', async (t) => {
-    const { baseUrl } = await startServer(
-        t,
-        createPasswordAuthConfig(),
-        createMcpAdminAuth({ enabled: true, configured: false }),
-    );
-
-    const response = await updateNoteRequest(baseUrl, { id: '1', title: 'Draft' }, 'mcp-secret');
     assert.equal(response.status, 503);
     assert.equal(response.body.code, 'MCP_AUTH_NOT_CONFIGURED');
 });

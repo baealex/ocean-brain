@@ -32,7 +32,6 @@ const EXPECTED_TOOL_ORDER = [
     OCEAN_BRAIN_MCP_TOOLS.searchNotes,
     OCEAN_BRAIN_MCP_TOOLS.readNote,
     OCEAN_BRAIN_MCP_TOOLS.createNote,
-    OCEAN_BRAIN_MCP_TOOLS.updateNote,
     OCEAN_BRAIN_MCP_TOOLS.patchNoteMarkdown,
     OCEAN_BRAIN_MCP_TOOLS.appendNoteMarkdown,
     OCEAN_BRAIN_MCP_TOOLS.updateNoteMetadata,
@@ -52,7 +51,6 @@ const EXPECTED_SCHEMA_KEYS: Record<string, string[]> = {
     [OCEAN_BRAIN_MCP_TOOLS.searchNotes]: ['limit', 'query'],
     [OCEAN_BRAIN_MCP_TOOLS.readNote]: ['id', 'maxLength'],
     [OCEAN_BRAIN_MCP_TOOLS.createNote]: ['layout', 'markdown', 'title'],
-    [OCEAN_BRAIN_MCP_TOOLS.updateNote]: ['id', 'layout', 'markdown', 'title'],
     [OCEAN_BRAIN_MCP_TOOLS.patchNoteMarkdown]: [
         'baseMarkdownSha256',
         'expectedUpdatedAt',
@@ -112,7 +110,6 @@ const EXPECTED_REQUIRED_FIELDS: Record<string, string[]> = {
     [OCEAN_BRAIN_MCP_TOOLS.searchNotes]: ['query'],
     [OCEAN_BRAIN_MCP_TOOLS.readNote]: ['id'],
     [OCEAN_BRAIN_MCP_TOOLS.createNote]: ['title'],
-    [OCEAN_BRAIN_MCP_TOOLS.updateNote]: ['id'],
     [OCEAN_BRAIN_MCP_TOOLS.patchNoteMarkdown]: ['id', 'intent', 'selector', 'operation'],
     [OCEAN_BRAIN_MCP_TOOLS.appendNoteMarkdown]: ['id', 'intent', 'insertion'],
     [OCEAN_BRAIN_MCP_TOOLS.updateNoteMetadata]: ['id', 'expectedUpdatedAt'],
@@ -189,7 +186,6 @@ describe('Ocean Brain MCP stdio contract', () => {
             assert.equal(property(OCEAN_BRAIN_MCP_TOOLS.readNote, 'maxLength').default, 1000);
             assert.equal(property(OCEAN_BRAIN_MCP_TOOLS.createNote, 'markdown').default, '');
             assert.deepEqual(property(OCEAN_BRAIN_MCP_TOOLS.createNote, 'layout').enum, ['narrow', 'wide', 'full']);
-            assert.deepEqual(property(OCEAN_BRAIN_MCP_TOOLS.updateNote, 'layout').enum, ['narrow', 'wide', 'full']);
             assert.deepEqual(property(OCEAN_BRAIN_MCP_TOOLS.updateNoteMetadata, 'layout').enum, ['narrow', 'wide', 'full']);
             assert.equal(property(OCEAN_BRAIN_MCP_TOOLS.listProperties, 'query').default, '');
             assert.equal(property(OCEAN_BRAIN_MCP_TOOLS.listProperties, 'limit').default, 50);

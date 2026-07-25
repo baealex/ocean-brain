@@ -8,7 +8,6 @@ test('Ocean Brain MCP tool names use explicit product-prefixed names', () => {
         searchNotes: 'ocean_brain_search_notes',
         readNote: 'ocean_brain_read_note',
         createNote: 'ocean_brain_create_note',
-        updateNote: 'ocean_brain_update_note',
         patchNoteMarkdown: 'ocean_brain_patch_note_markdown',
         appendNoteMarkdown: 'ocean_brain_append_note_markdown',
         updateNoteMetadata: 'ocean_brain_update_note_metadata',

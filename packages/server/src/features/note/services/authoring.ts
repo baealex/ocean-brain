@@ -1,7 +1,6 @@
 import models, { type NoteLayout } from '~/models.js';
 import { extractTagIdsFromContentJson, markdownToBlocksJson } from '~/modules/blocknote.js';
 import { buildNoteSearchProjection } from './search.js';
-import { captureNoteBaseline } from './snapshot.js';
 
 interface PlaceholderRecord {
     template: string;
@@ -11,7 +10,6 @@ interface PlaceholderRecord {
 interface NoteRecord {
     id: number;
     title: string;
-    content: string;
     layout: NoteLayout;
     createdAt: Date;
     updatedAt: Date;
@@ -24,35 +22,15 @@ interface NoteAuthoringDeps {
         layout?: NoteLayout;
         tagIds?: string[];
     }) => Promise<NoteRecord>;
-    findNoteById: (id: number) => Promise<NoteRecord | null>;
     findPlaceholders: (templates: string[]) => Promise<PlaceholderRecord[]>;
     parseMarkdownToContentJson: (markdown: string) => Promise<string>;
     extractTagIds: (contentJson: string) => string[];
-    captureBaseline: (input: { noteId: number; editSessionId?: string; meta?: string }) => Promise<unknown>;
-    updateNote: (
-        id: number,
-        input: {
-            title?: string;
-            content?: string;
-            layout?: NoteLayout;
-            tagIds?: string[];
-        },
-    ) => Promise<NoteRecord>;
 }
 
 export interface CreateNoteAuthoringInput {
     title: string;
     markdown?: string;
     layout?: NoteLayout;
-}
-
-export interface UpdateNoteAuthoringInput {
-    id: number;
-    title?: string;
-    markdown?: string;
-    layout?: NoteLayout;
-    editSessionId?: string;
-    snapshotMeta?: string;
 }
 
 export interface AuthoredNoteSummary {
@@ -134,54 +112,6 @@ export const createNoteAuthoringService = (deps: NoteAuthoringDeps) => {
 
             return serializeNote(note);
         },
-
-        updateNote: async (input: UpdateNoteAuthoringInput): Promise<AuthoredNoteSummary | null> => {
-            if (input.title === undefined && input.markdown === undefined && input.layout === undefined) {
-                throw new InvalidNoteAuthoringInputError('At least one note field must be provided for update.');
-            }
-
-            const existingNote = await deps.findNoteById(input.id);
-
-            if (!existingNote) {
-                return null;
-            }
-
-            const nextData: {
-                title?: string;
-                content?: string;
-                layout?: NoteLayout;
-                tagIds?: string[];
-            } = {};
-
-            if (input.title !== undefined) {
-                const title = input.title.trim();
-
-                if (!title) {
-                    throw new InvalidNoteAuthoringInputError('A note title is required.');
-                }
-
-                nextData.title = await replacePlaceholders(title);
-            }
-
-            if (input.markdown !== undefined) {
-                const replacedMarkdown = await replacePlaceholders(input.markdown);
-                nextData.content = await deps.parseMarkdownToContentJson(replacedMarkdown);
-                nextData.tagIds = deps.extractTagIds(nextData.content);
-            }
-
-            if (input.layout !== undefined) {
-                nextData.layout = input.layout;
-            }
-
-            await deps.captureBaseline({
-                noteId: input.id,
-                ...(input.editSessionId ? { editSessionId: input.editSessionId } : {}),
-                ...(input.snapshotMeta ? { meta: input.snapshotMeta } : {}),
-            });
-
-            const updatedNote = await deps.updateNote(input.id, nextData);
-            return serializeNote(updatedNote);
-        },
     };
 };
 
@@ -200,9 +130,6 @@ const defaultNoteAuthoringService = createNoteAuthoringService({
             },
         });
     },
-    findNoteById: async (id) => {
-        return models.note.findUnique({ where: { id } });
-    },
     findPlaceholders: async (templates) => {
         if (templates.length === 0) {
             return [];
@@ -218,43 +145,8 @@ const defaultNoteAuthoringService = createNoteAuthoringService({
     },
     parseMarkdownToContentJson: markdownToBlocksJson,
     extractTagIds: extractTagIdsFromContentJson,
-    captureBaseline: captureNoteBaseline,
-    updateNote: async (id, input) => {
-        const existingNote = await models.note.findUnique({
-            where: { id },
-            select: {
-                title: true,
-                content: true,
-            },
-        });
-
-        if (!existingNote) {
-            throw new Error('NOTE_NOT_FOUND');
-        }
-
-        const nextTitle = input.title ?? existingNote.title;
-        const nextContent = input.content ?? existingNote.content;
-
-        return models.note.update({
-            where: { id },
-            data: {
-                title: input.title,
-                content: input.content,
-                layout: input.layout,
-                ...buildNoteSearchProjection({
-                    title: nextTitle,
-                    content: nextContent,
-                }),
-                ...(input.tagIds ? { tags: { set: input.tagIds.map((tagId) => ({ id: Number(tagId) })) } } : {}),
-            },
-        });
-    },
 });
 
 export const createNoteFromMarkdown = async (input: CreateNoteAuthoringInput) => {
     return defaultNoteAuthoringService.createNote(input);
-};
-
-export const updateNoteFromMarkdown = async (input: UpdateNoteAuthoringInput) => {
-    return defaultNoteAuthoringService.updateNote(input);
 };

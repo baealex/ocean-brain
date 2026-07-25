@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createNoteAuthoringService, InvalidNoteAuthoringInputError } from './authoring.js';
+import { createNoteAuthoringService } from './authoring.js';
 
 test('note authoring create converts markdown after placeholder replacement', async () => {
     const created: Array<{
@@ -22,7 +22,6 @@ test('note authoring create converts markdown after placeholder replacement', as
                 updatedAt: new Date('2026-03-31T00:00:00.000Z'),
             };
         },
-        findNoteById: async () => null,
         findPlaceholders: async () => [
             {
                 template: 'today',
@@ -53,10 +52,6 @@ test('note authoring create converts markdown after placeholder replacement', as
                   ]),
         extractTagIds: (contentJson) =>
             JSON.parse(contentJson)[0]?.content?.[0]?.props?.id ? [JSON.parse(contentJson)[0].content[0].props.id] : [],
-        captureBaseline: async () => undefined,
-        updateNote: async () => {
-            throw new Error('should not update');
-        },
     });
 
     const result = await service.createNote({
@@ -90,153 +85,5 @@ test('note authoring create converts markdown after placeholder replacement', as
         layout: 'full',
         createdAt: '2026-03-31T00:00:00.000Z',
         updatedAt: '2026-03-31T00:00:00.000Z',
-    });
-});
-
-test('note authoring update returns null when the note does not exist', async () => {
-    const service = createNoteAuthoringService({
-        createNote: async () => {
-            throw new Error('should not create');
-        },
-        findNoteById: async () => null,
-        findPlaceholders: async () => [],
-        parseMarkdownToContentJson: async () => '[]',
-        extractTagIds: () => [],
-        captureBaseline: async () => undefined,
-        updateNote: async () => {
-            throw new Error('should not update');
-        },
-    });
-
-    const result = await service.updateNote({
-        id: 9,
-        markdown: 'Updated body',
-    });
-
-    assert.equal(result, null);
-});
-
-test('note authoring update requires at least one change field', async () => {
-    const service = createNoteAuthoringService({
-        createNote: async () => {
-            throw new Error('should not create');
-        },
-        findNoteById: async () => ({
-            id: 9,
-            title: 'Existing',
-            content: '[]',
-            layout: 'wide',
-            createdAt: new Date('2026-03-31T00:00:00.000Z'),
-            updatedAt: new Date('2026-03-31T00:00:00.000Z'),
-        }),
-        findPlaceholders: async () => [],
-        parseMarkdownToContentJson: async () => '[]',
-        extractTagIds: () => [],
-        captureBaseline: async () => undefined,
-        updateNote: async () => {
-            throw new Error('should not update');
-        },
-    });
-
-    await assert.rejects(() => service.updateNote({ id: 9 }), InvalidNoteAuthoringInputError);
-});
-
-test('note authoring update replaces provided fields only', async () => {
-    const updated: Array<{
-        id: number;
-        input: {
-            title?: string;
-            content?: string;
-            layout?: 'wide' | 'narrow' | 'full';
-            tagIds?: string[];
-        };
-    }> = [];
-    const service = createNoteAuthoringService({
-        createNote: async () => {
-            throw new Error('should not create');
-        },
-        findNoteById: async () => ({
-            id: 7,
-            title: 'Existing',
-            content: '[]',
-            layout: 'wide',
-            createdAt: new Date('2026-03-31T00:00:00.000Z'),
-            updatedAt: new Date('2026-03-31T00:00:00.000Z'),
-        }),
-        findPlaceholders: async () => [],
-        parseMarkdownToContentJson: async (markdown) =>
-            markdown === 'Updated body'
-                ? JSON.stringify([
-                      {
-                          type: 'paragraph',
-                          content: [
-                              {
-                                  type: 'tag',
-                                  props: {
-                                      id: '9',
-                                      tag: '@topic',
-                                  },
-                              },
-                          ],
-                      },
-                  ])
-                : JSON.stringify([
-                      {
-                          type: 'paragraph',
-                          markdown,
-                      },
-                  ]),
-        extractTagIds: (contentJson) =>
-            JSON.parse(contentJson)[0]?.content?.[0]?.props?.id ? [JSON.parse(contentJson)[0].content[0].props.id] : [],
-        captureBaseline: async () => undefined,
-        updateNote: async (id, input) => {
-            updated.push({
-                id,
-                input,
-            });
-            return {
-                id,
-                title: input.title ?? 'Existing',
-                content: input.content ?? '[]',
-                layout: input.layout ?? 'wide',
-                createdAt: new Date('2026-03-31T00:00:00.000Z'),
-                updatedAt: new Date('2026-04-01T00:00:00.000Z'),
-            };
-        },
-    });
-
-    const result = await service.updateNote({
-        id: 7,
-        title: 'Renamed',
-        markdown: 'Updated body',
-    });
-
-    assert.deepEqual(updated[0], {
-        id: 7,
-        input: {
-            title: 'Renamed',
-            content: JSON.stringify([
-                {
-                    type: 'paragraph',
-                    content: [
-                        {
-                            type: 'tag',
-                            props: {
-                                id: '9',
-                                tag: '@topic',
-                            },
-                        },
-                    ],
-                },
-            ]),
-            tagIds: ['9'],
-        },
-    });
-    assert.deepEqual(result, {
-        id: '7',
-        title: 'Renamed',
-        layout: 'wide',
-        createdAt: '2026-03-31T00:00:00.000Z',
-        updatedAt: '2026-04-01T00:00:00.000Z',
     });
 });

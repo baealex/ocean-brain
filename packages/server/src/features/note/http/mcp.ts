@@ -1,8 +1,4 @@
-import {
-    createNoteFromMarkdown,
-    InvalidNoteAuthoringInputError,
-    updateNoteFromMarkdown,
-} from '~/features/note/services/authoring.js';
+import { createNoteFromMarkdown, InvalidNoteAuthoringInputError } from '~/features/note/services/authoring.js';
 import { deleteNoteById } from '~/features/note/services/cleanup.js';
 import {
     appendNoteMarkdown,
@@ -356,76 +352,6 @@ export const createMcpCreateNoteHandler = (
             res.status(200)
                 .json({
                     created: true,
-                    note,
-                })
-                .end();
-        } catch (error) {
-            if (error instanceof InvalidNoteAuthoringInputError) {
-                throw createAppError(400, 'INVALID_NOTE_INPUT', error.message);
-            }
-
-            throw error;
-        }
-    };
-};
-
-export const createMcpUpdateNoteHandler = (
-    updateNote = updateNoteFromMarkdown,
-    emitEvent: EmitServerEvent = emitServerEvent,
-): Controller => {
-    return async (req, res) => {
-        const { id, title, markdown, layout, editSessionId } = req.body ?? {};
-        const noteId = Number(id);
-        const resolvedLayout = resolveNoteLayout(layout);
-
-        if (!Number.isInteger(noteId) || noteId <= 0) {
-            throw createAppError(400, 'INVALID_NOTE_ID', 'A valid note id is required.');
-        }
-
-        if (title !== undefined && typeof title !== 'string') {
-            throw createAppError(400, 'INVALID_NOTE_TITLE', 'Note title must be a string.');
-        }
-
-        if (markdown !== undefined && typeof markdown !== 'string') {
-            throw createAppError(400, 'INVALID_NOTE_MARKDOWN', 'Note markdown must be a string.');
-        }
-
-        if (layout !== undefined && resolvedLayout === null) {
-            throw createAppError(400, 'INVALID_NOTE_LAYOUT', 'Note layout must be one of narrow, wide, or full.');
-        }
-
-        if (editSessionId !== undefined && typeof editSessionId !== 'string') {
-            throw createAppError(400, 'INVALID_EDIT_SESSION_ID', 'Edit session id must be a string.');
-        }
-
-        if (title === undefined && markdown === undefined && layout === undefined) {
-            throw createAppError(400, 'INVALID_NOTE_INPUT', 'At least one note field must be provided for update.');
-        }
-
-        try {
-            const note = await updateNote({
-                id: noteId,
-                ...(title !== undefined ? { title } : {}),
-                ...(markdown !== undefined ? { markdown } : {}),
-                ...(resolvedLayout ? { layout: resolvedLayout } : {}),
-                ...(editSessionId !== undefined ? { editSessionId } : {}),
-                snapshotMeta: MCP_SNAPSHOT_META,
-            });
-
-            if (!note) {
-                throw createAppError(404, 'NOTE_NOT_FOUND', 'The requested note was not found.');
-            }
-
-            emitEvent({
-                type: 'mcp.note.updated',
-                source: 'mcp',
-                noteId: note.id,
-                updatedAt: note.updatedAt,
-            });
-
-            res.status(200)
-                .json({
-                    updated: true,
                     note,
                 })
                 .end();

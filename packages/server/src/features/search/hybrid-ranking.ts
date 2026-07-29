@@ -13,6 +13,11 @@ interface HybridRankingInput {
     rankConstant?: number;
 }
 
+const DEFAULT_LEXICAL_WEIGHT = 1;
+// Give meaning matches a small edge in HYBRID mode so strong semantic candidates
+// are not buried by broad partial lexical matches. Exact lexical mode remains
+// available when literal matching should take priority.
+const DEFAULT_SEMANTIC_WEIGHT = 1.25;
 const DEFAULT_RANK_CONSTANT = 60;
 
 const uniqueNoteIds = (noteIds: number[]) => {
@@ -22,8 +27,8 @@ const uniqueNoteIds = (noteIds: number[]) => {
 export const fuseHybridSearchRanks = ({
     lexicalNoteIds,
     semanticNoteIds,
-    lexicalWeight = 1,
-    semanticWeight = 1,
+    lexicalWeight = DEFAULT_LEXICAL_WEIGHT,
+    semanticWeight = DEFAULT_SEMANTIC_WEIGHT,
     rankConstant = DEFAULT_RANK_CONSTANT,
 }: HybridRankingInput): HybridSearchCandidate[] => {
     const lexicalIds = uniqueNoteIds(lexicalNoteIds);

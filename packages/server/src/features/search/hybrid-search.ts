@@ -51,6 +51,10 @@ export interface HybridNoteSearchResult {
 }
 
 const MAX_HYBRID_CANDIDATES = 80;
+// The tail of a semantic result set is often made up of broadly related notes.
+// Keep the larger lexical window for literal recall, but use only the strongest
+// semantic matches when the two sources are fused.
+const MAX_HYBRID_SEMANTIC_CANDIDATES = 30;
 
 const unavailableSemanticAttempt = (error: unknown): SemanticSearchAttempt => ({
     available: false,
@@ -206,6 +210,7 @@ export const createHybridNoteSearch = (dependencies: HybridNoteSearchDependencie
         }
 
         const candidateLimit = MAX_HYBRID_CANDIDATES;
+        const semanticCandidateLimit = mode === 'hybrid' ? MAX_HYBRID_SEMANTIC_CANDIDATES : MAX_HYBRID_CANDIDATES;
         const [lexicalNoteIds, semanticAttempt] = await Promise.all([
             mode === 'semantic'
                 ? Promise.resolve([])
@@ -218,12 +223,12 @@ export const createHybridNoteSearch = (dependencies: HybridNoteSearchDependencie
                       error: null,
                   } satisfies SemanticSearchAttempt)
                 : dependencies
-                      .trySemanticSearch(normalizedQuery, candidateLimit)
+                      .trySemanticSearch(normalizedQuery, semanticCandidateLimit)
                       .catch((error) => unavailableSemanticAttempt(error)),
         ]);
         const rankedCandidates = fuseHybridSearchRanks({
             lexicalNoteIds,
-            semanticNoteIds: semanticAttempt.matches.map((match) => match.noteId),
+            semanticNoteIds: semanticAttempt.matches.slice(0, semanticCandidateLimit).map((match) => match.noteId),
         });
         const pageCandidates = rankedCandidates.slice(offset, offset + limit);
         const notes = await dependencies.findNotesByIds(pageCandidates.map((candidate) => candidate.noteId));

@@ -27,6 +27,18 @@ test('raises notes found by both lexical and semantic retrieval', () => {
     );
 });
 
+test('keeps a strong semantic candidate ahead of broad lexical-only matches', () => {
+    const results = fuseHybridSearchRanks({
+        lexicalNoteIds: [1, 2, 3, 4],
+        semanticNoteIds: [9, 10, 11],
+    });
+
+    assert.deepEqual(
+        results.slice(0, 2).map((result) => result.noteId),
+        [9, 10],
+    );
+});
+
 test('deduplicates repeated chunk matches before combining ranks', () => {
     const results = fuseHybridSearchRanks({
         lexicalNoteIds: [2, 2, 1],

@@ -197,6 +197,32 @@ test('semantic mode does not call the lexical search dependency', async () => {
     assert.deepEqual(result.matches, [{ noteId: 7, lexical: false, semantic: true }]);
 });
 
+test('keeps the hybrid semantic window focused on the strongest matches', async () => {
+    let requestedSemanticLimit = 0;
+    const search = createHybridNoteSearch({
+        listLexicalNoteIds: async () => [1],
+        trySemanticSearch: async (_query, limit) => {
+            requestedSemanticLimit = limit;
+            return {
+                available: true,
+                used: true,
+                matches: Array.from({ length: 40 }, (_, index) => ({ noteId: index + 2, distance: index })),
+                error: null,
+            };
+        },
+        findNotesByIds: async (ids) => ids.map(createNote),
+    });
+
+    const result = await search({ query: 'vague memory', limit: 50, offset: 0 });
+
+    assert.equal(requestedSemanticLimit, 30);
+    assert.equal(result.totalCount, 31);
+    assert.equal(
+        result.notes.some((note) => note.id === 41),
+        false,
+    );
+});
+
 test('keeps every result within the ranked candidate window reachable through pagination', async () => {
     let requestedCandidateLimit = 0;
     const search = createHybridNoteSearch({

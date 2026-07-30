@@ -1,27 +1,40 @@
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi, Link } from '@tanstack/react-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
     type FetchSearchNotesParams,
     fetchSearchNotes,
+    fetchSearchRelatedNotes,
     type SearchMode,
+    type SearchNote,
     type SearchNotesResult,
 } from '~/apis/search.api';
 import { QueryBoundary } from '~/components/app';
-import { SearchInput, SearchMatchBadge, SearchModeControl } from '~/components/search';
-import { Empty, Highlight, PageLayout, Pagination, Skeleton } from '~/components/shared';
+import * as Icon from '~/components/icon';
+import { SearchInput, SearchMatchBadge } from '~/components/search';
+import { AuxiliaryPanelHeader, Empty, Highlight, PageLayout, Pagination, Skeleton } from '~/components/shared';
 import { Text } from '~/components/ui';
+import { ViewChip } from '~/components/view';
 import useSemanticSearchCapability from '~/hooks/useSemanticSearchCapability';
 import { queryKeys } from '~/modules/query-key-factory';
-import { getSearchPreviewBlocks } from '~/modules/search-preview';
-import { NOTE_ROUTE, SEARCH_ROUTE } from '~/modules/url';
+import { getSearchPreviewBlocks, type SearchPreviewKind } from '~/modules/search-preview';
+import { timeSince } from '~/modules/time';
+import { NOTE_ROUTE, SEARCH_ROUTE, SETTINGS_SEARCH_ROUTE, TAG_NOTES_ROUTE } from '~/modules/url';
 
 const Route = getRouteApi(SEARCH_ROUTE);
 const SEARCH_PAGE_LIMIT = 10;
 const SEARCH_DEBOUNCE_MS = 400;
+const SEARCH_RESULT_STALE_TIME_MS = 30_000;
 
 const formatResultCount = (count: number) => (count === 1 ? '1 result' : `${count} results`);
+
+const formatUpdatedAt = (updatedAt: string) => {
+    const numericTimestamp = Number(updatedAt);
+    const timestamp = Number.isFinite(numericTimestamp) ? numericTimestamp : Date.parse(updatedAt);
+
+    return Number.isFinite(timestamp) ? `Updated ${timeSince(timestamp)}` : 'Updated recently';
+};
 
 interface SearchNotesProps {
     searchParams: FetchSearchNotesParams;
@@ -38,6 +51,7 @@ const SearchNotes = ({ searchParams, render }: SearchNotesProps) => {
             }
             return response.searchNotes;
         },
+        staleTime: SEARCH_RESULT_STALE_TIME_MS,
     });
 
     return render(data);
@@ -60,6 +74,194 @@ const SearchResultsSkeleton = () => (
     </main>
 );
 
+const SearchNoteMeta = ({ note }: { note: SearchNote }) => {
+    const visibleTags = note.tags.slice(0, 2);
+    const hiddenTagCount = note.tags.length - visibleTags.length;
+
+    return (
+        <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
+            {note.pinned && (
+                <span className="inline-flex items-center text-fg-tertiary" title="Pinned note">
+                    <Icon.Pin className="h-3.5 w-3.5" weight="fill" aria-hidden="true" />
+                    <span className="sr-only">Pinned note</span>
+                </span>
+            )}
+            <Text as="span" variant="label" weight="medium" tone="tertiary">
+                {formatUpdatedAt(note.updatedAt)}
+            </Text>
+            {visibleTags.map((tag) => (
+                <Link key={tag.id} to={TAG_NOTES_ROUTE} params={{ id: tag.id }} search={{ page: 1 }}>
+                    <ViewChip
+                        size="compact"
+                        className="border-border-subtle bg-transparent text-fg-secondary transition-colors hover:bg-hover-subtle hover:text-fg-default"
+                    >
+                        {tag.name}
+                    </ViewChip>
+                </Link>
+            ))}
+            {hiddenTagCount > 0 && (
+                <ViewChip size="compact" className="border-border-subtle bg-subtle text-fg-tertiary">
+                    +{hiddenTagCount}
+                </ViewChip>
+            )}
+        </div>
+    );
+};
+
+const getSearchPreviewMarker = (kind: SearchPreviewKind) => {
+    if (kind === 'list') return '•';
+    if (kind === 'checklist') return '☐';
+    return null;
+};
+
+const getSearchPreviewBlockClassName = (kind: SearchPreviewKind) => {
+    if (kind === 'quote') {
+        return 'border-l-2 border-border-secondary pl-3 italic';
+    }
+
+    if (kind === 'code') {
+        return 'rounded-[10px] bg-subtle/70 px-2.5 py-2 font-mono text-sm';
+    }
+
+    return undefined;
+};
+
+const SearchPreview = ({
+    blocks,
+    query,
+}: {
+    blocks: Array<{ kind: SearchPreviewKind; text: string }>;
+    query: string;
+}) => {
+    return (
+        <div className="rounded-[14px] border border-border-subtle/80 bg-muted/40 px-3.5 py-3">
+            {blocks.map((block, index) => {
+                const marker = getSearchPreviewMarker(block.kind);
+
+                return (
+                    <div
+                        key={`${block.kind}:${index}`}
+                        className={index > 0 ? 'mt-2 border-t border-border-subtle/70 pt-2' : undefined}
+                    >
+                        <div className="flex items-start gap-2">
+                            {marker && (
+                                <span className="mt-0.5 w-4 shrink-0 text-center text-fg-tertiary" aria-hidden="true">
+                                    {marker}
+                                </span>
+                            )}
+                            <Text
+                                as="p"
+                                variant="body"
+                                weight={block.kind === 'heading' ? 'semibold' : 'regular'}
+                                tone={block.kind === 'heading' ? 'default' : 'secondary'}
+                                className={getSearchPreviewBlockClassName(block.kind) ?? 'leading-[1.65]'}
+                            >
+                                <Highlight match={query}>{block.text}</Highlight>
+                            </Text>
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+};
+
+const RelatedNotes = ({ noteId }: { noteId: string }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const { data, isError, isLoading } = useQuery({
+        queryKey: queryKeys.search.related(noteId),
+        queryFn: async () => {
+            const response = await fetchSearchRelatedNotes(noteId);
+            if (response.type === 'error') {
+                throw response;
+            }
+
+            return response.searchRelatedNotes;
+        },
+        enabled: isOpen,
+        staleTime: SEARCH_RESULT_STALE_TIME_MS,
+    });
+
+    return (
+        <details
+            className="group border-t border-border-subtle/70 pt-3"
+            onToggle={(event) => setIsOpen(event.currentTarget.open)}
+        >
+            <summary className="focus-ring-soft flex cursor-pointer list-none items-center justify-between gap-3 rounded-[10px] border border-transparent px-2.5 py-1.5 outline-none transition-colors hover:bg-hover-subtle marker:hidden">
+                <span className="flex min-w-0 items-center gap-2">
+                    <AuxiliaryPanelHeader
+                        icon={<Icon.LinkSimple className="h-3.5 w-3.5" />}
+                        title="Related notes"
+                        className="text-fg-tertiary"
+                    />
+                    {data && (
+                        <Text as="span" variant="meta" weight="medium" tone="tertiary">
+                            {data.length}
+                        </Text>
+                    )}
+                </span>
+                <Icon.ChevronDown
+                    className="h-4 w-4 shrink-0 text-fg-tertiary transition-transform group-open:rotate-180"
+                    aria-hidden="true"
+                />
+            </summary>
+            <div className="mt-2">
+                {isLoading && (
+                    <Text as="p" variant="meta" tone="tertiary" className="px-2 py-1.5">
+                        Looking for related notes…
+                    </Text>
+                )}
+                {isError && (
+                    <Text as="p" variant="meta" tone="error" className="px-2 py-1.5">
+                        Related notes could not be loaded.
+                    </Text>
+                )}
+                {!isLoading && !isError && data?.length === 0 && (
+                    <Text as="p" variant="meta" tone="tertiary" className="px-2 py-1.5">
+                        No direct connections found yet.
+                    </Text>
+                )}
+                {!isLoading && !isError && data && data.length > 0 && (
+                    <ul className="flex flex-col">
+                        {data.map((relatedNote) => (
+                            <li key={relatedNote.id}>
+                                <Link
+                                    to={NOTE_ROUTE}
+                                    params={{ id: relatedNote.id }}
+                                    className="flex min-w-0 items-start gap-2 rounded-[10px] px-2.5 py-1.5 text-fg-secondary transition-colors hover:bg-hover-subtle hover:text-fg-default"
+                                >
+                                    <Icon.File
+                                        className="mt-0.5 h-3.5 w-3.5 shrink-0 text-fg-tertiary"
+                                        aria-hidden="true"
+                                    />
+                                    <span className="min-w-0 flex-1">
+                                        <Text
+                                            as="span"
+                                            variant="body"
+                                            weight="medium"
+                                            className="text-current line-clamp-1"
+                                        >
+                                            {relatedNote.title || 'Untitled'}
+                                        </Text>
+                                        <Text
+                                            as="span"
+                                            variant="meta"
+                                            tone="tertiary"
+                                            className="mt-0.5 block line-clamp-1"
+                                        >
+                                            {relatedNote.reasons.join(' · ')}
+                                        </Text>
+                                    </span>
+                                </Link>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </div>
+        </details>
+    );
+};
+
 const SearchAvailabilityNotice = ({ result, mode }: { result: SearchNotesResult; mode: SearchMode }) => {
     if (mode === 'lexical' || (result.semanticAvailable && !result.semanticError)) {
         return null;
@@ -68,13 +270,32 @@ const SearchAvailabilityNotice = ({ result, mode }: { result: SearchNotesResult;
     return (
         <Text
             as="p"
-            variant="meta"
+            variant="body"
             tone="tertiary"
             className="rounded-[14px] border border-border-subtle bg-muted px-3.5 py-2.5"
         >
             {mode === 'semantic'
                 ? 'Meaning search is not ready. Configure an embedding API and build the index in Search settings.'
                 : 'Meaning search is not ready, so these results use keyword search only.'}
+        </Text>
+    );
+};
+
+const SearchDiscoveryHint = ({ isVisible }: { isVisible: boolean }) => {
+    if (!isVisible) {
+        return null;
+    }
+
+    return (
+        <Text as="p" variant="meta" tone="tertiary" className="mx-auto mt-5 max-w-[34rem] text-center">
+            <span className="font-semibold text-fg-secondary">Tip:</span> Search by meaning when the exact words are
+            fuzzy.{' '}
+            <Link
+                to={SETTINGS_SEARCH_ROUTE}
+                className="font-semibold text-fg-secondary underline decoration-border-secondary underline-offset-2 transition-colors hover:text-fg-default"
+            >
+                Enable meaning search
+            </Link>
         </Text>
     );
 };
@@ -86,8 +307,16 @@ export default function Search() {
     const [isComposing, setIsComposing] = useState(false);
     const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const normalizedQuery = query.trim();
-    const { isLoading: isCapabilityLoading, isSemanticSearchEnabled } = useSemanticSearchCapability();
-    const activeMode: SearchMode = isCapabilityLoading || isSemanticSearchEnabled ? mode : 'lexical';
+    const {
+        isLoading: isCapabilityLoading,
+        isError: isCapabilityError,
+        isSemanticSearchEnabled,
+        isSemanticSearchAvailable,
+    } = useSemanticSearchCapability();
+    const activeMode: SearchMode = isCapabilityLoading || isSemanticSearchAvailable ? mode : 'lexical';
+    const searchDescription = isSemanticSearchAvailable
+        ? 'Use exact words or describe a half-remembered note'
+        : 'Search notes by exact words';
 
     useEffect(() => {
         setDraftQuery(query);
@@ -147,13 +376,18 @@ export default function Search() {
     };
 
     return (
-        <PageLayout title="Search" description="Use exact words or describe a half-remembered note" variant="default">
+        <PageLayout title="Search" description={searchDescription} variant="default">
             <main>
                 <section aria-label="Search controls" className="border-b border-border-subtle pb-5">
                     <SearchInput
                         value={draftQuery}
                         onChange={setDraftQuery}
                         onCompositionChange={setIsComposing}
+                        mode={isSemanticSearchAvailable ? activeMode : undefined}
+                        onModeChange={isSemanticSearchAvailable ? handleModeChange : undefined}
+                        placeholder={
+                            isSemanticSearchAvailable ? 'Search or describe a memory' : 'Search notes by keyword'
+                        }
                         onSubmit={handleSubmit}
                         onClear={() => {
                             clearPendingSearch();
@@ -161,9 +395,6 @@ export default function Search() {
                         }}
                         autoFocus={!normalizedQuery}
                     />
-                    {isSemanticSearchEnabled && (
-                        <SearchModeControl value={activeMode} onChange={handleModeChange} className="mt-2.5" />
-                    )}
                 </section>
 
                 {!normalizedQuery ? (
@@ -171,6 +402,9 @@ export default function Search() {
                         <Empty
                             title="Start with anything you remember"
                             description="A name, phrase, rough date, or description all work."
+                        />
+                        <SearchDiscoveryHint
+                            isVisible={!isCapabilityLoading && !isCapabilityError && !isSemanticSearchEnabled}
                         />
                     </div>
                 ) : isCapabilityLoading ? (
@@ -192,7 +426,7 @@ export default function Search() {
                             render={(result) => (
                                 <div className="mt-5 flex flex-col gap-3">
                                     <div className="flex min-h-7 items-center justify-between gap-3">
-                                        <Text as="p" variant="meta" weight="semibold" tone="secondary">
+                                        <Text as="p" variant="body" weight="semibold" tone="secondary">
                                             {formatResultCount(result.totalCount)}
                                         </Text>
                                     </div>
@@ -200,7 +434,7 @@ export default function Search() {
                                     <SearchAvailabilityNotice result={result} mode={activeMode} />
 
                                     {result.notes.length > 0 ? (
-                                        <div className="surface-base divide-y divide-border-subtle overflow-hidden">
+                                        <div className="grid gap-3">
                                             {result.notes.map((note) => {
                                                 const previewBlocks = getSearchPreviewBlocks(
                                                     note.content,
@@ -211,72 +445,49 @@ export default function Search() {
                                                 return (
                                                     <article
                                                         key={note.id}
-                                                        className="flex flex-col gap-2.5 px-4 py-4 transition-colors hover:bg-hover-subtle/40 sm:px-5"
+                                                        className="surface-base flex flex-col gap-3.5 rounded-[16px] p-4 transition-colors hover:border-border-secondary/70 hover:bg-hover-subtle/25 sm:p-5"
                                                     >
                                                         <div className="flex min-w-0 items-start justify-between gap-3">
-                                                            <Text
-                                                                as="h2"
-                                                                variant="body"
-                                                                weight="semibold"
-                                                                tracking="tight"
-                                                                className="min-w-0"
-                                                            >
-                                                                <Link
-                                                                    to={NOTE_ROUTE}
-                                                                    params={{ id: note.id }}
-                                                                    className="transition-colors hover:text-fg-default/85"
+                                                            <div className="min-w-0 flex-1">
+                                                                <Text
+                                                                    as="h2"
+                                                                    variant="body"
+                                                                    weight="semibold"
+                                                                    tracking="tight"
+                                                                    className="min-w-0"
                                                                 >
-                                                                    <Highlight match={normalizedQuery}>
-                                                                        {note.title || 'Untitled'}
-                                                                    </Highlight>
-                                                                </Link>
-                                                            </Text>
+                                                                    <Link
+                                                                        to={NOTE_ROUTE}
+                                                                        params={{ id: note.id }}
+                                                                        className="line-clamp-2 transition-colors hover:text-fg-default/85"
+                                                                    >
+                                                                        <Highlight match={normalizedQuery}>
+                                                                            {note.title || 'Untitled'}
+                                                                        </Highlight>
+                                                                    </Link>
+                                                                </Text>
+                                                                <SearchNoteMeta note={note} />
+                                                            </div>
                                                             <SearchMatchBadge match={match} />
                                                         </div>
                                                         {previewBlocks.length > 0 ? (
-                                                            <div className="border-l-2 border-border-subtle pl-3">
-                                                                {previewBlocks.map((block, index) => (
-                                                                    <div
-                                                                        key={`${note.id}:${block.label}:${index}`}
-                                                                        className={
-                                                                            index > 0
-                                                                                ? 'mt-2 border-t border-border-subtle pt-2'
-                                                                                : undefined
-                                                                        }
-                                                                    >
-                                                                        <Text
-                                                                            as="div"
-                                                                            variant="micro"
-                                                                            weight="semibold"
-                                                                            tracking="wider"
-                                                                            transform="uppercase"
-                                                                            tone="tertiary"
-                                                                        >
-                                                                            {block.label}
-                                                                        </Text>
-                                                                        <Text
-                                                                            as="p"
-                                                                            variant="meta"
-                                                                            tone="secondary"
-                                                                            className="mt-1 leading-[1.65]"
-                                                                        >
-                                                                            <Highlight match={normalizedQuery}>
-                                                                                {block.text}
-                                                                            </Highlight>
-                                                                        </Text>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
+                                                            <SearchPreview
+                                                                blocks={previewBlocks}
+                                                                query={normalizedQuery}
+                                                            />
                                                         ) : (
-                                                            <Text
-                                                                as="p"
-                                                                variant="meta"
-                                                                tone="secondary"
-                                                                className="leading-[1.65]"
-                                                            >
-                                                                Open the note to inspect matching content.
-                                                            </Text>
+                                                            <div className="rounded-[14px] border border-dashed border-border-subtle/80 bg-muted/25 px-3.5 py-3">
+                                                                <Text
+                                                                    as="p"
+                                                                    variant="body"
+                                                                    tone="tertiary"
+                                                                    className="leading-[1.65]"
+                                                                >
+                                                                    Open the note to inspect matching content.
+                                                                </Text>
+                                                            </div>
                                                         )}
+                                                        <RelatedNotes noteId={note.id} />
                                                     </article>
                                                 );
                                             })}

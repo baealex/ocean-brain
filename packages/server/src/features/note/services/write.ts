@@ -1,4 +1,5 @@
 import models, { type NoteLayout, Prisma } from '~/models.js';
+import { replaceNoteReferences } from './note-reference-index.js';
 import { buildNoteSearchProjection } from './search.js';
 import { captureNoteBaseline } from './snapshot.js';
 import { createNoteVersionConflictError, MissingNoteVersionError, parseNoteVersion } from './write-conflict.js';
@@ -184,9 +185,17 @@ const defaultNoteWriteService = createNoteWriteService({
         }),
     captureBaseline: captureNoteBaseline,
     updateNote: ({ where, data }) =>
-        models.note.update({
-            where,
-            data,
+        models.$transaction(async (tx) => {
+            const note = await tx.note.update({
+                where,
+                data,
+            });
+
+            if (data.content !== undefined) {
+                await replaceNoteReferences(tx, note.id, data.content);
+            }
+
+            return note;
         }),
     isRecordNotFoundError,
 });

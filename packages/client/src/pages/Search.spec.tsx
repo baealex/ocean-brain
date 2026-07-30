@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 
 import * as searchApi from '~/apis/search.api';
 import { fetchSearchAdminStatus } from '~/apis/search-admin.api';
+import { SETTINGS_SEARCH_ROUTE } from '~/modules/url';
 import { createTestQueryClient } from '~/test/test-utils';
 import Search from './Search';
 
@@ -21,19 +22,29 @@ vi.mock('@tanstack/react-router', () => ({
         useNavigate: () => routeState.navigate,
         useSearch: () => routeState.search,
     }),
-    Link: ({ children, params }: { children: React.ReactNode; params?: { id?: string } }) => (
-        <a href={params?.id ? `/${params.id}` : '/'}>{children}</a>
+    Link: ({ children, params, to }: { children: React.ReactNode; params?: { id?: string }; to?: string }) => (
+        <a href={params?.id ? `/${params.id}` : (to ?? '/')}>{children}</a>
     ),
 }));
 
 vi.mock('~/apis/search.api', () => ({
     fetchSearchNotes: vi.fn(),
+    fetchSearchRelatedNotes: vi.fn(),
 }));
 vi.mock('~/apis/search-admin.api', () => ({
     fetchSearchAdminStatus: vi.fn(),
 }));
 
-const createStatus = (enabled: boolean) => ({
+beforeAll(() => {
+    Object.defineProperties(HTMLElement.prototype, {
+        hasPointerCapture: { configurable: true, value: () => false },
+        setPointerCapture: { configurable: true, value: () => undefined },
+        releasePointerCapture: { configurable: true, value: () => undefined },
+        scrollIntoView: { configurable: true, value: () => undefined },
+    });
+});
+
+const createStatus = (enabled: boolean, available = enabled) => ({
     config: {
         enabled,
         baseUrl: enabled ? 'http://127.0.0.1:1234/v1' : '',
@@ -42,8 +53,8 @@ const createStatus = (enabled: boolean) => ({
     },
     connectionValidated: enabled,
     apiKeyConfigured: false,
-    phase: enabled ? ('ready' as const) : ('disabled' as const),
-    available: enabled,
+    phase: enabled ? (available ? ('ready' as const) : ('needs-index' as const)) : ('disabled' as const),
+    available,
     needsReindex: false,
     noteCount: enabled ? 1 : 0,
     chunkCount: enabled ? 1 : 0,
@@ -126,6 +137,51 @@ describe('<Search />', () => {
         });
     });
 
+    it('loads related notes only when a result asks to explore them', async () => {
+        const user = userEvent.setup();
+        vi.mocked(searchApi.fetchSearchNotes).mockResolvedValue({
+            type: 'success',
+            searchNotes: {
+                totalCount: 1,
+                semanticAvailable: true,
+                semanticUsed: false,
+                semanticError: null,
+                matches: [{ noteId: '17', lexical: true, semantic: false }],
+                notes: [
+                    {
+                        id: '17',
+                        title: 'Current project note',
+                        content: '[]',
+                        pinned: false,
+                        tags: [],
+                        createdAt: '2026-01-01T00:00:00.000Z',
+                        updatedAt: '2026-01-01T00:00:00.000Z',
+                    },
+                ],
+            },
+        });
+        vi.mocked(searchApi.fetchSearchRelatedNotes).mockResolvedValue({
+            type: 'success',
+            searchRelatedNotes: [
+                {
+                    id: '42',
+                    title: 'Older project decision',
+                    reasons: ['Backlink to this note', 'Shares @project'],
+                },
+            ],
+        });
+
+        renderPage();
+
+        expect(searchApi.fetchSearchRelatedNotes).not.toHaveBeenCalled();
+        await user.click(await screen.findByText('Related notes'));
+
+        expect(await screen.findByRole('link', { name: /Older project decision/ })).toHaveAttribute('href', '/42');
+        expect(screen.getByText(/Backlink to this note/)).toBeInTheDocument();
+        expect(screen.getByText(/Shares @project/)).toBeInTheDocument();
+        expect(searchApi.fetchSearchRelatedNotes).toHaveBeenCalledWith('17');
+    });
+
     it('makes a semantic API failure visible while keeping keyword results', async () => {
         vi.mocked(searchApi.fetchSearchNotes).mockResolvedValue({
             type: 'success',
@@ -159,7 +215,8 @@ describe('<Search />', () => {
         });
 
         renderPage();
-        await user.click(await screen.findByRole('radio', { name: 'Keywords' }));
+        await user.click(await screen.findByRole('combobox', { name: 'Search mode' }));
+        await user.click(await screen.findByRole('option', { name: 'Keyword only' }));
 
         expect(routeState.navigate).toHaveBeenCalledWith({
             search: {
@@ -194,7 +251,59 @@ describe('<Search />', () => {
                 mode: 'lexical',
             });
         });
+        expect(screen.getByRole('searchbox', { name: 'Search notes' })).toHaveAttribute(
+            'placeholder',
+            'Search notes by keyword',
+        );
         expect(screen.queryByRole('radiogroup', { name: 'Search method' })).not.toBeInTheDocument();
+    });
+
+    it('keeps the common search page lexical while the semantic index is unavailable', async () => {
+        vi.mocked(fetchSearchAdminStatus).mockResolvedValue(createStatus(true, false));
+        vi.mocked(searchApi.fetchSearchNotes).mockResolvedValue({
+            type: 'success',
+            searchNotes: {
+                totalCount: 0,
+                notes: [],
+                matches: [],
+                semanticAvailable: false,
+                semanticUsed: false,
+                semanticError: null,
+            },
+        });
+
+        renderPage();
+
+        await waitFor(() => {
+            expect(searchApi.fetchSearchNotes).toHaveBeenCalledWith({
+                query: 'fortune teller death',
+                limit: 10,
+                offset: 0,
+                mode: 'lexical',
+            });
+        });
+        expect(screen.getByRole('searchbox', { name: 'Search notes' })).toHaveAttribute(
+            'placeholder',
+            'Search notes by keyword',
+        );
+        expect(screen.queryByRole('radiogroup', { name: 'Search method' })).not.toBeInTheDocument();
+    });
+
+    it('shows a concise meaning-search hint on the empty search page', async () => {
+        vi.mocked(fetchSearchAdminStatus).mockResolvedValue(createStatus(false));
+        routeState.search = {
+            page: 1,
+            query: '',
+            mode: 'hybrid',
+        };
+
+        renderPage();
+
+        expect(await screen.findByText(/Search by meaning when the exact words are fuzzy/i)).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Enable meaning search' })).toHaveAttribute(
+            'href',
+            SETTINGS_SEARCH_ROUTE,
+        );
     });
 
     it('focuses the common search input when opened without a query', async () => {

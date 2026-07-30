@@ -40,10 +40,26 @@ model Note {
   reminders             Reminder[]     @relation("NoteToReminder")
   snapshots             NoteSnapshot[]
   properties            NoteProperty[]
+  outgoingReferences    NoteReference[] @relation("NoteReferenceSource")
 
   @@index([updatedAt, id])
   @@index([createdAt, id])
   @@index([pinned, updatedAt, id])
+}
+
+model NoteReference {
+  sourceNoteId Int
+  targetNoteId Int
+  sourceNote   Note @relation("NoteReferenceSource", fields: [sourceNoteId], references: [id], onDelete: Cascade)
+
+  @@id([sourceNoteId, targetNoteId])
+  @@index([targetNoteId, sourceNoteId])
+}
+
+model NoteReferenceIndexState {
+  id        Int      @id
+  version   Int
+  updatedAt DateTime @updatedAt
 }
 
 model PropertyDefinition {

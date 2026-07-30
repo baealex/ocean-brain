@@ -13,6 +13,12 @@ export const searchTypeDefs = gql`
         semantic: Boolean!
     }
 
+    type SearchRelatedNote {
+        id: ID!
+        title: String!
+        reasons: [String!]!
+    }
+
     type SearchNotesResult {
         totalCount: Int!
         notes: [Note!]!
@@ -24,5 +30,6 @@ export const searchTypeDefs = gql`
 
     extend type Query {
         searchNotes(query: String!, pagination: PaginationInput!, mode: SearchMode = HYBRID): SearchNotesResult!
+        searchRelatedNotes(noteId: ID!, limit: Int = 5): [SearchRelatedNote!]!
     }
 `;

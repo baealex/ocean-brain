@@ -37,6 +37,14 @@ const noteChangeInvalidations: QueryInvalidation[] = [
         queryKey: queryKeys.tags.all(),
         exact: false,
     },
+    {
+        queryKey: queryKeys.search.resultsAll(),
+        exact: false,
+    },
+    {
+        queryKey: queryKeys.search.relatedAll(),
+        exact: false,
+    },
 ];
 
 const propertyKeysInvalidation: QueryInvalidation = {
@@ -67,6 +75,14 @@ const noteDeleteInvalidations: QueryInvalidation[] = [
     },
     {
         queryKey: queryKeys.calendar.all(),
+        exact: false,
+    },
+    {
+        queryKey: queryKeys.search.resultsAll(),
+        exact: false,
+    },
+    {
+        queryKey: queryKeys.search.relatedAll(),
         exact: false,
     },
 ];

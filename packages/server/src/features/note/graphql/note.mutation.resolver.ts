@@ -2,6 +2,7 @@ import type { IResolvers } from '@graphql-tools/utils';
 import type { Request } from 'express';
 import { GraphQLError } from 'graphql';
 import { extractBlocksByType, parseNoteContent } from '~/features/note/services/content-blocks.js';
+import { replaceNoteReferences } from '~/features/note/services/note-reference-index.js';
 import {
     createNotePropertyDefinition,
     deleteNotePropertyDefinition,
@@ -88,25 +89,31 @@ export const noteMutationResolvers: NoteMutationResolvers = {
         const replacedContent = await replacePlaceholders(note.content);
         const parsedContent = replacedContent ? parseRequiredNoteContent(replacedContent) : null;
         const blocks = parsedContent ? extractBlocksByType<{ id: string }>('tag', parsedContent) : [];
-        const createdNote = await models.note.create({
-            data: {
-                title: replacedTitle,
-                content: replacedContent,
-                ...buildNoteSearchProjection({
+        const noteResult = await models.$transaction(async (tx) => {
+            const createdNote = await tx.note.create({
+                data: {
                     title: replacedTitle,
                     content: replacedContent,
-                }),
-                ...(note.layout && { layout: note.layout }),
-            },
-        });
+                    ...buildNoteSearchProjection({
+                        title: replacedTitle,
+                        content: replacedContent,
+                    }),
+                    ...(note.layout && { layout: note.layout }),
+                },
+            });
 
-        const noteResult = replacedContent
-            ? await models.note.update({
-                  where: { id: createdNote.id },
-                  data: { tags: { set: toTagConnections(blocks) } },
-              })
-            : createdNote;
-        notifySemanticSearchNoteChanged(createdNote.id);
+            const noteResult = replacedContent
+                ? await tx.note.update({
+                      where: { id: createdNote.id },
+                      data: { tags: { set: toTagConnections(blocks) } },
+                  })
+                : createdNote;
+
+            await replaceNoteReferences(tx, createdNote.id, replacedContent);
+
+            return noteResult;
+        });
+        notifySemanticSearchNoteChanged(noteResult.id);
         return noteResult;
     },
     updateNote: async (

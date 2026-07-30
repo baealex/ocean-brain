@@ -22,5 +22,6 @@ describe('queryKeys.search', () => {
     it('keeps search settings status separate from result pages', () => {
         expect(queryKeys.search.adminStatus()).toEqual(['search', 'admin-status']);
         expect(queryKeys.search.resultsAll()).toEqual(['search', 'results']);
+        expect(queryKeys.search.relatedAll()).toEqual(['search', 'related']);
     });
 });

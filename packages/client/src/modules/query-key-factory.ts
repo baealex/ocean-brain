@@ -234,6 +234,8 @@ export const queryKeys = {
                     mode: params.mode ?? 'hybrid',
                 },
             ] as const,
+        relatedAll: () => ['search', 'related'] as const,
+        related: (noteId: string, limit = 5) => ['search', 'related', { noteId, limit }] as const,
         adminStatus: () => ['search', 'admin-status'] as const,
     },
     ui: { heroBanner: () => ['ui', 'hero-banner'] as const },

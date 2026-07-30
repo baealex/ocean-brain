@@ -8,12 +8,19 @@ import {
     GRAPH_ROUTE,
     HOME_ROUTE,
     REMINDERS_ROUTE,
+    SEARCH_ROUTE,
     SETTINGS_ROUTE,
     TAG_ROUTE,
     VIEWS_ROUTE,
 } from '~/modules/url';
 
 const NAVIGATION_ITEMS = [
+    {
+        name: 'Search',
+        path: SEARCH_ROUTE,
+        icon: Icon.Search,
+        shortcut: '⌘K / Ctrl+K',
+    },
     {
         name: 'Notes',
         path: HOME_ROUTE,
@@ -59,11 +66,16 @@ const TopNavigation = () => {
             {NAVIGATION_ITEMS.map((item, index) => {
                 const isActive =
                     pathname === item.path || (item.path !== HOME_ROUTE && pathname.startsWith(`${item.path}/`));
+                const shortcut = 'shortcut' in item ? item.shortcut : undefined;
 
                 return (
                     <Fragment key={item.path}>
                         {index > 0 && <span className="h-3.5 w-px shrink-0 bg-border-subtle" />}
-                        <Link to={item.path}>
+                        <Link
+                            to={item.path}
+                            aria-keyshortcuts={shortcut ? 'Meta+K Control+K' : undefined}
+                            title={shortcut ? `${item.name} (${shortcut})` : undefined}
+                        >
                             <div
                                 className={`flex min-w-26 items-center justify-center gap-2 border-b px-2 py-2 transition-colors ${
                                     isActive

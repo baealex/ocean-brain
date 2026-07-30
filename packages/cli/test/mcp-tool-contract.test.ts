@@ -185,7 +185,7 @@ describe('Ocean Brain MCP stdio contract', () => {
             assert.equal(property(OCEAN_BRAIN_MCP_TOOLS.searchNotes, 'limit').default, 10);
             assert.equal(property(OCEAN_BRAIN_MCP_TOOLS.searchNotes, 'offset').default, 0);
             assert.equal(property(OCEAN_BRAIN_MCP_TOOLS.searchNotes, 'offset').minimum, 0);
-            assert.equal(property(OCEAN_BRAIN_MCP_TOOLS.searchNotes, 'mode').default, undefined);
+            assert.equal(property(OCEAN_BRAIN_MCP_TOOLS.searchNotes, 'mode').default, 'hybrid');
             assert.deepEqual(property(OCEAN_BRAIN_MCP_TOOLS.searchNotes, 'mode').enum, [
                 'hybrid',
                 'lexical',

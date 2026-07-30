@@ -235,8 +235,7 @@ interface McpSearchNote {
     title: string;
     updatedAt: string;
     tags: Array<{ id: string; name: string }>;
-    contentAsMarkdown?: string;
-    contentPreview?: string;
+    contentPreview: string;
 }
 
 const formatMcpSearchNotes = (notes: McpSearchNote[]) => notes.map((note) => ({
@@ -244,9 +243,7 @@ const formatMcpSearchNotes = (notes: McpSearchNote[]) => notes.map((note) => ({
     title: note.title,
     updatedAt: note.updatedAt,
     tags: note.tags.map((t) => t.name),
-    preview: typeof note.contentPreview === 'string'
-        ? note.contentPreview
-        : note.contentAsMarkdown?.slice(0, 100) ?? '',
+    preview: note.contentPreview,
 }));
 
 interface RegisterMcpToolsOptions {
@@ -260,76 +257,17 @@ export const registerMcpTools = (
     options: RegisterMcpToolsOptions = {},
 ) => {
     const graphqlRequest = options.graphqlRequest ?? graphql;
-    let noteContentPreviewSupport: Promise<boolean> | undefined;
-    const supportsNoteContentPreview = () => {
-        if (!noteContentPreviewSupport) {
-            noteContentPreviewSupport = graphqlRequest(serverUrl, token, `
-                query {
-                    __type(name: "Note") {
-                        fields { name }
-                    }
-                }
-            `).then((data) => {
-                const noteType = data?.__type;
-                if (!noteType || typeof noteType !== 'object') {
-                    return false;
-                }
-
-                const fields = (noteType as { fields?: unknown }).fields;
-                return Array.isArray(fields) && fields.some((field) => (
-                    field !== null &&
-                    typeof field === 'object' &&
-                    (field as { name?: unknown }).name === 'contentPreview'
-                ));
-            });
-        }
-
-        return noteContentPreviewSupport;
-    };
 
     server.tool(
         OCEAN_BRAIN_MCP_TOOLS.searchNotes,
-        'Search Ocean Brain notes by keyword or meaning. Lexical uses words only, hybrid combines words and meaning, and semantic uses meaning only. Omit mode to keep the legacy keyword behavior and response. Explicit modes return one ranked result shape with match and semantic-search status. Use ocean_brain_read_note to get full content for a specific note.',
+        'Search Ocean Brain notes by keyword or meaning. Lexical uses words only, hybrid combines words and meaning, and semantic uses meaning only. Results use one ranked result shape with match and semantic-search status. Use ocean_brain_read_note to get full content for a specific note.',
         {
             query: z.string().describe('Search words or a natural-language description'),
-            limit: z.number().optional().default(10).describe('Results per page. Explicit modes return at most 50 per page. (default: 10)'),
+            limit: z.number().optional().default(10).describe('Results per page. Search returns at most 50 per page. (default: 10)'),
             offset: z.number().int().min(0).optional().default(0).describe('Results to skip for pagination (default: 0)'),
-            mode: searchModeSchema.optional().describe('Optional mode. Omit for the legacy keyword request and response; explicit modes use the unified ranked result contract'),
+            mode: searchModeSchema.default('hybrid').describe('Search mode. Defaults to hybrid.'),
         },
         async ({ query, limit, offset, mode }) => {
-            if (!mode) {
-                const data = await graphqlRequest(serverUrl, token, `
-                    query ($searchFilter: SearchFilterInput, $pagination: PaginationInput) {
-                        allNotes(searchFilter: $searchFilter, pagination: $pagination) {
-                            totalCount
-                            notes {
-                                id
-                                title
-                                updatedAt
-                                tags { id name }
-                                contentAsMarkdown
-                            }
-                        }
-                    }
-                `, {
-                    searchFilter: { query, sortBy: 'updatedAt', sortOrder: 'desc' },
-                    pagination: { limit, offset },
-                });
-
-                const result = data?.allNotes as {
-                    totalCount: number;
-                    notes: McpSearchNote[];
-                };
-
-                return createMcpJsonToolResult({
-                    totalCount: result.totalCount,
-                    notes: formatMcpSearchNotes(result.notes),
-                });
-            }
-
-            const previewField = await supportsNoteContentPreview()
-                ? 'contentPreview'
-                : 'contentAsMarkdown';
             const data = await graphqlRequest(serverUrl, token, `
                 query ($query: String!, $mode: SearchMode!, $pagination: PaginationInput!) {
                     searchNotes(query: $query, mode: $mode, pagination: $pagination) {
@@ -347,7 +285,7 @@ export const registerMcpTools = (
                             title
                             updatedAt
                             tags { id name }
-                            ${previewField}
+                            contentPreview
                         }
                     }
                 }

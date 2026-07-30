@@ -20,7 +20,7 @@ test('createMcpRequestHeaders includes MCP compatibility and client version head
 
     assert.equal(headers['Content-Type'], 'application/json');
     assert.equal(headers.Authorization, 'Bearer token-a');
-    assert.equal(OCEAN_BRAIN_MCP_COMPATIBILITY_VERSION, '0.10.0');
+    assert.equal(OCEAN_BRAIN_MCP_COMPATIBILITY_VERSION, '0.11.0');
     assert.equal(headers[OCEAN_BRAIN_MCP_VERSION_HEADER], OCEAN_BRAIN_MCP_COMPATIBILITY_VERSION);
     assert.equal(headers[OCEAN_BRAIN_MCP_COMPATIBILITY_VERSION_HEADER], OCEAN_BRAIN_MCP_COMPATIBILITY_VERSION);
     assert.match(headers[OCEAN_BRAIN_MCP_CLIENT_VERSION_HEADER], /^\d+\.\d+\.\d+/);
@@ -41,14 +41,6 @@ test('MCP note search gives every explicit mode one result contract with paginat
         variables?: Record<string, unknown>,
     ) => {
         requests.push({ query, variables });
-
-        if (query.includes('__type')) {
-            return {
-                __type: {
-                    fields: [{ name: 'contentPreview' }],
-                },
-            };
-        }
 
         return {
             searchNotes: {
@@ -112,17 +104,16 @@ test('MCP note search gives every explicit mode one result contract with paginat
             });
         }
 
-        assert.equal(requests.length, 4);
-        assert.match(requests[0].query, /__type\(name: "Note"\)/);
+        assert.equal(requests.length, 3);
         assert.deepEqual(
-            requests.slice(1).map((request) => request.variables),
+            requests.map((request) => request.variables),
             ['HYBRID', 'LEXICAL', 'SEMANTIC'].map((mode) => ({
                 query: 'deployment decision',
                 mode,
                 pagination: { limit: 20, offset: 5 },
             })),
         );
-        for (const request of requests.slice(1)) {
+        for (const request of requests) {
             assert.match(request.query, /searchNotes\(query: \$query, mode: \$mode, pagination: \$pagination\)/);
             assert.match(request.query, /contentPreview/);
             assert.doesNotMatch(request.query, /contentAsMarkdown/);
@@ -133,8 +124,7 @@ test('MCP note search gives every explicit mode one result contract with paginat
     }
 });
 
-test('MCP note search falls back to Markdown previews for compatible older servers', async () => {
-    const markdown = 'x'.repeat(120);
+test('MCP note search defaults to hybrid mode when mode is omitted', async () => {
     const requests: Array<{ query: string; variables?: Record<string, unknown> }> = [];
     const graphqlRequest = async (
         _serverUrl: string,
@@ -143,14 +133,6 @@ test('MCP note search falls back to Markdown previews for compatible older serve
         variables?: Record<string, unknown>,
     ) => {
         requests.push({ query, variables });
-
-        if (query.includes('__type')) {
-            return {
-                __type: {
-                    fields: [{ name: 'contentAsMarkdown' }],
-                },
-            };
-        }
 
         return {
             searchNotes: {
@@ -158,69 +140,13 @@ test('MCP note search falls back to Markdown previews for compatible older serve
                 semanticAvailable: true,
                 semanticUsed: true,
                 semanticError: null,
-                matches: [{ noteId: '17', lexical: false, semantic: true }],
-                notes: [{
-                    id: '17',
-                    title: 'Older server',
-                    updatedAt: '2026-07-26T00:00:00.000Z',
-                    tags: [],
-                    contentAsMarkdown: markdown,
-                }],
-            },
-        };
-    };
-
-    const server = new McpServer({ name: 'ocean-brain-test', version: '0.0.0' });
-    const client = new Client({ name: 'ocean-brain-test-client', version: '0.0.0' });
-    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
-
-    try {
-        registerMcpTools(server, 'http://localhost:6683', 'test-token', { graphqlRequest });
-        await Promise.all([
-            server.connect(serverTransport),
-            client.connect(clientTransport),
-        ]);
-
-        const result = await client.callTool({
-            name: OCEAN_BRAIN_MCP_TOOLS.searchNotes,
-            arguments: { query: 'older server', mode: 'semantic' },
-        });
-
-        assert.equal(requests.length, 2);
-        assert.match(requests[1].query, /contentAsMarkdown/);
-        assert.doesNotMatch(requests[1].query, /contentPreview/);
-
-        const content = result.content[0];
-        assert.equal(content?.type, 'text');
-        if (content?.type !== 'text') {
-            throw new Error('Expected a text MCP result.');
-        }
-        assert.equal(JSON.parse(content.text).notes[0].preview, 'x'.repeat(100));
-    } finally {
-        await client.close();
-        await server.close();
-    }
-});
-
-test('MCP note search keeps the legacy request and response when mode is omitted', async () => {
-    const requests: Array<{ query: string; variables?: Record<string, unknown> }> = [];
-    const graphqlRequest = async (
-        _serverUrl: string,
-        _token: string | undefined,
-        query: string,
-        variables?: Record<string, unknown>,
-    ) => {
-        requests.push({ query, variables });
-
-        return {
-            allNotes: {
-                totalCount: 1,
+                matches: [{ noteId: '23', lexical: true, semantic: true }],
                 notes: [{
                     id: '23',
-                    title: 'Legacy search',
+                    title: 'Hybrid search',
                     updatedAt: '2026-07-26T00:00:00.000Z',
-                    tags: [{ id: '2', name: '@legacy' }],
-                    contentAsMarkdown: 'Keep the old search behavior.',
+                    tags: [{ id: '2', name: '@search' }],
+                    contentPreview: 'Use the new hybrid search contract.',
                 }],
             },
         };
@@ -239,14 +165,16 @@ test('MCP note search keeps the legacy request and response when mode is omitted
 
         const result = await client.callTool({
             name: OCEAN_BRAIN_MCP_TOOLS.searchNotes,
-            arguments: { query: 'legacy search' },
+            arguments: { query: 'hybrid search' },
         });
 
         assert.equal(requests.length, 1);
-        assert.match(requests[0].query, /allNotes\(searchFilter: \$searchFilter, pagination: \$pagination\)/);
-        assert.doesNotMatch(requests[0].query, /searchNotes/);
+        assert.match(requests[0].query, /searchNotes\(query: \$query, mode: \$mode, pagination: \$pagination\)/);
+        assert.match(requests[0].query, /contentPreview/);
+        assert.doesNotMatch(requests[0].query, /contentAsMarkdown/);
         assert.deepEqual(requests[0].variables, {
-            searchFilter: { query: 'legacy search', sortBy: 'updatedAt', sortOrder: 'desc' },
+            query: 'hybrid search',
+            mode: 'HYBRID',
             pagination: { limit: 10, offset: 0 },
         });
 
@@ -258,12 +186,16 @@ test('MCP note search keeps the legacy request and response when mode is omitted
 
         assert.deepEqual(JSON.parse(content.text), {
             totalCount: 1,
+            semanticAvailable: true,
+            semanticUsed: true,
+            semanticError: null,
+            matches: [{ noteId: '23', lexical: true, semantic: true }],
             notes: [{
                 id: '23',
-                title: 'Legacy search',
+                title: 'Hybrid search',
                 updatedAt: '2026-07-26T00:00:00.000Z',
-                tags: ['@legacy'],
-                preview: 'Keep the old search behavior.',
+                tags: ['@search'],
+                preview: 'Use the new hybrid search contract.',
             }],
         });
     } finally {

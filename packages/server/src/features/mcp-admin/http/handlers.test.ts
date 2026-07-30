@@ -182,8 +182,8 @@ test('POST /api/mcp-admin/enabled toggles enabled state for authenticated sessio
         version?: unknown;
     };
     assert.equal(typeof serverInfo.version, 'string');
-    assert.equal(serverInfo.mcpVersionRequirement, '0.10.x');
-    assert.equal(serverInfo.mcp?.compatibilityRequirement, '0.10.x');
+    assert.equal(serverInfo.mcpVersionRequirement, '0.11.x');
+    assert.equal(serverInfo.mcp?.compatibilityRequirement, '0.11.x');
 });
 
 test('POST /api/mcp-admin/token/revoke revokes active token for authenticated session', async (t) => {

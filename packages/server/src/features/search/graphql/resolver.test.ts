@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createSearchNotesResolver } from './resolver.js';
+import { createSearchNotesResolver, createSearchRelatedNotesResolver } from './resolver.js';
 
 test('searchNotes resolver passes a bounded page request to hybrid search', async () => {
     let receivedInput: unknown;
@@ -55,4 +55,27 @@ test('searchNotes resolver maps an explicit GraphQL search mode', async () => {
         offset: 0,
         mode: 'semantic',
     });
+});
+
+test('searchRelatedNotes resolver validates the note id and bounds the result limit', async () => {
+    let receivedInput: unknown;
+    const resolver = createSearchRelatedNotesResolver(async (noteId, limit) => {
+        receivedInput = { noteId, limit };
+        return [];
+    });
+
+    await resolver(null, { noteId: '17', limit: 100 });
+
+    assert.deepEqual(receivedInput, { noteId: 17, limit: 5 });
+});
+
+test('searchRelatedNotes resolver ignores invalid note ids', async () => {
+    let called = false;
+    const resolver = createSearchRelatedNotesResolver(async () => {
+        called = true;
+        return [];
+    });
+
+    assert.deepEqual(await resolver(null, { noteId: 'not-a-number', limit: 5 }), []);
+    assert.equal(called, false);
 });

@@ -4,6 +4,7 @@ import {
     RECOVERY_CLEANUP_BATCH_LIMIT,
     TRASH_RETENTION_DAYS,
 } from '~/modules/recovery-retention.js';
+import { replaceNoteReferences } from './note-reference-index.js';
 import { resolveRestoredPropertyTarget } from './property-restore.js';
 import { buildNoteSearchProjection, extractVisibleSearchTextFromContent } from './search.js';
 
@@ -488,6 +489,8 @@ const noteTrashService = createNoteTrashService({
                         : {}),
                 },
             });
+
+            await replaceNoteReferences(tx, note.id, restoredContent);
 
             for (const property of deletedNote.properties ?? []) {
                 const target = await resolveRestoredPropertyTarget(property, {

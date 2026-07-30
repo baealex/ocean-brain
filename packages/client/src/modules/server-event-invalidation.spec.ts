@@ -59,6 +59,14 @@ describe('server-event-invalidation', () => {
             queryKey: queryKeys.tags.all(),
             exact: false,
         });
+        expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+            queryKey: queryKeys.search.resultsAll(),
+            exact: false,
+        });
+        expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+            queryKey: queryKeys.search.relatedAll(),
+            exact: false,
+        });
     });
 
     it('invalidates note collection queries for web note updates', async () => {
@@ -81,6 +89,14 @@ describe('server-event-invalidation', () => {
         });
         expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
             queryKey: queryKeys.views.sectionNotesAll(),
+            exact: false,
+        });
+        expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+            queryKey: queryKeys.search.resultsAll(),
+            exact: false,
+        });
+        expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+            queryKey: queryKeys.search.relatedAll(),
             exact: false,
         });
         expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith({
@@ -119,6 +135,14 @@ describe('server-event-invalidation', () => {
         });
         expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
             queryKey: queryKeys.calendar.all(),
+            exact: false,
+        });
+        expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+            queryKey: queryKeys.search.resultsAll(),
+            exact: false,
+        });
+        expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+            queryKey: queryKeys.search.relatedAll(),
             exact: false,
         });
     });

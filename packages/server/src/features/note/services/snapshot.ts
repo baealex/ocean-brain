@@ -10,6 +10,7 @@ import {
     SNAPSHOT_RETENTION_DAYS,
 } from '~/modules/recovery-retention.js';
 import { calculateMarkdownSha256 } from './markdown-patch.js';
+import { replaceNoteReferences } from './note-reference-index.js';
 import { resolveRestoredPropertyTarget } from './property-restore.js';
 import { buildNoteSearchProjection, extractVisibleSearchTextFromContent } from './search.js';
 import { createNoteVersionConflictError, MissingNoteVersionError, parseNoteVersion } from './write-conflict.js';
@@ -847,6 +848,10 @@ export const defaultNoteSnapshotService = createNoteSnapshotService({
                         ...(tagIds !== undefined ? { tags: { set: tagIds.map((tagId) => ({ id: tagId })) } } : {}),
                     },
                 });
+
+                if (noteInput.content !== undefined) {
+                    await replaceNoteReferences(tx, note.id, noteInput.content);
+                }
 
                 if (properties !== undefined) {
                     await tx.noteProperty.deleteMany({ where: { noteId: id } });

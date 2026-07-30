@@ -1,5 +1,6 @@
 import models, { type NoteLayout } from '~/models.js';
 import { extractTagIdsFromContentJson, markdownToBlocksJson } from '~/modules/blocknote.js';
+import { replaceNoteReferences } from './note-reference-index.js';
 import { buildNoteSearchProjection } from './search.js';
 
 interface PlaceholderRecord {
@@ -117,17 +118,23 @@ export const createNoteAuthoringService = (deps: NoteAuthoringDeps) => {
 
 const defaultNoteAuthoringService = createNoteAuthoringService({
     createNote: async (input) => {
-        return models.note.create({
-            data: {
-                title: input.title,
-                content: input.content,
-                ...buildNoteSearchProjection({
+        return models.$transaction(async (tx) => {
+            const note = await tx.note.create({
+                data: {
                     title: input.title,
                     content: input.content,
-                }),
-                ...(input.layout ? { layout: input.layout } : {}),
-                ...(input.tagIds ? { tags: { connect: input.tagIds.map((id) => ({ id: Number(id) })) } } : {}),
-            },
+                    ...buildNoteSearchProjection({
+                        title: input.title,
+                        content: input.content,
+                    }),
+                    ...(input.layout ? { layout: input.layout } : {}),
+                    ...(input.tagIds ? { tags: { connect: input.tagIds.map((id) => ({ id: Number(id) })) } } : {}),
+                },
+            });
+
+            await replaceNoteReferences(tx, note.id, input.content);
+
+            return note;
         });
     },
     findPlaceholders: async (templates) => {

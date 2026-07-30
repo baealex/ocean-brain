@@ -1,7 +1,7 @@
 import { createRootRoute, createRoute, createRouter, Outlet, RouterProvider } from '@tanstack/react-router';
 import { act, render, screen, within } from '@testing-library/react';
 
-import { GRAPH_ROUTE, HOME_ROUTE, VIEWS_ROUTE } from '~/modules/url';
+import { GRAPH_ROUTE, HOME_ROUTE, SEARCH_ROUTE, VIEWS_ROUTE } from '~/modules/url';
 
 import TopNavigation from './TopNavigation';
 
@@ -39,10 +39,13 @@ describe('<TopNavigation />', () => {
 
         const navigation = await screen.findByRole('navigation', { name: 'Primary navigation' });
         const graphLink = within(navigation).getByRole('link', { name: /graph/i });
+        const searchLink = within(navigation).getByRole('link', { name: /search/i });
         const notesLink = within(navigation).getByRole('link', { name: /notes/i });
         const viewsLink = within(navigation).getByRole('link', { name: /views/i });
 
         expect(graphLink).toHaveAttribute('href', GRAPH_ROUTE);
+        expect(searchLink).toHaveAttribute('href', SEARCH_ROUTE);
+        expect(searchLink).toHaveAttribute('aria-keyshortcuts', 'Meta+K Control+K');
         expect(graphLink).toHaveAttribute('aria-current', 'page');
         expect(notesLink).toHaveAttribute('href', HOME_ROUTE);
         expect(viewsLink).toHaveAttribute('href', VIEWS_ROUTE);

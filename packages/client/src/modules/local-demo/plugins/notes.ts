@@ -63,6 +63,52 @@ export const notesLocalPlugin: LocalDemoPlugin = {
                 },
             });
         },
+        FetchSearchRelatedNotes: ({ state, variables }) => {
+            const noteId = String(variables.noteId);
+            const source = findNote(state, noteId);
+
+            if (!source) {
+                return success({ searchRelatedNotes: [] });
+            }
+
+            const sourceReferences = new Set(extractNoteReferences(source).map((reference) => reference.id));
+            const relatedNotes = state.notes
+                .filter((note) => note.id !== source.id)
+                .map((note) => {
+                    const reasons: string[] = [];
+                    let score = 0;
+                    const noteReferences = new Set(extractNoteReferences(note).map((reference) => reference.id));
+                    const sharedTags = note.tags.filter((tag) =>
+                        source.tags.some((sourceTag) => sourceTag.id === tag.id),
+                    );
+
+                    if (sourceReferences.has(note.id)) {
+                        reasons.push('Linked from this note');
+                        score += 100;
+                    }
+
+                    if (noteReferences.has(source.id)) {
+                        reasons.push('Backlink to this note');
+                        score += 100;
+                    }
+
+                    for (const tag of sharedTags) {
+                        reasons.push(`Shares ${tag.name}`);
+                        score += 20;
+                    }
+
+                    return { note, reasons, score };
+                })
+                .filter(({ reasons }) => reasons.length > 0)
+                .sort(
+                    (left, right) =>
+                        right.score - left.score || right.note.updatedAt.localeCompare(left.note.updatedAt),
+                )
+                .slice(0, 5)
+                .map(({ note, reasons }) => ({ id: note.id, title: note.title || 'Untitled', reasons }));
+
+            return success({ searchRelatedNotes: relatedNotes });
+        },
         FetchTagNotes: ({ state, variables }) => {
             const tagId = getQueryText(variables);
             const filtered = sortNotes(

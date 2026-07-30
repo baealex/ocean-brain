@@ -18,6 +18,12 @@ export interface SearchNoteMatch {
     semantic: boolean;
 }
 
+export interface SearchRelatedNote {
+    id: string;
+    title: string;
+    reasons: string[];
+}
+
 export interface SearchNotesResult {
     totalCount: number;
     notes: SearchNote[];
@@ -78,5 +84,24 @@ export function fetchSearchNotes({ query, limit = 25, offset = 0, mode = 'hybrid
                 offset,
             },
         },
+    );
+}
+
+export function fetchSearchRelatedNotes(noteId: string, limit = 5) {
+    return graphQuery<
+        { searchRelatedNotes: SearchRelatedNote[] },
+        {
+            noteId: string;
+            limit: number;
+        }
+    >(
+        `query FetchSearchRelatedNotes($noteId: ID!, $limit: Int!) {
+            searchRelatedNotes(noteId: $noteId, limit: $limit) {
+                id
+                title
+                reasons
+            }
+        }`,
+        { noteId, limit },
     );
 }

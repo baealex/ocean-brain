@@ -6,7 +6,7 @@ interface SearchMatchBadgeProps {
 }
 
 const getLabel = (match?: SearchNoteMatch) => {
-    if (match?.lexical && match.semantic) return 'Keyword + meaning';
+    if (match?.lexical && match.semantic) return 'Keyword + Meaning';
     if (match?.semantic) return 'Meaning match';
     if (match?.lexical) return 'Keyword match';
     return null;
@@ -19,7 +19,7 @@ const SearchMatchBadge = ({ match }: SearchMatchBadgeProps) => {
     return (
         <Text
             as="span"
-            variant="micro"
+            variant="meta"
             weight="semibold"
             tone="tertiary"
             className="shrink-0 rounded-full bg-muted px-2 py-1"

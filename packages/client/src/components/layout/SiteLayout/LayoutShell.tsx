@@ -6,6 +6,8 @@ import { useEffect, useState } from 'react';
 import * as Icon from '~/components/icon';
 import { RestoreParentScroll } from '~/components/shared';
 
+import GlobalSearchShortcut from './GlobalSearchShortcut';
+
 const rootClassName = 'flex h-dvh min-h-0 w-full flex-row overflow-hidden';
 const menuButtonClassName = classNames(
     'fixed',
@@ -116,6 +118,7 @@ const LayoutShell = ({ sidebar, topNavigation, children }: LayoutShellProps) => 
 
     return (
         <div className={rootClassName}>
+            <GlobalSearchShortcut />
             <div className="md:hidden">
                 <button
                     type="button"

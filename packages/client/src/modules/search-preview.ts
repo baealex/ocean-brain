@@ -67,23 +67,20 @@ const getInlineText = (content: unknown) => {
         .join('');
 };
 
-const getBlockLabel = (type?: string, props?: Record<string, unknown>) => {
-    if (type === 'heading') {
-        const level = typeof props?.level === 'number' ? props.level : 1;
-        return `Heading ${level}`;
-    }
+export type SearchPreviewKind = 'heading' | 'list' | 'checklist' | 'quote' | 'code' | 'content';
 
-    if (type === 'bulletListItem') return 'Bullet';
-    if (type === 'numberedListItem') return 'Numbered';
-    if (type === 'checkListItem') return 'Checklist';
-    if (type === 'quote') return 'Quote';
-    if (type === 'codeBlock') return 'Code';
+const getBlockKind = (type?: string): SearchPreviewKind => {
+    if (type === 'heading') return 'heading';
+    if (type === 'bulletListItem' || type === 'numberedListItem') return 'list';
+    if (type === 'checkListItem') return 'checklist';
+    if (type === 'quote') return 'quote';
+    if (type === 'codeBlock') return 'code';
 
-    return 'Content';
+    return 'content';
 };
 
 export interface SearchPreviewBlock {
-    label: string;
+    kind: SearchPreviewKind;
     text: string;
 }
 
@@ -99,15 +96,11 @@ const collectPreviewBlocks = (nodes: unknown, blocks: SearchPreviewBlock[]) => {
 
         const type =
             typeof (node as { type?: unknown }).type === 'string' ? (node as { type: string }).type : undefined;
-        const props =
-            typeof (node as { props?: unknown }).props === 'object' && (node as { props?: unknown }).props
-                ? (node as { props: Record<string, unknown> }).props
-                : undefined;
         const text = normalizeSearchText(getInlineText((node as { content?: unknown }).content));
 
         if (text) {
             blocks.push({
-                label: getBlockLabel(type, props),
+                kind: getBlockKind(type),
                 text,
             });
         }

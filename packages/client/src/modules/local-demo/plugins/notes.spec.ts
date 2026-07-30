@@ -89,4 +89,35 @@ describe('notesLocalPlugin', () => {
         expect(tagNotes?.totalCount).toBe(2);
         expect(tagNotes?.notes.map((note) => note.id)).toEqual(['note-guide-a', 'note-guide-b']);
     });
+
+    it('returns linked and shared-tag notes for local search rediscovery', () => {
+        const state = createState();
+        state.notes[0].content = JSON.stringify([
+            {
+                type: 'paragraph',
+                content: [{ type: 'reference', props: { id: 'note-guide-b', title: 'Guide B' } }],
+            },
+        ]);
+        const handler = notesLocalPlugin.graphHandlers?.FetchSearchRelatedNotes;
+        expect(handler).toBeDefined();
+
+        const response = handler?.({
+            state,
+            variables: { noteId: 'note-guide-a', limit: 5 },
+            save: () => undefined,
+        });
+
+        const relatedNotes =
+            response && 'searchRelatedNotes' in response
+                ? (response.searchRelatedNotes as { id: string; title: string; reasons: string[] }[] | undefined)
+                : undefined;
+
+        expect(relatedNotes).toEqual([
+            {
+                id: 'note-guide-b',
+                title: 'Guide B',
+                reasons: ['Linked from this note', 'Shares @guide'],
+            },
+        ]);
+    });
 });

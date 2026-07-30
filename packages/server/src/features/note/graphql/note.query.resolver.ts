@@ -277,13 +277,24 @@ interface BackReferencesQueryResolverDeps {
 
 export const createBackReferencesQueryResolver = (
     deps: BackReferencesQueryResolverDeps = {
-        findCandidateNotes: (noteId) =>
-            models.note.findMany({
+        findCandidateNotes: async (noteId) => {
+            const references = await models.noteReference.findMany({
+                where: { targetNoteId: noteId },
+                select: { sourceNoteId: true },
+            });
+
+            if (references.length === 0) {
+                return [];
+            }
+
+            return models.note.findMany({
                 orderBy: [{ pinned: 'desc' }, { updatedAt: 'desc' }],
                 where: {
+                    id: { in: references.map((reference) => reference.sourceNoteId) },
                     NOT: { id: noteId },
                 },
-            }),
+            });
+        },
     },
 ) => {
     return async (_: unknown, { id }: { id: string }) => {

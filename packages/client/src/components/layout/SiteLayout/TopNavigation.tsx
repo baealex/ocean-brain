@@ -3,6 +3,7 @@ import { Fragment } from 'react';
 
 import * as Icon from '~/components/icon';
 import { Text } from '~/components/ui';
+import { getSearchShortcutLabel } from '~/modules/keyboard-shortcuts';
 import {
     CALENDAR_ROUTE,
     GRAPH_ROUTE,
@@ -19,7 +20,6 @@ const NAVIGATION_ITEMS = [
         name: 'Search',
         path: SEARCH_ROUTE,
         icon: Icon.Search,
-        shortcut: '⌘K / Ctrl+K',
     },
     {
         name: 'Notes',
@@ -60,13 +60,14 @@ const NAVIGATION_ITEMS = [
 
 const TopNavigation = () => {
     const pathname = useLocation({ select: (location) => location.pathname });
+    const searchShortcutLabel = getSearchShortcutLabel();
 
     return (
         <nav aria-label="Primary navigation" className="flex items-center gap-1 px-4 py-2.5">
             {NAVIGATION_ITEMS.map((item, index) => {
                 const isActive =
                     pathname === item.path || (item.path !== HOME_ROUTE && pathname.startsWith(`${item.path}/`));
-                const shortcut = 'shortcut' in item ? item.shortcut : undefined;
+                const shortcut = item.path === SEARCH_ROUTE ? searchShortcutLabel : undefined;
 
                 return (
                     <Fragment key={item.path}>

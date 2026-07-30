@@ -2,6 +2,7 @@ import { useNavigate } from '@tanstack/react-router';
 
 import * as Icon from '~/components/icon';
 import { Text } from '~/components/ui';
+import { getSearchShortcutLabel } from '~/modules/keyboard-shortcuts';
 import { SEARCH_ROUTE } from '~/modules/url';
 
 const launcherClassName =
@@ -9,6 +10,7 @@ const launcherClassName =
 
 const SidebarSearchLauncher = () => {
     const navigate = useNavigate();
+    const searchShortcutLabel = getSearchShortcutLabel();
     const handleOpen = () => {
         navigate({
             to: SEARCH_ROUTE,
@@ -42,7 +44,7 @@ const SidebarSearchLauncher = () => {
                 </span>
             </span>
             <span className="shrink-0 rounded-[8px] bg-muted px-1.5 py-1 text-label font-medium text-fg-tertiary">
-                ⌘K
+                {searchShortcutLabel}
             </span>
         </button>
     );

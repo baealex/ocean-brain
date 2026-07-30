@@ -60,6 +60,13 @@ const propertyValueTypeSchema = z.enum(['text', 'url', 'number', 'date', 'boolea
 const propertyFilterOperatorSchema = z.enum(['equals', 'before', 'after', 'exists', 'notExists']);
 const viewSortBySchema = z.enum(['updatedAt', 'createdAt', 'title']);
 const viewSortOrderSchema = z.enum(['asc', 'desc']);
+const searchModeSchema = z.enum(['hybrid', 'lexical', 'semantic']);
+
+const graphqlSearchModes = {
+    hybrid: 'HYBRID',
+    lexical: 'LEXICAL',
+    semantic: 'SEMANTIC',
+} as const;
 
 interface McpGraphqlErrorShape {
     message: string;
@@ -125,9 +132,10 @@ const normalizeOceanBrainTagNames = (names: string[]) => {
 const fetchOceanBrainTags = async (
     serverUrl: string,
     token: string | undefined,
-    query: string
+    query: string,
+    graphqlRequest: typeof graphql = graphql,
 ) => {
-    const data = await graphql(serverUrl, token, `
+    const data = await graphqlRequest(serverUrl, token, `
         query ($searchFilter: SearchFilterInput, $pagination: PaginationInput) {
             allTags(searchFilter: $searchFilter, pagination: $pagination) {
                 totalCount
@@ -222,57 +230,92 @@ const requireWriteToken = (token: string | undefined, toolName: string) => {
     throw new Error(`${toolName} requires an MCP bearer token. Set --token or --token-file.`);
 };
 
-const registerMcpTools = (
+interface McpSearchNote {
+    id: string;
+    title: string;
+    updatedAt: string;
+    tags: Array<{ id: string; name: string }>;
+    contentPreview: string;
+}
+
+const formatMcpSearchNotes = (notes: McpSearchNote[]) => notes.map((note) => ({
+    id: note.id,
+    title: note.title,
+    updatedAt: note.updatedAt,
+    tags: note.tags.map((t) => t.name),
+    preview: note.contentPreview,
+}));
+
+interface RegisterMcpToolsOptions {
+    graphqlRequest?: typeof graphql;
+}
+
+export const registerMcpTools = (
     server: McpServer,
     serverUrl: string,
-    token?: string
+    token?: string,
+    options: RegisterMcpToolsOptions = {},
 ) => {
+    const graphqlRequest = options.graphqlRequest ?? graphql;
+
     server.tool(
         OCEAN_BRAIN_MCP_TOOLS.searchNotes,
-        'Search Ocean Brain notes by keyword. Returns matching note titles and tags. Use ocean_brain_read_note to get full content for a specific note.',
+        'Search Ocean Brain notes by keyword or meaning. Lexical uses words only, hybrid combines words and meaning, and semantic uses meaning only. Results use one ranked result shape with match and semantic-search status. Use ocean_brain_read_note to get full content for a specific note.',
         {
-            query: z.string().describe('Search keyword'),
-            limit: z.number().optional().default(10).describe('Max results (default: 10)'),
+            query: z.string().describe('Search words or a natural-language description'),
+            limit: z.number().optional().default(10).describe('Results per page. Search returns at most 50 per page. (default: 10)'),
+            offset: z.number().int().min(0).optional().default(0).describe('Results to skip for pagination (default: 0)'),
+            mode: searchModeSchema.default('hybrid').describe('Search mode. Defaults to hybrid.'),
         },
-        async ({ query, limit }) => {
-            const data = await graphql(serverUrl, token, `
-                query ($searchFilter: SearchFilterInput, $pagination: PaginationInput) {
-                    allNotes(searchFilter: $searchFilter, pagination: $pagination) {
+        async ({ query, limit, offset, mode }) => {
+            const data = await graphqlRequest(serverUrl, token, `
+                query ($query: String!, $mode: SearchMode!, $pagination: PaginationInput!) {
+                    searchNotes(query: $query, mode: $mode, pagination: $pagination) {
                         totalCount
+                        semanticAvailable
+                        semanticUsed
+                        semanticError
+                        matches {
+                            noteId
+                            lexical
+                            semantic
+                        }
                         notes {
                             id
                             title
                             updatedAt
                             tags { id name }
-                            contentAsMarkdown
+                            contentPreview
                         }
                     }
                 }
             `, {
-                searchFilter: { query, sortBy: 'updatedAt', sortOrder: 'desc' },
-                pagination: { limit, offset: 0 },
+                query,
+                mode: graphqlSearchModes[mode],
+                pagination: { limit, offset },
             });
 
-            const result = data?.allNotes as {
+            const result = data?.searchNotes as {
                 totalCount: number;
-                notes: Array<{
-                    id: string;
-                    title: string;
-                    updatedAt: string;
-                    tags: Array<{ id: string; name: string }>;
-                    contentAsMarkdown: string;
+                semanticAvailable: boolean;
+                semanticUsed: boolean;
+                semanticError: string | null;
+                matches: Array<{
+                    noteId: string;
+                    lexical: boolean;
+                    semantic: boolean;
                 }>;
+                notes: McpSearchNote[];
             };
 
-            const notes = result.notes.map((note) => ({
-                id: note.id,
-                title: note.title,
-                updatedAt: note.updatedAt,
-                tags: note.tags.map((t) => t.name),
-                preview: note.contentAsMarkdown.slice(0, 100),
-            }));
-
-            return createMcpJsonToolResult({ totalCount: result.totalCount, notes });
+            return createMcpJsonToolResult({
+                totalCount: result.totalCount,
+                semanticAvailable: result.semanticAvailable,
+                semanticUsed: result.semanticUsed,
+                semanticError: result.semanticError,
+                matches: result.matches,
+                notes: formatMcpSearchNotes(result.notes),
+            });
         },
     );
 
@@ -284,7 +327,7 @@ const registerMcpTools = (
             maxLength: z.number().optional().default(1000).describe('Max content length in characters. 0 for full content. (default: 1000)'),
         },
         async ({ id, maxLength }) => {
-            const data = await graphql(serverUrl, token, `
+            const data = await graphqlRequest(serverUrl, token, `
                 query ($id: ID!) {
                     note(id: $id) {
                         id
@@ -373,7 +416,7 @@ const registerMcpTools = (
         'List Ocean Brain tags with their note counts.',
         {},
         async () => {
-            const data = await graphql(serverUrl, token, `
+            const data = await graphqlRequest(serverUrl, token, `
                 query ($searchFilter: SearchFilterInput, $pagination: PaginationInput) {
                     allTags(searchFilter: $searchFilter, pagination: $pagination) {
                         totalCount
@@ -407,7 +450,7 @@ const registerMcpTools = (
             offset: z.number().optional().default(0).describe('Pagination offset (default: 0)')
         },
         async ({ query, limit, offset }) => {
-            const data = await graphql(serverUrl, token, `
+            const data = await graphqlRequest(serverUrl, token, `
                 query ($query: String, $pagination: PaginationInput) {
                     notePropertyKeys(query: $query, pagination: $pagination) {
                         totalCount
@@ -461,7 +504,7 @@ const registerMcpTools = (
         },
         async ({ tag, limit, offset }) => {
             const normalizedTag = normalizeOceanBrainTagName(tag);
-            const tagResult = await fetchOceanBrainTags(serverUrl, token, normalizedTag);
+            const tagResult = await fetchOceanBrainTags(serverUrl, token, normalizedTag, graphqlRequest);
             const exactMatches = tagResult.tags.filter((item) => item.name === normalizedTag);
 
             if (exactMatches.length === 0) {
@@ -475,7 +518,7 @@ const registerMcpTools = (
             }
 
             const selectedTag = exactMatches[0];
-            const notesData = await graphql(serverUrl, token, `
+            const notesData = await graphqlRequest(serverUrl, token, `
                 query ($searchFilter: SearchFilterInput, $pagination: PaginationInput) {
                     tagNotes(searchFilter: $searchFilter, pagination: $pagination) {
                         totalCount
@@ -532,7 +575,7 @@ const registerMcpTools = (
             const normalizedTags = normalizeOceanBrainTagNames(tags);
             const tagResults = await Promise.all(
                 normalizedTags.map(async (normalizedTag) => {
-                    const result = await fetchOceanBrainTags(serverUrl, token, normalizedTag);
+                    const result = await fetchOceanBrainTags(serverUrl, token, normalizedTag, graphqlRequest);
                     const exactMatches = result.tags.filter((item) => item.name === normalizedTag);
 
                     return {
@@ -575,7 +618,7 @@ const registerMcpTools = (
                 (mode === 'and' && missingTags.length === 0)
                 || (mode === 'or' && matchedTags.length > 0)
             ) {
-                const notesData = await graphql(serverUrl, token, `
+                const notesData = await graphqlRequest(serverUrl, token, `
                     query ($tagNames: [String!]!, $mode: TagMatchMode!, $pagination: PaginationInput) {
                         notesByTagNames(tagNames: $tagNames, mode: $mode, pagination: $pagination) {
                             totalCount
@@ -631,7 +674,7 @@ const registerMcpTools = (
         async ({ propertyFilters, tagNames, mode, sortBy, sortOrder, includeProperties, propertyKeys, limit, offset }) => {
             const shouldIncludeProperties = includeProperties || propertyKeys.length > 0;
             const normalizedTagNames = normalizeOceanBrainTagNames(tagNames);
-            const data = await graphql(serverUrl, token, `
+            const data = await graphqlRequest(serverUrl, token, `
                 query ($input: NotesByPropertiesInput!, $pagination: PaginationInput, $includeProperties: Boolean!) {
                     notesByProperties(input: $input, pagination: $pagination) {
                         totalCount
@@ -683,7 +726,7 @@ const registerMcpTools = (
             limit: z.number().optional().default(10).describe('Max results (default: 10)'),
         },
         async ({ limit }) => {
-            const data = await graphql(serverUrl, token, `
+            const data = await graphqlRequest(serverUrl, token, `
                 query ($searchFilter: SearchFilterInput, $pagination: PaginationInput) {
                     allNotes(searchFilter: $searchFilter, pagination: $pagination) {
                         totalCount
@@ -735,7 +778,7 @@ const registerMcpTools = (
                 .split(/[,\s]+/)
                 .map((keyword) => keyword.trim())
                 .filter(Boolean);
-            const data = await graphql(serverUrl, token, `
+            const data = await graphqlRequest(serverUrl, token, `
                 query ($query: String, $pagination: PaginationInput) {
                     noteCleanupCandidates(query: $query, pagination: $pagination) {
                         id

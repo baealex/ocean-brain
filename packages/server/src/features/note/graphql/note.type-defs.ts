@@ -99,6 +99,7 @@ export const noteType = gql`
         id: ID!
         title: String!
         content: String!
+        contentPreview: String!
         contentAsMarkdown: String!
         createdAt: String!
         updatedAt: String!

@@ -109,5 +109,5 @@ export const createClientRouter = (authConfig: AuthConfig) =>
         .use(createClientRouteCsrfTokenMiddleware(authConfig))
         .use(express.static(paths.clientDist, { extensions: ['html'] }))
         .get(/.*/, (_req, res) => {
-            res.sendFile(paths.clientIndex);
+            res.sendFile('index.html', { root: paths.clientDist });
         });

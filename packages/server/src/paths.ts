@@ -15,7 +15,6 @@ const EMBEDDING_API_KEY_PATH = path.resolve(DATA_DIR, 'embedding-api-key');
 export const paths = {
     packageRoot: path.resolve(PACKAGE_ROOT),
     clientDist: path.resolve(PACKAGE_ROOT, 'client/dist'),
-    clientIndex: path.resolve(PACKAGE_ROOT, 'client/dist/index.html'),
     imageDir: path.resolve(IMAGE_DIR),
     searchIndex: path.resolve(SEARCH_INDEX_PATH),
     embeddingApiKey: path.resolve(EMBEDDING_API_KEY_PATH),

@@ -15,3 +15,5 @@ docs/private/
 .worktrees/
 .npm-cache
 coverage
+.tmp/e2e/
+test-results/

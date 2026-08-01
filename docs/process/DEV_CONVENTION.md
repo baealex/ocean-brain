@@ -1,6 +1,6 @@
 # Ocean Brain Dev Convention
 
-Updated: 2026-07-03
+Updated: 2026-08-01
 
 ## 1. Base Environment
 - Node.js: `22`
@@ -13,6 +13,11 @@ Updated: 2026-07-03
 - Server only: `pnpm dev:server`
 - Full build: `pnpm build`
 - Server start: `pnpm start`
+- Core user-flow integration: `pnpm test:integration`
+- Full browser E2E: `pnpm test:e2e`
+
+Both browser test commands build the production app before starting Playwright.
+Install the local browser once with `pnpm exec playwright install chromium` after Playwright is installed or updated.
 
 ## 3. Standard Quality Checks
 - `pnpm check:encoding`

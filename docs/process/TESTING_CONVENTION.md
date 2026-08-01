@@ -1,6 +1,6 @@
 # Ocean Brain Testing Convention
 
-Updated: 2026-06-26
+Updated: 2026-08-01
 
 ## 1. Philosophy
 - Tests are executable feedback, not coverage theater.
@@ -110,6 +110,10 @@ Prefer these replacements:
 - `pnpm test:ci`
 - `pnpm type-check`
 - `pnpm build`
+- Recommended browser validation for cross-boundary user flows:
+- Install or refresh the local browser with `pnpm exec playwright install chromium` when the Playwright version changes.
+- `pnpm test:integration` builds the production app and runs the core note flow.
+- `pnpm test:e2e` builds the production app and runs the full browser suite.
 
 ## 13. Source Notes
 - The Pragmatic Programmer tips: testing is a perspective into code, write the failing test before fixing bugs, prove assumptions, test significant states, use tracer bullets, and finish only when tests pass.

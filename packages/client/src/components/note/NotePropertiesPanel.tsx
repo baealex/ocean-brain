@@ -451,7 +451,7 @@ const NotePropertiesPanel = forwardRef<NotePropertiesPanelRef, NotePropertiesPan
                         return (
                             <div
                                 key={row.id}
-                                className="group grid gap-2 py-2 sm:grid-cols-[minmax(0,180px)_minmax(0,1fr)_auto] sm:items-center"
+                                className="group grid grid-cols-[minmax(0,5.5rem)_minmax(0,1fr)_auto] items-center gap-1 py-1.5 sm:grid-cols-[minmax(0,180px)_minmax(0,1fr)_auto] sm:gap-2 sm:py-2"
                             >
                                 <div className="flex min-w-0 items-center gap-2 px-1">
                                     <Text
@@ -476,6 +476,7 @@ const NotePropertiesPanel = forwardRef<NotePropertiesPanelRef, NotePropertiesPan
                                     <Select
                                         size="sm"
                                         variant="ghost"
+                                        className="min-w-0"
                                         value={row.value || 'false'}
                                         disabled={disabled}
                                         aria-labelledby={propertyLabelId}
@@ -488,6 +489,7 @@ const NotePropertiesPanel = forwardRef<NotePropertiesPanelRef, NotePropertiesPan
                                     <Select
                                         size="sm"
                                         variant="ghost"
+                                        className="min-w-0"
                                         value={row.value}
                                         placeholder="Select option"
                                         disabled={disabled}

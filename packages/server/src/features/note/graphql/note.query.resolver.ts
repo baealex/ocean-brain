@@ -305,25 +305,41 @@ export const createBackReferencesQueryResolver = (
 };
 
 interface NoteGraphQueryResolverDeps {
-    findNotes: () => Promise<Array<Pick<Note, 'id' | 'title' | 'content'>>>;
+    findNotes: (args: {
+        orderBy: Array<{ id: 'asc' }>;
+        select: { id: true; title: true };
+    }) => Promise<Array<Pick<Note, 'id' | 'title'>>>;
+    findReferences: (args: {
+        orderBy: Array<{ sourceNoteId: 'asc' } | { targetNoteId: 'asc' }>;
+        select: { sourceNoteId: true; targetNoteId: true };
+    }) => Promise<Array<{ sourceNoteId: number; targetNoteId: number }>>;
 }
 
 export const createNoteGraphQueryResolver = (
     deps: NoteGraphQueryResolverDeps = {
-        findNotes: () =>
-            models.note.findMany({
-                select: {
-                    id: true,
-                    title: true,
-                    content: true,
-                },
-            }),
+        findNotes: (args) => models.note.findMany(args),
+        findReferences: (args) => models.noteReference.findMany(args),
     },
 ) => {
     return async () => {
-        const notes = await deps.findNotes();
+        const [notes, references] = await Promise.all([
+            deps.findNotes({
+                orderBy: [{ id: 'asc' }],
+                select: {
+                    id: true,
+                    title: true,
+                },
+            }),
+            deps.findReferences({
+                orderBy: [{ sourceNoteId: 'asc' }, { targetNoteId: 'asc' }],
+                select: {
+                    sourceNoteId: true,
+                    targetNoteId: true,
+                },
+            }),
+        ]);
 
-        return buildNoteGraph(notes);
+        return buildNoteGraph(notes, references);
     };
 };
 

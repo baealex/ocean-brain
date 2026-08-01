@@ -16,7 +16,11 @@ interface ReferenceProps {
 interface NoteGraphInput {
     id: string | number;
     title: string;
-    content: string;
+}
+
+interface NoteGraphReferenceInput {
+    sourceNoteId: string | number;
+    targetNoteId: string | number;
 }
 
 export interface NoteGraphResult {
@@ -108,37 +112,40 @@ export const syncReferenceTitlesInContent = (content: string, titlesById: Map<st
     return changed ? JSON.stringify(parsed) : content;
 };
 
-export const buildNoteGraph = (notes: NoteGraphInput[]): NoteGraphResult => {
+export const buildNoteGraph = (notes: NoteGraphInput[], references: NoteGraphReferenceInput[]): NoteGraphResult => {
     const existingNoteIds = new Set(notes.map((note) => String(note.id)));
     const links: NoteGraphResult['links'] = [];
     const connectionCount: Record<string, number> = {};
     const linkSet = new Set<string>();
 
-    for (const note of notes) {
-        const sourceId = String(note.id);
+    for (const reference of references) {
+        const sourceId = normalizeReferenceId(reference.sourceNoteId);
+        const targetId = normalizeReferenceId(reference.targetNoteId);
 
-        for (const block of extractReferenceBlocksFromContent(note.content)) {
-            const targetId = normalizeReferenceId(block.props?.id);
-
-            if (!targetId || sourceId === targetId || !existingNoteIds.has(targetId)) {
-                continue;
-            }
-
-            const linkKey = `${sourceId}-${targetId}`;
-            const reverseLinkKey = `${targetId}-${sourceId}`;
-
-            if (linkSet.has(linkKey) || linkSet.has(reverseLinkKey)) {
-                continue;
-            }
-
-            linkSet.add(linkKey);
-            links.push({
-                source: sourceId,
-                target: targetId,
-            });
-            connectionCount[sourceId] = (connectionCount[sourceId] || 0) + 1;
-            connectionCount[targetId] = (connectionCount[targetId] || 0) + 1;
+        if (
+            !sourceId ||
+            !targetId ||
+            sourceId === targetId ||
+            !existingNoteIds.has(sourceId) ||
+            !existingNoteIds.has(targetId)
+        ) {
+            continue;
         }
+
+        const linkKey = `${sourceId}-${targetId}`;
+        const reverseLinkKey = `${targetId}-${sourceId}`;
+
+        if (linkSet.has(linkKey) || linkSet.has(reverseLinkKey)) {
+            continue;
+        }
+
+        linkSet.add(linkKey);
+        links.push({
+            source: sourceId,
+            target: targetId,
+        });
+        connectionCount[sourceId] = (connectionCount[sourceId] || 0) + 1;
+        connectionCount[targetId] = (connectionCount[targetId] || 0) + 1;
     }
 
     return {

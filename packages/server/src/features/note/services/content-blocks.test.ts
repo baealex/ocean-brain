@@ -210,43 +210,70 @@ test('reference helpers ignore invalid note JSON', () => {
     assert.equal(syncReferenceTitlesInContent('{bad-json', new Map([['7', 'Current title']])), null);
 });
 
-test('buildNoteGraph ignores broken reference targets', () => {
-    const graph = buildNoteGraph([
-        {
-            id: 1,
-            title: 'Source',
-            content: JSON.stringify([
-                {
-                    type: 'paragraph',
-                    content: [
-                        {
-                            type: 'reference',
-                            props: {
-                                id: '2',
-                                title: 'Target',
-                            },
-                        },
-                        {
-                            type: 'reference',
-                            props: {
-                                id: '99',
-                                title: 'Missing',
-                            },
-                        },
-                    ],
-                },
-            ]),
-        },
-        {
-            id: 2,
-            title: 'Target',
-            content: JSON.stringify([]),
-        },
-    ]);
+test('buildNoteGraph ignores references whose source or target node is missing', () => {
+    const graph = buildNoteGraph(
+        [
+            { id: 1, title: 'Source' },
+            { id: 2, title: 'Target' },
+        ],
+        [
+            { sourceNoteId: 1, targetNoteId: 2 },
+            { sourceNoteId: 1, targetNoteId: 99 },
+            { sourceNoteId: 99, targetNoteId: 2 },
+        ],
+    );
 
     assert.deepEqual(graph.links, [{ source: '1', target: '2' }]);
     assert.deepEqual(graph.nodes, [
         { id: '1', title: 'Source', connections: 1 },
         { id: '2', title: 'Target', connections: 1 },
     ]);
+});
+
+test('buildNoteGraph ignores self references', () => {
+    const graph = buildNoteGraph([{ id: 1, title: 'Source' }], [{ sourceNoteId: 1, targetNoteId: 1 }]);
+
+    assert.deepEqual(graph.links, []);
+    assert.deepEqual(graph.nodes, [{ id: '1', title: 'Source', connections: 0 }]);
+});
+
+test('buildNoteGraph collapses reverse references into one undirected link', () => {
+    const graph = buildNoteGraph(
+        [
+            { id: 1, title: 'Source' },
+            { id: 2, title: 'Target' },
+        ],
+        [
+            { sourceNoteId: 1, targetNoteId: 2 },
+            { sourceNoteId: 2, targetNoteId: 1 },
+        ],
+    );
+
+    assert.deepEqual(graph.links, [{ source: '1', target: '2' }]);
+    assert.deepEqual(graph.nodes, [
+        { id: '1', title: 'Source', connections: 1 },
+        { id: '2', title: 'Target', connections: 1 },
+    ]);
+});
+
+test('buildNoteGraph preserves indexed links across more than 1,000 notes', () => {
+    const noteCount = 1_001;
+    const notes = Array.from({ length: noteCount }, (_, index) => ({
+        id: index + 1,
+        title: `Note ${index + 1}`,
+    }));
+    const references = Array.from({ length: noteCount - 1 }, (_, index) => ({
+        sourceNoteId: index + 1,
+        targetNoteId: index + 2,
+    }));
+
+    const graph = buildNoteGraph(notes, references);
+
+    assert.equal(graph.nodes.length, noteCount);
+    assert.equal(graph.links.length, noteCount - 1);
+    assert.deepEqual(graph.links.at(0), { source: '1', target: '2' });
+    assert.deepEqual(graph.links.at(-1), { source: '1000', target: '1001' });
+    assert.equal(graph.nodes.at(0)?.connections, 1);
+    assert.equal(graph.nodes.at(500)?.connections, 2);
+    assert.equal(graph.nodes.at(-1)?.connections, 1);
 });

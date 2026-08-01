@@ -356,40 +356,60 @@ test('backReferences resolver finds structurally valid references in formatted n
     );
 });
 
-test('noteGraph resolver uses the shared structural reference parser', async () => {
+test('noteGraph resolver reads note metadata and links from the reference index', async () => {
+    const noteQueries: unknown[] = [];
+    const referenceQueries: unknown[] = [];
+    const resolver = createNoteGraphQueryResolver({
+        findNotes: async (args) => {
+            noteQueries.push(args);
+
+            return [
+                { id: 1, title: 'Source' },
+                { id: 2, title: 'Target' },
+            ];
+        },
+        findReferences: async (args) => {
+            referenceQueries.push(args);
+
+            return [{ sourceNoteId: 1, targetNoteId: 2 }];
+        },
+    });
+
+    await resolver();
+
+    assert.deepEqual(noteQueries, [
+        {
+            orderBy: [{ id: 'asc' }],
+            select: {
+                id: true,
+                title: true,
+            },
+        },
+    ]);
+    assert.deepEqual(referenceQueries, [
+        {
+            orderBy: [{ sourceNoteId: 'asc' }, { targetNoteId: 'asc' }],
+            select: {
+                sourceNoteId: true,
+                targetNoteId: true,
+            },
+        },
+    ]);
+});
+
+test('noteGraph resolver preserves the graph response contract with indexed references', async () => {
     const resolver = createNoteGraphQueryResolver({
         findNotes: async () => [
             {
                 id: 1,
                 title: 'Source',
-                content: JSON.stringify(
-                    [
-                        {
-                            id: 'paragraph-1',
-                            type: 'paragraph',
-                            props: {},
-                            content: [
-                                {
-                                    type: 'reference',
-                                    props: {
-                                        id: '2',
-                                        title: 'Target',
-                                    },
-                                },
-                            ],
-                            children: [],
-                        },
-                    ],
-                    null,
-                    2,
-                ),
             },
             {
                 id: 2,
                 title: 'Target',
-                content: JSON.stringify([]),
             },
         ],
+        findReferences: async () => [{ sourceNoteId: 1, targetNoteId: 2 }],
     });
 
     assert.deepEqual(await resolver(), {

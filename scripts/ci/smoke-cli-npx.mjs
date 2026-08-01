@@ -383,6 +383,7 @@ async function runScenario(scenario) {
         await waitForReady(child, readyTimeoutMs);
         if (scenario.expectation === 'graphql-open') {
             await assertClientShellLoads('/');
+            await assertClientShellLoads('/12');
             await assertAuthSession({
                 mode: 'open',
                 authRequired: false,

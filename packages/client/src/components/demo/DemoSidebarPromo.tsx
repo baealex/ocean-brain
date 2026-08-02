@@ -21,8 +21,8 @@ const promoItems = [
     },
     {
         tone: 'feedback',
-        title: 'Send Feedback',
-        description: 'Tell us what to improve.',
+        title: 'How was the demo?',
+        description: 'One quick question.',
         href: 'https://tally.so/r/yP7720',
         image: feedbackIllustration,
         imageAlt: 'Speech bubbles, note, and cursor illustration',

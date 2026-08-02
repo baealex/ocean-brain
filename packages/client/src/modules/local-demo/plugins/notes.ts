@@ -247,6 +247,8 @@ export const notesLocalPlugin: LocalDemoPlugin = {
                 id: note.id,
                 title: note.title,
                 connections: connectionCounts.get(note.id) ?? 0,
+                updatedAt: note.updatedAt,
+                tags: note.tags,
             }));
             return success({ noteGraph: { nodes, links } });
         },

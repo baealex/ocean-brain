@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { createTestQueryClient } from '~/test/test-utils';
@@ -14,10 +14,14 @@ const apiMocks = vi.hoisted(() => ({
     fetchNoteGraph: vi.fn(),
 }));
 
-const virtualizerMocks = vi.hoisted(() => ({
-    measureElement: vi.fn(),
-    scrollToOffset: vi.fn(),
-    scrollToIndex: vi.fn(),
+const forceGraphState = vi.hoisted(() => ({
+    props: null as null | {
+        graphData?: { nodes: Array<{ id: string }> };
+        onNodeClick?: (node: { id: string }) => void;
+    },
+    d3Force: vi.fn(),
+    d3ReheatSimulation: vi.fn(),
+    zoomToFit: vi.fn(),
 }));
 
 vi.mock('@tanstack/react-router', () => ({
@@ -28,11 +32,13 @@ vi.mock('@tanstack/react-router', () => ({
     Link: ({
         children,
         params,
+        search: _search,
         to,
         ...props
     }: {
         children: React.ReactNode;
         params?: { id?: string };
+        search?: unknown;
         to?: string;
     }) => (
         <a href={params?.id ? `/${params.id}` : to} {...props}>
@@ -41,52 +47,85 @@ vi.mock('@tanstack/react-router', () => ({
     ),
 }));
 
-vi.mock('@tanstack/react-virtual', () => ({
-    useVirtualizer: ({
-        count,
-        estimateSize,
-        getItemKey,
-    }: {
-        count: number;
-        estimateSize: (index: number) => number;
-        getItemKey?: (index: number) => number | string | bigint;
-    }) => {
-        const itemSize = count > 0 ? estimateSize(0) : 0;
-
-        return {
-            getTotalSize: () => count * itemSize,
-            getVirtualItems: () =>
-                Array.from({ length: count }, (_, index) => ({
-                    end: (index + 1) * itemSize,
-                    index,
-                    key: getItemKey?.(index) ?? index,
-                    lane: 0,
-                    size: itemSize,
-                    start: index * itemSize,
-                })),
-            measureElement: virtualizerMocks.measureElement,
-            scrollToOffset: virtualizerMocks.scrollToOffset,
-            scrollToIndex: virtualizerMocks.scrollToIndex,
-        };
-    },
-}));
-
 vi.mock('~/apis/note.api', () => apiMocks);
 
 vi.mock('react-force-graph-2d', async () => {
     const React = await vi.importActual<typeof import('react')>('react');
 
     return {
-        default: React.forwardRef((_props, ref) => {
-            React.useImperativeHandle(ref, () => ({
-                enableZoomInteraction: vi.fn(),
-                zoomToFit: vi.fn(),
-            }));
+        default: React.forwardRef(
+            (
+                props: {
+                    graphData?: { nodes: Array<{ id: string }> };
+                    onNodeClick?: (node: { id: string }) => void;
+                },
+                ref,
+            ) => {
+                forceGraphState.props = props;
+                React.useImperativeHandle(ref, () => ({
+                    d3Force: forceGraphState.d3Force,
+                    d3ReheatSimulation: forceGraphState.d3ReheatSimulation,
+                    zoomToFit: forceGraphState.zoomToFit,
+                }));
 
-            return <div data-testid="force-graph" />;
-        }),
+                return <div data-testid="force-graph" />;
+            },
+        ),
     };
 });
+
+const graphFixture = {
+    nodes: [
+        {
+            id: '1',
+            title: 'Product direction',
+            connections: 1,
+            updatedAt: '1785600000000',
+            tags: [{ id: 'tag-product', name: '@product' }],
+        },
+        {
+            id: '2',
+            title: 'Graph ideas',
+            connections: 2,
+            updatedAt: '1785600001000',
+            tags: [{ id: 'tag-product', name: '@product' }],
+        },
+        {
+            id: '3',
+            title: 'Search notes',
+            connections: 2,
+            updatedAt: '1785600002000',
+            tags: [{ id: 'tag-product', name: '@product' }],
+        },
+        {
+            id: '4',
+            title: 'Reading queue',
+            connections: 2,
+            updatedAt: '1785600003000',
+            tags: [{ id: 'tag-reading', name: '@reading' }],
+        },
+        {
+            id: '5',
+            title: 'Book notes',
+            connections: 1,
+            updatedAt: '1785600004000',
+            tags: [{ id: 'tag-reading', name: '@reading' }],
+        },
+        {
+            id: '6',
+            title: 'Unlinked scratch',
+            connections: 0,
+            updatedAt: '1785600005000',
+            tags: [{ id: 'tag-scratch', name: '@scratch' }],
+        },
+    ],
+    links: [
+        { source: '1', target: '2' },
+        { source: '2', target: '3' },
+        { source: '3', target: '4' },
+        { source: '4', target: '5' },
+    ],
+};
 
 const renderGraph = () => {
     const queryClient = createTestQueryClient();
@@ -102,156 +141,92 @@ describe('<Graph />', () => {
     beforeEach(() => {
         routeState.navigate.mockReset();
         routeState.search = {};
-        virtualizerMocks.measureElement.mockReset();
-        virtualizerMocks.scrollToOffset.mockReset();
-        virtualizerMocks.scrollToIndex.mockReset();
+        forceGraphState.props = null;
+        forceGraphState.d3Force.mockReset();
+        forceGraphState.d3ReheatSimulation.mockReset();
+        forceGraphState.zoomToFit.mockReset();
         apiMocks.fetchNoteGraph.mockResolvedValue({
             type: 'success',
-            noteGraph: {
-                nodes: [
-                    { id: 'note-1', title: 'Alpha note', connections: 1 },
-                    { id: 'note-2', title: 'Beta note', connections: 1 },
-                    { id: 'note-3', title: 'Isolated note', connections: 0 },
-                ],
-                links: [{ source: 'note-1', target: 'note-2' }],
-            },
+            noteGraph: graphFixture,
         });
     });
 
-    it('provides a keyboard-accessible graph node list with separate selection and open actions', async () => {
+    it('presents linked communities as selectable connection areas', async () => {
+        renderGraph();
+
+        expect(await screen.findByRole('region', { name: 'Connection areas' })).toBeInTheDocument();
+        expect(screen.getByTestId('force-graph')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Graph ideas/ })).toHaveAttribute('aria-pressed', 'false');
+        expect(screen.getByRole('button', { name: /Reading queue/ })).toHaveAttribute('aria-pressed', 'false');
+        expect(screen.getByText('5 linked notes · 2 areas · 4 connections')).toBeInTheDocument();
+    });
+
+    it('focuses a connection area from the visual legend', async () => {
         const user = userEvent.setup();
         renderGraph();
 
-        expect(await screen.findByRole('region', { name: 'Graph Explorer' })).toBeInTheDocument();
-        expect(screen.getByTestId('force-graph')).toBeInTheDocument();
+        const readingCluster = await screen.findByRole('button', { name: /Reading queue/ });
+        await user.click(readingCluster);
 
-        const alphaButton = screen.getByRole('button', { name: /Alpha note/ });
-        const alphaOpenLink = screen.getByRole('link', { name: 'Open Alpha note' });
-        expect(alphaOpenLink).toHaveAttribute('href', '/note-1');
-        expect(screen.queryByRole('button', { name: /Isolated note/ })).not.toBeInTheDocument();
+        expect(readingCluster).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('status')).toHaveTextContent('Reading queue highlighted');
 
-        await user.click(alphaButton);
+        await user.click(readingCluster);
+        expect(readingCluster).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    it('restores a selected node into a focused insight panel', async () => {
+        routeState.search = { selected: '2' };
+        renderGraph();
+
+        expect(await screen.findByRole('region', { name: 'Graph ideas' })).toHaveTextContent('Near Graph ideas');
+        expect(screen.getByLabelText('Selected note tags')).toHaveTextContent('@product');
+        expect(screen.getByRole('button', { name: 'Product direction' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Search notes' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Open note' })).toHaveAttribute('href', '/2');
+        expect(screen.getByRole('status')).toHaveTextContent('Graph ideas selected near Graph ideas');
+    });
+
+    it('selects a graph node through the canvas interaction contract', async () => {
+        renderGraph();
+
+        await screen.findByTestId('force-graph');
+        const node = forceGraphState.props?.graphData?.nodes.find((item) => item.id === '4');
+        expect(node).toBeDefined();
+
+        act(() => {
+            if (node) {
+                forceGraphState.props?.onNodeClick?.(node);
+            }
+        });
 
         expect(routeState.navigate).toHaveBeenCalledWith({
             search: expect.any(Function),
             replace: true,
         });
-        expect(routeState.navigate.mock.calls[0][0].search({})).toEqual({
-            selected: 'note-1',
-        });
+        expect(routeState.navigate.mock.calls[0][0].search({})).toEqual({ selected: '4' });
     });
 
-    it('restores selected graph node from the route search', async () => {
-        routeState.search = { selected: 'note-2' };
-        renderGraph();
-
-        expect(await screen.findByRole('status')).toHaveTextContent('Beta note selected, 1 links');
-        expect(screen.getByRole('status')).toHaveTextContent('Alpha note');
-
-        await waitFor(() => {
-            expect(virtualizerMocks.scrollToIndex).toHaveBeenCalledWith(1, {
-                align: 'auto',
-                behavior: 'smooth',
-            });
-        });
-
-        const listItems = screen.getAllByRole('listitem');
-        expect(listItems[1]).toHaveAttribute('aria-posinset', '2');
-        expect(listItems[1]).toHaveAttribute('aria-setsize', '2');
-    });
-
-    it('keeps graph note rows in an accessible virtualized list', async () => {
-        renderGraph();
-
-        expect(await screen.findByRole('list', { name: 'Graph notes' })).toBeInTheDocument();
-        expect(virtualizerMocks.measureElement).toHaveBeenCalled();
-
-        const listItems = screen.getAllByRole('listitem');
-        expect(listItems).toHaveLength(2);
-        expect(listItems[0]).toHaveAttribute('aria-posinset', '1');
-        expect(listItems[0]).toHaveAttribute('aria-setsize', '2');
-        expect(listItems[1]).toHaveAttribute('aria-posinset', '2');
-        expect(listItems[1]).toHaveAttribute('aria-setsize', '2');
-    });
-
-    it('provides a keyboard scroll target for virtualized graph notes', async () => {
+    it('fits the full connection map on request', async () => {
         const user = userEvent.setup();
+        renderGraph();
+
+        expect(await screen.findByTestId('force-graph')).toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: 'Fit connection map' }));
+        expect(forceGraphState.zoomToFit).toHaveBeenCalled();
+    });
+
+    it('keeps the empty state tied to actual note connections', async () => {
         apiMocks.fetchNoteGraph.mockResolvedValue({
             type: 'success',
             noteGraph: {
-                nodes: Array.from({ length: 20 }, (_, index) => ({
-                    id: `note-${index + 1}`,
-                    title: `Note ${index + 1}`,
-                    connections: 1,
-                })),
-                links: Array.from({ length: 19 }, (_, index) => ({
-                    source: `note-${index + 1}`,
-                    target: `note-${index + 2}`,
-                })),
+                nodes: graphFixture.nodes.map((node) => ({ ...node, connections: 0 })),
+                links: [],
             },
         });
         renderGraph();
 
-        const list = await screen.findByRole('list', { name: 'Graph notes' });
-        expect(list).toHaveAttribute('tabindex', '0');
-        expect(list).toHaveAccessibleDescription(
-            '20 graph notes shown Focus the graph notes list and use arrow, page, home, or end keys to browse more results.',
-        );
-
-        list.focus();
-        expect(list).toHaveFocus();
-
-        await user.keyboard('{PageDown}');
-
-        const [offset, options] = virtualizerMocks.scrollToOffset.mock.calls[0] ?? [];
-
-        expect(offset).toEqual(expect.any(Number));
-        expect(offset).toBeGreaterThan(0);
-        expect(options).toEqual({ behavior: 'auto' });
-    });
-
-    it('filters the accessible graph node list', async () => {
-        const user = userEvent.setup();
-        renderGraph();
-
-        const searchInput = await screen.findByRole('textbox', { name: 'Search graph notes' });
-        expect(searchInput).toHaveAccessibleDescription('2 graph notes shown');
-
-        await user.type(searchInput, 'beta');
-
-        expect(screen.getByRole('button', { name: /Beta note/ })).toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: /Alpha note/ })).not.toBeInTheDocument();
-        expect(searchInput).toHaveAccessibleDescription('1 graph notes shown');
-        expect(virtualizerMocks.scrollToOffset).toHaveBeenCalledWith(0, { behavior: 'auto' });
-
-        await user.click(screen.getByRole('button', { name: 'Clear graph search' }));
-
-        expect(searchInput).toHaveValue('');
-        expect(screen.getByRole('button', { name: /Alpha note/ })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /Beta note/ })).toBeInTheDocument();
-    });
-
-    it('does not let selected-node scrolling override search reset', async () => {
-        routeState.search = { selected: 'note-2' };
-        const user = userEvent.setup();
-        renderGraph();
-
-        expect(await screen.findByRole('status')).toHaveTextContent('Beta note selected, 1 links');
-        await waitFor(() => {
-            expect(virtualizerMocks.scrollToIndex).toHaveBeenCalledWith(1, {
-                align: 'auto',
-                behavior: 'smooth',
-            });
-        });
-
-        virtualizerMocks.scrollToIndex.mockClear();
-        virtualizerMocks.scrollToOffset.mockClear();
-
-        await user.type(screen.getByRole('textbox', { name: 'Search graph notes' }), 'note');
-
-        expect(screen.getByRole('button', { name: /Alpha note/ })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /Beta note/ })).toBeInTheDocument();
-        expect(virtualizerMocks.scrollToOffset).toHaveBeenCalledWith(0, { behavior: 'auto' });
-        expect(virtualizerMocks.scrollToIndex).not.toHaveBeenCalled();
+        expect(await screen.findByText('No map yet')).toBeInTheDocument();
     });
 });

@@ -892,6 +892,11 @@ export interface GraphNode {
     id: string;
     title: string;
     connections: number;
+    updatedAt: string;
+    tags: Array<{
+        id: string;
+        name: string;
+    }>;
 }
 
 export interface GraphLink {
@@ -914,6 +919,11 @@ export function fetchNoteGraph() {
                     id
                     title
                     connections
+                    updatedAt
+                    tags {
+                        id
+                        name
+                    }
                 }
                 links {
                     source

@@ -2,34 +2,35 @@ import type { Theme } from '~/store/theme';
 
 export interface GraphTheme {
     background: string;
-    nodeHub: string;
-    nodeSelected: string;
-    nodeConnected: string;
-    nodeDefault: string[];
-    nodeDimmed: string[];
-    nodeHubDimmed: string;
+    clusterNode: string[];
+    clusterNodeDimmed: string[];
+    clusterArea: string[];
+    clusterAreaFocused: string[];
+    clusterLabel: string[];
     nodeStroke: string;
     nodeSelectedStroke: string;
+    nodeConnectedStroke: string;
     labelBackground: string;
     labelText: string;
     labelFontFamily: string;
     linkIdle: string;
     linkConnected: string;
     linkDimmed: string;
-    legendHub: string;
 }
 
 interface GraphNodeFillOptions {
-    connections: number;
     colorIndex: number;
-    selectedNodeId: string | null;
-    nodeId: string;
-    isConnected: boolean;
+    isDimmed: boolean;
+}
+
+interface GraphClusterAreaFillOptions {
+    isFocused: boolean;
+    isDimmed: boolean;
 }
 
 interface GraphLinkColorOptions {
-    selectedNodeId: string | null;
     isConnected: boolean;
+    isDimmed: boolean;
 }
 
 interface GraphLabelFontOptions {
@@ -38,90 +39,138 @@ interface GraphLabelFontOptions {
 }
 
 const LIGHT_THEME: GraphTheme = {
-    background: '#f4f6f8',
-    nodeHub: '#2c2f36',
-    nodeSelected: '#111318',
-    nodeConnected: '#636b76',
-    nodeDefault: ['#d6dbe1', '#c8ced6', '#b7bec7', '#a7afb9'],
-    nodeDimmed: ['rgba(214,219,225,0.28)', 'rgba(200,206,214,0.24)', 'rgba(183,190,199,0.24)', 'rgba(167,175,185,0.2)'],
-    nodeHubDimmed: 'rgba(44,47,54,0.16)',
-    nodeStroke: '#eef1f4',
-    nodeSelectedStroke: '#a6b0bc',
-    labelBackground: 'rgba(246,248,250,0.92)',
-    labelText: '#222831',
+    background: '#f2f6fa',
+    clusterNode: ['#4e79a7', '#d18b47', '#5f8f76', '#c66a66', '#8064a2', '#a37a55', '#b86e91', '#4e8f9a'],
+    clusterNodeDimmed: [
+        'rgba(78,121,167,0.2)',
+        'rgba(209,139,71,0.2)',
+        'rgba(95,143,118,0.2)',
+        'rgba(198,106,102,0.2)',
+        'rgba(128,100,162,0.2)',
+        'rgba(163,122,85,0.2)',
+        'rgba(184,110,145,0.2)',
+        'rgba(78,143,154,0.2)',
+    ],
+    clusterArea: [
+        'rgba(78,121,167,0.085)',
+        'rgba(209,139,71,0.085)',
+        'rgba(95,143,118,0.085)',
+        'rgba(198,106,102,0.085)',
+        'rgba(128,100,162,0.085)',
+        'rgba(163,122,85,0.085)',
+        'rgba(184,110,145,0.085)',
+        'rgba(78,143,154,0.085)',
+    ],
+    clusterAreaFocused: [
+        'rgba(78,121,167,0.16)',
+        'rgba(209,139,71,0.16)',
+        'rgba(95,143,118,0.16)',
+        'rgba(198,106,102,0.16)',
+        'rgba(128,100,162,0.16)',
+        'rgba(163,122,85,0.16)',
+        'rgba(184,110,145,0.16)',
+        'rgba(78,143,154,0.16)',
+    ],
+    clusterLabel: ['#3d638c', '#8b5a29', '#47715c', '#934d4a', '#614a82', '#765338', '#874d69', '#376f78'],
+    nodeStroke: '#f7fafc',
+    nodeSelectedStroke: '#1f3347',
+    nodeConnectedStroke: '#8197aa',
+    labelBackground: 'rgba(247,250,252,0.94)',
+    labelText: '#1d2b39',
     labelFontFamily: 'Pretendard Variable, Pretendard, system-ui, sans-serif',
-    linkIdle: 'rgba(99, 107, 117, 0.34)',
-    linkConnected: '#68717c',
-    linkDimmed: 'rgba(127, 136, 146, 0.12)',
-    legendHub: '#2c2f36',
+    linkIdle: 'rgba(82,112,139,0.28)',
+    linkConnected: '#5e7891',
+    linkDimmed: 'rgba(93,122,148,0.08)',
 };
 
 const DARK_THEME: GraphTheme = {
-    background: '#121316',
-    nodeHub: '#d6dce3',
-    nodeSelected: '#eef1f5',
-    nodeConnected: '#9099a4',
-    nodeDefault: ['#343a43', '#2d333c', '#262c35', '#20262f'],
-    nodeDimmed: ['rgba(52,58,67,0.28)', 'rgba(45,51,60,0.24)', 'rgba(38,44,53,0.22)', 'rgba(32,38,47,0.2)'],
-    nodeHubDimmed: 'rgba(214,220,227,0.16)',
-    nodeStroke: '#171c23',
-    nodeSelectedStroke: '#7f8a97',
-    labelBackground: 'rgba(16,18,22,0.9)',
-    labelText: '#eef2f6',
+    background: '#111820',
+    clusterNode: ['#80a9d4', '#e3aa6b', '#8db9a2', '#da918d', '#ad94cc', '#c4a17c', '#d69ab6', '#83bdc4'],
+    clusterNodeDimmed: [
+        'rgba(128,169,212,0.18)',
+        'rgba(227,170,107,0.18)',
+        'rgba(141,185,162,0.18)',
+        'rgba(218,145,141,0.18)',
+        'rgba(173,148,204,0.18)',
+        'rgba(196,161,124,0.18)',
+        'rgba(214,154,182,0.18)',
+        'rgba(131,189,196,0.18)',
+    ],
+    clusterArea: [
+        'rgba(128,169,212,0.09)',
+        'rgba(227,170,107,0.09)',
+        'rgba(141,185,162,0.09)',
+        'rgba(218,145,141,0.09)',
+        'rgba(173,148,204,0.09)',
+        'rgba(196,161,124,0.09)',
+        'rgba(214,154,182,0.09)',
+        'rgba(131,189,196,0.09)',
+    ],
+    clusterAreaFocused: [
+        'rgba(128,169,212,0.17)',
+        'rgba(227,170,107,0.17)',
+        'rgba(141,185,162,0.17)',
+        'rgba(218,145,141,0.17)',
+        'rgba(173,148,204,0.17)',
+        'rgba(196,161,124,0.17)',
+        'rgba(214,154,182,0.17)',
+        'rgba(131,189,196,0.17)',
+    ],
+    clusterLabel: ['#9bc1e4', '#e7b77e', '#a4cbb6', '#e5aaa7', '#c1abdf', '#d1b08c', '#e0aec5', '#9acbd0'],
+    nodeStroke: '#121a23',
+    nodeSelectedStroke: '#eef6fc',
+    nodeConnectedStroke: '#a5bed0',
+    labelBackground: 'rgba(14,21,29,0.92)',
+    labelText: '#edf5fb',
     labelFontFamily: 'Pretendard Variable, Pretendard, system-ui, sans-serif',
-    linkIdle: 'rgba(118, 127, 138, 0.42)',
-    linkConnected: '#a2abb6',
-    linkDimmed: 'rgba(118, 127, 138, 0.1)',
-    legendHub: '#d6dce3',
+    linkIdle: 'rgba(132,158,181,0.34)',
+    linkConnected: '#b0c8da',
+    linkDimmed: 'rgba(121,151,177,0.08)',
 };
 
 export function getGraphTheme(theme: Theme): GraphTheme {
     return theme === 'dark' ? DARK_THEME : LIGHT_THEME;
 }
 
-export function getGraphNodeFill(theme: Theme, options: GraphNodeFillOptions): string {
+export function getGraphClusterColor(theme: Theme, colorIndex: number) {
     const palette = getGraphTheme(theme);
-    const { connections, colorIndex, selectedNodeId, nodeId, isConnected } = options;
+    return palette.clusterNode[colorIndex % palette.clusterNode.length];
+}
 
-    const isSelected = selectedNodeId === nodeId;
-    const isDimmed = selectedNodeId !== null && !isSelected && !isConnected;
+export function getGraphNodeFill(theme: Theme, options: GraphNodeFillOptions) {
+    const palette = getGraphTheme(theme);
+    const colors = options.isDimmed ? palette.clusterNodeDimmed : palette.clusterNode;
+    return colors[options.colorIndex % colors.length];
+}
 
-    if (isDimmed) {
-        return connections > 3 ? palette.nodeHubDimmed : palette.nodeDimmed[colorIndex % palette.nodeDimmed.length];
+export function getGraphClusterAreaFill(theme: Theme, colorIndex: number, options: GraphClusterAreaFillOptions) {
+    const palette = getGraphTheme(theme);
+    if (options.isDimmed) {
+        return 'transparent';
     }
 
-    if (isSelected) {
-        return palette.nodeSelected;
-    }
+    const colors = options.isFocused ? palette.clusterAreaFocused : palette.clusterArea;
+    return colors[colorIndex % colors.length];
+}
 
-    if (isConnected) {
-        return palette.nodeConnected;
-    }
-
-    if (connections > 3) {
-        return palette.nodeHub;
-    }
-
-    return palette.nodeDefault[colorIndex % palette.nodeDefault.length];
+export function getGraphClusterLabelColor(theme: Theme, colorIndex: number) {
+    const palette = getGraphTheme(theme);
+    return palette.clusterLabel[colorIndex % palette.clusterLabel.length];
 }
 
 export function getGraphLinkColor(theme: Theme, options: GraphLinkColorOptions): string {
     const palette = getGraphTheme(theme);
 
-    if (options.selectedNodeId !== null && !options.isConnected) {
+    if (options.isDimmed) {
         return palette.linkDimmed;
     }
 
-    if (options.isConnected) {
-        return palette.linkConnected;
-    }
-
-    return palette.linkIdle;
+    return options.isConnected ? palette.linkConnected : palette.linkIdle;
 }
 
 export function getGraphLabelFont(theme: Theme, options: GraphLabelFontOptions): string {
     const palette = getGraphTheme(theme);
-    const weight = options.emphasize ? '700' : '400';
+    const weight = options.emphasize ? '700' : '500';
 
     return `${weight} ${options.fontSize}px ${palette.labelFontFamily}`;
 }

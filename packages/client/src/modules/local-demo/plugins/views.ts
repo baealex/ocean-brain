@@ -4,11 +4,17 @@ import { localError, success } from '../response';
 import type { LocalDemoPlugin } from '../types';
 import { applyPropertyFilters, createLocalId, listNotesByTags, paginate } from '../utils';
 
-const sortSectionNotes = (notes: Note[], section: ViewSection) => {
-    const direction = section.sortOrder === 'asc' ? 1 : -1;
+const sortSectionNotes = (
+    notes: Note[],
+    section: ViewSection,
+    override: Partial<Pick<ViewSection, 'sortBy' | 'sortOrder'>> = {},
+) => {
+    const sortBy = override.sortBy ?? section.sortBy;
+    const sortOrder = override.sortOrder ?? section.sortOrder;
+    const direction = sortOrder === 'asc' ? 1 : -1;
 
     return [...notes].sort((left, right) => {
-        const comparison = left[section.sortBy].localeCompare(right[section.sortBy]) * direction;
+        const comparison = left[sortBy].localeCompare(right[sortBy]) * direction;
         return comparison || left.id.localeCompare(right.id);
     });
 };
@@ -34,9 +40,41 @@ export const viewsLocalPlugin: LocalDemoPlugin = {
                           section.propertyFilters,
                       ),
                       section,
+                      {
+                          sortBy: variables.sortBy as ViewSection['sortBy'] | undefined,
+                          sortOrder: variables.sortOrder as ViewSection['sortOrder'] | undefined,
+                      },
                   )
                 : [];
             return success({ viewSectionNotes: { totalCount: notes.length, notes: paginate(notes, variables) } });
+        },
+        FetchViewSectionBoardColumn: ({ state, variables }) => {
+            const section = state.viewWorkspace.tabs
+                .flatMap((tab) => tab.sections)
+                .find((item) => item.id === String(variables.id));
+
+            if (!section || section.displayType !== 'board') {
+                return localError('Board section not found');
+            }
+
+            const groupPropertyKey = section.displayOptions.boardGroupByPropertyKey;
+
+            if (!groupPropertyKey) {
+                return localError('Board grouping property is unavailable');
+            }
+
+            const optionValue = typeof variables.optionValue === 'string' ? variables.optionValue : null;
+            const notes = sortSectionNotes(
+                applyPropertyFilters(listNotesByTags(state, section.tagNames, section.mode), section.propertyFilters),
+                section,
+            ).filter((note) => {
+                const property = note.properties?.find((candidate) => candidate.key === groupPropertyKey);
+                return optionValue === null ? !property : property?.value === optionValue;
+            });
+
+            return success({
+                viewSectionBoardColumn: { totalCount: notes.length, notes: paginate(notes, variables) },
+            });
         },
         CreateViewTab: ({ state, variables, save }) => {
             const tab = {
@@ -84,7 +122,11 @@ export const viewsLocalPlugin: LocalDemoPlugin = {
                 tabId: tab.id,
                 title: input.title ?? 'Untitled section',
                 displayType: input.displayType ?? 'list',
-                displayOptions: input.displayOptions ?? { tableColumns: [] },
+                displayOptions: input.displayOptions ?? {
+                    tableColumns: [],
+                    tablePropertyKeys: [],
+                    boardGroupByPropertyKey: null,
+                },
                 tagNames: input.tagNames ?? [],
                 mode: input.mode ?? 'and',
                 propertyFilters: input.propertyFilters ?? [],

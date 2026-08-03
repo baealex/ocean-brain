@@ -1,5 +1,12 @@
-import { createRootRoute, createRoute, createRouter, lazyRouteComponent, Outlet } from '@tanstack/react-router';
-
+import {
+    createRootRoute,
+    createRoute,
+    createRouter,
+    lazyRouteComponent,
+    Outlet,
+    redirect,
+} from '@tanstack/react-router';
+import { fetchViewSection } from '~/apis/view.api';
 import { RouteErrorView, RouteNotFoundView, RoutePendingView } from '~/components/app';
 import { SiteLayout } from '~/components/layout';
 import {
@@ -10,6 +17,7 @@ import {
     validateSearchPageSearch,
     validateTagSearch,
     validateViewNotesSearch,
+    validateViewsSearch,
 } from '~/modules/route-search';
 import {
     CALENDAR_ROUTE,
@@ -31,6 +39,7 @@ import {
     VIEW_NOTES_ROUTE,
     VIEWS_ROUTE,
 } from '~/modules/url';
+import { buildLegacyViewNotesRouteState } from '~/modules/view-route-state';
 import Home from '~/pages/Home';
 
 const rootRoute = createRootRoute({
@@ -65,6 +74,7 @@ const viewsRoute = createRoute({
     path: VIEWS_ROUTE,
     component: lazyRouteComponent(() => import('~/pages/Views')),
     pendingComponent: () => <RoutePendingView title="Loading views" description="Preparing your saved dashboards." />,
+    validateSearch: validateViewsSearch,
 });
 
 const remindersRoute = createRoute({
@@ -125,11 +135,20 @@ const tagNotesRoute = createRoute({
 const viewNotesRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: VIEW_NOTES_ROUTE,
-    component: lazyRouteComponent(() => import('~/pages/ViewNotes')),
-    pendingComponent: () => (
-        <RoutePendingView title="Loading view notes" description="Preparing notes for this saved view section." />
-    ),
     validateSearch: validateViewNotesSearch,
+    beforeLoad: async ({ search }) => {
+        const sectionResponse = search.sectionId ? await fetchViewSection(search.sectionId).catch(() => null) : null;
+        const section = sectionResponse?.type === 'success' ? sectionResponse.viewSection : null;
+
+        throw redirect({
+            to: VIEWS_ROUTE,
+            search: {
+                tab: section?.tabId,
+                state: section ? buildLegacyViewNotesRouteState(section.id, search.page, section.limit) : undefined,
+            },
+            replace: true,
+        });
+    },
 });
 
 const settingsRoute = createRoute({
@@ -232,6 +251,7 @@ const routeTree = rootRoute.addChildren([
 export const router = createRouter({
     routeTree,
     defaultPreload: 'intent',
+    scrollRestoration: true,
     defaultPendingComponent: () => <RoutePendingView title="Loading page" description="Preparing the next route." />,
 });
 

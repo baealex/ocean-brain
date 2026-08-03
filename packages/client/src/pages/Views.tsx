@@ -9,10 +9,11 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getRouteApi } from '@tanstack/react-router';
 import classNames from 'classnames';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 
-import { fetchNotePropertyKeys } from '~/apis/note.api';
+import { fetchNotePropertyKeys, type NotePropertyKeySummary } from '~/apis/note.api';
 import { fetchTags } from '~/apis/tag.api';
 import {
     createViewSection,
@@ -38,6 +39,7 @@ import {
 } from '~/components/view';
 import type { ViewSection, ViewsWorkspace, ViewTab } from '~/models/view.model';
 import { queryKeys } from '~/modules/query-key-factory';
+import { VIEWS_ROUTE } from '~/modules/url';
 import {
     buildViewSectionInput,
     EMPTY_VIEWS_WORKSPACE,
@@ -49,6 +51,14 @@ import {
     setActiveViewTabInWorkspace,
     type ViewMoveDirection,
 } from '~/modules/view-dashboard';
+import {
+    getViewSectionRouteState,
+    updateViewSectionRouteState,
+    type ViewSectionRouteState,
+    type ViewSectionRouteStateUpdater,
+} from '~/modules/view-route-state';
+
+const Route = getRouteApi(VIEWS_ROUTE);
 
 const pageDescription = 'Save reusable note queries with tags, shared properties, and sorting.';
 
@@ -60,24 +70,36 @@ const dragHandleClassName =
 
 interface SortableViewSectionProps {
     section: ViewSection;
+    availableProperties: NotePropertyKeySummary[];
+    isPropertiesLoading: boolean;
     onEdit: () => void;
     onDuplicate: () => void;
     onDelete: () => void;
     onMoveUp?: () => void;
     onMoveDown?: () => void;
+    navigationState: ViewSectionRouteState;
+    onNavigationStateChange: (sectionId: string, updater: ViewSectionRouteStateUpdater) => void;
 }
 
 const SortableViewSection = ({
     section,
+    availableProperties,
+    isPropertiesLoading,
     onEdit,
     onDuplicate,
     onDelete,
     onMoveUp,
     onMoveDown,
+    navigationState,
+    onNavigationStateChange,
 }: SortableViewSectionProps) => {
     const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
         id: section.id,
     });
+    const handleNavigationStateChange = useCallback(
+        (updater: ViewSectionRouteStateUpdater) => onNavigationStateChange(section.id, updater),
+        [onNavigationStateChange, section.id],
+    );
 
     return (
         <div
@@ -90,11 +112,15 @@ const SortableViewSection = ({
         >
             <ViewSectionCard
                 section={section}
+                availableProperties={availableProperties}
+                isPropertiesLoading={isPropertiesLoading}
                 onEdit={onEdit}
                 onDuplicate={onDuplicate}
                 onDelete={onDelete}
                 onMoveUp={onMoveUp}
                 onMoveDown={onMoveDown}
+                navigationState={navigationState}
+                onNavigationStateChange={handleNavigationStateChange}
                 dragHandle={
                     <button
                         type="button"
@@ -116,6 +142,8 @@ export default function Views() {
     const confirm = useConfirm();
     const toast = useToast();
     const queryClient = useQueryClient();
+    const search = Route.useSearch();
+    const navigate = Route.useNavigate();
     const [tabDialogState, setTabDialogState] = useState<ViewTabDialogState>(null);
     const [sectionDialogState, setSectionDialogState] = useState<ViewSectionDialogState>(null);
 
@@ -138,7 +166,7 @@ export default function Views() {
     });
 
     const workspace = workspaceData ?? EMPTY_VIEWS_WORKSPACE;
-    const activeTab = getActiveViewTab(workspace);
+    const activeTab = workspace.tabs.find((tab) => tab.id === search.tab) ?? getActiveViewTab(workspace);
     const activeTabIndex = activeTab ? workspace.tabs.findIndex((tab) => tab.id === activeTab.id) : -1;
 
     const { data: tagData, isPending: isTagsLoading } = useQuery({
@@ -179,6 +207,20 @@ export default function Views() {
     const syncWorkspace = (nextWorkspace: ViewsWorkspace) => {
         queryClient.setQueryData(queryKeys.views.workspace(), nextWorkspace);
     };
+
+    const handleSectionNavigationStateChange = useCallback(
+        (sectionId: string, updater: ViewSectionRouteStateUpdater) => {
+            void navigate({
+                search: (current) => ({
+                    ...current,
+                    state: updateViewSectionRouteState(current.state, sectionId, updater),
+                }),
+                replace: true,
+                resetScroll: false,
+            });
+        },
+        [navigate],
+    );
 
     const invalidateViews = async () => {
         await queryClient.invalidateQueries({
@@ -226,14 +268,20 @@ export default function Views() {
 
     const handleSelectTab = async (tab: ViewTab) => {
         const previousWorkspace = queryClient.getQueryData<ViewsWorkspace>(queryKeys.views.workspace()) ?? workspace;
+        const previousSearch = search;
         const nextWorkspace = setActiveViewTabInWorkspace(previousWorkspace, tab.id);
 
         syncWorkspace(nextWorkspace);
+        await navigate({
+            search: { tab: tab.id, state: undefined },
+            resetScroll: false,
+        });
 
         const response = await setActiveViewTab(tab.id);
 
         if (response.type === 'error') {
             syncWorkspace(previousWorkspace);
+            await navigate({ search: previousSearch, replace: true, resetScroll: false });
             toast(response.errors[0].message);
             return;
         }
@@ -298,7 +346,18 @@ export default function Views() {
             return;
         }
 
+        const activeTabResponse = await setActiveViewTab(response.createViewTab.id);
+        if (activeTabResponse.type === 'success') {
+            syncWorkspace(activeTabResponse.setActiveViewTab);
+        } else {
+            toast(activeTabResponse.errors[0].message);
+        }
+
         await invalidateViews();
+        await navigate({
+            search: { tab: response.createViewTab.id, state: undefined },
+            resetScroll: false,
+        });
         setTabDialogState(null);
     };
 
@@ -335,6 +394,7 @@ export default function Views() {
         }
 
         await invalidateViews();
+        await navigate({ search: { tab: undefined, state: undefined }, replace: true, resetScroll: false });
     };
 
     const handleCreateSection = async (draft: ViewSectionDialogDraft) => {
@@ -365,6 +425,7 @@ export default function Views() {
             return;
         }
 
+        handleSectionNavigationStateChange(sectionDialogState.section.id, {});
         await invalidateViews();
         setSectionDialogState(null);
     };
@@ -400,6 +461,7 @@ export default function Views() {
             return;
         }
 
+        handleSectionNavigationStateChange(sectionId, {});
         await invalidateViews();
     };
 
@@ -531,6 +593,13 @@ export default function Views() {
                                                         <SortableViewSection
                                                             key={section.id}
                                                             section={section}
+                                                            availableProperties={availableProperties}
+                                                            isPropertiesLoading={isPropertiesLoading}
+                                                            navigationState={getViewSectionRouteState(
+                                                                search.state,
+                                                                section.id,
+                                                            )}
+                                                            onNavigationStateChange={handleSectionNavigationStateChange}
                                                             onEdit={() =>
                                                                 setSectionDialogState({ mode: 'edit', section })
                                                             }

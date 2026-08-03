@@ -9,6 +9,7 @@ import {
     validateSearchPageSearch,
     validateTagSearch,
     validateViewNotesSearch,
+    validateViewsSearch,
 } from './route-search';
 
 describe('route-search validators', () => {
@@ -111,6 +112,30 @@ describe('route-search validators', () => {
         ).toEqual({
             page: 1,
             sectionId: '17',
+        });
+    });
+
+    it('normalizes versioned per-section view state', () => {
+        expect(
+            validateViewsSearch({
+                tab: ' tab-1 ',
+                state: {
+                    version: 1,
+                    sections: {
+                        'section-1': { page: 2 },
+                        'section-2': { columns: { todo: 3 } },
+                    },
+                },
+            }),
+        ).toEqual({
+            tab: 'tab-1',
+            state: {
+                version: 1,
+                sections: {
+                    'section-1': { page: 2 },
+                    'section-2': { columns: { todo: 3 } },
+                },
+            },
         });
     });
 });

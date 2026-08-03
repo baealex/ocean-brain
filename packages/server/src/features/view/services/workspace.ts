@@ -8,7 +8,7 @@ import { buildNoteTagNamesWhere, type NoteTagMatchMode } from '~/features/note/s
 import models from '~/models.js';
 
 export type ViewTagMatchMode = NoteTagMatchMode;
-export type ViewDisplayType = 'list' | 'table' | 'calendar';
+export type ViewDisplayType = 'list' | 'table' | 'board' | 'calendar';
 export type ViewTableColumn = 'title' | 'tags' | 'properties' | 'createdAt' | 'updatedAt';
 export type ViewPropertyFilterOperator =
     | 'equals'
@@ -24,6 +24,8 @@ export type ViewSortOrder = 'asc' | 'desc';
 
 export interface ViewDisplayOptionsRecord {
     tableColumns: ViewTableColumn[];
+    tablePropertyKeys: string[];
+    boardGroupByPropertyKey: string | null;
 }
 
 export interface ViewPropertyFilterRecord {
@@ -98,11 +100,18 @@ export interface ViewPropertyFilterInput {
 
 export interface ViewDisplayOptionsInput {
     tableColumns?: ViewTableColumn[] | null;
+    tablePropertyKeys?: string[] | null;
+    boardGroupByPropertyKey?: string | null;
 }
 
 export interface ViewSectionNotesResult {
     totalCount: number;
     notes: Note[];
+}
+
+export interface ViewBoardColumnNotesResult {
+    totalCount: number;
+    notes: Array<Pick<Note, 'id' | 'title' | 'updatedAt'>>;
 }
 
 const VIEW_WORKSPACE_ID = 1;
@@ -113,6 +122,7 @@ export const MAX_VIEW_SECTION_LIMIT = 20;
 export const DEFAULT_VIEW_NOTES_QUERY_LIMIT = 20;
 export const MAX_VIEW_NOTES_QUERY_LIMIT = 50;
 const MAX_VIEW_PROPERTY_FILTERS = 10;
+const MAX_VIEW_TABLE_PROPERTY_COLUMNS = 6;
 const DEFAULT_VIEW_DISPLAY_TYPE: ViewDisplayType = 'list';
 const DEFAULT_VIEW_SORT_BY: ViewSortBy = 'updatedAt';
 const DEFAULT_VIEW_SORT_ORDER: ViewSortOrder = 'desc';
@@ -214,7 +224,7 @@ const isViewTableColumn = (value: unknown): value is ViewTableColumn => {
 };
 
 const normalizeViewDisplayType = (value: ViewDisplayType | undefined): ViewDisplayType => {
-    if (value === 'table' || value === 'calendar') {
+    if (value === 'table' || value === 'board' || value === 'calendar') {
         return value;
     }
 
@@ -240,11 +250,18 @@ export const normalizeViewTableColumns = (columns: ViewTableColumn[] | null | un
     return uniqueColumns.includes('title') ? uniqueColumns : ['title' as const, ...uniqueColumns];
 };
 
+export const normalizeViewTablePropertyKeys = (keys: string[] | null | undefined): string[] =>
+    Array.from(new Set((keys ?? []).map(normalizePropertyKey))).slice(0, MAX_VIEW_TABLE_PROPERTY_COLUMNS);
+
 export const normalizeViewDisplayOptions = (
     options: ViewDisplayOptionsInput | Partial<ViewDisplayOptionsRecord> | null | undefined,
 ): ViewDisplayOptionsRecord => {
     return {
         tableColumns: normalizeViewTableColumns(options?.tableColumns),
+        tablePropertyKeys: normalizeViewTablePropertyKeys(options?.tablePropertyKeys),
+        boardGroupByPropertyKey: options?.boardGroupByPropertyKey
+            ? normalizePropertyKey(options.boardGroupByPropertyKey)
+            : null,
     };
 };
 
@@ -417,10 +434,22 @@ export const normalizeViewSectionInput = (input: ViewSectionInput) => {
     const sortBy = normalizeViewSortBy(input.sortBy);
     const sortOrder = normalizeViewSortOrder(input.sortOrder);
     const displayOptions = normalizeViewDisplayOptions(input.displayOptions);
+    const displayType = normalizeViewDisplayType(input.displayType);
+
+    if (displayType === 'board' && !displayOptions.boardGroupByPropertyKey) {
+        throw new InvalidNotePropertyInputError('Board sections require a grouping property.');
+    }
+
+    if (
+        displayType === 'board' &&
+        propertyFilters.some((filter) => filter.key === displayOptions.boardGroupByPropertyKey)
+    ) {
+        throw new InvalidNotePropertyInputError('A board grouping property cannot also be used as a section filter.');
+    }
 
     return {
         title: trimmedTitle || buildDefaultSectionTitle(tagNames, propertyFilters),
-        displayType: normalizeViewDisplayType(input.displayType),
+        displayType,
         displayOptions,
         tagNames,
         mode: input.mode === 'or' ? 'or' : 'and',
@@ -629,6 +658,27 @@ export const hydratePropertyFilters = async (
 const buildStoredViewQuery = async (db: ViewDbClient, section: ReturnType<typeof normalizeViewSectionInput>) => {
     const propertyFilters = await hydratePropertyFilters(db, section.propertyFilters, { validateSelectOptions: true });
 
+    if (section.displayType === 'board') {
+        const groupingProperty = await db.propertyDefinition.findUnique({
+            where: { key: section.displayOptions.boardGroupByPropertyKey ?? '' },
+            select: { valueType: true, options: { select: { id: true }, take: 1 } },
+        });
+
+        if (!groupingProperty) {
+            throw new InvalidNotePropertyInputError(
+                `Property ${section.displayOptions.boardGroupByPropertyKey ?? ''} is not defined.`,
+            );
+        }
+
+        if (groupingProperty.valueType !== 'select') {
+            throw new InvalidNotePropertyInputError('Board sections can only group by a select property.');
+        }
+
+        if (groupingProperty.options.length === 0) {
+            throw new InvalidNotePropertyInputError('Board grouping properties require at least one option.');
+        }
+    }
+
     return serializeStoredViewQuery({
         propertyFilters,
         sortBy: section.sortBy,
@@ -831,6 +881,28 @@ export const buildViewSectionWhere = (section: ViewSectionRecord): Prisma.NoteWh
     return buildViewNotesWhere(section);
 };
 
+export const buildViewBoardColumnWhere = (
+    section: ViewSectionRecord,
+    propertyDefinitionId: number,
+    optionId: number | null,
+): Prisma.NoteWhereInput => {
+    const sectionWhere = buildViewSectionWhere(section);
+    const columnWhere: Prisma.NoteWhereInput =
+        optionId === null
+            ? {
+                  properties: {
+                      none: { propertyDefinitionId },
+                  },
+              }
+            : {
+                  properties: {
+                      some: { propertyDefinitionId, optionId },
+                  },
+              };
+
+    return Object.keys(sectionWhere).length === 0 ? columnWhere : { AND: [sectionWhere, columnWhere] };
+};
+
 const buildViewNotesOrderBy = (
     query: Pick<ViewNotesQueryRecord, 'sortBy' | 'sortOrder'>,
 ): Prisma.NoteOrderByWithRelationInput[] => {
@@ -847,6 +919,7 @@ export const getViewSectionNotes = async (
         limit: number;
         offset: number;
     },
+    sort: Pick<ViewNotesQueryInput, 'sortBy' | 'sortOrder'> = {},
 ): Promise<ViewSectionNotesResult | null> => {
     const section = await models.viewSection.findUnique({
         where: { id: parseViewId(id) },
@@ -859,11 +932,15 @@ export const getViewSectionNotes = async (
 
     const serializedSection = serializeViewSection(section);
     const where = buildViewSectionWhere(serializedSection);
+    const effectiveSort = {
+        sortBy: sort.sortBy ?? serializedSection.sortBy,
+        sortOrder: sort.sortOrder ?? serializedSection.sortOrder,
+    };
 
     const [totalCount, notes] = await Promise.all([
         models.note.count({ where }),
         models.note.findMany({
-            orderBy: buildViewSectionOrderBy(serializedSection),
+            orderBy: buildViewNotesOrderBy(effectiveSort),
             where,
             take: Number(pagination.limit),
             skip: Number(pagination.offset),
@@ -874,6 +951,84 @@ export const getViewSectionNotes = async (
         totalCount,
         notes,
     };
+};
+
+export const getViewSectionBoardColumn = async (
+    id: string,
+    optionValue: string | null,
+    pagination?: {
+        limit?: number;
+        offset?: number;
+    },
+): Promise<ViewBoardColumnNotesResult | null> => {
+    const section = await models.viewSection.findUnique({
+        where: { id: parseViewId(id) },
+        include: orderedViewSectionTagsInclude,
+    });
+
+    if (!section) {
+        return null;
+    }
+
+    const serializedSection = serializeViewSection(section);
+
+    if (serializedSection.displayType !== 'board') {
+        throw new InvalidNotePropertyInputError('This section is not configured as a board.');
+    }
+
+    const groupingPropertyKey = serializedSection.displayOptions.boardGroupByPropertyKey;
+
+    if (!groupingPropertyKey) {
+        throw new InvalidNotePropertyInputError('Board sections require a grouping property.');
+    }
+
+    const groupingProperty = await models.propertyDefinition.findUnique({
+        where: { key: groupingPropertyKey },
+        select: {
+            id: true,
+            valueType: true,
+            options: {
+                orderBy: [{ order: 'asc' }, { id: 'asc' }],
+                select: { id: true, value: true },
+            },
+        },
+    });
+
+    if (!groupingProperty || groupingProperty.valueType !== 'select') {
+        throw new InvalidNotePropertyInputError('The board grouping property is unavailable.');
+    }
+
+    const normalizedOptionValue = optionValue === null ? null : normalizeSelectFilterValue(optionValue);
+    const option =
+        normalizedOptionValue === null
+            ? null
+            : groupingProperty.options.find((candidate) => candidate.value === normalizedOptionValue);
+
+    if (normalizedOptionValue !== null && !option) {
+        throw new InvalidNotePropertyInputError(
+            `Property ${groupingPropertyKey} option ${normalizedOptionValue} is not defined.`,
+        );
+    }
+
+    const normalizedPagination = normalizeViewNotesPagination(pagination);
+    const where = buildViewBoardColumnWhere(serializedSection, groupingProperty.id, option?.id ?? null);
+
+    const [totalCount, notes] = await Promise.all([
+        models.note.count({ where }),
+        models.note.findMany({
+            orderBy: buildViewSectionOrderBy(serializedSection),
+            where,
+            take: normalizedPagination.limit,
+            skip: normalizedPagination.offset,
+            select: {
+                id: true,
+                title: true,
+                updatedAt: true,
+            },
+        }),
+    ]);
+
+    return { totalCount, notes };
 };
 
 export const getNotesByPropertiesWithDb = async (

@@ -48,7 +48,7 @@ const createSection = (sortBy: ViewSection['sortBy'], sortOrder: ViewSection['so
     tabId: 'tab-1',
     title: 'All notes',
     displayType: 'list',
-    displayOptions: { tableColumns: ['title'] },
+    displayOptions: { tableColumns: ['title'], tablePropertyKeys: [], boardGroupByPropertyKey: null },
     tagNames: [],
     mode: 'and',
     propertyFilters: [],
@@ -73,5 +73,22 @@ describe('viewsLocalPlugin', () => {
         const result = response?.viewSectionNotes as { notes: Note[] } | undefined;
 
         expect(result?.notes.map((note) => note.id)).toEqual(expectedIds);
+    });
+
+    it('uses request sorting for URL-restored table state', () => {
+        const handler = viewsLocalPlugin.graphHandlers?.FetchViewSectionNotes;
+        const response = handler?.({
+            state: createState(createSection('updatedAt', 'desc')),
+            variables: {
+                id: 'section-1',
+                pagination: { limit: 5, offset: 0 },
+                sortBy: 'title',
+                sortOrder: 'asc',
+            },
+            save: () => undefined,
+        });
+        const result = response?.viewSectionNotes as { notes: Note[] } | undefined;
+
+        expect(result?.notes.map((note) => note.id)).toEqual(['note-1', 'note-2', 'note-3']);
     });
 });

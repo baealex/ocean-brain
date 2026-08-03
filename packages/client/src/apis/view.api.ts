@@ -29,6 +29,8 @@ const VIEW_SECTION_FIELDS = `
     displayType
     displayOptions {
         tableColumns
+        tablePropertyKeys
+        boardGroupByPropertyKey
     }
     tagNames
     mode
@@ -81,7 +83,17 @@ export function fetchViewSection(id: string) {
 
 export function fetchViewSectionNotes(
     id: string,
-    { limit = 25, offset = 0 }: { limit?: number; offset?: number } = {},
+    {
+        limit = 25,
+        offset = 0,
+        sortBy,
+        sortOrder,
+    }: {
+        limit?: number;
+        offset?: number;
+        sortBy?: ViewSortBy;
+        sortOrder?: ViewSortOrder;
+    } = {},
 ) {
     return graphQuery<
         {
@@ -90,10 +102,20 @@ export function fetchViewSectionNotes(
                 notes: Note[];
             };
         },
-        { id: string; pagination: { limit: number; offset: number } }
+        {
+            id: string;
+            pagination: { limit: number; offset: number };
+            sortBy?: ViewSortBy;
+            sortOrder?: ViewSortOrder;
+        }
     >(
-        `query FetchViewSectionNotes($id: ID!, $pagination: PaginationInput) {
-            viewSectionNotes(id: $id, pagination: $pagination) {
+        `query FetchViewSectionNotes(
+            $id: ID!
+            $pagination: PaginationInput
+            $sortBy: ViewSortBy
+            $sortOrder: ViewSortOrder
+        ) {
+            viewSectionNotes(id: $id, pagination: $pagination, sortBy: $sortBy, sortOrder: $sortOrder) {
                 totalCount
                 notes {
                     id
@@ -123,6 +145,53 @@ export function fetchViewSectionNotes(
                 limit,
                 offset,
             },
+            sortBy,
+            sortOrder,
+        },
+    );
+}
+
+export type ViewBoardNote = Pick<Note, 'id' | 'title' | 'updatedAt'>;
+
+export interface ViewBoardColumnResult {
+    totalCount: number;
+    notes: ViewBoardNote[];
+}
+
+export interface FetchViewSectionBoardColumnParams {
+    optionValue: string | null;
+    limit?: number;
+    offset?: number;
+}
+
+export function fetchViewSectionBoardColumn(
+    id: string,
+    { optionValue, limit = 5, offset = 0 }: FetchViewSectionBoardColumnParams,
+) {
+    return graphQuery<
+        {
+            viewSectionBoardColumn: ViewBoardColumnResult;
+        },
+        {
+            id: string;
+            optionValue: string | null;
+            pagination: { limit: number; offset: number };
+        }
+    >(
+        `query FetchViewSectionBoardColumn($id: ID!, $optionValue: String, $pagination: PaginationInput) {
+            viewSectionBoardColumn(id: $id, optionValue: $optionValue, pagination: $pagination) {
+                totalCount
+                notes {
+                    id
+                    title
+                    updatedAt
+                }
+            }
+        }`,
+        {
+            id,
+            optionValue,
+            pagination: { limit, offset },
         },
     );
 }

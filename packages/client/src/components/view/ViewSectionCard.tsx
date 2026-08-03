@@ -1,19 +1,13 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
-import { useState } from 'react';
-import { fetchViewSectionNotes, updateViewSection } from '~/apis/view.api';
-import { Dropdown, SurfaceCard } from '~/components/shared';
-import { Button, MoreButton, Text, useToast } from '~/components/ui';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import type { NotePropertyKeySummary } from '~/apis/note.api';
+import { fetchViewSectionNotes } from '~/apis/view.api';
+import { Dropdown, Pagination, SurfaceCard } from '~/components/shared';
+import { MoreButton, Text } from '~/components/ui';
 import type { ViewSection, ViewSortBy, ViewSortOrder } from '~/models/view.model';
 import { queryKeys } from '~/modules/query-key-factory';
-import { VIEW_NOTES_ROUTE } from '~/modules/url';
-import {
-    buildViewNotesSearch,
-    buildViewSectionInput,
-    formatViewPropertyFilter,
-    getViewDisplayTypeLabel,
-    getViewTagMatchToken,
-} from '~/modules/view-dashboard';
+import { formatViewPropertyFilter, getViewDisplayTypeLabel, getViewTagMatchToken } from '~/modules/view-dashboard';
+import type { ViewSectionRouteState, ViewSectionRouteStateUpdater } from '~/modules/view-route-state';
 import ViewChip from './ViewChip';
 import ViewSectionRenderer from './ViewSectionRenderer';
 
@@ -25,6 +19,10 @@ interface ViewSectionCardProps {
     onMoveUp?: () => void;
     onMoveDown?: () => void;
     dragHandle?: React.ReactNode;
+    availableProperties?: NotePropertyKeySummary[];
+    isPropertiesLoading?: boolean;
+    navigationState?: ViewSectionRouteState;
+    onNavigationStateChange?: (updater: ViewSectionRouteStateUpdater) => void;
 }
 
 export default function ViewSectionCard({
@@ -35,19 +33,33 @@ export default function ViewSectionCard({
     onMoveUp,
     onMoveDown,
     dragHandle,
+    availableProperties = [],
+    isPropertiesLoading = false,
+    navigationState = {},
+    onNavigationStateChange = () => undefined,
 }: ViewSectionCardProps) {
-    const queryClient = useQueryClient();
-    const toast = useToast();
-    const [isSortPending, setIsSortPending] = useState(false);
-    const sectionSearch = buildViewNotesSearch(section);
+    const isBoard = section.displayType === 'board';
+    const page = navigationState.page ?? 1;
+    const offset = (page - 1) * section.limit;
+    const sortBy = navigationState.sort?.by ?? section.sortBy;
+    const sortOrder = navigationState.sort?.order ?? section.sortOrder;
 
-    const { data, isPending, isError, refetch } = useQuery({
+    const { data, isPending, isError, isPlaceholderData, refetch } = useQuery({
         queryKey: queryKeys.views.sectionNotes(section.id, {
             limit: section.limit,
-            offset: 0,
+            offset,
+            sortBy,
+            sortOrder,
         }),
+        enabled: !isBoard,
+        placeholderData: keepPreviousData,
         async queryFn() {
-            const response = await fetchViewSectionNotes(section.id, { limit: section.limit, offset: 0 });
+            const response = await fetchViewSectionNotes(section.id, {
+                limit: section.limit,
+                offset,
+                sortBy,
+                sortOrder,
+            });
 
             if (response.type === 'error') {
                 throw response;
@@ -59,45 +71,31 @@ export default function ViewSectionCard({
 
     const notes = data?.notes ?? [];
     const totalCount = data?.totalCount ?? 0;
+    const lastPage = Math.max(1, Math.ceil(totalCount / section.limit));
     const tagMatchToken = getViewTagMatchToken(section.mode);
     const hasFilters = section.tagNames.length > 0 || section.propertyFilters.length > 0;
+    const boardGroupProperty = isBoard
+        ? availableProperties.find((property) => property.key === section.displayOptions.boardGroupByPropertyKey)
+        : null;
 
-    const updateSectionSort = async (sortBy: ViewSortBy) => {
-        if (isSortPending) {
-            return;
-        }
-
+    const updateSectionSort = (nextSortBy: ViewSortBy) => {
         const nextSortOrder: ViewSortOrder =
-            section.sortBy === sortBy
-                ? section.sortOrder === 'asc'
-                    ? 'desc'
-                    : 'asc'
-                : sortBy === 'title'
-                  ? 'asc'
-                  : 'desc';
+            sortBy === nextSortBy ? (sortOrder === 'asc' ? 'desc' : 'asc') : nextSortBy === 'title' ? 'asc' : 'desc';
 
-        setIsSortPending(true);
+        onNavigationStateChange((current) => ({
+            ...current,
+            page: 1,
+            sort: { by: nextSortBy, order: nextSortOrder },
+        }));
+    };
 
-        const response = await updateViewSection(
-            section.id,
-            buildViewSectionInput(section, {
-                sortBy,
-                sortOrder: nextSortOrder,
-            }),
-        );
-
-        if (response.type === 'error') {
-            toast(response.errors[0]?.message ?? 'Failed to update table sort.');
-            setIsSortPending(false);
+    useEffect(() => {
+        if (isBoard || isPending || isError || isPlaceholderData || !data || page <= lastPage) {
             return;
         }
 
-        await queryClient.invalidateQueries({
-            queryKey: queryKeys.views.all(),
-            exact: false,
-        });
-        setIsSortPending(false);
-    };
+        onNavigationStateChange((current) => ({ ...current, page: lastPage }));
+    }, [data, isBoard, isError, isPending, isPlaceholderData, lastPage, onNavigationStateChange, page]);
 
     return (
         <SurfaceCard flush className="flex h-full flex-col overflow-hidden">
@@ -107,13 +105,7 @@ export default function ViewSectionCard({
                         {dragHandle && <div className="-mr-1 shrink-0 self-center">{dragHandle}</div>}
                         <div className="min-w-0">
                             <Text as="h2" variant="subheading" weight="semibold" tracking="tight" className="min-w-0">
-                                <Link
-                                    to={VIEW_NOTES_ROUTE}
-                                    search={sectionSearch}
-                                    className="truncate hover:text-fg-default/85"
-                                >
-                                    {section.title}
-                                </Link>
+                                <span className="truncate">{section.title}</span>
                             </Text>
                         </div>
                     </div>
@@ -121,6 +113,11 @@ export default function ViewSectionCard({
                         <ViewChip className="max-w-full border-border-subtle/80 bg-elevated text-fg-secondary">
                             {getViewDisplayTypeLabel(section.displayType)}
                         </ViewChip>
+                        {isBoard && section.displayOptions.boardGroupByPropertyKey ? (
+                            <ViewChip className="max-w-full border-border-subtle/80 bg-subtle text-fg-secondary">
+                                Grouped by {boardGroupProperty?.name ?? section.displayOptions.boardGroupByPropertyKey}
+                            </ViewChip>
+                        ) : null}
                         {section.tagNames.map((tagName, index) => (
                             <div key={tagName} className="flex min-w-0 items-center gap-1.5">
                                 {index > 0 && (
@@ -180,19 +177,34 @@ export default function ViewSectionCard({
                     onRetry={() => void refetch()}
                     onEdit={onEdit}
                     onSortChange={updateSectionSort}
-                    isSortPending={isSortPending}
+                    isSortPending={isPlaceholderData}
+                    activeSortBy={sortBy}
+                    activeSortOrder={sortOrder}
+                    availableProperties={availableProperties}
+                    isPropertiesLoading={isPropertiesLoading}
+                    navigationState={navigationState}
+                    onNavigationStateChange={onNavigationStateChange}
                 />
             </div>
 
-            <div className="flex items-center justify-between gap-3 border-t border-border-subtle/75 px-4 py-3">
+            <div className="flex flex-col gap-3 border-t border-border-subtle/75 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <Text as="p" variant="meta" tone="tertiary">
-                    {isPending ? 'Loading notes...' : `Showing ${notes.length} of ${totalCount} notes`}
+                    {isBoard
+                        ? `${section.limit} cards per column load`
+                        : isPending || isPlaceholderData
+                          ? 'Loading notes...'
+                          : totalCount === 0
+                            ? 'No matching notes'
+                            : `Showing ${offset + 1}–${Math.min(offset + notes.length, totalCount)} of ${totalCount} notes`}
                 </Text>
-                <Button asChild variant="subtle" size="sm">
-                    <Link to={VIEW_NOTES_ROUTE} search={sectionSearch}>
-                        Open results
-                    </Link>
-                </Button>
+                {!isBoard && lastPage > 1 ? (
+                    <Pagination
+                        page={Math.min(page, lastPage)}
+                        last={lastPage}
+                        className="!mt-0 shrink-0 sm:justify-end"
+                        onChange={(nextPage) => onNavigationStateChange((current) => ({ ...current, page: nextPage }))}
+                    />
+                ) : null}
             </div>
         </SurfaceCard>
     );

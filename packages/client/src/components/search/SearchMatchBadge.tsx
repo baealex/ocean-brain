@@ -3,6 +3,7 @@ import { Text } from '~/components/ui';
 
 interface SearchMatchBadgeProps {
     match?: SearchNoteMatch;
+    className?: string;
 }
 
 const getLabel = (match?: SearchNoteMatch) => {
@@ -12,7 +13,7 @@ const getLabel = (match?: SearchNoteMatch) => {
     return null;
 };
 
-const SearchMatchBadge = ({ match }: SearchMatchBadgeProps) => {
+const SearchMatchBadge = ({ match, className }: SearchMatchBadgeProps) => {
     const label = getLabel(match);
     if (!label) return null;
 
@@ -22,7 +23,7 @@ const SearchMatchBadge = ({ match }: SearchMatchBadgeProps) => {
             variant="meta"
             weight="semibold"
             tone="tertiary"
-            className="shrink-0 rounded-full bg-muted px-2 py-1"
+            className={`shrink-0 rounded-full bg-muted px-2 py-1 ${className ?? ''}`.trim()}
         >
             {label}
         </Text>

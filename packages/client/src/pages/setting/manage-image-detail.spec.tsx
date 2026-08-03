@@ -7,6 +7,7 @@ import { deleteImage, fetchImage } from '~/apis/image.api';
 import { fetchImageNotes } from '~/apis/note.api';
 import { setServerCache } from '~/apis/server-cache.api';
 import { queryKeys } from '~/modules/query-key-factory';
+import { validatePaginationSearch } from '~/modules/route-search';
 import { SETTINGS_MANAGE_IMAGE_DETAIL_ROUTE, SETTINGS_MANAGE_IMAGE_ROUTE } from '~/modules/url';
 import { createTestQueryClient } from '~/test/test-utils';
 
@@ -46,7 +47,7 @@ vi.mock('~/components/shared', async () => {
 });
 
 const renderPage = async () => {
-    window.history.pushState({}, '', '/setting/manage-image/image-1');
+    window.history.pushState({}, '', '/setting/manage-image/image-1?page=3');
 
     const queryClient = createTestQueryClient();
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined);
@@ -56,11 +57,13 @@ const renderPage = async () => {
         getParentRoute: () => rootRoute,
         path: SETTINGS_MANAGE_IMAGE_ROUTE,
         component: () => null,
+        validateSearch: validatePaginationSearch,
     });
     const manageImageDetailRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: SETTINGS_MANAGE_IMAGE_DETAIL_ROUTE,
         component: ManageImageDetail,
+        validateSearch: validatePaginationSearch,
     });
     const router = createRouter({
         routeTree: rootRoute.addChildren([manageImageRoute, manageImageDetailRoute]),
@@ -107,6 +110,15 @@ describe('<ManageImageDetail />', () => {
         });
 
         const { invalidateSpy } = await renderPage();
+
+        expect(await screen.findByRole('link', { name: 'Open original image' })).toHaveAttribute(
+            'href',
+            'https://example.com/hero.jpg',
+        );
+        expect(screen.getByRole('link', { name: 'Back to Images' })).toHaveAttribute(
+            'href',
+            `${SETTINGS_MANAGE_IMAGE_ROUTE}?page=3`,
+        );
 
         await userEvent.click(await screen.findByRole('button', { name: 'Set hero banner' }));
 

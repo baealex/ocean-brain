@@ -145,10 +145,10 @@ test('production graph chunks render after a direct hard refresh', async ({ page
 
     await page.goto('/graph');
     await expect(page.getByRole('heading', { name: 'Knowledge Graph' })).toBeVisible();
-    await expect(page.getByText('No constellations yet')).toBeVisible();
+    await expect(page.getByText(/0 linked notes.*0 connections/)).toBeVisible();
 
     await page.reload();
     await expect(page.getByRole('heading', { name: 'Knowledge Graph' })).toBeVisible();
-    await expect(page.getByText('No constellations yet')).toBeVisible();
+    await expect(page.getByText(/0 linked notes.*0 connections/)).toBeVisible();
     expect(runtimeErrors).toEqual([]);
 });

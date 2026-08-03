@@ -29,20 +29,10 @@ export default function useReminderMutate() {
                 return;
             }
 
-            await Promise.all([
-                queryClient.invalidateQueries({
-                    queryKey: queryKeys.reminders.noteAllPages(noteId),
-                    exact: false,
-                }),
-                queryClient.invalidateQueries({
-                    queryKey: queryKeys.reminders.upcomingAllPages(),
-                    exact: false,
-                }),
-                queryClient.invalidateQueries({
-                    queryKey: queryKeys.reminders.inDateRangeAll(),
-                    exact: false,
-                }),
-            ]);
+            await queryClient.invalidateQueries({
+                queryKey: queryKeys.reminders.all(),
+                exact: false,
+            });
 
             if (onSuccess) {
                 onSuccess();
@@ -54,7 +44,7 @@ export default function useReminderMutate() {
     const onUpdate = useCallback(
         async (
             id: string,
-            noteId: string,
+            _noteId: string,
             params: {
                 reminderDate?: Date;
                 completed?: boolean;
@@ -73,20 +63,10 @@ export default function useReminderMutate() {
                 return;
             }
 
-            await Promise.all([
-                queryClient.invalidateQueries({
-                    queryKey: queryKeys.reminders.noteAllPages(noteId),
-                    exact: false,
-                }),
-                queryClient.invalidateQueries({
-                    queryKey: queryKeys.reminders.upcomingAllPages(),
-                    exact: false,
-                }),
-                queryClient.invalidateQueries({
-                    queryKey: queryKeys.reminders.inDateRangeAll(),
-                    exact: false,
-                }),
-            ]);
+            await queryClient.invalidateQueries({
+                queryKey: queryKeys.reminders.all(),
+                exact: false,
+            });
 
             if (onSuccess) {
                 onSuccess();
@@ -96,7 +76,7 @@ export default function useReminderMutate() {
     );
 
     const onDelete = useCallback(
-        async (id: string, noteId: string, onSuccess?: () => void) => {
+        async (id: string, _noteId: string, onSuccess?: () => void) => {
             const response = await deleteReminder(id);
 
             if (response.type === 'error') {
@@ -104,20 +84,10 @@ export default function useReminderMutate() {
                 return;
             }
 
-            await Promise.all([
-                queryClient.invalidateQueries({
-                    queryKey: queryKeys.reminders.noteAllPages(noteId),
-                    exact: false,
-                }),
-                queryClient.invalidateQueries({
-                    queryKey: queryKeys.reminders.upcomingAllPages(),
-                    exact: false,
-                }),
-                queryClient.invalidateQueries({
-                    queryKey: queryKeys.reminders.inDateRangeAll(),
-                    exact: false,
-                }),
-            ]);
+            await queryClient.invalidateQueries({
+                queryKey: queryKeys.reminders.all(),
+                exact: false,
+            });
 
             if (onSuccess) {
                 onSuccess();

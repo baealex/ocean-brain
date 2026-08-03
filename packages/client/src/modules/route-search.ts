@@ -2,6 +2,7 @@ import dayjs from 'dayjs';
 
 import type { SearchMode } from '~/apis/search.api';
 import type { SortBy, SortOrder } from '~/components/shared/NoteFilters';
+import type { ReminderPriority } from '~/models/reminder.model';
 import { HOME_DEFAULT_LIMIT, HOME_LIMIT_OPTIONS, type HomeLimit } from '~/modules/home-pagination';
 import { TAG_DEFAULT_LIMIT, TAG_LIMIT_OPTIONS, type TagLimit } from '~/modules/tag-pagination';
 import { normalizeViewRouteState, type ViewRouteState } from '~/modules/view-route-state';
@@ -13,6 +14,9 @@ const TAG_SORT_BY = ['referenceCount', 'name'] as const;
 const SORT_ORDER = ['asc', 'desc'] as const satisfies readonly SortOrder[];
 const CALENDAR_TYPES = ['create', 'update'] as const;
 const SEARCH_MODES = ['hybrid', 'lexical', 'semantic'] as const satisfies readonly SearchMode[];
+const REMINDER_STATUSES = ['open', 'completed'] as const;
+const REMINDER_SCOPES = ['all', 'overdue', 'today', 'upcoming'] as const;
+const REMINDER_PRIORITIES = ['all', 'high', 'medium', 'low'] as const satisfies readonly ('all' | ReminderPriority)[];
 
 const getFirstValue = (value: unknown) => (Array.isArray(value) ? value[0] : value);
 
@@ -83,6 +87,12 @@ export interface PaginationRouteSearch {
     page: number;
 }
 
+export interface ReminderRouteSearch extends PaginationRouteSearch {
+    status: (typeof REMINDER_STATUSES)[number];
+    scope: (typeof REMINDER_SCOPES)[number];
+    priority: (typeof REMINDER_PRIORITIES)[number];
+}
+
 export interface SearchRouteSearch extends PaginationRouteSearch {
     query: string;
     mode: SearchMode;
@@ -125,6 +135,18 @@ export const validateHomeSearch = (search: SearchRecord): HomeRouteSearch => ({
 export const validatePaginationSearch = (search: SearchRecord): PaginationRouteSearch => ({
     page: parsePositiveInt(search.page, 1),
 });
+
+export const validateReminderSearch = (search: SearchRecord): ReminderRouteSearch => {
+    const status = parseEnum(search.status, REMINDER_STATUSES, 'open');
+    const scope = parseEnum(search.scope, REMINDER_SCOPES, 'all');
+
+    return {
+        page: parsePositiveInt(search.page, 1),
+        status,
+        scope: status === 'completed' ? 'all' : scope,
+        priority: parseEnum(search.priority, REMINDER_PRIORITIES, 'all'),
+    };
+};
 
 export const validateSearchPageSearch = (search: SearchRecord): SearchRouteSearch => ({
     page: parsePositiveInt(search.page, 1),

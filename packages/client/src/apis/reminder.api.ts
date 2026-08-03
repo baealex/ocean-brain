@@ -7,12 +7,60 @@ export interface ReminderPaginationParams {
     offset?: number;
 }
 
+export type ReminderStatus = 'open' | 'completed';
+export type ReminderSortBy = 'reminderDate' | 'updatedAt';
+export type ReminderSortOrder = 'asc' | 'desc';
+
+export interface ReminderListFilter {
+    status: ReminderStatus;
+    priority?: ReminderPriority;
+    start?: string;
+    end?: string;
+    sortBy?: ReminderSortBy;
+    sortOrder?: ReminderSortOrder;
+}
+
+export interface FetchRemindersParams extends ReminderPaginationParams {
+    filter: ReminderListFilter;
+}
+
+export interface FetchOpenReminderOverviewParams {
+    now: string;
+    tomorrow: string;
+    priority?: ReminderPriority;
+    limit?: number;
+}
+
+export interface OpenReminderOverview {
+    overdue: ReminderCollection;
+    today: ReminderCollection;
+    upcoming: ReminderCollection;
+}
+
 const toPaginationInput = (params: ReminderPaginationParams = {}): Pagination => {
     return {
         limit: params.limit ?? 10,
         offset: params.offset ?? 0,
     };
 };
+
+const reminderCollectionSelection = `
+    totalCount
+    reminders {
+        id
+        noteId
+        reminderDate
+        priority
+        content
+        completed
+        createdAt
+        updatedAt
+        note {
+            id
+            title
+        }
+    }
+`;
 
 export const fetchNoteReminders = async (noteId: string, pagination?: ReminderPaginationParams) => {
     return graphQuery<{ noteReminders: ReminderCollection }, { noteId: string; pagination: Pagination }>(
@@ -64,6 +112,88 @@ export const fetchUpcomingReminders = async (pagination?: ReminderPaginationPara
         }
     `,
         { pagination: toPaginationInput(pagination) },
+    );
+};
+
+export const fetchReminders = async ({ filter, limit = 25, offset = 0 }: FetchRemindersParams) => {
+    return graphQuery<{ reminders: ReminderCollection }, { filter: ReminderListFilter; pagination: Pagination }>(
+        `
+        query FetchReminders($filter: ReminderFilterInput!, $pagination: PaginationInput) {
+            reminders(filter: $filter, pagination: $pagination) {
+                ${reminderCollectionSelection}
+            }
+        }
+    `,
+        {
+            filter,
+            pagination: { limit, offset },
+        },
+    );
+};
+
+export const fetchOpenReminderOverview = async ({
+    now,
+    tomorrow,
+    priority,
+    limit = 5,
+}: FetchOpenReminderOverviewParams) => {
+    const baseFilter = {
+        status: 'open' as const,
+        ...(priority ? { priority } : {}),
+    };
+    const overdueFilter: ReminderListFilter = {
+        ...baseFilter,
+        end: now,
+        sortBy: 'reminderDate',
+        sortOrder: 'desc',
+    };
+    const todayFilter: ReminderListFilter = {
+        ...baseFilter,
+        start: now,
+        end: tomorrow,
+        sortBy: 'reminderDate',
+        sortOrder: 'asc',
+    };
+    const upcomingFilter: ReminderListFilter = {
+        ...baseFilter,
+        start: tomorrow,
+        sortBy: 'reminderDate',
+        sortOrder: 'asc',
+    };
+
+    return graphQuery<
+        OpenReminderOverview,
+        {
+            overdueFilter: ReminderListFilter;
+            todayFilter: ReminderListFilter;
+            upcomingFilter: ReminderListFilter;
+            pagination: Pagination;
+        }
+    >(
+        `
+        query FetchOpenReminderOverview(
+            $overdueFilter: ReminderFilterInput!
+            $todayFilter: ReminderFilterInput!
+            $upcomingFilter: ReminderFilterInput!
+            $pagination: PaginationInput
+        ) {
+            overdue: reminders(filter: $overdueFilter, pagination: $pagination) {
+                ${reminderCollectionSelection}
+            }
+            today: reminders(filter: $todayFilter, pagination: $pagination) {
+                ${reminderCollectionSelection}
+            }
+            upcoming: reminders(filter: $upcomingFilter, pagination: $pagination) {
+                ${reminderCollectionSelection}
+            }
+        }
+    `,
+        {
+            overdueFilter,
+            todayFilter,
+            upcomingFilter,
+            pagination: { limit, offset: 0 },
+        },
     );
 };
 

@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import type { Reminder } from '~/models/reminder.model';
 import ReminderCard from './ReminderCard';
@@ -23,6 +24,19 @@ describe('<ReminderCard />', () => {
     it('labels the completion checkbox with reminder context', () => {
         render(<ReminderCard reminder={createReminder()} onUpdate={vi.fn()} onDelete={vi.fn()} />);
 
-        expect(screen.getByRole('checkbox', { name: 'Reminder: Follow up' })).toBeInTheDocument();
+        expect(screen.getByRole('checkbox', { name: 'Complete reminder: Follow up' })).toBeInTheDocument();
+    });
+
+    it('presents completed reminders as reopenable history', async () => {
+        const user = userEvent.setup();
+        const onUpdate = vi.fn();
+
+        render(<ReminderCard reminder={createReminder({ completed: true })} onUpdate={onUpdate} onDelete={vi.fn()} />);
+
+        expect(screen.getByText('Completed')).toBeInTheDocument();
+
+        await user.click(screen.getByRole('checkbox', { name: 'Reopen reminder: Follow up' }));
+
+        expect(onUpdate).toHaveBeenCalledWith('reminder-1', '1', { completed: false });
     });
 });

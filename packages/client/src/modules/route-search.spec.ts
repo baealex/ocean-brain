@@ -6,6 +6,7 @@ import {
     validateGraphSearch,
     validateHomeSearch,
     validatePaginationSearch,
+    validateReminderSearch,
     validateSearchPageSearch,
     validateTagSearch,
     validateViewNotesSearch,
@@ -44,6 +45,29 @@ describe('route-search validators', () => {
 
     it('returns a safe pagination fallback', () => {
         expect(validatePaginationSearch({ page: '-2' })).toEqual({ page: 1 });
+    });
+
+    it('normalizes reminder management state', () => {
+        expect(
+            validateReminderSearch({
+                page: '3',
+                status: 'completed',
+                scope: 'overdue',
+                priority: 'high',
+            }),
+        ).toEqual({
+            page: 3,
+            status: 'completed',
+            scope: 'all',
+            priority: 'high',
+        });
+
+        expect(validateReminderSearch({ status: 'unknown', scope: 'later', priority: 'urgent' })).toEqual({
+            page: 1,
+            status: 'open',
+            scope: 'all',
+            priority: 'all',
+        });
     });
 
     it('reads search page query and page', () => {

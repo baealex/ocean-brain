@@ -18,7 +18,7 @@ const createNote = (input: Pick<Note, 'id' | 'title' | 'tags'>): Note => ({
 
 const createState = (): LocalDemoState => {
     return {
-        version: 5,
+        version: 6,
         notes: [
             createNote({
                 id: 'note-guide-a',

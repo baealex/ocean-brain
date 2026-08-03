@@ -25,4 +25,25 @@ describe('createLocalDemoSeed', () => {
             true,
         );
     });
+
+    it('provides useful states for the views and reminder tours', () => {
+        const nowMs = 1_710_000_000_000;
+        const seed = createLocalDemoSeed({ tags, nowMs });
+        const displayTypes = seed.viewTabs.flatMap((tab) => tab.sections.map((section) => section.displayType));
+        const projectStatuses = seed.notes
+            .filter((note) => note.tags.some((tag) => tag.name === '@project'))
+            .flatMap((note) => note.properties ?? [])
+            .filter((property) => property.key === 'status')
+            .map((property) => property.value);
+
+        expect(displayTypes).toEqual(expect.arrayContaining(['list', 'table', 'board']));
+        expect(projectStatuses).toEqual(expect.arrayContaining(['todo', 'doing', 'done']));
+        expect(seed.reminders.some((reminder) => !reminder.completed && Number(reminder.reminderDate) < nowMs)).toBe(
+            true,
+        );
+        expect(seed.reminders.some((reminder) => !reminder.completed && Number(reminder.reminderDate) > nowMs)).toBe(
+            true,
+        );
+        expect(seed.reminders.some((reminder) => reminder.completed)).toBe(true);
+    });
 });

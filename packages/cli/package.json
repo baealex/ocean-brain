@@ -3,6 +3,9 @@
     "version": "0.12.0",
     "license": "MIT",
     "type": "module",
+    "engines": {
+        "node": "^22.13.0 || >=24.0.0"
+    },
     "repository": {
         "type": "git",
         "url": "https://github.com/baealex/ocean-brain"
@@ -47,7 +50,6 @@
         "jsdom": "catalog:",
         "lusca": "catalog:",
         "prisma": "catalog:",
-        "sqlite3": "catalog:",
         "sqlite-vec": "catalog:",
         "winston": "catalog:",
         "zod": "^3.25.76"

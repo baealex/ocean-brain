@@ -28,9 +28,6 @@
     "@types/lusca": "^1.7.5"
   },
   "pnpm": {
-    "onlyBuiltDependencies": [
-      "sqlite3"
-    ],
     "overrides": {
       "@hono/node-server": "2.0.11",
       "esbuild": "0.28.1",

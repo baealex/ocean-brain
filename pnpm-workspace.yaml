@@ -16,6 +16,5 @@ catalog:
   jsdom: ^25.0.1
   lusca: ^1.7.0
   prisma: ^6.19.3
-  sqlite3: ^6.0.1
   sqlite-vec: 0.1.9
   winston: ^3.19.0

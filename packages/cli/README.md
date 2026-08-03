@@ -16,7 +16,7 @@ For the product overview and screenshots, see the [Ocean Brain project](https://
 
 ## Requirements
 
-Use Node.js 22. A global installation is not required; the examples below use `npx`.
+Use Node.js 22.13+ or a newer LTS release. A global installation is not required; the examples below use `npx`.
 
 ## `serve`
 

@@ -1,9 +1,9 @@
 # Ocean Brain Dev Convention
 
-Updated: 2026-08-01
+Updated: 2026-08-04
 
 ## 1. Base Environment
-- Node.js: `22`
+- Node.js: `22.13+`
 - Package manager: `pnpm@10.25.0`
 - Workspace: `packages/*` (pnpm workspace)
 

@@ -206,6 +206,7 @@ const manageImageDetailRoute = createRoute({
     pendingComponent: () => (
         <RoutePendingView title="Loading image detail" description="Preparing references for the selected image." />
     ),
+    validateSearch: validatePaginationSearch,
 });
 
 const propertiesRoute = createRoute({

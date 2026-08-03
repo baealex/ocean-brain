@@ -79,7 +79,7 @@ const SearchNoteMeta = ({ note }: { note: SearchNote }) => {
     const hiddenTagCount = note.tags.length - visibleTags.length;
 
     return (
-        <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 sm:col-start-1 sm:row-start-2">
             {note.pinned && (
                 <span className="inline-flex items-center text-fg-tertiary" title="Pinned note">
                     <Icon.Pin className="h-3.5 w-3.5" weight="fill" aria-hidden="true" />
@@ -447,28 +447,29 @@ export default function Search() {
                                                         key={note.id}
                                                         className="surface-base flex flex-col gap-3.5 rounded-[16px] p-4 transition-colors hover:border-border-secondary/70 hover:bg-hover-subtle/25 sm:p-5"
                                                     >
-                                                        <div className="flex min-w-0 items-start justify-between gap-3">
-                                                            <div className="min-w-0 flex-1">
-                                                                <Text
-                                                                    as="h2"
-                                                                    variant="body"
-                                                                    weight="semibold"
-                                                                    tracking="tight"
-                                                                    className="min-w-0"
+                                                        <div className="grid min-w-0 gap-x-3 gap-y-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                                                            <Text
+                                                                as="h2"
+                                                                variant="body"
+                                                                weight="semibold"
+                                                                tracking="tight"
+                                                                className="min-w-0"
+                                                            >
+                                                                <Link
+                                                                    to={NOTE_ROUTE}
+                                                                    params={{ id: note.id }}
+                                                                    className="line-clamp-2 transition-colors hover:text-fg-default/85"
                                                                 >
-                                                                    <Link
-                                                                        to={NOTE_ROUTE}
-                                                                        params={{ id: note.id }}
-                                                                        className="line-clamp-2 transition-colors hover:text-fg-default/85"
-                                                                    >
-                                                                        <Highlight match={normalizedQuery}>
-                                                                            {note.title || 'Untitled'}
-                                                                        </Highlight>
-                                                                    </Link>
-                                                                </Text>
-                                                                <SearchNoteMeta note={note} />
-                                                            </div>
-                                                            <SearchMatchBadge match={match} />
+                                                                    <Highlight match={normalizedQuery}>
+                                                                        {note.title || 'Untitled'}
+                                                                    </Highlight>
+                                                                </Link>
+                                                            </Text>
+                                                            <SearchNoteMeta note={note} />
+                                                            <SearchMatchBadge
+                                                                match={match}
+                                                                className="justify-self-start sm:col-start-2 sm:row-start-1 sm:justify-self-end"
+                                                            />
                                                         </div>
                                                         {previewBlocks.length > 0 ? (
                                                             <SearchPreview

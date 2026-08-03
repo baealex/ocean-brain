@@ -14,17 +14,20 @@ import { SETTINGS_MANAGE_IMAGE_DETAIL_ROUTE, SETTINGS_MANAGE_IMAGE_ROUTE } from 
 import { getImageDeleteConfirmation } from './image-delete-confirmation';
 
 const Route = getRouteApi(SETTINGS_MANAGE_IMAGE_DETAIL_ROUTE);
-const DETAIL_PREVIEW_HEIGHT = 352;
 
 const backLinkClassName =
     'mb-4 inline-flex items-center gap-1 text-fg-secondary transition-colors hover:text-fg-default';
-const previewFrameClassName = 'flex items-center justify-center bg-muted/25 p-3';
+const previewFrameClassName = 'flex h-[248px] items-center justify-center bg-muted/25 p-3 sm:h-[352px]';
 const previewImageClassName = 'h-full w-full rounded-[12px] object-contain';
 const sectionHeaderClassName =
     'mb-3 flex flex-wrap items-start justify-between gap-3 border-b border-border-subtle pb-3';
 const sectionTextClassName = 'space-y-1';
+const detailLayoutClassName = 'grid gap-6 min-[1200px]:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]';
 
-const getReferenceText = (count: number) => (count === 1 ? '1 reference' : `${count} references`);
+const getReferenceText = (count: number) => {
+    if (count === 0) return 'Unused';
+    return count === 1 ? '1 reference' : `${count} references`;
+};
 
 const getErrorMessage = (error: unknown, fallback: string) => {
     if (
@@ -45,11 +48,11 @@ const getErrorMessage = (error: unknown, fallback: string) => {
 };
 
 const ManageImageDetailSkeleton = () => (
-    <div className="flex flex-col gap-6 lg:flex-row">
-        <div className="w-full lg:w-[400px] lg:flex-shrink-0">
+    <div className={detailLayoutClassName}>
+        <div className="min-w-0">
             <SurfaceCard flush>
-                <div className={previewFrameClassName} style={{ height: DETAIL_PREVIEW_HEIGHT }}>
-                    <Skeleton width="100%" height={DETAIL_PREVIEW_HEIGHT - 24} className="rounded-[12px]" />
+                <div className={previewFrameClassName}>
+                    <Skeleton width="100%" height="100%" className="rounded-[12px]" />
                 </div>
                 <div className="flex flex-col gap-4 border-t border-border-subtle p-4">
                     <Skeleton width={96} height={14} className="rounded-full" />
@@ -60,7 +63,7 @@ const ManageImageDetailSkeleton = () => (
                 </div>
             </SurfaceCard>
         </div>
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0">
             <SurfaceCard>
                 <div className={sectionHeaderClassName}>
                     <div className={sectionTextClassName}>
@@ -171,12 +174,24 @@ const ManageImageDetailContent = ({ id }: ManageImageDetailContentProps) => {
     };
 
     return (
-        <div className="flex flex-col gap-6 lg:flex-row">
-            <div className="w-full lg:w-[400px] lg:flex-shrink-0">
+        <div className={detailLayoutClassName}>
+            <div className="min-w-0">
                 <SurfaceCard flush>
-                    <div className={previewFrameClassName} style={{ height: DETAIL_PREVIEW_HEIGHT }}>
-                        <ImageComponent className={previewImageClassName} src={image.url} alt={`Image ${image.id}`} />
-                    </div>
+                    <a
+                        href={image.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label="Open original image"
+                        className="focus-ring-soft block overflow-hidden rounded-t-[18px] outline-none"
+                    >
+                        <div className={previewFrameClassName}>
+                            <ImageComponent
+                                className={`${previewImageClassName} transition-transform duration-200 hover:scale-[1.02]`}
+                                src={image.url}
+                                alt={`Image ${image.id}`}
+                            />
+                        </div>
+                    </a>
                     <div className="flex flex-col gap-4 border-t border-border-subtle p-4">
                         <div className="space-y-1">
                             <div className="flex items-center gap-2">
@@ -218,7 +233,7 @@ const ManageImageDetailContent = ({ id }: ManageImageDetailContentProps) => {
                     </div>
                 </SurfaceCard>
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="min-w-0">
                 <SurfaceCard>
                     <div className={sectionHeaderClassName}>
                         <div className={sectionTextClassName}>
@@ -264,13 +279,14 @@ const ManageImageDetailContent = ({ id }: ManageImageDetailContentProps) => {
 
 const ManageImageDetail = () => {
     const { id } = Route.useParams();
+    const { page } = Route.useSearch();
 
     return (
-        <>
+        <div className="w-full">
             <Helmet>
                 <title>Image Detail | Ocean Brain</title>
             </Helmet>
-            <Link to={SETTINGS_MANAGE_IMAGE_ROUTE} search={{ page: 1 }} className={backLinkClassName}>
+            <Link to={SETTINGS_MANAGE_IMAGE_ROUTE} search={{ page }} className={backLinkClassName}>
                 <Icon.ChevronLeft size={16} />
                 <Text as="span" variant="meta" weight="medium" className="text-current">
                     Back to Images
@@ -287,7 +303,7 @@ const ManageImageDetail = () => {
             >
                 <ManageImageDetailContent id={id} />
             </QueryBoundary>
-        </>
+        </div>
     );
 };
 

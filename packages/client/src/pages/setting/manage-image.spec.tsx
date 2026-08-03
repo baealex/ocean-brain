@@ -12,6 +12,7 @@ const mockConfirm = vi.fn();
 const mockImageData = vi.hoisted(() => ({
     images: [] as Array<{ id: string; url: string; referenceCount: number }>,
     totalCount: 0,
+    searchParams: null as { limit: number; offset: number } | null,
 }));
 
 vi.mock('~/components/app', () => ({ QueryBoundary: ({ children }: { children: React.ReactNode }) => children }));
@@ -20,20 +21,18 @@ vi.mock('~/apis/image.api', () => ({ deleteImage: vi.fn() }));
 
 vi.mock('~/components/entities', () => ({
     Images: ({
+        searchParams,
         render,
     }: {
+        searchParams: { limit: number; offset: number };
         render: (data: {
             images: Array<{ id: string; url: string; referenceCount: number }>;
             totalCount: number;
         }) => React.ReactNode;
-    }) => render(mockImageData),
-}));
-
-vi.mock('~/hooks/useGridLimit', () => ({
-    useGridLimit: () => ({
-        containerRef: { current: null },
-        limit: 12,
-    }),
+    }) => {
+        mockImageData.searchParams = searchParams;
+        return render(mockImageData);
+    },
 }));
 
 vi.mock('~/components/ui', async () => {
@@ -55,8 +54,8 @@ vi.mock('~/components/shared', async () => {
     };
 });
 
-const renderPage = async () => {
-    window.history.pushState({}, '', `${SETTINGS_MANAGE_IMAGE_ROUTE}?page=1`);
+const renderPage = async (page = 1) => {
+    window.history.pushState({}, '', `${SETTINGS_MANAGE_IMAGE_ROUTE}?page=${page}`);
 
     const queryClient = createTestQueryClient();
     const rootRoute = createRootRoute({ component: () => <ManageImage /> });
@@ -83,6 +82,7 @@ describe('<ManageImage />', () => {
         vi.clearAllMocks();
         mockImageData.images = [];
         mockImageData.totalCount = 0;
+        mockImageData.searchParams = null;
         vi.mocked(deleteImage).mockResolvedValue({ type: 'success', deleteImage: true });
     });
 
@@ -107,6 +107,15 @@ describe('<ManageImage />', () => {
         await renderPage();
 
         expect(screen.getByRole('button', { name: 'Delete image image-1' })).toBeInTheDocument();
+    });
+
+    it('loads stable 28-item pages regardless of the viewport width', async () => {
+        await renderPage(2);
+
+        expect(mockImageData.searchParams).toEqual({
+            limit: 28,
+            offset: 28,
+        });
     });
 
     it('allows deleting a referenced image after an impact warning', async () => {

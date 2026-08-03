@@ -5,40 +5,43 @@ import { QueryBoundary } from '~/components/app';
 import { Images } from '~/components/entities';
 import * as Icon from '~/components/icon';
 import { Empty, Image as ImageComponent, PageLayout, Pagination, Skeleton, SurfaceCard } from '~/components/shared';
-import { Button, Text, useConfirm } from '~/components/ui';
-import { useGridLimit } from '~/hooks/useGridLimit';
+import { Button, Text, useConfirm, useToast } from '~/components/ui';
 import { queryKeys } from '~/modules/query-key-factory';
 import { SETTINGS_MANAGE_IMAGE_DETAIL_ROUTE, SETTINGS_MANAGE_IMAGE_ROUTE } from '~/modules/url';
 import { getImageDeleteConfirmation } from './image-delete-confirmation';
 
-const IMAGE_MIN_WIDTH = 240;
-const IMAGE_GAP = 20;
-const IMAGE_ROWS = 4;
+const IMAGE_PAGE_LIMIT = 28;
 const IMAGE_PREVIEW_HEIGHT = 192;
 const Route = getRouteApi(SETTINGS_MANAGE_IMAGE_ROUTE);
 
 const ManageImage = () => {
     const confirm = useConfirm();
+    const toast = useToast();
     const queryClient = useQueryClient();
 
     const navigate = Route.useNavigate();
     const { page } = Route.useSearch();
-    const { containerRef, limit } = useGridLimit({
-        minItemWidth: IMAGE_MIN_WIDTH,
-        gap: IMAGE_GAP,
-        rows: IMAGE_ROWS,
-    });
 
     const deleteImageMutation = useMutation({
-        mutationFn: deleteImage,
-        onSuccess: (response) => {
+        mutationFn: async (id: string) => {
+            const response = await deleteImage(id);
             if (response.type === 'error') {
-                throw response;
+                throw new Error(response.errors[0]?.message ?? 'Failed to delete image');
             }
-            queryClient.invalidateQueries({
+
+            if (!response.deleteImage) {
+                throw new Error('Failed to delete image');
+            }
+        },
+        onSuccess: async () => {
+            await queryClient.invalidateQueries({
                 queryKey: queryKeys.images.listAll(),
                 exact: false,
             });
+            toast('Image deleted');
+        },
+        onError: (error) => {
+            toast(error instanceof Error ? error.message : 'Failed to delete image');
         },
     });
 
@@ -48,10 +51,13 @@ const ManageImage = () => {
         }
     };
 
-    const getReferenceText = (count: number) => (count === 1 ? '1 reference' : `${count} references`);
+    const getReferenceText = (count: number) => {
+        if (count === 0) return 'Unused';
+        return count === 1 ? '1 reference' : `${count} references`;
+    };
 
     return (
-        <div ref={containerRef}>
+        <div className="w-full">
             <QueryBoundary
                 fallback={
                     <PageLayout
@@ -86,12 +92,12 @@ const ManageImage = () => {
                 }
                 errorTitle="Failed to load images"
                 errorDescription="Retry loading uploaded image metadata"
-                resetKeys={[page, limit]}
+                resetKeys={[page]}
             >
                 <Images
                     searchParams={{
-                        offset: (page - 1) * limit,
-                        limit,
+                        offset: (page - 1) * IMAGE_PAGE_LIMIT,
+                        limit: IMAGE_PAGE_LIMIT,
                     }}
                     render={({ images, totalCount }) => {
                         const heading = totalCount > 0 ? `Images (${totalCount})` : undefined;
@@ -122,6 +128,7 @@ const ManageImage = () => {
                                                 <Link
                                                     to={SETTINGS_MANAGE_IMAGE_DETAIL_ROUTE}
                                                     params={{ id: image.id }}
+                                                    search={{ page }}
                                                     className="focus-ring-soft block overflow-hidden rounded-t-[18px] outline-none"
                                                 >
                                                     <div
@@ -161,10 +168,10 @@ const ManageImage = () => {
                                             </SurfaceCard>
                                         ))}
                                     </div>
-                                    {totalCount && limit < totalCount && (
+                                    {totalCount > IMAGE_PAGE_LIMIT && (
                                         <Pagination
                                             page={page}
-                                            last={Math.ceil(totalCount / limit)}
+                                            last={Math.ceil(totalCount / IMAGE_PAGE_LIMIT)}
                                             onChange={(page) => {
                                                 navigate({
                                                     search: (prev) => ({

@@ -372,7 +372,7 @@ const SearchSetting = () => {
                                 value={form.baseUrl}
                                 disabled={!hasInitialized || isIndexing || isCheckingProvider}
                                 onChange={(event) => handleBaseUrlChange(event.target.value)}
-                                className="min-w-0 flex-1"
+                                className="w-full min-w-0 sm:flex-1"
                             />
                             <Button
                                 type="button"
@@ -415,7 +415,7 @@ const SearchSetting = () => {
                                     value={apiKeyDraft}
                                     disabled={!hasInitialized || isIndexing || isCheckingProvider || removeSavedApiKey}
                                     onChange={(event) => handleApiKeyChange(event.target.value)}
-                                    className="min-w-0 flex-1"
+                                    className="w-full min-w-0 sm:flex-1"
                                 />
                                 {status?.apiKeyConfigured && (
                                     <Button
@@ -492,7 +492,7 @@ const SearchSetting = () => {
                                         !modelOptions.length || !hasInitialized || isIndexing || isCheckingProvider
                                     }
                                     onValueChange={handleModelChange}
-                                    className="min-w-0 flex-1"
+                                    className="w-full min-w-0 sm:flex-1"
                                 >
                                     {modelOptions.map((model) => (
                                         <SelectItem key={model.id} value={model.id}>

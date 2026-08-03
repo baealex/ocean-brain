@@ -234,7 +234,7 @@ export default function ViewSectionTableRenderer({
     const loadingRowClassName = surface === 'card' ? 'bg-elevated' : 'bg-transparent';
     const tableHeadClassName = surface === 'card' ? 'bg-subtle/65' : 'bg-subtle/45';
     const tableBodyClassName = surface === 'card' ? 'bg-elevated' : 'bg-transparent';
-    const stickyCellClassName = surface === 'card' ? 'bg-elevated' : 'bg-surface';
+    const stickyCellBackground = surface === 'card' ? 'var(--elevated)' : 'var(--surface)';
 
     const renderHeaderCell = (column: ResolvedTableColumn) => {
         if (column.kind === 'property') {
@@ -261,8 +261,15 @@ export default function ViewSectionTableRenderer({
                 aria-sort={isActiveSort ? (activeSortOrder === 'asc' ? 'ascending' : 'descending') : undefined}
                 className={classNames(
                     'px-3 py-2.5 text-xs font-semibold text-fg-tertiary',
-                    isTitle && 'sticky left-0 z-20 bg-subtle',
+                    isTitle && 'lg:sticky lg:left-0 lg:z-20',
                 )}
+                style={
+                    isTitle
+                        ? {
+                              background: `linear-gradient(var(--subtle), var(--subtle)), ${stickyCellBackground}`,
+                          }
+                        : undefined
+                }
             >
                 {sortBy ? (
                     <button
@@ -329,12 +336,14 @@ export default function ViewSectionTableRenderer({
                 return (
                     <td
                         key={column.key}
-                        className={classNames(
-                            'sticky left-0 z-10 px-3 py-2.5 align-middle transition-colors group-hover:bg-hover-subtle',
-                            stickyCellClassName,
-                        )}
+                        className="relative px-3 py-2.5 align-middle lg:sticky lg:left-0 lg:z-10"
+                        style={{ background: stickyCellBackground }}
                     >
-                        <div className="flex min-w-0 items-center gap-2">
+                        <span
+                            aria-hidden="true"
+                            className="pointer-events-none absolute inset-0 bg-hover-subtle opacity-0 transition-opacity group-hover:opacity-100"
+                        />
+                        <div className="relative z-10 flex min-w-0 items-center gap-2">
                             {note.pinned ? (
                                 <Icon.Pin
                                     className="size-3.5 shrink-0 text-fg-tertiary"

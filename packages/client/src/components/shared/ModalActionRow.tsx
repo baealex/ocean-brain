@@ -5,5 +5,5 @@ interface ModalActionRowProps {
 }
 
 export default function ModalActionRow({ children }: ModalActionRowProps) {
-    return <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">{children}</div>;
+    return <div className="flex w-full flex-wrap items-center justify-end gap-3">{children}</div>;
 }

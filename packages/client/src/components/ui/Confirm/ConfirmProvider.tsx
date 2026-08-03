@@ -40,7 +40,7 @@ const AlertModal = ({ open, options, onClose }: AlertComponentProps) => {
         >
             <AlertDialogPrimitive.Portal>
                 <AlertDialogPrimitive.Overlay className={alertDialogOverlayClassName} />
-                <div className="pointer-events-none fixed inset-0 z-[1100] flex items-center justify-center p-4">
+                <div className="pointer-events-none fixed inset-0 z-[1100] flex items-end justify-center p-0 sm:items-center sm:p-4">
                     <AlertDialogPrimitive.Content className={dialogContentVariants({ variant: 'confirm' })}>
                         <div className={dialogBodyVariants({ variant: 'confirm' })}>
                             <AlertDialogPrimitive.Title className={dialogTitleVariants({ variant: 'confirm' })}>
@@ -80,7 +80,7 @@ const ConfirmModal = ({ open, options, onCancel, onConfirm }: ConfirmComponentPr
         >
             <AlertDialogPrimitive.Portal>
                 <AlertDialogPrimitive.Overlay className={alertDialogOverlayClassName} />
-                <div className="pointer-events-none fixed inset-0 z-[1100] flex items-center justify-center p-4">
+                <div className="pointer-events-none fixed inset-0 z-[1100] flex items-end justify-center p-0 sm:items-center sm:p-4">
                     <AlertDialogPrimitive.Content className={dialogContentVariants({ variant: 'confirm' })}>
                         <div className={dialogBodyVariants({ variant: 'confirm' })}>
                             <AlertDialogPrimitive.Title className={dialogTitleVariants({ variant: 'confirm' })}>

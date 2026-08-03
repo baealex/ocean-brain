@@ -51,43 +51,41 @@ export default function ReminderCard({ reminder, onUpdate, onDelete }: ReminderC
     const reminderDateText = formatReminderDate(reminder.reminderDate);
 
     return (
-        <div className="surface-base flex flex-col gap-2.5 px-4 py-3 sm:flex-row sm:items-center sm:gap-4">
-            <div className="flex min-w-0 flex-1 items-start gap-2.5 sm:items-center">
-                <Checkbox
-                    checked={reminder.completed}
-                    onChange={() => onUpdate(reminder.id, noteId, { completed: !reminder.completed })}
-                    size="sm"
-                    aria-label={`Reminder: ${primaryText}`}
-                />
-                <div className="min-w-0 flex-1">
+        <div className="surface-base grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-2.5 gap-y-2 px-4 py-3 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:items-center sm:gap-x-4 sm:gap-y-0">
+            <Checkbox
+                checked={reminder.completed}
+                onChange={() => onUpdate(reminder.id, noteId, { completed: !reminder.completed })}
+                size="sm"
+                aria-label={`Reminder: ${primaryText}`}
+            />
+            <div className="min-w-0">
+                <Text
+                    as="p"
+                    variant="body"
+                    weight="semibold"
+                    className={reminder.completed ? 'truncate line-through opacity-45' : 'truncate'}
+                >
+                    {primaryText}
+                </Text>
+                {showNoteTitle && (
                     <Text
-                        as="p"
-                        variant="body"
-                        weight="semibold"
-                        className={reminder.completed ? 'truncate line-through opacity-45' : 'truncate'}
+                        as="div"
+                        variant="meta"
+                        tone="secondary"
+                        className={reminder.completed ? 'mt-0.5 truncate opacity-45' : 'mt-0.5 truncate'}
                     >
-                        {primaryText}
-                    </Text>
-                    {showNoteTitle && (
-                        <Text
-                            as="div"
-                            variant="meta"
-                            tone="secondary"
-                            className={reminder.completed ? 'mt-0.5 truncate opacity-45' : 'mt-0.5 truncate'}
+                        <Link
+                            to={NOTE_ROUTE}
+                            params={{ id: String(reminder.note?.id ?? reminder.noteId) }}
+                            className="transition-colors hover:text-fg-default hover:underline"
                         >
-                            <Link
-                                to={NOTE_ROUTE}
-                                params={{ id: String(reminder.note?.id ?? reminder.noteId) }}
-                                className="transition-colors hover:text-fg-default hover:underline"
-                            >
-                                {noteTitle}
-                            </Link>
-                        </Text>
-                    )}
-                </div>
+                            {noteTitle}
+                        </Link>
+                    </Text>
+                )}
             </div>
 
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:shrink-0">
+            <div className="col-start-2 row-start-2 flex flex-wrap items-center gap-x-2 gap-y-1 sm:col-start-auto sm:row-start-auto sm:shrink-0">
                 <span
                     className={`h-3 w-3 shrink-0 rounded-full border border-border-subtle ${priorityToneClassName}`}
                     aria-label={`${priorityLabel} priority`}
@@ -113,7 +111,7 @@ export default function ReminderCard({ reminder, onUpdate, onDelete }: ReminderC
                 </Text>
             </div>
 
-            <div className="flex items-center justify-end gap-1.5 sm:shrink-0">
+            <div className="col-start-3 row-start-1 flex items-center justify-end gap-1.5 sm:col-start-auto sm:row-start-auto sm:shrink-0">
                 <Dropdown
                     button={<MoreButton label="Reminder actions" iconClassName="h-5 w-5 text-current" />}
                     items={[

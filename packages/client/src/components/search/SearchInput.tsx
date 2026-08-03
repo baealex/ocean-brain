@@ -79,8 +79,15 @@ const SearchInput = ({
                             <Icon.Close className="h-4 w-4" weight="bold" />
                         </button>
                     )}
-                    <Button type="submit" size="lg" disabled={!value.trim()} className="my-1 px-4 sm:px-5">
-                        Search
+                    <Button
+                        type="submit"
+                        size="lg"
+                        aria-label="Search"
+                        disabled={!value.trim()}
+                        className="my-1 w-11 shrink-0 px-0 sm:w-auto sm:px-5"
+                    >
+                        <Icon.ArrowRight className="h-4 w-4 sm:hidden" weight="bold" aria-hidden="true" />
+                        <span className="hidden sm:inline">Search</span>
                     </Button>
                 </div>
             </div>

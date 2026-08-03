@@ -8,6 +8,8 @@ import * as Icon from '~/components/icon';
 const selectTriggerVariants = cva(
     [
         'inline-flex',
+        'min-w-0',
+        'max-w-full',
         'items-center',
         'justify-between',
         'gap-2',
@@ -90,8 +92,10 @@ const Select = ({
                     className,
                 })}
             >
-                <SelectPrimitive.Value className="min-w-0 truncate" placeholder={placeholder} />
-                <SelectPrimitive.Icon>
+                <span className="min-w-0 flex-1 truncate text-left">
+                    <SelectPrimitive.Value placeholder={placeholder} />
+                </span>
+                <SelectPrimitive.Icon className="shrink-0">
                     <Icon.ChevronDown className="w-3.5 h-3.5 opacity-60" />
                 </SelectPrimitive.Icon>
             </SelectPrimitive.Trigger>

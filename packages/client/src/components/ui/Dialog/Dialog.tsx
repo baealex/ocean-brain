@@ -54,24 +54,26 @@ const DialogContent = forwardRef<
     React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
         variant?: DialogVariant;
     }
->(({ className, children, variant = 'default', ...props }, ref) => (
-    <DialogPortal>
-        <DialogOverlay />
-        <div className="pointer-events-none fixed inset-0 z-[1100] flex items-center justify-center p-4">
-            <DialogPrimitive.Content
-                ref={ref}
-                data-dialog-variant={variant}
-                className={dialogContentVariants({
-                    variant,
-                    className,
-                })}
-                {...props}
-            >
-                <DialogVariantContext.Provider value={variant}>{children}</DialogVariantContext.Provider>
-            </DialogPrimitive.Content>
-        </div>
-    </DialogPortal>
-));
+>(({ className, children, variant = 'default', ...props }, ref) => {
+    return (
+        <DialogPortal>
+            <DialogOverlay />
+            <div className="pointer-events-none fixed inset-0 z-[1100] flex items-end justify-center p-0 sm:items-center sm:p-4">
+                <DialogPrimitive.Content
+                    ref={ref}
+                    data-dialog-variant={variant}
+                    className={dialogContentVariants({
+                        variant,
+                        className,
+                    })}
+                    {...props}
+                >
+                    <DialogVariantContext.Provider value={variant}>{children}</DialogVariantContext.Provider>
+                </DialogPrimitive.Content>
+            </div>
+        </DialogPortal>
+    );
+});
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 interface DialogHeaderProps {

@@ -28,7 +28,6 @@ import type {
 } from '~/models/view.model';
 import {
     DEFAULT_VIEW_TABLE_COLUMNS,
-    getViewDisplayTypeLabel,
     getViewPropertyOperatorLabel,
     getViewTableColumnLabel,
     getViewTagMatchLabel,
@@ -426,16 +425,11 @@ export default function ViewSectionDialog({
                         />
                     </div>
 
-                    <section className="flex flex-col gap-3 rounded-[18px] border border-border-subtle bg-elevated px-4 py-3">
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div className="min-w-0">
-                                <Label size="md">Display</Label>
-                                <Text as="p" variant="meta" tone="tertiary" className="mt-1">
-                                    Show the same note set as a list, table, or property board.
-                                </Text>
-                            </div>
-                            <Text as="span" variant="meta" tone="tertiary">
-                                {getViewDisplayTypeLabel(displayType)}
+                    <section className="flex flex-col gap-3 border-b border-border-subtle pb-5">
+                        <div className="min-w-0">
+                            <Label size="md">Display</Label>
+                            <Text as="p" variant="meta" tone="tertiary" className="mt-1">
+                                Show the same note set as a list, table, or property board.
                             </Text>
                         </div>
                         <ToggleGroup
@@ -472,7 +466,7 @@ export default function ViewSectionDialog({
                             </ToggleGroupItem>
                         </ToggleGroup>
                         {displayType === 'table' ? (
-                            <div className="rounded-[16px] border border-border-subtle bg-subtle/45 p-3">
+                            <div className="border-t border-border-subtle/80 pt-3">
                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                     <Label size="sm">Table columns</Label>
                                     <Text as="span" variant="meta" tone="tertiary">
@@ -485,15 +479,12 @@ export default function ViewSectionDialog({
                                               } shown`}
                                     </Text>
                                 </div>
-                                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                                <div className="mt-3 grid grid-cols-2 gap-2">
                                     {TABLE_COLUMN_OPTIONS.map((column) => {
                                         const label = getViewTableColumnLabel(column);
 
                                         return (
-                                            <div
-                                                key={column}
-                                                className="flex items-center gap-2 rounded-[12px] border border-border-subtle bg-elevated px-3 py-2"
-                                            >
+                                            <div key={column} className="flex items-center gap-2 px-1 py-2">
                                                 <Checkbox
                                                     size="sm"
                                                     checked={tableColumns.includes(column)}
@@ -530,7 +521,7 @@ export default function ViewSectionDialog({
                                             </Text>
                                         </div>
                                         {availableProperties.length > 0 ? (
-                                            <div className="mt-3 grid max-h-48 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
+                                            <div className="mt-3 grid grid-cols-2 gap-2">
                                                 {availableProperties.map((property) => {
                                                     const isSelected = tablePropertyKeys.includes(property.key);
                                                     const isSelectionFull =
@@ -539,7 +530,7 @@ export default function ViewSectionDialog({
                                                     return (
                                                         <div
                                                             key={property.key}
-                                                            className="flex min-w-0 items-center gap-2 rounded-[12px] border border-border-subtle bg-elevated px-3 py-2"
+                                                            className="flex min-w-0 items-center gap-2 px-1 py-2"
                                                         >
                                                             <Checkbox
                                                                 size="sm"
@@ -576,7 +567,7 @@ export default function ViewSectionDialog({
                             </div>
                         ) : null}
                         {displayType === 'board' ? (
-                            <div className="rounded-[16px] border border-border-subtle bg-subtle/45 p-3">
+                            <div className="border-t border-border-subtle/80 pt-3">
                                 <div className="flex flex-col gap-2">
                                     <Label
                                         id="view-section-board-group-label"
@@ -619,7 +610,7 @@ export default function ViewSectionDialog({
                         ) : null}
                     </section>
 
-                    <section className="flex flex-col gap-3 rounded-[20px] border border-border-subtle bg-subtle/40 p-4">
+                    <section className="flex flex-col gap-3 border-b border-border-subtle pb-5">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                             <div className="min-w-0">
                                 <Label size="md">Filters</Label>
@@ -873,20 +864,23 @@ export default function ViewSectionDialog({
                         </Text>
                     </section>
 
-                    <details className="group rounded-[18px] border border-border-subtle bg-elevated px-4 py-3">
+                    <details className="group pb-1">
                         <summary className="cursor-pointer list-none">
-                            <div className="flex items-center justify-between gap-3">
-                                <div>
-                                    <Text as="span" variant="label" tone="default">
-                                        Sort and page size
-                                    </Text>
-                                    <Text as="p" variant="meta" tone="tertiary" className="mt-1">
-                                        {displayType === 'board'
-                                            ? 'Controls how many cards each board column loads at a time.'
-                                            : 'Controls how many matching notes appear on each section page.'}
-                                    </Text>
-                                </div>
-                                <Text as="span" variant="meta" tone="tertiary">
+                            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1">
+                                <Text as="span" variant="label" tone="default">
+                                    Sort and page size
+                                </Text>
+                                <Text as="p" variant="meta" tone="tertiary" className="col-start-1 row-start-2">
+                                    {displayType === 'board'
+                                        ? 'Controls how many cards each board column loads at a time.'
+                                        : 'Controls how many matching notes appear on each section page.'}
+                                </Text>
+                                <Text
+                                    as="span"
+                                    variant="meta"
+                                    tone="tertiary"
+                                    className="col-start-2 row-span-2 row-start-1 whitespace-nowrap"
+                                >
                                     {displayType === 'board' ? `${limit} per column` : `${limit} notes`}
                                 </Text>
                             </div>

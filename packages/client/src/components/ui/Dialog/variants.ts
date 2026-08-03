@@ -4,12 +4,13 @@ export const dialogContentVariants = cva(
     [
         'relative',
         'pointer-events-auto',
+        'flex',
+        'min-h-0',
         'w-full',
-        'max-h-[calc(100dvh-2rem)]',
-        'overflow-y-auto',
+        'flex-col',
+        'overflow-hidden',
         'border',
         'border-border-subtle',
-        'overscroll-contain',
         'data-[state=open]:animate-in',
         'data-[state=closed]:animate-out',
         'data-[state=closed]:fade-out-0',
@@ -20,18 +21,22 @@ export const dialogContentVariants = cva(
     {
         variants: {
             variant: {
-                default: 'max-w-[640px] rounded-[20px] bg-elevated shadow-[0_24px_64px_-32px_rgba(15,18,24,0.36)]',
-                compact: 'max-w-[480px] rounded-[18px] bg-surface shadow-[0_18px_44px_-28px_rgba(15,18,24,0.28)]',
-                form: 'max-w-[560px] rounded-[20px] bg-elevated shadow-[0_22px_56px_-30px_rgba(15,18,24,0.32)]',
-                inspect: 'max-w-[640px] rounded-[20px] bg-elevated shadow-[0_24px_64px_-30px_rgba(15,18,24,0.34)]',
-                confirm: 'max-w-[336px] rounded-[18px] bg-surface shadow-[0_16px_36px_-24px_rgba(15,18,24,0.24)]',
+                default:
+                    'max-h-[calc(100dvh-0.75rem)] max-w-none rounded-t-[20px] rounded-b-none border-b-0 bg-elevated shadow-[0_24px_64px_-32px_rgba(15,18,24,0.36)] sm:max-h-[calc(100dvh-2rem)] sm:max-w-[640px] sm:rounded-[20px] sm:border-b',
+                compact:
+                    'max-h-[calc(100dvh-0.75rem)] max-w-none rounded-t-[18px] rounded-b-none border-b-0 bg-surface shadow-[0_18px_44px_-28px_rgba(15,18,24,0.28)] sm:max-h-[calc(100dvh-2rem)] sm:max-w-[480px] sm:rounded-[18px] sm:border-b',
+                form: 'max-h-[calc(100dvh-0.75rem)] max-w-none rounded-t-[20px] rounded-b-none border-b-0 bg-elevated shadow-[0_22px_56px_-30px_rgba(15,18,24,0.32)] sm:max-h-[calc(100dvh-2rem)] sm:max-w-[560px] sm:rounded-[20px] sm:border-b',
+                inspect:
+                    'max-h-[calc(100dvh-0.75rem)] max-w-none rounded-t-[20px] rounded-b-none border-b-0 bg-elevated shadow-[0_24px_64px_-30px_rgba(15,18,24,0.34)] sm:max-h-[calc(100dvh-2rem)] sm:max-w-[640px] sm:rounded-[20px] sm:border-b',
+                confirm:
+                    'max-h-[calc(100dvh-0.75rem)] max-w-none rounded-t-[18px] rounded-b-none border-b-0 bg-surface shadow-[0_16px_36px_-24px_rgba(15,18,24,0.24)] sm:max-h-[calc(100dvh-2rem)] sm:max-w-[336px] sm:rounded-[18px] sm:border-b',
             },
         },
         defaultVariants: { variant: 'default' },
     },
 );
 
-export const dialogHeaderVariants = cva(['flex', 'items-center', 'justify-between'], {
+export const dialogHeaderVariants = cva(['flex', 'shrink-0', 'items-center', 'justify-between'], {
     variants: {
         variant: {
             default: 'border-b border-border-subtle/70 px-4 py-3.5',
@@ -44,7 +49,7 @@ export const dialogHeaderVariants = cva(['flex', 'items-center', 'justify-betwee
     defaultVariants: { variant: 'default' },
 });
 
-export const dialogBodyVariants = cva('', {
+export const dialogBodyVariants = cva('min-h-0 flex-1 overflow-y-auto overscroll-contain', {
     variants: {
         variant: {
             default: 'px-4 py-5 sm:px-5',
@@ -57,7 +62,7 @@ export const dialogBodyVariants = cva('', {
     defaultVariants: { variant: 'default' },
 });
 
-export const dialogFooterVariants = cva(['flex', 'items-center', 'justify-end'], {
+export const dialogFooterVariants = cva(['flex', 'shrink-0', 'items-center', 'justify-end'], {
     variants: {
         variant: {
             default: 'border-t border-border-subtle/70 px-4 py-3.5',

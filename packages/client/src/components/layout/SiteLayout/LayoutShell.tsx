@@ -43,12 +43,13 @@ const sidebarClassName = classNames(
     'border-border-subtle',
     'bg-[var(--page-bg)]',
     'pb-20',
-    'md:static',
-    'md:w-auto',
-    'md:translate-x-0',
-    'md:border-r',
-    'md:pb-0',
-    'md:pointer-events-auto',
+    'sm:w-[300px]',
+    'sm:border-r',
+    'min-[1000px]:static',
+    'min-[1000px]:w-auto',
+    'min-[1000px]:translate-x-0',
+    'min-[1000px]:pb-0',
+    'min-[1000px]:pointer-events-auto',
 );
 const sidebarClosedClassName = 'pointer-events-none -translate-x-full';
 const sidebarOpenClassName = 'pointer-events-auto translate-x-0';
@@ -71,13 +72,13 @@ const topClassName = classNames(
     'border-b',
     'border-border-subtle',
     'bg-[var(--page-bg)]',
-    "max-md:after:content-['']",
-    'max-md:after:pointer-events-none',
-    'max-md:after:absolute',
-    'max-md:after:inset-y-0',
-    'max-md:after:right-0',
-    'max-md:after:w-12',
-    'max-md:after:bg-[linear-gradient(to_right,transparent,var(--page-bg))]',
+    "max-[999px]:after:content-['']",
+    'max-[999px]:after:pointer-events-none',
+    'max-[999px]:after:absolute',
+    'max-[999px]:after:inset-y-0',
+    'max-[999px]:after:right-0',
+    'max-[999px]:after:w-12',
+    'max-[999px]:after:bg-[linear-gradient(to_right,transparent,var(--page-bg))]',
 );
 const topContentClassName = classNames(
     'flex',
@@ -98,7 +99,7 @@ const contentClassName = classNames(
     'after:block',
     'after:h-4',
     "after:content-['']",
-    'max-md:after:h-24',
+    'max-[999px]:after:h-24',
 );
 
 interface LayoutShellProps {
@@ -119,7 +120,7 @@ const LayoutShell = ({ sidebar, topNavigation, children }: LayoutShellProps) => 
     return (
         <div className={rootClassName}>
             <GlobalSearchShortcut />
-            <div className="md:hidden">
+            <div className="min-[1000px]:hidden">
                 <button
                     type="button"
                     className={menuButtonClassName}

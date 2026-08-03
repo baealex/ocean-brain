@@ -7,6 +7,30 @@ export const reminderType = gql`
         high
     }
 
+    enum ReminderStatus {
+        open
+        completed
+    }
+
+    enum ReminderSortBy {
+        reminderDate
+        updatedAt
+    }
+
+    enum ReminderSortOrder {
+        asc
+        desc
+    }
+
+    input ReminderFilterInput {
+        status: ReminderStatus!
+        priority: ReminderPriority
+        start: String
+        end: String
+        sortBy: ReminderSortBy
+        sortOrder: ReminderSortOrder
+    }
+
     type Reminder {
         id: ID!
         noteId: Int!
@@ -28,6 +52,7 @@ export const reminderType = gql`
 export const reminderQuery = gql`
     extend type Query {
         noteReminders(noteId: ID!, pagination: PaginationInput): Reminders!
+        reminders(filter: ReminderFilterInput!, pagination: PaginationInput): Reminders!
         upcomingReminders(pagination: PaginationInput): Reminders!
         remindersInDateRange(dateRange: DateRangeInput): [Reminder!]!
     }

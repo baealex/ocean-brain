@@ -6,7 +6,11 @@ import type {
     FetchTagNotesParams,
 } from '~/apis/note.api';
 import type { FetchPlaceholdersParams } from '~/apis/placeholder.api';
-import type { ReminderPaginationParams } from '~/apis/reminder.api';
+import type {
+    FetchOpenReminderOverviewParams,
+    FetchRemindersParams,
+    ReminderPaginationParams,
+} from '~/apis/reminder.api';
 import type { FetchSearchNotesParams } from '~/apis/search.api';
 import type { FetchTagsParams } from '~/apis/tag.api';
 
@@ -145,6 +149,35 @@ export const queryKeys = {
     },
     reminders: {
         all: () => ['reminders'] as const,
+        listAll: () => ['reminders', 'list'] as const,
+        list: ({ filter, limit = 25, offset = 0 }: FetchRemindersParams) =>
+            [
+                'reminders',
+                'list',
+                {
+                    filter: {
+                        status: filter.status,
+                        priority: filter.priority ?? null,
+                        start: filter.start ?? null,
+                        end: filter.end ?? null,
+                        sortBy: filter.sortBy ?? 'reminderDate',
+                        sortOrder: filter.sortOrder ?? 'asc',
+                    },
+                    limit,
+                    offset,
+                },
+            ] as const,
+        overview: ({ now, tomorrow, priority, limit = 5 }: FetchOpenReminderOverviewParams) =>
+            [
+                'reminders',
+                'overview',
+                {
+                    now,
+                    tomorrow,
+                    priority: priority ?? null,
+                    limit,
+                },
+            ] as const,
         note: (noteId: string, params: ReminderPaginationParams = {}) =>
             [
                 'reminders',

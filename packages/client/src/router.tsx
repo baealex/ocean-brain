@@ -14,6 +14,7 @@ import {
     validateGraphSearch,
     validateHomeSearch,
     validatePaginationSearch,
+    validateReminderSearch,
     validateSearchPageSearch,
     validateTagSearch,
     validateViewNotesSearch,
@@ -82,9 +83,9 @@ const remindersRoute = createRoute({
     path: REMINDERS_ROUTE,
     component: lazyRouteComponent(() => import('~/pages/Reminders')),
     pendingComponent: () => (
-        <RoutePendingView title="Loading reminders" description="Collecting upcoming reminder cards." />
+        <RoutePendingView title="Loading reminders" description="Preparing your reminder workspace." />
     ),
-    validateSearch: validatePaginationSearch,
+    validateSearch: validateReminderSearch,
 });
 
 const graphRoute = createRoute({

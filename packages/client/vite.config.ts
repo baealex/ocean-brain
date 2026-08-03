@@ -1,7 +1,6 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import svgr from 'vite-plugin-svgr';
 import { defineConfig } from 'vitest/config';
 
 import { createClientRollupOptions, createRoutePreloadPlugin } from './build/client-bundling';
@@ -27,7 +26,6 @@ export default defineConfig({
     plugins: [
         createRoutePreloadPlugin(),
         react(),
-        svgr(),
         tailwindcss(),
         {
             name: 'ocean-brain-dev-auth-gate',

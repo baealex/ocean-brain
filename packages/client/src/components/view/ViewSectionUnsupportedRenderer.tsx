@@ -11,7 +11,7 @@ export default function ViewSectionUnsupportedRenderer({ onEdit }: ViewSectionUn
                 This display type is unavailable
             </Text>
             <Text as="p" variant="meta" tone="tertiary" className="mt-1">
-                Switch this section to List or Table to preview the saved query here.
+                Switch this section to List, Table, or Board to show the saved query here.
             </Text>
             <div className="mt-3">
                 <Button type="button" variant="ghost" size="sm" onClick={onEdit}>

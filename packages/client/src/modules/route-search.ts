@@ -4,6 +4,7 @@ import type { SearchMode } from '~/apis/search.api';
 import type { SortBy, SortOrder } from '~/components/shared/NoteFilters';
 import { HOME_DEFAULT_LIMIT, HOME_LIMIT_OPTIONS, type HomeLimit } from '~/modules/home-pagination';
 import { TAG_DEFAULT_LIMIT, TAG_LIMIT_OPTIONS, type TagLimit } from '~/modules/tag-pagination';
+import { normalizeViewRouteState, type ViewRouteState } from '~/modules/view-route-state';
 
 type SearchRecord = Record<string, unknown>;
 
@@ -108,6 +109,11 @@ export interface ViewNotesRouteSearch extends PaginationRouteSearch {
     sectionId: string;
 }
 
+export interface ViewsRouteSearch {
+    tab?: string;
+    state?: ViewRouteState;
+}
+
 export const validateHomeSearch = (search: SearchRecord): HomeRouteSearch => ({
     page: parsePositiveInt(search.page, 1),
     limit: parseNumberEnum(search.limit, HOME_LIMIT_OPTIONS, HOME_DEFAULT_LIMIT),
@@ -149,6 +155,16 @@ export const validateCalendarSearch = (search: SearchRecord): CalendarRouteSearc
 export const validateGraphSearch = (search: SearchRecord): GraphRouteSearch => {
     const selected = parseString(search.selected, '').trim();
     return selected ? { selected } : {};
+};
+
+export const validateViewsSearch = (search: SearchRecord): ViewsRouteSearch => {
+    const tab = parseString(search.tab, '').trim();
+    const state = normalizeViewRouteState(search.state);
+
+    return {
+        ...(tab ? { tab } : {}),
+        ...(state ? { state } : {}),
+    };
 };
 
 export const validateViewNotesSearch = (search: SearchRecord): ViewNotesRouteSearch => ({

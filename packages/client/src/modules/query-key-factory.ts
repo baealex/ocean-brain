@@ -209,7 +209,15 @@ export const queryKeys = {
         workspace: () => ['views', 'workspace'] as const,
         section: (id: string) => ['views', 'section', { id }] as const,
         sectionNotesAll: () => ['views', 'section-notes'] as const,
-        sectionNotes: (id: string, params: { limit?: number; offset?: number } = {}) =>
+        sectionNotes: (
+            id: string,
+            params: {
+                limit?: number;
+                offset?: number;
+                sortBy?: 'updatedAt' | 'createdAt' | 'title';
+                sortOrder?: 'asc' | 'desc';
+            } = {},
+        ) =>
             [
                 'views',
                 'section-notes',
@@ -217,6 +225,21 @@ export const queryKeys = {
                     id,
                     limit: params.limit ?? 25,
                     offset: params.offset ?? 0,
+                    sortBy: params.sortBy ?? null,
+                    sortOrder: params.sortOrder ?? null,
+                },
+            ] as const,
+        sectionBoardsAll: () => ['views', 'section-board'] as const,
+        sectionBoardAll: (id: string) => ['views', 'section-board', id] as const,
+        sectionBoardColumnPages: (id: string, groupPropertyKey: string, optionValue: string | null, pageSize: number) =>
+            [
+                'views',
+                'section-board',
+                id,
+                {
+                    groupPropertyKey,
+                    optionValue,
+                    pageSize,
                 },
             ] as const,
     },

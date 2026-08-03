@@ -13,6 +13,7 @@ import type {
 export const DEFAULT_VIEW_SECTION_LIMIT = 5;
 export const MIN_VIEW_SECTION_LIMIT = 1;
 export const MAX_VIEW_SECTION_LIMIT = 20;
+export const MAX_VIEW_TABLE_PROPERTY_COLUMNS = 6;
 export const DEFAULT_VIEW_TABLE_COLUMNS: ViewTableColumn[] = ['title', 'tags', 'properties', 'createdAt', 'updatedAt'];
 
 export const EMPTY_VIEWS_WORKSPACE: ViewsWorkspace = {
@@ -186,6 +187,8 @@ export const getViewDisplayTypeLabel = (displayType: ViewDisplayType) => {
     switch (displayType) {
         case 'table':
             return 'Table';
+        case 'board':
+            return 'Board';
         case 'calendar':
             return 'Unavailable';
         case 'list':
@@ -222,8 +225,16 @@ export const normalizeViewTableColumns = (columns?: readonly ViewTableColumn[] |
     return uniqueColumns.includes('title') ? uniqueColumns : ['title', ...uniqueColumns];
 };
 
+export const normalizeViewTablePropertyKeys = (keys?: readonly string[] | null): string[] =>
+    Array.from(new Set((keys ?? []).map((key) => key.trim()).filter(Boolean))).slice(
+        0,
+        MAX_VIEW_TABLE_PROPERTY_COLUMNS,
+    );
+
 export const normalizeViewDisplayOptions = (options?: Partial<ViewDisplayOptions> | null): ViewDisplayOptions => ({
     tableColumns: normalizeViewTableColumns(options?.tableColumns),
+    tablePropertyKeys: normalizeViewTablePropertyKeys(options?.tablePropertyKeys),
+    boardGroupByPropertyKey: options?.boardGroupByPropertyKey?.trim() || null,
 });
 
 export const formatViewPropertyFilter = (filter: ViewPropertyFilter) => {
@@ -262,8 +273,3 @@ export const buildViewSectionInput = (
         limit: nextSection.limit,
     };
 };
-
-export const buildViewNotesSearch = (section: Pick<ViewSection, 'id'>) => ({
-    page: 1,
-    sectionId: section.id,
-});

@@ -528,24 +528,7 @@ export const createLocalDemoSeed = ({ tags, nowMs }: SeedInput): SeedOutput => {
             id: 'view-tab-tasks',
             title: 'Tasks',
             order: 1,
-            sections: [
-                createViewSection(
-                    'view-section-todo',
-                    'view-tab-tasks',
-                    'To do',
-                    0,
-                    [],
-                    [{ key: 'status', name: 'Status', valueType: 'select', operator: 'equals', value: 'todo' }],
-                ),
-                createViewSection(
-                    'view-section-done',
-                    'view-tab-tasks',
-                    'Done',
-                    1,
-                    [],
-                    [{ key: 'status', name: 'Status', valueType: 'select', operator: 'equals', value: 'done' }],
-                ),
-            ],
+            sections: [createBoardViewSection('view-section-tasks', 'view-tab-tasks', 'Task board', 'status')],
         },
     ];
 
@@ -569,7 +552,11 @@ const createViewSection = (
     tabId,
     title,
     displayType: 'table',
-    displayOptions: { tableColumns: ['title', 'tags', 'properties', 'updatedAt'] },
+    displayOptions: {
+        tableColumns: ['title', 'tags', 'properties', 'updatedAt'],
+        tablePropertyKeys: ['status', 'priority', 'dueDate'],
+        boardGroupByPropertyKey: null,
+    },
     tagNames,
     mode: 'and',
     propertyFilters,
@@ -577,4 +564,20 @@ const createViewSection = (
     sortOrder: 'desc',
     limit: 25,
     order,
+});
+
+const createBoardViewSection = (
+    id: string,
+    tabId: string,
+    title: string,
+    boardGroupByPropertyKey: string,
+): ViewSection => ({
+    ...createViewSection(id, tabId, title, 0, [], []),
+    displayType: 'board',
+    displayOptions: {
+        tableColumns: ['title', 'tags', 'properties', 'updatedAt'],
+        tablePropertyKeys: [],
+        boardGroupByPropertyKey,
+    },
+    limit: 5,
 });

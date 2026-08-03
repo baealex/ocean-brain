@@ -32,8 +32,10 @@ import {
     getViewPropertyOperatorLabel,
     getViewTableColumnLabel,
     getViewTagMatchLabel,
+    MAX_VIEW_TABLE_PROPERTY_COLUMNS,
     normalizeViewDisplayOptions,
     normalizeViewTableColumns,
+    normalizeViewTablePropertyKeys,
     normalizeViewTagNames,
 } from '~/modules/view-dashboard';
 
@@ -69,18 +71,23 @@ interface ViewSectionDialogProps {
 }
 
 const PROPERTY_PLACEHOLDER_VALUE = '__choose_property__';
+const BOARD_GROUP_PLACEHOLDER_VALUE = '__choose_board_group__';
 const TABLE_COLUMN_OPTIONS: ViewTableColumn[] = ['title', 'tags', 'properties', 'createdAt', 'updatedAt'];
 
 const getInitialLimitValue = (section?: ViewSection | null) => String(section?.limit ?? 5);
 const getInitialDisplayTypeValue = (section?: ViewSection | null): ViewDisplayType => {
-    if (section?.displayType === 'table') {
-        return 'table';
+    if (section?.displayType === 'table' || section?.displayType === 'board') {
+        return section.displayType;
     }
 
     return 'list';
 };
 const getInitialTableColumnsValue = (section?: ViewSection | null): ViewTableColumn[] =>
     normalizeViewTableColumns(section?.displayOptions?.tableColumns ?? DEFAULT_VIEW_TABLE_COLUMNS);
+const getInitialTablePropertyKeysValue = (section?: ViewSection | null) =>
+    normalizeViewTablePropertyKeys(section?.displayOptions?.tablePropertyKeys);
+const getInitialBoardGroupValue = (section?: ViewSection | null) =>
+    section?.displayOptions?.boardGroupByPropertyKey ?? '';
 const getInitialModeValue = (section?: ViewSection | null): ViewTagMatchMode => section?.mode ?? 'and';
 const getInitialTagsValue = (section?: ViewSection | null) => (section ? section.tagNames.join(', ') : '');
 const getInitialTitleValue = (section?: ViewSection | null) => section?.title ?? '';
@@ -182,6 +189,10 @@ export default function ViewSectionDialog({
     const [title, setTitle] = useState(getInitialTitleValue(initialSection));
     const [displayType, setDisplayType] = useState<ViewDisplayType>(getInitialDisplayTypeValue(initialSection));
     const [tableColumns, setTableColumns] = useState<ViewTableColumn[]>(getInitialTableColumnsValue(initialSection));
+    const [tablePropertyKeys, setTablePropertyKeys] = useState<string[]>(
+        getInitialTablePropertyKeysValue(initialSection),
+    );
+    const [boardGroupByPropertyKey, setBoardGroupByPropertyKey] = useState(getInitialBoardGroupValue(initialSection));
     const [tagInput, setTagInput] = useState(getInitialTagsValue(initialSection));
     const [matchMode, setMatchMode] = useState<ViewTagMatchMode>(getInitialModeValue(initialSection));
     const [sortBy, setSortBy] = useState<ViewSortBy>(getInitialSortByValue(initialSection));
@@ -204,6 +215,8 @@ export default function ViewSectionDialog({
         setTitle(getInitialTitleValue(initialSection));
         setDisplayType(getInitialDisplayTypeValue(initialSection));
         setTableColumns(getInitialTableColumnsValue(initialSection));
+        setTablePropertyKeys(getInitialTablePropertyKeysValue(initialSection));
+        setBoardGroupByPropertyKey(getInitialBoardGroupValue(initialSection));
         setTagInput(getInitialTagsValue(initialSection));
         setMatchMode(getInitialModeValue(initialSection));
         setSortBy(getInitialSortByValue(initialSection));
@@ -217,6 +230,9 @@ export default function ViewSectionDialog({
     const selectedTagNames = normalizeViewTagNames([tagInput]);
     const showTagFilter = isTagFilterOpen || selectedTagNames.length > 0;
     const isAllNotesView = selectedTagNames.length === 0 && filters.length === 0;
+    const boardGroupProperties = availableProperties.filter(
+        (property) => property.valueType === 'select' && property.options.length > 0,
+    );
 
     const toggleTableColumn = (column: ViewTableColumn) => {
         if (column === 'title') {
@@ -232,6 +248,16 @@ export default function ViewSectionDialog({
             return normalizeViewTableColumns([...currentColumns, column]);
         });
         setFormError('');
+    };
+
+    const toggleTablePropertyKey = (key: string) => {
+        setTablePropertyKeys((current) => {
+            if (current.includes(key)) {
+                return current.filter((currentKey) => currentKey !== key);
+            }
+
+            return current.length >= MAX_VIEW_TABLE_PROPERTY_COLUMNS ? current : [...current, key];
+        });
     };
 
     const toggleTagName = (tagName: string) => {
@@ -330,6 +356,26 @@ export default function ViewSectionDialog({
                             return;
                         }
 
+                        const boardGroupProperty = propertyByKey.get(boardGroupByPropertyKey);
+
+                        if (
+                            displayType === 'board' &&
+                            (!boardGroupProperty ||
+                                boardGroupProperty.valueType !== 'select' ||
+                                boardGroupProperty.options.length === 0)
+                        ) {
+                            setFormError('Choose a select property with at least one option for the board columns.');
+                            return;
+                        }
+
+                        if (
+                            displayType === 'board' &&
+                            filters.some((filter) => filter.key === boardGroupByPropertyKey)
+                        ) {
+                            setFormError('Use different properties for the board columns and the section filter.');
+                            return;
+                        }
+
                         const propertyFilters = filters.map((filter) => {
                             const property = propertyByKey.get(filter.key);
 
@@ -355,6 +401,8 @@ export default function ViewSectionDialog({
                             displayType,
                             displayOptions: normalizeViewDisplayOptions({
                                 tableColumns,
+                                tablePropertyKeys,
+                                boardGroupByPropertyKey,
                             }),
                             tagNames,
                             mode: matchMode,
@@ -383,7 +431,7 @@ export default function ViewSectionDialog({
                             <div className="min-w-0">
                                 <Label size="md">Display</Label>
                                 <Text as="p" variant="meta" tone="tertiary" className="mt-1">
-                                    Show the same query as a compact list or a table.
+                                    Show the same note set as a list, table, or property board.
                                 </Text>
                             </div>
                             <Text as="span" variant="meta" tone="tertiary">
@@ -394,8 +442,19 @@ export default function ViewSectionDialog({
                             type="single"
                             value={displayType}
                             onValueChange={(value) => {
-                                if (value === 'list' || value === 'table') {
+                                if (value === 'list' || value === 'table' || value === 'board') {
                                     setDisplayType(value);
+
+                                    if (
+                                        value === 'board' &&
+                                        !boardGroupProperties.some(
+                                            (property) => property.key === boardGroupByPropertyKey,
+                                        )
+                                    ) {
+                                        setBoardGroupByPropertyKey(boardGroupProperties[0]?.key ?? '');
+                                    }
+
+                                    setFormError('');
                                 }
                             }}
                             variant="quiet"
@@ -408,13 +467,22 @@ export default function ViewSectionDialog({
                             <ToggleGroupItem value="table" aria-label="Show as table">
                                 Table
                             </ToggleGroupItem>
+                            <ToggleGroupItem value="board" aria-label="Show as board">
+                                Board
+                            </ToggleGroupItem>
                         </ToggleGroup>
                         {displayType === 'table' ? (
                             <div className="rounded-[16px] border border-border-subtle bg-subtle/45 p-3">
                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                     <Label size="sm">Table columns</Label>
                                     <Text as="span" variant="meta" tone="tertiary">
-                                        {tableColumns.length} shown
+                                        {tableColumns.includes('properties') && tablePropertyKeys.length === 0
+                                            ? 'Properties automatic'
+                                            : `${
+                                                  tableColumns.length -
+                                                  (tableColumns.includes('properties') ? 1 : 0) +
+                                                  (tableColumns.includes('properties') ? tablePropertyKeys.length : 0)
+                                              } shown`}
                                     </Text>
                                 </div>
                                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -443,6 +511,110 @@ export default function ViewSectionDialog({
                                 <Text as="p" variant="meta" tone="tertiary" className="mt-2">
                                     Title is always shown because it opens the note.
                                 </Text>
+                                {tableColumns.includes('properties') ? (
+                                    <div className="mt-3 border-t border-border-subtle/80 pt-3">
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                            <div>
+                                                <Text as="p" variant="label" weight="semibold">
+                                                    Property columns
+                                                </Text>
+                                                <Text as="p" variant="meta" tone="tertiary" className="mt-0.5">
+                                                    Select up to {MAX_VIEW_TABLE_PROPERTY_COLUMNS} properties to
+                                                    compare.
+                                                </Text>
+                                            </div>
+                                            <Text as="span" variant="meta" tone="tertiary">
+                                                {tablePropertyKeys.length > 0
+                                                    ? `${tablePropertyKeys.length} selected`
+                                                    : 'Automatic'}
+                                            </Text>
+                                        </div>
+                                        {availableProperties.length > 0 ? (
+                                            <div className="mt-3 grid max-h-48 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
+                                                {availableProperties.map((property) => {
+                                                    const isSelected = tablePropertyKeys.includes(property.key);
+                                                    const isSelectionFull =
+                                                        tablePropertyKeys.length >= MAX_VIEW_TABLE_PROPERTY_COLUMNS;
+
+                                                    return (
+                                                        <div
+                                                            key={property.key}
+                                                            className="flex min-w-0 items-center gap-2 rounded-[12px] border border-border-subtle bg-elevated px-3 py-2"
+                                                        >
+                                                            <Checkbox
+                                                                size="sm"
+                                                                checked={isSelected}
+                                                                disabled={!isSelected && isSelectionFull}
+                                                                aria-label={`Show ${property.name} property column`}
+                                                                onChange={() => toggleTablePropertyKey(property.key)}
+                                                            />
+                                                            <div className="min-w-0">
+                                                                <Text as="p" variant="label" tone="secondary" truncate>
+                                                                    {property.name}
+                                                                </Text>
+                                                                <Text as="p" variant="micro" tone="tertiary">
+                                                                    {property.valueType}
+                                                                </Text>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        ) : (
+                                            <Text as="p" variant="meta" tone="tertiary" className="mt-3">
+                                                Shared properties will appear here after you create them.
+                                            </Text>
+                                        )}
+                                        {tablePropertyKeys.length === 0 && availableProperties.length > 0 ? (
+                                            <Text as="p" variant="meta" tone="tertiary" className="mt-2">
+                                                Automatic mode shows up to three properties relevant to the current
+                                                notes.
+                                            </Text>
+                                        ) : null}
+                                    </div>
+                                ) : null}
+                            </div>
+                        ) : null}
+                        {displayType === 'board' ? (
+                            <div className="rounded-[16px] border border-border-subtle bg-subtle/45 p-3">
+                                <div className="flex flex-col gap-2">
+                                    <Label
+                                        id="view-section-board-group-label"
+                                        htmlFor="view-section-board-group"
+                                        size="sm"
+                                    >
+                                        Board columns
+                                    </Label>
+                                    <Select
+                                        id="view-section-board-group"
+                                        value={boardGroupByPropertyKey || BOARD_GROUP_PLACEHOLDER_VALUE}
+                                        aria-labelledby="view-section-board-group-label"
+                                        className="w-full"
+                                        onValueChange={(value) => {
+                                            if (value !== BOARD_GROUP_PLACEHOLDER_VALUE) {
+                                                setBoardGroupByPropertyKey(value);
+                                                setFormError('');
+                                            }
+                                        }}
+                                    >
+                                        <SelectItem value={BOARD_GROUP_PLACEHOLDER_VALUE} disabled>
+                                            Choose a select property
+                                        </SelectItem>
+                                        {boardGroupProperties.map((property) => (
+                                            <SelectItem key={property.key} value={property.key}>
+                                                {property.name} · {property.options.length} columns
+                                            </SelectItem>
+                                        ))}
+                                    </Select>
+                                    <Text as="p" variant="meta" tone="tertiary">
+                                        Moving a card changes this property. Notes without a value stay in Unassigned.
+                                    </Text>
+                                    {boardGroupProperties.length === 0 && !isPropertiesLoading ? (
+                                        <Text as="p" variant="meta" className="text-fg-error">
+                                            Create a shared select property with options before using a board.
+                                        </Text>
+                                    ) : null}
+                                </div>
                             </div>
                         ) : null}
                     </section>
@@ -706,14 +878,16 @@ export default function ViewSectionDialog({
                             <div className="flex items-center justify-between gap-3">
                                 <div>
                                     <Text as="span" variant="label" tone="default">
-                                        Sort and limit
+                                        Sort and page size
                                     </Text>
                                     <Text as="p" variant="meta" tone="tertiary" className="mt-1">
-                                        Controls how many matching notes appear on the Views page preview.
+                                        {displayType === 'board'
+                                            ? 'Controls how many cards each board column loads at a time.'
+                                            : 'Controls how many matching notes appear on each section page.'}
                                     </Text>
                                 </div>
                                 <Text as="span" variant="meta" tone="tertiary">
-                                    {limit} notes
+                                    {displayType === 'board' ? `${limit} per column` : `${limit} notes`}
                                 </Text>
                             </div>
                         </summary>
@@ -750,7 +924,7 @@ export default function ViewSectionDialog({
                             </div>
                             <div className="flex flex-col gap-2">
                                 <Label id="view-section-limit-label" htmlFor="view-section-limit" size="sm">
-                                    Preview rows
+                                    {displayType === 'board' ? 'Cards per load' : 'Rows per page'}
                                 </Label>
                                 <Select
                                     id="view-section-limit"
@@ -758,11 +932,11 @@ export default function ViewSectionDialog({
                                     aria-labelledby="view-section-limit-label"
                                     onValueChange={setLimit}
                                 >
-                                    <SelectItem value="3">3 rows</SelectItem>
-                                    <SelectItem value="5">5 rows</SelectItem>
-                                    <SelectItem value="8">8 rows</SelectItem>
-                                    <SelectItem value="10">10 rows</SelectItem>
-                                    <SelectItem value="12">12 rows</SelectItem>
+                                    <SelectItem value="3">3 {displayType === 'board' ? 'cards' : 'rows'}</SelectItem>
+                                    <SelectItem value="5">5 {displayType === 'board' ? 'cards' : 'rows'}</SelectItem>
+                                    <SelectItem value="8">8 {displayType === 'board' ? 'cards' : 'rows'}</SelectItem>
+                                    <SelectItem value="10">10 {displayType === 'board' ? 'cards' : 'rows'}</SelectItem>
+                                    <SelectItem value="12">12 {displayType === 'board' ? 'cards' : 'rows'}</SelectItem>
                                 </Select>
                             </div>
                         </div>

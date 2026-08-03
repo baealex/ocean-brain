@@ -28,6 +28,8 @@ const createSection = (patch: Partial<ViewSection> = {}): ViewSection => ({
     displayType: 'list',
     displayOptions: {
         tableColumns: ['title', 'tags', 'properties', 'createdAt', 'updatedAt'],
+        tablePropertyKeys: [],
+        boardGroupByPropertyKey: null,
     },
     tagNames: [],
     mode: 'and',
@@ -40,27 +42,37 @@ const createSection = (patch: Partial<ViewSection> = {}): ViewSection => ({
 });
 
 describe('<ViewSectionDialog />', () => {
-    it('submits the selected table display type', async () => {
+    it('submits a board grouped by the selected property', async () => {
         const user = userEvent.setup();
         const handleSubmit = vi.fn();
+        const statusProperty = createProperty({
+            key: 'status',
+            name: 'Status',
+            valueType: 'select',
+            options: [
+                { id: 'todo', label: 'To do', value: 'todo', order: 0 },
+                { id: 'doing', label: 'Doing', value: 'doing', order: 1 },
+            ],
+        });
 
         render(
             <ViewSectionDialog
                 open
                 mode="create"
                 availableTags={[]}
-                availableProperties={[]}
+                availableProperties={[statusProperty]}
                 onClose={vi.fn()}
                 onSubmit={handleSubmit}
             />,
         );
 
-        await user.click(screen.getByRole('radio', { name: 'Show as table' }));
+        await user.click(screen.getByRole('radio', { name: 'Show as board' }));
         await user.click(screen.getByRole('button', { name: 'Create section' }));
 
         expect(handleSubmit).toHaveBeenCalledWith(
             expect.objectContaining({
-                displayType: 'table',
+                displayType: 'board',
+                displayOptions: expect.objectContaining({ boardGroupByPropertyKey: 'status' }),
             }),
         );
     });
@@ -88,9 +100,42 @@ describe('<ViewSectionDialog />', () => {
 
         expect(handleSubmit).toHaveBeenCalledWith(
             expect.objectContaining({
-                displayOptions: {
+                displayType: 'table',
+                displayOptions: expect.objectContaining({
                     tableColumns: ['title', 'updatedAt'],
-                },
+                }),
+            }),
+        );
+    });
+
+    it('submits selected shared properties as dedicated table columns', async () => {
+        const user = userEvent.setup();
+        const handleSubmit = vi.fn();
+        const statusProperty = createProperty({
+            key: 'status',
+            name: 'Status',
+            valueType: 'select',
+            options: [{ id: 'doing', label: 'Doing', value: 'doing', order: 0 }],
+        });
+
+        render(
+            <ViewSectionDialog
+                open
+                mode="create"
+                availableTags={[]}
+                availableProperties={[statusProperty]}
+                onClose={vi.fn()}
+                onSubmit={handleSubmit}
+            />,
+        );
+
+        await user.click(screen.getByRole('radio', { name: 'Show as table' }));
+        await user.click(screen.getByRole('checkbox', { name: 'Show Status property column' }));
+        await user.click(screen.getByRole('button', { name: 'Create section' }));
+
+        expect(handleSubmit).toHaveBeenCalledWith(
+            expect.objectContaining({
+                displayOptions: expect.objectContaining({ tablePropertyKeys: ['status'] }),
             }),
         );
     });
@@ -177,7 +222,7 @@ describe('<ViewSectionDialog />', () => {
 
         expect(screen.getByRole('combobox', { name: 'Sort by' })).toBeInTheDocument();
         expect(screen.getByRole('combobox', { name: 'Order' })).toBeInTheDocument();
-        expect(screen.getByRole('combobox', { name: 'Preview rows' })).toBeInTheDocument();
+        expect(screen.getByRole('combobox', { name: 'Rows per page' })).toBeInTheDocument();
     });
 
     it('submits partial URL text for contains filters', async () => {

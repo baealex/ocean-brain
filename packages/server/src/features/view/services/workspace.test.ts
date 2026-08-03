@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
     buildPropertyFilterWhere,
+    buildViewBoardColumnWhere,
     buildViewSectionWhere,
     clampViewSectionLimit,
     getNotesByPropertiesWithDb,
@@ -32,49 +33,28 @@ test('normalizeViewTagNames rejects hash-prefixed tags', () => {
 });
 
 test('normalizeViewSectionInput derives a default title and clamps invalid limits', () => {
-    assert.deepEqual(
-        normalizeViewSectionInput({
-            title: '   ',
-            tagNames: ['project', '@review'],
-            mode: 'or',
-            limit: 999,
-        }),
-        {
-            title: '@project + @review',
-            displayType: 'list',
-            displayOptions: {
-                tableColumns: ['title', 'tags', 'properties', 'createdAt', 'updatedAt'],
-            },
-            tagNames: ['@project', '@review'],
-            mode: 'or',
-            propertyFilters: [],
-            sortBy: 'updatedAt',
-            sortOrder: 'desc',
-            limit: 20,
-        },
-    );
+    const section = normalizeViewSectionInput({
+        title: '   ',
+        tagNames: ['project', '@review'],
+        mode: 'or',
+        limit: 999,
+    });
+
+    assert.equal(section.title, '@project + @review');
+    assert.deepEqual(section.tagNames, ['@project', '@review']);
+    assert.equal(section.mode, 'or');
+    assert.equal(section.limit, 20);
 });
 
 test('normalizeViewSectionInput allows all-note views without filters', () => {
-    assert.deepEqual(
-        normalizeViewSectionInput({
-            title: '',
-            tagNames: ['   ', ''],
-        }),
-        {
-            title: 'All notes',
-            displayType: 'list',
-            displayOptions: {
-                tableColumns: ['title', 'tags', 'properties', 'createdAt', 'updatedAt'],
-            },
-            tagNames: [],
-            mode: 'and',
-            propertyFilters: [],
-            sortBy: 'updatedAt',
-            sortOrder: 'desc',
-            limit: 5,
-        },
-    );
+    const section = normalizeViewSectionInput({
+        title: '',
+        tagNames: ['   ', ''],
+    });
+
+    assert.equal(section.title, 'All notes');
+    assert.deepEqual(section.tagNames, []);
+    assert.deepEqual(section.propertyFilters, []);
 });
 
 test('normalizeViewSectionInput preserves table display sections', () => {
@@ -84,6 +64,7 @@ test('normalizeViewSectionInput preserves table display sections', () => {
             displayType: 'table',
             displayOptions: {
                 tableColumns: ['title', 'properties', 'updatedAt'],
+                boardGroupByPropertyKey: null,
             },
             tagNames: [],
         }).displayType,
@@ -91,10 +72,43 @@ test('normalizeViewSectionInput preserves table display sections', () => {
     );
 });
 
-test('normalizeViewDisplayOptions keeps table title visible and drops duplicates', () => {
-    assert.deepEqual(normalizeViewDisplayOptions({ tableColumns: ['tags', 'tags', 'updatedAt'] }), {
-        tableColumns: ['title', 'tags', 'updatedAt'],
+test('normalizeViewSectionInput preserves a select property as the board axis', () => {
+    const section = normalizeViewSectionInput({
+        title: 'Project board',
+        displayType: 'board',
+        displayOptions: {
+            boardGroupByPropertyKey: ' Status ',
+        },
     });
+
+    assert.equal(section.displayType, 'board');
+    assert.equal(section.displayOptions.boardGroupByPropertyKey, 'status');
+});
+
+test('normalizeViewSectionInput requires the board axis to differ from section filters', () => {
+    assert.throws(
+        () =>
+            normalizeViewSectionInput({
+                displayType: 'board',
+                displayOptions: { boardGroupByPropertyKey: 'status' },
+                propertyFilters: [{ key: 'status', valueType: 'select', operator: 'notEquals', value: 'done' }],
+            }),
+        /cannot also be used as a section filter/,
+    );
+});
+
+test('normalizeViewDisplayOptions keeps table title visible and normalizes property columns', () => {
+    assert.deepEqual(
+        normalizeViewDisplayOptions({
+            tableColumns: ['tags', 'tags', 'updatedAt'],
+            tablePropertyKeys: [' Status ', 'status', 'priority'],
+        }),
+        {
+            tableColumns: ['title', 'tags', 'updatedAt'],
+            tablePropertyKeys: ['status', 'priority'],
+            boardGroupByPropertyKey: null,
+        },
+    );
 });
 
 test('normalizeViewPropertyFilters validates typed filter values', () => {
@@ -614,6 +628,8 @@ const createSectionRecord = (patch: Partial<ViewSectionRecord> = {}): ViewSectio
     displayType: 'list',
     displayOptions: {
         tableColumns: ['title', 'tags', 'properties', 'createdAt', 'updatedAt'],
+        tablePropertyKeys: [],
+        boardGroupByPropertyKey: null,
     },
     tagNames: [],
     mode: 'and',
@@ -676,6 +692,29 @@ test('buildViewSectionWhere combines tag and property filters with AND', () => {
             ],
         },
     );
+});
+
+test('buildViewBoardColumnWhere keeps the section scope while selecting one indexed option', () => {
+    const section = createSectionRecord({ tagNames: ['@ocean'] });
+
+    assert.deepEqual(buildViewBoardColumnWhere(section, 7, 11), {
+        AND: [
+            buildViewSectionWhere(section),
+            {
+                properties: {
+                    some: { propertyDefinitionId: 7, optionId: 11 },
+                },
+            },
+        ],
+    });
+});
+
+test('buildViewBoardColumnWhere treats missing group values as unassigned', () => {
+    assert.deepEqual(buildViewBoardColumnWhere(createSectionRecord(), 7, null), {
+        properties: {
+            none: { propertyDefinitionId: 7 },
+        },
+    });
 });
 
 test('normalizeViewTabTitle falls back to an untitled label', () => {

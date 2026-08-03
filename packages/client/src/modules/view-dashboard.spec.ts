@@ -30,6 +30,8 @@ const createSection = (section: {
     displayType: 'list' as const,
     displayOptions: {
         tableColumns: ['title', 'tags', 'properties', 'createdAt', 'updatedAt'] as const,
+        tablePropertyKeys: [] as const,
+        boardGroupByPropertyKey: null,
     },
     propertyFilters: [],
     sortBy: 'updatedAt' as const,
@@ -236,6 +238,7 @@ describe('view-dashboard helpers', () => {
     it('labels supported view display types', () => {
         expect(getViewDisplayTypeLabel('list')).toBe('List');
         expect(getViewDisplayTypeLabel('table')).toBe('Table');
+        expect(getViewDisplayTypeLabel('board')).toBe('Board');
         expect(getViewDisplayTypeLabel('calendar')).toBe('Unavailable');
     });
 
@@ -267,6 +270,8 @@ describe('view-dashboard helpers', () => {
             displayType: 'list',
             displayOptions: {
                 tableColumns: ['title', 'tags', 'properties', 'createdAt', 'updatedAt'],
+                tablePropertyKeys: [],
+                boardGroupByPropertyKey: null,
             },
             tagNames: ['@제품'],
             mode: 'and',

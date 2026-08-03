@@ -38,11 +38,25 @@ export const viewType = gql`
 
     type ViewDisplayOptions {
         tableColumns: [ViewTableColumn!]!
+        tablePropertyKeys: [String!]!
+        boardGroupByPropertyKey: String
+    }
+
+    type ViewBoardNote {
+        id: ID!
+        title: String!
+        updatedAt: String!
+    }
+
+    type ViewBoardColumnNotes {
+        totalCount: Int!
+        notes: [ViewBoardNote!]!
     }
 
     enum ViewDisplayType {
         list
         table
+        board
         calendar
     }
 
@@ -85,6 +99,8 @@ export const viewType = gql`
 
     input ViewDisplayOptionsInput {
         tableColumns: [ViewTableColumn!]
+        tablePropertyKeys: [String!]
+        boardGroupByPropertyKey: String
     }
 
     input ViewSectionInput {
@@ -112,7 +128,13 @@ export const viewQuery = gql`
     type Query {
         viewWorkspace: ViewWorkspace!
         viewSection(id: ID!): ViewSection
-        viewSectionNotes(id: ID!, pagination: PaginationInput): Notes!
+        viewSectionNotes(
+            id: ID!
+            pagination: PaginationInput
+            sortBy: ViewSortBy
+            sortOrder: ViewSortOrder
+        ): Notes!
+        viewSectionBoardColumn(id: ID!, optionValue: String, pagination: PaginationInput): ViewBoardColumnNotes!
         notesByProperties(input: NotesByPropertiesInput!, pagination: PaginationInput): Notes!
     }
 `;

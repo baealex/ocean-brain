@@ -5,8 +5,6 @@ import type { Note } from '~/models/note.model';
 import type { ViewSection } from '~/models/view.model';
 import ViewSectionTableRenderer from './ViewSectionTableRenderer';
 
-const mockNavigate = vi.fn();
-
 vi.mock('@tanstack/react-router', () => ({
     Link: ({
         children,
@@ -22,7 +20,6 @@ vi.mock('@tanstack/react-router', () => ({
             {children}
         </a>
     ),
-    useNavigate: () => mockNavigate,
 }));
 
 const createNote = (patch: Partial<Note> = {}): Note => ({
@@ -61,6 +58,8 @@ const createSection = (patch: Partial<ViewSection> = {}): ViewSection => ({
     displayType: 'table',
     displayOptions: {
         tableColumns: ['title', 'tags', 'properties', 'createdAt', 'updatedAt'],
+        tablePropertyKeys: [],
+        boardGroupByPropertyKey: null,
     },
     tagNames: [],
     mode: 'and',
@@ -99,15 +98,14 @@ describe('<ViewSectionTableRenderer />', () => {
         expect(table).toBeInTheDocument();
         expect(within(table).getByRole('columnheader', { name: /Created/ })).toBeInTheDocument();
         expect(within(table).getByRole('columnheader', { name: /Updated/ })).toBeInTheDocument();
+        expect(within(table).getByRole('columnheader', { name: /Status/ })).toBeInTheDocument();
+        expect(within(table).queryByRole('columnheader', { name: 'Properties' })).not.toBeInTheDocument();
         expect(within(table).getByText('Ocean Brain task')).toBeInTheDocument();
         expect(within(table).getByText('@제품')).toBeInTheDocument();
-        expect(within(table).getByText('Status')).toBeInTheDocument();
         expect(within(table).getByText('Doing')).toBeInTheDocument();
     });
 
-    it('opens notes through the title link instead of the whole table row', async () => {
-        const user = userEvent.setup();
-
+    it('keeps note navigation on the title link', () => {
         renderTable();
 
         const link = screen.getByRole('link', { name: /Ocean Brain task/i });
@@ -115,14 +113,30 @@ describe('<ViewSectionTableRenderer />', () => {
 
         expect(row).toBeInTheDocument();
         expect(link).toHaveAttribute('href', '/note-1');
-
-        await user.click(row!);
-
-        expect(mockNavigate).not.toHaveBeenCalled();
+        expect(within(row!).getAllByRole('link')).toHaveLength(1);
     });
 
     it('keeps notes without tags or properties visible with empty table cells', () => {
-        renderTable({ notes: [createNote({ tags: [], properties: [] })] });
+        renderTable({
+            notes: [createNote({ tags: [], properties: [] })],
+            section: createSection({
+                displayOptions: {
+                    tableColumns: ['title', 'tags', 'properties'],
+                    tablePropertyKeys: ['status'],
+                    boardGroupByPropertyKey: null,
+                },
+            }),
+            availableProperties: [
+                {
+                    key: 'status',
+                    name: 'Status',
+                    valueType: 'select',
+                    noteCount: 1,
+                    options: [],
+                    updatedAt: '1780000000000',
+                },
+            ],
+        });
 
         expect(screen.getByText('Ocean Brain task')).toBeInTheDocument();
         expect(screen.getAllByText('—')).toHaveLength(2);
@@ -133,6 +147,8 @@ describe('<ViewSectionTableRenderer />', () => {
             section: createSection({
                 displayOptions: {
                     tableColumns: ['title', 'updatedAt'],
+                    tablePropertyKeys: [],
+                    boardGroupByPropertyKey: null,
                 },
             }),
         });
@@ -145,7 +161,7 @@ describe('<ViewSectionTableRenderer />', () => {
         expect(within(table).queryByRole('columnheader', { name: 'Properties' })).not.toBeInTheDocument();
     });
 
-    it('requests saved section sorting from sortable column headers', async () => {
+    it('requests sorting from sortable column headers', async () => {
         const user = userEvent.setup();
         const handleSortChange = vi.fn();
 

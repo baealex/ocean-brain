@@ -34,6 +34,10 @@ const noteChangeInvalidations: QueryInvalidation[] = [
         exact: false,
     },
     {
+        queryKey: queryKeys.views.sectionBoardsAll(),
+        exact: false,
+    },
+    {
         queryKey: queryKeys.tags.all(),
         exact: false,
     },
@@ -59,6 +63,10 @@ const noteDeleteInvalidations: QueryInvalidation[] = [
     },
     {
         queryKey: queryKeys.views.sectionNotesAll(),
+        exact: false,
+    },
+    {
+        queryKey: queryKeys.views.sectionBoardsAll(),
         exact: false,
     },
     {

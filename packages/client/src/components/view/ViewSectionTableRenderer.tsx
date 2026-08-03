@@ -1,11 +1,18 @@
 import { Link } from '@tanstack/react-router';
+import classNames from 'classnames';
+import dayjs from 'dayjs';
 
+import type { NotePropertyKeySummary } from '~/apis/note.api';
+import * as Icon from '~/components/icon';
 import { Button, Text } from '~/components/ui';
-import type { Note, NoteProperty } from '~/models/note.model';
-import type { ViewSection, ViewSortBy, ViewTableColumn } from '~/models/view.model';
-import { timeSince } from '~/modules/time';
+import type { Note, NoteProperty, NotePropertyValueType } from '~/models/note.model';
+import type { ViewSection, ViewSortBy, ViewSortOrder, ViewTableColumn } from '~/models/view.model';
 import { NOTE_ROUTE } from '~/modules/url';
-import { getViewTableColumnLabel, normalizeViewTableColumns } from '~/modules/view-dashboard';
+import {
+    getViewTableColumnLabel,
+    normalizeViewTableColumns,
+    normalizeViewTablePropertyKeys,
+} from '~/modules/view-dashboard';
 import ViewChip from './ViewChip';
 
 interface ViewSectionTableRendererProps {
@@ -16,49 +23,116 @@ interface ViewSectionTableRendererProps {
     onRetry: () => void;
     onSortChange: (sortBy: ViewSortBy) => void;
     isSortPending: boolean;
+    activeSortBy?: ViewSortBy;
+    activeSortOrder?: ViewSortOrder;
+    availableProperties?: NotePropertyKeySummary[];
     surface?: 'flush' | 'card';
 }
 
-const formatPropertyValue = (property: NoteProperty) => {
-    if (property.valueType === 'select') {
-        return property.option?.label ?? property.value;
-    }
+type BaseTableColumn = Exclude<ViewTableColumn, 'properties'>;
 
-    if (property.valueType === 'boolean') {
-        return property.value === 'true' ? 'True' : 'False';
-    }
+type ResolvedTableColumn =
+    | { kind: 'base'; key: BaseTableColumn }
+    | {
+          kind: 'property';
+          key: string;
+          name: string;
+          valueType: NotePropertyValueType;
+      };
 
-    return property.value;
+const BASE_COLUMN_WIDTHS: Record<BaseTableColumn, number> = {
+    title: 300,
+    tags: 200,
+    createdAt: 148,
+    updatedAt: 148,
 };
-
-const getVisibleProperties = (note: Note) => (note.properties ?? []).slice(0, 3);
-const TABLE_COLUMN_WIDTHS: Record<ViewTableColumn, number> = {
-    title: 280,
-    tags: 190,
-    properties: 260,
-    createdAt: 132,
-    updatedAt: 132,
-};
-const SORTABLE_TABLE_COLUMNS: Partial<Record<ViewTableColumn, ViewSortBy>> = {
+const SORTABLE_TABLE_COLUMNS: Partial<Record<BaseTableColumn, ViewSortBy>> = {
     title: 'title',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt',
 };
-const summaryListClassName = 'flex h-[22px] min-w-0 max-w-full items-center gap-1.5 overflow-hidden whitespace-nowrap';
+const summaryListClassName = 'flex h-[24px] min-w-0 max-w-full items-center gap-1.5 overflow-hidden whitespace-nowrap';
 const emptySummaryClassName = 'text-xs leading-5 text-fg-tertiary';
 
-const getTableMinWidth = (columns: ViewTableColumn[]) => {
-    const width = columns.reduce((totalWidth, column) => totalWidth + TABLE_COLUMN_WIDTHS[column], 0);
+const formatTimestamp = (value: string) => dayjs(Number(value)).format('MMM D, YYYY');
 
-    return Math.max(520, width);
+const getPropertyColumnWidth = (valueType: NotePropertyValueType) => {
+    if (valueType === 'text' || valueType === 'url') {
+        return 220;
+    }
+
+    if (valueType === 'date') {
+        return 168;
+    }
+
+    return 156;
 };
 
-const renderTagSummary = (note: Note, options: { hideEmpty?: boolean } = {}) => {
-    if (note.tags.length === 0) {
-        if (options.hideEmpty) {
-            return null;
+const getColumnWidth = (column: ResolvedTableColumn) =>
+    column.kind === 'property' ? getPropertyColumnWidth(column.valueType) : BASE_COLUMN_WIDTHS[column.key];
+
+const resolvePropertyColumns = (
+    section: ViewSection,
+    notes: Note[],
+    availableProperties: NotePropertyKeySummary[],
+): Extract<ResolvedTableColumn, { kind: 'property' }>[] => {
+    const propertySummaryByKey = new Map(availableProperties.map((property) => [property.key, property]));
+    const notePropertyByKey = new Map(
+        notes.flatMap((note) => note.properties ?? []).map((property) => [property.key, property]),
+    );
+    const configuredKeys = normalizeViewTablePropertyKeys(section.displayOptions.tablePropertyKeys);
+    const automaticKeys = Array.from(
+        new Set([
+            ...section.propertyFilters.map((filter) => filter.key),
+            ...notes.flatMap((note) => (note.properties ?? []).map((property) => property.key)),
+        ]),
+    ).slice(0, 3);
+
+    return (configuredKeys.length > 0 ? configuredKeys : automaticKeys).flatMap((key) => {
+        const summary = propertySummaryByKey.get(key);
+        const noteProperty = notePropertyByKey.get(key);
+
+        if (!summary && !noteProperty) {
+            return [];
         }
 
+        return [
+            {
+                kind: 'property' as const,
+                key,
+                name: summary?.name ?? noteProperty?.name ?? key,
+                valueType: summary?.valueType ?? noteProperty?.valueType ?? 'text',
+            },
+        ];
+    });
+};
+
+const resolveTableColumns = (
+    section: ViewSection,
+    notes: Note[],
+    availableProperties: NotePropertyKeySummary[],
+): ResolvedTableColumn[] => {
+    const propertyColumns = resolvePropertyColumns(section, notes, availableProperties);
+
+    return normalizeViewTableColumns(section.displayOptions.tableColumns).reduce<ResolvedTableColumn[]>(
+        (resolvedColumns, column) => {
+            if (column === 'properties') {
+                resolvedColumns.push(...propertyColumns);
+            } else {
+                resolvedColumns.push({ kind: 'base', key: column });
+            }
+
+            return resolvedColumns;
+        },
+        [],
+    );
+};
+
+const getTableWidth = (columns: ResolvedTableColumn[]) =>
+    columns.reduce((totalWidth, column) => totalWidth + getColumnWidth(column), 0);
+
+const renderTagSummary = (note: Note) => {
+    if (note.tags.length === 0) {
         return <span className={emptySummaryClassName}>—</span>;
     }
 
@@ -76,47 +150,61 @@ const renderTagSummary = (note: Note, options: { hideEmpty?: boolean } = {}) => 
                     {tag.name}
                 </ViewChip>
             ))}
-            {hiddenCount > 0 && (
+            {hiddenCount > 0 ? (
                 <ViewChip size="compact" className="shrink-0 border-border-subtle bg-subtle text-fg-tertiary">
                     +{hiddenCount}
                 </ViewChip>
-            )}
+            ) : null}
         </div>
     );
 };
 
-const renderPropertySummary = (note: Note, options: { hideEmpty?: boolean } = {}) => {
-    const visibleProperties = getVisibleProperties(note);
-
-    if (visibleProperties.length === 0) {
-        if (options.hideEmpty) {
-            return null;
-        }
-
+const renderPropertyValue = (property: NoteProperty | undefined) => {
+    if (!property) {
         return <span className={emptySummaryClassName}>—</span>;
     }
 
-    const hiddenCount = (note.properties?.length ?? 0) - visibleProperties.length;
+    if (property.valueType === 'select') {
+        return (
+            <ViewChip
+                size="compact"
+                className="max-w-full border-border-subtle bg-subtle/65 text-fg-secondary"
+                truncateContent={false}
+            >
+                <span className="inline-flex min-w-0 items-center gap-2">
+                    <span
+                        className="size-2 shrink-0 rounded-full border border-black/5"
+                        style={{ backgroundColor: property.option?.color ?? 'var(--color-fg-tertiary)' }}
+                        aria-hidden="true"
+                    />
+                    <span className="min-w-0 truncate">{property.option?.label ?? property.value}</span>
+                </span>
+            </ViewChip>
+        );
+    }
+
+    if (property.valueType === 'boolean') {
+        const isTrue = property.value === 'true';
+        const BooleanIcon = isTrue ? Icon.CheckCircle : Icon.Circle;
+
+        return (
+            <span className="inline-flex items-center gap-1.5 text-sm text-fg-secondary">
+                <BooleanIcon className="size-3.5 text-fg-tertiary" weight={isTrue ? 'fill' : 'regular'} />
+                {isTrue ? 'True' : 'False'}
+            </span>
+        );
+    }
 
     return (
-        <div className={summaryListClassName}>
-            {visibleProperties.map((property) => (
-                <ViewChip
-                    key={property.key}
-                    size="compact"
-                    truncateContent={false}
-                    className="max-w-[190px] shrink-0 gap-1 border-border-subtle bg-subtle text-fg-secondary"
-                >
-                    <span className="min-w-0 max-w-[76px] shrink truncate text-fg-tertiary">{property.name}</span>
-                    <span className="min-w-0 truncate">{formatPropertyValue(property) || '—'}</span>
-                </ViewChip>
-            ))}
-            {hiddenCount > 0 && (
-                <ViewChip size="compact" className="shrink-0 border-border-subtle bg-subtle text-fg-tertiary">
-                    +{hiddenCount}
-                </ViewChip>
+        <span
+            className={classNames(
+                'block truncate text-sm text-fg-secondary',
+                property.valueType === 'number' && 'tabular-nums',
             )}
-        </div>
+            title={property.value}
+        >
+            {property.value || '—'}
+        </span>
     );
 };
 
@@ -128,10 +216,13 @@ export default function ViewSectionTableRenderer({
     onRetry,
     onSortChange,
     isSortPending,
+    activeSortBy = section.sortBy,
+    activeSortOrder = section.sortOrder,
+    availableProperties = [],
     surface = 'flush',
 }: ViewSectionTableRendererProps) {
-    const visibleColumns = normalizeViewTableColumns(section.displayOptions?.tableColumns);
-    const tableMinWidth = getTableMinWidth(visibleColumns);
+    const columns = resolveTableColumns(section, notes, availableProperties);
+    const tableWidth = getTableWidth(columns);
     const surfaceClassName =
         surface === 'card'
             ? 'overflow-x-auto rounded-[16px] border border-border-subtle bg-elevated'
@@ -143,17 +234,35 @@ export default function ViewSectionTableRenderer({
     const loadingRowClassName = surface === 'card' ? 'bg-elevated' : 'bg-transparent';
     const tableHeadClassName = surface === 'card' ? 'bg-subtle/65' : 'bg-subtle/45';
     const tableBodyClassName = surface === 'card' ? 'bg-elevated' : 'bg-transparent';
+    const stickyCellClassName = surface === 'card' ? 'bg-elevated' : 'bg-surface';
 
-    const renderHeaderCell = (column: ViewTableColumn) => {
-        const sortBy = SORTABLE_TABLE_COLUMNS[column];
-        const label = getViewTableColumnLabel(column);
-        const isActiveSort = sortBy ? section.sortBy === sortBy : false;
+    const renderHeaderCell = (column: ResolvedTableColumn) => {
+        if (column.kind === 'property') {
+            return (
+                <th key={`property:${column.key}`} className="px-3 py-2 text-left">
+                    <Text as="p" variant="label" weight="semibold" className="truncate" title={column.name}>
+                        {column.name}
+                    </Text>
+                    <Text as="p" variant="micro" tone="tertiary" className="mt-0.5 capitalize">
+                        {column.valueType}
+                    </Text>
+                </th>
+            );
+        }
+
+        const sortBy = SORTABLE_TABLE_COLUMNS[column.key];
+        const label = getViewTableColumnLabel(column.key);
+        const isActiveSort = sortBy ? activeSortBy === sortBy : false;
+        const isTitle = column.key === 'title';
 
         return (
             <th
-                key={column}
-                aria-sort={isActiveSort ? (section.sortOrder === 'asc' ? 'ascending' : 'descending') : undefined}
-                className="px-3 py-2.5 text-xs font-semibold text-fg-tertiary"
+                key={column.key}
+                aria-sort={isActiveSort ? (activeSortOrder === 'asc' ? 'ascending' : 'descending') : undefined}
+                className={classNames(
+                    'px-3 py-2.5 text-xs font-semibold text-fg-tertiary',
+                    isTitle && 'sticky left-0 z-20 bg-subtle',
+                )}
             >
                 {sortBy ? (
                     <button
@@ -164,7 +273,7 @@ export default function ViewSectionTableRenderer({
                     >
                         <span>{label}</span>
                         <span aria-hidden="true" className="text-[10px] text-fg-tertiary">
-                            {isActiveSort ? (section.sortOrder === 'asc' ? '↑' : '↓') : '↕'}
+                            {isActiveSort ? (activeSortOrder === 'asc' ? '↑' : '↓') : '↕'}
                         </span>
                     </button>
                 ) : (
@@ -174,49 +283,75 @@ export default function ViewSectionTableRenderer({
         );
     };
 
-    const renderCell = (note: Note, column: ViewTableColumn) => {
-        switch (column) {
+    const renderCell = (note: Note, column: ResolvedTableColumn) => {
+        if (column.kind === 'property') {
+            return (
+                <td
+                    key={`property:${column.key}`}
+                    className="overflow-hidden px-3 py-2.5 align-middle transition-colors group-hover:bg-hover-subtle"
+                >
+                    {renderPropertyValue(note.properties?.find((property) => property.key === column.key))}
+                </td>
+            );
+        }
+
+        switch (column.key) {
             case 'tags':
                 return (
-                    <td key={column} className="overflow-hidden px-3 py-2.5 align-middle">
+                    <td
+                        key={column.key}
+                        className="overflow-hidden px-3 py-2.5 align-middle transition-colors group-hover:bg-hover-subtle"
+                    >
                         {renderTagSummary(note)}
                     </td>
                 );
-            case 'properties':
-                return (
-                    <td key={column} className="overflow-hidden px-3 py-2.5 align-middle">
-                        {renderPropertySummary(note)}
-                    </td>
-                );
             case 'createdAt':
+            case 'updatedAt': {
+                const value = column.key === 'createdAt' ? note.createdAt : note.updatedAt;
                 return (
-                    <td key={column} className="whitespace-nowrap px-3 py-2.5 align-middle">
-                        <Text as="span" variant="meta" tone="tertiary">
-                            {timeSince(Number(note.createdAt))}
+                    <td
+                        key={column.key}
+                        className="whitespace-nowrap px-3 py-2.5 align-middle transition-colors group-hover:bg-hover-subtle"
+                    >
+                        <Text
+                            as="span"
+                            variant="meta"
+                            tone="tertiary"
+                            title={dayjs(Number(value)).format('MMM D, YYYY h:mm A')}
+                        >
+                            {formatTimestamp(value)}
                         </Text>
                     </td>
                 );
-            case 'updatedAt':
-                return (
-                    <td key={column} className="whitespace-nowrap px-3 py-2.5 align-middle">
-                        <Text as="span" variant="meta" tone="tertiary">
-                            {timeSince(Number(note.updatedAt))}
-                        </Text>
-                    </td>
-                );
+            }
             case 'title':
             default:
                 return (
-                    <td key={column} className="px-3 py-2.5 align-middle">
-                        <Text as="div" variant="body" weight="semibold" className="line-clamp-1">
-                            <Link
-                                to={NOTE_ROUTE}
-                                params={{ id: note.id }}
-                                className="focus-ring-soft rounded-[6px] outline-none transition-colors hover:text-fg-default/85"
-                            >
-                                {note.title || 'Untitled'}
-                            </Link>
-                        </Text>
+                    <td
+                        key={column.key}
+                        className={classNames(
+                            'sticky left-0 z-10 px-3 py-2.5 align-middle transition-colors group-hover:bg-hover-subtle',
+                            stickyCellClassName,
+                        )}
+                    >
+                        <div className="flex min-w-0 items-center gap-2">
+                            {note.pinned ? (
+                                <Icon.Pin
+                                    className="size-3.5 shrink-0 text-fg-tertiary"
+                                    weight="fill"
+                                    aria-label="Pinned"
+                                />
+                            ) : null}
+                            <Text as="div" variant="body" weight="semibold" className="min-w-0 line-clamp-1">
+                                <Link
+                                    to={NOTE_ROUTE}
+                                    params={{ id: note.id }}
+                                    className="focus-ring-soft rounded-[6px] outline-none transition-colors hover:text-fg-default/80"
+                                >
+                                    {note.title || 'Untitled'}
+                                </Link>
+                            </Text>
+                        </div>
                     </td>
                 );
         }
@@ -265,21 +400,30 @@ export default function ViewSectionTableRenderer({
     }
 
     return (
-        <div className={surfaceClassName}>
-            <table className="w-full table-fixed border-collapse text-left" style={{ minWidth: tableMinWidth }}>
+        <div
+            className={surfaceClassName}
+            data-scroll-restoration-id={`view-table-${section.id}`}
+            aria-label="Scrollable view table"
+        >
+            <table className="w-full table-fixed border-collapse text-left" style={{ minWidth: tableWidth }}>
                 <caption className="sr-only">View query results as a table</caption>
                 <colgroup>
-                    {visibleColumns.map((column) => (
-                        <col key={column} style={{ width: TABLE_COLUMN_WIDTHS[column] }} />
+                    {columns.map((column) => (
+                        <col
+                            key={column.kind === 'property' ? `property:${column.key}` : column.key}
+                            style={{
+                                width: `${(getColumnWidth(column) / tableWidth) * 100}%`,
+                            }}
+                        />
                     ))}
                 </colgroup>
                 <thead className={tableHeadClassName}>
-                    <tr className="border-b border-border-subtle">{visibleColumns.map(renderHeaderCell)}</tr>
+                    <tr className="border-b border-border-subtle">{columns.map(renderHeaderCell)}</tr>
                 </thead>
                 <tbody className={tableBodyClassName}>
                     {notes.map((note) => (
-                        <tr key={note.id} className="h-12 border-b border-border-subtle/70 last:border-b-0">
-                            {visibleColumns.map((column) => renderCell(note, column))}
+                        <tr key={note.id} className="group h-12 border-b border-border-subtle/70 last:border-b-0">
+                            {columns.map((column) => renderCell(note, column))}
                         </tr>
                     ))}
                 </tbody>

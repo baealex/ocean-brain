@@ -6,12 +6,22 @@ import { fetchNotePropertyKeys } from '~/apis/note.api';
 import { fetchTags } from '~/apis/tag.api';
 import { fetchViewSectionNotes, fetchViewWorkspace, reorderViewSections, reorderViewTabs } from '~/apis/view.api';
 import { ConfirmProvider, ToastProvider } from '~/components/ui';
+import type { ViewSection } from '~/models/view.model';
 import { createQueryClientWrapper } from '~/test/test-utils';
 
 import Views from './Views';
 
+const routerMocks = vi.hoisted(() => ({
+    search: {} as Record<string, unknown>,
+    navigate: vi.fn(),
+}));
+
 vi.mock('@tanstack/react-router', () => ({
     Link: ({ children }: { children: ReactNode }) => <a href="#">{children}</a>,
+    getRouteApi: () => ({
+        useSearch: () => routerMocks.search,
+        useNavigate: () => routerMocks.navigate,
+    }),
 }));
 
 vi.mock('~/apis/note.api', () => ({ fetchNotePropertyKeys: vi.fn() }));
@@ -30,8 +40,71 @@ vi.mock('~/apis/view.api', () => ({
     updateViewTab: vi.fn(),
 }));
 
+const createSection = (patch: Partial<ViewSection> = {}): ViewSection => ({
+    id: 'section-1',
+    tabId: 'tab-1',
+    title: 'First section',
+    displayType: 'list',
+    displayOptions: {
+        tableColumns: ['title'],
+        tablePropertyKeys: [],
+        boardGroupByPropertyKey: null,
+    },
+    tagNames: [],
+    mode: 'and',
+    propertyFilters: [],
+    sortBy: 'updatedAt',
+    sortOrder: 'desc',
+    limit: 5,
+    order: 0,
+    ...patch,
+});
+
+const mockActiveWorkspace = (sections: ViewSection[]) => {
+    vi.mocked(fetchViewWorkspace).mockResolvedValue({
+        type: 'success',
+        viewWorkspace: {
+            activeTabId: 'tab-1',
+            tabs: [
+                {
+                    id: 'tab-1',
+                    title: 'Work',
+                    order: 0,
+                    sections,
+                },
+                {
+                    id: 'tab-2',
+                    title: 'Later',
+                    order: 1,
+                    sections: [],
+                },
+            ],
+        },
+    } as never);
+    vi.mocked(fetchViewSectionNotes).mockResolvedValue({
+        type: 'success',
+        viewSectionNotes: { totalCount: 0, notes: [] },
+    } as never);
+};
+
+const renderViews = () => {
+    const { Wrapper: QueryWrapper } = createQueryClientWrapper();
+    const Wrapper = ({ children }: { children: React.ReactNode }) => (
+        <QueryWrapper>
+            <ToastProvider>
+                <ConfirmProvider>{children}</ConfirmProvider>
+            </ToastProvider>
+        </QueryWrapper>
+    );
+
+    return render(<Views />, { wrapper: Wrapper });
+};
+
 describe('<Views />', () => {
     beforeEach(() => {
+        vi.clearAllMocks();
+        routerMocks.search = {};
+        routerMocks.navigate.mockResolvedValue(undefined);
         vi.mocked(fetchNotePropertyKeys).mockResolvedValue({
             type: 'success',
             notePropertyKeys: {
@@ -56,98 +129,105 @@ describe('<Views />', () => {
     });
 
     it('renders the first-tab onboarding when there are no saved views', async () => {
-        const { Wrapper: QueryWrapper } = createQueryClientWrapper();
-        const Wrapper = ({ children }: { children: React.ReactNode }) => (
-            <QueryWrapper>
-                <ToastProvider>
-                    <ConfirmProvider>{children}</ConfirmProvider>
-                </ToastProvider>
-            </QueryWrapper>
-        );
-
-        render(<Views />, { wrapper: Wrapper });
+        renderViews();
 
         expect(await screen.findByText('Create your first view tab')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Create first tab' })).toBeInTheDocument();
     });
 
-    it('offers menu fallbacks for moving tabs and sections without dragging', async () => {
-        vi.mocked(fetchViewWorkspace).mockResolvedValue({
+    it('restores and updates a table sort through the per-section URL state', async () => {
+        const user = userEvent.setup();
+        routerMocks.search = {
+            tab: 'tab-1',
+            state: {
+                version: 1,
+                sections: {
+                    'section-1': { page: 2, sort: { by: 'title', order: 'asc' } },
+                    'section-2': { page: 3 },
+                },
+            },
+        };
+        mockActiveWorkspace([
+            createSection({ displayType: 'table' }),
+            createSection({ id: 'section-2', title: 'Second section', order: 1 }),
+        ]);
+        vi.mocked(fetchViewSectionNotes).mockResolvedValue({
             type: 'success',
-            viewWorkspace: {
-                activeTabId: 'tab-1',
-                tabs: [
+            viewSectionNotes: {
+                totalCount: 20,
+                notes: [
                     {
-                        id: 'tab-1',
-                        title: 'Work',
+                        id: 'note-1',
+                        title: 'Ocean Brain task',
+                        content: '',
+                        pinned: false,
                         order: 0,
-                        sections: [
-                            {
-                                id: 'section-1',
-                                tabId: 'tab-1',
-                                title: 'First section',
-                                displayType: 'list',
-                                displayOptions: { tableColumns: ['title'] },
-                                tagNames: [],
-                                mode: 'and',
-                                propertyFilters: [],
-                                sortBy: 'updatedAt',
-                                sortOrder: 'desc',
-                                limit: 5,
-                                order: 0,
-                            },
-                            {
-                                id: 'section-2',
-                                tabId: 'tab-1',
-                                title: 'Second section',
-                                displayType: 'list',
-                                displayOptions: { tableColumns: ['title'] },
-                                tagNames: [],
-                                mode: 'and',
-                                propertyFilters: [],
-                                sortBy: 'updatedAt',
-                                sortOrder: 'desc',
-                                limit: 5,
-                                order: 1,
-                            },
-                        ],
-                    },
-                    {
-                        id: 'tab-2',
-                        title: 'Later',
-                        order: 1,
-                        sections: [],
+                        layout: 'wide',
+                        tags: [],
+                        properties: [],
+                        createdAt: '1780000000000',
+                        updatedAt: '1780000000000',
                     },
                 ],
             },
         } as never);
-        vi.mocked(fetchViewSectionNotes).mockResolvedValue({
-            type: 'success',
-            viewSectionNotes: { totalCount: 0, notes: [] },
-        } as never);
+
+        renderViews();
+
+        await screen.findAllByRole('button', { name: 'Section actions' });
+
+        expect(fetchViewSectionNotes).toHaveBeenCalledWith('section-1', {
+            limit: 5,
+            offset: 5,
+            sortBy: 'title',
+            sortOrder: 'asc',
+        });
+        expect(fetchViewSectionNotes).toHaveBeenCalledWith('section-2', {
+            limit: 5,
+            offset: 10,
+            sortBy: 'updatedAt',
+            sortOrder: 'desc',
+        });
+
+        await user.click(await screen.findByRole('button', { name: /Title/ }));
+
+        const navigation = routerMocks.navigate.mock.calls[0]?.[0] as {
+            search: (current: typeof routerMocks.search) => Record<string, unknown>;
+            replace: boolean;
+            resetScroll: boolean;
+        };
+        expect(navigation.search(routerMocks.search)).toEqual({
+            tab: 'tab-1',
+            state: {
+                version: 1,
+                sections: {
+                    'section-1': { sort: { by: 'title', order: 'desc' } },
+                    'section-2': { page: 3 },
+                },
+            },
+        });
+        expect(navigation).toMatchObject({ replace: true, resetScroll: false });
+    });
+
+    it('offers menu fallbacks for moving tabs and sections without dragging', async () => {
+        const user = userEvent.setup();
+        routerMocks.search = { tab: 'tab-1' };
+        mockActiveWorkspace([createSection(), createSection({ id: 'section-2', title: 'Second section', order: 1 })]);
         vi.mocked(reorderViewSections).mockResolvedValue({ type: 'success', reorderViewSections: [] } as never);
         vi.mocked(reorderViewTabs).mockResolvedValue({ type: 'success', reorderViewTabs: [] } as never);
-        const { Wrapper: QueryWrapper } = createQueryClientWrapper();
-        const Wrapper = ({ children }: { children: React.ReactNode }) => (
-            <QueryWrapper>
-                <ToastProvider>
-                    <ConfirmProvider>{children}</ConfirmProvider>
-                </ToastProvider>
-            </QueryWrapper>
-        );
 
-        render(<Views />, { wrapper: Wrapper });
+        renderViews();
 
         const actionButtons = await screen.findAllByRole('button', { name: 'Section actions' });
-        await userEvent.click(actionButtons[0]);
-        await userEvent.click(await screen.findByRole('menuitem', { name: 'Move down' }));
+        await user.click(actionButtons[0]);
+        await user.click(await screen.findByRole('menuitem', { name: 'Move down' }));
 
         await waitFor(() => {
             expect(reorderViewSections).toHaveBeenCalledWith('tab-1', ['section-2', 'section-1']);
         });
 
-        await userEvent.click(screen.getByRole('button', { name: 'View tab actions' }));
-        await userEvent.click(await screen.findByRole('menuitem', { name: 'Move tab right' }));
+        await user.click(screen.getByRole('button', { name: 'View tab actions' }));
+        await user.click(await screen.findByRole('menuitem', { name: 'Move tab right' }));
 
         await waitFor(() => {
             expect(reorderViewTabs).toHaveBeenCalledWith(['tab-2', 'tab-1']);

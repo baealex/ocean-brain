@@ -19,7 +19,7 @@ const createNote = (id: string, title: string, createdAt: string, updatedAt: str
 });
 
 const createState = (section: ViewSection): LocalDemoState => ({
-    version: 5,
+    version: 6,
     notes: [
         createNote('note-2', 'Beta', '1710000002000', '1710000001000'),
         createNote('note-1', 'Alpha', '1710000001000', '1710000002000'),

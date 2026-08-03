@@ -1,107 +1,59 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 
-import { getGraphLabelFont, getGraphLinkColor, getGraphNodeFill, getGraphTheme } from './graph-theme';
+import {
+    getGraphClusterAreaFill,
+    getGraphClusterColor,
+    getGraphLinkColor,
+    getGraphNodeFill,
+    getGraphTheme,
+} from './graph-theme';
 
-describe('getGraphTheme', () => {
-    it('returns monochrome-forward light and dark palettes', () => {
+describe('graph theme', () => {
+    it('keeps connection colors distinct and aligned across visual states', () => {
         const light = getGraphTheme('light');
         const dark = getGraphTheme('dark');
 
-        expect(light.nodeHub).toBe('#2c2f36');
-        expect(light.labelFontFamily).toContain('Pretendard');
-        expect(dark.background).toBe('#121316');
-        expect(dark.linkIdle).toContain('rgba');
+        for (const palette of [light, dark]) {
+            expect(new Set(palette.clusterNode).size).toBe(palette.clusterNode.length);
+            expect(palette.clusterNode.length).toBeGreaterThan(1);
+            expect(palette.clusterNodeDimmed).toHaveLength(palette.clusterNode.length);
+            expect(palette.clusterArea).toHaveLength(palette.clusterNode.length);
+            expect(palette.clusterAreaFocused).toHaveLength(palette.clusterNode.length);
+            expect(palette.clusterLabel).toHaveLength(palette.clusterNode.length);
+        }
     });
 
-    it('maps node fills through selected, connected, hub, dimmed, and default states', () => {
-        expect(
-            getGraphNodeFill('light', {
-                connections: 2,
-                colorIndex: 1,
-                selectedNodeId: 'node-1',
-                nodeId: 'node-1',
-                isConnected: false,
-            }),
-        ).toBe('#111318');
-
-        expect(
-            getGraphNodeFill('light', {
-                connections: 2,
-                colorIndex: 1,
-                selectedNodeId: 'node-1',
-                nodeId: 'node-2',
-                isConnected: true,
-            }),
-        ).toBe(getGraphTheme('light').nodeConnected);
-
-        expect(
-            getGraphNodeFill('light', {
-                connections: 4,
-                colorIndex: 2,
-                selectedNodeId: null,
-                nodeId: 'node-3',
-                isConnected: false,
-            }),
-        ).toBe(getGraphTheme('light').nodeHub);
-
-        expect(
-            getGraphNodeFill('dark', {
-                connections: 1,
-                colorIndex: 3,
-                selectedNodeId: 'node-1',
-                nodeId: 'node-4',
-                isConnected: false,
-            }),
-        ).toBe(getGraphTheme('dark').nodeDimmed[3]);
-
-        expect(
-            getGraphNodeFill('dark', {
-                connections: 2,
-                colorIndex: 0,
-                selectedNodeId: null,
-                nodeId: 'node-5',
-                isConnected: false,
-            }),
-        ).toBe(getGraphTheme('dark').nodeDefault[0]);
+    it('keeps cluster identity while dimming nodes outside the current focus', () => {
+        expect(getGraphNodeFill('light', { colorIndex: 2, isDimmed: false })).toBe(getGraphClusterColor('light', 2));
+        expect(getGraphNodeFill('light', { colorIndex: 2, isDimmed: true })).toContain('rgba');
     });
 
-    it('maps link colors for idle, connected, and dimmed states', () => {
+    it('strengthens only the focused interest area', () => {
         expect(
-            getGraphLinkColor('light', {
-                selectedNodeId: null,
-                isConnected: false,
+            getGraphClusterAreaFill('light', 1, {
+                isFocused: true,
+                isDimmed: false,
             }),
-        ).toBe(getGraphTheme('light').linkIdle);
-
+        ).not.toBe(
+            getGraphClusterAreaFill('light', 1, {
+                isFocused: false,
+                isDimmed: false,
+            }),
+        );
         expect(
-            getGraphLinkColor('light', {
-                selectedNodeId: 'node-1',
-                isConnected: true,
+            getGraphClusterAreaFill('light', 1, {
+                isFocused: false,
+                isDimmed: true,
             }),
-        ).toBe(getGraphTheme('light').linkConnected);
-
-        expect(
-            getGraphLinkColor('dark', {
-                selectedNodeId: 'node-1',
-                isConnected: false,
-            }),
-        ).toBe(getGraphTheme('dark').linkDimmed);
+        ).toBe('transparent');
     });
 
-    it('maps label font weights to shipped Pretendard weights', () => {
-        expect(
-            getGraphLabelFont('light', {
-                fontSize: 12,
-                emphasize: false,
-            }),
-        ).toBe('400 12px Pretendard Variable, Pretendard, system-ui, sans-serif');
+    it('maps links to idle, connected, and dimmed states', () => {
+        const palette = getGraphTheme('dark');
 
-        expect(
-            getGraphLabelFont('dark', {
-                fontSize: 12,
-                emphasize: true,
-            }),
-        ).toBe('700 12px Pretendard Variable, Pretendard, system-ui, sans-serif');
+        expect(getGraphLinkColor('dark', { isConnected: false, isDimmed: false })).toBe(palette.linkIdle);
+        expect(getGraphLinkColor('dark', { isConnected: true, isDimmed: false })).toBe(palette.linkConnected);
+        expect(getGraphLinkColor('dark', { isConnected: true, isDimmed: true })).toBe(palette.linkDimmed);
     });
 });

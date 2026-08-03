@@ -357,6 +357,7 @@ test('backReferences resolver finds structurally valid references in formatted n
 });
 
 test('noteGraph resolver reads note metadata and links from the reference index', async () => {
+    const updatedAt = new Date('2026-08-02T12:00:00.000Z');
     const noteQueries: unknown[] = [];
     const referenceQueries: unknown[] = [];
     const resolver = createNoteGraphQueryResolver({
@@ -364,8 +365,8 @@ test('noteGraph resolver reads note metadata and links from the reference index'
             noteQueries.push(args);
 
             return [
-                { id: 1, title: 'Source' },
-                { id: 2, title: 'Target' },
+                { id: 1, title: 'Source', updatedAt, tags: [{ id: 10, name: '@product' }] },
+                { id: 2, title: 'Target', updatedAt, tags: [] },
             ];
         },
         findReferences: async (args) => {
@@ -383,6 +384,14 @@ test('noteGraph resolver reads note metadata and links from the reference index'
             select: {
                 id: true,
                 title: true,
+                updatedAt: true,
+                tags: {
+                    orderBy: [{ name: 'asc' }],
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
             },
         },
     ]);
@@ -398,15 +407,20 @@ test('noteGraph resolver reads note metadata and links from the reference index'
 });
 
 test('noteGraph resolver preserves the graph response contract with indexed references', async () => {
+    const updatedAt = new Date('2026-08-02T12:00:00.000Z');
     const resolver = createNoteGraphQueryResolver({
         findNotes: async () => [
             {
                 id: 1,
                 title: 'Source',
+                updatedAt,
+                tags: [{ id: 10, name: '@product' }],
             },
             {
                 id: 2,
                 title: 'Target',
+                updatedAt,
+                tags: [],
             },
         ],
         findReferences: async () => [{ sourceNoteId: 1, targetNoteId: 2 }],
@@ -414,8 +428,14 @@ test('noteGraph resolver preserves the graph response contract with indexed refe
 
     assert.deepEqual(await resolver(), {
         nodes: [
-            { id: '1', title: 'Source', connections: 1 },
-            { id: '2', title: 'Target', connections: 1 },
+            {
+                id: '1',
+                title: 'Source',
+                connections: 1,
+                updatedAt: String(updatedAt.getTime()),
+                tags: [{ id: '10', name: '@product' }],
+            },
+            { id: '2', title: 'Target', connections: 1, updatedAt: String(updatedAt.getTime()), tags: [] },
         ],
         links: [{ source: '1', target: '2' }],
     });

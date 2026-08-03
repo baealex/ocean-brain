@@ -16,6 +16,11 @@ interface ReferenceProps {
 interface NoteGraphInput {
     id: string | number;
     title: string;
+    updatedAt: Date;
+    tags: Array<{
+        id: string | number;
+        name: string;
+    }>;
 }
 
 interface NoteGraphReferenceInput {
@@ -24,7 +29,13 @@ interface NoteGraphReferenceInput {
 }
 
 export interface NoteGraphResult {
-    nodes: Array<{ id: string; title: string; connections: number }>;
+    nodes: Array<{
+        id: string;
+        title: string;
+        connections: number;
+        updatedAt: string;
+        tags: Array<{ id: string; name: string }>;
+    }>;
     links: Array<{ source: string; target: string }>;
 }
 
@@ -156,6 +167,11 @@ export const buildNoteGraph = (notes: NoteGraphInput[], references: NoteGraphRef
                 id,
                 title: note.title || 'Untitled',
                 connections: connectionCount[id] || 0,
+                updatedAt: String(note.updatedAt.getTime()),
+                tags: note.tags.map((tag) => ({
+                    id: String(tag.id),
+                    name: tag.name,
+                })),
             };
         }),
         links,

@@ -307,8 +307,22 @@ export const createBackReferencesQueryResolver = (
 interface NoteGraphQueryResolverDeps {
     findNotes: (args: {
         orderBy: Array<{ id: 'asc' }>;
-        select: { id: true; title: true };
-    }) => Promise<Array<Pick<Note, 'id' | 'title'>>>;
+        select: {
+            id: true;
+            title: true;
+            updatedAt: true;
+            tags: {
+                orderBy: Array<{ name: 'asc' }>;
+                select: { id: true; name: true };
+            };
+        };
+    }) => Promise<
+        Array<
+            Pick<Note, 'id' | 'title' | 'updatedAt'> & {
+                tags: Array<{ id: number; name: string }>;
+            }
+        >
+    >;
     findReferences: (args: {
         orderBy: Array<{ sourceNoteId: 'asc' } | { targetNoteId: 'asc' }>;
         select: { sourceNoteId: true; targetNoteId: true };
@@ -328,6 +342,14 @@ export const createNoteGraphQueryResolver = (
                 select: {
                     id: true,
                     title: true,
+                    updatedAt: true,
+                    tags: {
+                        orderBy: [{ name: 'asc' }],
+                        select: {
+                            id: true,
+                            name: true,
+                        },
+                    },
                 },
             }),
             deps.findReferences({

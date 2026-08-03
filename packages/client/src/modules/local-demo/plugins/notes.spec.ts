@@ -120,4 +120,41 @@ describe('notesLocalPlugin', () => {
             },
         ]);
     });
+
+    it('includes tags and update time in the local knowledge graph contract', () => {
+        const state = createState();
+        state.notes[0].content = JSON.stringify([
+            {
+                type: 'paragraph',
+                content: [{ type: 'reference', props: { id: 'note-guide-b', title: 'Guide B' } }],
+            },
+        ]);
+        const handler = notesLocalPlugin.graphHandlers?.FetchNoteGraph;
+        expect(handler).toBeDefined();
+
+        const response = handler?.({
+            state,
+            variables: {},
+            save: () => undefined,
+        });
+        const noteGraph =
+            response && 'noteGraph' in response
+                ? (response.noteGraph as
+                      | {
+                            nodes: Array<{
+                                id: string;
+                                updatedAt: string;
+                                tags: Array<{ id: string; name: string }>;
+                            }>;
+                            links: Array<{ source: string; target: string }>;
+                        }
+                      | undefined)
+                : undefined;
+
+        expect(noteGraph?.links).toContainEqual({ source: 'note-guide-a', target: 'note-guide-b' });
+        expect(noteGraph?.nodes.find((node) => node.id === 'note-guide-a')).toMatchObject({
+            updatedAt: '1710000000000',
+            tags: [{ id: 'tag-guide', name: '@guide' }],
+        });
+    });
 });

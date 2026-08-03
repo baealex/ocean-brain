@@ -257,6 +257,8 @@ export const noteQuery = gql`
         id: ID!
         title: String!
         connections: Int!
+        updatedAt: String!
+        tags: [Tag!]!
     }
 
     type GraphLink {

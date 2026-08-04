@@ -1,8 +1,10 @@
 export { CalendarDay } from './CalendarDay';
+export { CalendarDayDetail } from './CalendarDayDetail';
 export { CalendarEntryCard } from './CalendarEntryCard';
 export { CalendarHeader } from './CalendarHeader';
+export { CalendarMonth } from './CalendarMonth';
 export { NoteCard } from './NoteCard';
 export { PriorityLegend } from './PriorityLegend';
 export { ReminderCard } from './ReminderCard';
-export type { CalendarDisplayType } from './types';
+export type { CalendarDayData, CalendarDisplayType } from './types';
 export { useCalendarData } from './useCalendarData';

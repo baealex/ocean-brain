@@ -54,16 +54,16 @@ export const CalendarHeader = ({ month, year, type, onPrevMonth, onNextMonth, on
                         {year}
                     </Text>
                 </div>
-                <Text as="p" variant="meta" weight="medium" tone="secondary">
+                <Text as="p" variant="meta" weight="medium" tone="secondary" className="hidden sm:block">
                     {headerDescription}
                 </Text>
             </div>
 
             <div className="flex lg:justify-end">
-                <div className="surface-base inline-flex flex-wrap items-center gap-3 rounded-[16px] px-3.5 py-2.5">
+                <div className="flex w-full flex-col gap-2 sm:inline-flex sm:w-auto sm:flex-row sm:items-center sm:gap-3">
                     <div className="flex items-center gap-2">
                         <Icon.Calendar className="h-4 w-4 shrink-0 text-fg-tertiary" />
-                        <Text id="calendar-note-date-label" as="span" variant="label" weight="medium" tone="tertiary">
+                        <Text id="calendar-note-date-label" as="span" variant="label" weight="medium" tone="secondary">
                             Note date
                         </Text>
                         <Select
@@ -78,18 +78,20 @@ export const CalendarHeader = ({ month, year, type, onPrevMonth, onNextMonth, on
                         </Select>
                     </div>
 
-                    <div className="h-5 w-px bg-divider" />
+                    <div className="hidden h-5 w-px bg-divider sm:block" />
 
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center justify-between sm:justify-start sm:gap-1.5">
                         <Button variant="ghost" size="sm" onClick={onToday}>
                             Today
                         </Button>
-                        <Button variant="ghost" size="icon-sm" aria-label="Previous month" onClick={onPrevMonth}>
-                            <Icon.ChevronLeft width={18} height={18} />
-                        </Button>
-                        <Button variant="ghost" size="icon-sm" aria-label="Next month" onClick={onNextMonth}>
-                            <Icon.ChevronRight width={18} height={18} />
-                        </Button>
+                        <div className="flex items-center gap-1" role="group" aria-label="Month navigation">
+                            <Button variant="ghost" size="icon-sm" aria-label="Previous month" onClick={onPrevMonth}>
+                                <Icon.ChevronLeft width={18} height={18} />
+                            </Button>
+                            <Button variant="ghost" size="icon-sm" aria-label="Next month" onClick={onNextMonth}>
+                                <Icon.ChevronRight width={18} height={18} />
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </div>

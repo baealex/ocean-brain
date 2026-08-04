@@ -1,14 +1,11 @@
-import { memo, useCallback, useMemo, useState } from 'react';
+import dayjs from 'dayjs';
 
-import { Modal } from '~/components/ui';
 import type { Note } from '~/models/note.model';
 import type { Reminder } from '~/models/reminder.model';
 import { CalendarDayView } from './CalendarDayView';
-import { NoteCard } from './NoteCard';
-import { ReminderCard } from './ReminderCard';
-import type { CalendarDisplayType, CalendarItem } from './types';
+import type { CalendarDayPreviewItem } from './types';
 
-const MAX_VISIBLE_ITEMS = 3;
+const MAX_PREVIEW_ITEMS = 2;
 
 interface Props {
     year: number;
@@ -17,20 +14,12 @@ interface Props {
     isCurrentMonth: boolean;
     isSunday: boolean;
     isToday: boolean;
+    isSelected: boolean;
     isPast: boolean;
     notes: Note[];
     reminders: Reminder[];
-    type: CalendarDisplayType;
+    onSelect: () => void;
 }
-
-const renderItems = (items: CalendarItem[], type: CalendarDisplayType) =>
-    items.map((calendarItem) =>
-        calendarItem.type === 'note' ? (
-            <NoteCard key={`note-${calendarItem.item.id}`} note={calendarItem.item} type={type} />
-        ) : (
-            <ReminderCard key={`reminder-${calendarItem.item.id}`} reminder={calendarItem.item} />
-        ),
-    );
 
 const CalendarDayComponent = ({
     year,
@@ -39,84 +28,67 @@ const CalendarDayComponent = ({
     isCurrentMonth,
     isSunday,
     isToday,
+    isSelected,
     isPast,
     notes,
     reminders,
-    type,
+    onSelect,
 }: Props) => {
-    const [isModalOpen, setIsModalOpen] = useState(false);
-
-    const sortedItems = useMemo<CalendarItem[]>(() => {
-        const noteItems: CalendarItem[] = notes.map((n) => ({
-            type: 'note',
-            item: n,
-        }));
-        const reminderItems: CalendarItem[] = reminders.map((r) => ({
-            type: 'reminder',
-            item: r,
-        }));
-
-        return isPast ? [...noteItems, ...reminderItems] : [...reminderItems, ...noteItems];
-    }, [isPast, notes, reminders]);
-
-    const hasOverflow = sortedItems.length > MAX_VISIBLE_ITEMS;
-    const visibleItems = useMemo(() => renderItems(sortedItems.slice(0, MAX_VISIBLE_ITEMS), type), [sortedItems, type]);
-    const allItems = useMemo(() => renderItems(sortedItems, type), [sortedItems, type]);
-
-    const handleOpenModal = useCallback(() => setIsModalOpen(true), []);
-    const handleCloseModal = useCallback(() => setIsModalOpen(false), []);
+    const noteItems: CalendarDayPreviewItem[] = notes.slice(0, MAX_PREVIEW_ITEMS).map((note) => ({
+        key: `note-${note.id}`,
+        type: 'note',
+        title: note.title,
+    }));
+    const reminderItems: CalendarDayPreviewItem[] = reminders.slice(0, MAX_PREVIEW_ITEMS).map((reminder) => ({
+        key: `reminder-${reminder.id}`,
+        type: 'reminder',
+        title: reminder.content || reminder.note?.title || 'No title',
+        isCompleted: reminder.completed,
+    }));
+    const previewItems = (isPast ? [...noteItems, ...reminderItems] : [...reminderItems, ...noteItems]).slice(
+        0,
+        MAX_PREVIEW_ITEMS,
+    );
 
     const getCellStyle = () => {
         if (!isCurrentMonth) {
-            return 'bg-muted/18 border-border-subtle/70';
+            return 'cursor-default bg-[var(--page-bg)] text-fg-disabled';
         }
-        if (isToday) {
-            return 'border-border-secondary/70 bg-[color:color-mix(in_srgb,var(--surface)_88%,var(--accent-soft-primary)_12%)]';
+        if (isSelected) {
+            return 'bg-elevated shadow-[inset_0_0_0_1px_var(--border-secondary)] hover:bg-surface';
         }
-        return 'bg-surface border-border-subtle';
+        return 'bg-surface hover:bg-muted';
     };
 
     const getDayNumberStyle = () => {
         if (isToday) {
-            return 'bg-cta text-fg-on-filled font-semibold';
+            return 'bg-cta font-semibold text-fg-on-filled';
         }
         if (!isCurrentMonth) {
-            return 'text-fg-disabled opacity-55';
+            return 'font-medium text-fg-tertiary';
         }
         if (isSunday) {
-            return 'text-fg-weekend font-bold';
+            return 'font-semibold text-fg-weekend';
         }
-        return 'text-fg-secondary font-bold';
+        return 'font-semibold text-fg-secondary';
     };
 
     return (
-        <>
-            <CalendarDayView
-                day={day}
-                cellClassName={getCellStyle()}
-                dayNumberClassName={getDayNumberStyle()}
-                isCurrentMonth={isCurrentMonth}
-                items={visibleItems}
-                overflowCount={hasOverflow ? sortedItems.length - MAX_VISIBLE_ITEMS : 0}
-                onOpenOverflow={handleOpenModal}
-            />
-
-            {hasOverflow && (
-                <Modal isOpen={isModalOpen} onClose={handleCloseModal} variant="inspect">
-                    <Modal.Header
-                        title={`${year}/${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}`}
-                        onClose={handleCloseModal}
-                    />
-                    <Modal.Body>
-                        <Modal.Description className="sr-only">
-                            View all notes and reminders scheduled for day {day}.
-                        </Modal.Description>
-                        <div className="flex max-h-[60vh] flex-col gap-2 overflow-y-auto">{allItems}</div>
-                    </Modal.Body>
-                </Modal>
-            )}
-        </>
+        <CalendarDayView
+            day={day}
+            dateLabel={dayjs(new Date(year, month - 1, day)).format('dddd, MMMM D, YYYY')}
+            cellClassName={getCellStyle()}
+            dayNumberClassName={getDayNumberStyle()}
+            isCurrentMonth={isCurrentMonth}
+            isToday={isToday}
+            isSelected={isSelected}
+            noteCount={notes.length}
+            reminderCount={reminders.length}
+            previewItems={previewItems}
+            overflowCount={Math.max(0, notes.length + reminders.length - MAX_PREVIEW_ITEMS)}
+            onSelect={onSelect}
+        />
     );
 };
 
-export const CalendarDay = memo(CalendarDayComponent);
+export const CalendarDay = CalendarDayComponent;

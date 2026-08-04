@@ -4,9 +4,9 @@
   "license": "MIT",
   "scripts": {
     "check:encoding": "node scripts/ci/check-encoding.mjs",
-    "dev": "pnpm --parallel --filter @ocean-brain/client --filter @ocean-brain/server dev",
+    "dev": "pnpm --filter @ocean-brain/server dev",
     "dev:client": "pnpm --filter @ocean-brain/client dev",
-    "dev:server": "pnpm --filter @ocean-brain/server dev",
+    "dev:server": "pnpm --filter @ocean-brain/server dev:server",
     "build": "pnpm --filter @ocean-brain/client build && pnpm --filter @ocean-brain/server build",
     "build:client": "pnpm --filter @ocean-brain/client build",
     "build:server": "pnpm --filter @ocean-brain/server build",

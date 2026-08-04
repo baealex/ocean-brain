@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { type Express, type RequestHandler } from 'express';
 import { createMcpAdminService, type McpAdminService } from './features/mcp-admin/service.js';
 import { purgeExpiredNoteSnapshots } from './features/note/services/snapshot.js';
 import { purgeExpiredTrashedNotes } from './features/note/services/trash.js';
@@ -8,13 +8,22 @@ import { createErrorHandler } from './modules/error-handler.js';
 import logger from './modules/logger.js';
 import { createApiRouter, createAuthPagesRouter, createClientRouter, createGraphqlRouter } from './routes/index.js';
 
-export const createApp = (authConfig: AuthConfig) => {
-    const mcpAdminService = createMcpAdminService();
-    return createAppWithMcpAuth(authConfig, mcpAdminService);
+export type CreateAppOptions = {
+    application?: Express;
+    clientContentMiddleware?: RequestHandler;
 };
 
-export const createAppWithMcpAuth = (authConfig: AuthConfig, mcpAdminService: McpAdminService) => {
-    const app = express();
+export const createApp = (authConfig: AuthConfig, options: CreateAppOptions = {}) => {
+    const mcpAdminService = createMcpAdminService();
+    return createAppWithMcpAuth(authConfig, mcpAdminService, options);
+};
+
+export const createAppWithMcpAuth = (
+    authConfig: AuthConfig,
+    mcpAdminService: McpAdminService,
+    options: CreateAppOptions = {},
+) => {
+    const app = options.application ?? express();
     app.locals.authConfig = authConfig;
 
     void Promise.all([purgeExpiredNoteSnapshots(), purgeExpiredTrashedNotes()]).catch((error) => {
@@ -29,7 +38,7 @@ export const createAppWithMcpAuth = (authConfig: AuthConfig, mcpAdminService: Mc
         .use('/api', createApiRouter(authConfig, mcpAdminService))
         .use(createAuthPagesRouter(authConfig))
         .use('/graphql', createGraphqlRouter(authConfig, mcpAdminService))
-        .use(createClientRouter(authConfig))
+        .use(createClientRouter(authConfig, options.clientContentMiddleware))
         .use(createErrorHandler());
 
     return app;

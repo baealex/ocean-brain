@@ -81,3 +81,26 @@ test('does not serve the SPA document for missing assets or non-document request
     assert.equal(nonDocumentRoute.status, 404);
     assert.equal(await nonDocumentRoute.text(), '');
 });
+
+test('serves client routes through an injected content middleware', async (t: TestContext) => {
+    const server = express()
+        .use(
+            createClientRouter({ mode: 'open' }, (_req, res) => {
+                res.status(200).send('Development client');
+            }),
+        )
+        .listen(0);
+
+    await new Promise<void>((resolve, reject) => {
+        server.once('listening', resolve);
+        server.once('error', reject);
+    });
+
+    t.after(() => server.close());
+
+    const { port } = server.address() as AddressInfo;
+    const response = await fetch(`http://127.0.0.1:${port}/notes`);
+
+    assert.equal(response.status, 200);
+    assert.equal(await response.text(), 'Development client');
+});

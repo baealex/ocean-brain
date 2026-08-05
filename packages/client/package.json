@@ -44,7 +44,6 @@
         "react-force-graph-2d": "^1.29.0",
         "react-helmet": "^6.1.0",
         "sass": "^1.101.7",
-        "vite-plugin-svgr": "^4.5.0",
         "zustand": "^5.0.11"
     },
     "devDependencies": {

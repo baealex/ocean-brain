@@ -7,6 +7,7 @@ import { createClientRollupOptions, createRoutePreloadPlugin } from './build/cli
 import { createDevAuthGateMiddleware } from './src/dev-auth-gate';
 
 const backendOrigin = process.env.OCEAN_BRAIN_DEV_SERVER_URL || 'http://localhost:6683';
+const isEmbeddedMiddlewareMode = process.env.OCEAN_BRAIN_VITE_MIDDLEWARE_MODE === 'true';
 const isLocalOnlyDemoBuild = process.env.VITE_DEMO_MODE === 'local-only';
 const demoSidebarPromoSlotPath = isLocalOnlyDemoBuild
     ? './src/components/demo/DemoSidebarPromoSlot.tsx'
@@ -27,12 +28,16 @@ export default defineConfig({
         createRoutePreloadPlugin(),
         react(),
         tailwindcss(),
-        {
-            name: 'ocean-brain-dev-auth-gate',
-            configureServer(server) {
-                server.middlewares.use(createDevAuthGateMiddleware({ backendOrigin }));
-            },
-        },
+        ...(!isEmbeddedMiddlewareMode
+            ? [
+                  {
+                      name: 'ocean-brain-dev-auth-gate',
+                      configureServer(server) {
+                          server.middlewares.use(createDevAuthGateMiddleware({ backendOrigin }));
+                      },
+                  },
+              ]
+            : []),
     ],
     resolve: {
         alias: [
@@ -61,13 +66,17 @@ export default defineConfig({
     },
     server: {
         host: '0.0.0.0',
-        proxy: {
-            '/api': { target: backendOrigin },
-            '/login': { target: backendOrigin },
-            '/logout': { target: backendOrigin },
-            '/graphql': { target: backendOrigin },
-            '/assets/images': { target: backendOrigin },
-        },
+        ...(!isEmbeddedMiddlewareMode
+            ? {
+                  proxy: {
+                      '/api': { target: backendOrigin },
+                      '/login': { target: backendOrigin },
+                      '/logout': { target: backendOrigin },
+                      '/graphql': { target: backendOrigin },
+                      '/assets/images': { target: backendOrigin },
+                  },
+              }
+            : {}),
     },
     test: {
         globals: true,

@@ -76,7 +76,26 @@ const createClientRouteCsrfTokenMiddleware = (authConfig: AuthConfig) => {
     };
 };
 
-export const createClientRouter = (authConfig: AuthConfig) =>
+const createProductionClientContentRouter = () =>
+    Router()
+        .use(express.static(paths.clientDist, { extensions: ['html'] }))
+        .get(/.*/, (req, res, next) => {
+            if (!isClientDocumentRequest(req)) {
+                next();
+                return;
+            }
+
+            res.sendFile('index.html', { root: paths.clientDist });
+        })
+        .use((_req, res) => {
+            res.setHeader('X-Content-Type-Options', 'nosniff');
+            res.status(404).end();
+        });
+
+export const createClientRouter = (
+    authConfig: AuthConfig,
+    clientContentMiddleware: RequestHandler = createProductionClientContentRouter(),
+) =>
     Router()
         .use(
             '/assets/images',
@@ -111,16 +130,4 @@ export const createClientRouter = (authConfig: AuthConfig) =>
             next();
         })
         .use(createClientRouteCsrfTokenMiddleware(authConfig))
-        .use(express.static(paths.clientDist, { extensions: ['html'] }))
-        .get(/.*/, (req, res, next) => {
-            if (!isClientDocumentRequest(req)) {
-                next();
-                return;
-            }
-
-            res.sendFile('index.html', { root: paths.clientDist });
-        })
-        .use((_req, res) => {
-            res.setHeader('X-Content-Type-Options', 'nosniff');
-            res.status(404).end();
-        });
+        .use(clientContentMiddleware);

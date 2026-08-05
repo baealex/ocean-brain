@@ -19,6 +19,8 @@ Updated: 2026-08-04
 Both browser test commands build the production app before starting Playwright.
 Install the local browser once with `pnpm exec playwright install chromium` after Playwright is installed or updated.
 
+Full dev mode exposes Express APIs, the Vite client, and HMR through the server port (`6683` by default). Client-only mode keeps the standalone Vite server and development proxy for isolated frontend work. Server-only mode runs Express with the existing built client fallback and does not start Vite.
+
 ## 3. Standard Quality Checks
 - `pnpm check:encoding`
 - `pnpm lint`

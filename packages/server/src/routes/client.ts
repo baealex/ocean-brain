@@ -7,6 +7,10 @@ import { paths } from '../paths.js';
 
 const IMAGE_ASSET_RATE_LIMIT_MESSAGE = 'Too many image asset requests. Please try again later.';
 
+const isClientDocumentRequest = (req: express.Request) => {
+    return req.method === 'GET' && Boolean(req.headers.accept?.includes('text/html')) && path.extname(req.path) === '';
+};
+
 const shouldBlockClientRoute = (authConfig: AuthConfig, requestPath: string, authenticated: boolean) => {
     if (authConfig.mode !== 'password' || authenticated) {
         return false;
@@ -108,6 +112,15 @@ export const createClientRouter = (authConfig: AuthConfig) =>
         })
         .use(createClientRouteCsrfTokenMiddleware(authConfig))
         .use(express.static(paths.clientDist, { extensions: ['html'] }))
-        .get(/.*/, (_req, res) => {
+        .get(/.*/, (req, res, next) => {
+            if (!isClientDocumentRequest(req)) {
+                next();
+                return;
+            }
+
             res.sendFile('index.html', { root: paths.clientDist });
+        })
+        .use((_req, res) => {
+            res.setHeader('X-Content-Type-Options', 'nosniff');
+            res.status(404).end();
         });

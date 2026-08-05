@@ -35,8 +35,49 @@ test('serves direct client routes when the package path contains a dot directory
     t.after(() => server.close());
 
     const { port } = server.address() as AddressInfo;
-    const response = await fetch(`http://127.0.0.1:${port}/12`);
+    const response = await fetch(`http://127.0.0.1:${port}/12`, {
+        headers: { Accept: 'text/html' },
+    });
 
     assert.equal(response.status, 200);
     assert.equal(await response.text(), '<main id="root">Ocean Brain</main>');
+});
+
+test('does not serve the SPA document for missing assets or non-document requests', async (t: TestContext) => {
+    const fixtureRoot = mkdtempSync(path.join(os.tmpdir(), 'ocean-brain-client-route-'));
+    const clientDist = path.join(fixtureRoot, 'client', 'dist');
+    const originalClientDist = paths.clientDist;
+
+    mkdirSync(clientDist, { recursive: true });
+    writeFileSync(path.join(clientDist, 'index.html'), '<main id="root">Ocean Brain</main>');
+    paths.clientDist = clientDist;
+
+    t.after(() => {
+        paths.clientDist = originalClientDist;
+        rmSync(fixtureRoot, { recursive: true, force: true });
+    });
+
+    const server = express()
+        .use(createClientRouter({ mode: 'open' }))
+        .listen(0);
+
+    await new Promise<void>((resolve, reject) => {
+        server.once('listening', resolve);
+        server.once('error', reject);
+    });
+
+    t.after(() => server.close());
+
+    const { port } = server.address() as AddressInfo;
+    const baseUrl = `http://127.0.0.1:${port}`;
+    const [missingAsset, nonDocumentRoute] = await Promise.all([
+        fetch(`${baseUrl}/assets/missing.js`, { headers: { Accept: 'text/html' } }),
+        fetch(`${baseUrl}/notes`, { headers: { Accept: 'application/json' } }),
+    ]);
+
+    assert.equal(missingAsset.status, 404);
+    assert.equal(missingAsset.headers.get('x-content-type-options'), 'nosniff');
+    assert.equal(await missingAsset.text(), '');
+    assert.equal(nonDocumentRoute.status, 404);
+    assert.equal(await nonDocumentRoute.text(), '');
 });

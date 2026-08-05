@@ -107,5 +107,13 @@ export const createApiRouter = (authConfig: AuthConfig, mcpAdminService: McpAdmi
             useAsync(createSearchAdminReindexHandler()),
         )
         .post('/image', sessionAccessRateLimit, requireSession, csrfProtection, useAsync(createUploadImageHandler()))
-        .get('/events', sessionAccessRateLimit, requireSession, csrfProtection, createServerEventsHandler());
+        .get('/events', sessionAccessRateLimit, requireSession, csrfProtection, createServerEventsHandler())
+        .use((_req, res) => {
+            res.status(404)
+                .json({
+                    code: 'API_ROUTE_NOT_FOUND',
+                    message: 'The requested API route was not found.',
+                })
+                .end();
+        });
 };

@@ -1,50 +1,187 @@
+import classNames from 'classnames';
+
+import * as Icon from '~/components/icon';
 import { Text } from '~/components/ui';
+import type { CalendarDayPreviewItem } from './types';
 
 interface CalendarDayViewProps {
     day: number;
+    dateLabel: string;
     cellClassName: string;
     dayNumberClassName: string;
     isCurrentMonth: boolean;
-    items: React.ReactNode[];
+    isToday: boolean;
+    isSelected: boolean;
+    noteCount: number;
+    reminderCount: number;
+    previewItems: CalendarDayPreviewItem[];
     overflowCount: number;
-    onOpenOverflow: () => void;
+    onSelect: () => void;
 }
+
+const NOTE_PREVIEW_TONE = 'bg-surface shadow-[inset_0_0_0_1px_var(--border-subtle)]';
+const REMINDER_PREVIEW_TONE = 'bg-emphasis';
+
+const itemLabel = (count: number, singular: string) => `${count} ${count === 1 ? singular : `${singular}s`}`;
 
 export const CalendarDayView = ({
     day,
+    dateLabel,
     cellClassName,
     dayNumberClassName,
     isCurrentMonth,
-    items,
+    isToday,
+    isSelected,
+    noteCount,
+    reminderCount,
+    previewItems,
     overflowCount,
-    onOpenOverflow,
+    onSelect,
 }: CalendarDayViewProps) => {
-    return (
-        <div className={`min-h-[196px] rounded-[16px] border p-2.5 ${cellClassName}`.trim()}>
-            <div className="mb-2.5 flex justify-end">
-                <Text
-                    as="span"
-                    variant="label"
-                    className={`flex h-7 w-7 items-center justify-center rounded-[10px] ${dayNumberClassName}`.trim()}
-                >
-                    {day}
-                </Text>
-            </div>
+    const totalCount = noteCount + reminderCount;
+    const accessibleLabel = `${dateLabel}, ${itemLabel(noteCount, 'note')}, ${itemLabel(reminderCount, 'reminder')}`;
 
-            {isCurrentMonth && items.length > 0 ? (
-                <div className="flex flex-col gap-1.5">
-                    {items}
-                    {overflowCount > 0 ? (
-                        <button
-                            type="button"
-                            onClick={onOpenOverflow}
-                            className="focus-ring-soft w-full rounded-[10px] border border-dashed border-border-subtle/70 bg-subtle/70 py-1 text-center text-micro font-semibold text-fg-tertiary outline-none transition-colors hover:border-border-secondary/70 hover:bg-hover-subtle hover:text-fg-secondary"
-                        >
-                            +{overflowCount} more
-                        </button>
-                    ) : null}
+    return (
+        <button
+            type="button"
+            disabled={!isCurrentMonth}
+            aria-label={accessibleLabel}
+            aria-pressed={isCurrentMonth ? isSelected : undefined}
+            aria-current={isCurrentMonth && isToday ? 'date' : undefined}
+            onClick={onSelect}
+            className={classNames(
+                'focus-ring-soft relative flex min-h-16 min-w-0 flex-col p-1.5 text-left outline-none transition-colors focus-visible:z-10 sm:min-h-24 sm:p-2 lg:min-h-36 lg:p-2.5',
+                cellClassName,
+            )}
+        >
+            <Text
+                as="span"
+                variant="label"
+                className={classNames(
+                    'flex h-6 min-w-6 items-center justify-center self-end whitespace-nowrap rounded-[9px] px-1.5 sm:h-7 sm:min-w-7 lg:!text-sm',
+                    dayNumberClassName,
+                )}
+            >
+                {day}
+            </Text>
+
+            {isCurrentMonth && totalCount > 0 ? (
+                <div aria-hidden="true" className="mt-1.5 w-full sm:mt-2">
+                    <div className="flex flex-col gap-0.5 text-fg-tertiary sm:hidden">
+                        {noteCount > 0 ? (
+                            <span className="flex items-center justify-between leading-none">
+                                <Icon.FileNote className="shrink-0" size={10} />
+                                <span className="whitespace-nowrap text-[10px] font-semibold text-fg-secondary tabular-nums">
+                                    {noteCount}
+                                </span>
+                            </span>
+                        ) : null}
+                        {reminderCount > 0 ? (
+                            <span className="flex items-center justify-between leading-none">
+                                <Icon.Bell className="shrink-0" size={10} />
+                                <span className="whitespace-nowrap text-[10px] font-semibold text-fg-secondary tabular-nums">
+                                    {reminderCount}
+                                </span>
+                            </span>
+                        ) : null}
+                    </div>
+
+                    <div className="hidden flex-col gap-1 sm:flex 2xl:hidden">
+                        {noteCount > 0 ? (
+                            <span
+                                className={classNames(
+                                    'flex min-h-7 min-w-0 items-center justify-between gap-1 rounded-[8px] px-2 py-1.5 text-fg-tertiary',
+                                    NOTE_PREVIEW_TONE,
+                                )}
+                            >
+                                <Text
+                                    as="span"
+                                    variant="micro"
+                                    weight="medium"
+                                    tone="secondary"
+                                    className="truncate !text-[11px] !leading-4"
+                                >
+                                    Notes
+                                </Text>
+                                <Text
+                                    as="span"
+                                    variant="micro"
+                                    weight="semibold"
+                                    tone="secondary"
+                                    className="!text-[11px] !leading-4 tabular-nums"
+                                >
+                                    {noteCount}
+                                </Text>
+                            </span>
+                        ) : null}
+                        {reminderCount > 0 ? (
+                            <span
+                                className={classNames(
+                                    'flex min-h-7 min-w-0 items-center justify-between gap-1 rounded-[8px] px-2 py-1.5 text-fg-tertiary',
+                                    REMINDER_PREVIEW_TONE,
+                                )}
+                            >
+                                <Text
+                                    as="span"
+                                    variant="micro"
+                                    weight="medium"
+                                    tone="secondary"
+                                    className="truncate !text-[11px] !leading-4"
+                                >
+                                    Reminders
+                                </Text>
+                                <Text
+                                    as="span"
+                                    variant="micro"
+                                    weight="semibold"
+                                    tone="secondary"
+                                    className="!text-[11px] !leading-4 tabular-nums"
+                                >
+                                    {reminderCount}
+                                </Text>
+                            </span>
+                        ) : null}
+                    </div>
+
+                    <div className="hidden flex-col gap-1 2xl:flex">
+                        {previewItems.map((item) => (
+                            <span
+                                key={item.key}
+                                className={classNames(
+                                    'flex min-h-8 min-w-0 items-center gap-1.5 rounded-[8px] px-2 py-1.5',
+                                    item.type === 'reminder' ? REMINDER_PREVIEW_TONE : NOTE_PREVIEW_TONE,
+                                )}
+                            >
+                                {item.type === 'reminder' ? (
+                                    <Icon.Bell className="shrink-0 text-fg-tertiary" size={12} />
+                                ) : (
+                                    <Icon.FileNote className="shrink-0 text-fg-tertiary" size={12} />
+                                )}
+                                <Text
+                                    as="span"
+                                    variant="label"
+                                    weight="medium"
+                                    tone="secondary"
+                                    className={classNames('truncate', item.isCompleted && 'line-through')}
+                                >
+                                    {item.title}
+                                </Text>
+                            </span>
+                        ))}
+                        {overflowCount > 0 ? (
+                            <Text
+                                as="span"
+                                variant="micro"
+                                weight="medium"
+                                tone="secondary"
+                                className="flex min-h-4 items-center px-2 !text-[11px] !leading-4"
+                            >
+                                +{overflowCount} more
+                            </Text>
+                        ) : null}
+                    </div>
                 </div>
             ) : null}
-        </div>
+        </button>
     );
 };

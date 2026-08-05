@@ -1,68 +1,25 @@
 import { getRouteApi } from '@tanstack/react-router';
 import dayjs from 'dayjs';
-import { useCallback, useMemo, useRef } from 'react';
-import type { CalendarDisplayType } from '~/components/calendar';
-import { CalendarDay, CalendarHeader, useCalendarData } from '~/components/calendar';
+import { useMemo, useState } from 'react';
+import type { CalendarDayData, CalendarDisplayType } from '~/components/calendar';
+import { CalendarHeader, CalendarMonth, useCalendarData } from '~/components/calendar';
 import { Callout, PageLayout } from '~/components/shared';
-import { Skeleton, Text } from '~/components/ui';
 import type { Note } from '~/models/note.model';
 import type { Reminder } from '~/models/reminder.model';
 import { CALENDAR_ROUTE } from '~/modules/url';
 
-const DAYS_OF_WEEK = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-
 const EMPTY_NOTES: Note[] = [];
 const EMPTY_REMINDERS: Reminder[] = [];
-
-interface CalendarDayView {
-    key: string;
-    year: number;
-    month: number;
-    day: number;
-    isCurrentMonth: boolean;
-    isSunday: boolean;
-    isToday: boolean;
-    isPast: boolean;
-    notes: Note[];
-    reminders: Reminder[];
-}
 
 const Route = getRouteApi(CALENDAR_ROUTE);
 
 export default function Calendar() {
     const navigate = Route.useNavigate();
     const { year, month, type } = Route.useSearch();
-
-    const gridScrollRef = useRef<HTMLDivElement>(null);
-    const isDragging = useRef(false);
-    const dragStartX = useRef(0);
-    const dragScrollLeft = useRef(0);
-
-    const handleMouseDown = useCallback((e: React.MouseEvent) => {
-        isDragging.current = true;
-        dragStartX.current = e.pageX - (gridScrollRef.current?.offsetLeft ?? 0);
-        dragScrollLeft.current = gridScrollRef.current?.scrollLeft ?? 0;
-        if (gridScrollRef.current) {
-            gridScrollRef.current.style.cursor = 'grabbing';
-            gridScrollRef.current.style.userSelect = 'none';
-        }
-    }, []);
-
-    const handleMouseMove = useCallback((e: React.MouseEvent) => {
-        if (!isDragging.current || !gridScrollRef.current) return;
-        e.preventDefault();
-        const x = e.pageX - gridScrollRef.current.offsetLeft;
-        const walk = (x - dragStartX.current) * 1.2;
-        gridScrollRef.current.scrollLeft = dragScrollLeft.current - walk;
-    }, []);
-
-    const handleMouseUp = useCallback(() => {
-        isDragging.current = false;
-        if (gridScrollRef.current) {
-            gridScrollRef.current.style.cursor = 'grab';
-            gridScrollRef.current.style.userSelect = '';
-        }
-    }, []);
+    const currentMonthKey = `${year}-${month}`;
+    const [calendarSelection, setCalendarSelection] = useState<{ monthKey: string; dayKey?: string }>(() => ({
+        monthKey: currentMonthKey,
+    }));
 
     const { notes, reminders, isLoading, isError } = useCalendarData({
         year,
@@ -141,7 +98,7 @@ export default function Calendar() {
         }
 
         // Merge into stable view objects
-        return days.map((d, index): CalendarDayView => {
+        return days.map((d, index): CalendarDayData => {
             const key = `${d.year}-${d.month}-${d.day}`;
             const dayDate = dayjs(`${d.year}-${String(d.month).padStart(2, '0')}-${String(d.day).padStart(2, '0')}`);
             return {
@@ -158,6 +115,12 @@ export default function Calendar() {
             };
         });
     }, [year, month, notes, reminders, type]);
+
+    const defaultSelectedDayKey = calendarDayViews.find((day) => day.isCurrentMonth && day.isToday)?.key;
+    const selectedDayKey =
+        calendarSelection.monthKey === currentMonthKey
+            ? (calendarSelection.dayKey ?? defaultSelectedDayKey)
+            : defaultSelectedDayKey;
 
     const handlePrevMonth = () => {
         const newMonth = month === 1 ? 12 : month - 1;
@@ -184,11 +147,18 @@ export default function Calendar() {
     };
 
     const handleToday = () => {
+        const today = dayjs();
+        const todayMonth = today.month() + 1;
+        const todayYear = today.year();
+        setCalendarSelection({
+            monthKey: `${todayYear}-${todayMonth}`,
+            dayKey: `${todayYear}-${todayMonth}-${today.date()}`,
+        });
         navigate({
             search: (prev) => ({
                 ...prev,
-                month: dayjs().month() + 1,
-                year: dayjs().year(),
+                month: todayMonth,
+                year: todayYear,
             }),
         });
     };
@@ -203,14 +173,17 @@ export default function Calendar() {
         });
     };
 
+    const handleSelectedDayChange = (dayKey: string) => {
+        setCalendarSelection({ monthKey: currentMonthKey, dayKey });
+    };
+
     return (
         <PageLayout title="Calendar" variant="none">
             {isError ? (
                 <Callout>Failed to load calendar data. Please try again later.</Callout>
             ) : (
-                <div className="surface-base">
-                    {/* Header - not scrollable */}
-                    <div className="border-b border-border-subtle/80 px-4 py-4 sm:px-5">
+                <div className="-mr-4">
+                    <div className="border-b border-border-subtle/80 pb-4">
                         <CalendarHeader
                             month={month}
                             year={year}
@@ -222,58 +195,14 @@ export default function Calendar() {
                         />
                     </div>
 
-                    {/* Scrollable grid */}
-                    <div
-                        ref={gridScrollRef}
-                        className="cursor-grab overflow-x-auto px-4 pb-4 pt-3 sm:px-5"
-                        onMouseDown={handleMouseDown}
-                        onMouseMove={handleMouseMove}
-                        onMouseUp={handleMouseUp}
-                        onMouseLeave={handleMouseUp}
-                    >
-                        <div className="min-w-[1260px]">
-                            <div className="mb-2.5 grid grid-cols-7 gap-1.5">
-                                {DAYS_OF_WEEK.map((day, index) => (
-                                    <Text
-                                        key={day}
-                                        as="div"
-                                        variant="label"
-                                        weight="semibold"
-                                        tracking="wider"
-                                        transform="uppercase"
-                                        className={`py-2 text-center ${index === 0 ? 'text-fg-weekend' : 'text-fg-tertiary'}`}
-                                    >
-                                        {day}
-                                    </Text>
-                                ))}
-                            </div>
-
-                            {isLoading ? (
-                                <div className="grid grid-cols-7 gap-1.5">
-                                    {Array.from({ length: 35 }).map((_, i) => (
-                                        <Skeleton key={i} height={180} />
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="grid grid-cols-7 gap-1.5">
-                                    {calendarDayViews.map((view) => (
-                                        <CalendarDay
-                                            key={view.key}
-                                            year={view.year}
-                                            month={view.month}
-                                            day={view.day}
-                                            isCurrentMonth={view.isCurrentMonth}
-                                            isSunday={view.isSunday}
-                                            isToday={view.isToday}
-                                            isPast={view.isPast}
-                                            notes={view.notes}
-                                            reminders={view.reminders}
-                                            type={type}
-                                        />
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                    <div className="pt-4">
+                        <CalendarMonth
+                            days={calendarDayViews}
+                            type={type}
+                            isLoading={isLoading}
+                            selectedDayKey={selectedDayKey}
+                            onSelectedDayChange={handleSelectedDayChange}
+                        />
                     </div>
                 </div>
             )}

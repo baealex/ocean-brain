@@ -1,20 +1,13 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-
-vi.mock('./NoteCard', () => ({
-    NoteCard: ({ note }: { note: { title: string } }) => <div data-testid="calendar-note-card">{note.title}</div>,
-}));
-
-vi.mock('./ReminderCard', () => ({
-    ReminderCard: ({ reminder }: { reminder: { content: string } }) => (
-        <div data-testid="calendar-reminder-card">{reminder.content}</div>
-    ),
-}));
 
 import { CalendarDay } from './CalendarDay';
 
 describe('<CalendarDay />', () => {
-    it('prioritizes reminders before notes for upcoming days', () => {
+    it('summarizes the day and selects it from the month overview', async () => {
+        const user = userEvent.setup();
+        const handleSelect = vi.fn();
+
         render(
             <CalendarDay
                 year={2026}
@@ -23,90 +16,56 @@ describe('<CalendarDay />', () => {
                 isCurrentMonth
                 isSunday={false}
                 isToday={false}
+                isSelected={false}
                 isPast={false}
                 notes={
                     [
-                        {
-                            id: 'n1',
-                            title: 'Note one',
-                        },
-                        {
-                            id: 'n2',
-                            title: 'Note two',
-                        },
+                        { id: 'n1', title: 'Note one' },
+                        { id: 'n2', title: 'Note two' },
                     ] as never[]
                 }
-                reminders={
-                    [
-                        {
-                            id: 'r1',
-                            content: 'Reminder one',
-                        },
-                        {
-                            id: 'r2',
-                            content: 'Reminder two',
-                        },
-                    ] as never[]
-                }
-                type="create"
+                reminders={[{ id: 'r1', content: 'Reminder one', completed: true }] as never[]}
+                onSelect={handleSelect}
             />,
         );
 
-        const visibleCards = screen
-            .getAllByTestId(/calendar-(note|reminder)-card/)
-            .map((element) => element.textContent);
+        const dayButton = screen.getByRole('button', {
+            name: 'Thursday, April 2, 2026, 2 notes, 1 reminder',
+        });
 
-        expect(visibleCards).toEqual(['Reminder one', 'Reminder two', 'Note one']);
-        expect(screen.getByRole('button', { name: '+1 more' })).toBeInTheDocument();
+        expect(dayButton).toHaveAttribute('aria-pressed', 'false');
+        expect(screen.getByText('Notes')).toBeInTheDocument();
+        expect(screen.getByText('Reminders')).toBeInTheDocument();
+        expect(screen.getByText('Reminder one')).toHaveClass('line-through');
+        expect(screen.getByText('Note one')).toBeInTheDocument();
+        expect(screen.getByText('+1 more')).toBeInTheDocument();
+
+        await user.click(dayButton);
+
+        expect(handleSelect).toHaveBeenCalledTimes(1);
     });
 
-    it('opens an overflow dialog with the full day contents', async () => {
-        const user = userEvent.setup();
-
+    it('keeps adjacent-month dates unavailable in the current month overview', () => {
         render(
             <CalendarDay
                 year={2026}
-                month={4}
-                day={2}
-                isCurrentMonth
-                isSunday={false}
+                month={3}
+                day={29}
+                isCurrentMonth={false}
+                isSunday
                 isToday={false}
+                isSelected={false}
                 isPast
-                notes={
-                    [
-                        {
-                            id: 'n1',
-                            title: 'Note one',
-                        },
-                        {
-                            id: 'n2',
-                            title: 'Note two',
-                        },
-                    ] as never[]
-                }
-                reminders={
-                    [
-                        {
-                            id: 'r1',
-                            content: 'Reminder one',
-                        },
-                        {
-                            id: 'r2',
-                            content: 'Reminder two',
-                        },
-                    ] as never[]
-                }
-                type="create"
+                notes={[]}
+                reminders={[]}
+                onSelect={vi.fn()}
             />,
         );
 
-        await user.click(screen.getByRole('button', { name: '+1 more' }));
-
-        const dialog = screen.getByRole('dialog');
-
-        expect(within(dialog).getAllByTestId('calendar-note-card')).toHaveLength(2);
-        expect(within(dialog).getAllByTestId('calendar-reminder-card')).toHaveLength(2);
-        expect(within(dialog).getByText('Note one')).toBeInTheDocument();
-        expect(within(dialog).getByText('Reminder one')).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', {
+                name: 'Sunday, March 29, 2026, 0 notes, 0 reminders',
+            }),
+        ).toBeDisabled();
     });
 });

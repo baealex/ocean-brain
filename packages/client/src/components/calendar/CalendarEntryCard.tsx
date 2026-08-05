@@ -25,7 +25,7 @@ export const CalendarEntryCard = ({
         <Link to={NOTE_ROUTE} params={params} className="focus-ring-soft group block rounded-[8px] outline-none">
             <div
                 className={classNames(
-                    'flex items-start gap-1.5 rounded-[8px] px-1.5 py-1 transition-colors group-hover:bg-hover-subtle',
+                    'flex items-start gap-1.5 rounded-[8px] px-1.5 py-1 transition-colors group-hover:bg-muted',
                     toneClassName,
                 )}
             >
@@ -48,7 +48,13 @@ export const CalendarEntryCard = ({
                         {title}
                     </Text>
                     {meta ? (
-                        <Text as="div" variant="micro" weight="medium" tone="tertiary" className="mt-0.5">
+                        <Text
+                            as="div"
+                            variant="micro"
+                            weight="medium"
+                            tone="secondary"
+                            className="mt-0.5 !text-[11px] !leading-4"
+                        >
                             {meta}
                         </Text>
                     ) : null}

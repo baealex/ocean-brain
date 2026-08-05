@@ -180,6 +180,7 @@ async function assertGraphql() {
 
 async function assertClientShellLoads(pathname) {
     const response = await fetch(`${rootUrl}${pathname}`, {
+        headers: { Accept: 'text/html' },
         redirect: 'manual',
         signal: AbortSignal.timeout(5000)
     });

@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import test from 'node:test';
-import sqlite3 from 'sqlite3';
 import { SqliteSemanticVectorIndex } from './sqlite-vector-index.js';
 
 const profile = {
@@ -15,18 +15,12 @@ const profile = {
 };
 
 const setDatabaseSchemaVersion = (filePath: string, version: number) => {
-    return new Promise<void>((resolve, reject) => {
-        const database = new sqlite3.Database(filePath);
-        database.run(`PRAGMA user_version = ${version}`, (error) => {
-            database.close((closeError) => {
-                if (error || closeError) {
-                    reject(error ?? closeError);
-                    return;
-                }
-                resolve();
-            });
-        });
-    });
+    const database = new DatabaseSync(filePath);
+    try {
+        database.exec(`PRAGMA user_version = ${version}`);
+    } finally {
+        database.close();
+    }
 };
 
 test('stores vectors in a disposable SQLite file and returns one nearest match per note', async (t) => {

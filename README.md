@@ -29,7 +29,7 @@ These commands enable password mode and bind Ocean Brain to your own machine. Ch
 
 ### npx
 
-With Node.js 22 installed:
+With Node.js 22.13+ or a newer LTS release installed:
 
 ```bash
 OCEAN_BRAIN_PASSWORD='choose-a-strong-password' \
@@ -59,7 +59,7 @@ For a stable session secret, persistent volumes, open mode, exact version tags, 
 
 ## Development
 
-Source development uses Node.js `22`, pnpm `10.25.0`, and a `packages/*` workspace. See [DEV_CONVENTION.md](./docs/process/DEV_CONVENTION.md) and [GIT_CONVENTION.md](./docs/process/GIT_CONVENTION.md) before making changes.
+Source development uses Node.js `22.13+`, pnpm `10.25.0`, and a `packages/*` workspace. See [DEV_CONVENTION.md](./docs/process/DEV_CONVENTION.md) and [GIT_CONVENTION.md](./docs/process/GIT_CONVENTION.md) before making changes.
 
 ## License
 

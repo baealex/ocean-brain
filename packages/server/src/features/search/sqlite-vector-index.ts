@@ -1,7 +1,8 @@
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
+import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
+import { setImmediate as yieldToEventLoop } from 'node:timers/promises';
 import { getLoadablePath } from 'sqlite-vec';
-import sqlite3 from 'sqlite3';
 import type { NoteEmbeddingChunk } from './note-chunking.js';
 
 export const SEMANTIC_INDEX_SCHEMA_VERSION = 2;
@@ -66,7 +67,7 @@ export interface SemanticNoteSyncStore {
     getNoteSyncQueueStatus: () => Promise<SemanticNoteSyncQueueStatus>;
 }
 
-type SqliteParameters = unknown[] | Record<string, unknown>;
+type SqliteParameters = SQLInputValue[];
 
 interface SearchIndexStateRow {
     profileJson: string;
@@ -165,84 +166,34 @@ const openDatabase = async (filePath: string) => {
         await mkdir(path.dirname(filePath), { recursive: true });
     }
 
-    const database = await new Promise<sqlite3.Database>((resolve, reject) => {
-        const db = new sqlite3.Database(filePath, (error) => {
-            if (error) {
-                reject(error);
-                return;
-            }
-
-            resolve(db);
-        });
-    });
-
-    await new Promise<void>((resolve, reject) => {
-        database.loadExtension(getLoadablePath(), (error) => {
-            if (error) {
-                reject(error);
-                return;
-            }
-
-            resolve();
-        });
-    });
-
-    return database;
+    const database = new DatabaseSync(filePath, { allowExtension: true });
+    try {
+        database.loadExtension(getLoadablePath());
+        database.enableLoadExtension(false);
+        return database;
+    } catch (error) {
+        database.close();
+        throw error;
+    }
 };
 
-const run = (database: sqlite3.Database, sql: string, parameters: SqliteParameters = []) => {
-    return new Promise<sqlite3.RunResult>((resolve, reject) => {
-        database.run(sql, parameters, function onRun(error) {
-            if (error) {
-                reject(error);
-                return;
-            }
-
-            resolve(this);
-        });
-    });
+const run = (database: DatabaseSync, sql: string, parameters: SqliteParameters = []) => {
+    return database.prepare(sql).run(...parameters);
 };
 
-const get = <T>(database: sqlite3.Database, sql: string, parameters: SqliteParameters = []) => {
-    return new Promise<T | undefined>((resolve, reject) => {
-        database.get<T>(sql, parameters, (error, row) => {
-            if (error) {
-                reject(error);
-                return;
-            }
-
-            resolve(row);
-        });
-    });
+const get = <T>(database: DatabaseSync, sql: string, parameters: SqliteParameters = []) => {
+    return database.prepare(sql).get(...parameters) as T | undefined;
 };
 
-const all = <T>(database: sqlite3.Database, sql: string, parameters: SqliteParameters = []) => {
-    return new Promise<T[]>((resolve, reject) => {
-        database.all<T>(sql, parameters, (error, rows) => {
-            if (error) {
-                reject(error);
-                return;
-            }
-
-            resolve(rows);
-        });
-    });
+const all = <T>(database: DatabaseSync, sql: string, parameters: SqliteParameters = []) => {
+    return database.prepare(sql).all(...parameters) as T[];
 };
 
-const exec = (database: sqlite3.Database, sql: string) => {
-    return new Promise<void>((resolve, reject) => {
-        database.exec(sql, (error) => {
-            if (error) {
-                reject(error);
-                return;
-            }
-
-            resolve();
-        });
-    });
+const exec = (database: DatabaseSync, sql: string) => {
+    database.exec(sql);
 };
 
-const initializeSearchDatabase = async (database: sqlite3.Database) => {
+const initializeSearchDatabase = async (database: DatabaseSync) => {
     await exec(
         database,
         `
@@ -264,21 +215,40 @@ const initializeSearchDatabase = async (database: sqlite3.Database) => {
     await exec(database, `PRAGMA user_version = ${SEARCH_DATABASE_SCHEMA_VERSION};`);
 };
 
-const close = (database: sqlite3.Database) => {
-    return new Promise<void>((resolve, reject) => {
-        database.close((error) => {
-            if (error) {
-                reject(error);
-                return;
-            }
-
-            resolve();
-        });
-    });
+const close = (database: DatabaseSync) => {
+    database.close();
 };
 
 const serializeEmbedding = (embedding: number[]) => {
     return Buffer.from(Float32Array.from(embedding).buffer);
+};
+
+const INSERT_YIELD_INTERVAL = 250;
+
+const insertChunks = async (database: DatabaseSync, chunks: IndexedNoteChunk[]) => {
+    const statement = database.prepare(`
+        INSERT INTO search_chunks (
+            note_id,
+            chunk_index,
+            source_hash,
+            text,
+            embedding
+        ) VALUES (?, ?, ?, ?, ?)
+    `);
+
+    for (const [index, chunk] of chunks.entries()) {
+        statement.run(
+            chunk.noteId,
+            chunk.chunkIndex,
+            chunk.sourceHash,
+            chunk.text,
+            serializeEmbedding(chunk.embedding),
+        );
+
+        if ((index + 1) % INSERT_YIELD_INTERVAL === 0 && index + 1 < chunks.length) {
+            await yieldToEventLoop();
+        }
+    }
 };
 
 const isSemanticIndexProfile = (value: unknown): value is SemanticIndexProfile => {
@@ -333,7 +303,7 @@ const validateIndexInput = (profile: SemanticIndexProfile, chunks: IndexedNoteCh
 };
 
 export class SqliteSemanticVectorIndex {
-    private databasePromise: Promise<sqlite3.Database> | null = null;
+    private databasePromise: Promise<DatabaseSync> | null = null;
     private operationTail: Promise<void> = Promise.resolve();
 
     constructor(private readonly filePath: string) {}
@@ -371,27 +341,7 @@ export class SqliteSemanticVectorIndex {
                 await run(database, 'DELETE FROM search_chunks');
                 await run(database, 'DELETE FROM search_index_state');
 
-                for (const chunk of chunks) {
-                    await run(
-                        database,
-                        `
-                            INSERT INTO search_chunks (
-                                note_id,
-                                chunk_index,
-                                source_hash,
-                                text,
-                                embedding
-                            ) VALUES (?, ?, ?, ?, ?)
-                        `,
-                        [
-                            chunk.noteId,
-                            chunk.chunkIndex,
-                            chunk.sourceHash,
-                            chunk.text,
-                            serializeEmbedding(chunk.embedding),
-                        ],
-                    );
-                }
+                await insertChunks(database, chunks);
 
                 await run(
                     database,
@@ -417,7 +367,7 @@ export class SqliteSemanticVectorIndex {
         });
     }
 
-    private async getStatusFromDatabase(database: sqlite3.Database): Promise<SemanticIndexStatus> {
+    private async getStatusFromDatabase(database: DatabaseSync): Promise<SemanticIndexStatus> {
         const state = await get<SearchIndexStateRow>(
             database,
             `
@@ -442,7 +392,7 @@ export class SqliteSemanticVectorIndex {
         };
     }
 
-    private async refreshIndexCounts(database: sqlite3.Database) {
+    private async refreshIndexCounts(database: DatabaseSync) {
         const counts = await get<IndexCountsRow>(
             database,
             `
@@ -643,37 +593,35 @@ export class SqliteSemanticVectorIndex {
     async getNoteSyncQueueStatus(): Promise<SemanticNoteSyncQueueStatus> {
         return this.runExclusive(async () => {
             const database = await this.getDatabase();
-            const [queue, state, latestError] = await Promise.all([
-                get<NoteSyncQueueStatusRow>(
-                    database,
-                    `
-                        SELECT
-                            COUNT(*) AS pendingNoteCount,
-                            MIN(first_queued_at) AS oldestQueuedAt
-                        FROM search_note_sync_queue
-                    `,
-                ),
-                get<NoteSyncStateRow>(
-                    database,
-                    `
-                        SELECT
-                            last_synced_at AS lastSyncedAt,
-                            last_reconciled_at AS lastReconciledAt
-                        FROM search_note_sync_state
-                        WHERE id = 1
-                    `,
-                ),
-                get<NoteSyncErrorRow>(
-                    database,
-                    `
-                        SELECT last_error AS error
-                        FROM search_note_sync_queue
-                        WHERE last_error IS NOT NULL
-                        ORDER BY next_attempt_at DESC, note_id ASC
-                        LIMIT 1
-                    `,
-                ),
-            ]);
+            const queue = get<NoteSyncQueueStatusRow>(
+                database,
+                `
+                    SELECT
+                        COUNT(*) AS pendingNoteCount,
+                        MIN(first_queued_at) AS oldestQueuedAt
+                    FROM search_note_sync_queue
+                `,
+            );
+            const state = get<NoteSyncStateRow>(
+                database,
+                `
+                    SELECT
+                        last_synced_at AS lastSyncedAt,
+                        last_reconciled_at AS lastReconciledAt
+                    FROM search_note_sync_state
+                    WHERE id = 1
+                `,
+            );
+            const latestError = get<NoteSyncErrorRow>(
+                database,
+                `
+                    SELECT last_error AS error
+                    FROM search_note_sync_queue
+                    WHERE last_error IS NOT NULL
+                    ORDER BY next_attempt_at DESC, note_id ASC
+                    LIMIT 1
+                `,
+            );
 
             return {
                 pendingNoteCount: queue?.pendingNoteCount ?? 0,
@@ -703,27 +651,7 @@ export class SqliteSemanticVectorIndex {
             await exec(database, 'BEGIN IMMEDIATE;');
             try {
                 await run(database, 'DELETE FROM search_chunks WHERE note_id = ?', [noteId]);
-                for (const chunk of chunks) {
-                    await run(
-                        database,
-                        `
-                            INSERT INTO search_chunks (
-                                note_id,
-                                chunk_index,
-                                source_hash,
-                                text,
-                                embedding
-                            ) VALUES (?, ?, ?, ?, ?)
-                        `,
-                        [
-                            chunk.noteId,
-                            chunk.chunkIndex,
-                            chunk.sourceHash,
-                            chunk.text,
-                            serializeEmbedding(chunk.embedding),
-                        ],
-                    );
-                }
+                await insertChunks(database, chunks);
                 await this.refreshIndexCounts(database);
                 await exec(database, 'COMMIT;');
             } catch (error) {

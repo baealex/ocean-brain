@@ -3,20 +3,17 @@ import models from '~/models.js';
 import type { Pagination, SearchFilter } from '~/types/index.js';
 
 type PlaceholderQueryResolvers = NonNullable<IResolvers['Query']>;
+type PlaceholderWhere = { name: { contains: string } };
 
 interface PlaceholderQueryDeps {
-    countPlaceholders: () => Promise<number>;
+    countPlaceholders: (where?: PlaceholderWhere) => Promise<number>;
     findPlaceholderById: (id: number) => Promise<unknown>;
-    findPlaceholders: (input: {
-        where?: { name: { contains: string } };
-        take?: number;
-        skip?: number;
-    }) => Promise<unknown[]>;
+    findPlaceholders: (input: { where?: PlaceholderWhere; take?: number; skip?: number }) => Promise<unknown[]>;
 }
 
 export const createAllPlaceholdersQueryResolver = (
     deps: PlaceholderQueryDeps = {
-        countPlaceholders: async () => models.placeholder.count(),
+        countPlaceholders: async (where) => models.placeholder.count({ where }),
         findPlaceholderById: async (id) => models.placeholder.findFirst({ where: { id } }),
         findPlaceholders: async (input) => models.placeholder.findMany(input),
     },
@@ -25,13 +22,14 @@ export const createAllPlaceholdersQueryResolver = (
         _: unknown,
         { searchFilter, pagination }: { searchFilter?: SearchFilter; pagination?: Pagination },
     ) => {
+        const where = searchFilter?.query ? { name: { contains: searchFilter.query } } : undefined;
         const placeholders = await deps.findPlaceholders({
-            where: searchFilter?.query ? { name: { contains: searchFilter.query } } : undefined,
+            where,
             take: pagination?.limit,
             skip: pagination?.offset,
         });
 
-        const totalCount = await deps.countPlaceholders();
+        const totalCount = await deps.countPlaceholders(where);
 
         return {
             totalCount,

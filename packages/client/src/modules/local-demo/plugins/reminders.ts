@@ -22,6 +22,11 @@ const toTime = (value: string | undefined) => {
     return Number.isFinite(parsedValue) ? parsedValue : null;
 };
 
+const compareReminderDates = (left: Reminder, right: Reminder) => {
+    const difference = (toTime(left.reminderDate) ?? 0) - (toTime(right.reminderDate) ?? 0);
+    return difference || left.id.localeCompare(right.id);
+};
+
 const listReminders = (state: LocalDemoState, filter: LocalReminderFilter) => {
     const start = toTime(filter.start);
     const end = toTime(filter.end);
@@ -71,6 +76,7 @@ export const remindersLocalPlugin: LocalDemoPlugin = {
         FetchUpcomingReminders: ({ state, variables }) => {
             const reminders = state.reminders
                 .filter((reminder) => !reminder.completed)
+                .sort(compareReminderDates)
                 .map((reminder) => ({ ...reminder, note: findNote(state, reminder.noteId) }));
             return success({
                 upcomingReminders: {
@@ -80,9 +86,9 @@ export const remindersLocalPlugin: LocalDemoPlugin = {
             });
         },
         FetchNoteReminders: ({ state, variables }) => {
-            const reminders = state.reminders.filter(
-                (reminder) => String(reminder.noteId) === String(variables.noteId),
-            );
+            const reminders = state.reminders
+                .filter((reminder) => String(reminder.noteId) === String(variables.noteId))
+                .sort(compareReminderDates);
             return success({
                 noteReminders: {
                     totalCount: reminders.length,

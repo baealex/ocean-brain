@@ -3,14 +3,14 @@ import test from 'node:test';
 
 import { createAllPlaceholdersQueryResolver, createPlaceholderQueryResolver } from './placeholder.query.resolver.js';
 
-test('allPlaceholders resolver forwards search and pagination while keeping the legacy total count behavior', async () => {
+test('allPlaceholders resolver applies the search filter to items and total count', async () => {
     let findArgs: unknown;
-    let counted = false;
+    let countWhere: unknown;
 
     const resolver = createAllPlaceholdersQueryResolver({
-        countPlaceholders: async () => {
-            counted = true;
-            return 9;
+        countPlaceholders: async (where) => {
+            countWhere = where;
+            return 1;
         },
         findPlaceholderById: async () => null,
         findPlaceholders: async (input) => {
@@ -36,13 +36,13 @@ test('allPlaceholders resolver forwards search and pagination while keeping the 
         },
     });
 
-    assert.equal(counted, true);
+    assert.deepEqual(countWhere, { name: { contains: 'Meeting' } });
     assert.deepEqual(findArgs, {
         where: { name: { contains: 'Meeting' } },
         take: 5,
         skip: 10,
     });
-    assert.equal(result.totalCount, 9);
+    assert.equal(result.totalCount, 1);
     assert.deepEqual(result.placeholders, [
         {
             id: 2,

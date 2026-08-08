@@ -39,7 +39,7 @@ test('createPlaceholder resolver forwards placeholder fields to the create depen
     });
 });
 
-test('updatePlaceholder resolver preserves legacy behavior by returning the pre-update record', async () => {
+test('updatePlaceholder resolver returns the updated record', async () => {
     let updateInput: unknown;
 
     const resolver = createUpdatePlaceholderMutationResolver({
@@ -53,6 +53,14 @@ test('updatePlaceholder resolver preserves legacy behavior by returning the pre-
         }),
         updatePlaceholder: async (input) => {
             updateInput = input;
+            return {
+                id: input.id,
+                name: input.name ?? 'Old name',
+                template: input.template ?? 'old-template',
+                replacement: input.replacement ?? 'Old value',
+                createdAt: new Date('2026-04-01T00:00:00.000Z'),
+                updatedAt: new Date('2026-04-02T00:00:00.000Z'),
+            };
         },
     });
 
@@ -71,18 +79,20 @@ test('updatePlaceholder resolver preserves legacy behavior by returning the pre-
     });
     assert.deepEqual(result, {
         id: 8,
-        name: 'Old name',
-        template: 'old-template',
-        replacement: 'Old value',
+        name: 'New name',
+        template: 'new-template',
+        replacement: 'New value',
         createdAt: new Date('2026-04-01T00:00:00.000Z'),
-        updatedAt: new Date('2026-04-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-04-02T00:00:00.000Z'),
     });
 });
 
 test('updatePlaceholder resolver throws when the placeholder does not exist', async () => {
     const resolver = createUpdatePlaceholderMutationResolver({
         findPlaceholderById: async () => null,
-        updatePlaceholder: async () => undefined,
+        updatePlaceholder: async () => {
+            throw new Error('should not update');
+        },
     });
 
     await assert.rejects(() => resolver(null, { id: '3' }), /Placeholder not found/);

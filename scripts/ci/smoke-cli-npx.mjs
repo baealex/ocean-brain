@@ -350,10 +350,18 @@ async function stopProcess(child) {
 
 export async function expectAuthFailure(child, getStderr, timeoutMs = 15000) {
     if (child.exitCode === null && child.signalCode === null) {
-        await Promise.race([
-            new Promise(resolve => child.once('exit', resolve)),
-            sleep(timeoutMs)
-        ]);
+        let timeout;
+
+        try {
+            await Promise.race([
+                new Promise(resolve => child.once('exit', resolve)),
+                new Promise(resolve => {
+                    timeout = setTimeout(resolve, timeoutMs);
+                })
+            ]);
+        } finally {
+            clearTimeout(timeout);
+        }
     }
 
     if (child.exitCode === null && child.signalCode === null) {

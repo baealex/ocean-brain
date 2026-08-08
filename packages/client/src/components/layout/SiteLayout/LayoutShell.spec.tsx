@@ -1,52 +1,56 @@
-import { RouterProvider } from '@tanstack/react-router';
-import { act, render, screen } from '@testing-library/react';
+import {
+    createMemoryHistory,
+    createRootRoute,
+    createRoute,
+    createRouter,
+    Outlet,
+    RouterProvider,
+} from '@tanstack/react-router';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-
-import { createTestRouter } from '~/test/create-test-router';
 
 import LayoutShell from './LayoutShell';
 
-describe('<LayoutShell />', () => {
-    it('renders the shell slots and outlet content', async () => {
-        const router = createTestRouter({
-            initialPath: '/',
-            routePath: '/',
-            rootComponent: () => (
-                <LayoutShell sidebar={<div>Sidebar</div>} topNavigation={<div>Top Navigation</div>}>
-                    <div>Page Content</div>
-                </LayoutShell>
-            ),
-            routeComponent: () => null,
-        });
-
-        render(<RouterProvider router={router} />);
-        await act(async () => {
-            await router.load();
-        });
-
-        expect(await screen.findByText('Sidebar')).toBeInTheDocument();
-        expect(await screen.findByText('Top Navigation')).toBeInTheDocument();
-        expect(await screen.findByText('Page Content')).toBeInTheDocument();
+const createLayoutRouter = () => {
+    const rootRoute = createRootRoute({
+        component: () => (
+            <LayoutShell sidebar={<div>Sidebar</div>} topNavigation={<div>Top Navigation</div>}>
+                <Outlet />
+            </LayoutShell>
+        ),
+    });
+    const homeRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => <div>Home page</div>,
+    });
+    const nextRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/next',
+        component: () => <div>Next page</div>,
     });
 
+    return createRouter({
+        routeTree: rootRoute.addChildren([homeRoute, nextRoute]),
+        history: createMemoryHistory({ initialEntries: ['/'] }),
+    });
+};
+
+const renderLayout = async () => {
+    const router = createLayoutRouter();
+    render(<RouterProvider router={router} />);
+
+    await act(async () => {
+        await router.load();
+    });
+
+    return router;
+};
+
+describe('<LayoutShell />', () => {
     it('exposes the mobile sidebar toggle as an accessible stateful control', async () => {
         const user = userEvent.setup();
-        const router = createTestRouter({
-            initialPath: '/',
-            routePath: '/',
-            rootComponent: () => (
-                <LayoutShell sidebar={<div>Sidebar</div>} topNavigation={<div>Top Navigation</div>}>
-                    <div>Page Content</div>
-                </LayoutShell>
-            ),
-            routeComponent: () => null,
-        });
-
-        render(<RouterProvider router={router} />);
-        await act(async () => {
-            await router.load();
-        });
-
+        await renderLayout();
         const toggleButton = screen.getByRole('button', { name: 'Toggle sidebar' });
         const sidebar = screen.getByText('Sidebar').closest('aside');
 
@@ -56,5 +60,21 @@ describe('<LayoutShell />', () => {
         await user.click(toggleButton);
 
         expect(toggleButton).toHaveAttribute('aria-expanded', 'true');
+    });
+
+    it('closes the mobile sidebar after route navigation', async () => {
+        const user = userEvent.setup();
+        const router = await renderLayout();
+        const toggleButton = screen.getByRole('button', { name: 'Toggle sidebar' });
+        await user.click(toggleButton);
+        expect(toggleButton).toHaveAttribute('aria-expanded', 'true');
+
+        await act(async () => {
+            await router.navigate({ to: '/next' });
+        });
+
+        await waitFor(() => {
+            expect(toggleButton).toHaveAttribute('aria-expanded', 'false');
+        });
     });
 });

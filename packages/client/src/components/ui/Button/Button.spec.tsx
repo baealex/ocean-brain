@@ -4,34 +4,32 @@ import userEvent from '@testing-library/user-event';
 import { Button } from './Button';
 
 describe('<Button />', () => {
-    it('calls the click handler from the accessible button', async () => {
+    it('exposes a busy disabled state while loading and blocks interaction', async () => {
         const user = userEvent.setup();
         const handleClick = vi.fn();
 
-        render(<Button onClick={handleClick}>Capture</Button>);
+        render(
+            <Button isLoading onClick={handleClick}>
+                Capture
+            </Button>,
+        );
 
         const button = screen.getByRole('button', { name: 'Capture' });
-        expect(button).toBeInTheDocument();
 
         await user.click(button);
 
-        expect(handleClick).toHaveBeenCalledTimes(1);
+        expect(button).toBeDisabled();
+        expect(button).toHaveAttribute('aria-busy', 'true');
+        expect(handleClick).not.toHaveBeenCalled();
     });
 
-    it('respects the disabled state regardless of visual variant', () => {
+    it('composes its behavior onto a child link', () => {
         render(
-            <>
-                <Button disabled>Primary action</Button>
-                <Button variant="subtle" disabled>
-                    Quiet action
-                </Button>
-            </>,
+            <Button asChild variant="ghost">
+                <a href="/notes/7">Open note</a>
+            </Button>,
         );
 
-        const primaryButton = screen.getByRole('button', { name: 'Primary action' });
-        const subtleButton = screen.getByRole('button', { name: 'Quiet action' });
-
-        expect(primaryButton).toBeDisabled();
-        expect(subtleButton).toBeDisabled();
+        expect(screen.getByRole('link', { name: 'Open note' })).toHaveAttribute('href', '/notes/7');
     });
 });

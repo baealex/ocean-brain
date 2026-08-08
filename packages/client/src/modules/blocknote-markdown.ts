@@ -35,6 +35,23 @@ const TAG_PLACEHOLDER_SUFFIX = '_TOKEN';
 
 const createTagPlaceholder = (index: number) => `${TAG_PLACEHOLDER_PREFIX}${index}${TAG_PLACEHOLDER_SUFFIX}`;
 
+const createTagPlaceholderFactory = (blocks: MarkdownBlock[]) => {
+    const serializedBlocks = JSON.stringify(blocks);
+    let nextPlaceholderIndex = 0;
+
+    return () => {
+        let placeholder = createTagPlaceholder(nextPlaceholderIndex);
+
+        while (serializedBlocks.includes(placeholder)) {
+            nextPlaceholderIndex += 1;
+            placeholder = createTagPlaceholder(nextPlaceholderIndex);
+        }
+
+        nextPlaceholderIndex += 1;
+        return placeholder;
+    };
+};
+
 const isTableContent = (content: MarkdownBlock['content']): content is MarkdownTableContent => {
     return !Array.isArray(content) && content?.type === 'tableContent';
 };
@@ -78,7 +95,7 @@ const mapBlocks = (
 
 export function prepareBlocksForMarkdown(blocks: MarkdownBlock[]) {
     const placeholderToTag = new Map<string, string>();
-    let nextPlaceholderIndex = 0;
+    const createPlaceholder = createTagPlaceholderFactory(blocks);
 
     const markdownBlocks = mapBlocks(blocks, (content) =>
         mapBlockContent(content, (inline) => {
@@ -96,8 +113,7 @@ export function prepareBlocksForMarkdown(blocks: MarkdownBlock[]) {
 
             if (inline.type === 'tag') {
                 const tag = (inline.props?.tag as string) || '';
-                const placeholder = createTagPlaceholder(nextPlaceholderIndex);
-                nextPlaceholderIndex += 1;
+                const placeholder = createPlaceholder();
                 placeholderToTag.set(placeholder, tag);
 
                 return {

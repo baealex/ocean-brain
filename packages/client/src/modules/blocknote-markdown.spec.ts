@@ -43,6 +43,30 @@ describe('blocknote markdown helpers', () => {
         expect(prepared.blocks[0].content).toEqual([{ type: 'text', text: '[[Title Only Note]]', styles: {} }]);
     });
 
+    it('preserves literal text that matches an internal tag placeholder', () => {
+        const prepared = prepareBlocksForMarkdown([
+            {
+                type: 'paragraph',
+                content: [
+                    { type: 'text', text: 'Literal OCEAN_BRAIN_TAG_0_TOKEN ', styles: {} },
+                    { type: 'tag', props: { tag: '@project' } },
+                ],
+                children: [],
+            },
+        ]);
+
+        expect(prepared.blocks[0].content).toEqual([
+            { type: 'text', text: 'Literal OCEAN_BRAIN_TAG_0_TOKEN ', styles: {} },
+            { type: 'text', text: 'OCEAN_BRAIN_TAG_1_TOKEN', styles: {} },
+        ]);
+        expect(
+            restoreTagPlaceholdersInMarkdown(
+                'Literal OCEAN_BRAIN_TAG_0_TOKEN OCEAN_BRAIN_TAG_1_TOKEN',
+                prepared.placeholderToTag,
+            ),
+        ).toBe('Literal OCEAN_BRAIN_TAG_0_TOKEN [@project]');
+    });
+
     it('strips unsupported table of contents blocks', () => {
         const prepared = prepareBlocksForMarkdown([
             { type: 'tableOfContents', content: [], children: [] },

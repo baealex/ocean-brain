@@ -222,6 +222,34 @@ test('blocksToMarkdown serializes tags using explicit bracket syntax', async () 
     assert.match(markdown, /\[\[Reference Note\]\]\(note:44\)/);
 });
 
+test('blocksToMarkdown preserves literal text that matches its tag placeholder', async () => {
+    const content = JSON.stringify([
+        {
+            type: 'paragraph',
+            props: {},
+            content: [
+                {
+                    type: 'text',
+                    text: 'Literal OCEAN_BRAIN_TAG_0_TOKEN ',
+                    styles: {},
+                },
+                {
+                    type: 'tag',
+                    props: {
+                        id: '12',
+                        tag: '@project',
+                    },
+                },
+            ],
+            children: [],
+        },
+    ]);
+
+    const markdown = await blocksToMarkdown(content);
+
+    assert.match(markdown, /Literal OCEAN_BRAIN_TAG_0_TOKEN \[@project\]/);
+});
+
 test('blocksToMarkdown serializes custom inline content inside table cells', async () => {
     const content = JSON.stringify([
         {
@@ -580,6 +608,29 @@ test('markdownToBlocksJson restores custom tag and reference inline content from
             },
         },
     ]);
+});
+
+test('markdownToBlocksJson preserves literal text matching tag and reference placeholders', async () => {
+    const contentJson = await markdownToBlocksJson(
+        'Literal OCEAN_BRAIN_TAG_0_TOKEN OCEAN_BRAIN_REFERENCE_0_TOKEN [@project] [[Old Title]](note:44)',
+        {
+            ensureTag: async () => ({
+                id: '12',
+                name: '@project',
+            }),
+            findNotesByTitle: async () => [],
+            findNoteById: async (id) => (id === '44' ? { id, title: 'Current Title' } : null),
+        },
+    );
+    const blocks = JSON.parse(contentJson);
+
+    assert.match(blocks[0].content[0].text, /OCEAN_BRAIN_TAG_0_TOKEN/);
+    assert.match(blocks[0].content[0].text, /OCEAN_BRAIN_REFERENCE_0_TOKEN/);
+    assert.equal(blocks[0].content[1].type, 'tag');
+    assert.equal(blocks[0].content[1].props.tag, '@project');
+    assert.equal(blocks[0].content[3].type, 'reference');
+    assert.equal(blocks[0].content[3].props.id, '44');
+    assert.equal(blocks[0].content[3].props.title, 'Current Title');
 });
 
 test('markdownToBlocksJson leaves explicit # tag syntax as text', async () => {

@@ -67,19 +67,20 @@ describe('note-export', () => {
         const html = createHtmlDocumentExport(
             '<p>Body</p>',
             {
-                id: '123-->\n<img src=x onerror=alert(1)><!--',
+                id: '123-->\n<img src=x onerror=alert(1)><!-- --!>',
                 title: 'Line 1\r\nLine 2 -- tail',
                 createdAt: '8640000000000001',
             },
             { includeMetadata: true },
         );
 
-        expect(html.match(/-->/g)).toHaveLength(1);
+        expect(html.split('-->')).toHaveLength(2);
+        expect(html).not.toContain('--!>');
         expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;');
         expect(html).not.toContain('<img src=x onerror=alert(1)>');
         expect(html).not.toContain('Line 1\r\nLine 2');
         expect(html).toContain('created_at: 8640000000000001');
-        expect(html).toMatch(/-->\n<p>Body<\/p>$/);
+        expect(html.endsWith('-->\n<p>Body</p>')).toBe(true);
 
         const container = document.createElement('div');
 

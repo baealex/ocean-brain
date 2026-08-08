@@ -3,6 +3,7 @@ import models from '~/models.js';
 
 type PlaceholderMutationResolvers = NonNullable<IResolvers['Mutation']>;
 type PlaceholderRecord = Awaited<ReturnType<typeof models.placeholder.findFirst>>;
+type ExistingPlaceholderRecord = NonNullable<PlaceholderRecord>;
 
 interface CreatePlaceholderArgs {
     name: string;
@@ -21,7 +22,12 @@ interface PlaceholderMutationDeps {
     createPlaceholder: (input: CreatePlaceholderArgs) => Promise<unknown>;
     deletePlaceholder: (id: number) => Promise<void>;
     findPlaceholderById: (id: number) => Promise<PlaceholderRecord>;
-    updatePlaceholder: (input: { id: number; name?: string; template?: string; replacement?: string }) => Promise<void>;
+    updatePlaceholder: (input: {
+        id: number;
+        name?: string;
+        template?: string;
+        replacement?: string;
+    }) => Promise<ExistingPlaceholderRecord>;
 }
 
 export const createCreatePlaceholderMutationResolver = (
@@ -49,7 +55,7 @@ export const createUpdatePlaceholderMutationResolver = (
     deps: Pick<PlaceholderMutationDeps, 'findPlaceholderById' | 'updatePlaceholder'> = {
         findPlaceholderById: async (id) => models.placeholder.findFirst({ where: { id } }),
         updatePlaceholder: async (input) => {
-            await models.placeholder.update({
+            return models.placeholder.update({
                 where: { id: input.id },
                 data: {
                     name: input.name,
@@ -67,14 +73,12 @@ export const createUpdatePlaceholderMutationResolver = (
             throw new Error('Placeholder not found');
         }
 
-        await deps.updatePlaceholder({
+        return deps.updatePlaceholder({
             id: Number(id),
             name,
             template,
             replacement,
         });
-
-        return placeholder;
     };
 };
 

@@ -13,12 +13,28 @@ import type { Pagination } from '~/types/index.js';
 
 type ViewQueryResolvers = NonNullable<IResolvers['Query']>;
 
-export const viewQueryResolvers: ViewQueryResolvers = {
+export interface ViewQueryResolverDeps {
+    getNotesByProperties: typeof getNotesByProperties;
+    getViewSectionBoardColumn: typeof getViewSectionBoardColumn;
+    getViewSectionById: typeof getViewSectionById;
+    getViewSectionNotes: typeof getViewSectionNotes;
+    getViewWorkspace: typeof getViewWorkspace;
+}
+
+export const createViewQueryResolvers = (
+    deps: ViewQueryResolverDeps = {
+        getNotesByProperties,
+        getViewSectionBoardColumn,
+        getViewSectionById,
+        getViewSectionNotes,
+        getViewWorkspace,
+    },
+): ViewQueryResolvers => ({
     viewWorkspace: async () => {
-        return getViewWorkspace();
+        return deps.getViewWorkspace();
     },
     viewSection: async (_, { id }: { id: string }) => {
-        return getViewSectionById(id);
+        return deps.getViewSectionById(id);
     },
     viewSectionNotes: async (
         _,
@@ -37,7 +53,7 @@ export const viewQueryResolvers: ViewQueryResolvers = {
             sortOrder?: ViewNotesQueryInput['sortOrder'];
         },
     ) => {
-        const sectionNotes = await getViewSectionNotes(
+        const sectionNotes = await deps.getViewSectionNotes(
             id,
             {
                 limit: Number(pagination.limit),
@@ -68,7 +84,7 @@ export const viewQueryResolvers: ViewQueryResolvers = {
         },
     ) => {
         try {
-            const columnNotes = await getViewSectionBoardColumn(id, optionValue, {
+            const columnNotes = await deps.getViewSectionBoardColumn(id, optionValue, {
                 limit: Number(pagination.limit),
                 offset: Number(pagination.offset),
             });
@@ -104,7 +120,7 @@ export const viewQueryResolvers: ViewQueryResolvers = {
         },
     ) => {
         try {
-            return await getNotesByProperties(input, {
+            return await deps.getNotesByProperties(input, {
                 limit: Number(pagination.limit),
                 offset: Number(pagination.offset),
             });
@@ -120,4 +136,6 @@ export const viewQueryResolvers: ViewQueryResolvers = {
             throw error;
         }
     },
-};
+});
+
+export const viewQueryResolvers = createViewQueryResolvers();

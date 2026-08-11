@@ -140,14 +140,6 @@ function visitBlocks(blocks: BlockNote[], visit: (block: BlockNote) => void) {
     }
 }
 
-function createTagPlaceholder(index: number) {
-    return `${TAG_PLACEHOLDER_PREFIX}${index}${TAG_PLACEHOLDER_SUFFIX}`;
-}
-
-function createReferencePlaceholder(index: number) {
-    return `${REFERENCE_PLACEHOLDER_PREFIX}${index}${REFERENCE_PLACEHOLDER_SUFFIX}`;
-}
-
 function isValidNoteIdString(id: string) {
     if (!/^[1-9]\d*$/.test(id)) {
         return false;
@@ -249,7 +241,7 @@ function mapBlocks(
 function preprocessCustomInlineContent(
     blocks: BlockNote[],
     placeholderToTag: Map<string, string>,
-    nextPlaceholderIndex: { value: number },
+    createTagPlaceholder: () => string,
 ): BlockNote[] {
     return mapBlocks(blocks, (content) =>
         mapBlockContent(content, (inline) => {
@@ -265,7 +257,7 @@ function preprocessCustomInlineContent(
             }
             if (inline.type === 'tag') {
                 const tag = (inline.props?.tag as string) || '';
-                const placeholder = createTagPlaceholder(nextPlaceholderIndex.value++);
+                const placeholder = createTagPlaceholder();
                 placeholderToTag.set(placeholder, tag);
                 return {
                     type: 'text',
@@ -290,9 +282,13 @@ function restoreTagPlaceholdersInMarkdown(markdown: string, placeholderToTag: Ma
 
 function preprocessMarkdownExplicitTags(markdown: string) {
     const placeholderToTag = new Map<string, string>();
-    let nextPlaceholderIndex = 0;
+    const createPlaceholder = createProtectedTextPlaceholderFactory(
+        markdown,
+        TAG_PLACEHOLDER_PREFIX,
+        TAG_PLACEHOLDER_SUFFIX,
+    );
     const preprocessedMarkdown = markdown.replace(/\[(@[^\s[\]]+)\]/g, (_match, tagToken: string) => {
-        const placeholder = createTagPlaceholder(nextPlaceholderIndex++);
+        const placeholder = createPlaceholder();
         placeholderToTag.set(placeholder, tagToken);
         return placeholder;
     });
@@ -305,6 +301,11 @@ function preprocessMarkdownExplicitTags(markdown: string) {
 
 function preprocessMarkdownExplicitReferences(markdown: string) {
     const placeholderToReference = new Map<string, { id: string; title: string; token: string }>();
+    const createPlaceholder = createProtectedTextPlaceholderFactory(
+        markdown,
+        REFERENCE_PLACEHOLDER_PREFIX,
+        REFERENCE_PLACEHOLDER_SUFFIX,
+    );
     let activeFence: { marker: '`' | '~'; length: number } | null = null;
 
     const preprocessedLines = markdown.split(/(?<=\n)/).map((line) => {
@@ -331,7 +332,11 @@ function preprocessMarkdownExplicitReferences(markdown: string) {
             return line;
         }
 
-        return `${replaceMarkdownLineExplicitReferences(lineBody, placeholderToReference)}${lineEnding}`;
+        return `${replaceMarkdownLineExplicitReferences(
+            lineBody,
+            placeholderToReference,
+            createPlaceholder,
+        )}${lineEnding}`;
     });
 
     return {
@@ -343,6 +348,7 @@ function preprocessMarkdownExplicitReferences(markdown: string) {
 function replaceMarkdownLineExplicitReferences(
     line: string,
     placeholderToReference: Map<string, { id: string; title: string; token: string }>,
+    createPlaceholder: () => string,
 ) {
     let result = '';
     let cursor = 0;
@@ -351,11 +357,15 @@ function replaceMarkdownLineExplicitReferences(
         const codeSpan = findNextInlineCodeSpan(line, cursor);
 
         if (!codeSpan) {
-            result += replaceExplicitReferenceTokens(line.slice(cursor), placeholderToReference);
+            result += replaceExplicitReferenceTokens(line.slice(cursor), placeholderToReference, createPlaceholder);
             break;
         }
 
-        result += replaceExplicitReferenceTokens(line.slice(cursor, codeSpan.start), placeholderToReference);
+        result += replaceExplicitReferenceTokens(
+            line.slice(cursor, codeSpan.start),
+            placeholderToReference,
+            createPlaceholder,
+        );
         result += line.slice(codeSpan.start, codeSpan.end);
         cursor = codeSpan.end;
     }
@@ -366,9 +376,10 @@ function replaceMarkdownLineExplicitReferences(
 function replaceExplicitReferenceTokens(
     text: string,
     placeholderToReference: Map<string, { id: string; title: string; token: string }>,
+    createPlaceholder: () => string,
 ) {
     return text.replace(/\[\[([^\n]+?)\]\]\(note:([^)\s]+)\)/g, (token, title: string, id: string) => {
-        const placeholder = createReferencePlaceholder(placeholderToReference.size);
+        const placeholder = createPlaceholder();
         placeholderToReference.set(placeholder, { id, title, token });
         return placeholder;
     });
@@ -1434,7 +1445,12 @@ export async function blocksToMarkdown(contentJson: string): Promise<string> {
         const blocks = parseBlockNoteContent(contentJson);
         const supportedBlocks = stripUnsupportedMarkdownBlocks(blocks);
         const placeholderToTag = new Map<string, string>();
-        const processed = preprocessCustomInlineContent(supportedBlocks, placeholderToTag, { value: 0 });
+        const createTagPlaceholder = createProtectedTextPlaceholderFactory(
+            contentJson,
+            TAG_PLACEHOLDER_PREFIX,
+            TAG_PLACEHOLDER_SUFFIX,
+        );
+        const processed = preprocessCustomInlineContent(supportedBlocks, placeholderToTag, createTagPlaceholder);
         const editor = getEditor();
         const markdown = await editor.blocksToMarkdownLossy(
             processed as Parameters<typeof editor.blocksToMarkdownLossy>[0],

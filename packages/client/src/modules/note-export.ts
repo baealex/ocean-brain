@@ -1,4 +1,5 @@
 import JSZip from 'jszip';
+import { getSupportedImageFileExtension } from './image-upload-policy';
 
 export interface NoteExportMetadata {
     id: string;
@@ -22,31 +23,68 @@ interface MarkdownDocumentExportOptions {
     includeMetadata?: boolean;
 }
 
-const YAML_SPECIAL_CHAR_PATTERN = /[:{}[\],&*#?|<>=!%@`-]/;
 const LOCAL_IMAGE_ASSET_PREFIX = '/assets/images/';
+const MAX_FILENAME_STEM_BYTES = 120;
+const MAX_ASSET_FILENAME_STEM_BYTES = 100;
+const WINDOWS_RESERVED_FILENAME_PATTERN =
+    /^(?:con|prn|aux|nul|com[1-9\u00b9\u00b2\u00b3]|lpt[1-9\u00b9\u00b2\u00b3])(?:\.|$)/i;
+
+const isControlCharacter = (character: string) => {
+    const codePoint = character.codePointAt(0) ?? 0;
+
+    return codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f);
+};
+
+const truncateUtf8 = (value: string, maxBytes: number) => {
+    const encoder = new TextEncoder();
+    let byteLength = 0;
+    let truncated = '';
+
+    for (const character of value) {
+        const characterBytes = encoder.encode(character).byteLength;
+
+        if (byteLength + characterBytes > maxBytes) {
+            break;
+        }
+
+        truncated += character;
+        byteLength += characterBytes;
+    }
+
+    return truncated;
+};
+
+const trimPortableFilenameEdges = (value: string) => value.replace(/^[.\s-]+|[.\s-]+$/g, '');
 
 const normalizeTitleForFilename = (title: string) => {
-    const normalized = title
-        .trim()
-        .toLowerCase()
-        .replace(/\s+/g, '-')
-        .replace(/[\\/:*?"<>|]/g, '-')
+    let normalized = Array.from(title.normalize('NFC').trim().toLowerCase(), (character) =>
+        isControlCharacter(character) || /[\\/:*?"<>|\s]/.test(character) ? '-' : character,
+    )
+        .join('')
         .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '');
+        .replace(/^[.-]+|[.-]+$/g, '');
+
+    if (WINDOWS_RESERVED_FILENAME_PATTERN.test(normalized)) {
+        normalized = `note-${normalized}`;
+    }
+
+    normalized = trimPortableFilenameEdges(truncateUtf8(normalized, MAX_FILENAME_STEM_BYTES));
 
     return normalized || 'untitled-note';
 };
 
-const formatYamlString = (value: string) => {
-    if (!value) {
-        return '""';
-    }
+const formatYamlString = (value: string) => JSON.stringify(value);
 
-    if (YAML_SPECIAL_CHAR_PATTERN.test(value) || /^\s|\s$/.test(value)) {
-        return JSON.stringify(value);
-    }
+const formatHtmlCommentValue = (value: string) => {
+    const escapedValue = value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/--/g, '&#45;&#45;');
 
-    return value;
+    return Array.from(escapedValue, (character) =>
+        isControlCharacter(character) ? `&#${character.codePointAt(0)};` : character,
+    ).join('');
 };
 
 const formatTimestamp = (timestamp?: string) => {
@@ -60,7 +98,9 @@ const formatTimestamp = (timestamp?: string) => {
         return timestamp;
     }
 
-    return new Date(numericTimestamp).toISOString();
+    const date = new Date(numericTimestamp);
+
+    return Number.isNaN(date.getTime()) ? timestamp : date.toISOString();
 };
 
 const getDocumentOrigin = () => {
@@ -91,16 +131,20 @@ const getResponseContentType = (response: Response) => {
     return response.headers.get('content-type')?.split(';')[0]?.trim().toLowerCase() ?? '';
 };
 
-const sanitizeZipAssetName = (value: string) => {
-    const withoutUnsafeChars = value
+const sanitizeZipAssetStem = (value: string, fallback: string) => {
+    let sanitized = value
+        .normalize('NFC')
         .trim()
-        .replace(/[\\/:*?"<>|]/g, '-')
-        .split('')
-        .map((character) => (character.charCodeAt(0) < 32 ? '-' : character))
-        .join('');
-    const sanitized = withoutUnsafeChars.replace(/\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+        .replace(/[^\p{L}\p{M}\p{N}._-]+/gu, '-')
+        .replace(/-+/g, '-');
 
-    return sanitized || 'image';
+    sanitized = trimPortableFilenameEdges(sanitized);
+
+    if (WINDOWS_RESERVED_FILENAME_PATTERN.test(sanitized)) {
+        sanitized = `image-${sanitized}`;
+    }
+
+    return trimPortableFilenameEdges(truncateUtf8(sanitized, MAX_ASSET_FILENAME_STEM_BYTES)) || fallback;
 };
 
 const splitFileName = (fileName: string) => {
@@ -119,23 +163,68 @@ const splitFileName = (fileName: string) => {
     };
 };
 
-const createZipAssetName = (src: string, index: number, usedNames: Set<string>) => {
+const safeDecodeURIComponent = (value: string) => {
+    try {
+        return decodeURIComponent(value);
+    } catch {
+        return value;
+    }
+};
+
+const createZipAssetName = (src: string, index: number, extension: string, usedNames: Set<string>) => {
     const url = new URL(src, getDocumentOrigin());
     const pathSegments = url.pathname.split('/').filter(Boolean);
-    const rawName = decodeURIComponent(pathSegments[pathSegments.length - 1] ?? '');
+    const rawName = safeDecodeURIComponent(pathSegments[pathSegments.length - 1] ?? '');
     const fallbackName = `image-${index + 1}`;
-    const { baseName, extension } = splitFileName(sanitizeZipAssetName(rawName || fallbackName));
-    let candidate = `${baseName}${extension}`;
+    const { baseName } = splitFileName(rawName || fallbackName);
+    const sanitizedBaseName = sanitizeZipAssetStem(baseName, fallbackName);
+    let candidate = `${sanitizedBaseName}.${extension}`;
     let suffix = 2;
 
-    while (usedNames.has(candidate)) {
-        candidate = `${baseName}-${suffix}${extension}`;
+    while (usedNames.has(candidate.normalize('NFC').toLowerCase())) {
+        candidate = `${sanitizedBaseName}-${suffix}.${extension}`;
         suffix += 1;
     }
 
-    usedNames.add(candidate);
+    usedNames.add(candidate.normalize('NFC').toLowerCase());
 
     return `assets/${candidate}`;
+};
+
+const unescapeMarkdownDestination = (value: string) => {
+    return value.replace(/\\([!"#$%&'()*+,\-./:;<=>?@[\]\\^_`{|}~])/g, '$1');
+};
+
+const addLocalImageAssetToZip = async (
+    zip: JSZip,
+    requestPath: string,
+    fetchImpl: FetchAsset,
+    assetNameByRequestPath: Map<string, string>,
+    usedNames: Set<string>,
+) => {
+    const existingAssetName = assetNameByRequestPath.get(requestPath);
+
+    if (existingAssetName) {
+        return existingAssetName;
+    }
+
+    const response = await fetchImpl(requestPath, { credentials: 'same-origin' });
+
+    if (!response.ok) {
+        throw new Error(`Failed to fetch image asset: ${requestPath}`);
+    }
+
+    const extension = getSupportedImageFileExtension(getResponseContentType(response));
+
+    if (!extension) {
+        throw new Error(`Image asset did not return image content: ${requestPath}`);
+    }
+
+    const zipAssetName = createZipAssetName(requestPath, assetNameByRequestPath.size, extension, usedNames);
+    zip.file(zipAssetName, new Uint8Array(await response.arrayBuffer()));
+    assetNameByRequestPath.set(requestPath, zipAssetName);
+
+    return zipAssetName;
 };
 
 const findTagEnd = (html: string, startIndex: number) => {
@@ -530,7 +619,7 @@ export const createMarkdownDocumentExport = (
 ) => {
     const markdownExport = createMarkdownExport(markdown, metadata, includeMetadata);
     const replacements = findMarkdownImageTags(markdownExport)
-        .filter((imageTag) => isLocalImageAssetUrl(imageTag.source.value))
+        .filter((imageTag) => isLocalImageAssetUrl(unescapeMarkdownDestination(imageTag.source.value)))
         .map((imageTag) => ({
             end: imageTag.end,
             start: imageTag.start,
@@ -546,7 +635,16 @@ export const createHtmlExport = (
     { includeMetadata = false }: HtmlDocumentExportOptions = {},
 ) => {
     const metadataComment = includeMetadata
-        ? `<!--\nsource: ocean-brain\nnote_id: ${metadata.id}\ntitle: ${metadata.title}\ncreated_at: ${formatTimestamp(metadata.createdAt) ?? ''}\nupdated_at: ${formatTimestamp(metadata.updatedAt) ?? ''}\n-->\n`
+        ? [
+              '<!--',
+              'source: ocean-brain',
+              `note_id: ${formatHtmlCommentValue(metadata.id)}`,
+              `title: ${formatHtmlCommentValue(metadata.title)}`,
+              `created_at: ${formatHtmlCommentValue(formatTimestamp(metadata.createdAt) ?? '')}`,
+              `updated_at: ${formatHtmlCommentValue(formatTimestamp(metadata.updatedAt) ?? '')}`,
+              '-->',
+              '',
+          ].join('\n')
         : '';
 
     return `${metadataComment}${html}`;
@@ -587,24 +685,13 @@ export const createHtmlAssetsZipExport = async (
         }
 
         const requestPath = getImageAssetRequestPath(imageSourceRange.value);
-        let zipAssetName = assetNameByRequestPath.get(requestPath);
-
-        if (!zipAssetName) {
-            zipAssetName = createZipAssetName(requestPath, assetNameByRequestPath.size, usedNames);
-            assetNameByRequestPath.set(requestPath, zipAssetName);
-
-            const response = await fetchImpl(requestPath, { credentials: 'same-origin' });
-
-            if (!response.ok) {
-                throw new Error(`Failed to fetch image asset: ${requestPath}`);
-            }
-
-            if (!getResponseContentType(response).startsWith('image/')) {
-                throw new Error(`Image asset did not return image content: ${requestPath}`);
-            }
-
-            zip.file(zipAssetName, new Uint8Array(await response.arrayBuffer()));
-        }
+        const zipAssetName = await addLocalImageAssetToZip(
+            zip,
+            requestPath,
+            fetchImpl,
+            assetNameByRequestPath,
+            usedNames,
+        );
 
         replacements.push({
             end: imageSourceRange.end,
@@ -631,29 +718,20 @@ export const createMarkdownAssetsZipExport = async (
     const assetNameByRequestPath = new Map<string, string>();
 
     for (const { source: imageSourceRange } of imageTags) {
-        if (!isLocalImageAssetUrl(imageSourceRange.value)) {
+        const imageSource = unescapeMarkdownDestination(imageSourceRange.value);
+
+        if (!isLocalImageAssetUrl(imageSource)) {
             continue;
         }
 
-        const requestPath = getImageAssetRequestPath(imageSourceRange.value);
-        let zipAssetName = assetNameByRequestPath.get(requestPath);
-
-        if (!zipAssetName) {
-            zipAssetName = createZipAssetName(requestPath, assetNameByRequestPath.size, usedNames);
-            assetNameByRequestPath.set(requestPath, zipAssetName);
-
-            const response = await fetchImpl(requestPath, { credentials: 'same-origin' });
-
-            if (!response.ok) {
-                throw new Error(`Failed to fetch image asset: ${requestPath}`);
-            }
-
-            if (!getResponseContentType(response).startsWith('image/')) {
-                throw new Error(`Image asset did not return image content: ${requestPath}`);
-            }
-
-            zip.file(zipAssetName, new Uint8Array(await response.arrayBuffer()));
-        }
+        const requestPath = getImageAssetRequestPath(imageSource);
+        const zipAssetName = await addLocalImageAssetToZip(
+            zip,
+            requestPath,
+            fetchImpl,
+            assetNameByRequestPath,
+            usedNames,
+        );
 
         replacements.push({
             end: imageSourceRange.end,
@@ -668,15 +746,18 @@ export const createMarkdownAssetsZipExport = async (
 };
 
 export const downloadBlobFile = (blob: Blob, filename: string) => {
-    const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
+    const url = URL.createObjectURL(blob);
 
-    anchor.href = url;
-    anchor.download = filename;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
+    try {
+        anchor.href = url;
+        anchor.download = filename;
+        document.body.appendChild(anchor);
+        anchor.click();
+    } finally {
+        anchor.remove();
+        URL.revokeObjectURL(url);
+    }
 };
 
 export const downloadTextFile = (content: string, filename: string, type: string) => {

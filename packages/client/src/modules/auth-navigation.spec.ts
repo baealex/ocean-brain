@@ -1,6 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { buildAuthLoginPath, shouldRedirectToLogin } from './auth-navigation';
+import {
+    buildAuthLoginPath,
+    redirectToLogin,
+    resetAuthNavigationStateForTests,
+    shouldRedirectToLogin,
+} from './auth-navigation';
 
 const createAxiosError = (status: number, url = '/graphql') => ({
     isAxiosError: true,
@@ -9,6 +14,10 @@ const createAxiosError = (status: number, url = '/graphql') => ({
 });
 
 describe('auth-navigation', () => {
+    beforeEach(() => {
+        resetAuthNavigationStateForTests();
+    });
+
     it('builds a login path that preserves the current route', () => {
         const loginPath = buildAuthLoginPath({
             pathname: '/notes/123',
@@ -33,5 +42,33 @@ describe('auth-navigation', () => {
     it('does not redirect auth route failures', () => {
         expect(shouldRedirectToLogin(createAxiosError(401, '/api/auth/login'))).toBe(false);
         expect(shouldRedirectToLogin(createAxiosError(401, '/login'))).toBe(false);
+    });
+
+    it('redirects to login once while preserving the current route', () => {
+        const location = {
+            pathname: '/notes/123',
+            search: '?tab=edit',
+            hash: '#title',
+            assign: vi.fn(),
+        };
+
+        redirectToLogin(location);
+        redirectToLogin(location);
+
+        expect(location.assign).toHaveBeenCalledTimes(1);
+        expect(location.assign).toHaveBeenCalledWith('/login?next=%2Fnotes%2F123%3Ftab%3Dedit%23title');
+    });
+
+    it('does not redirect when the browser is already on the login page', () => {
+        const location = {
+            pathname: '/login',
+            search: '',
+            hash: '',
+            assign: vi.fn(),
+        };
+
+        redirectToLogin(location);
+
+        expect(location.assign).not.toHaveBeenCalled();
     });
 });

@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 const TEXT_EXTENSIONS = new Set([
@@ -26,12 +26,14 @@ const ROOT_TEXT_FILES = new Set([
 
 const decoder = new TextDecoder('utf-8', { fatal: true });
 
-const trackedFiles = execFileSync('git', ['ls-files', '-z'], { encoding: 'utf8' })
+const candidateFiles = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], {
+    encoding: 'utf8'
+})
     .split('\0')
     .filter(Boolean);
 
-const filesToCheck = trackedFiles.filter((file) => (
-    ROOT_TEXT_FILES.has(file) || TEXT_EXTENSIONS.has(path.extname(file))
+const filesToCheck = candidateFiles.filter((file) => (
+    existsSync(file) && (ROOT_TEXT_FILES.has(file) || TEXT_EXTENSIONS.has(path.extname(file)))
 ));
 
 const issues = [];
@@ -67,4 +69,4 @@ if (issues.length > 0) {
     process.exit(1);
 }
 
-console.log(`Encoding check passed for ${filesToCheck.length} tracked text files.`);
+console.log(`Encoding check passed for ${filesToCheck.length} repository text files.`);

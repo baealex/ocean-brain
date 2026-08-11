@@ -62,6 +62,38 @@ const createState = (): LocalDemoState => {
 };
 
 describe('notesLocalPlugin', () => {
+    it('returns notes created or updated inside a calendar range', () => {
+        const state = createState();
+        state.notes = [
+            createNote({ id: 'created-in-range', title: 'Created in range', tags: [] }),
+            createNote({ id: 'updated-in-range', title: 'Updated in range', tags: [] }),
+            createNote({ id: 'outside-range', title: 'Outside range', tags: [] }),
+        ];
+        state.notes[0].createdAt = '2026-08-05T00:00:00.000Z';
+        state.notes[0].updatedAt = '2026-09-05T00:00:00.000Z';
+        state.notes[1].createdAt = '2026-07-05T00:00:00.000Z';
+        state.notes[1].updatedAt = '2026-08-06T00:00:00.000Z';
+        state.notes[2].createdAt = '2026-07-05T00:00:00.000Z';
+        state.notes[2].updatedAt = '2026-09-05T00:00:00.000Z';
+
+        const handler = notesLocalPlugin.graphHandlers?.NotesInDateRange;
+        expect(handler).toBeDefined();
+
+        const response = handler?.({
+            state,
+            variables: {
+                dateRange: {
+                    start: '2026-08-01T00:00:00.000Z',
+                    end: '2026-09-01T00:00:00.000Z',
+                },
+            },
+            save: () => undefined,
+        });
+        const notes = response && 'notesInDateRange' in response ? (response.notesInDateRange as Note[]) : [];
+
+        expect(notes.map((note) => note.id)).toEqual(['created-in-range', 'updated-in-range']);
+    });
+
     it('rejects hash-prefixed tags instead of normalizing them', () => {
         expect(() => normalizeTagName('#guide')).toThrow('use @, not #');
     });

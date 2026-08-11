@@ -341,7 +341,9 @@ export const notesLocalPlugin: LocalDemoPlugin = {
         },
         NotesInDateRange: ({ state, variables }) => {
             const dateRange = variables.dateRange as { start?: string; end?: string } | undefined;
-            const notes = state.notes.filter((note) => isInDateRange(note.createdAt, dateRange));
+            const notes = state.notes.filter(
+                (note) => isInDateRange(note.createdAt, dateRange) || isInDateRange(note.updatedAt, dateRange),
+            );
             return success({ notesInDateRange: notes });
         },
     },

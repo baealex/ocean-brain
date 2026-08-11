@@ -442,6 +442,23 @@ export const createNoteQueryResolver = (
     };
 };
 
+export const buildNotesInDateRangeWhere = (dateRange: { start: string; end: string }): Prisma.NoteWhereInput => ({
+    OR: [
+        {
+            updatedAt: {
+                gte: new Date(dateRange.start),
+                lt: new Date(dateRange.end),
+            },
+        },
+        {
+            createdAt: {
+                gte: new Date(dateRange.start),
+                lt: new Date(dateRange.end),
+            },
+        },
+    ],
+});
+
 export const noteQueryResolvers: NoteQueryResolvers = {
     allNotes: createAllNotesQueryResolver(),
     notesInDateRange: async (
@@ -455,22 +472,7 @@ export const noteQueryResolvers: NoteQueryResolvers = {
             };
         },
     ) => {
-        const where: Prisma.NoteWhereInput = {
-            OR: [
-                {
-                    updatedAt: {
-                        gte: new Date(dateRange.start),
-                        lte: new Date(dateRange.end),
-                    },
-                },
-                {
-                    createdAt: {
-                        gte: new Date(dateRange.start),
-                        lte: new Date(dateRange.end),
-                    },
-                },
-            ],
-        };
+        const where = buildNotesInDateRangeWhere(dateRange);
 
         return models.note.findMany({
             orderBy: { createdAt: 'asc' },

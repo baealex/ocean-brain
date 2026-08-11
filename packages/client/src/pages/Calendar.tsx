@@ -3,6 +3,7 @@ import dayjs from 'dayjs';
 import { useMemo, useState } from 'react';
 import type { CalendarDayData, CalendarDisplayType } from '~/components/calendar';
 import { CalendarHeader, CalendarMonth, useCalendarData } from '~/components/calendar';
+import { sortCalendarNotes } from '~/components/calendar/calendar-data';
 import { Callout, PageLayout } from '~/components/shared';
 import type { Note } from '~/models/note.model';
 import type { Reminder } from '~/models/reminder.model';
@@ -38,6 +39,9 @@ export default function Calendar() {
             const existing = notesMap.get(key) || [];
             existing.push(note);
             notesMap.set(key, existing);
+        }
+        for (const [key, dayNotes] of notesMap) {
+            notesMap.set(key, sortCalendarNotes(dayNotes, type));
         }
 
         // Build reminders map

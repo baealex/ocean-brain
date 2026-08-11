@@ -27,6 +27,10 @@ describe('useCalendarData', () => {
             } as never;
         });
         const { Wrapper } = createQueryClientWrapper();
+        const expectedDateRange = {
+            start: new Date(2026, 11, 1).toISOString(),
+            end: new Date(2027, 0, 1).toISOString(),
+        };
 
         const { result } = renderHook(() => useCalendarData({ year: 2026, month: 12 }), { wrapper: Wrapper });
 
@@ -35,10 +39,10 @@ describe('useCalendarData', () => {
         });
         expect(graphQuery).toHaveBeenCalledTimes(2);
         expect(graphQuery).toHaveBeenCalledWith(expect.stringContaining('query NotesInDateRange'), {
-            dateRange: { start: '2026-12-01', end: '2027-01-01' },
+            dateRange: expectedDateRange,
         });
         expect(graphQuery).toHaveBeenCalledWith(expect.stringContaining('query RemindersInDateRange'), {
-            dateRange: { start: '2026-12-01', end: '2027-01-01' },
+            dateRange: expectedDateRange,
         });
         expect(result.current.notes).toEqual([{ id: 'note-1', title: 'Year-end note' }]);
         expect(result.current.reminders).toEqual([{ id: 'reminder-1', content: 'Year-end reminder' }]);

@@ -4,6 +4,7 @@ import type { Note } from '~/models/note.model';
 import type { Reminder } from '~/models/reminder.model';
 import { graphQuery } from '~/modules/graph-query';
 import { queryKeys } from '~/modules/query-key-factory';
+import { getCalendarMonthRange } from './calendar-data';
 
 const NOTES_QUERY = `
     query NotesInDateRange($dateRange: DateRangeInput) {
@@ -60,15 +61,7 @@ interface UseCalendarDataParams {
 }
 
 export const useCalendarData = ({ year, month }: UseCalendarDataParams) => {
-    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-    const nextMonth = month === 12 ? 1 : month + 1;
-    const nextYear = month === 12 ? year + 1 : year;
-    const endDate = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
-
-    const dateRange = {
-        start: startDate,
-        end: endDate,
-    };
+    const dateRange = getCalendarMonthRange(year, month);
 
     const notesQuery = useQuery({
         queryKey: queryKeys.calendar.notesInDateRange(year, month),

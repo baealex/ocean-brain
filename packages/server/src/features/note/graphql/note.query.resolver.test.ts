@@ -2,11 +2,24 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+    buildNotesInDateRangeWhere,
     createAllNotesQueryResolver,
     createBackReferencesQueryResolver,
     createNoteGraphQueryResolver,
     createNoteQueryResolver,
 } from './note.query.resolver.js';
+
+test('notes in date range uses an exclusive end boundary for both note dates', () => {
+    const start = '2026-08-01T00:00:00.000Z';
+    const end = '2026-09-01T00:00:00.000Z';
+
+    assert.deepEqual(buildNotesInDateRangeWhere({ start, end }), {
+        OR: [
+            { updatedAt: { gte: new Date(start), lt: new Date(end) } },
+            { createdAt: { gte: new Date(start), lt: new Date(end) } },
+        ],
+    });
+});
 
 const createNoteRecord = (input: { id: number; title: string; content: string; updatedAt?: Date }) =>
     ({

@@ -19,6 +19,11 @@ const sortSectionNotes = (
     });
 };
 
+const toTimestamp = (value: string) => {
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) ? numericValue : Date.parse(value);
+};
+
 export const viewsLocalPlugin: LocalDemoPlugin = {
     name: 'views',
     graphHandlers: {
@@ -47,6 +52,39 @@ export const viewsLocalPlugin: LocalDemoPlugin = {
                   )
                 : [];
             return success({ viewSectionNotes: { totalCount: notes.length, notes: paginate(notes, variables) } });
+        },
+        FetchViewSectionCalendarNotes: ({ state, variables }) => {
+            const section = state.viewWorkspace.tabs
+                .flatMap((tab) => tab.sections)
+                .find((item) => item.id === String(variables.id));
+
+            if (!section || section.displayType !== 'calendar') {
+                return localError('Calendar section not found');
+            }
+
+            const dateRange = variables.dateRange as { start?: unknown; end?: unknown } | undefined;
+            const start = Date.parse(String(dateRange?.start ?? ''));
+            const end = Date.parse(String(dateRange?.end ?? ''));
+
+            if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+                return localError('Calendar date range is invalid');
+            }
+
+            const dateField = section.displayOptions.calendarDateField === 'updatedAt' ? 'updatedAt' : 'createdAt';
+            const notes = applyPropertyFilters(
+                listNotesByTags(state, section.tagNames, section.mode),
+                section.propertyFilters,
+            )
+                .filter((note) => {
+                    const timestamp = toTimestamp(note[dateField]);
+                    return timestamp >= start && timestamp < end;
+                })
+                .sort((left, right) => {
+                    const comparison = toTimestamp(left[dateField]) - toTimestamp(right[dateField]);
+                    return comparison || left.id.localeCompare(right.id);
+                });
+
+            return success({ viewSectionCalendarNotes: notes });
         },
         FetchViewSectionBoardColumn: ({ state, variables }) => {
             const section = state.viewWorkspace.tabs
@@ -126,6 +164,7 @@ export const viewsLocalPlugin: LocalDemoPlugin = {
                     tableColumns: [],
                     tablePropertyKeys: [],
                     boardGroupByPropertyKey: null,
+                    calendarDateField: 'createdAt',
                 },
                 tagNames: input.tagNames ?? [],
                 mode: input.mode ?? 'and',

@@ -32,6 +32,7 @@ const createSection = (section: {
         tableColumns: ['title', 'tags', 'properties', 'createdAt', 'updatedAt'] as const,
         tablePropertyKeys: [] as const,
         boardGroupByPropertyKey: null,
+        calendarDateField: 'createdAt' as const,
     },
     propertyFilters: [],
     sortBy: 'updatedAt' as const,
@@ -239,7 +240,7 @@ describe('view-dashboard helpers', () => {
         expect(getViewDisplayTypeLabel('list')).toBe('List');
         expect(getViewDisplayTypeLabel('table')).toBe('Table');
         expect(getViewDisplayTypeLabel('board')).toBe('Board');
-        expect(getViewDisplayTypeLabel('calendar')).toBe('Unavailable');
+        expect(getViewDisplayTypeLabel('calendar')).toBe('Calendar');
     });
 
     it('normalizes table columns and keeps title visible', () => {
@@ -272,6 +273,7 @@ describe('view-dashboard helpers', () => {
                 tableColumns: ['title', 'tags', 'properties', 'createdAt', 'updatedAt'],
                 tablePropertyKeys: [],
                 boardGroupByPropertyKey: null,
+                calendarDateField: 'createdAt',
             },
             tagNames: ['@제품'],
             mode: 'and',

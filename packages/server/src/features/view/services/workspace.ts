@@ -10,6 +10,7 @@ import models from '~/models.js';
 export type ViewTagMatchMode = NoteTagMatchMode;
 export type ViewDisplayType = 'list' | 'table' | 'board' | 'calendar';
 export type ViewTableColumn = 'title' | 'tags' | 'properties' | 'createdAt' | 'updatedAt';
+export type ViewCalendarDateField = 'createdAt' | 'updatedAt';
 export type ViewPropertyFilterOperator =
     | 'equals'
     | 'notEquals'
@@ -26,6 +27,7 @@ export interface ViewDisplayOptionsRecord {
     tableColumns: ViewTableColumn[];
     tablePropertyKeys: string[];
     boardGroupByPropertyKey: string | null;
+    calendarDateField: ViewCalendarDateField;
 }
 
 export interface ViewPropertyFilterRecord {
@@ -102,6 +104,7 @@ export interface ViewDisplayOptionsInput {
     tableColumns?: ViewTableColumn[] | null;
     tablePropertyKeys?: string[] | null;
     boardGroupByPropertyKey?: string | null;
+    calendarDateField?: ViewCalendarDateField | null;
 }
 
 export interface ViewSectionNotesResult {
@@ -114,6 +117,13 @@ export interface ViewBoardColumnNotesResult {
     notes: Array<Pick<Note, 'id' | 'title' | 'updatedAt'>>;
 }
 
+export type ViewCalendarNote = Pick<Note, 'id' | 'title' | 'createdAt' | 'updatedAt'>;
+
+export interface ViewCalendarDateRangeInput {
+    start: string;
+    end: string;
+}
+
 const VIEW_WORKSPACE_ID = 1;
 
 export const DEFAULT_VIEW_SECTION_LIMIT = 5;
@@ -123,10 +133,12 @@ export const DEFAULT_VIEW_NOTES_QUERY_LIMIT = 20;
 export const MAX_VIEW_NOTES_QUERY_LIMIT = 50;
 const MAX_VIEW_PROPERTY_FILTERS = 10;
 const MAX_VIEW_TABLE_PROPERTY_COLUMNS = 6;
+const MAX_VIEW_CALENDAR_RANGE_MS = 32 * 24 * 60 * 60 * 1000;
 const DEFAULT_VIEW_DISPLAY_TYPE: ViewDisplayType = 'list';
 const DEFAULT_VIEW_SORT_BY: ViewSortBy = 'updatedAt';
 const DEFAULT_VIEW_SORT_ORDER: ViewSortOrder = 'desc';
 const DEFAULT_VIEW_TABLE_COLUMNS: ViewTableColumn[] = ['title', 'tags', 'properties', 'createdAt', 'updatedAt'];
+const DEFAULT_VIEW_CALENDAR_DATE_FIELD: ViewCalendarDateField = 'createdAt';
 
 type ViewDbClient = typeof models | Prisma.TransactionClient;
 
@@ -253,6 +265,10 @@ export const normalizeViewTableColumns = (columns: ViewTableColumn[] | null | un
 export const normalizeViewTablePropertyKeys = (keys: string[] | null | undefined): string[] =>
     Array.from(new Set((keys ?? []).map(normalizePropertyKey))).slice(0, MAX_VIEW_TABLE_PROPERTY_COLUMNS);
 
+export const normalizeViewCalendarDateField = (
+    value: ViewCalendarDateField | null | undefined,
+): ViewCalendarDateField => (value === 'updatedAt' ? 'updatedAt' : DEFAULT_VIEW_CALENDAR_DATE_FIELD);
+
 export const normalizeViewDisplayOptions = (
     options: ViewDisplayOptionsInput | Partial<ViewDisplayOptionsRecord> | null | undefined,
 ): ViewDisplayOptionsRecord => {
@@ -262,6 +278,7 @@ export const normalizeViewDisplayOptions = (
         boardGroupByPropertyKey: options?.boardGroupByPropertyKey
             ? normalizePropertyKey(options.boardGroupByPropertyKey)
             : null,
+        calendarDateField: normalizeViewCalendarDateField(options?.calendarDateField),
     };
 };
 
@@ -881,6 +898,38 @@ export const buildViewSectionWhere = (section: ViewSectionRecord): Prisma.NoteWh
     return buildViewNotesWhere(section);
 };
 
+export const normalizeViewCalendarDateRange = (dateRange: ViewCalendarDateRangeInput) => {
+    const start = new Date(dateRange.start);
+    const end = new Date(dateRange.end);
+    const duration = end.getTime() - start.getTime();
+
+    if (
+        Number.isNaN(start.getTime()) ||
+        Number.isNaN(end.getTime()) ||
+        duration <= 0 ||
+        duration > MAX_VIEW_CALENDAR_RANGE_MS
+    ) {
+        throw new InvalidNotePropertyInputError('Calendar date range must be valid and cover no more than 32 days.');
+    }
+
+    return { start, end };
+};
+
+export const buildViewSectionCalendarWhere = (
+    section: ViewSectionRecord,
+    dateRange: { start: Date; end: Date },
+): Prisma.NoteWhereInput => {
+    const sectionWhere = buildViewSectionWhere(section);
+    const dateWhere: Prisma.NoteWhereInput = {
+        [section.displayOptions.calendarDateField]: {
+            gte: dateRange.start,
+            lt: dateRange.end,
+        },
+    };
+
+    return Object.keys(sectionWhere).length === 0 ? dateWhere : { AND: [sectionWhere, dateWhere] };
+};
+
 export const buildViewBoardColumnWhere = (
     section: ViewSectionRecord,
     propertyDefinitionId: number,
@@ -951,6 +1000,40 @@ export const getViewSectionNotes = async (
         totalCount,
         notes,
     };
+};
+
+export const getViewSectionCalendarNotes = async (
+    id: string,
+    dateRangeInput: ViewCalendarDateRangeInput,
+): Promise<ViewCalendarNote[] | null> => {
+    const section = await models.viewSection.findUnique({
+        where: { id: parseViewId(id) },
+        include: orderedViewSectionTagsInclude,
+    });
+
+    if (!section) {
+        return null;
+    }
+
+    const serializedSection = serializeViewSection(section);
+
+    if (serializedSection.displayType !== 'calendar') {
+        throw new InvalidNotePropertyInputError('This section is not configured as a calendar.');
+    }
+
+    const dateRange = normalizeViewCalendarDateRange(dateRangeInput);
+    const dateField = serializedSection.displayOptions.calendarDateField;
+
+    return models.note.findMany({
+        orderBy: [{ [dateField]: 'asc' }, { id: 'asc' }],
+        where: buildViewSectionCalendarWhere(serializedSection, dateRange),
+        select: {
+            id: true,
+            title: true,
+            createdAt: true,
+            updatedAt: true,
+        },
+    });
 };
 
 export const getViewSectionBoardColumn = async (

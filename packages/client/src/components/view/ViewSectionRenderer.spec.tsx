@@ -1,5 +1,4 @@
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 
 import type { Note } from '~/models/note.model';
 import type { ViewSection } from '~/models/view.model';
@@ -21,6 +20,12 @@ vi.mock('@tanstack/react-router', () => ({
         </a>
     ),
     useNavigate: () => vi.fn(),
+}));
+
+vi.mock('./ViewSectionCalendarRenderer', () => ({
+    default: ({ section }: { section: ViewSection }) => (
+        <div aria-label="View query results as a calendar">{section.displayOptions.calendarDateField}</div>
+    ),
 }));
 
 const createNote = (): Note => ({
@@ -55,6 +60,7 @@ const createSection = (patch: Partial<ViewSection> = {}): ViewSection => ({
         tableColumns: ['title', 'tags', 'properties', 'createdAt', 'updatedAt'],
         tablePropertyKeys: [],
         boardGroupByPropertyKey: null,
+        calendarDateField: 'createdAt',
     },
     tagNames: [],
     mode: 'and',
@@ -97,23 +103,9 @@ describe('<ViewSectionRenderer />', () => {
         expect(screen.getByRole('table', { name: 'View query results as a table' })).toBeInTheDocument();
     });
 
-    it('shows a generic unavailable state for unsupported display types', () => {
+    it('renders calendar sections with the calendar renderer', () => {
         renderRenderer(createSection({ displayType: 'calendar' }));
 
-        expect(screen.getByText('This display type is unavailable')).toBeInTheDocument();
-        expect(
-            screen.getByText('Switch this section to List, Table, or Board to show the saved query here.'),
-        ).toBeInTheDocument();
-    });
-
-    it('opens editing from the unsupported display type recovery action', async () => {
-        const handleEdit = vi.fn();
-        const user = userEvent.setup();
-
-        renderRenderer(createSection({ displayType: 'calendar' }), handleEdit);
-
-        await user.click(screen.getByRole('button', { name: 'Change display' }));
-
-        expect(handleEdit).toHaveBeenCalledTimes(1);
+        expect(screen.getByLabelText('View query results as a calendar')).toHaveTextContent('createdAt');
     });
 });

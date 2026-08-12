@@ -4,7 +4,13 @@ import type { ReactNode } from 'react';
 
 import { fetchNotePropertyKeys } from '~/apis/note.api';
 import { fetchTags } from '~/apis/tag.api';
-import { fetchViewSectionNotes, fetchViewWorkspace, reorderViewSections, reorderViewTabs } from '~/apis/view.api';
+import {
+    fetchViewSectionCalendarNotes,
+    fetchViewSectionNotes,
+    fetchViewWorkspace,
+    reorderViewSections,
+    reorderViewTabs,
+} from '~/apis/view.api';
 import { ConfirmProvider, ToastProvider } from '~/components/ui';
 import type { ViewSection } from '~/models/view.model';
 import { createQueryClientWrapper } from '~/test/test-utils';
@@ -31,6 +37,7 @@ vi.mock('~/apis/view.api', () => ({
     createViewTab: vi.fn(),
     deleteViewSection: vi.fn(),
     deleteViewTab: vi.fn(),
+    fetchViewSectionCalendarNotes: vi.fn(),
     fetchViewWorkspace: vi.fn(),
     fetchViewSectionNotes: vi.fn(),
     reorderViewSections: vi.fn(),
@@ -49,6 +56,7 @@ const createSection = (patch: Partial<ViewSection> = {}): ViewSection => ({
         tableColumns: ['title'],
         tablePropertyKeys: [],
         boardGroupByPropertyKey: null,
+        calendarDateField: 'createdAt',
     },
     tagNames: [],
     mode: 'and',
@@ -125,6 +133,10 @@ describe('<Views />', () => {
                 activeTabId: null,
                 tabs: [],
             },
+        } as never);
+        vi.mocked(fetchViewSectionCalendarNotes).mockResolvedValue({
+            type: 'success',
+            viewSectionCalendarNotes: [],
         } as never);
     });
 
@@ -207,6 +219,30 @@ describe('<Views />', () => {
             },
         });
         expect(navigation).toMatchObject({ replace: true, resetScroll: false });
+    });
+
+    it('loads calendar sections by visible month without using paginated section notes', async () => {
+        routerMocks.search = {
+            tab: 'tab-1',
+            state: {
+                version: 1,
+                sections: {
+                    'section-1': { calendar: { year: 2026, month: 8 } },
+                },
+            },
+        };
+        mockActiveWorkspace([createSection({ displayType: 'calendar' })]);
+
+        renderViews();
+
+        expect(await screen.findByText('August 2026')).toBeInTheDocument();
+        await waitFor(() => {
+            expect(fetchViewSectionCalendarNotes).toHaveBeenCalledWith('section-1', {
+                start: new Date(2026, 7, 1).toISOString(),
+                end: new Date(2026, 8, 1).toISOString(),
+            });
+        });
+        expect(fetchViewSectionNotes).not.toHaveBeenCalled();
     });
 
     it('offers menu fallbacks for moving tabs and sections without dragging', async () => {

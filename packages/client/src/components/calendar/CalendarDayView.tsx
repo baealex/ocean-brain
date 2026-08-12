@@ -16,6 +16,8 @@ interface CalendarDayViewProps {
     reminderCount: number;
     previewItems: CalendarDayPreviewItem[];
     overflowCount: number;
+    density?: 'comfortable' | 'compact';
+    showReminderSummary?: boolean;
     onSelect: () => void;
 }
 
@@ -36,10 +38,18 @@ export const CalendarDayView = ({
     reminderCount,
     previewItems,
     overflowCount,
+    density = 'comfortable',
+    showReminderSummary = true,
     onSelect,
 }: CalendarDayViewProps) => {
     const totalCount = noteCount + reminderCount;
-    const accessibleLabel = `${dateLabel}, ${itemLabel(noteCount, 'note')}, ${itemLabel(reminderCount, 'reminder')}`;
+    const accessibleLabel = showReminderSummary
+        ? `${dateLabel}, ${itemLabel(noteCount, 'note')}, ${itemLabel(reminderCount, 'reminder')}`
+        : `${dateLabel}, ${itemLabel(noteCount, 'note')}`;
+    const densityClassName =
+        density === 'compact'
+            ? 'min-h-16 p-1.5 sm:min-h-20 sm:p-2 lg:min-h-24 lg:p-2.5'
+            : 'min-h-16 p-1.5 sm:min-h-24 sm:p-2 lg:min-h-36 lg:p-2.5';
 
     return (
         <button
@@ -50,7 +60,8 @@ export const CalendarDayView = ({
             aria-current={isCurrentMonth && isToday ? 'date' : undefined}
             onClick={onSelect}
             className={classNames(
-                'focus-ring-soft relative flex min-h-16 min-w-0 flex-col p-1.5 text-left outline-none transition-colors focus-visible:z-10 sm:min-h-24 sm:p-2 lg:min-h-36 lg:p-2.5',
+                'focus-ring-soft relative flex min-w-0 flex-col text-left outline-none transition-colors focus-visible:z-10',
+                densityClassName,
                 cellClassName,
             )}
         >
@@ -76,7 +87,7 @@ export const CalendarDayView = ({
                                 </span>
                             </span>
                         ) : null}
-                        {reminderCount > 0 ? (
+                        {showReminderSummary && reminderCount > 0 ? (
                             <span className="flex items-center justify-between leading-none">
                                 <Icon.Bell className="shrink-0" size={10} />
                                 <span className="whitespace-nowrap text-[10px] font-semibold text-fg-secondary tabular-nums">
@@ -114,7 +125,7 @@ export const CalendarDayView = ({
                                 </Text>
                             </span>
                         ) : null}
-                        {reminderCount > 0 ? (
+                        {showReminderSummary && reminderCount > 0 ? (
                             <span
                                 className={classNames(
                                     'flex min-h-7 min-w-0 items-center justify-between gap-1 rounded-[8px] px-2 py-1.5 text-fg-tertiary',

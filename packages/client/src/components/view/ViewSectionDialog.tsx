@@ -16,6 +16,7 @@ import {
 } from '~/components/ui';
 import type { Tag } from '~/models/tag.model';
 import type {
+    ViewCalendarDateField,
     ViewDisplayOptions,
     ViewDisplayType,
     ViewPropertyFilter,
@@ -27,11 +28,13 @@ import type {
     ViewTagMatchMode,
 } from '~/models/view.model';
 import {
+    DEFAULT_VIEW_CALENDAR_DATE_FIELD,
     DEFAULT_VIEW_TABLE_COLUMNS,
     getViewPropertyOperatorLabel,
     getViewTableColumnLabel,
     getViewTagMatchLabel,
     MAX_VIEW_TABLE_PROPERTY_COLUMNS,
+    normalizeViewCalendarDateField,
     normalizeViewDisplayOptions,
     normalizeViewTableColumns,
     normalizeViewTablePropertyKeys,
@@ -74,19 +77,15 @@ const BOARD_GROUP_PLACEHOLDER_VALUE = '__choose_board_group__';
 const TABLE_COLUMN_OPTIONS: ViewTableColumn[] = ['title', 'tags', 'properties', 'createdAt', 'updatedAt'];
 
 const getInitialLimitValue = (section?: ViewSection | null) => String(section?.limit ?? 5);
-const getInitialDisplayTypeValue = (section?: ViewSection | null): ViewDisplayType => {
-    if (section?.displayType === 'table' || section?.displayType === 'board') {
-        return section.displayType;
-    }
-
-    return 'list';
-};
+const getInitialDisplayTypeValue = (section?: ViewSection | null): ViewDisplayType => section?.displayType ?? 'list';
 const getInitialTableColumnsValue = (section?: ViewSection | null): ViewTableColumn[] =>
     normalizeViewTableColumns(section?.displayOptions?.tableColumns ?? DEFAULT_VIEW_TABLE_COLUMNS);
 const getInitialTablePropertyKeysValue = (section?: ViewSection | null) =>
     normalizeViewTablePropertyKeys(section?.displayOptions?.tablePropertyKeys);
 const getInitialBoardGroupValue = (section?: ViewSection | null) =>
     section?.displayOptions?.boardGroupByPropertyKey ?? '';
+const getInitialCalendarDateFieldValue = (section?: ViewSection | null) =>
+    normalizeViewCalendarDateField(section?.displayOptions?.calendarDateField ?? DEFAULT_VIEW_CALENDAR_DATE_FIELD);
 const getInitialModeValue = (section?: ViewSection | null): ViewTagMatchMode => section?.mode ?? 'and';
 const getInitialTagsValue = (section?: ViewSection | null) => (section ? section.tagNames.join(', ') : '');
 const getInitialTitleValue = (section?: ViewSection | null) => section?.title ?? '';
@@ -192,6 +191,9 @@ export default function ViewSectionDialog({
         getInitialTablePropertyKeysValue(initialSection),
     );
     const [boardGroupByPropertyKey, setBoardGroupByPropertyKey] = useState(getInitialBoardGroupValue(initialSection));
+    const [calendarDateField, setCalendarDateField] = useState<ViewCalendarDateField>(
+        getInitialCalendarDateFieldValue(initialSection),
+    );
     const [tagInput, setTagInput] = useState(getInitialTagsValue(initialSection));
     const [matchMode, setMatchMode] = useState<ViewTagMatchMode>(getInitialModeValue(initialSection));
     const [sortBy, setSortBy] = useState<ViewSortBy>(getInitialSortByValue(initialSection));
@@ -216,6 +218,7 @@ export default function ViewSectionDialog({
         setTableColumns(getInitialTableColumnsValue(initialSection));
         setTablePropertyKeys(getInitialTablePropertyKeysValue(initialSection));
         setBoardGroupByPropertyKey(getInitialBoardGroupValue(initialSection));
+        setCalendarDateField(getInitialCalendarDateFieldValue(initialSection));
         setTagInput(getInitialTagsValue(initialSection));
         setMatchMode(getInitialModeValue(initialSection));
         setSortBy(getInitialSortByValue(initialSection));
@@ -402,6 +405,7 @@ export default function ViewSectionDialog({
                                 tableColumns,
                                 tablePropertyKeys,
                                 boardGroupByPropertyKey,
+                                calendarDateField,
                             }),
                             tagNames,
                             mode: matchMode,
@@ -429,14 +433,19 @@ export default function ViewSectionDialog({
                         <div className="min-w-0">
                             <Label size="md">Display</Label>
                             <Text as="p" variant="meta" tone="tertiary" className="mt-1">
-                                Show the same note set as a list, table, or property board.
+                                Show the same note set as a list, table, property board, or calendar.
                             </Text>
                         </div>
                         <ToggleGroup
                             type="single"
                             value={displayType}
                             onValueChange={(value) => {
-                                if (value === 'list' || value === 'table' || value === 'board') {
+                                if (
+                                    value === 'list' ||
+                                    value === 'table' ||
+                                    value === 'board' ||
+                                    value === 'calendar'
+                                ) {
                                     setDisplayType(value);
 
                                     if (
@@ -463,6 +472,9 @@ export default function ViewSectionDialog({
                             </ToggleGroupItem>
                             <ToggleGroupItem value="board" aria-label="Show as board">
                                 Board
+                            </ToggleGroupItem>
+                            <ToggleGroupItem value="calendar" aria-label="Show as calendar">
+                                Calendar
                             </ToggleGroupItem>
                         </ToggleGroup>
                         {displayType === 'table' ? (
@@ -605,6 +617,38 @@ export default function ViewSectionDialog({
                                             Create a shared select property with options before using a board.
                                         </Text>
                                     ) : null}
+                                </div>
+                            </div>
+                        ) : null}
+                        {displayType === 'calendar' ? (
+                            <div className="border-t border-border-subtle/80 pt-3">
+                                <div className="flex flex-col gap-2">
+                                    <Label
+                                        id="view-section-calendar-date-label"
+                                        htmlFor="view-section-calendar-date"
+                                        size="sm"
+                                    >
+                                        Place notes by
+                                    </Label>
+                                    <Select
+                                        id="view-section-calendar-date"
+                                        value={calendarDateField}
+                                        aria-labelledby="view-section-calendar-date-label"
+                                        className="w-full"
+                                        onValueChange={(value) => {
+                                            if (value === 'createdAt' || value === 'updatedAt') {
+                                                setCalendarDateField(value);
+                                                setFormError('');
+                                            }
+                                        }}
+                                    >
+                                        <SelectItem value="createdAt">Created date</SelectItem>
+                                        <SelectItem value="updatedAt">Updated date</SelectItem>
+                                    </Select>
+                                    <Text as="p" variant="meta" tone="tertiary">
+                                        The calendar loads every matching note in the visible month. Date properties and
+                                        reminders are not included.
+                                    </Text>
                                 </div>
                             </div>
                         ) : null}
@@ -864,77 +908,102 @@ export default function ViewSectionDialog({
                         </Text>
                     </section>
 
-                    <details className="group pb-1">
-                        <summary className="cursor-pointer list-none">
-                            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1">
-                                <Text as="span" variant="label" tone="default">
-                                    Sort and page size
-                                </Text>
-                                <Text as="p" variant="meta" tone="tertiary" className="col-start-1 row-start-2">
-                                    {displayType === 'board'
-                                        ? 'Controls how many cards each board column loads at a time.'
-                                        : 'Controls how many matching notes appear on each section page.'}
-                                </Text>
-                                <Text
-                                    as="span"
-                                    variant="meta"
-                                    tone="tertiary"
-                                    className="col-start-2 row-span-2 row-start-1 whitespace-nowrap"
-                                >
-                                    {displayType === 'board' ? `${limit} per column` : `${limit} notes`}
-                                </Text>
-                            </div>
-                        </summary>
-
-                        <div className="mt-4 grid gap-4 md:grid-cols-3">
-                            <div className="flex flex-col gap-2">
-                                <Label id="view-section-sort-by-label" htmlFor="view-section-sort-by" size="sm">
-                                    Sort by
-                                </Label>
-                                <Select
-                                    id="view-section-sort-by"
-                                    value={sortBy}
-                                    aria-labelledby="view-section-sort-by-label"
-                                    onValueChange={(value) => setSortBy(value as ViewSortBy)}
-                                >
-                                    <SelectItem value="updatedAt">Updated time</SelectItem>
-                                    <SelectItem value="createdAt">Created time</SelectItem>
-                                    <SelectItem value="title">Title</SelectItem>
-                                </Select>
-                            </div>
-                            <div className="flex flex-col gap-2">
-                                <Label id="view-section-sort-order-label" htmlFor="view-section-sort-order" size="sm">
-                                    Order
-                                </Label>
-                                <Select
-                                    id="view-section-sort-order"
-                                    value={sortOrder}
-                                    aria-labelledby="view-section-sort-order-label"
-                                    onValueChange={(value) => setSortOrder(value as ViewSortOrder)}
-                                >
-                                    <SelectItem value="desc">Descending</SelectItem>
-                                    <SelectItem value="asc">Ascending</SelectItem>
-                                </Select>
-                            </div>
-                            <div className="flex flex-col gap-2">
-                                <Label id="view-section-limit-label" htmlFor="view-section-limit" size="sm">
-                                    {displayType === 'board' ? 'Cards per load' : 'Rows per page'}
-                                </Label>
-                                <Select
-                                    id="view-section-limit"
-                                    value={limit}
-                                    aria-labelledby="view-section-limit-label"
-                                    onValueChange={setLimit}
-                                >
-                                    <SelectItem value="3">3 {displayType === 'board' ? 'cards' : 'rows'}</SelectItem>
-                                    <SelectItem value="5">5 {displayType === 'board' ? 'cards' : 'rows'}</SelectItem>
-                                    <SelectItem value="8">8 {displayType === 'board' ? 'cards' : 'rows'}</SelectItem>
-                                    <SelectItem value="10">10 {displayType === 'board' ? 'cards' : 'rows'}</SelectItem>
-                                    <SelectItem value="12">12 {displayType === 'board' ? 'cards' : 'rows'}</SelectItem>
-                                </Select>
-                            </div>
+                    {displayType === 'calendar' ? (
+                        <div className="rounded-[16px] border border-dashed border-border-subtle bg-subtle/40 px-4 py-3">
+                            <Text as="p" variant="label" weight="semibold">
+                                Month view
+                            </Text>
+                            <Text as="p" variant="meta" tone="tertiary" className="mt-1">
+                                Calendar sections use month navigation instead of row sorting or pagination.
+                            </Text>
                         </div>
-                    </details>
+                    ) : (
+                        <details className="group pb-1">
+                            <summary className="cursor-pointer list-none">
+                                <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1">
+                                    <Text as="span" variant="label" tone="default">
+                                        Sort and page size
+                                    </Text>
+                                    <Text as="p" variant="meta" tone="tertiary" className="col-start-1 row-start-2">
+                                        {displayType === 'board'
+                                            ? 'Controls how many cards each board column loads at a time.'
+                                            : 'Controls how many matching notes appear on each section page.'}
+                                    </Text>
+                                    <Text
+                                        as="span"
+                                        variant="meta"
+                                        tone="tertiary"
+                                        className="col-start-2 row-span-2 row-start-1 whitespace-nowrap"
+                                    >
+                                        {displayType === 'board' ? `${limit} per column` : `${limit} notes`}
+                                    </Text>
+                                </div>
+                            </summary>
+
+                            <div className="mt-4 grid gap-4 md:grid-cols-3">
+                                <div className="flex flex-col gap-2">
+                                    <Label id="view-section-sort-by-label" htmlFor="view-section-sort-by" size="sm">
+                                        Sort by
+                                    </Label>
+                                    <Select
+                                        id="view-section-sort-by"
+                                        value={sortBy}
+                                        aria-labelledby="view-section-sort-by-label"
+                                        onValueChange={(value) => setSortBy(value as ViewSortBy)}
+                                    >
+                                        <SelectItem value="updatedAt">Updated time</SelectItem>
+                                        <SelectItem value="createdAt">Created time</SelectItem>
+                                        <SelectItem value="title">Title</SelectItem>
+                                    </Select>
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    <Label
+                                        id="view-section-sort-order-label"
+                                        htmlFor="view-section-sort-order"
+                                        size="sm"
+                                    >
+                                        Order
+                                    </Label>
+                                    <Select
+                                        id="view-section-sort-order"
+                                        value={sortOrder}
+                                        aria-labelledby="view-section-sort-order-label"
+                                        onValueChange={(value) => setSortOrder(value as ViewSortOrder)}
+                                    >
+                                        <SelectItem value="desc">Descending</SelectItem>
+                                        <SelectItem value="asc">Ascending</SelectItem>
+                                    </Select>
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    <Label id="view-section-limit-label" htmlFor="view-section-limit" size="sm">
+                                        {displayType === 'board' ? 'Cards per load' : 'Rows per page'}
+                                    </Label>
+                                    <Select
+                                        id="view-section-limit"
+                                        value={limit}
+                                        aria-labelledby="view-section-limit-label"
+                                        onValueChange={setLimit}
+                                    >
+                                        <SelectItem value="3">
+                                            3 {displayType === 'board' ? 'cards' : 'rows'}
+                                        </SelectItem>
+                                        <SelectItem value="5">
+                                            5 {displayType === 'board' ? 'cards' : 'rows'}
+                                        </SelectItem>
+                                        <SelectItem value="8">
+                                            8 {displayType === 'board' ? 'cards' : 'rows'}
+                                        </SelectItem>
+                                        <SelectItem value="10">
+                                            10 {displayType === 'board' ? 'cards' : 'rows'}
+                                        </SelectItem>
+                                        <SelectItem value="12">
+                                            12 {displayType === 'board' ? 'cards' : 'rows'}
+                                        </SelectItem>
+                                    </Select>
+                                </div>
+                            </div>
+                        </details>
+                    )}
                 </form>
             </Modal.Body>
             <Modal.Footer>

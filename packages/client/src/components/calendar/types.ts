@@ -12,7 +12,7 @@ export interface CalendarDayPreviewItem {
     isCompleted?: boolean;
 }
 
-export interface CalendarDayData {
+export interface CalendarGridDay {
     key: string;
     year: number;
     month: number;
@@ -21,6 +21,9 @@ export interface CalendarDayData {
     isSunday: boolean;
     isToday: boolean;
     isPast: boolean;
+}
+
+export interface CalendarDayData extends CalendarGridDay {
     notes: Note[];
     reminders: Reminder[];
 }

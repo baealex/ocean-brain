@@ -4,9 +4,9 @@ import type { Note } from '~/models/note.model';
 import type { ViewSection, ViewSortBy, ViewSortOrder } from '~/models/view.model';
 import type { ViewSectionRouteState, ViewSectionRouteStateUpdater } from '~/modules/view-route-state';
 import ViewSectionBoardRenderer from './ViewSectionBoardRenderer';
+import ViewSectionCalendarRenderer from './ViewSectionCalendarRenderer';
 import ViewSectionListRenderer from './ViewSectionListRenderer';
 import ViewSectionTableRenderer from './ViewSectionTableRenderer';
-import ViewSectionUnsupportedRenderer from './ViewSectionUnsupportedRenderer';
 
 interface ViewSectionRendererProps {
     section: ViewSection;
@@ -103,7 +103,13 @@ export default function ViewSectionRenderer({
     }
 
     if (section.displayType === 'calendar') {
-        return <ViewSectionUnsupportedRenderer onEdit={onEdit} />;
+        return (
+            <ViewSectionCalendarRenderer
+                section={section}
+                navigationState={navigationState}
+                onNavigationStateChange={onNavigationStateChange}
+            />
+        );
     }
 
     return <ViewSectionListRenderer notes={notes} isPending={isPending} isError={isError} onRetry={onRetry} />;

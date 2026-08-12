@@ -48,7 +48,12 @@ const createSection = (sortBy: ViewSection['sortBy'], sortOrder: ViewSection['so
     tabId: 'tab-1',
     title: 'All notes',
     displayType: 'list',
-    displayOptions: { tableColumns: ['title'], tablePropertyKeys: [], boardGroupByPropertyKey: null },
+    displayOptions: {
+        tableColumns: ['title'],
+        tablePropertyKeys: [],
+        boardGroupByPropertyKey: null,
+        calendarDateField: 'createdAt',
+    },
     tagNames: [],
     mode: 'and',
     propertyFilters: [],
@@ -90,5 +95,26 @@ describe('viewsLocalPlugin', () => {
         const result = response?.viewSectionNotes as { notes: Note[] } | undefined;
 
         expect(result?.notes.map((note) => note.id)).toEqual(['note-1', 'note-2', 'note-3']);
+    });
+
+    it('filters calendar sections by their configured date field and visible range', () => {
+        const handler = viewsLocalPlugin.graphHandlers?.FetchViewSectionCalendarNotes;
+        const section = createSection('updatedAt', 'desc');
+        section.displayType = 'calendar';
+        section.displayOptions.calendarDateField = 'createdAt';
+        const response = handler?.({
+            state: createState(section),
+            variables: {
+                id: 'section-1',
+                dateRange: {
+                    start: new Date(1_710_000_001_500).toISOString(),
+                    end: new Date(1_710_000_003_500).toISOString(),
+                },
+            },
+            save: () => undefined,
+        });
+        const notes = response?.viewSectionCalendarNotes as Note[] | undefined;
+
+        expect(notes?.map((note) => note.id)).toEqual(['note-2', 'note-3']);
     });
 });

@@ -4,10 +4,12 @@ import test from 'node:test';
 import {
     buildPropertyFilterWhere,
     buildViewBoardColumnWhere,
+    buildViewSectionCalendarWhere,
     buildViewSectionWhere,
     clampViewSectionLimit,
     getNotesByPropertiesWithDb,
     hydratePropertyFilters,
+    normalizeViewCalendarDateRange,
     normalizeViewDisplayOptions,
     normalizeViewNotesPagination,
     normalizeViewNotesQueryInput,
@@ -65,6 +67,7 @@ test('normalizeViewSectionInput preserves table display sections', () => {
             displayOptions: {
                 tableColumns: ['title', 'properties', 'updatedAt'],
                 boardGroupByPropertyKey: null,
+                calendarDateField: 'createdAt',
             },
             tagNames: [],
         }).displayType,
@@ -83,6 +86,17 @@ test('normalizeViewSectionInput preserves a select property as the board axis', 
 
     assert.equal(section.displayType, 'board');
     assert.equal(section.displayOptions.boardGroupByPropertyKey, 'status');
+});
+
+test('normalizeViewSectionInput preserves the calendar date field', () => {
+    const section = normalizeViewSectionInput({
+        title: 'Recently edited',
+        displayType: 'calendar',
+        displayOptions: { calendarDateField: 'updatedAt' },
+    });
+
+    assert.equal(section.displayType, 'calendar');
+    assert.equal(section.displayOptions.calendarDateField, 'updatedAt');
 });
 
 test('normalizeViewSectionInput requires the board axis to differ from section filters', () => {
@@ -107,7 +121,33 @@ test('normalizeViewDisplayOptions keeps table title visible and normalizes prope
             tableColumns: ['title', 'tags', 'updatedAt'],
             tablePropertyKeys: ['status', 'priority'],
             boardGroupByPropertyKey: null,
+            calendarDateField: 'createdAt',
         },
+    );
+});
+
+test('normalizeViewCalendarDateRange accepts one month and rejects invalid or oversized ranges', () => {
+    assert.deepEqual(
+        normalizeViewCalendarDateRange({
+            start: '2026-08-01T00:00:00.000Z',
+            end: '2026-09-01T00:00:00.000Z',
+        }),
+        {
+            start: new Date('2026-08-01T00:00:00.000Z'),
+            end: new Date('2026-09-01T00:00:00.000Z'),
+        },
+    );
+    assert.throws(
+        () => normalizeViewCalendarDateRange({ start: 'invalid', end: '2026-09-01T00:00:00.000Z' }),
+        /no more than 32 days/,
+    );
+    assert.throws(
+        () =>
+            normalizeViewCalendarDateRange({
+                start: '2026-01-01T00:00:00.000Z',
+                end: '2026-03-01T00:00:00.000Z',
+            }),
+        /no more than 32 days/,
     );
 });
 
@@ -630,6 +670,7 @@ const createSectionRecord = (patch: Partial<ViewSectionRecord> = {}): ViewSectio
         tableColumns: ['title', 'tags', 'properties', 'createdAt', 'updatedAt'],
         tablePropertyKeys: [],
         boardGroupByPropertyKey: null,
+        calendarDateField: 'createdAt',
     },
     tagNames: [],
     mode: 'and',
@@ -692,6 +733,33 @@ test('buildViewSectionWhere combines tag and property filters with AND', () => {
             ],
         },
     );
+});
+
+test('buildViewSectionCalendarWhere combines section filters with the configured date field', () => {
+    const section = createSectionRecord({
+        displayType: 'calendar',
+        displayOptions: {
+            ...createSectionRecord().displayOptions,
+            calendarDateField: 'updatedAt',
+        },
+        tagNames: ['@ocean'],
+    });
+    const dateRange = {
+        start: new Date('2026-08-01T00:00:00.000Z'),
+        end: new Date('2026-09-01T00:00:00.000Z'),
+    };
+
+    assert.deepEqual(buildViewSectionCalendarWhere(section, dateRange), {
+        AND: [
+            buildViewSectionWhere(section),
+            {
+                updatedAt: {
+                    gte: dateRange.start,
+                    lt: dateRange.end,
+                },
+            },
+        ],
+    });
 });
 
 test('buildViewBoardColumnWhere keeps the section scope while selecting one indexed option', () => {

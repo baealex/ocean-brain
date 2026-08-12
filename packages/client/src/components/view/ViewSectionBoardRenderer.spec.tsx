@@ -26,6 +26,7 @@ const section: ViewSection = {
         tableColumns: ['title'],
         tablePropertyKeys: [],
         boardGroupByPropertyKey: 'status',
+        calendarDateField: 'createdAt',
     },
     tagNames: [],
     mode: 'and',

@@ -13,6 +13,7 @@ import type {
 } from '~/apis/reminder.api';
 import type { FetchSearchNotesParams } from '~/apis/search.api';
 import type { FetchTagsParams } from '~/apis/tag.api';
+import type { ViewCalendarDateField } from '~/models/view.model';
 
 const normalizeFields = (fields?: FetchNotesParams['fields']) => {
     if (!fields || fields.length === 0) {
@@ -273,6 +274,18 @@ export const queryKeys = {
                     groupPropertyKey,
                     optionValue,
                     pageSize,
+                },
+            ] as const,
+        sectionCalendarsAll: () => ['views', 'section-calendar'] as const,
+        sectionCalendar: (id: string, params: { year: number; month: number; dateField: ViewCalendarDateField }) =>
+            [
+                'views',
+                'section-calendar',
+                id,
+                {
+                    year: params.year,
+                    month: params.month,
+                    dateField: params.dateField,
                 },
             ] as const,
     },

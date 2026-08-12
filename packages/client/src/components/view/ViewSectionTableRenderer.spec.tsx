@@ -60,6 +60,7 @@ const createSection = (patch: Partial<ViewSection> = {}): ViewSection => ({
         tableColumns: ['title', 'tags', 'properties', 'createdAt', 'updatedAt'],
         tablePropertyKeys: [],
         boardGroupByPropertyKey: null,
+        calendarDateField: 'createdAt',
     },
     tagNames: [],
     mode: 'and',
@@ -124,6 +125,7 @@ describe('<ViewSectionTableRenderer />', () => {
                     tableColumns: ['title', 'tags', 'properties'],
                     tablePropertyKeys: ['status'],
                     boardGroupByPropertyKey: null,
+                    calendarDateField: 'createdAt',
                 },
             }),
             availableProperties: [
@@ -149,6 +151,7 @@ describe('<ViewSectionTableRenderer />', () => {
                     tableColumns: ['title', 'updatedAt'],
                     tablePropertyKeys: [],
                     boardGroupByPropertyKey: null,
+                    calendarDateField: 'createdAt',
                 },
             }),
         });

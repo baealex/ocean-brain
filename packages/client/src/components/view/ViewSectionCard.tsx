@@ -39,6 +39,7 @@ export default function ViewSectionCard({
     onNavigationStateChange = () => undefined,
 }: ViewSectionCardProps) {
     const isBoard = section.displayType === 'board';
+    const isCalendar = section.displayType === 'calendar';
     const page = navigationState.page ?? 1;
     const offset = (page - 1) * section.limit;
     const sortBy = navigationState.sort?.by ?? section.sortBy;
@@ -51,7 +52,7 @@ export default function ViewSectionCard({
             sortBy,
             sortOrder,
         }),
-        enabled: !isBoard,
+        enabled: !isBoard && !isCalendar,
         placeholderData: keepPreviousData,
         async queryFn() {
             const response = await fetchViewSectionNotes(section.id, {
@@ -90,12 +91,12 @@ export default function ViewSectionCard({
     };
 
     useEffect(() => {
-        if (isBoard || isPending || isError || isPlaceholderData || !data || page <= lastPage) {
+        if (isBoard || isCalendar || isPending || isError || isPlaceholderData || !data || page <= lastPage) {
             return;
         }
 
         onNavigationStateChange((current) => ({ ...current, page: lastPage }));
-    }, [data, isBoard, isError, isPending, isPlaceholderData, lastPage, onNavigationStateChange, page]);
+    }, [data, isBoard, isCalendar, isError, isPending, isPlaceholderData, lastPage, onNavigationStateChange, page]);
 
     return (
         <SurfaceCard flush className="flex h-full flex-col overflow-hidden">
@@ -116,6 +117,13 @@ export default function ViewSectionCard({
                         {isBoard && section.displayOptions.boardGroupByPropertyKey ? (
                             <ViewChip className="max-w-full border-border-subtle/80 bg-subtle text-fg-secondary">
                                 Grouped by {boardGroupProperty?.name ?? section.displayOptions.boardGroupByPropertyKey}
+                            </ViewChip>
+                        ) : null}
+                        {isCalendar ? (
+                            <ViewChip className="max-w-full border-border-subtle/80 bg-subtle text-fg-secondary">
+                                {section.displayOptions.calendarDateField === 'updatedAt'
+                                    ? 'Updated date'
+                                    : 'Created date'}
                             </ViewChip>
                         ) : null}
                         {section.tagNames.map((tagName, index) => (
@@ -187,25 +195,29 @@ export default function ViewSectionCard({
                 />
             </div>
 
-            <div className="flex flex-col gap-3 border-t border-border-subtle/75 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                <Text as="p" variant="meta" tone="tertiary">
-                    {isBoard
-                        ? `${section.limit} cards per column load`
-                        : isPending || isPlaceholderData
-                          ? 'Loading notes...'
-                          : totalCount === 0
-                            ? 'No matching notes'
-                            : `Showing ${offset + 1}–${Math.min(offset + notes.length, totalCount)} of ${totalCount} notes`}
-                </Text>
-                {!isBoard && lastPage > 1 ? (
-                    <Pagination
-                        page={Math.min(page, lastPage)}
-                        last={lastPage}
-                        className="!mt-0 shrink-0 sm:justify-end"
-                        onChange={(nextPage) => onNavigationStateChange((current) => ({ ...current, page: nextPage }))}
-                    />
-                ) : null}
-            </div>
+            {!isCalendar ? (
+                <div className="flex flex-col gap-3 border-t border-border-subtle/75 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <Text as="p" variant="meta" tone="tertiary">
+                        {isBoard
+                            ? `${section.limit} cards per column load`
+                            : isPending || isPlaceholderData
+                              ? 'Loading notes...'
+                              : totalCount === 0
+                                ? 'No matching notes'
+                                : `Showing ${offset + 1}–${Math.min(offset + notes.length, totalCount)} of ${totalCount} notes`}
+                    </Text>
+                    {!isBoard && lastPage > 1 ? (
+                        <Pagination
+                            page={Math.min(page, lastPage)}
+                            last={lastPage}
+                            className="!mt-0 shrink-0 sm:justify-end"
+                            onChange={(nextPage) =>
+                                onNavigationStateChange((current) => ({ ...current, page: nextPage }))
+                            }
+                        />
+                    ) : null}
+                </div>
+            ) : null}
         </SurfaceCard>
     );
 }

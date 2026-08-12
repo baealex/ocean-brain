@@ -5,8 +5,10 @@ import {
     getNotesByProperties,
     getViewSectionBoardColumn,
     getViewSectionById,
+    getViewSectionCalendarNotes,
     getViewSectionNotes,
     getViewWorkspace,
+    type ViewCalendarDateRangeInput,
     type ViewNotesQueryInput,
 } from '~/features/view/services/workspace.js';
 import type { Pagination } from '~/types/index.js';
@@ -17,6 +19,7 @@ export interface ViewQueryResolverDeps {
     getNotesByProperties: typeof getNotesByProperties;
     getViewSectionBoardColumn: typeof getViewSectionBoardColumn;
     getViewSectionById: typeof getViewSectionById;
+    getViewSectionCalendarNotes: typeof getViewSectionCalendarNotes;
     getViewSectionNotes: typeof getViewSectionNotes;
     getViewWorkspace: typeof getViewWorkspace;
 }
@@ -26,6 +29,7 @@ export const createViewQueryResolvers = (
         getNotesByProperties,
         getViewSectionBoardColumn,
         getViewSectionById,
+        getViewSectionCalendarNotes,
         getViewSectionNotes,
         getViewWorkspace,
     },
@@ -67,6 +71,27 @@ export const createViewQueryResolvers = (
         }
 
         return sectionNotes;
+    },
+    viewSectionCalendarNotes: async (_, { id, dateRange }: { id: string; dateRange: ViewCalendarDateRangeInput }) => {
+        try {
+            const notes = await deps.getViewSectionCalendarNotes(id, dateRange);
+
+            if (!notes) {
+                throw 'NOT FOUND';
+            }
+
+            return notes;
+        } catch (error) {
+            if (error instanceof InvalidNotePropertyInputError) {
+                throw new GraphQLError(error.message, {
+                    extensions: {
+                        code: 'INVALID_NOTE_PROPERTY_INPUT',
+                    },
+                });
+            }
+
+            throw error;
+        }
     },
     viewSectionBoardColumn: async (
         _,

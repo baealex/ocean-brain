@@ -1,6 +1,7 @@
 export type ViewTagMatchMode = 'and' | 'or';
 export type ViewDisplayType = 'list' | 'table' | 'board' | 'calendar';
 export type ViewTableColumn = 'title' | 'tags' | 'properties' | 'createdAt' | 'updatedAt';
+export type ViewCalendarDateField = 'createdAt' | 'updatedAt';
 export type ViewPropertyFilterOperator =
     | 'equals'
     | 'notEquals'
@@ -17,6 +18,7 @@ export interface ViewDisplayOptions {
     tableColumns: ViewTableColumn[];
     tablePropertyKeys: string[];
     boardGroupByPropertyKey: string | null;
+    calendarDateField: ViewCalendarDateField;
 }
 
 export interface ViewPropertyFilter {

@@ -907,6 +907,20 @@ export const createLocalDemoSeed = ({ tags, nowMs }: SeedInput): SeedOutput => {
                 ]),
             ],
         },
+        {
+            id: 'view-tab-timeline',
+            title: 'Timeline',
+            order: 2,
+            sections: [
+                createCalendarViewSection(
+                    'view-section-timeline',
+                    'view-tab-timeline',
+                    'Project timeline',
+                    ['project'],
+                    'updatedAt',
+                ),
+            ],
+        },
     ];
 
     return {
@@ -935,6 +949,7 @@ const createViewSection = (
         tableColumns: ['title', 'tags', 'properties', 'updatedAt'],
         tablePropertyKeys: displayType === 'table' ? ['status', 'priority', 'dueDate', 'owner'] : [],
         boardGroupByPropertyKey: null,
+        calendarDateField: 'createdAt',
     },
     tagNames,
     mode: 'and',
@@ -958,6 +973,25 @@ const createBoardViewSection = (
         tableColumns: ['title', 'tags', 'properties', 'updatedAt'],
         tablePropertyKeys: [],
         boardGroupByPropertyKey,
+        calendarDateField: 'createdAt',
     },
     limit: 8,
 });
+
+const createCalendarViewSection = (
+    id: string,
+    tabId: string,
+    title: string,
+    tagNames: string[],
+    calendarDateField: ViewSection['displayOptions']['calendarDateField'],
+): ViewSection => {
+    const section = createViewSection(id, tabId, title, 0, tagNames, [], 'calendar');
+
+    return {
+        ...section,
+        displayOptions: {
+            ...section.displayOptions,
+            calendarDateField,
+        },
+    };
+};

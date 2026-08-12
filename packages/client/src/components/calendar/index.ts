@@ -1,10 +1,12 @@
 export { CalendarDay } from './CalendarDay';
 export { CalendarDayDetail } from './CalendarDayDetail';
+export { CalendarDayView } from './CalendarDayView';
 export { CalendarEntryCard } from './CalendarEntryCard';
+export { CalendarGrid } from './CalendarGrid';
 export { CalendarHeader } from './CalendarHeader';
 export { CalendarMonth } from './CalendarMonth';
 export { NoteCard } from './NoteCard';
 export { PriorityLegend } from './PriorityLegend';
 export { ReminderCard } from './ReminderCard';
-export type { CalendarDayData, CalendarDisplayType } from './types';
+export type { CalendarDayData, CalendarDisplayType, CalendarGridDay } from './types';
 export { useCalendarData } from './useCalendarData';

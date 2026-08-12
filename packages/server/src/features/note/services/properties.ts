@@ -1,4 +1,4 @@
-import models, { type Note, type NoteLayout, Prisma, type PropertyValueType } from '~/models.js';
+import models, { type Note, type NoteLayout, Prisma, type PropertyValueType, type ViewDisplayType } from '~/models.js';
 import { buildNoteSearchProjection } from './search.js';
 import { captureNoteBaseline } from './snapshot.js';
 import { createNoteVersionConflictError, MissingNoteVersionError, parseNoteVersion } from './write-conflict.js';
@@ -434,17 +434,19 @@ const parseViewQueryRecord = (value: string | null) => {
     }
 };
 
-const getNormalizedViewFilterKey = (filter: Record<string, unknown>) => {
-    if (typeof filter.key !== 'string') {
+const getNormalizedViewPropertyKey = (value: unknown) => {
+    if (typeof value !== 'string') {
         return null;
     }
 
     try {
-        return normalizePropertyKey(filter.key);
+        return normalizePropertyKey(value);
     } catch {
         return null;
     }
 };
+
+const getNormalizedViewFilterKey = (filter: Record<string, unknown>) => getNormalizedViewPropertyKey(filter.key);
 
 export const renamePropertyFiltersInViewQuery = ({
     query,
@@ -527,14 +529,48 @@ export const findReferencedRemovedPropertyOptionValue = ({
     return null;
 };
 
-export const viewQueryReferencesProperty = ({ query, key }: { query: string | null; key: string }) => {
+export const viewQueryReferencesProperty = ({
+    query,
+    key,
+    displayType,
+}: {
+    query: string | null;
+    key: string;
+    displayType: ViewDisplayType;
+}) => {
     const parsed = parseViewQueryRecord(query);
 
-    if (!parsed || !Array.isArray(parsed.propertyFilters)) {
+    if (!parsed) {
         return false;
     }
 
-    return parsed.propertyFilters.some((filter) => isRecord(filter) && getNormalizedViewFilterKey(filter) === key);
+    const isReferencedKey = (value: unknown) => getNormalizedViewPropertyKey(value) === key;
+    const referencedByFilter =
+        Array.isArray(parsed.propertyFilters) &&
+        parsed.propertyFilters.some((filter) => isRecord(filter) && getNormalizedViewFilterKey(filter) === key);
+    const displayOptions = isRecord(parsed.displayOptions) ? parsed.displayOptions : null;
+
+    if (!displayOptions) {
+        return referencedByFilter;
+    }
+
+    if (referencedByFilter) {
+        return true;
+    }
+
+    if (displayType === 'board') {
+        return isReferencedKey(displayOptions.boardGroupByPropertyKey);
+    }
+
+    if (displayType === 'calendar') {
+        return isReferencedKey(displayOptions.calendarDatePropertyKey);
+    }
+
+    return (
+        displayType === 'table' &&
+        Array.isArray(displayOptions.tablePropertyKeys) &&
+        displayOptions.tablePropertyKeys.some(isReferencedKey)
+    );
 };
 
 const buildTypedValueData = async (
@@ -999,10 +1035,14 @@ export const deleteNotePropertyDefinition = async ({
 
         const referencingViewSections = await tx.viewSection.findMany({
             where: { query: { contains: definition.key } },
-            select: { title: true, query: true },
+            select: { title: true, displayType: true, query: true },
         });
         const referencingView = referencingViewSections.find((section) =>
-            viewQueryReferencesProperty({ query: section.query, key: definition.key }),
+            viewQueryReferencesProperty({
+                query: section.query,
+                key: definition.key,
+                displayType: section.displayType,
+            }),
         );
 
         if (referencingView) {

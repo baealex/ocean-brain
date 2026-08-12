@@ -1,5 +1,6 @@
 // @vitest-environment node
 import {
+    fetchAllNotePropertyKeys,
     fetchNoteSnapshot,
     fetchNoteSnapshots,
     fetchTrashedNote,
@@ -156,6 +157,50 @@ describe('note.api', () => {
                 title: 'Updated note',
             },
             force: true,
+        });
+    });
+
+    it('loads every property key page for complete view metadata', async () => {
+        const firstPage = Array.from({ length: 100 }, (_, index) => ({
+            key: `property-${index}`,
+            name: `Property ${index}`,
+            valueType: 'text' as const,
+            noteCount: 0,
+            options: [],
+            updatedAt: '2026-08-13T00:00:00.000Z',
+        }));
+        const finalProperty = {
+            key: 'property-100',
+            name: 'Property 100',
+            valueType: 'date' as const,
+            noteCount: 1,
+            options: [],
+            updatedAt: '2026-08-13T00:00:00.000Z',
+        };
+        vi.mocked(graphQuery)
+            .mockResolvedValueOnce({
+                type: 'success',
+                notePropertyKeys: { totalCount: 101, keys: firstPage },
+            } as never)
+            .mockResolvedValueOnce({
+                type: 'success',
+                notePropertyKeys: { totalCount: 101, keys: [finalProperty] },
+            } as never);
+
+        const response = await fetchAllNotePropertyKeys();
+
+        expect(graphQuery).toHaveBeenNthCalledWith(1, expect.stringContaining('query FetchNotePropertyKeys'), {
+            pagination: { limit: 100, offset: 0 },
+        });
+        expect(graphQuery).toHaveBeenNthCalledWith(2, expect.stringContaining('query FetchNotePropertyKeys'), {
+            pagination: { limit: 100, offset: 100 },
+        });
+        expect(response).toEqual({
+            type: 'success',
+            notePropertyKeys: {
+                totalCount: 101,
+                keys: [...firstPage, finalProperty],
+            },
         });
     });
 

@@ -184,9 +184,27 @@ test('property definition deletion detects references from saved views', () => {
         ],
     });
 
-    assert.equal(viewQueryReferencesProperty({ query, key: 'state' }), true);
-    assert.equal(viewQueryReferencesProperty({ query, key: 'project' }), false);
-    assert.equal(viewQueryReferencesProperty({ query: '{invalid', key: 'state' }), false);
+    assert.equal(viewQueryReferencesProperty({ query, key: 'state', displayType: 'list' }), true);
+    assert.equal(viewQueryReferencesProperty({ query, key: 'project', displayType: 'list' }), false);
+    assert.equal(viewQueryReferencesProperty({ query: '{invalid', key: 'state', displayType: 'list' }), false);
+});
+
+test('property definition deletion detects references from saved view display options', () => {
+    const query = JSON.stringify({
+        propertyFilters: [],
+        displayOptions: {
+            tablePropertyKeys: ['owner'],
+            boardGroupByPropertyKey: 'state',
+            calendarDateField: 'property',
+            calendarDatePropertyKey: 'due-date',
+        },
+    });
+
+    assert.equal(viewQueryReferencesProperty({ query, key: 'owner', displayType: 'table' }), true);
+    assert.equal(viewQueryReferencesProperty({ query, key: 'state', displayType: 'board' }), true);
+    assert.equal(viewQueryReferencesProperty({ query, key: 'due-date', displayType: 'calendar' }), true);
+    assert.equal(viewQueryReferencesProperty({ query, key: 'due-date', displayType: 'list' }), false);
+    assert.equal(viewQueryReferencesProperty({ query, key: 'project', displayType: 'calendar' }), false);
 });
 
 test('property definition rename refreshes saved view filter labels', () => {

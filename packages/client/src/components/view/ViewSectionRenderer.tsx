@@ -21,9 +21,27 @@ interface ViewSectionRendererProps {
     activeSortOrder?: ViewSortOrder;
     availableProperties?: NotePropertyKeySummary[];
     isPropertiesLoading?: boolean;
+    isPropertiesError?: boolean;
+    onRetryProperties?: () => void;
     navigationState?: ViewSectionRouteState;
     onNavigationStateChange?: (updater: ViewSectionRouteStateUpdater) => void;
 }
+
+const PropertyMetadataError = ({ displayName, onRetry }: { displayName: string; onRetry: () => void }) => (
+    <div className="m-4 rounded-[16px] border border-border-subtle bg-hover-subtle/70 p-4">
+        <Text as="p" variant="body" weight="semibold">
+            Failed to load {displayName} properties
+        </Text>
+        <Text as="p" variant="meta" tone="tertiary" className="mt-1">
+            Retry to check the configured property without changing this view.
+        </Text>
+        <div className="mt-3">
+            <Button type="button" variant="ghost" size="sm" onClick={onRetry}>
+                Retry
+            </Button>
+        </div>
+    </div>
+);
 
 export default function ViewSectionRenderer({
     section,
@@ -38,6 +56,8 @@ export default function ViewSectionRenderer({
     activeSortOrder = section.sortOrder,
     availableProperties = [],
     isPropertiesLoading = false,
+    isPropertiesError = false,
+    onRetryProperties = () => undefined,
     navigationState = {},
     onNavigationStateChange = () => undefined,
 }: ViewSectionRendererProps) {
@@ -55,6 +75,10 @@ export default function ViewSectionRenderer({
                     <div className="h-[248px] w-[18rem] shrink-0 animate-pulse rounded-[18px] bg-subtle/50" />
                 </div>
             );
+        }
+
+        if (!groupProperty && isPropertiesError) {
+            return <PropertyMetadataError displayName="board" onRetry={onRetryProperties} />;
         }
 
         if (!groupProperty || groupProperty.options.length === 0) {
@@ -115,6 +139,10 @@ export default function ViewSectionRenderer({
         if (section.displayOptions.calendarDateField === 'property' && !calendarDateProperty) {
             if (isPropertiesLoading) {
                 return <div className="m-4 h-[320px] animate-pulse rounded-[18px] bg-subtle/50" />;
+            }
+
+            if (isPropertiesError) {
+                return <PropertyMetadataError displayName="calendar" onRetry={onRetryProperties} />;
             }
 
             return (

@@ -21,6 +21,8 @@ interface ViewSectionCardProps {
     dragHandle?: React.ReactNode;
     availableProperties?: NotePropertyKeySummary[];
     isPropertiesLoading?: boolean;
+    isPropertiesError?: boolean;
+    onRetryProperties?: () => void;
     navigationState?: ViewSectionRouteState;
     onNavigationStateChange?: (updater: ViewSectionRouteStateUpdater) => void;
 }
@@ -35,6 +37,8 @@ export default function ViewSectionCard({
     dragHandle,
     availableProperties = [],
     isPropertiesLoading = false,
+    isPropertiesError = false,
+    onRetryProperties = () => undefined,
     navigationState = {},
     onNavigationStateChange = () => undefined,
 }: ViewSectionCardProps) {
@@ -197,6 +201,8 @@ export default function ViewSectionCard({
                     activeSortOrder={sortOrder}
                     availableProperties={availableProperties}
                     isPropertiesLoading={isPropertiesLoading}
+                    isPropertiesError={isPropertiesError}
+                    onRetryProperties={onRetryProperties}
                     navigationState={navigationState}
                     onNavigationStateChange={onNavigationStateChange}
                 />

@@ -98,6 +98,62 @@ describe('notesLocalPlugin', () => {
         expect(() => normalizeTagName('#guide')).toThrow('use @, not #');
     });
 
+    it('keeps a property used as a saved calendar axis', () => {
+        const state = createState();
+        state.propertyDefinitions = [
+            {
+                key: 'due-date',
+                name: 'Due date',
+                valueType: 'date',
+                options: [],
+                updatedAt: '2026-08-13T00:00:00.000Z',
+            },
+        ];
+        state.viewWorkspace = {
+            activeTabId: 'tab-1',
+            tabs: [
+                {
+                    id: 'tab-1',
+                    title: 'Planning',
+                    order: 0,
+                    sections: [
+                        {
+                            id: 'section-1',
+                            tabId: 'tab-1',
+                            title: 'Due dates',
+                            displayType: 'calendar',
+                            displayOptions: {
+                                tableColumns: ['title'],
+                                tablePropertyKeys: [],
+                                boardGroupByPropertyKey: null,
+                                calendarDateField: 'property',
+                                calendarDatePropertyKey: 'due-date',
+                            },
+                            tagNames: [],
+                            mode: 'and',
+                            propertyFilters: [],
+                            sortBy: 'updatedAt',
+                            sortOrder: 'desc',
+                            limit: 5,
+                            order: 0,
+                        },
+                    ],
+                },
+            ],
+        };
+        const save = vi.fn();
+        const handler = notesLocalPlugin.graphHandlers?.DeleteNotePropertyKey;
+
+        const response = handler?.({ state, variables: { key: 'due-date' }, save });
+
+        expect(response).toMatchObject({
+            type: 'error',
+            errors: [{ message: 'Property due-date is used by view Due dates and cannot be deleted.' }],
+        });
+        expect(state.propertyDefinitions).toHaveLength(1);
+        expect(save).not.toHaveBeenCalled();
+    });
+
     it('filters tagged notes by tag id for the tag notes page', () => {
         const handler = notesLocalPlugin.graphHandlers?.FetchTagNotes;
         expect(handler).toBeDefined();

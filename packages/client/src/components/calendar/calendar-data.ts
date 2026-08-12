@@ -7,6 +7,11 @@ export const getCalendarMonthRange = (year: number, month: number) => ({
     end: new Date(year, month, 1).toISOString(),
 });
 
+export const getCalendarDateOnlyMonthRange = (year: number, month: number) => ({
+    start: new Date(Date.UTC(year, month - 1, 1)).toISOString(),
+    end: new Date(Date.UTC(year, month, 1)).toISOString(),
+});
+
 export const toCalendarTimestamp = (value: string) => {
     const numericValue = Number(value);
     return Number.isFinite(numericValue) ? numericValue : Date.parse(value);

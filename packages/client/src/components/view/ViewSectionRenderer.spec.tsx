@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import type { Note } from '~/models/note.model';
 import type { ViewSection } from '~/models/view.model';
@@ -61,6 +62,7 @@ const createSection = (patch: Partial<ViewSection> = {}): ViewSection => ({
         tablePropertyKeys: [],
         boardGroupByPropertyKey: null,
         calendarDateField: 'createdAt',
+        calendarDatePropertyKey: null,
     },
     tagNames: [],
     mode: 'and',
@@ -107,5 +109,24 @@ describe('<ViewSectionRenderer />', () => {
         renderRenderer(createSection({ displayType: 'calendar' }));
 
         expect(screen.getByLabelText('View query results as a calendar')).toHaveTextContent('createdAt');
+    });
+
+    it('offers calendar recovery when its date property is unavailable', async () => {
+        const user = userEvent.setup();
+        const handleEdit = vi.fn();
+        const section = createSection({
+            displayType: 'calendar',
+            displayOptions: {
+                ...createSection().displayOptions,
+                calendarDateField: 'property',
+                calendarDatePropertyKey: 'due-date',
+            },
+        });
+
+        renderRenderer(section, handleEdit);
+
+        expect(screen.getByText('Calendar date property is unavailable')).toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'Edit calendar' }));
+        expect(handleEdit).toHaveBeenCalledOnce();
     });
 });

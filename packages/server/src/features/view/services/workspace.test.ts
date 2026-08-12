@@ -68,6 +68,7 @@ test('normalizeViewSectionInput preserves table display sections', () => {
                 tableColumns: ['title', 'properties', 'updatedAt'],
                 boardGroupByPropertyKey: null,
                 calendarDateField: 'createdAt',
+                calendarDatePropertyKey: null,
             },
             tagNames: [],
         }).displayType,
@@ -99,6 +100,28 @@ test('normalizeViewSectionInput preserves the calendar date field', () => {
     assert.equal(section.displayOptions.calendarDateField, 'updatedAt');
 });
 
+test('normalizeViewSectionInput preserves a normalized date property as the calendar axis', () => {
+    const section = normalizeViewSectionInput({
+        title: 'Due dates',
+        displayType: 'calendar',
+        displayOptions: {
+            calendarDateField: 'property',
+            calendarDatePropertyKey: ' Due-Date ',
+        },
+    });
+
+    assert.equal(section.displayOptions.calendarDateField, 'property');
+    assert.equal(section.displayOptions.calendarDatePropertyKey, 'due-date');
+    assert.throws(
+        () =>
+            normalizeViewSectionInput({
+                displayType: 'calendar',
+                displayOptions: { calendarDateField: 'property' },
+            }),
+        /require a date property/,
+    );
+});
+
 test('normalizeViewSectionInput requires the board axis to differ from section filters', () => {
     assert.throws(
         () =>
@@ -122,6 +145,7 @@ test('normalizeViewDisplayOptions keeps table title visible and normalizes prope
             tablePropertyKeys: ['status', 'priority'],
             boardGroupByPropertyKey: null,
             calendarDateField: 'createdAt',
+            calendarDatePropertyKey: null,
         },
     );
 });
@@ -671,6 +695,7 @@ const createSectionRecord = (patch: Partial<ViewSectionRecord> = {}): ViewSectio
         tablePropertyKeys: [],
         boardGroupByPropertyKey: null,
         calendarDateField: 'createdAt',
+        calendarDatePropertyKey: null,
     },
     tagNames: [],
     mode: 'and',
@@ -756,6 +781,39 @@ test('buildViewSectionCalendarWhere combines section filters with the configured
                 updatedAt: {
                     gte: dateRange.start,
                     lt: dateRange.end,
+                },
+            },
+        ],
+    });
+});
+
+test('buildViewSectionCalendarWhere selects an indexed date property inside the section scope', () => {
+    const section = createSectionRecord({
+        displayType: 'calendar',
+        displayOptions: {
+            ...createSectionRecord().displayOptions,
+            calendarDateField: 'property',
+            calendarDatePropertyKey: 'due-date',
+        },
+        tagNames: ['@ocean'],
+    });
+    const dateRange = {
+        start: new Date('2026-08-01T00:00:00.000Z'),
+        end: new Date('2026-09-01T00:00:00.000Z'),
+    };
+
+    assert.deepEqual(buildViewSectionCalendarWhere(section, dateRange, 17), {
+        AND: [
+            buildViewSectionWhere(section),
+            {
+                properties: {
+                    some: {
+                        propertyDefinitionId: 17,
+                        dateValue: {
+                            gte: dateRange.start,
+                            lt: dateRange.end,
+                        },
+                    },
                 },
             },
         ],

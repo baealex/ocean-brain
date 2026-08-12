@@ -103,9 +103,41 @@ export default function ViewSectionRenderer({
     }
 
     if (section.displayType === 'calendar') {
+        const calendarDateProperty =
+            section.displayOptions.calendarDateField === 'property'
+                ? availableProperties.find(
+                      (property) =>
+                          property.key === section.displayOptions.calendarDatePropertyKey &&
+                          property.valueType === 'date',
+                  )
+                : undefined;
+
+        if (section.displayOptions.calendarDateField === 'property' && !calendarDateProperty) {
+            if (isPropertiesLoading) {
+                return <div className="m-4 h-[320px] animate-pulse rounded-[18px] bg-subtle/50" />;
+            }
+
+            return (
+                <div className="m-4 rounded-[16px] border border-dashed border-border-subtle bg-subtle/40 px-4 py-5">
+                    <Text as="p" variant="body" weight="semibold">
+                        Calendar date property is unavailable
+                    </Text>
+                    <Text as="p" variant="meta" tone="tertiary" className="mt-1">
+                        Choose an existing date property to restore this calendar.
+                    </Text>
+                    <div className="mt-3">
+                        <Button type="button" variant="ghost" size="sm" onClick={onEdit}>
+                            Edit calendar
+                        </Button>
+                    </div>
+                </div>
+            );
+        }
+
         return (
             <ViewSectionCalendarRenderer
                 section={section}
+                calendarDateProperty={calendarDateProperty}
                 navigationState={navigationState}
                 onNavigationStateChange={onNavigationStateChange}
             />

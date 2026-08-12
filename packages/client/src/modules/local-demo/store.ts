@@ -59,7 +59,15 @@ const normalizeViewWorkspace = (workspace: LocalDemoState['viewWorkspace']): Loc
             ...section,
             displayOptions: {
                 ...section.displayOptions,
-                calendarDateField: section.displayOptions.calendarDateField === 'updatedAt' ? 'updatedAt' : 'createdAt',
+                calendarDateField:
+                    section.displayOptions.calendarDateField === 'updatedAt' ||
+                    section.displayOptions.calendarDateField === 'property'
+                        ? section.displayOptions.calendarDateField
+                        : 'createdAt',
+                calendarDatePropertyKey:
+                    section.displayOptions.calendarDateField === 'property'
+                        ? section.displayOptions.calendarDatePropertyKey?.trim() || null
+                        : null,
             },
         })),
     })),

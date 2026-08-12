@@ -70,21 +70,44 @@ export const viewsLocalPlugin: LocalDemoPlugin = {
                 return localError('Calendar date range is invalid');
             }
 
-            const dateField = section.displayOptions.calendarDateField === 'updatedAt' ? 'updatedAt' : 'createdAt';
-            const notes = applyPropertyFilters(
+            const dateField = section.displayOptions.calendarDateField;
+            const datePropertyKey = section.displayOptions.calendarDatePropertyKey;
+
+            if (
+                dateField === 'property' &&
+                (!datePropertyKey ||
+                    !state.propertyDefinitions.some(
+                        (definition) => definition.key === datePropertyKey && definition.valueType === 'date',
+                    ))
+            ) {
+                return localError('Calendar date property is unavailable');
+            }
+
+            const calendarNotes = applyPropertyFilters(
                 listNotesByTags(state, section.tagNames, section.mode),
                 section.propertyFilters,
             )
-                .filter((note) => {
-                    const timestamp = toTimestamp(note[dateField]);
-                    return timestamp >= start && timestamp < end;
+                .flatMap((note) => {
+                    const calendarDate =
+                        dateField === 'property'
+                            ? note.properties?.find((property) => property.key === datePropertyKey)?.value
+                            : note[dateField];
+
+                    if (!calendarDate) {
+                        return [];
+                    }
+
+                    const timestamp = toTimestamp(calendarDate);
+                    return timestamp >= start && timestamp < end
+                        ? [{ id: note.id, title: note.title, calendarDate }]
+                        : [];
                 })
                 .sort((left, right) => {
-                    const comparison = toTimestamp(left[dateField]) - toTimestamp(right[dateField]);
+                    const comparison = toTimestamp(left.calendarDate) - toTimestamp(right.calendarDate);
                     return comparison || left.id.localeCompare(right.id);
                 });
 
-            return success({ viewSectionCalendarNotes: notes });
+            return success({ viewSectionCalendarNotes: calendarNotes });
         },
         FetchViewSectionBoardColumn: ({ state, variables }) => {
             const section = state.viewWorkspace.tabs
@@ -165,6 +188,7 @@ export const viewsLocalPlugin: LocalDemoPlugin = {
                     tablePropertyKeys: [],
                     boardGroupByPropertyKey: null,
                     calendarDateField: 'createdAt',
+                    calendarDatePropertyKey: null,
                 },
                 tagNames: input.tagNames ?? [],
                 mode: input.mode ?? 'and',

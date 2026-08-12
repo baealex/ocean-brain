@@ -32,6 +32,7 @@ const VIEW_SECTION_FIELDS = `
         tablePropertyKeys
         boardGroupByPropertyKey
         calendarDateField
+        calendarDatePropertyKey
     }
     tagNames
     mode
@@ -152,7 +153,9 @@ export function fetchViewSectionNotes(
     );
 }
 
-export type ViewCalendarNote = Pick<Note, 'id' | 'title' | 'createdAt' | 'updatedAt'>;
+export interface ViewCalendarNote extends Pick<Note, 'id' | 'title'> {
+    calendarDate: string;
+}
 
 export interface ViewCalendarDateRange {
     start: string;
@@ -173,8 +176,7 @@ export function fetchViewSectionCalendarNotes(id: string, dateRange: ViewCalenda
             viewSectionCalendarNotes(id: $id, dateRange: $dateRange) {
                 id
                 title
-                createdAt
-                updatedAt
+                calendarDate
             }
         }`,
         { id, dateRange },

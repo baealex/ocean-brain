@@ -234,14 +234,20 @@ export const normalizeViewTablePropertyKeys = (keys?: readonly string[] | null):
     );
 
 export const normalizeViewCalendarDateField = (value?: ViewCalendarDateField | null): ViewCalendarDateField =>
-    value === 'updatedAt' ? 'updatedAt' : DEFAULT_VIEW_CALENDAR_DATE_FIELD;
+    value === 'updatedAt' || value === 'property' ? value : DEFAULT_VIEW_CALENDAR_DATE_FIELD;
 
-export const normalizeViewDisplayOptions = (options?: Partial<ViewDisplayOptions> | null): ViewDisplayOptions => ({
-    tableColumns: normalizeViewTableColumns(options?.tableColumns),
-    tablePropertyKeys: normalizeViewTablePropertyKeys(options?.tablePropertyKeys),
-    boardGroupByPropertyKey: options?.boardGroupByPropertyKey?.trim() || null,
-    calendarDateField: normalizeViewCalendarDateField(options?.calendarDateField),
-});
+export const normalizeViewDisplayOptions = (options?: Partial<ViewDisplayOptions> | null): ViewDisplayOptions => {
+    const calendarDateField = normalizeViewCalendarDateField(options?.calendarDateField);
+
+    return {
+        tableColumns: normalizeViewTableColumns(options?.tableColumns),
+        tablePropertyKeys: normalizeViewTablePropertyKeys(options?.tablePropertyKeys),
+        boardGroupByPropertyKey: options?.boardGroupByPropertyKey?.trim() || null,
+        calendarDateField,
+        calendarDatePropertyKey:
+            calendarDateField === 'property' ? options?.calendarDatePropertyKey?.trim() || null : null,
+    };
+};
 
 export const formatViewPropertyFilter = (filter: ViewPropertyFilter) => {
     const operatorLabel = getViewPropertyOperatorLabel(filter.operator);

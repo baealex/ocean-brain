@@ -57,6 +57,7 @@ const createSection = (patch: Partial<ViewSection> = {}): ViewSection => ({
         tablePropertyKeys: [],
         boardGroupByPropertyKey: null,
         calendarDateField: 'createdAt',
+        calendarDatePropertyKey: null,
     },
     tagNames: [],
     mode: 'and',

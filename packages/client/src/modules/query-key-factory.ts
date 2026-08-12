@@ -277,7 +277,15 @@ export const queryKeys = {
                 },
             ] as const,
         sectionCalendarsAll: () => ['views', 'section-calendar'] as const,
-        sectionCalendar: (id: string, params: { year: number; month: number; dateField: ViewCalendarDateField }) =>
+        sectionCalendar: (
+            id: string,
+            params: {
+                year: number;
+                month: number;
+                dateField: ViewCalendarDateField;
+                propertyKey?: string | null;
+            },
+        ) =>
             [
                 'views',
                 'section-calendar',
@@ -286,6 +294,7 @@ export const queryKeys = {
                     year: params.year,
                     month: params.month,
                     dateField: params.dateField,
+                    propertyKey: params.propertyKey ?? null,
                 },
             ] as const,
     },

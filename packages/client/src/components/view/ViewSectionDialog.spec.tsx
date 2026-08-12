@@ -6,6 +6,15 @@ import type { Tag } from '~/models/tag.model';
 import type { ViewSection } from '~/models/view.model';
 import ViewSectionDialog from './ViewSectionDialog';
 
+beforeAll(() => {
+    Object.defineProperties(HTMLElement.prototype, {
+        hasPointerCapture: { configurable: true, value: () => false },
+        setPointerCapture: { configurable: true, value: () => undefined },
+        releasePointerCapture: { configurable: true, value: () => undefined },
+        scrollIntoView: { configurable: true, value: () => undefined },
+    });
+});
+
 const createTag = (name: string, index: number): Pick<Tag, 'id' | 'name'> => ({
     id: `tag-${index}`,
     name,
@@ -31,6 +40,7 @@ const createSection = (patch: Partial<ViewSection> = {}): ViewSection => ({
         tablePropertyKeys: [],
         boardGroupByPropertyKey: null,
         calendarDateField: 'createdAt',
+        calendarDatePropertyKey: null,
     },
     tagNames: [],
     mode: 'and',
@@ -164,6 +174,42 @@ describe('<ViewSectionDialog />', () => {
             expect.objectContaining({
                 displayType: 'calendar',
                 displayOptions: expect.objectContaining({ calendarDateField: 'createdAt' }),
+            }),
+        );
+    });
+
+    it('uses a shared date property as the calendar placement field', async () => {
+        const user = userEvent.setup();
+        const handleSubmit = vi.fn();
+        const dueDateProperty = createProperty({
+            key: 'due-date',
+            name: 'Due date',
+            valueType: 'date',
+        });
+
+        render(
+            <ViewSectionDialog
+                open
+                mode="create"
+                availableTags={[]}
+                availableProperties={[dueDateProperty]}
+                onClose={vi.fn()}
+                onSubmit={handleSubmit}
+            />,
+        );
+
+        await user.click(screen.getByRole('radio', { name: 'Show as calendar' }));
+        await user.click(screen.getByRole('combobox', { name: 'Place notes by' }));
+        await user.click(await screen.findByRole('option', { name: 'Due date · date property' }));
+        await user.click(screen.getByRole('button', { name: 'Create section' }));
+
+        expect(handleSubmit).toHaveBeenCalledWith(
+            expect.objectContaining({
+                displayType: 'calendar',
+                displayOptions: expect.objectContaining({
+                    calendarDateField: 'property',
+                    calendarDatePropertyKey: 'due-date',
+                }),
             }),
         );
     });

@@ -86,6 +86,8 @@ const getInitialBoardGroupValue = (section?: ViewSection | null) =>
     section?.displayOptions?.boardGroupByPropertyKey ?? '';
 const getInitialCalendarDateFieldValue = (section?: ViewSection | null) =>
     normalizeViewCalendarDateField(section?.displayOptions?.calendarDateField ?? DEFAULT_VIEW_CALENDAR_DATE_FIELD);
+const getInitialCalendarDatePropertyKeyValue = (section?: ViewSection | null) =>
+    section?.displayOptions?.calendarDatePropertyKey ?? '';
 const getInitialModeValue = (section?: ViewSection | null): ViewTagMatchMode => section?.mode ?? 'and';
 const getInitialTagsValue = (section?: ViewSection | null) => (section ? section.tagNames.join(', ') : '');
 const getInitialTitleValue = (section?: ViewSection | null) => section?.title ?? '';
@@ -194,6 +196,9 @@ export default function ViewSectionDialog({
     const [calendarDateField, setCalendarDateField] = useState<ViewCalendarDateField>(
         getInitialCalendarDateFieldValue(initialSection),
     );
+    const [calendarDatePropertyKey, setCalendarDatePropertyKey] = useState(
+        getInitialCalendarDatePropertyKeyValue(initialSection),
+    );
     const [tagInput, setTagInput] = useState(getInitialTagsValue(initialSection));
     const [matchMode, setMatchMode] = useState<ViewTagMatchMode>(getInitialModeValue(initialSection));
     const [sortBy, setSortBy] = useState<ViewSortBy>(getInitialSortByValue(initialSection));
@@ -219,6 +224,7 @@ export default function ViewSectionDialog({
         setTablePropertyKeys(getInitialTablePropertyKeysValue(initialSection));
         setBoardGroupByPropertyKey(getInitialBoardGroupValue(initialSection));
         setCalendarDateField(getInitialCalendarDateFieldValue(initialSection));
+        setCalendarDatePropertyKey(getInitialCalendarDatePropertyKeyValue(initialSection));
         setTagInput(getInitialTagsValue(initialSection));
         setMatchMode(getInitialModeValue(initialSection));
         setSortBy(getInitialSortByValue(initialSection));
@@ -235,6 +241,11 @@ export default function ViewSectionDialog({
     const boardGroupProperties = availableProperties.filter(
         (property) => property.valueType === 'select' && property.options.length > 0,
     );
+    const calendarDateProperties = availableProperties.filter((property) => property.valueType === 'date');
+    const isCalendarDatePropertyUnavailable =
+        calendarDateField === 'property' &&
+        Boolean(calendarDatePropertyKey) &&
+        !calendarDateProperties.some((property) => property.key === calendarDatePropertyKey);
 
     const toggleTableColumn = (column: ViewTableColumn) => {
         if (column === 'title') {
@@ -378,6 +389,17 @@ export default function ViewSectionDialog({
                             return;
                         }
 
+                        const calendarDateProperty = propertyByKey.get(calendarDatePropertyKey);
+
+                        if (
+                            displayType === 'calendar' &&
+                            calendarDateField === 'property' &&
+                            (!calendarDateProperty || calendarDateProperty.valueType !== 'date')
+                        ) {
+                            setFormError('Choose a date property for the calendar.');
+                            return;
+                        }
+
                         const propertyFilters = filters.map((filter) => {
                             const property = propertyByKey.get(filter.key);
 
@@ -406,6 +428,7 @@ export default function ViewSectionDialog({
                                 tablePropertyKeys,
                                 boardGroupByPropertyKey,
                                 calendarDateField,
+                                calendarDatePropertyKey,
                             }),
                             tagNames,
                             mode: matchMode,
@@ -632,22 +655,49 @@ export default function ViewSectionDialog({
                                     </Label>
                                     <Select
                                         id="view-section-calendar-date"
-                                        value={calendarDateField}
+                                        value={
+                                            calendarDateField === 'property' && calendarDatePropertyKey
+                                                ? `property:${calendarDatePropertyKey}`
+                                                : calendarDateField
+                                        }
                                         aria-labelledby="view-section-calendar-date-label"
                                         className="w-full"
                                         onValueChange={(value) => {
                                             if (value === 'createdAt' || value === 'updatedAt') {
                                                 setCalendarDateField(value);
+                                                setCalendarDatePropertyKey('');
                                                 setFormError('');
+                                                return;
+                                            }
+
+                                            if (value.startsWith('property:')) {
+                                                const propertyKey = value.slice('property:'.length);
+                                                const property = propertyByKey.get(propertyKey);
+
+                                                if (property?.valueType === 'date') {
+                                                    setCalendarDateField('property');
+                                                    setCalendarDatePropertyKey(property.key);
+                                                    setFormError('');
+                                                }
                                             }
                                         }}
                                     >
                                         <SelectItem value="createdAt">Created date</SelectItem>
                                         <SelectItem value="updatedAt">Updated date</SelectItem>
+                                        {isCalendarDatePropertyUnavailable ? (
+                                            <SelectItem value={`property:${calendarDatePropertyKey}`} disabled>
+                                                {calendarDatePropertyKey} · unavailable
+                                            </SelectItem>
+                                        ) : null}
+                                        {calendarDateProperties.map((property) => (
+                                            <SelectItem key={property.key} value={`property:${property.key}`}>
+                                                {property.name} · date property
+                                            </SelectItem>
+                                        ))}
                                     </Select>
                                     <Text as="p" variant="meta" tone="tertiary">
-                                        The calendar loads every matching note in the visible month. Date properties and
-                                        reminders are not included.
+                                        The calendar loads every matching note in the visible month. Date properties use
+                                        their saved day; reminders are not included.
                                     </Text>
                                 </div>
                             </div>

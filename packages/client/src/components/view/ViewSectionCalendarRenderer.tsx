@@ -1,9 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { useMemo, useState } from 'react';
+import type { NotePropertyKeySummary } from '~/apis/note.api';
 import { fetchViewSectionCalendarNotes, type ViewCalendarNote } from '~/apis/view.api';
 import { CalendarDayView, CalendarEntryCard, CalendarGrid, type CalendarGridDay } from '~/components/calendar';
-import { buildCalendarGridDays, getCalendarMonthRange, toCalendarTimestamp } from '~/components/calendar/calendar-data';
+import {
+    buildCalendarGridDays,
+    getCalendarDateOnlyMonthRange,
+    getCalendarMonthRange,
+    toCalendarTimestamp,
+} from '~/components/calendar/calendar-data';
 import * as Icon from '~/components/icon';
 import { Button, Modal, Text } from '~/components/ui';
 import type { ViewSection } from '~/models/view.model';
@@ -18,12 +24,48 @@ interface ViewCalendarDay extends CalendarGridDay {
 
 interface ViewSectionCalendarRendererProps {
     section: ViewSection;
+    calendarDateProperty?: NotePropertyKeySummary;
     navigationState: ViewSectionRouteState;
     onNavigationStateChange: (updater: ViewSectionRouteStateUpdater) => void;
 }
 
-const getDateFieldLabel = (section: ViewSection) =>
-    section.displayOptions.calendarDateField === 'updatedAt' ? 'Updated date' : 'Created date';
+const getDateFieldLabel = (section: ViewSection, calendarDateProperty?: NotePropertyKeySummary) => {
+    if (section.displayOptions.calendarDateField === 'property') {
+        return calendarDateProperty?.name ?? section.displayOptions.calendarDatePropertyKey ?? 'Date property';
+    }
+
+    return section.displayOptions.calendarDateField === 'updatedAt' ? 'Updated date' : 'Created date';
+};
+
+const getDateOnlyDayKey = (value: string) => {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+
+    if (!match) {
+        return null;
+    }
+
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const date = new Date(Date.UTC(year, month - 1, day));
+
+    if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
+        return null;
+    }
+
+    return `${year}-${month}-${day}`;
+};
+
+const getTimestampDayKey = (value: string) => {
+    const timestamp = toCalendarTimestamp(value);
+
+    if (!Number.isFinite(timestamp)) {
+        return null;
+    }
+
+    const date = dayjs(timestamp);
+    return `${date.year()}-${date.month() + 1}-${date.date()}`;
+};
 
 const getCellClassName = (day: ViewCalendarDay, isSelected: boolean) => {
     if (!day.isCurrentMonth) {
@@ -51,6 +93,7 @@ const getDayNumberClassName = (day: ViewCalendarDay) => {
 
 export default function ViewSectionCalendarRenderer({
     section,
+    calendarDateProperty,
     navigationState,
     onNavigationStateChange,
 }: ViewSectionCalendarRendererProps) {
@@ -58,13 +101,19 @@ export default function ViewSectionCalendarRenderer({
     const year = navigationState.calendar?.year ?? today.year();
     const month = navigationState.calendar?.month ?? today.month() + 1;
     const monthLabel = dayjs(new Date(year, month - 1, 1)).format('MMMM YYYY');
-    const dateField = section.displayOptions.calendarDateField === 'updatedAt' ? 'updatedAt' : 'createdAt';
-    const dateFieldLabel = getDateFieldLabel(section);
-    const dateRange = getCalendarMonthRange(year, month);
+    const dateField = section.displayOptions.calendarDateField;
+    const isDateProperty = dateField === 'property';
+    const dateFieldLabel = getDateFieldLabel(section, calendarDateProperty);
+    const dateRange = isDateProperty ? getCalendarDateOnlyMonthRange(year, month) : getCalendarMonthRange(year, month);
     const [selectedDayKey, setSelectedDayKey] = useState<string>();
 
     const { data, isPending, isError, refetch } = useQuery({
-        queryKey: queryKeys.views.sectionCalendar(section.id, { year, month, dateField }),
+        queryKey: queryKeys.views.sectionCalendar(section.id, {
+            year,
+            month,
+            dateField,
+            propertyKey: section.displayOptions.calendarDatePropertyKey,
+        }),
         async queryFn() {
             const response = await fetchViewSectionCalendarNotes(section.id, dateRange);
 
@@ -80,14 +129,12 @@ export default function ViewSectionCalendarRenderer({
         const notesByDay = new Map<string, ViewCalendarNote[]>();
 
         for (const note of data ?? []) {
-            const timestamp = toCalendarTimestamp(note[dateField]);
+            const key = isDateProperty ? getDateOnlyDayKey(note.calendarDate) : getTimestampDayKey(note.calendarDate);
 
-            if (!Number.isFinite(timestamp)) {
+            if (!key) {
                 continue;
             }
 
-            const date = dayjs(timestamp);
-            const key = `${date.year()}-${date.month() + 1}-${date.date()}`;
             const dayNotes = notesByDay.get(key) ?? [];
             dayNotes.push(note);
             notesByDay.set(key, dayNotes);
@@ -95,7 +142,9 @@ export default function ViewSectionCalendarRenderer({
 
         for (const dayNotes of notesByDay.values()) {
             dayNotes.sort((left, right) => {
-                const comparison = toCalendarTimestamp(left[dateField]) - toCalendarTimestamp(right[dateField]);
+                const comparison = isDateProperty
+                    ? left.calendarDate.localeCompare(right.calendarDate)
+                    : toCalendarTimestamp(left.calendarDate) - toCalendarTimestamp(right.calendarDate);
                 return comparison || left.id.localeCompare(right.id);
             });
         }
@@ -104,7 +153,7 @@ export default function ViewSectionCalendarRenderer({
             ...day,
             notes: notesByDay.get(day.key) ?? [],
         }));
-    }, [data, dateField, month, year]);
+    }, [data, isDateProperty, month, year]);
 
     const selectedDay = days.find((day) => day.key === selectedDayKey);
     const selectedDayHeading = selectedDay
@@ -252,7 +301,11 @@ export default function ViewSectionCalendarRenderer({
                                 params={{ id: note.id }}
                                 header={<Icon.FileNote size={12} />}
                                 title={note.title || 'Untitled'}
-                                meta={dayjs(toCalendarTimestamp(note[dateField])).format('HH:mm')}
+                                meta={
+                                    isDateProperty
+                                        ? undefined
+                                        : dayjs(toCalendarTimestamp(note.calendarDate)).format('HH:mm')
+                                }
                             />
                         ))}
                     </div>

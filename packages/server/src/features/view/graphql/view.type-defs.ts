@@ -41,6 +41,7 @@ export const viewType = gql`
         tablePropertyKeys: [String!]!
         boardGroupByPropertyKey: String
         calendarDateField: ViewCalendarDateField!
+        calendarDatePropertyKey: String
     }
 
     type ViewBoardNote {
@@ -57,8 +58,7 @@ export const viewType = gql`
     type ViewCalendarNote {
         id: ID!
         title: String!
-        createdAt: String!
-        updatedAt: String!
+        calendarDate: String!
     }
 
     enum ViewDisplayType {
@@ -79,6 +79,7 @@ export const viewType = gql`
     enum ViewCalendarDateField {
         createdAt
         updatedAt
+        property
     }
 
     enum ViewPropertyFilterOperator {
@@ -115,6 +116,7 @@ export const viewType = gql`
         tablePropertyKeys: [String!]
         boardGroupByPropertyKey: String
         calendarDateField: ViewCalendarDateField
+        calendarDatePropertyKey: String
     }
 
     input ViewSectionInput {

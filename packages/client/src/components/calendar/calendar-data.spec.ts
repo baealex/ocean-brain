@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Note } from '~/models/note.model';
-import { buildCalendarGridDays, getCalendarMonthRange, sortCalendarNotes } from './calendar-data';
+import {
+    buildCalendarGridDays,
+    getCalendarDateOnlyMonthRange,
+    getCalendarMonthRange,
+    sortCalendarNotes,
+} from './calendar-data';
 
 const createNote = (id: string, createdAt: string, updatedAt: string) => ({ id, createdAt, updatedAt }) as Note;
 
@@ -10,6 +15,13 @@ describe('calendar data', () => {
         expect(getCalendarMonthRange(2026, 8)).toEqual({
             start: new Date(2026, 7, 1).toISOString(),
             end: new Date(2026, 8, 1).toISOString(),
+        });
+    });
+
+    it('builds UTC month boundaries for date-only property values', () => {
+        expect(getCalendarDateOnlyMonthRange(2026, 8)).toEqual({
+            start: '2026-08-01T00:00:00.000Z',
+            end: '2026-09-01T00:00:00.000Z',
         });
     });
 

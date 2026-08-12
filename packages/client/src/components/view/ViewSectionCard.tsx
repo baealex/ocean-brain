@@ -78,6 +78,15 @@ export default function ViewSectionCard({
     const boardGroupProperty = isBoard
         ? availableProperties.find((property) => property.key === section.displayOptions.boardGroupByPropertyKey)
         : null;
+    const calendarDateProperty = isCalendar
+        ? availableProperties.find((property) => property.key === section.displayOptions.calendarDatePropertyKey)
+        : null;
+    const calendarDateLabel =
+        section.displayOptions.calendarDateField === 'property'
+            ? (calendarDateProperty?.name ?? section.displayOptions.calendarDatePropertyKey ?? 'Date property')
+            : section.displayOptions.calendarDateField === 'updatedAt'
+              ? 'Updated date'
+              : 'Created date';
 
     const updateSectionSort = (nextSortBy: ViewSortBy) => {
         const nextSortOrder: ViewSortOrder =
@@ -121,9 +130,7 @@ export default function ViewSectionCard({
                         ) : null}
                         {isCalendar ? (
                             <ViewChip className="max-w-full border-border-subtle/80 bg-subtle text-fg-secondary">
-                                {section.displayOptions.calendarDateField === 'updatedAt'
-                                    ? 'Updated date'
-                                    : 'Created date'}
+                                {calendarDateLabel}
                             </ViewChip>
                         ) : null}
                         {section.tagNames.map((tagName, index) => (

@@ -5,6 +5,7 @@ export { CalendarEntryCard } from './CalendarEntryCard';
 export { CalendarGrid } from './CalendarGrid';
 export { CalendarHeader } from './CalendarHeader';
 export { CalendarMonth } from './CalendarMonth';
+export { CalendarMonthNavigation } from './CalendarMonthNavigation';
 export { NoteCard } from './NoteCard';
 export { PriorityLegend } from './PriorityLegend';
 export { ReminderCard } from './ReminderCard';

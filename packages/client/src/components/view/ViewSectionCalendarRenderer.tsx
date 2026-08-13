@@ -3,7 +3,13 @@ import dayjs from 'dayjs';
 import { useMemo, useState } from 'react';
 import type { NotePropertyKeySummary } from '~/apis/note.api';
 import { fetchViewSectionCalendarNotes, type ViewCalendarNote } from '~/apis/view.api';
-import { CalendarDayView, CalendarEntryCard, CalendarGrid, type CalendarGridDay } from '~/components/calendar';
+import {
+    CalendarDayView,
+    CalendarEntryCard,
+    CalendarGrid,
+    type CalendarGridDay,
+    CalendarMonthNavigation,
+} from '~/components/calendar';
 import {
     buildCalendarGridDays,
     getCalendarDateOnlyMonthRange,
@@ -187,38 +193,11 @@ export default function ViewSectionCalendarRenderer({
                         Notes placed by {dateFieldLabel.toLowerCase()}
                     </Text>
                 </div>
-                <div
-                    className="flex items-center gap-1.5 self-start sm:self-auto"
-                    role="group"
-                    aria-label="Month navigation"
-                >
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setVisibleMonth(today.year(), today.month() + 1)}
-                    >
-                        Today
-                    </Button>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label="Previous month"
-                        onClick={() => moveMonth(-1)}
-                    >
-                        <Icon.ChevronLeft width={18} height={18} />
-                    </Button>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label="Next month"
-                        onClick={() => moveMonth(1)}
-                    >
-                        <Icon.ChevronRight width={18} height={18} />
-                    </Button>
-                </div>
+                <CalendarMonthNavigation
+                    onToday={() => setVisibleMonth(today.year(), today.month() + 1)}
+                    onPrevMonth={() => moveMonth(-1)}
+                    onNextMonth={() => moveMonth(1)}
+                />
             </div>
 
             {isError ? (

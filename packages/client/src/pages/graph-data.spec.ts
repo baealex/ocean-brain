@@ -62,9 +62,16 @@ describe('createConnectionMapData', () => {
         const result = createConnectionMapData(graph);
 
         expect(result).not.toBeNull();
-        expect(result?.nodes.map((node) => node.id)).not.toContain('6');
+        expect(result?.nodes.map((node) => node.id)).toEqual(['1', '2', '3', '4', '5']);
+        expect(result?.isolatedNodes.map((node) => node.id)).toEqual(['6']);
         expect(result?.clusters.map((cluster) => cluster.label)).toEqual(['Graph ideas', 'Reading queue']);
         expect(result?.clusters.map((cluster) => cluster.tagNames)).toEqual([['@product'], ['@reading']]);
+        expect(result?.isolatedNodes[0]).toMatchObject({
+            id: '6',
+            clusterId: 'cluster:isolated',
+            clusterLabel: 'Unlinked notes',
+            isIsolated: true,
+        });
 
         const clusterByNodeId = new Map(result?.nodes.map((node) => [node.id, node.clusterId]));
         expect(clusterByNodeId.get('1')).toBe(clusterByNodeId.get('2'));
@@ -145,5 +152,20 @@ describe('createConnectionMapData', () => {
 
         expect(result?.nodes).toHaveLength(pairCount * 2);
         expect(result?.clusters).toHaveLength(pairCount);
+    });
+
+    it('keeps a note-only graph discoverable when no references exist', () => {
+        const result = createConnectionMapData({
+            nodes: [
+                { id: '1', title: 'First thought', connections: 0, updatedAt: '1', tags: [] },
+                { id: '2', title: 'Second thought', connections: 0, updatedAt: '2', tags: [] },
+            ],
+            links: [],
+        });
+
+        expect(result?.nodes).toEqual([]);
+        expect(result?.isolatedNodes.map((node) => node.id)).toEqual(['1', '2']);
+        expect(result?.links).toEqual([]);
+        expect(result?.clusters).toEqual([]);
     });
 });

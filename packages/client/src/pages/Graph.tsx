@@ -6,7 +6,8 @@ import { QueryBoundary, QueryErrorView } from '~/components/app';
 import { Empty, PageLayout, Skeleton } from '~/components/shared';
 import { queryKeys } from '~/modules/query-key-factory';
 import { GraphCanvas } from './GraphCanvas';
-import { GraphMapOverlay } from './GraphMapOverlay';
+import { GraphCanvasControls } from './GraphCanvasControls';
+import { GraphInsights } from './GraphInsights';
 import {
     createAdjacencyMap,
     createConnectionMapData,
@@ -20,11 +21,6 @@ const graphPageFallback = (
     <PageLayout title="Knowledge Graph" description={<Skeleton width={184} height={16} className="rounded-full" />}>
         <div className="surface-base relative h-[clamp(36rem,calc(100dvh-8rem),72rem)] w-full overflow-hidden">
             <Skeleton width="100%" height="100%" />
-            <div className="surface-floating absolute top-3 left-3 w-56 space-y-2 p-3" aria-hidden="true">
-                <Skeleton width={92} height={14} className="rounded-full" />
-                <Skeleton width="100%" height={32} className="rounded-[10px]" />
-                <Skeleton width="82%" height={32} className="rounded-[10px]" />
-            </div>
         </div>
     </PageLayout>
 );
@@ -50,10 +46,22 @@ function GraphContent() {
         [graphData],
     );
     const graphNodes = useMemo(() => (graphData ? sortGraphNodes(graphData.nodes) : []), [graphData]);
-    const selectedNode = useMemo(() => getSelectedGraphNode(graphNodes, selectedNodeId), [graphNodes, selectedNodeId]);
+    const selectableNodes = useMemo(
+        () => (graphData ? [...graphNodes, ...sortGraphNodes(graphData.isolatedNodes)] : []),
+        [graphData, graphNodes],
+    );
+    const selectedNode = useMemo(
+        () => getSelectedGraphNode(selectableNodes, selectedNodeId),
+        [selectableNodes, selectedNodeId],
+    );
     const selectedConnectedNodes = useMemo(
-        () => getConnectedGraphNodes(graphNodes, adjacencyMap, selectedNode?.id ?? null),
-        [adjacencyMap, graphNodes, selectedNode],
+        () => getConnectedGraphNodes(selectableNodes, adjacencyMap, selectedNode?.id ?? null),
+        [adjacencyMap, selectableNodes, selectedNode],
+    );
+    const hubNode = graphNodes[0] ?? null;
+    const hubConnectedNodes = useMemo(
+        () => getConnectedGraphNodes(selectableNodes, adjacencyMap, hubNode?.id ?? null),
+        [adjacencyMap, hubNode, selectableNodes],
     );
     const activeClusterId = graphData?.clusters.some((cluster) => cluster.id === focusedClusterId)
         ? focusedClusterId
@@ -82,37 +90,57 @@ function GraphContent() {
 
     if (!graphData) {
         return (
-            <PageLayout title="Knowledge Graph" description="0 linked notes, 0 connections">
-                <Empty title="No map yet" description="Connect two notes to begin shaping your knowledge map" />
+            <PageLayout title="Knowledge Graph" description="0 notes · 0 areas · 0 connections">
+                <Empty title="No notes yet" description="Create a note to begin shaping your knowledge map" />
             </PageLayout>
         );
     }
 
+    const totalNodeCount = graphData.nodes.length + graphData.isolatedNodes.length;
+    const graphDescription = [
+        `${totalNodeCount} notes`,
+        `${graphData.links.length} ${graphData.links.length === 1 ? 'connection' : 'connections'}`,
+        graphData.clusters.length > 1 ? `${graphData.clusters.length} areas` : null,
+    ]
+        .filter(Boolean)
+        .join(' · ');
+
     return (
-        <PageLayout
-            title="Knowledge Graph"
-            description={`${graphData.nodes.length} linked notes · ${graphData.clusters.length} areas · ${graphData.links.length} connections`}
-        >
+        <PageLayout title="Knowledge Graph" description={graphDescription}>
             <div className="relative min-w-0">
-                <GraphCanvas
-                    adjacencyMap={adjacencyMap}
-                    focusedClusterId={activeClusterId}
-                    graphData={graphData}
-                    onClearFocus={handleClearMapFocus}
-                    onOpenNode={openNode}
-                    onSelectNode={handleSelectNode}
-                    selectedNodeId={selectedNode?.id ?? null}
-                />
-                <GraphMapOverlay
-                    clusters={graphData.clusters}
-                    focusedClusterId={activeClusterId}
-                    onClearSelection={clearSelection}
-                    onFocusCluster={handleFocusCluster}
-                    onSelectNode={handleSelectNode}
-                    selectedConnectedNodes={selectedConnectedNodes}
-                    selectedNode={selectedNode}
-                />
+                {graphData.nodes.length > 0 ? (
+                    <>
+                        <GraphCanvasControls
+                            clusters={graphData.clusters}
+                            focusedClusterId={activeClusterId}
+                            hubConnectedNodes={hubConnectedNodes}
+                            hubNode={hubNode}
+                            onClearSelection={clearSelection}
+                            onFocusCluster={handleFocusCluster}
+                            onSelectNode={handleSelectNode}
+                            selectedConnectedNodes={selectedConnectedNodes}
+                            selectedNode={selectedNode}
+                        />
+                        <GraphCanvas
+                            adjacencyMap={adjacencyMap}
+                            focusedClusterId={activeClusterId}
+                            graphData={graphData}
+                            onClearFocus={handleClearMapFocus}
+                            onOpenNode={openNode}
+                            onSelectNode={handleSelectNode}
+                            selectedNodeId={selectedNode?.id ?? null}
+                        />
+                    </>
+                ) : (
+                    <div className="surface-base flex h-[clamp(36rem,calc(100dvh-8rem),72rem)] w-full items-center justify-center p-6">
+                        <Empty
+                            title="No connections yet"
+                            description="Browse unlinked notes and connect ideas from their note pages"
+                        />
+                    </div>
+                )}
             </div>
+            <GraphInsights isolatedNodes={graphData.isolatedNodes} />
         </PageLayout>
     );
 }

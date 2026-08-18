@@ -178,6 +178,15 @@ export function GraphCanvas({
         graphRef.current?.zoomToFit(prefersReducedMotion ? 0 : 360, dimensions.width < 768 ? 34 : 72);
     }, [dimensions.width]);
 
+    const zoomGraph = useCallback((factor: number) => {
+        const graph = graphRef.current;
+        if (!graph) {
+            return;
+        }
+
+        graph.zoom(Math.min(5, Math.max(0.3, graph.zoom() * factor)), 180);
+    }, []);
+
     useEffect(() => {
         const timeoutId = window.setTimeout(fitGraph, 520);
         return () => window.clearTimeout(timeoutId);
@@ -411,14 +420,32 @@ export function GraphCanvas({
             className="surface-base graph-canvas relative h-[clamp(36rem,calc(100dvh-8rem),72rem)] w-full max-w-full overflow-hidden"
             style={{ '--graph-bg': graphTheme.background } as React.CSSProperties}
         >
-            <button
-                type="button"
-                onClick={fitGraph}
-                className="surface-floating focus-ring-soft absolute top-3 right-3 z-20 inline-flex h-10 w-10 items-center justify-center text-fg-secondary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default"
-                aria-label="Fit connection map"
-            >
-                <Icon.Crosshair className="h-4 w-4" aria-hidden="true" />
-            </button>
+            <div className="surface-floating absolute top-3 right-3 z-20 flex items-center">
+                <button
+                    type="button"
+                    onClick={() => zoomGraph(0.8)}
+                    className="focus-ring-soft inline-flex h-10 w-10 items-center justify-center text-fg-secondary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default"
+                    aria-label="Zoom out"
+                >
+                    <Icon.ZoomOut className="h-4 w-4" aria-hidden="true" />
+                </button>
+                <button
+                    type="button"
+                    onClick={fitGraph}
+                    className="focus-ring-soft inline-flex h-10 w-10 items-center justify-center text-fg-secondary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default"
+                    aria-label="Fit connection map"
+                >
+                    <Icon.Crosshair className="h-4 w-4" aria-hidden="true" />
+                </button>
+                <button
+                    type="button"
+                    onClick={() => zoomGraph(1.25)}
+                    className="focus-ring-soft inline-flex h-10 w-10 items-center justify-center text-fg-secondary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default"
+                    aria-label="Zoom in"
+                >
+                    <Icon.ZoomIn className="h-4 w-4" aria-hidden="true" />
+                </button>
+            </div>
             <div aria-hidden="true">
                 <ForceGraph2D<GraphVisualNode, object>
                     ref={graphRef}
@@ -452,7 +479,7 @@ export function GraphCanvas({
                     cooldownTicks={100}
                     d3AlphaDecay={0.045}
                     d3VelocityDecay={0.32}
-                    enableZoomInteraction={true}
+                    enableZoomInteraction={(event) => event.ctrlKey || event.metaKey}
                     enablePanInteraction={true}
                     minZoom={0.3}
                     maxZoom={5}

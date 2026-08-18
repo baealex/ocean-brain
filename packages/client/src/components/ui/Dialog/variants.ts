@@ -6,6 +6,7 @@ export const dialogContentVariants = cva(
         'pointer-events-auto',
         'flex',
         'min-h-0',
+        'min-w-0',
         'w-full',
         'flex-col',
         'overflow-hidden',
@@ -49,7 +50,7 @@ export const dialogHeaderVariants = cva(['flex', 'shrink-0', 'items-center', 'ju
     defaultVariants: { variant: 'default' },
 });
 
-export const dialogBodyVariants = cva('min-h-0 flex-1 overflow-y-auto overscroll-contain', {
+export const dialogBodyVariants = cva('min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain', {
     variants: {
         variant: {
             default: 'px-4 py-5 sm:px-5',

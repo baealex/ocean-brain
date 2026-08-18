@@ -16,6 +16,7 @@ const createNode = (overrides: Partial<GraphVisualNode> = {}): GraphVisualNode =
     clusterX: 0,
     clusterY: 0,
     isClusterHub: false,
+    isIsolated: false,
     x: 0,
     y: 0,
     ...overrides,

@@ -5,6 +5,8 @@ const MAX_COMMUNITY_PASSES = 20;
 const TARGET_MAX_CONNECTION_AREAS = 16;
 const CLUSTER_SPACING = 190;
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
+const ISOLATED_CLUSTER_ID = 'cluster:isolated';
+const ISOLATED_CLUSTER_LABEL = 'Unlinked notes';
 
 interface WeightedNeighbor {
     id: string;
@@ -18,6 +20,7 @@ export interface GraphCluster {
     hubNodeId: string;
     nodeIds: string[];
     tagNames: string[];
+    isIsolated: boolean;
     x: number;
     y: number;
 }
@@ -29,12 +32,14 @@ export interface GraphVisualNode extends GraphNode {
     clusterX: number;
     clusterY: number;
     isClusterHub: boolean;
+    isIsolated: boolean;
     x: number;
     y: number;
 }
 
 export interface GraphData {
     nodes: GraphVisualNode[];
+    isolatedNodes: GraphVisualNode[];
     links: GraphLink[];
     clusters: GraphCluster[];
 }
@@ -327,24 +332,44 @@ function createClusters(
                 hubNodeId: hubNode.id,
                 nodeIds: members.map((node) => node.id).sort((a, b) => a.localeCompare(b)),
                 tagNames,
+                isIsolated: false,
                 x: 0,
                 y: 0,
             } satisfies GraphCluster;
         })
-        .sort((a, b) => b.nodeIds.length - a.nodeIds.length || a.label.localeCompare(b.label))
-        .map((cluster, index) => {
-            if (index === 0) {
-                return cluster;
-            }
+        .sort((a, b) => b.nodeIds.length - a.nodeIds.length || a.label.localeCompare(b.label));
+}
 
-            const radius = CLUSTER_SPACING * Math.sqrt(index);
-            const angle = index * GOLDEN_ANGLE;
-            return {
-                ...cluster,
-                x: Math.cos(angle) * radius,
-                y: Math.sin(angle) * radius,
-            };
-        });
+function positionClusters(clusters: GraphCluster[]) {
+    return clusters.map((cluster, index) => {
+        if (index === 0) {
+            return cluster;
+        }
+
+        const radius = CLUSTER_SPACING * Math.sqrt(index);
+        const angle = index * GOLDEN_ANGLE;
+        return {
+            ...cluster,
+            x: Math.cos(angle) * radius,
+            y: Math.sin(angle) * radius,
+        };
+    });
+}
+
+function createIsolatedCluster(nodes: GraphNode[], allNodes: GraphNode[]): GraphCluster {
+    const sortedNodes = [...nodes].sort((a, b) => a.id.localeCompare(b.id));
+
+    return {
+        id: ISOLATED_CLUSTER_ID,
+        label: ISOLATED_CLUSTER_LABEL,
+        colorIndex: stableHash(ISOLATED_CLUSTER_ID),
+        hubNodeId: sortedNodes[0]?.id ?? ISOLATED_CLUSTER_ID,
+        nodeIds: sortedNodes.map((node) => node.id),
+        tagNames: getClusterTagNames(sortedNodes, allNodes),
+        isIsolated: true,
+        x: 0,
+        y: 0,
+    };
 }
 
 export function getNodeSize(connections: number) {
@@ -361,46 +386,63 @@ export function createConnectionMapData(data: NoteGraph): GraphData | null {
         .map((link) => ({ ...link }))
         .sort((a, b) => `${a.source}:${a.target}`.localeCompare(`${b.source}:${b.target}`));
     const linkedNodeIds = new Set(validLinks.flatMap((link) => [link.source, link.target]));
-    const linkedNodes = data.nodes
-        .filter((node) => linkedNodeIds.has(node.id))
+    const allNodes = data.nodes
         .map((node) => ({ ...node, tags: node.tags.map((tag) => ({ ...tag })) }))
         .sort((a, b) => a.id.localeCompare(b.id));
 
-    if (linkedNodes.length === 0) {
+    if (allNodes.length === 0) {
         return null;
     }
 
+    const linkedNodes = allNodes.filter((node) => linkedNodeIds.has(node.id));
+    const isolatedNodes = allNodes.filter((node) => !linkedNodeIds.has(node.id));
     const adjacency = createWeightedAdjacency(linkedNodes, validLinks);
-    const detectedCommunities = detectCommunities(linkedNodes, adjacency);
-    const communities = consolidateCommunities(linkedNodes, adjacency, detectedCommunities);
-    const clusters = createClusters(linkedNodes, communities, adjacency);
-    const clusterById = new Map(clusters.map((cluster) => [cluster.id, cluster]));
+    const communities =
+        linkedNodes.length > 0
+            ? consolidateCommunities(linkedNodes, adjacency, detectCommunities(linkedNodes, adjacency))
+            : new Map<string, string>();
+    const connectedClusters = linkedNodes.length > 0 ? createClusters(linkedNodes, communities, adjacency) : [];
+    const clusters = positionClusters(connectedClusters);
+    const isolatedCluster = isolatedNodes.length > 0 ? createIsolatedCluster(isolatedNodes, allNodes) : null;
+    const layoutClusters = isolatedCluster ? [...clusters, isolatedCluster] : clusters;
+    const clusterById = new Map(layoutClusters.map((cluster) => [cluster.id, cluster]));
     const nodeIndexByCluster = new Map<string, number>();
 
-    const nodes = linkedNodes.map((node) => {
-        const clusterId = communities.get(node.id) ?? `cluster:${node.id}`;
-        const cluster = clusterById.get(clusterId) ?? clusters[0];
-        const clusterNodeIndex = nodeIndexByCluster.get(cluster.id) ?? 0;
-        nodeIndexByCluster.set(cluster.id, clusterNodeIndex + 1);
+    const nodes = allNodes
+        .map((node) => {
+            const isIsolated = !linkedNodeIds.has(node.id);
+            const clusterId = isIsolated ? ISOLATED_CLUSTER_ID : communities.get(node.id);
+            const cluster = clusterId ? clusterById.get(clusterId) : undefined;
+            if (!cluster) {
+                return null;
+            }
+            const clusterNodeIndex = nodeIndexByCluster.get(cluster.id) ?? 0;
+            nodeIndexByCluster.set(cluster.id, clusterNodeIndex + 1);
 
-        const nodeAngle = (stableHash(node.id) / 0xffff_ffff) * Math.PI * 2;
-        const nodeRadius = 12 + Math.sqrt(clusterNodeIndex) * 11;
+            const nodeAngle = (stableHash(node.id) / 0xffff_ffff) * Math.PI * 2;
+            const nodeRadius = 12 + Math.sqrt(clusterNodeIndex) * 11;
 
-        return {
-            ...node,
-            clusterId: cluster.id,
-            clusterLabel: cluster.label,
-            clusterColorIndex: cluster.colorIndex,
-            clusterX: cluster.x,
-            clusterY: cluster.y,
-            isClusterHub: cluster.hubNodeId === node.id,
-            x: cluster.x + Math.cos(nodeAngle) * nodeRadius,
-            y: cluster.y + Math.sin(nodeAngle) * nodeRadius,
-        } satisfies GraphVisualNode;
-    });
+            return {
+                ...node,
+                clusterId: cluster.id,
+                clusterLabel: cluster.label,
+                clusterColorIndex: cluster.colorIndex,
+                clusterX: cluster.x,
+                clusterY: cluster.y,
+                isClusterHub: cluster.hubNodeId === node.id,
+                isIsolated,
+                x: isIsolated ? cluster.x : cluster.x + Math.cos(nodeAngle) * nodeRadius,
+                y: isIsolated ? cluster.y : cluster.y + Math.sin(nodeAngle) * nodeRadius,
+            } satisfies GraphVisualNode;
+        })
+        .filter((node): node is GraphVisualNode => node !== null);
+
+    const visibleNodes = nodes.filter((node) => !node.isIsolated);
+    const hiddenIsolatedNodes = nodes.filter((node) => node.isIsolated);
 
     return {
-        nodes,
+        nodes: visibleNodes,
+        isolatedNodes: hiddenIsolatedNodes,
         links: validLinks,
         clusters,
     };
@@ -425,7 +467,7 @@ export function sortGraphNodes<T extends GraphNode>(nodes: T[]) {
     return [...nodes].sort((a, b) => b.connections - a.connections || a.title.localeCompare(b.title));
 }
 
-export function filterGraphNodes(nodes: GraphNode[], query: string) {
+export function filterGraphNodes<T extends GraphNode>(nodes: T[], query: string) {
     const normalizedQuery = query.trim().toLowerCase();
     if (!normalizedQuery) {
         return nodes;

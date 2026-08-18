@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { createTestQueryClient } from '~/test/test-utils';
@@ -17,6 +17,7 @@ const apiMocks = vi.hoisted(() => ({
 const forceGraphState = vi.hoisted(() => ({
     props: null as null | {
         graphData?: { nodes: Array<{ id: string }> };
+        enableZoomInteraction?: (event: MouseEvent) => boolean;
         onNodeClick?: (node: { id: string }) => void;
     },
     d3Force: vi.fn(),
@@ -57,6 +58,7 @@ vi.mock('react-force-graph-2d', async () => {
             (
                 props: {
                     graphData?: { nodes: Array<{ id: string }> };
+                    enableZoomInteraction?: (event: MouseEvent) => boolean;
                     onNodeClick?: (node: { id: string }) => void;
                 },
                 ref,
@@ -127,6 +129,20 @@ const graphFixture = {
     ],
 };
 
+const fourAreaFixture = {
+    nodes: Array.from({ length: 8 }, (_, index) => ({
+        id: String(index + 1),
+        title: `Area ${Math.floor(index / 2) + 1}`,
+        connections: 1,
+        updatedAt: String(1785600000000 + index),
+        tags: [],
+    })),
+    links: Array.from({ length: 4 }, (_, index) => ({
+        source: String(index * 2 + 1),
+        target: String(index * 2 + 2),
+    })),
+};
+
 const renderGraph = () => {
     const queryClient = createTestQueryClient();
 
@@ -151,21 +167,87 @@ describe('<Graph />', () => {
         });
     });
 
-    it('presents linked communities as selectable connection areas', async () => {
+    it('presents the graph with unobstructed next steps', async () => {
         renderGraph();
 
-        expect(await screen.findByRole('region', { name: 'Connection areas' })).toBeInTheDocument();
+        const controls = await screen.findByRole('region', { name: 'Explore graph' });
+        const startingPoint = await screen.findByRole('region', { name: 'Start with Graph ideas' });
+        const insights = await screen.findByRole('region', { name: 'Next steps' });
+
+        expect(within(controls).getByRole('button', { name: /Explore areas/ })).toBeInTheDocument();
+        expect(insights).toBeInTheDocument();
         expect(screen.getByTestId('force-graph')).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /Graph ideas/ })).toHaveAttribute('aria-pressed', 'false');
-        expect(screen.getByRole('button', { name: /Reading queue/ })).toHaveAttribute('aria-pressed', 'false');
-        expect(screen.getByText('5 linked notes · 2 areas · 4 connections')).toBeInTheDocument();
+        expect(within(startingPoint).getByRole('heading', { name: 'Start with Graph ideas' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Review notes' })).toBeInTheDocument();
+        expect(within(startingPoint).getByRole('button', { name: 'Search notes' })).toBeInTheDocument();
+        expect(within(insights).queryByRole('button', { name: /Explore areas/ })).not.toBeInTheDocument();
+        expect(screen.queryByRole('region', { name: 'Connection areas' })).not.toBeInTheDocument();
+    });
+
+    it('opens an inline unlinked-note review without adding notes to the canvas', async () => {
+        const user = userEvent.setup();
+        renderGraph();
+
+        await user.click(await screen.findByRole('button', { name: 'Review notes' }));
+        const reviewPanel = await screen.findByRole('region', { name: 'Review notes without connections' });
+
+        expect(forceGraphState.props?.graphData?.nodes).toHaveLength(5);
+        expect(
+            within(reviewPanel).getByRole('searchbox', { name: 'Search notes without connections' }),
+        ).toBeInTheDocument();
+        expect(within(reviewPanel).getByRole('link', { name: /Unlinked scratch/ })).toHaveAttribute('href', '/6');
+
+        await user.type(
+            within(reviewPanel).getByRole('searchbox', { name: 'Search notes without connections' }),
+            'scratch',
+        );
+        expect(within(reviewPanel).getByRole('link', { name: /Unlinked scratch/ })).toBeInTheDocument();
+        expect(within(reviewPanel).queryByRole('link', { name: /Product direction/ })).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: 'Hide review' }));
+        expect(screen.queryByRole('region', { name: 'Review notes without connections' })).not.toBeInTheDocument();
+    });
+
+    it('keeps every connection area actionable', async () => {
+        const user = userEvent.setup();
+        apiMocks.fetchNoteGraph.mockResolvedValue({
+            type: 'success',
+            noteGraph: fourAreaFixture,
+        });
+        renderGraph();
+
+        const controls = await screen.findByRole('region', { name: 'Explore graph' });
+        await user.click(within(controls).getByRole('button', { name: /Explore areas/ }));
+        const areaList = await screen.findByRole('list', { name: 'Connection areas' });
+        expect(within(areaList).getAllByRole('button')).toHaveLength(4);
+
+        const lastArea = within(areaList).getByRole('button', { name: /Area 4/ });
+        await user.click(lastArea);
+        expect(lastArea).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('lets users follow a connected note from the recommended starting point', async () => {
+        const user = userEvent.setup();
+        renderGraph();
+
+        const startingPoint = await screen.findByRole('region', { name: 'Start with Graph ideas' });
+        await user.click(within(startingPoint).getByRole('button', { name: 'Search notes' }));
+
+        expect(routeState.navigate).toHaveBeenCalledWith({
+            search: expect.any(Function),
+            replace: true,
+        });
+        expect(routeState.navigate.mock.calls[0][0].search({})).toEqual({ selected: '3' });
     });
 
     it('focuses a connection area from the visual legend', async () => {
         const user = userEvent.setup();
         renderGraph();
 
-        const readingCluster = await screen.findByRole('button', { name: /Reading queue/ });
+        const controls = await screen.findByRole('region', { name: 'Explore graph' });
+        await user.click(within(controls).getByRole('button', { name: /Explore areas/ }));
+        const areaList = await screen.findByRole('list', { name: 'Connection areas' });
+        const readingCluster = within(areaList).getByRole('button', { name: /Reading queue/ });
         await user.click(readingCluster);
 
         expect(readingCluster).toHaveAttribute('aria-pressed', 'true');
@@ -179,19 +261,31 @@ describe('<Graph />', () => {
         routeState.search = { selected: '2' };
         renderGraph();
 
-        expect(await screen.findByRole('region', { name: 'Graph ideas' })).toHaveTextContent('Near Graph ideas');
-        expect(screen.getByLabelText('Selected note tags')).toHaveTextContent('@product');
-        expect(screen.getByRole('button', { name: 'Product direction' })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Search notes' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Open note' })).toHaveAttribute('href', '/2');
+        const selectedNote = await screen.findByRole('region', { name: 'Graph ideas' });
+
+        expect(within(selectedNote).getByRole('heading', { name: 'Graph ideas' })).toBeInTheDocument();
+        expect(within(selectedNote).getByRole('button', { name: 'Product direction' })).toBeInTheDocument();
+        expect(within(selectedNote).getByRole('button', { name: 'Search notes' })).toBeInTheDocument();
+        expect(within(selectedNote).getByRole('link', { name: 'Open note' })).toHaveAttribute('href', '/2');
         expect(screen.getByRole('status')).toHaveTextContent('Graph ideas selected near Graph ideas');
     });
 
-    it('selects a graph node through the canvas interaction contract', async () => {
+    it('restores an isolated note with a direct open-note action', async () => {
+        routeState.search = { selected: '6' };
+        renderGraph();
+
+        const selectedNote = await screen.findByRole('region', { name: 'Unlinked scratch' });
+
+        expect(within(selectedNote).getByText('Unlinked notes')).toBeInTheDocument();
+        expect(within(selectedNote).getByRole('link', { name: 'Open note' })).toHaveAttribute('href', '/6');
+        expect(screen.getByRole('status')).toHaveTextContent('Unlinked scratch selected near Unlinked notes');
+    });
+
+    it('selects a connected graph node through the canvas interaction contract', async () => {
         renderGraph();
 
         await screen.findByTestId('force-graph');
-        const node = forceGraphState.props?.graphData?.nodes.find((item) => item.id === '4');
+        const node = forceGraphState.props?.graphData?.nodes.find((item) => item.id === '2');
         expect(node).toBeDefined();
 
         act(() => {
@@ -204,7 +298,7 @@ describe('<Graph />', () => {
             search: expect.any(Function),
             replace: true,
         });
-        expect(routeState.navigate.mock.calls[0][0].search({})).toEqual({ selected: '4' });
+        expect(routeState.navigate.mock.calls[0][0].search({})).toEqual({ selected: '2' });
     });
 
     it('fits the full connection map on request', async () => {
@@ -212,21 +306,55 @@ describe('<Graph />', () => {
         renderGraph();
 
         expect(await screen.findByTestId('force-graph')).toBeInTheDocument();
+        expect(forceGraphState.props?.enableZoomInteraction?.(new MouseEvent('wheel'))).toBe(false);
+        expect(forceGraphState.props?.enableZoomInteraction?.(new MouseEvent('wheel', { ctrlKey: true }))).toBe(true);
 
         await user.click(screen.getByRole('button', { name: 'Fit connection map' }));
         expect(forceGraphState.zoomToFit).toHaveBeenCalled();
     });
 
-    it('keeps the empty state tied to actual note connections', async () => {
+    it('keeps the empty state tied to the presence of notes', async () => {
         apiMocks.fetchNoteGraph.mockResolvedValue({
             type: 'success',
             noteGraph: {
-                nodes: graphFixture.nodes.map((node) => ({ ...node, connections: 0 })),
+                nodes: [],
                 links: [],
             },
         });
         renderGraph();
 
-        expect(await screen.findByText('No map yet')).toBeInTheDocument();
+        expect(await screen.findByText('No notes yet')).toBeInTheDocument();
+    });
+
+    it('shows an unlinked-note summary when no connections exist', async () => {
+        apiMocks.fetchNoteGraph.mockResolvedValue({
+            type: 'success',
+            noteGraph: {
+                nodes: [
+                    {
+                        id: '7',
+                        title: 'Standalone idea',
+                        connections: 0,
+                        updatedAt: '1785600006000',
+                        tags: [],
+                    },
+                    {
+                        id: '8',
+                        title: 'Another standalone idea',
+                        connections: 0,
+                        updatedAt: '1785600007000',
+                        tags: [],
+                    },
+                ],
+                links: [],
+            },
+        });
+        renderGraph();
+
+        expect(await screen.findByText('No connections yet')).toBeInTheDocument();
+        expect(screen.queryByTestId('force-graph')).not.toBeInTheDocument();
+
+        expect(screen.getByText('2 notes · 0 connections')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Review notes' })).toBeInTheDocument();
     });
 });

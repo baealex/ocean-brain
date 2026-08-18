@@ -12,6 +12,7 @@ describe('view route state', () => {
         const nextState = updateViewSectionRouteState(firstState, 'section-2', {
             page: 3,
             columns: { 'view-board-column:value:todo': 4 },
+            calendar: { year: 2026, month: 8 },
             sort: { by: 'title', order: 'asc' },
         });
 
@@ -19,6 +20,7 @@ describe('view route state', () => {
         expect(getViewSectionRouteState(nextState, 'section-2')).toEqual({
             page: 3,
             columns: { 'view-board-column:value:todo': 4 },
+            calendar: { year: 2026, month: 8 },
             sort: { by: 'title', order: 'asc' },
         });
     });
@@ -47,6 +49,7 @@ describe('view route state', () => {
                     valid: {
                         page: 3,
                         columns: { todo: 2, capped: 100_000, invalid: -1 },
+                        calendar: { year: 2026, month: 8 },
                         sort: { by: 'updatedAt', order: 'desc' },
                     },
                     invalid: { page: '4' },
@@ -55,9 +58,25 @@ describe('view route state', () => {
         ).toEqual({
             version: 1,
             sections: {
-                valid: { page: 3, columns: { todo: 2, capped: 50 }, sort: { by: 'updatedAt', order: 'desc' } },
+                valid: {
+                    page: 3,
+                    columns: { todo: 2, capped: 50 },
+                    sort: { by: 'updatedAt', order: 'desc' },
+                    calendar: { year: 2026, month: 8 },
+                },
             },
         });
+    });
+
+    it('drops invalid calendar month state without affecting valid section navigation', () => {
+        expect(
+            normalizeViewRouteState({
+                version: 1,
+                sections: {
+                    section: { page: 2, calendar: { year: 2026, month: 13 } },
+                },
+            }),
+        ).toEqual({ version: 1, sections: { section: { page: 2 } } });
     });
 
     it('preserves the legacy result offset when redirecting into section pagination', () => {

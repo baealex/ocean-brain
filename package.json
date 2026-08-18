@@ -2,6 +2,7 @@
   "name": "ocean-brain-workspace",
   "private": true,
   "license": "MIT",
+  "packageManager": "pnpm@10.25.0",
   "scripts": {
     "check:encoding": "node scripts/ci/check-encoding.mjs",
     "dev": "pnpm --filter @ocean-brain/server dev",

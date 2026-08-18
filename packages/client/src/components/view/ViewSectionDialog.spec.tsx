@@ -6,6 +6,15 @@ import type { Tag } from '~/models/tag.model';
 import type { ViewSection } from '~/models/view.model';
 import ViewSectionDialog from './ViewSectionDialog';
 
+beforeAll(() => {
+    Object.defineProperties(HTMLElement.prototype, {
+        hasPointerCapture: { configurable: true, value: () => false },
+        setPointerCapture: { configurable: true, value: () => undefined },
+        releasePointerCapture: { configurable: true, value: () => undefined },
+        scrollIntoView: { configurable: true, value: () => undefined },
+    });
+});
+
 const createTag = (name: string, index: number): Pick<Tag, 'id' | 'name'> => ({
     id: `tag-${index}`,
     name,
@@ -30,6 +39,8 @@ const createSection = (patch: Partial<ViewSection> = {}): ViewSection => ({
         tableColumns: ['title', 'tags', 'properties', 'createdAt', 'updatedAt'],
         tablePropertyKeys: [],
         boardGroupByPropertyKey: null,
+        calendarDateField: 'createdAt',
+        calendarDatePropertyKey: null,
     },
     tagNames: [],
     mode: 'and',
@@ -140,7 +151,10 @@ describe('<ViewSectionDialog />', () => {
         );
     });
 
-    it('does not expose unavailable calendar display options', () => {
+    it('submits a calendar section with the default note date field', async () => {
+        const user = userEvent.setup();
+        const handleSubmit = vi.fn();
+
         render(
             <ViewSectionDialog
                 open
@@ -148,11 +162,56 @@ describe('<ViewSectionDialog />', () => {
                 availableTags={[]}
                 availableProperties={[]}
                 onClose={vi.fn()}
-                onSubmit={vi.fn()}
+                onSubmit={handleSubmit}
             />,
         );
 
-        expect(screen.queryByText(/Calendar/i)).not.toBeInTheDocument();
+        await user.click(screen.getByRole('radio', { name: 'Show as calendar' }));
+        expect(screen.getByRole('combobox', { name: 'Place notes by' })).toHaveTextContent('Created date');
+        await user.click(screen.getByRole('button', { name: 'Create section' }));
+
+        expect(handleSubmit).toHaveBeenCalledWith(
+            expect.objectContaining({
+                displayType: 'calendar',
+                displayOptions: expect.objectContaining({ calendarDateField: 'createdAt' }),
+            }),
+        );
+    });
+
+    it('uses a shared date property as the calendar placement field', async () => {
+        const user = userEvent.setup();
+        const handleSubmit = vi.fn();
+        const dueDateProperty = createProperty({
+            key: 'due-date',
+            name: 'Due date',
+            valueType: 'date',
+        });
+
+        render(
+            <ViewSectionDialog
+                open
+                mode="create"
+                availableTags={[]}
+                availableProperties={[dueDateProperty]}
+                onClose={vi.fn()}
+                onSubmit={handleSubmit}
+            />,
+        );
+
+        await user.click(screen.getByRole('radio', { name: 'Show as calendar' }));
+        await user.click(screen.getByRole('combobox', { name: 'Place notes by' }));
+        await user.click(await screen.findByRole('option', { name: 'Due date · date property' }));
+        await user.click(screen.getByRole('button', { name: 'Create section' }));
+
+        expect(handleSubmit).toHaveBeenCalledWith(
+            expect.objectContaining({
+                displayType: 'calendar',
+                displayOptions: expect.objectContaining({
+                    calendarDateField: 'property',
+                    calendarDatePropertyKey: 'due-date',
+                }),
+            }),
+        );
     });
 
     it('labels tag match choices as AND and OR with helper text', () => {
@@ -191,12 +250,18 @@ describe('<ViewSectionDialog />', () => {
         expect(screen.getByRole('button', { name: '@docs' })).toHaveAttribute('aria-pressed', 'false');
     });
 
-    it('normalizes unavailable initial display types back to list when editing', () => {
+    it('preserves calendar display settings when editing', () => {
         render(
             <ViewSectionDialog
                 open
                 mode="edit"
-                initialSection={createSection({ displayType: 'calendar' })}
+                initialSection={createSection({
+                    displayType: 'calendar',
+                    displayOptions: {
+                        ...createSection().displayOptions,
+                        calendarDateField: 'updatedAt',
+                    },
+                })}
                 availableTags={[]}
                 availableProperties={[]}
                 onClose={vi.fn()}
@@ -204,7 +269,9 @@ describe('<ViewSectionDialog />', () => {
             />,
         );
 
-        expect(screen.getByRole('radio', { name: 'Show as list' })).toHaveAttribute('aria-checked', 'true');
+        expect(screen.getByRole('radio', { name: 'Show as calendar' })).toHaveAttribute('aria-checked', 'true');
+        expect(screen.getByRole('combobox', { name: 'Place notes by' })).toHaveTextContent('Updated date');
+        expect(screen.queryByRole('combobox', { name: 'Rows per page' })).not.toBeInTheDocument();
     });
 
     it('labels sort and limit selects through their visible labels', () => {

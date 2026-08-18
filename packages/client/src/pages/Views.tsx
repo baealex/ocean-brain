@@ -13,7 +13,7 @@ import { getRouteApi } from '@tanstack/react-router';
 import classNames from 'classnames';
 import { useCallback, useState } from 'react';
 
-import { fetchNotePropertyKeys, type NotePropertyKeySummary } from '~/apis/note.api';
+import { fetchAllNotePropertyKeys, type NotePropertyKeySummary } from '~/apis/note.api';
 import { fetchTags } from '~/apis/tag.api';
 import {
     createViewSection,
@@ -72,6 +72,8 @@ interface SortableViewSectionProps {
     section: ViewSection;
     availableProperties: NotePropertyKeySummary[];
     isPropertiesLoading: boolean;
+    isPropertiesError: boolean;
+    onRetryProperties: () => void;
     onEdit: () => void;
     onDuplicate: () => void;
     onDelete: () => void;
@@ -85,6 +87,8 @@ const SortableViewSection = ({
     section,
     availableProperties,
     isPropertiesLoading,
+    isPropertiesError,
+    onRetryProperties,
     onEdit,
     onDuplicate,
     onDelete,
@@ -114,6 +118,8 @@ const SortableViewSection = ({
                 section={section}
                 availableProperties={availableProperties}
                 isPropertiesLoading={isPropertiesLoading}
+                isPropertiesError={isPropertiesError}
+                onRetryProperties={onRetryProperties}
                 onEdit={onEdit}
                 onDuplicate={onDuplicate}
                 onDelete={onDelete}
@@ -189,10 +195,15 @@ export default function Views() {
 
     const availableTags = tagData?.tags ?? [];
 
-    const { data: propertyKeyData, isPending: isPropertiesLoading } = useQuery({
-        queryKey: queryKeys.notes.propertyKeys({ limit: 100 }),
+    const {
+        data: propertyKeyData,
+        isPending: isPropertiesLoading,
+        isError: isPropertiesError,
+        refetch: refetchProperties,
+    } = useQuery({
+        queryKey: queryKeys.notes.propertyKeysCatalog(),
         async queryFn() {
-            const response = await fetchNotePropertyKeys({ limit: 100 });
+            const response = await fetchAllNotePropertyKeys();
 
             if (response.type === 'error') {
                 throw response;
@@ -595,6 +606,8 @@ export default function Views() {
                                                             section={section}
                                                             availableProperties={availableProperties}
                                                             isPropertiesLoading={isPropertiesLoading}
+                                                            isPropertiesError={isPropertiesError}
+                                                            onRetryProperties={() => void refetchProperties()}
                                                             navigationState={getViewSectionRouteState(
                                                                 search.state,
                                                                 section.id,

@@ -112,6 +112,10 @@ export default function RestoreSnapshotModal({
                     exact: false,
                 }),
                 queryClient.invalidateQueries({
+                    queryKey: queryKeys.views.sectionCalendarsAll(),
+                    exact: false,
+                }),
+                queryClient.invalidateQueries({
                     queryKey: queryKeys.tags.all(),
                     exact: false,
                 }),

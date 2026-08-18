@@ -40,6 +40,8 @@ export const viewType = gql`
         tableColumns: [ViewTableColumn!]!
         tablePropertyKeys: [String!]!
         boardGroupByPropertyKey: String
+        calendarDateField: ViewCalendarDateField!
+        calendarDatePropertyKey: String
     }
 
     type ViewBoardNote {
@@ -51,6 +53,12 @@ export const viewType = gql`
     type ViewBoardColumnNotes {
         totalCount: Int!
         notes: [ViewBoardNote!]!
+    }
+
+    type ViewCalendarNote {
+        id: ID!
+        title: String!
+        calendarDate: String!
     }
 
     enum ViewDisplayType {
@@ -66,6 +74,12 @@ export const viewType = gql`
         properties
         createdAt
         updatedAt
+    }
+
+    enum ViewCalendarDateField {
+        createdAt
+        updatedAt
+        property
     }
 
     enum ViewPropertyFilterOperator {
@@ -101,6 +115,8 @@ export const viewType = gql`
         tableColumns: [ViewTableColumn!]
         tablePropertyKeys: [String!]
         boardGroupByPropertyKey: String
+        calendarDateField: ViewCalendarDateField
+        calendarDatePropertyKey: String
     }
 
     input ViewSectionInput {
@@ -134,6 +150,7 @@ export const viewQuery = gql`
             sortBy: ViewSortBy
             sortOrder: ViewSortOrder
         ): Notes!
+        viewSectionCalendarNotes(id: ID!, dateRange: DateRangeInput!): [ViewCalendarNote!]!
         viewSectionBoardColumn(id: ID!, optionValue: String, pagination: PaginationInput): ViewBoardColumnNotes!
         notesByProperties(input: NotesByPropertiesInput!, pagination: PaginationInput): Notes!
     }

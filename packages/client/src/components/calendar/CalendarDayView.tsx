@@ -16,6 +16,8 @@ interface CalendarDayViewProps {
     reminderCount: number;
     previewItems: CalendarDayPreviewItem[];
     overflowCount: number;
+    density?: 'comfortable' | 'compact';
+    showReminderSummary?: boolean;
     onSelect: () => void;
 }
 
@@ -36,10 +38,18 @@ export const CalendarDayView = ({
     reminderCount,
     previewItems,
     overflowCount,
+    density = 'comfortable',
+    showReminderSummary = true,
     onSelect,
 }: CalendarDayViewProps) => {
     const totalCount = noteCount + reminderCount;
-    const accessibleLabel = `${dateLabel}, ${itemLabel(noteCount, 'note')}, ${itemLabel(reminderCount, 'reminder')}`;
+    const accessibleLabel = showReminderSummary
+        ? `${dateLabel}, ${itemLabel(noteCount, 'note')}, ${itemLabel(reminderCount, 'reminder')}`
+        : `${dateLabel}, ${itemLabel(noteCount, 'note')}`;
+    const densityClassName =
+        density === 'compact'
+            ? 'min-h-16 p-1 sm:min-h-20 sm:p-2 lg:min-h-[142px] lg:p-2.5'
+            : 'min-h-20 p-1 sm:min-h-24 sm:p-2 lg:min-h-[142px] lg:p-2.5';
 
     return (
         <button
@@ -50,7 +60,8 @@ export const CalendarDayView = ({
             aria-current={isCurrentMonth && isToday ? 'date' : undefined}
             onClick={onSelect}
             className={classNames(
-                'focus-ring-soft relative flex min-h-16 min-w-0 flex-col p-1.5 text-left outline-none transition-colors focus-visible:z-10 sm:min-h-24 sm:p-2 lg:min-h-36 lg:p-2.5',
+                'focus-ring-soft relative flex min-w-0 flex-col text-left outline-none focus-visible:z-10',
+                densityClassName,
                 cellClassName,
             )}
         >
@@ -67,75 +78,30 @@ export const CalendarDayView = ({
 
             {isCurrentMonth && totalCount > 0 ? (
                 <div aria-hidden="true" className="mt-1.5 w-full sm:mt-2">
-                    <div className="flex flex-col gap-0.5 text-fg-tertiary sm:hidden">
+                    <div className="flex flex-col items-start gap-0 text-fg-tertiary lg:hidden">
                         {noteCount > 0 ? (
-                            <span className="flex items-center justify-between leading-none">
+                            <span className="inline-flex h-4 items-center gap-1 leading-none">
                                 <Icon.FileNote className="shrink-0" size={10} />
-                                <span className="whitespace-nowrap text-[10px] font-semibold text-fg-secondary tabular-nums">
+                                <Text
+                                    as="span"
+                                    variant="micro"
+                                    weight="semibold"
+                                    tone="secondary"
+                                    className="whitespace-nowrap !text-[10px] !leading-3 tabular-nums"
+                                >
                                     {noteCount}
-                                </span>
+                                </Text>
                             </span>
                         ) : null}
-                        {reminderCount > 0 ? (
-                            <span className="flex items-center justify-between leading-none">
+                        {showReminderSummary && reminderCount > 0 ? (
+                            <span className="inline-flex h-4 items-center gap-1 leading-none">
                                 <Icon.Bell className="shrink-0" size={10} />
-                                <span className="whitespace-nowrap text-[10px] font-semibold text-fg-secondary tabular-nums">
-                                    {reminderCount}
-                                </span>
-                            </span>
-                        ) : null}
-                    </div>
-
-                    <div className="hidden flex-col gap-1 sm:flex 2xl:hidden">
-                        {noteCount > 0 ? (
-                            <span
-                                className={classNames(
-                                    'flex min-h-7 min-w-0 items-center justify-between gap-1 rounded-[8px] px-2 py-1.5 text-fg-tertiary',
-                                    NOTE_PREVIEW_TONE,
-                                )}
-                            >
-                                <Text
-                                    as="span"
-                                    variant="micro"
-                                    weight="medium"
-                                    tone="secondary"
-                                    className="truncate !text-[11px] !leading-4"
-                                >
-                                    Notes
-                                </Text>
                                 <Text
                                     as="span"
                                     variant="micro"
                                     weight="semibold"
                                     tone="secondary"
-                                    className="!text-[11px] !leading-4 tabular-nums"
-                                >
-                                    {noteCount}
-                                </Text>
-                            </span>
-                        ) : null}
-                        {reminderCount > 0 ? (
-                            <span
-                                className={classNames(
-                                    'flex min-h-7 min-w-0 items-center justify-between gap-1 rounded-[8px] px-2 py-1.5 text-fg-tertiary',
-                                    REMINDER_PREVIEW_TONE,
-                                )}
-                            >
-                                <Text
-                                    as="span"
-                                    variant="micro"
-                                    weight="medium"
-                                    tone="secondary"
-                                    className="truncate !text-[11px] !leading-4"
-                                >
-                                    Reminders
-                                </Text>
-                                <Text
-                                    as="span"
-                                    variant="micro"
-                                    weight="semibold"
-                                    tone="secondary"
-                                    className="!text-[11px] !leading-4 tabular-nums"
+                                    className="whitespace-nowrap !text-[10px] !leading-3 tabular-nums"
                                 >
                                     {reminderCount}
                                 </Text>
@@ -143,26 +109,29 @@ export const CalendarDayView = ({
                         ) : null}
                     </div>
 
-                    <div className="hidden flex-col gap-1 2xl:flex">
+                    <div className="mt-1.5 hidden flex-col gap-1 lg:flex">
                         {previewItems.map((item) => (
                             <span
                                 key={item.key}
                                 className={classNames(
-                                    'flex min-h-8 min-w-0 items-center gap-1.5 rounded-[8px] px-2 py-1.5',
+                                    'flex min-h-7 min-w-0 items-center gap-1 rounded-[7px] px-1.5 py-1',
                                     item.type === 'reminder' ? REMINDER_PREVIEW_TONE : NOTE_PREVIEW_TONE,
                                 )}
                             >
                                 {item.type === 'reminder' ? (
-                                    <Icon.Bell className="shrink-0 text-fg-tertiary" size={12} />
+                                    <Icon.Bell className="shrink-0 text-fg-tertiary" size={11} />
                                 ) : (
-                                    <Icon.FileNote className="shrink-0 text-fg-tertiary" size={12} />
+                                    <Icon.FileNote className="shrink-0 text-fg-tertiary" size={11} />
                                 )}
                                 <Text
                                     as="span"
-                                    variant="label"
+                                    variant="micro"
                                     weight="medium"
                                     tone="secondary"
-                                    className={classNames('truncate', item.isCompleted && 'line-through')}
+                                    className={classNames(
+                                        'truncate !text-[11px] !leading-4',
+                                        item.isCompleted && 'line-through',
+                                    )}
                                 >
                                     {item.title}
                                 </Text>

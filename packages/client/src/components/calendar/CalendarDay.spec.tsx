@@ -34,8 +34,7 @@ describe('<CalendarDay />', () => {
         });
 
         expect(dayButton).toHaveAttribute('aria-pressed', 'false');
-        expect(screen.getByText('Notes')).toBeInTheDocument();
-        expect(screen.getByText('Reminders')).toBeInTheDocument();
+        expect(dayButton).toHaveClass('min-h-20', 'sm:min-h-24', 'lg:min-h-[142px]');
         expect(screen.getByText('Reminder one')).toHaveClass('line-through');
         expect(screen.getByText('Note one')).toBeInTheDocument();
         expect(screen.getByText('+1 more')).toBeInTheDocument();

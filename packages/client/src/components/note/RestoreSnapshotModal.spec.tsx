@@ -5,6 +5,7 @@ import type { ComponentProps } from 'react';
 
 import { fetchNoteSnapshot, fetchNoteSnapshotDiff, fetchNoteSnapshots, restoreNoteSnapshot } from '~/apis/note.api';
 import { ToastProvider } from '~/components/ui';
+import { queryKeys } from '~/modules/query-key-factory';
 import { createTestQueryClient } from '~/test/test-utils';
 import RestoreSnapshotModal from './RestoreSnapshotModal';
 
@@ -47,7 +48,7 @@ const renderModal = (props: Partial<ComponentProps<typeof RestoreSnapshotModal>>
         </QueryClientProvider>,
     );
 
-    return { onClose, onRestored };
+    return { onClose, onRestored, queryClient };
 };
 
 describe('<RestoreSnapshotModal />', () => {
@@ -122,7 +123,8 @@ describe('<RestoreSnapshotModal />', () => {
 
     it('restores from the content preview screen', async () => {
         const user = userEvent.setup();
-        const { onClose, onRestored } = renderModal();
+        const { onClose, onRestored, queryClient } = renderModal();
+        const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries');
 
         await user.click(await screen.findByRole('button', { name: /compare/i }));
         await user.click(screen.getByRole('button', { name: /view content/i }));
@@ -131,5 +133,9 @@ describe('<RestoreSnapshotModal />', () => {
         await waitFor(() => expect(restoreNoteSnapshot).toHaveBeenCalledWith('snapshot-1', '1774915199000'));
         expect(onRestored).toHaveBeenCalledWith(expect.objectContaining({ id: '7' }));
         expect(onClose).toHaveBeenCalledTimes(1);
+        expect(invalidateQueries).toHaveBeenCalledWith({
+            queryKey: queryKeys.views.sectionCalendarsAll(),
+            exact: false,
+        });
     });
 });

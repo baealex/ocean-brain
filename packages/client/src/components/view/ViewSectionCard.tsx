@@ -21,6 +21,8 @@ interface ViewSectionCardProps {
     dragHandle?: React.ReactNode;
     availableProperties?: NotePropertyKeySummary[];
     isPropertiesLoading?: boolean;
+    isPropertiesError?: boolean;
+    onRetryProperties?: () => void;
     navigationState?: ViewSectionRouteState;
     onNavigationStateChange?: (updater: ViewSectionRouteStateUpdater) => void;
 }
@@ -35,10 +37,13 @@ export default function ViewSectionCard({
     dragHandle,
     availableProperties = [],
     isPropertiesLoading = false,
+    isPropertiesError = false,
+    onRetryProperties = () => undefined,
     navigationState = {},
     onNavigationStateChange = () => undefined,
 }: ViewSectionCardProps) {
     const isBoard = section.displayType === 'board';
+    const isCalendar = section.displayType === 'calendar';
     const page = navigationState.page ?? 1;
     const offset = (page - 1) * section.limit;
     const sortBy = navigationState.sort?.by ?? section.sortBy;
@@ -51,7 +56,7 @@ export default function ViewSectionCard({
             sortBy,
             sortOrder,
         }),
-        enabled: !isBoard,
+        enabled: !isBoard && !isCalendar,
         placeholderData: keepPreviousData,
         async queryFn() {
             const response = await fetchViewSectionNotes(section.id, {
@@ -77,6 +82,15 @@ export default function ViewSectionCard({
     const boardGroupProperty = isBoard
         ? availableProperties.find((property) => property.key === section.displayOptions.boardGroupByPropertyKey)
         : null;
+    const calendarDateProperty = isCalendar
+        ? availableProperties.find((property) => property.key === section.displayOptions.calendarDatePropertyKey)
+        : null;
+    const calendarDateLabel =
+        section.displayOptions.calendarDateField === 'property'
+            ? (calendarDateProperty?.name ?? section.displayOptions.calendarDatePropertyKey ?? 'Date property')
+            : section.displayOptions.calendarDateField === 'updatedAt'
+              ? 'Updated date'
+              : 'Created date';
 
     const updateSectionSort = (nextSortBy: ViewSortBy) => {
         const nextSortOrder: ViewSortOrder =
@@ -90,12 +104,12 @@ export default function ViewSectionCard({
     };
 
     useEffect(() => {
-        if (isBoard || isPending || isError || isPlaceholderData || !data || page <= lastPage) {
+        if (isBoard || isCalendar || isPending || isError || isPlaceholderData || !data || page <= lastPage) {
             return;
         }
 
         onNavigationStateChange((current) => ({ ...current, page: lastPage }));
-    }, [data, isBoard, isError, isPending, isPlaceholderData, lastPage, onNavigationStateChange, page]);
+    }, [data, isBoard, isCalendar, isError, isPending, isPlaceholderData, lastPage, onNavigationStateChange, page]);
 
     return (
         <SurfaceCard flush className="flex h-full flex-col overflow-hidden">
@@ -116,6 +130,11 @@ export default function ViewSectionCard({
                         {isBoard && section.displayOptions.boardGroupByPropertyKey ? (
                             <ViewChip className="max-w-full border-border-subtle/80 bg-subtle text-fg-secondary">
                                 Grouped by {boardGroupProperty?.name ?? section.displayOptions.boardGroupByPropertyKey}
+                            </ViewChip>
+                        ) : null}
+                        {isCalendar ? (
+                            <ViewChip className="max-w-full border-border-subtle/80 bg-subtle text-fg-secondary">
+                                {calendarDateLabel}
                             </ViewChip>
                         ) : null}
                         {section.tagNames.map((tagName, index) => (
@@ -182,30 +201,36 @@ export default function ViewSectionCard({
                     activeSortOrder={sortOrder}
                     availableProperties={availableProperties}
                     isPropertiesLoading={isPropertiesLoading}
+                    isPropertiesError={isPropertiesError}
+                    onRetryProperties={onRetryProperties}
                     navigationState={navigationState}
                     onNavigationStateChange={onNavigationStateChange}
                 />
             </div>
 
-            <div className="flex flex-col gap-3 border-t border-border-subtle/75 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                <Text as="p" variant="meta" tone="tertiary">
-                    {isBoard
-                        ? `${section.limit} cards per column load`
-                        : isPending || isPlaceholderData
-                          ? 'Loading notes...'
-                          : totalCount === 0
-                            ? 'No matching notes'
-                            : `Showing ${offset + 1}–${Math.min(offset + notes.length, totalCount)} of ${totalCount} notes`}
-                </Text>
-                {!isBoard && lastPage > 1 ? (
-                    <Pagination
-                        page={Math.min(page, lastPage)}
-                        last={lastPage}
-                        className="!mt-0 shrink-0 sm:justify-end"
-                        onChange={(nextPage) => onNavigationStateChange((current) => ({ ...current, page: nextPage }))}
-                    />
-                ) : null}
-            </div>
+            {!isCalendar ? (
+                <div className="flex flex-col gap-3 border-t border-border-subtle/75 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <Text as="p" variant="meta" tone="tertiary">
+                        {isBoard
+                            ? `${section.limit} cards per column load`
+                            : isPending || isPlaceholderData
+                              ? 'Loading notes...'
+                              : totalCount === 0
+                                ? 'No matching notes'
+                                : `Showing ${offset + 1}–${Math.min(offset + notes.length, totalCount)} of ${totalCount} notes`}
+                    </Text>
+                    {!isBoard && lastPage > 1 ? (
+                        <Pagination
+                            page={Math.min(page, lastPage)}
+                            last={lastPage}
+                            className="!mt-0 shrink-0 sm:justify-end"
+                            onChange={(nextPage) =>
+                                onNavigationStateChange((current) => ({ ...current, page: nextPage }))
+                            }
+                        />
+                    ) : null}
+                </div>
+            ) : null}
         </SurfaceCard>
     );
 }

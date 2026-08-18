@@ -23,6 +23,12 @@ vi.mock('@tanstack/react-router', () => ({
     useNavigate: () => vi.fn(),
 }));
 
+vi.mock('./ViewSectionCalendarRenderer', () => ({
+    default: ({ section }: { section: ViewSection }) => (
+        <div aria-label="View query results as a calendar">{section.displayOptions.calendarDateField}</div>
+    ),
+}));
+
 const createNote = (): Note => ({
     id: 'note-1',
     title: 'Ocean Brain task',
@@ -55,6 +61,8 @@ const createSection = (patch: Partial<ViewSection> = {}): ViewSection => ({
         tableColumns: ['title', 'tags', 'properties', 'createdAt', 'updatedAt'],
         tablePropertyKeys: [],
         boardGroupByPropertyKey: null,
+        calendarDateField: 'createdAt',
+        calendarDatePropertyKey: null,
     },
     tagNames: [],
     mode: 'and',
@@ -97,23 +105,28 @@ describe('<ViewSectionRenderer />', () => {
         expect(screen.getByRole('table', { name: 'View query results as a table' })).toBeInTheDocument();
     });
 
-    it('shows a generic unavailable state for unsupported display types', () => {
+    it('renders calendar sections with the calendar renderer', () => {
         renderRenderer(createSection({ displayType: 'calendar' }));
 
-        expect(screen.getByText('This display type is unavailable')).toBeInTheDocument();
-        expect(
-            screen.getByText('Switch this section to List, Table, or Board to show the saved query here.'),
-        ).toBeInTheDocument();
+        expect(screen.getByLabelText('View query results as a calendar')).toHaveTextContent('createdAt');
     });
 
-    it('opens editing from the unsupported display type recovery action', async () => {
-        const handleEdit = vi.fn();
+    it('offers calendar recovery when its date property is unavailable', async () => {
         const user = userEvent.setup();
+        const handleEdit = vi.fn();
+        const section = createSection({
+            displayType: 'calendar',
+            displayOptions: {
+                ...createSection().displayOptions,
+                calendarDateField: 'property',
+                calendarDatePropertyKey: 'due-date',
+            },
+        });
 
-        renderRenderer(createSection({ displayType: 'calendar' }), handleEdit);
+        renderRenderer(section, handleEdit);
 
-        await user.click(screen.getByRole('button', { name: 'Change display' }));
-
-        expect(handleEdit).toHaveBeenCalledTimes(1);
+        expect(screen.getByText('Calendar date property is unavailable')).toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'Edit calendar' }));
+        expect(handleEdit).toHaveBeenCalledOnce();
     });
 });

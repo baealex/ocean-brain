@@ -2,9 +2,15 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 
-import { fetchNotePropertyKeys } from '~/apis/note.api';
+import { fetchAllNotePropertyKeys } from '~/apis/note.api';
 import { fetchTags } from '~/apis/tag.api';
-import { fetchViewSectionNotes, fetchViewWorkspace, reorderViewSections, reorderViewTabs } from '~/apis/view.api';
+import {
+    fetchViewSectionCalendarNotes,
+    fetchViewSectionNotes,
+    fetchViewWorkspace,
+    reorderViewSections,
+    reorderViewTabs,
+} from '~/apis/view.api';
 import { ConfirmProvider, ToastProvider } from '~/components/ui';
 import type { ViewSection } from '~/models/view.model';
 import { createQueryClientWrapper } from '~/test/test-utils';
@@ -24,13 +30,14 @@ vi.mock('@tanstack/react-router', () => ({
     }),
 }));
 
-vi.mock('~/apis/note.api', () => ({ fetchNotePropertyKeys: vi.fn() }));
+vi.mock('~/apis/note.api', () => ({ fetchAllNotePropertyKeys: vi.fn() }));
 vi.mock('~/apis/tag.api', () => ({ fetchTags: vi.fn() }));
 vi.mock('~/apis/view.api', () => ({
     createViewSection: vi.fn(),
     createViewTab: vi.fn(),
     deleteViewSection: vi.fn(),
     deleteViewTab: vi.fn(),
+    fetchViewSectionCalendarNotes: vi.fn(),
     fetchViewWorkspace: vi.fn(),
     fetchViewSectionNotes: vi.fn(),
     reorderViewSections: vi.fn(),
@@ -49,6 +56,8 @@ const createSection = (patch: Partial<ViewSection> = {}): ViewSection => ({
         tableColumns: ['title'],
         tablePropertyKeys: [],
         boardGroupByPropertyKey: null,
+        calendarDateField: 'createdAt',
+        calendarDatePropertyKey: null,
     },
     tagNames: [],
     mode: 'and',
@@ -105,7 +114,7 @@ describe('<Views />', () => {
         vi.clearAllMocks();
         routerMocks.search = {};
         routerMocks.navigate.mockResolvedValue(undefined);
-        vi.mocked(fetchNotePropertyKeys).mockResolvedValue({
+        vi.mocked(fetchAllNotePropertyKeys).mockResolvedValue({
             type: 'success',
             notePropertyKeys: {
                 totalCount: 0,
@@ -125,6 +134,10 @@ describe('<Views />', () => {
                 activeTabId: null,
                 tabs: [],
             },
+        } as never);
+        vi.mocked(fetchViewSectionCalendarNotes).mockResolvedValue({
+            type: 'success',
+            viewSectionCalendarNotes: [],
         } as never);
     });
 
@@ -207,6 +220,83 @@ describe('<Views />', () => {
             },
         });
         expect(navigation).toMatchObject({ replace: true, resetScroll: false });
+    });
+
+    it('loads calendar sections by visible month without using paginated section notes', async () => {
+        routerMocks.search = {
+            tab: 'tab-1',
+            state: {
+                version: 1,
+                sections: {
+                    'section-1': { calendar: { year: 2026, month: 8 } },
+                },
+            },
+        };
+        mockActiveWorkspace([createSection({ displayType: 'calendar' })]);
+
+        renderViews();
+
+        expect(await screen.findByText('August 2026')).toBeInTheDocument();
+        await waitFor(() => {
+            expect(fetchViewSectionCalendarNotes).toHaveBeenCalledWith('section-1', {
+                start: new Date(2026, 7, 1).toISOString(),
+                end: new Date(2026, 8, 1).toISOString(),
+            });
+        });
+        expect(fetchViewSectionNotes).not.toHaveBeenCalled();
+    });
+
+    it('retries property metadata failures without reporting a valid calendar property as missing', async () => {
+        const user = userEvent.setup();
+        routerMocks.search = {
+            tab: 'tab-1',
+            state: {
+                version: 1,
+                sections: {
+                    'section-1': { calendar: { year: 2026, month: 8 } },
+                },
+            },
+        };
+        mockActiveWorkspace([
+            createSection({
+                displayType: 'calendar',
+                displayOptions: {
+                    ...createSection().displayOptions,
+                    calendarDateField: 'property',
+                    calendarDatePropertyKey: 'due-date',
+                },
+            }),
+        ]);
+        vi.mocked(fetchAllNotePropertyKeys)
+            .mockResolvedValueOnce({
+                type: 'error',
+                category: 'network',
+                errors: [{ code: 'NETWORK_ERROR', message: 'Unavailable' }],
+            })
+            .mockResolvedValueOnce({
+                type: 'success',
+                notePropertyKeys: {
+                    totalCount: 1,
+                    keys: [
+                        {
+                            key: 'due-date',
+                            name: 'Due date',
+                            valueType: 'date',
+                            noteCount: 0,
+                            options: [],
+                            updatedAt: '2026-08-13T00:00:00.000Z',
+                        },
+                    ],
+                },
+            });
+
+        renderViews();
+
+        expect(await screen.findByText('Failed to load calendar properties')).toBeInTheDocument();
+        expect(screen.queryByText('Calendar date property is unavailable')).not.toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'Retry' }));
+        expect(await screen.findByText('August 2026')).toBeInTheDocument();
+        expect(fetchAllNotePropertyKeys).toHaveBeenCalledTimes(2);
     });
 
     it('offers menu fallbacks for moving tabs and sections without dragging', async () => {

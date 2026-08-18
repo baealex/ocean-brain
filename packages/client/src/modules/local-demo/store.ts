@@ -51,6 +51,28 @@ const getLocalStorage = () => {
     }
 };
 
+const normalizeViewWorkspace = (workspace: LocalDemoState['viewWorkspace']): LocalDemoState['viewWorkspace'] => ({
+    ...workspace,
+    tabs: workspace.tabs.map((tab) => ({
+        ...tab,
+        sections: tab.sections.map((section) => ({
+            ...section,
+            displayOptions: {
+                ...section.displayOptions,
+                calendarDateField:
+                    section.displayOptions.calendarDateField === 'updatedAt' ||
+                    section.displayOptions.calendarDateField === 'property'
+                        ? section.displayOptions.calendarDateField
+                        : 'createdAt',
+                calendarDatePropertyKey:
+                    section.displayOptions.calendarDateField === 'property'
+                        ? section.displayOptions.calendarDatePropertyKey?.trim() || null
+                        : null,
+            },
+        })),
+    })),
+});
+
 const mergeState = (raw: unknown): LocalDemoState => {
     const seed = createSeedState();
     if (!raw || typeof raw !== 'object') return seed;
@@ -73,7 +95,9 @@ const mergeState = (raw: unknown): LocalDemoState => {
             : seed.propertyDefinitions,
         mcp: value.mcp && typeof value.mcp === 'object' ? { ...seed.mcp, ...value.mcp } : seed.mcp,
         viewWorkspace:
-            value.viewWorkspace && Array.isArray(value.viewWorkspace.tabs) ? value.viewWorkspace : seed.viewWorkspace,
+            value.viewWorkspace && Array.isArray(value.viewWorkspace.tabs)
+                ? normalizeViewWorkspace(value.viewWorkspace)
+                : seed.viewWorkspace,
     };
 };
 

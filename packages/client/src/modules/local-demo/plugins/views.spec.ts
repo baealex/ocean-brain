@@ -48,7 +48,13 @@ const createSection = (sortBy: ViewSection['sortBy'], sortOrder: ViewSection['so
     tabId: 'tab-1',
     title: 'All notes',
     displayType: 'list',
-    displayOptions: { tableColumns: ['title'], tablePropertyKeys: [], boardGroupByPropertyKey: null },
+    displayOptions: {
+        tableColumns: ['title'],
+        tablePropertyKeys: [],
+        boardGroupByPropertyKey: null,
+        calendarDateField: 'createdAt',
+        calendarDatePropertyKey: null,
+    },
     tagNames: [],
     mode: 'and',
     propertyFilters: [],
@@ -90,5 +96,71 @@ describe('viewsLocalPlugin', () => {
         const result = response?.viewSectionNotes as { notes: Note[] } | undefined;
 
         expect(result?.notes.map((note) => note.id)).toEqual(['note-1', 'note-2', 'note-3']);
+    });
+
+    it('filters calendar sections by their configured date field and visible range', () => {
+        const handler = viewsLocalPlugin.graphHandlers?.FetchViewSectionCalendarNotes;
+        const section = createSection('updatedAt', 'desc');
+        section.displayType = 'calendar';
+        section.displayOptions.calendarDateField = 'createdAt';
+        const response = handler?.({
+            state: createState(section),
+            variables: {
+                id: 'section-1',
+                dateRange: {
+                    start: new Date(1_710_000_001_500).toISOString(),
+                    end: new Date(1_710_000_003_500).toISOString(),
+                },
+            },
+            save: () => undefined,
+        });
+        const notes = response?.viewSectionCalendarNotes as Note[] | undefined;
+
+        expect(notes?.map((note) => note.id)).toEqual(['note-2', 'note-3']);
+    });
+
+    it('uses a date property as the calendar placement field', () => {
+        const handler = viewsLocalPlugin.graphHandlers?.FetchViewSectionCalendarNotes;
+        const section = createSection('updatedAt', 'desc');
+        section.displayType = 'calendar';
+        section.displayOptions.calendarDateField = 'property';
+        section.displayOptions.calendarDatePropertyKey = 'due-date';
+        const state = createState(section);
+        state.propertyDefinitions = [
+            {
+                key: 'due-date',
+                name: 'Due date',
+                valueType: 'date',
+                options: [],
+                updatedAt: '2026-08-01T00:00:00.000Z',
+            },
+        ];
+        state.notes[0]!.properties = [
+            {
+                key: 'due-date',
+                name: 'Due date',
+                value: '2026-08-12',
+                valueType: 'date',
+                option: null,
+                createdAt: '2026-08-01T00:00:00.000Z',
+                updatedAt: '2026-08-01T00:00:00.000Z',
+            },
+        ];
+
+        const response = handler?.({
+            state,
+            variables: {
+                id: 'section-1',
+                dateRange: {
+                    start: '2026-08-01T00:00:00.000Z',
+                    end: '2026-09-01T00:00:00.000Z',
+                },
+            },
+            save: () => undefined,
+        });
+
+        expect(response?.viewSectionCalendarNotes).toEqual([
+            { id: 'note-2', title: 'Beta', calendarDate: '2026-08-12' },
+        ]);
     });
 });

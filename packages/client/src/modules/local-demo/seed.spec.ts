@@ -36,7 +36,7 @@ describe('createLocalDemoSeed', () => {
             .filter((property) => property.key === 'status')
             .map((property) => property.value);
 
-        expect(displayTypes).toEqual(expect.arrayContaining(['list', 'table', 'board']));
+        expect(displayTypes).toEqual(expect.arrayContaining(['list', 'table', 'board', 'calendar']));
         expect(projectStatuses).toEqual(expect.arrayContaining(['todo', 'doing', 'done']));
         expect(seed.reminders.some((reminder) => !reminder.completed && Number(reminder.reminderDate) < nowMs)).toBe(
             true,

@@ -7,11 +7,17 @@ const MAX_COLUMN_STATES = 100;
 const MAX_STATE_KEY_LENGTH = 256;
 const MAX_PAGE = 100_000;
 const MAX_BOARD_COLUMN_PAGES = 50;
+const MIN_CALENDAR_YEAR = 1970;
+const MAX_CALENDAR_YEAR = 9999;
 const LEGACY_VIEW_NOTES_PAGE_SIZE = 25;
 
 export interface ViewSectionRouteState {
     page?: number;
     columns?: Record<string, number>;
+    calendar?: {
+        year: number;
+        month: number;
+    };
     sort?: {
         by: ViewSortBy;
         order: ViewSortOrder;
@@ -55,6 +61,30 @@ const normalizeSort = (value: unknown): ViewSectionRouteState['sort'] => {
     return { by, order };
 };
 
+const normalizeCalendar = (value: unknown): ViewSectionRouteState['calendar'] => {
+    if (!isRecord(value)) {
+        return undefined;
+    }
+
+    const year = value.year;
+    const month = value.month;
+
+    if (
+        typeof year !== 'number' ||
+        !Number.isInteger(year) ||
+        year < MIN_CALENDAR_YEAR ||
+        year > MAX_CALENDAR_YEAR ||
+        typeof month !== 'number' ||
+        !Number.isInteger(month) ||
+        month < 1 ||
+        month > 12
+    ) {
+        return undefined;
+    }
+
+    return { year, month };
+};
+
 const normalizeSectionState = (value: unknown): ViewSectionRouteState | undefined => {
     if (!isRecord(value)) {
         return undefined;
@@ -62,6 +92,7 @@ const normalizeSectionState = (value: unknown): ViewSectionRouteState | undefine
 
     const page = normalizePage(value.page);
     const sort = normalizeSort(value.sort);
+    const calendar = normalizeCalendar(value.calendar);
     const columns = isRecord(value.columns)
         ? Object.fromEntries(
               Object.entries(value.columns)
@@ -74,7 +105,7 @@ const normalizeSectionState = (value: unknown): ViewSectionRouteState | undefine
           )
         : {};
 
-    if (page === undefined && Object.keys(columns).length === 0 && sort === undefined) {
+    if (page === undefined && Object.keys(columns).length === 0 && sort === undefined && calendar === undefined) {
         return undefined;
     }
 
@@ -82,6 +113,7 @@ const normalizeSectionState = (value: unknown): ViewSectionRouteState | undefine
         ...(page === undefined ? {} : { page }),
         ...(Object.keys(columns).length === 0 ? {} : { columns }),
         ...(sort === undefined ? {} : { sort }),
+        ...(calendar === undefined ? {} : { calendar }),
     };
 };
 

@@ -13,6 +13,7 @@ import type {
 } from '~/apis/reminder.api';
 import type { FetchSearchNotesParams } from '~/apis/search.api';
 import type { FetchTagsParams } from '~/apis/tag.api';
+import type { ViewCalendarDateField } from '~/models/view.model';
 
 const normalizeFields = (fields?: FetchNotesParams['fields']) => {
     if (!fields || fields.length === 0) {
@@ -106,6 +107,7 @@ export const queryKeys = {
         backReferences: (noteId: string) => ['notes', 'back-references', { noteId }] as const,
         graph: () => ['notes', 'graph'] as const,
         propertyKeysAll: () => ['notes', 'property-keys'] as const,
+        propertyKeysCatalog: () => ['notes', 'property-keys', 'catalog'] as const,
         propertyKeys: (params: FetchNotePropertyKeysParams = {}) =>
             [
                 'notes',
@@ -273,6 +275,27 @@ export const queryKeys = {
                     groupPropertyKey,
                     optionValue,
                     pageSize,
+                },
+            ] as const,
+        sectionCalendarsAll: () => ['views', 'section-calendar'] as const,
+        sectionCalendar: (
+            id: string,
+            params: {
+                year: number;
+                month: number;
+                dateField: ViewCalendarDateField;
+                propertyKey?: string | null;
+            },
+        ) =>
+            [
+                'views',
+                'section-calendar',
+                id,
+                {
+                    year: params.year,
+                    month: params.month,
+                    dateField: params.dateField,
+                    propertyKey: params.propertyKey ?? null,
                 },
             ] as const,
     },

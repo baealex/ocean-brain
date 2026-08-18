@@ -1,5 +1,5 @@
 import type { Note, NotePropertyOption, NotePropertyValueType } from '~/models/note.model';
-import { graphQuery } from '~/modules/graph-query';
+import { type GraphQueryResponse, graphQuery } from '~/modules/graph-query';
 
 type NoteAdditionalField = 'content' | 'order' | 'layout' | 'properties';
 
@@ -272,13 +272,17 @@ export interface FetchNotePropertyKeysParams {
     offset?: number;
 }
 
+export interface NotePropertyKeysResult {
+    totalCount: number;
+    keys: NotePropertyKeySummary[];
+}
+
+const NOTE_PROPERTY_KEYS_PAGE_SIZE = 100;
+
 export function fetchNotePropertyKeys({ query = '', limit = 50, offset = 0 }: FetchNotePropertyKeysParams = {}) {
     return graphQuery<
         {
-            notePropertyKeys: {
-                totalCount: number;
-                keys: NotePropertyKeySummary[];
-            };
+            notePropertyKeys: NotePropertyKeysResult;
         },
         {
             query?: string;
@@ -309,6 +313,43 @@ export function fetchNotePropertyKeys({ query = '', limit = 50, offset = 0 }: Fe
             },
         },
     );
+}
+
+export async function fetchAllNotePropertyKeys(): Promise<
+    GraphQueryResponse<{ notePropertyKeys: NotePropertyKeysResult }>
+> {
+    const propertyByKey = new Map<string, NotePropertyKeySummary>();
+    let offset = 0;
+    let totalCount = 0;
+
+    while (true) {
+        const response = await fetchNotePropertyKeys({ limit: NOTE_PROPERTY_KEYS_PAGE_SIZE, offset });
+
+        if (response.type === 'error') {
+            return response;
+        }
+
+        const page = response.notePropertyKeys;
+        totalCount = page.totalCount;
+
+        for (const property of page.keys) {
+            propertyByKey.set(property.key, property);
+        }
+
+        offset += page.keys.length;
+
+        if (page.keys.length === 0 || offset >= totalCount) {
+            break;
+        }
+    }
+
+    return {
+        type: 'success',
+        notePropertyKeys: {
+            totalCount,
+            keys: Array.from(propertyByKey.values()),
+        },
+    };
 }
 
 export interface CreateNotePropertyKeyRequestData {

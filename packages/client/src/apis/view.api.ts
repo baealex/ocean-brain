@@ -31,6 +31,8 @@ const VIEW_SECTION_FIELDS = `
         tableColumns
         tablePropertyKeys
         boardGroupByPropertyKey
+        calendarDateField
+        calendarDatePropertyKey
     }
     tagNames
     mode
@@ -148,6 +150,36 @@ export function fetchViewSectionNotes(
             sortBy,
             sortOrder,
         },
+    );
+}
+
+export interface ViewCalendarNote extends Pick<Note, 'id' | 'title'> {
+    calendarDate: string;
+}
+
+export interface ViewCalendarDateRange {
+    start: string;
+    end: string;
+}
+
+export function fetchViewSectionCalendarNotes(id: string, dateRange: ViewCalendarDateRange) {
+    return graphQuery<
+        {
+            viewSectionCalendarNotes: ViewCalendarNote[];
+        },
+        {
+            id: string;
+            dateRange: ViewCalendarDateRange;
+        }
+    >(
+        `query FetchViewSectionCalendarNotes($id: ID!, $dateRange: DateRangeInput!) {
+            viewSectionCalendarNotes(id: $id, dateRange: $dateRange) {
+                id
+                title
+                calendarDate
+            }
+        }`,
+        { id, dateRange },
     );
 }
 

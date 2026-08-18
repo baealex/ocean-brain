@@ -4,9 +4,9 @@ import type { Note } from '~/models/note.model';
 import type { ViewSection, ViewSortBy, ViewSortOrder } from '~/models/view.model';
 import type { ViewSectionRouteState, ViewSectionRouteStateUpdater } from '~/modules/view-route-state';
 import ViewSectionBoardRenderer from './ViewSectionBoardRenderer';
+import ViewSectionCalendarRenderer from './ViewSectionCalendarRenderer';
 import ViewSectionListRenderer from './ViewSectionListRenderer';
 import ViewSectionTableRenderer from './ViewSectionTableRenderer';
-import ViewSectionUnsupportedRenderer from './ViewSectionUnsupportedRenderer';
 
 interface ViewSectionRendererProps {
     section: ViewSection;
@@ -21,9 +21,27 @@ interface ViewSectionRendererProps {
     activeSortOrder?: ViewSortOrder;
     availableProperties?: NotePropertyKeySummary[];
     isPropertiesLoading?: boolean;
+    isPropertiesError?: boolean;
+    onRetryProperties?: () => void;
     navigationState?: ViewSectionRouteState;
     onNavigationStateChange?: (updater: ViewSectionRouteStateUpdater) => void;
 }
+
+const PropertyMetadataError = ({ displayName, onRetry }: { displayName: string; onRetry: () => void }) => (
+    <div className="m-4 rounded-[16px] border border-border-subtle bg-hover-subtle/70 p-4">
+        <Text as="p" variant="body" weight="semibold">
+            Failed to load {displayName} properties
+        </Text>
+        <Text as="p" variant="meta" tone="tertiary" className="mt-1">
+            Retry to check the configured property without changing this view.
+        </Text>
+        <div className="mt-3">
+            <Button type="button" variant="ghost" size="sm" onClick={onRetry}>
+                Retry
+            </Button>
+        </div>
+    </div>
+);
 
 export default function ViewSectionRenderer({
     section,
@@ -38,6 +56,8 @@ export default function ViewSectionRenderer({
     activeSortOrder = section.sortOrder,
     availableProperties = [],
     isPropertiesLoading = false,
+    isPropertiesError = false,
+    onRetryProperties = () => undefined,
     navigationState = {},
     onNavigationStateChange = () => undefined,
 }: ViewSectionRendererProps) {
@@ -55,6 +75,10 @@ export default function ViewSectionRenderer({
                     <div className="h-[248px] w-[18rem] shrink-0 animate-pulse rounded-[18px] bg-subtle/50" />
                 </div>
             );
+        }
+
+        if (!groupProperty && isPropertiesError) {
+            return <PropertyMetadataError displayName="board" onRetry={onRetryProperties} />;
         }
 
         if (!groupProperty || groupProperty.options.length === 0) {
@@ -103,7 +127,49 @@ export default function ViewSectionRenderer({
     }
 
     if (section.displayType === 'calendar') {
-        return <ViewSectionUnsupportedRenderer onEdit={onEdit} />;
+        const calendarDateProperty =
+            section.displayOptions.calendarDateField === 'property'
+                ? availableProperties.find(
+                      (property) =>
+                          property.key === section.displayOptions.calendarDatePropertyKey &&
+                          property.valueType === 'date',
+                  )
+                : undefined;
+
+        if (section.displayOptions.calendarDateField === 'property' && !calendarDateProperty) {
+            if (isPropertiesLoading) {
+                return <div className="m-4 h-[320px] animate-pulse rounded-[18px] bg-subtle/50" />;
+            }
+
+            if (isPropertiesError) {
+                return <PropertyMetadataError displayName="calendar" onRetry={onRetryProperties} />;
+            }
+
+            return (
+                <div className="m-4 rounded-[16px] border border-dashed border-border-subtle bg-subtle/40 px-4 py-5">
+                    <Text as="p" variant="body" weight="semibold">
+                        Calendar date property is unavailable
+                    </Text>
+                    <Text as="p" variant="meta" tone="tertiary" className="mt-1">
+                        Choose an existing date property to restore this calendar.
+                    </Text>
+                    <div className="mt-3">
+                        <Button type="button" variant="ghost" size="sm" onClick={onEdit}>
+                            Edit calendar
+                        </Button>
+                    </div>
+                </div>
+            );
+        }
+
+        return (
+            <ViewSectionCalendarRenderer
+                section={section}
+                calendarDateProperty={calendarDateProperty}
+                navigationState={navigationState}
+                onNavigationStateChange={onNavigationStateChange}
+            />
+        );
     }
 
     return <ViewSectionListRenderer notes={notes} isPending={isPending} isError={isError} onRetry={onRetry} />;

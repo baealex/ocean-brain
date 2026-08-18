@@ -1,5 +1,6 @@
 import * as Icon from '~/components/icon';
-import { Button, Select, SelectItem, Text } from '~/components/ui';
+import { Select, SelectItem, Text } from '~/components/ui';
+import { CalendarMonthNavigation } from './CalendarMonthNavigation';
 import type { CalendarDisplayType } from './types';
 
 const MONTHS = [
@@ -80,19 +81,7 @@ export const CalendarHeader = ({ month, year, type, onPrevMonth, onNextMonth, on
 
                     <div className="hidden h-5 w-px bg-divider sm:block" />
 
-                    <div className="flex items-center justify-between sm:justify-start sm:gap-1.5">
-                        <Button variant="ghost" size="sm" onClick={onToday}>
-                            Today
-                        </Button>
-                        <div className="flex items-center gap-1" role="group" aria-label="Month navigation">
-                            <Button variant="ghost" size="icon-sm" aria-label="Previous month" onClick={onPrevMonth}>
-                                <Icon.ChevronLeft width={18} height={18} />
-                            </Button>
-                            <Button variant="ghost" size="icon-sm" aria-label="Next month" onClick={onNextMonth}>
-                                <Icon.ChevronRight width={18} height={18} />
-                            </Button>
-                        </div>
-                    </div>
+                    <CalendarMonthNavigation onPrevMonth={onPrevMonth} onNextMonth={onNextMonth} onToday={onToday} />
                 </div>
             </div>
         </div>

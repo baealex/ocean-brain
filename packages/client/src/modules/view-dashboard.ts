@@ -1,4 +1,5 @@
 import type {
+    ViewCalendarDateField,
     ViewDisplayOptions,
     ViewDisplayType,
     ViewPropertyFilter,
@@ -15,6 +16,7 @@ export const MIN_VIEW_SECTION_LIMIT = 1;
 export const MAX_VIEW_SECTION_LIMIT = 20;
 export const MAX_VIEW_TABLE_PROPERTY_COLUMNS = 6;
 export const DEFAULT_VIEW_TABLE_COLUMNS: ViewTableColumn[] = ['title', 'tags', 'properties', 'createdAt', 'updatedAt'];
+export const DEFAULT_VIEW_CALENDAR_DATE_FIELD: ViewCalendarDateField = 'createdAt';
 
 export const EMPTY_VIEWS_WORKSPACE: ViewsWorkspace = {
     activeTabId: null,
@@ -190,7 +192,7 @@ export const getViewDisplayTypeLabel = (displayType: ViewDisplayType) => {
         case 'board':
             return 'Board';
         case 'calendar':
-            return 'Unavailable';
+            return 'Calendar';
         case 'list':
         default:
             return 'List';
@@ -231,11 +233,21 @@ export const normalizeViewTablePropertyKeys = (keys?: readonly string[] | null):
         MAX_VIEW_TABLE_PROPERTY_COLUMNS,
     );
 
-export const normalizeViewDisplayOptions = (options?: Partial<ViewDisplayOptions> | null): ViewDisplayOptions => ({
-    tableColumns: normalizeViewTableColumns(options?.tableColumns),
-    tablePropertyKeys: normalizeViewTablePropertyKeys(options?.tablePropertyKeys),
-    boardGroupByPropertyKey: options?.boardGroupByPropertyKey?.trim() || null,
-});
+export const normalizeViewCalendarDateField = (value?: ViewCalendarDateField | null): ViewCalendarDateField =>
+    value === 'updatedAt' || value === 'property' ? value : DEFAULT_VIEW_CALENDAR_DATE_FIELD;
+
+export const normalizeViewDisplayOptions = (options?: Partial<ViewDisplayOptions> | null): ViewDisplayOptions => {
+    const calendarDateField = normalizeViewCalendarDateField(options?.calendarDateField);
+
+    return {
+        tableColumns: normalizeViewTableColumns(options?.tableColumns),
+        tablePropertyKeys: normalizeViewTablePropertyKeys(options?.tablePropertyKeys),
+        boardGroupByPropertyKey: options?.boardGroupByPropertyKey?.trim() || null,
+        calendarDateField,
+        calendarDatePropertyKey:
+            calendarDateField === 'property' ? options?.calendarDatePropertyKey?.trim() || null : null,
+    };
+};
 
 export const formatViewPropertyFilter = (filter: ViewPropertyFilter) => {
     const operatorLabel = getViewPropertyOperatorLabel(filter.operator);

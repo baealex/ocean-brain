@@ -1,4 +1,5 @@
 import type { Note, NoteLayout, NoteProperty, NotePropertyOption, NotePropertyValueType } from '~/models/note.model';
+import type { ViewSection } from '~/models/view.model';
 import { localError, success } from '../response';
 import type { LocalDemoPlugin, LocalTrashNote } from '../types';
 import {
@@ -21,6 +22,22 @@ const toTrashedNotePayload = (note: LocalTrashNote) => ({
     contentAsMarkdown: note.content,
     tagNames: note.tags.map((tag) => tag.name),
 });
+
+const viewSectionReferencesProperty = (section: ViewSection, key: string) => {
+    if (section.propertyFilters.some((filter) => filter.key === key)) {
+        return true;
+    }
+
+    if (section.displayType === 'table') {
+        return section.displayOptions.tablePropertyKeys.includes(key);
+    }
+
+    if (section.displayType === 'board') {
+        return section.displayOptions.boardGroupByPropertyKey === key;
+    }
+
+    return section.displayType === 'calendar' && section.displayOptions.calendarDatePropertyKey === key;
+};
 
 export const notesLocalPlugin: LocalDemoPlugin = {
     name: 'notes',
@@ -297,6 +314,14 @@ export const notesLocalPlugin: LocalDemoPlugin = {
         },
         DeleteNotePropertyKey: ({ state, variables, save }) => {
             const key = String(variables.key);
+            const referencingView = state.viewWorkspace.tabs
+                .flatMap((tab) => tab.sections)
+                .find((section) => viewSectionReferencesProperty(section, key));
+
+            if (referencingView) {
+                return localError(`Property ${key} is used by view ${referencingView.title} and cannot be deleted.`);
+            }
+
             state.propertyDefinitions = state.propertyDefinitions.filter((item) => item.key !== key);
             for (const note of state.notes)
                 note.properties = note.properties?.filter((property) => property.key !== key);

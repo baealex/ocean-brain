@@ -14,6 +14,7 @@ const createDeps = (overrides: Partial<ViewQueryResolverDeps> = {}): ViewQueryRe
     getNotesByProperties: async () => ({ totalCount: 0, notes: [] }),
     getViewSectionBoardColumn: async () => ({ totalCount: 0, notes: [] }),
     getViewSectionById: async () => null,
+    getViewSectionCalendarNotes: async () => [],
     getViewSectionNotes: async () => ({ totalCount: 0, notes: [] }),
     getViewWorkspace: async () => ({ activeTabId: null, tabs: [] }),
     ...overrides,
@@ -52,6 +53,29 @@ test('viewSectionBoardColumn maps invalid property input to a stable GraphQL err
         (error) =>
             error instanceof GraphQLError &&
             error.message === 'Unknown board property' &&
+            error.extensions.code === 'INVALID_NOTE_PROPERTY_INPUT',
+    );
+});
+
+test('viewSectionCalendarNotes maps invalid calendar input to a stable GraphQL error code', async () => {
+    const resolvers = createViewQueryResolvers(
+        createDeps({
+            getViewSectionCalendarNotes: async () => {
+                throw new InvalidNotePropertyInputError('Invalid calendar range');
+            },
+        }),
+    );
+    const resolveCalendarNotes = getQueryResolver(resolvers, 'viewSectionCalendarNotes');
+
+    await assert.rejects(
+        () =>
+            resolveCalendarNotes(null, {
+                id: 'section-1',
+                dateRange: { start: '2026-08-01T00:00:00.000Z', end: '2026-09-01T00:00:00.000Z' },
+            }),
+        (error) =>
+            error instanceof GraphQLError &&
+            error.message === 'Invalid calendar range' &&
             error.extensions.code === 'INVALID_NOTE_PROPERTY_INPUT',
     );
 });

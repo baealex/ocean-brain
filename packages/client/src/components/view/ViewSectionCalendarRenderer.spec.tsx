@@ -88,7 +88,7 @@ describe('<ViewSectionCalendarRenderer />', () => {
         const dayButton = await screen.findByRole('button', {
             name: 'Wednesday, August 12, 2026, 1 note',
         });
-        expect(dayButton).toHaveClass('min-h-20');
+        expect(dayButton).toHaveClass('min-h-16', 'sm:min-h-20', 'lg:min-h-[142px]');
         await user.click(dayButton);
 
         expect(await screen.findByRole('link', { name: /Edited note/ })).toBeInTheDocument();

@@ -24,3 +24,4 @@
 - [ ] Type-check completed
 - [ ] Tests completed
 - [ ] Documentation updated (if needed)
+- [ ] Documentation change follows `docs/process/DOCUMENTATION_CONVENTION.md` (if applicable)

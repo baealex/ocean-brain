@@ -126,3 +126,4 @@ Before sharing a PR URL, confirm all of the following:
 
 ## 5. Deployment and Release Reference
 - For deployment/release policy and runbook details, refer to `docs/process/DEPLOYMENT_RELEASE_STRATEGY.md`.
+- For documentation ownership and review criteria, refer to `docs/process/DOCUMENTATION_CONVENTION.md`.

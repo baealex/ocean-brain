@@ -47,6 +47,7 @@ Full dev mode exposes Express APIs, the Vite client, and HMR through the server 
 
 ## 6. Related Documents
 - Git rules: `docs/process/GIT_CONVENTION.md`
+- Documentation rules: `docs/process/DOCUMENTATION_CONVENTION.md`
 - Encoding rules: `docs/process/ENCODING_CONVENTION.md`
 - Testing rules: `docs/process/TESTING_CONVENTION.md`
 - Query key rules: `docs/process/QUERY_KEY_CONVENTION.md`

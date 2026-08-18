@@ -1,10 +1,14 @@
 # Ocean Brain Documentation Convention
 
+Updated: 2026-08-18
+
 ## 1. Purpose
 
 Documentation changes should make the product or the contribution workflow easier to understand. The size of a documentation change is not a quality criterion by itself; its audience, source of truth, and measurable clarity are.
 
 Use this document when deciding where new guidance belongs and whether a documentation pull request adds enough value to merge.
+
+Process documents in `docs/process/` include an `Updated: YYYY-MM-DD` line below the title. This is a freshness hint, not a replacement for Git history; update it when the document's meaning changes. User-facing documents such as `README.md` do not need a manual date unless freshness is part of their meaning.
 
 ## 2. Document ownership
 
@@ -66,4 +70,3 @@ Before approving a documentation change, check:
 - Close the pull request with a short, specific explanation when it duplicates existing guidance, has no clear reader benefit, or is out of scope.
 
 For a decline, explain the repository rule and point to the canonical document when possible. Keep the decision about the change, not the contributor.
-

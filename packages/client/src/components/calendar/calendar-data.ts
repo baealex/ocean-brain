@@ -2,6 +2,8 @@ import dayjs from 'dayjs';
 import type { Note } from '~/models/note.model';
 import type { CalendarDisplayType, CalendarGridDay } from './types';
 
+const CALENDAR_GRID_DAYS = 42;
+
 export const getCalendarMonthRange = (year: number, month: number) => ({
     start: new Date(year, month - 1, 1).toISOString(),
     end: new Date(year, month, 1).toISOString(),
@@ -52,8 +54,7 @@ export const buildCalendarGridDays = (year: number, month: number, now: Date = n
         days.push({ day, isCurrentMonth: true, year, month });
     }
 
-    const lastDayOfWeek = (firstDayOfWeek + totalDays) % 7;
-    const daysToFill = lastDayOfWeek === 0 ? 0 : 7 - lastDayOfWeek;
+    const daysToFill = CALENDAR_GRID_DAYS - (firstDayOfWeek + totalDays);
     const nextMonth = month === 12 ? 1 : month + 1;
     const nextYear = month === 12 ? year + 1 : year;
 

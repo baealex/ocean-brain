@@ -41,4 +41,10 @@ describe('calendar data', () => {
         expect(days.find((day) => day.key === '2026-8-12')).toMatchObject({ isCurrentMonth: true, isToday: true });
         expect(days.at(-1)).toMatchObject({ key: '2026-9-5', isCurrentMonth: false });
     });
+
+    it('keeps every month at six calendar weeks', () => {
+        for (let month = 1; month <= 12; month += 1) {
+            expect(buildCalendarGridDays(2026, month)).toHaveLength(42);
+        }
+    });
 });

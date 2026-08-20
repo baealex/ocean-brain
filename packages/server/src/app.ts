@@ -1,5 +1,4 @@
-import crypto from 'node:crypto';
-import fastifyCookie from '@fastify/cookie';
+import fastifyCookie, { Signer } from '@fastify/cookie';
 import fastifyCsrfProtection from '@fastify/csrf-protection';
 import fastifyFormbody from '@fastify/formbody';
 import fastifyRateLimit from '@fastify/rate-limit';
@@ -52,9 +51,6 @@ export const createFastifyApplication = (options: CreateFastifyApplicationOption
         logger: isHttpLoggerEnabled(options.logger) ? createLoggerOptions() : false,
     });
 
-const createSessionSecret = (sessionSecret: string) =>
-    crypto.createHash('sha256').update(sessionSecret, 'utf8').digest('hex');
-
 const registerRequestInfrastructure = (app: FastifyInstance, authConfig: AuthConfig) => {
     app.addHook('onRequest', (request, _reply, done) => {
         const contentEncoding = request.headers['content-encoding'];
@@ -85,7 +81,8 @@ const registerRequestInfrastructure = (app: FastifyInstance, authConfig: AuthCon
         done();
     });
     app.register(fastifySession, {
-        secret: createSessionSecret(authConfig.sessionSecret),
+        // Preserve the configured secret bytes and support legacy secrets shorter than 32 characters.
+        secret: new Signer(authConfig.sessionSecret),
         cookieName: authConfig.cookieName,
         cookiePrefix: 's:',
         store: sessionStore,

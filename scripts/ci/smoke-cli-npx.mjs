@@ -2,6 +2,7 @@
 
 import { spawn, spawnSync } from 'child_process';
 import { mkdirSync, mkdtempSync, rmSync } from 'fs';
+import { createServer } from 'net';
 import os from 'os';
 import path from 'path';
 import { pathToFileURL } from 'url';
@@ -19,15 +20,50 @@ function resolveNpxPackageSpec(spec) {
 
 const packageSpec = packageArg ? resolveNpxPackageSpec(packageArg) : null;
 const host = '127.0.0.1';
-const port = Number(process.env.CLI_SMOKE_PORT ?? '6683');
-const rootUrl = `http://${host}:${port}`;
+const configuredPort = process.env.CLI_SMOKE_PORT;
+let port = Number(configuredPort ?? '6683');
+let rootUrl = `http://${host}:${port}`;
 export const AUTH_SESSION_PATH = '/api/auth/session';
+export const MCP_ADMIN_ENABLED_PATH = '/api/mcp-admin/enabled';
+export const MCP_ADMIN_ROTATE_TOKEN_PATH = '/api/mcp-admin/token/rotate';
 const isWindows = process.platform === 'win32';
 const readyTimeoutMs = Number(
     process.env.CLI_SMOKE_READY_TIMEOUT_MS ?? (isWindows ? '300000' : '120000')
 );
+const MCP_PROTOCOL_VERSION = '2025-11-25';
+export const MCP_SMOKE_TOOL_NAME = 'ocean_brain_list_tags';
+export const MCP_SMOKE_EXPECTED_TOOL_COUNT = 16;
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+export const isExpectedServerReadyOutput = (stdout) =>
+    stdout.includes(`http server listen on ${host}:${port}`);
+
+const assignEphemeralSmokePort = () => new Promise((resolve, reject) => {
+    const probe = createServer();
+
+    probe.once('error', reject);
+    probe.listen(0, host, () => {
+        const address = probe.address();
+        if (!address || typeof address === 'string') {
+            probe.close();
+            reject(new Error('Failed to allocate an ephemeral CLI smoke port.'));
+            return;
+        }
+
+        const ephemeralPort = address.port;
+        probe.close((error) => {
+            if (error) {
+                reject(error);
+                return;
+            }
+
+            port = ephemeralPort;
+            rootUrl = `http://${host}:${port}`;
+            resolve();
+        });
+    });
+});
 
 const getSetCookies = (headers) => {
     if (typeof headers.getSetCookie === 'function') {
@@ -94,6 +130,58 @@ export function buildSmokeScenarios(resolvedPackageSpec) {
     ];
 }
 
+export function buildMcpSmokeArgs(token) {
+    return [
+        '--yes',
+        '--package',
+        packageSpec,
+        'ocean-brain',
+        'mcp',
+        '--server',
+        rootUrl,
+        '--token',
+        token
+    ];
+}
+
+export function buildMcpSmokeRequests() {
+    return {
+        initialize: {
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'initialize',
+            params: {
+                protocolVersion: MCP_PROTOCOL_VERSION,
+                capabilities: {},
+                clientInfo: {
+                    name: 'ocean-brain-packaged-smoke',
+                    version: '0.0.0'
+                }
+            }
+        },
+        initialized: {
+            jsonrpc: '2.0',
+            method: 'notifications/initialized',
+            params: {}
+        },
+        listTools: {
+            jsonrpc: '2.0',
+            id: 2,
+            method: 'tools/list',
+            params: {}
+        },
+        callTool: {
+            jsonrpc: '2.0',
+            id: 3,
+            method: 'tools/call',
+            params: {
+                name: MCP_SMOKE_TOOL_NAME,
+                arguments: {}
+            }
+        }
+    };
+}
+
 export function isExpectedAuthFailure(stderr) {
     return stderr.includes('Unable to resolve auth mode.')
         && stderr.includes('OCEAN_BRAIN_PASSWORD')
@@ -119,8 +207,38 @@ function spawnScenarioProcess(scenario, dataDir, imageDir) {
         }
     );
 
+    let stdoutBuffer = '';
     let stderrBuffer = '';
-    child.stdout.on('data', chunk => process.stdout.write(chunk));
+    child.stdout.on('data', chunk => {
+        const text = chunk.toString();
+        stdoutBuffer += text;
+        process.stdout.write(text);
+    });
+    child.stderr.on('data', chunk => {
+        const text = chunk.toString();
+        stderrBuffer += text;
+        process.stderr.write(text);
+    });
+
+    return {
+        child,
+        getStdout: () => stdoutBuffer,
+        getStderr: () => stderrBuffer
+    };
+}
+
+function spawnMcpProcess(token) {
+    const args = buildMcpSmokeArgs(token);
+    const child = spawn(
+        isWindows ? 'cmd.exe' : 'npx',
+        isWindows ? ['/d', '/s', '/c', 'npx', ...args] : args,
+        {
+            detached: !isWindows,
+            env: process.env,
+            stdio: ['pipe', 'pipe', 'pipe']
+        }
+    );
+    let stderrBuffer = '';
     child.stderr.on('data', chunk => {
         const text = chunk.toString();
         stderrBuffer += text;
@@ -133,7 +251,146 @@ function spawnScenarioProcess(scenario, dataDir, imageDir) {
     };
 }
 
-async function waitForReady(child, timeoutMs) {
+function createJsonRpcStdioClient(child, getStderr) {
+    let stdoutBuffer = '';
+    const pending = new Map();
+
+    const failPending = (error) => {
+        for (const { reject, timeout } of pending.values()) {
+            clearTimeout(timeout);
+            reject(error);
+        }
+        pending.clear();
+    };
+
+    child.stdout.on('data', chunk => {
+        stdoutBuffer += chunk.toString();
+
+        while (stdoutBuffer.includes('\n')) {
+            const separator = stdoutBuffer.indexOf('\n');
+            const line = stdoutBuffer.slice(0, separator).replace(/\r$/, '');
+            stdoutBuffer = stdoutBuffer.slice(separator + 1);
+
+            if (!line.trim()) continue;
+
+            let message;
+            try {
+                message = JSON.parse(line);
+            } catch (error) {
+                failPending(new Error(`Packaged MCP emitted invalid JSON-RPC: ${line}`, { cause: error }));
+                continue;
+            }
+
+            const waiter = pending.get(message.id);
+            if (!waiter) continue;
+
+            pending.delete(message.id);
+            clearTimeout(waiter.timeout);
+
+            if (message.error) {
+                waiter.reject(new Error(`Packaged MCP request failed: ${JSON.stringify(message.error)}`));
+                continue;
+            }
+
+            waiter.resolve(message.result);
+        }
+    });
+
+    child.once('exit', (code, signal) => {
+        if (pending.size === 0) return;
+
+        failPending(new Error(
+            `Packaged MCP exited before responding (code=${code}, signal=${signal}).\n${getStderr()}`
+        ));
+    });
+
+    const send = (message) => {
+        child.stdin.write(`${JSON.stringify(message)}\n`);
+    };
+
+    const request = (message, timeoutMs) => new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+            pending.delete(message.id);
+            reject(new Error(`Packaged MCP timed out handling ${message.method}.\n${getStderr()}`));
+        }, timeoutMs);
+
+        pending.set(message.id, { reject, resolve, timeout });
+        send(message);
+    });
+
+    return { request, send };
+}
+
+async function assertPackagedMcpContract(token) {
+    const { child, getStderr } = spawnMcpProcess(token);
+    const client = createJsonRpcStdioClient(child, getStderr);
+    const requests = buildMcpSmokeRequests();
+
+    try {
+        const initialization = await client.request(requests.initialize, readyTimeoutMs);
+        if (!initialization?.protocolVersion || !initialization?.serverInfo?.name) {
+            throw new Error(`Packaged MCP returned an invalid initialize result: ${JSON.stringify(initialization)}`);
+        }
+
+        client.send(requests.initialized);
+        const listed = await client.request(requests.listTools, 30_000);
+        const toolNames = listed?.tools?.map(tool => tool.name) ?? [];
+
+        if (toolNames.length !== MCP_SMOKE_EXPECTED_TOOL_COUNT || !toolNames.includes(MCP_SMOKE_TOOL_NAME)) {
+            throw new Error(`Packaged MCP returned an unexpected tool list: ${JSON.stringify(toolNames)}`);
+        }
+
+        const called = await client.request(requests.callTool, 30_000);
+        if (called?.isError || !Array.isArray(called?.content) || called.content.length === 0) {
+            throw new Error(`Packaged MCP tool call failed: ${JSON.stringify(called)}`);
+        }
+
+        console.log(`Packaged MCP smoke passed: ${toolNames.length} tools and ${MCP_SMOKE_TOOL_NAME} call`);
+    } catch (error) {
+        const stderrBuffer = getStderr();
+        if (stderrBuffer.trim()) {
+            console.error(`\n--- packaged MCP stderr ---\n${stderrBuffer}\n--- end packaged MCP stderr ---\n`);
+        }
+        throw error;
+    } finally {
+        child.stdin.end();
+        await stopProcess(child);
+    }
+}
+
+async function postMcpAdmin(pathname, body) {
+    const response = await fetch(`${rootUrl}${pathname}`, {
+        method: 'POST',
+        signal: AbortSignal.timeout(5000),
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+    });
+    const payload = await response.json();
+
+    if (response.status !== 200) {
+        throw new Error(`${pathname} returned HTTP ${response.status}: ${JSON.stringify(payload)}`);
+    }
+
+    return payload;
+}
+
+async function configureMcpForSmoke() {
+    const enabled = await postMcpAdmin(MCP_ADMIN_ENABLED_PATH, { enabled: true });
+    if (enabled.enabled !== true) {
+        throw new Error(`${MCP_ADMIN_ENABLED_PATH} did not enable MCP: ${JSON.stringify(enabled)}`);
+    }
+
+    const rotated = await postMcpAdmin(MCP_ADMIN_ROTATE_TOKEN_PATH, {});
+    if (typeof rotated.token !== 'string' || rotated.token.length === 0) {
+        throw new Error(`${MCP_ADMIN_ROTATE_TOKEN_PATH} returned an invalid token`);
+    }
+
+    return rotated.token;
+}
+
+async function waitForReady(child, getStdout, timeoutMs) {
     const deadline = Date.now() + timeoutMs;
 
     while (Date.now() < deadline) {
@@ -141,13 +398,15 @@ async function waitForReady(child, timeoutMs) {
             throw new Error(`CLI process exited early (code=${child.exitCode}, signal=${child.signalCode})`);
         }
 
-        try {
-            const response = await fetch(`${rootUrl}/`, {
-                signal: AbortSignal.timeout(3000)
-            });
-            if (response.status === 200) return;
-        } catch {
-            // Server not ready yet.
+        if (isExpectedServerReadyOutput(getStdout())) {
+            try {
+                const response = await fetch(`${rootUrl}/`, {
+                    signal: AbortSignal.timeout(3000)
+                });
+                if (response.status === 200) return;
+            } catch {
+                // The spawned server logged readiness but is not accepting requests yet.
+            }
         }
 
         await sleep(1000);
@@ -440,7 +699,7 @@ async function runScenario(scenario) {
     const imageDir = path.join(dataDir, 'assets', 'images');
     mkdirSync(imageDir, { recursive: true });
 
-    const { child, getStderr } = spawnScenarioProcess(scenario, dataDir, imageDir);
+    const { child, getStdout, getStderr } = spawnScenarioProcess(scenario, dataDir, imageDir);
 
     try {
         if (scenario.name === 'missing-auth') {
@@ -449,7 +708,7 @@ async function runScenario(scenario) {
             return;
         }
 
-        await waitForReady(child, readyTimeoutMs);
+        await waitForReady(child, getStdout, readyTimeoutMs);
         if (scenario.expectation === 'graphql-open') {
             await assertClientShellLoads('/');
             await assertClientShellLoads('/12');
@@ -460,6 +719,8 @@ async function runScenario(scenario) {
             });
             await assertGraphql();
             await assertNoteRoundTrip();
+            const mcpToken = await configureMcpForSmoke();
+            await assertPackagedMcpContract(mcpToken);
         }
 
         if (scenario.expectation === 'password-auth') {
@@ -509,6 +770,9 @@ async function main() {
     }
 
     try {
+        if (!configuredPort) {
+            await assignEphemeralSmokePort();
+        }
         for (const scenario of buildSmokeScenarios(packageSpec)) {
             await runScenario(scenario);
         }

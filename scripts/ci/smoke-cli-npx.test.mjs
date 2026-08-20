@@ -5,10 +5,17 @@ import { EventEmitter } from 'node:events';
 import {
     AUTH_SESSION_PATH,
     assertLoginPageHtml,
+    buildMcpSmokeArgs,
+    buildMcpSmokeRequests,
     buildSmokeScenarios,
     expectAuthFailure,
     extractLocalAssetPaths,
-    isExpectedAuthFailure
+    isExpectedServerReadyOutput,
+    isExpectedAuthFailure,
+    MCP_ADMIN_ENABLED_PATH,
+    MCP_ADMIN_ROTATE_TOKEN_PATH,
+    MCP_SMOKE_EXPECTED_TOOL_COUNT,
+    MCP_SMOKE_TOOL_NAME
 } from './smoke-cli-npx.mjs';
 
 test('buildSmokeScenarios returns insecure, missing-auth, and password-auth scenarios', () => {
@@ -53,6 +60,30 @@ test('missing-auth scenario expects startup failure guidance', () => {
     assert.equal(scenario.expectation, 'startup-auth-failure');
 });
 
+test('packaged MCP smoke initializes stdio, lists the full contract, and calls a read tool', () => {
+    const requests = buildMcpSmokeRequests();
+
+    assert.equal(requests.initialize.method, 'initialize');
+    assert.equal(requests.initialized.method, 'notifications/initialized');
+    assert.equal(requests.listTools.method, 'tools/list');
+    assert.equal(requests.callTool.method, 'tools/call');
+    assert.equal(requests.callTool.params.name, MCP_SMOKE_TOOL_NAME);
+    assert.equal(MCP_SMOKE_EXPECTED_TOOL_COUNT, 16);
+});
+
+test('packaged MCP smoke passes the rotated token to the bundled adapter', () => {
+    const args = buildMcpSmokeArgs('rotated-smoke-token');
+
+    assert.deepEqual(args.slice(-4), [
+        '--server',
+        'http://127.0.0.1:6683',
+        '--token',
+        'rotated-smoke-token'
+    ]);
+    assert.equal(MCP_ADMIN_ENABLED_PATH, '/api/mcp-admin/enabled');
+    assert.equal(MCP_ADMIN_ROTATE_TOKEN_PATH, '/api/mcp-admin/token/rotate');
+});
+
 test('isExpectedAuthFailure matches the documented startup failure message', () => {
     assert.equal(
         isExpectedAuthFailure(
@@ -64,6 +95,11 @@ test('isExpectedAuthFailure matches the documented startup failure message', () 
 
 test('smoke checks auth session status through the mounted API router path', () => {
     assert.equal(AUTH_SESSION_PATH, '/api/auth/session');
+});
+
+test('smoke accepts readiness only from the process listening on its configured address', () => {
+    assert.equal(isExpectedServerReadyOutput('http server listen on 127.0.0.1:6683 (auth: open)'), true);
+    assert.equal(isExpectedServerReadyOutput('Server listening at http://127.0.0.1:6683'), false);
 });
 
 test('extractLocalAssetPaths returns only local Vite assets from the client shell', () => {

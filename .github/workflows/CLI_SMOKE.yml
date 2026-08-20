@@ -6,6 +6,9 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   pack-cli:
     if: github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'chore/release-v')

@@ -81,6 +81,48 @@ describe('<McpSetting />', () => {
         expect(await screen.findByText('MCP compatibility 0.9.x')).toBeInTheDocument();
     });
 
+    it('uses the built-in ocean-brain MCP command for every client guide', async () => {
+        vi.mocked(mcpAdminApi.fetchMcpAdminStatus).mockResolvedValue(createMcpStatus());
+
+        renderPage();
+
+        expect(((await screen.findByLabelText('Codex setup')) as HTMLTextAreaElement).value).toContain(
+            'npx -y ocean-brain mcp',
+        );
+
+        await userEvent.click(screen.getByRole('radio', { name: 'Claude' }));
+        expect((screen.getByLabelText('Claude setup') as HTMLTextAreaElement).value).toContain(
+            'npx -y ocean-brain mcp',
+        );
+
+        await userEvent.click(screen.getByRole('radio', { name: 'JSON' }));
+        const jsonSetup = screen.getByLabelText('Token file and MCP JSON') as HTMLTextAreaElement;
+
+        expect(jsonSetup.value).toContain('"command": "npx"');
+        expect(jsonSetup.value).toContain('"ocean-brain",');
+        expect(jsonSetup.value).toContain('"mcp",');
+    });
+
+    it('generates a PowerShell setup for Windows clients', async () => {
+        vi.mocked(mcpAdminApi.fetchMcpAdminStatus).mockResolvedValue(createMcpStatus());
+
+        renderPage();
+
+        await userEvent.click(await screen.findByText('Connection options'));
+        await userEvent.click(screen.getByRole('radio', { name: 'Windows PowerShell' }));
+
+        const setup = screen.getByLabelText('Codex setup') as HTMLTextAreaElement;
+        expect(setup.value).toContain('New-Item -ItemType Directory -Force');
+        expect(setup.value).toContain("--token-file '$HOME\\.config\\ocean-brain\\mcp-token'");
+        expect(setup.value).toContain('codex mcp add ocean-brain -- cmd.exe /d /c npx -y ocean-brain mcp');
+
+        await userEvent.click(screen.getByRole('radio', { name: 'JSON' }));
+        const jsonSetup = screen.getByLabelText('Token file and MCP JSON') as HTMLTextAreaElement;
+        expect(jsonSetup.value).toContain('"command": "cmd.exe"');
+        expect(jsonSetup.value).toContain('"/c",');
+        expect(jsonSetup.value).toContain('"npx",');
+    });
+
     it('submits enabled toggle and refreshes status', async () => {
         vi.mocked(mcpAdminApi.fetchMcpAdminStatus).mockResolvedValue(createMcpStatus());
         vi.mocked(mcpAdminApi.setMcpEnabled).mockResolvedValue(createMcpStatus({ enabled: true }));

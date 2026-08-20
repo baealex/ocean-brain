@@ -7,6 +7,7 @@ export default defineConfig({
     platform: 'node',
     outDir: 'dist',
     clean: true,
+    metafile: true,
     bundle: true,
     splitting: true,
     treeshake: true,

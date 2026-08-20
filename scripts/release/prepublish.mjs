@@ -63,6 +63,13 @@ runPnpm(['--filter', '@ocean-brain/server', 'build']);
 console.log('=== Build CLI ===');
 runPnpm(['--filter', 'ocean-brain', 'build']);
 
+console.log('=== Generate bundled dependency metadata ===');
+execSync('node scripts/release/generate-bundle-metadata.mjs', {
+    cwd: rootDir,
+    stdio: 'inherit',
+    env: process.env
+});
+
 console.log('=== Copy artifacts to CLI package ===');
 copyArtifacts();
 

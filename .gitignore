@@ -8,6 +8,8 @@ packages/server/dist
 packages/client/dist
 packages/cli/dist
 packages/cli/server
+packages/cli/SBOM.cdx.json
+packages/cli/THIRD_PARTY_NOTICES.txt
 packages/server/prisma/data/*
 !packages/server/prisma/data/.gitkeep
 packages/server/assets/images

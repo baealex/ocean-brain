@@ -30,6 +30,7 @@ export default defineConfig({
     platform: 'node',
     outDir: 'dist',
     clean: true,
+    metafile: true,
     sourcemap: false,
     splitting: true,
     treeshake: true,

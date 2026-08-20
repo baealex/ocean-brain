@@ -48,6 +48,7 @@ git push origin v0.3.1
 - Installs Node 22 and pnpm
 - Runs `node scripts/release/prepublish.mjs`
 - Packs the CLI with `pnpm pack` so workspace `catalog:` dependencies are resolved in the tarball.
+- Verifies that the tarball contains the generated third-party notices and CycloneDX inventory for bundled code.
 - Publishes that tarball with `npm publish --provenance --access public`.
 - Uses npm trusted publishing (OIDC) via GitHub Actions
 
@@ -60,6 +61,7 @@ git push origin v0.3.1
 - Runs only after successful `verify-npm`
 - Extracts version from tag (`vX.Y.Z` -> `X.Y.Z`)
 - Builds and pushes per architecture via DockerHub
+- Publishes a BuildKit SBOM attestation for each architecture.
 - Requires `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`
 
 4. `publish-docker-manifest`
@@ -71,13 +73,15 @@ git push origin v0.3.1
 - Pulls `baealex/ocean-brain:<version>` with retry to tolerate registry propagation delay.
 - Runs the published Docker image and verifies the web shell, auth session endpoint, and GraphQL endpoint.
 - Creates the GitHub Release with auto-generated notes (`generate_release_notes: true`) only after Docker verification passes.
+- Attaches `SBOM.cdx.json` and `THIRD_PARTY_NOTICES.txt` to the GitHub Release.
 
 ## 5. Prepublish Build Strategy
 - `scripts/release/prepublish.mjs` standardizes release artifacts.
 1. Builds `@ocean-brain/client`
 2. Builds `@ocean-brain/server`
 3. Builds `ocean-brain` (CLI)
-4. Copies artifacts into `packages/cli/server/**`
+4. Generates exact-version third-party notices and a CycloneDX inventory from the Rollup/esbuild input graphs
+5. Copies artifacts into `packages/cli/server/**`
 - Result: only CLI is published to npm, with bundled server/client artifacts and registry-compatible dependency ranges.
 
 ## 6. Release Preparation Runbook

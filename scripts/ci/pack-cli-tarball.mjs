@@ -47,6 +47,25 @@ if (!tarball) {
 
 const tarballPath = path.isAbsolute(tarball) ? tarball : path.join(tempDir, tarball);
 const relativePath = path.relative(rootDir, tarballPath).split(path.sep).join(path.posix.sep);
+const verification = spawnSync(
+    process.execPath,
+    [path.join(rootDir, 'scripts', 'ci', 'verify-cli-tarball.mjs'), tarballPath],
+    {
+        cwd: rootDir,
+        encoding: 'utf8',
+        stdio: 'inherit',
+        env: process.env
+    }
+);
+
+if (verification.error) {
+    throw verification.error;
+}
+
+if (verification.status !== 0) {
+    throw new Error(`CLI tarball metadata verification failed with exit code ${verification.status}`);
+}
+
 console.log(`Tarball: ${relativePath}`);
 
 if (process.env.GITHUB_OUTPUT) {

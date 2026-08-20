@@ -3,7 +3,11 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import { defineConfig } from 'vitest/config';
 
-import { createClientRollupOptions, createRoutePreloadPlugin } from './build/client-bundling';
+import {
+    createClientBundleMetafilePlugin,
+    createClientRollupOptions,
+    createRoutePreloadPlugin,
+} from './build/client-bundling';
 import { createDevAuthGateMiddleware } from './src/dev-auth-gate';
 
 const backendOrigin = process.env.OCEAN_BRAIN_DEV_SERVER_URL || 'http://localhost:6683';
@@ -25,6 +29,7 @@ const searchAdminAdapterPath = isLocalOnlyDemoBuild
 // https://vitejs.dev/config/
 export default defineConfig({
     plugins: [
+        createClientBundleMetafilePlugin(),
         createRoutePreloadPlugin(),
         react(),
         tailwindcss(),

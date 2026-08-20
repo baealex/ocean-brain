@@ -122,6 +122,35 @@ export const createRoutePreloadPlugin = (): Plugin => {
     };
 };
 
+export const createClientBundleMetafilePlugin = (): Plugin => ({
+    name: 'ocean-brain-client-bundle-metafile',
+    apply: 'build',
+    generateBundle(_options, bundle) {
+        const inputs = new Set<string>();
+
+        for (const output of Object.values(bundle)) {
+            if (output.type !== 'chunk') continue;
+
+            for (const moduleId of Object.keys(output.modules)) {
+                if (moduleId.startsWith('\0')) continue;
+                inputs.add(normalizeModuleId(moduleId));
+            }
+        }
+
+        this.emitFile({
+            type: 'asset',
+            fileName: 'bundle-metafile.json',
+            source: `${JSON.stringify(
+                {
+                    inputs: Object.fromEntries([...inputs].sort().map((input) => [input, {}])),
+                },
+                null,
+                2,
+            )}\n`,
+        });
+    },
+});
+
 export const createClientRollupOptions = (clientRoot: string): RollupOptions => ({
     input: {
         app: path.resolve(clientRoot, 'index.html'),

@@ -7,6 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..', '..');
 const cliPackageJsonPath = path.join(rootDir, 'packages', 'cli', 'package.json');
+const prepublishScriptPath = path.join(rootDir, 'scripts', 'release', 'prepublish.mjs');
 const cliPostinstallScriptPath = path.join(
     rootDir,
     'packages',
@@ -20,6 +21,18 @@ test('CLI package uses a portable Prisma postinstall script', () => {
 
     assert.equal(cliPackageJson.scripts?.postinstall, 'node ./scripts/postinstall-prisma.mjs');
     assert.equal(cliPackageJson.files.includes('scripts/postinstall-prisma.mjs'), true);
+    assert.equal(cliPackageJson.files.includes('THIRD_PARTY_NOTICES.txt'), true);
+    assert.equal(cliPackageJson.files.includes('SBOM.cdx.json'), true);
+});
+
+test('prepublish generates bundle metadata before copying server artifacts', () => {
+    const source = readFileSync(prepublishScriptPath, 'utf8');
+    const metadataStep = source.indexOf('generate-bundle-metadata.mjs');
+    const copyStep = source.indexOf('copyArtifacts();');
+
+    assert.notEqual(metadataStep, -1);
+    assert.notEqual(copyStep, -1);
+    assert.equal(metadataStep < copyStep, true);
 });
 
 test('Prisma postinstall script resolves packaged and workspace schema locations', async () => {

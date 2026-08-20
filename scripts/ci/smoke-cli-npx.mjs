@@ -178,6 +178,66 @@ async function assertGraphql() {
     }
 }
 
+async function assertNoteRoundTrip() {
+    const content = JSON.stringify([
+        {
+            id: 'bundle-smoke-paragraph',
+            type: 'paragraph',
+            props: {
+                backgroundColor: 'default',
+                textColor: 'default',
+                textAlignment: 'left'
+            },
+            content: [
+                {
+                    type: 'text',
+                    text: 'Bundled BlockNote round trip',
+                    styles: {}
+                }
+            ],
+            children: []
+        }
+    ]);
+    const response = await fetch(`${rootUrl}/graphql`, {
+        method: 'POST',
+        signal: AbortSignal.timeout(15000),
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            query: `
+                mutation BundleSmoke($note: NoteInput!) {
+                    createNote(note: $note) {
+                        id
+                        title
+                        contentAsMarkdown
+                    }
+                }
+            `,
+            variables: {
+                note: {
+                    title: 'Bundle smoke note',
+                    content
+                }
+            }
+        })
+    });
+
+    const payload = await response.json();
+    if (response.status !== 200) {
+        throw new Error(`Bundled note round trip returned HTTP ${response.status}: ${JSON.stringify(payload)}`);
+    }
+
+    if (payload.errors) {
+        throw new Error(`Bundled note round trip returned errors: ${JSON.stringify(payload.errors)}`);
+    }
+
+    const note = payload.data?.createNote;
+    if (note?.title !== 'Bundle smoke note' || !note.contentAsMarkdown?.includes('Bundled BlockNote round trip')) {
+        throw new Error(`Bundled note round trip returned an unexpected payload: ${JSON.stringify(payload)}`);
+    }
+}
+
 async function assertClientShellLoads(pathname) {
     const response = await fetch(`${rootUrl}${pathname}`, {
         headers: { Accept: 'text/html' },
@@ -399,6 +459,7 @@ async function runScenario(scenario) {
                 authenticated: false
             });
             await assertGraphql();
+            await assertNoteRoundTrip();
         }
 
         if (scenario.expectation === 'password-auth') {

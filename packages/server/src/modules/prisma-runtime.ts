@@ -1,7 +1,7 @@
 import { execFileSync } from 'child_process';
 import { createRequire } from 'module';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { paths } from '../paths.js';
 
 interface PrismaRuntimeDeps {
     execFileSync: (
@@ -15,13 +15,8 @@ interface PrismaRuntimeDeps {
     resolvePrismaCliEntry: () => string;
 }
 
-const resolveServerRoot = () => {
-    const __dirname = path.dirname(fileURLToPath(import.meta.url));
-    return process.env.OCEAN_BRAIN_PACKAGE_ROOT || path.resolve(__dirname, '../..');
-};
-
 export const resolvePrismaSchemaPath = () => {
-    return path.resolve(resolveServerRoot(), 'prisma/schema.prisma');
+    return path.resolve(paths.packageRoot, 'prisma/schema.prisma');
 };
 
 export const resolvePrismaCliEntry = () => {

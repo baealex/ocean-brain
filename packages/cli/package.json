@@ -34,26 +34,14 @@
         "type-check": "tsc --noEmit"
     },
     "dependencies": {
-        "@baejino/auth": "catalog:",
-        "@blocknote/core": "catalog:",
-        "@fastify/cookie": "catalog:",
-        "@fastify/csrf-protection": "catalog:",
-        "@fastify/formbody": "catalog:",
-        "@fastify/rate-limit": "catalog:",
-        "@fastify/session": "catalog:",
-        "@fastify/static": "catalog:",
-        "@graphql-tools/schema": "catalog:",
-        "@graphql-tools/utils": "catalog:",
-        "@modelcontextprotocol/sdk": "^1.29.0",
         "@prisma/client": "catalog:",
-        "commander": "^14.0.3",
-        "diff": "catalog:",
-        "fastify": "catalog:",
         "graphql": "catalog:",
-        "jsdom": "catalog:",
-        "mercurius": "catalog:",
         "prisma": "catalog:",
-        "sqlite-vec": "catalog:",
+        "sqlite-vec": "catalog:"
+    },
+    "devDependencies": {
+        "@modelcontextprotocol/sdk": "^1.29.0",
+        "commander": "^14.0.3",
         "zod": "^3.25.76"
     },
     "oceanBrain": {

@@ -16,14 +16,21 @@ const cliPackage = readPackageJson('packages/cli/package.json');
 
 const serverDependencies = serverPackage.dependencies ?? {};
 const cliDependencies = cliPackage.dependencies ?? {};
+const bundleExternals = serverPackage.oceanBrain?.bundleExternals ?? [];
 
 const missing = [];
 const mismatched = [];
-const nonCatalogShared = [];
+const unexpectedRuntimeDependencies = [];
+const unknownExternals = [];
 
-for (const [name, serverSpec] of Object.entries(serverDependencies)) {
+for (const name of bundleExternals) {
+    const serverSpec = serverDependencies[name];
+    if (!serverSpec) {
+        unknownExternals.push(name);
+        continue;
+    }
+
     const cliSpec = cliDependencies[name];
-
     if (!cliSpec) {
         missing.push({ name, serverSpec });
         continue;
@@ -31,15 +38,16 @@ for (const [name, serverSpec] of Object.entries(serverDependencies)) {
 
     if (cliSpec !== serverSpec) {
         mismatched.push({ name, serverSpec, cliSpec });
-        continue;
-    }
-
-    if (serverSpec !== 'catalog:') {
-        nonCatalogShared.push({ name, spec: serverSpec });
     }
 }
 
-if (!missing.length && !mismatched.length && !nonCatalogShared.length) {
+for (const [name, cliSpec] of Object.entries(cliDependencies)) {
+    if (!bundleExternals.includes(name)) {
+        unexpectedRuntimeDependencies.push({ name, cliSpec });
+    }
+}
+
+if (!missing.length && !mismatched.length && !unexpectedRuntimeDependencies.length && !unknownExternals.length) {
     console.log('CLI/server runtime dependency parity check passed.');
     process.exit(0);
 }
@@ -62,10 +70,17 @@ if (mismatched.length) {
     }
 }
 
-if (nonCatalogShared.length) {
-    console.error('\nShared runtime dependency must use pnpm catalog:');
-    for (const item of nonCatalogShared) {
-        console.error(`- ${item.name} (${item.spec})`);
+if (unexpectedRuntimeDependencies.length) {
+    console.error('\nBundled dependency must not be installed by the published CLI:');
+    for (const item of unexpectedRuntimeDependencies) {
+        console.error(`- ${item.name} (${item.cliSpec})`);
+    }
+}
+
+if (unknownExternals.length) {
+    console.error('\nBundle external is not declared by the server package:');
+    for (const dependency of unknownExternals) {
+        console.error(`- ${dependency}`);
     }
 }
 

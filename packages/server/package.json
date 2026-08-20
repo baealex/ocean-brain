@@ -3,11 +3,11 @@
     "version": "1.0.0",
     "private": true,
     "type": "module",
-    "main": "dist/main.js",
+    "main": "dist/start.js",
     "scripts": {
         "dev": "prisma migrate deploy && prisma generate && tsx watch --clear-screen=false --exclude \"../client/node_modules/**\" dev/main.ts",
         "dev:server": "prisma migrate deploy && prisma generate && node --watch --import tsx src/main.ts",
-        "build": "prisma generate && tsup && tsc-alias",
+        "build": "prisma generate && tsup",
         "start": "node dist/start.js",
         "lint": "biome check .",
         "format": "biome check --write .",
@@ -38,10 +38,17 @@
     "devDependencies": {
         "@biomejs/biome": "2.4.11",
         "@types/jsdom": "^21.1.7",
-        "tsc-alias": "^1.9.1",
         "tsup": "^8.5.1",
         "tsx": "^4.23.1",
         "typescript": "^5.9.3",
         "vite": "^7.3.5"
+    },
+    "oceanBrain": {
+        "bundleExternals": [
+            "@prisma/client",
+            "graphql",
+            "prisma",
+            "sqlite-vec"
+        ]
     }
 }

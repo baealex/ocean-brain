@@ -1,15 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type { SessionData } from 'express-session';
+import type { Session } from 'fastify';
 import { TtlMemorySessionStore } from './session-store.js';
 
-const createSessionData = (expires: Date, authenticated = false): SessionData =>
+const createSessionData = (expires: Date, authenticated = false): Session =>
     ({
-        cookie: { expires },
+        cookie: { expires, originalMaxAge: null },
         ...(authenticated ? { authenticated: true } : {}),
-    }) as SessionData;
+    }) as Session;
 
-const setSession = (store: TtlMemorySessionStore, sid: string, data: SessionData) =>
+const setSession = (store: TtlMemorySessionStore, sid: string, data: Session) =>
     new Promise<void>((resolve, reject) => {
         store.set(sid, data, (error) => {
             if (error) {
@@ -22,7 +22,7 @@ const setSession = (store: TtlMemorySessionStore, sid: string, data: SessionData
     });
 
 const getSession = (store: TtlMemorySessionStore, sid: string) =>
-    new Promise<SessionData | null | undefined>((resolve, reject) => {
+    new Promise<Session | null | undefined>((resolve, reject) => {
         store.get(sid, (error, data) => {
             if (error) {
                 reject(error);

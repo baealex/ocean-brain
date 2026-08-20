@@ -93,29 +93,27 @@ const parseBaseUrl = (value: unknown) => {
 export const createSearchAdminStatusHandler = (
     manager: SearchAdminManager = getDefaultSemanticSearchManager(),
 ): Controller => {
-    return async (_req, res) => {
-        res.status(200)
-            .json(await manager.getStatus())
-            .end();
+    return async (_req, reply) => {
+        return reply.status(200).send(await manager.getStatus());
     };
 };
 
 export const createSearchAdminSaveConfigHandler = (
     manager: SearchAdminManager = getDefaultSemanticSearchManager(),
 ): Controller => {
-    return async (req, res) => {
+    return async (req, reply) => {
         const status = await manager.saveConfig(parseConfig(req.body), parseApiKeyInput(req.body));
-        res.status(200).json(status).end();
+        return reply.status(200).send(status);
     };
 };
 
 export const createSearchAdminTestConnectionHandler = (
     manager: SearchAdminManager = getDefaultSemanticSearchManager(),
 ): Controller => {
-    return async (req, res) => {
+    return async (req, reply) => {
         const config = parseConfig({ ...req.body, enabled: true });
         const result = await manager.testConnection(config, parseApiKeyInput(req.body));
-        res.status(200).json(result).end();
+        return reply.status(200).send(result);
     };
 };
 
@@ -123,19 +121,17 @@ export const createSearchAdminListModelsHandler = (
     listModels: ListEmbeddingModels = (baseUrl, apiKeyInput) =>
         getDefaultSemanticSearchManager().listModels(baseUrl, apiKeyInput),
 ): Controller => {
-    return async (req, res) => {
+    return async (req, reply) => {
         const models = await listModels(parseBaseUrl(req.body), parseApiKeyInput(req.body));
-        res.status(200).json({ models }).end();
+        return reply.status(200).send({ models });
     };
 };
 
 export const createSearchAdminReindexHandler = (
     manager: SearchAdminManager = getDefaultSemanticSearchManager(),
 ): Controller => {
-    return async (_req, res) => {
+    return async (_req, reply) => {
         const result = await manager.startReindex();
-        res.status(result.started ? 202 : 200)
-            .json(result)
-            .end();
+        return reply.status(result.started ? 202 : 200).send(result);
     };
 };

@@ -1,10 +1,9 @@
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import type { AddressInfo } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import test, { type TestContext } from 'node:test';
-import express from 'express';
+import Fastify from 'fastify';
 
 import { paths } from '../src/paths.js';
 import { createClientRouter } from '../src/routes/client.js';
@@ -23,19 +22,13 @@ test('serves direct client routes when the package path contains a dot directory
         rmSync(fixtureRoot, { recursive: true, force: true });
     });
 
-    const server = express()
-        .use(createClientRouter({ mode: 'open' }))
-        .listen(0);
+    const app = Fastify({ logger: false });
+    app.register(createClientRouter({ mode: 'open' }));
+    const baseUrl = await app.listen({ port: 0, host: '127.0.0.1' });
 
-    await new Promise<void>((resolve, reject) => {
-        server.once('listening', resolve);
-        server.once('error', reject);
-    });
+    t.after(() => app.close());
 
-    t.after(() => server.close());
-
-    const { port } = server.address() as AddressInfo;
-    const response = await fetch(`http://127.0.0.1:${port}/12`, {
+    const response = await fetch(`${baseUrl}/12`, {
         headers: { Accept: 'text/html' },
     });
 
@@ -57,19 +50,11 @@ test('does not serve the SPA document for missing assets or non-document request
         rmSync(fixtureRoot, { recursive: true, force: true });
     });
 
-    const server = express()
-        .use(createClientRouter({ mode: 'open' }))
-        .listen(0);
+    const app = Fastify({ logger: false });
+    app.register(createClientRouter({ mode: 'open' }));
+    const baseUrl = await app.listen({ port: 0, host: '127.0.0.1' });
 
-    await new Promise<void>((resolve, reject) => {
-        server.once('listening', resolve);
-        server.once('error', reject);
-    });
-
-    t.after(() => server.close());
-
-    const { port } = server.address() as AddressInfo;
-    const baseUrl = `http://127.0.0.1:${port}`;
+    t.after(() => app.close());
     const [missingAsset, nonDocumentRoute] = await Promise.all([
         fetch(`${baseUrl}/assets/missing.js`, { headers: { Accept: 'text/html' } }),
         fetch(`${baseUrl}/notes`, { headers: { Accept: 'application/json' } }),
@@ -83,23 +68,17 @@ test('does not serve the SPA document for missing assets or non-document request
 });
 
 test('serves client routes through an injected content middleware', async (t: TestContext) => {
-    const server = express()
-        .use(
-            createClientRouter({ mode: 'open' }, (_req, res) => {
-                res.status(200).send('Development client');
-            }),
-        )
-        .listen(0);
+    const app = Fastify({ logger: false });
+    app.register(
+        createClientRouter({ mode: 'open' }, (_request, reply) => {
+            return reply.status(200).send('Development client');
+        }),
+    );
+    const baseUrl = await app.listen({ port: 0, host: '127.0.0.1' });
 
-    await new Promise<void>((resolve, reject) => {
-        server.once('listening', resolve);
-        server.once('error', reject);
-    });
+    t.after(() => app.close());
 
-    t.after(() => server.close());
-
-    const { port } = server.address() as AddressInfo;
-    const response = await fetch(`http://127.0.0.1:${port}/notes`);
+    const response = await fetch(`${baseUrl}/notes`);
 
     assert.equal(response.status, 200);
     assert.equal(await response.text(), 'Development client');

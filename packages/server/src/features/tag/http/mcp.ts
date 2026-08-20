@@ -3,7 +3,7 @@ import { createAppError } from '~/modules/error-handler.js';
 import type { Controller } from '~/types/index.js';
 
 export const createMcpCreateTagHandler = (ensureTag = ensureTagByName): Controller => {
-    return async (req, res) => {
+    return async (req, reply) => {
         const name = req.body?.name;
 
         if (typeof name !== 'string') {
@@ -12,7 +12,7 @@ export const createMcpCreateTagHandler = (ensureTag = ensureTagByName): Controll
 
         try {
             const result = await ensureTag(name);
-            res.status(200).json(result).end();
+            return reply.status(200).send(result);
         } catch (error) {
             if (error instanceof InvalidTagNameError) {
                 throw createAppError(400, 'INVALID_TAG_NAME', error.message);

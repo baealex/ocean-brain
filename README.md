@@ -59,7 +59,7 @@ For a stable session secret, persistent volumes, open mode, exact version tags, 
 
 ## Development
 
-Source development uses Node.js `22.13+`, pnpm `10.25.0`, and a `packages/*` workspace. See [DEV_CONVENTION.md](./docs/process/DEV_CONVENTION.md) and [GIT_CONVENTION.md](./docs/process/GIT_CONVENTION.md) before making changes.
+Source development uses Node.js `22.13+`, pnpm `10.25.0`, and a `packages/*` workspace. See [DEV_CONVENTION.md](./docs/process/DEV_CONVENTION.md) and [GIT_CONVENTION.md](./docs/process/GIT_CONVENTION.md) before making changes. The repeatable Express/Fastify comparison is recorded in [SERVER_BENCHMARK.md](./docs/process/SERVER_BENCHMARK.md).
 
 ## License
 

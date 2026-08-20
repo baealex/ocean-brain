@@ -1,4 +1,4 @@
-import type { NextFunction, Request, RequestHandler, Response } from 'express';
+import type { FastifyRequest, preHandlerAsyncHookHandler } from 'fastify';
 import type { ValidationRule } from 'graphql';
 import { GraphQLError } from 'graphql';
 
@@ -23,16 +23,16 @@ export interface McpAdminAuthPort {
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 export const OCEAN_BRAIN_MCP_VERSION_HEADER = 'X-Ocean-Brain-MCP-Version';
 
-const readHeaderValue = (req: Request, headerName: string) => {
+const readHeaderValue = (req: FastifyRequest, headerName: string) => {
     const value = req.headers[headerName.toLowerCase()];
     return Array.isArray(value) ? value[0] : value;
 };
 
-const readMcpCompatibilityVersion = (req: Request) =>
+const readMcpCompatibilityVersion = (req: FastifyRequest) =>
     readHeaderValue(req, OCEAN_BRAIN_MCP_COMPATIBILITY_VERSION_HEADER) ??
     readHeaderValue(req, OCEAN_BRAIN_MCP_VERSION_HEADER);
 
-const readMcpClientVersion = (req: Request) =>
+const readMcpClientVersion = (req: FastifyRequest) =>
     readHeaderValue(req, OCEAN_BRAIN_MCP_CLIENT_VERSION_HEADER) ?? readHeaderValue(req, OCEAN_BRAIN_MCP_VERSION_HEADER);
 
 export const isMcpVersionCompatible = (requiredMcpCompatibilityVersion: string, mcpCompatibilityVersion: string) => {
@@ -76,91 +76,75 @@ const readBearerToken = (authorizationHeader?: string) => {
     return authorizationHeader.slice('Bearer '.length).trim() || undefined;
 };
 
-export const createMcpAuthMiddleware = (_authConfig: AuthConfig, mcpAdminAuth: McpAdminAuthPort): RequestHandler => {
-    return async (req: Request, res: Response, next: NextFunction) => {
-        try {
-            const status = await mcpAdminAuth.getStatus();
-            if (!status.enabled) {
-                res.status(403)
-                    .set(JSON_HEADERS)
-                    .json({
-                        code: 'MCP_DISABLED',
-                        message: 'MCP access is disabled by admin.',
-                    })
-                    .end();
-                return;
-            }
+export const createMcpAuthMiddleware = (
+    _authConfig: AuthConfig,
+    mcpAdminAuth: McpAdminAuthPort,
+): preHandlerAsyncHookHandler => {
+    return async (req, reply) => {
+        const status = await mcpAdminAuth.getStatus();
+        if (!status.enabled) {
+            await reply.status(403).headers(JSON_HEADERS).send({
+                code: 'MCP_DISABLED',
+                message: 'MCP access is disabled by admin.',
+            });
+            return;
+        }
 
-            const bearerToken = readBearerToken(req.headers.authorization);
+        const bearerToken = readBearerToken(req.headers.authorization);
 
-            if (!bearerToken) {
-                res.status(401)
-                    .set(JSON_HEADERS)
-                    .json({
-                        code: 'UNAUTHORIZED',
-                        message: 'A valid MCP bearer token is required.',
-                    })
-                    .end();
-                return;
-            }
+        if (!bearerToken) {
+            await reply.status(401).headers(JSON_HEADERS).send({
+                code: 'UNAUTHORIZED',
+                message: 'A valid MCP bearer token is required.',
+            });
+            return;
+        }
 
-            const validation = await mcpAdminAuth.validatePresentedToken(bearerToken);
+        const validation = await mcpAdminAuth.validatePresentedToken(bearerToken);
 
-            if (!validation.ok && validation.reason === 'not_configured') {
-                res.status(503)
-                    .set(JSON_HEADERS)
-                    .json({
-                        code: 'MCP_AUTH_NOT_CONFIGURED',
-                        message: 'MCP bearer auth is not configured.',
-                    })
-                    .end();
-                return;
-            }
+        if (!validation.ok && validation.reason === 'not_configured') {
+            await reply.status(503).headers(JSON_HEADERS).send({
+                code: 'MCP_AUTH_NOT_CONFIGURED',
+                message: 'MCP bearer auth is not configured.',
+            });
+            return;
+        }
 
-            if (!validation.ok) {
-                res.status(403)
-                    .set(JSON_HEADERS)
-                    .json({
-                        code: 'FORBIDDEN',
-                        message: 'Invalid MCP bearer token.',
-                    })
-                    .end();
-                return;
-            }
+        if (!validation.ok) {
+            await reply.status(403).headers(JSON_HEADERS).send({
+                code: 'FORBIDDEN',
+                message: 'Invalid MCP bearer token.',
+            });
+            return;
+        }
 
-            const versionInfo = getOceanBrainVersionInfo();
-            const mcpCompatibilityVersion = readMcpCompatibilityVersion(req);
-            const mcpClientVersion = readMcpClientVersion(req);
+        const versionInfo = getOceanBrainVersionInfo();
+        const mcpCompatibilityVersion = readMcpCompatibilityVersion(req);
+        const mcpClientVersion = readMcpClientVersion(req);
 
-            if (
-                !mcpCompatibilityVersion ||
-                !isMcpVersionCompatible(versionInfo.mcp.compatibilityVersion, mcpCompatibilityVersion)
-            ) {
-                res.status(426)
-                    .set(JSON_HEADERS)
-                    .json({
-                        code: 'MCP_VERSION_INCOMPATIBLE',
-                        message: createMcpVersionCompatibilityMessage({
-                            serverVersion: versionInfo.version,
-                            requiredMcpCompatibilityVersion: versionInfo.mcp.compatibilityRequirement,
-                            mcpCompatibilityVersion,
-                            mcpClientVersion,
-                        }),
+        if (
+            !mcpCompatibilityVersion ||
+            !isMcpVersionCompatible(versionInfo.mcp.compatibilityVersion, mcpCompatibilityVersion)
+        ) {
+            await reply
+                .status(426)
+                .headers(JSON_HEADERS)
+                .send({
+                    code: 'MCP_VERSION_INCOMPATIBLE',
+                    message: createMcpVersionCompatibilityMessage({
                         serverVersion: versionInfo.version,
-                        mcpVersion: mcpClientVersion ?? mcpCompatibilityVersion ?? null,
-                        mcpClientVersion: mcpClientVersion ?? null,
-                        mcpCompatibilityVersion: mcpCompatibilityVersion ?? null,
-                        requiredMcpVersion: versionInfo.mcpVersionRequirement,
                         requiredMcpCompatibilityVersion: versionInfo.mcp.compatibilityRequirement,
-                        releaseUrl: versionInfo.releaseUrl,
-                    })
-                    .end();
-                return;
-            }
-
-            next();
-        } catch (error) {
-            next(error);
+                        mcpCompatibilityVersion,
+                        mcpClientVersion,
+                    }),
+                    serverVersion: versionInfo.version,
+                    mcpVersion: mcpClientVersion ?? mcpCompatibilityVersion ?? null,
+                    mcpClientVersion: mcpClientVersion ?? null,
+                    mcpCompatibilityVersion: mcpCompatibilityVersion ?? null,
+                    requiredMcpVersion: versionInfo.mcpVersionRequirement,
+                    requiredMcpCompatibilityVersion: versionInfo.mcp.compatibilityRequirement,
+                    releaseUrl: versionInfo.releaseUrl,
+                });
         }
     };
 };

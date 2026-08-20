@@ -19,26 +19,28 @@ const getEventStreamLifetimeMs = (expires?: Date | string | null) => {
 };
 
 export const createServerEventsHandler = (): Controller => {
-    return async (req, res) => {
-        res.status(200);
-        res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
-        res.setHeader('Cache-Control', 'no-cache, no-transform');
-        res.setHeader('Connection', 'keep-alive');
-        res.setHeader('X-Accel-Buffering', 'no');
-        res.flushHeaders?.();
-        res.write(': connected\n\n');
+    return async (req, reply) => {
+        reply.hijack();
+        const response = reply.raw;
+        response.statusCode = 200;
+        response.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+        response.setHeader('Cache-Control', 'no-cache, no-transform');
+        response.setHeader('Connection', 'keep-alive');
+        response.setHeader('X-Accel-Buffering', 'no');
+        response.flushHeaders();
+        response.write(': connected\n\n');
 
         const unsubscribe = subscribeServerEvents((event) => {
-            res.write(serializeServerEvent(event));
+            response.write(serializeServerEvent(event));
         });
 
         const keepAliveTimer = setInterval(() => {
-            res.write(': keepalive\n\n');
+            response.write(': keepalive\n\n');
         }, KEEP_ALIVE_INTERVAL_MS);
         keepAliveTimer.unref?.();
 
         const sessionExpiryTimer = setTimeout(() => {
-            res.end();
+            response.end();
         }, getEventStreamLifetimeMs(req.session?.cookie.expires));
         sessionExpiryTimer.unref?.();
 
@@ -55,7 +57,7 @@ export const createServerEventsHandler = (): Controller => {
             unsubscribe();
         };
 
-        req.on('close', cleanup);
-        res.on('close', cleanup);
+        req.raw.on('close', cleanup);
+        response.on('close', cleanup);
     };
 };

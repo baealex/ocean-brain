@@ -13,7 +13,7 @@ import {
 } from '../service.js';
 
 export const createLoginHandler = (authConfig: AuthConfig): Controller => {
-    return async (req, res) => {
+    return async (req, reply) => {
         const expectedPassword = assertPasswordLoginAvailable(authConfig);
         const password = typeof req.body?.password === 'string' ? req.body.password : '';
 
@@ -23,25 +23,26 @@ export const createLoginHandler = (authConfig: AuthConfig): Controller => {
 
         await regenerateSession(req);
         req.session.authenticated = true;
-        refreshCsrfToken(req);
+        refreshCsrfToken(authConfig, reply);
 
-        res.status(200).json(buildSessionResponse(authConfig, req)).end();
+        return reply.status(200).send(buildSessionResponse(authConfig, req));
     };
 };
 
 export const createLogoutHandler = (authConfig: AuthConfig): Controller => {
-    return async (req, res) => {
+    return async (req, reply) => {
         if (authConfig.mode === 'password') {
             await destroySession(req);
         }
 
-        res.status(200).json(buildAuthSessionResponse(authConfig, false)).end();
+        return reply.status(200).send(buildAuthSessionResponse(authConfig, false));
     };
 };
 
 export const createSessionStatusHandler = (authConfig: AuthConfig): Controller => {
-    return async (req, res) => {
-        setSessionStatusHeaders(res);
-        res.status(200).json(buildSessionResponse(authConfig, req)).end();
+    return async (req, reply) => {
+        setSessionStatusHeaders(reply);
+        refreshCsrfToken(authConfig, reply);
+        return reply.status(200).send(buildSessionResponse(authConfig, req));
     };
 };

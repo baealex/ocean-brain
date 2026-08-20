@@ -1,6 +1,6 @@
 # Ocean Brain Dev Convention
 
-Updated: 2026-08-04
+Updated: 2026-08-19
 
 ## 1. Base Environment
 - Node.js: `22.13+`
@@ -19,7 +19,7 @@ Updated: 2026-08-04
 Both browser test commands build the production app before starting Playwright.
 Install the local browser once with `pnpm exec playwright install chromium` after Playwright is installed or updated.
 
-Full dev mode exposes Express APIs, the Vite client, and HMR through the server port (`6683` by default). Client-only mode keeps the standalone Vite server and development proxy for isolated frontend work. Server-only mode runs Express with the existing built client fallback and does not start Vite.
+Full dev mode exposes Fastify APIs, the Vite client, and HMR through the server port (`6683` by default). Client-only mode keeps the standalone Vite server and development proxy for isolated frontend work. Server-only mode runs Fastify with the existing built client fallback and does not start Vite.
 
 ## 3. Standard Quality Checks
 - `pnpm check:encoding`
@@ -52,3 +52,4 @@ Full dev mode exposes Express APIs, the Vite client, and HMR through the server 
 - Testing rules: `docs/process/TESTING_CONVENTION.md`
 - Query key rules: `docs/process/QUERY_KEY_CONVENTION.md`
 - Deployment/release: `docs/process/DEPLOYMENT_RELEASE_STRATEGY.md`
+- Server benchmark: `docs/process/SERVER_BENCHMARK.md`

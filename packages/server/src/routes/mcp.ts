@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import type { FastifyPluginAsync } from 'fastify';
 import type { McpAdminService } from '../features/mcp-admin/service.js';
 import {
     createMcpAppendNoteMarkdownHandler,
@@ -12,49 +12,33 @@ import {
 import { createMcpCreateTagHandler } from '../features/tag/http/mcp.js';
 import type { AuthConfig } from '../modules/auth-mode.js';
 import { createMcpAuthMiddleware } from '../modules/mcp-auth.js';
-import useAsync from '../modules/use-async.js';
+import type { HttpRoute } from '../types/index.js';
 
 type McpRouteService = Pick<McpAdminService, 'getStatus' | 'validatePresentedToken'>;
 
-export const createMcpRouter = (authConfig: AuthConfig, mcpAdminService: McpRouteService) =>
-    Router()
-        .post(
-            '/notes/create',
-            createMcpAuthMiddleware(authConfig, mcpAdminService),
-            useAsync(createMcpCreateNoteHandler()),
-        )
-        .post(
-            '/notes/baseline',
-            createMcpAuthMiddleware(authConfig, mcpAdminService),
-            useAsync(createMcpNoteWriteBaselineHandler()),
-        )
-        .post(
+export const createMcpRouter = (authConfig: AuthConfig, mcpAdminService: McpRouteService): FastifyPluginAsync => {
+    return async (app) => {
+        const requireMcpAuth = createMcpAuthMiddleware(authConfig, mcpAdminService);
+
+        app.post<HttpRoute>('/notes/create', { preHandler: requireMcpAuth }, createMcpCreateNoteHandler());
+        app.post<HttpRoute>('/notes/baseline', { preHandler: requireMcpAuth }, createMcpNoteWriteBaselineHandler());
+        app.post<HttpRoute>(
             '/notes/patch-markdown',
-            createMcpAuthMiddleware(authConfig, mcpAdminService),
-            useAsync(createMcpPatchNoteMarkdownHandler()),
-        )
-        .post(
-            '/notes/append-markdown',
-            createMcpAuthMiddleware(authConfig, mcpAdminService),
-            useAsync(createMcpAppendNoteMarkdownHandler()),
-        )
-        .post(
-            '/notes/metadata',
-            createMcpAuthMiddleware(authConfig, mcpAdminService),
-            useAsync(createMcpUpdateNoteMetadataHandler()),
-        )
-        .post(
-            '/notes/replace-markdown',
-            createMcpAuthMiddleware(authConfig, mcpAdminService),
-            useAsync(createMcpReplaceNoteMarkdownHandler()),
-        )
-        .post(
-            '/notes/delete',
-            createMcpAuthMiddleware(authConfig, mcpAdminService),
-            useAsync(createMcpDeleteNoteHandler()),
-        )
-        .post(
-            '/tags/create',
-            createMcpAuthMiddleware(authConfig, mcpAdminService),
-            useAsync(createMcpCreateTagHandler()),
+            { preHandler: requireMcpAuth },
+            createMcpPatchNoteMarkdownHandler(),
         );
+        app.post<HttpRoute>(
+            '/notes/append-markdown',
+            { preHandler: requireMcpAuth },
+            createMcpAppendNoteMarkdownHandler(),
+        );
+        app.post<HttpRoute>('/notes/metadata', { preHandler: requireMcpAuth }, createMcpUpdateNoteMetadataHandler());
+        app.post<HttpRoute>(
+            '/notes/replace-markdown',
+            { preHandler: requireMcpAuth },
+            createMcpReplaceNoteMarkdownHandler(),
+        );
+        app.post<HttpRoute>('/notes/delete', { preHandler: requireMcpAuth }, createMcpDeleteNoteHandler());
+        app.post<HttpRoute>('/tags/create', { preHandler: requireMcpAuth }, createMcpCreateTagHandler());
+    };
+};

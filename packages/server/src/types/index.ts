@@ -1,11 +1,23 @@
-import type { NextFunction, Request, Response } from 'express';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 
-declare module 'express-session' {
-    interface SessionData {
+declare module 'fastify' {
+    interface Session {
         authenticated?: boolean;
     }
 }
 
-export type Controller = (req: Request, res: Response, next?: NextFunction) => Promise<void>;
+export type RequestBody = Record<string, unknown>;
+export type RequestQuery = Record<string, unknown>;
+export type RequestParams = Record<string, string>;
+
+export type HttpRoute = {
+    Body: RequestBody;
+    Querystring: RequestQuery;
+    Params: RequestParams;
+};
+
+export type HttpRequest = FastifyRequest<HttpRoute>;
+
+export type Controller = (req: HttpRequest, reply: FastifyReply) => Promise<unknown>;
 
 export * from './input.js';

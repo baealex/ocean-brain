@@ -319,7 +319,7 @@ export const createMcpCreateNoteHandler = (
     createNote = createNoteFromMarkdown,
     emitEvent: EmitServerEvent = emitServerEvent,
 ): Controller => {
-    return async (req, res) => {
+    return async (req, reply) => {
         const { title, markdown, layout } = req.body ?? {};
         const resolvedLayout = resolveNoteLayout(layout);
 
@@ -349,12 +349,10 @@ export const createMcpCreateNoteHandler = (
                 updatedAt: note.updatedAt,
             });
 
-            res.status(200)
-                .json({
-                    created: true,
-                    note,
-                })
-                .end();
+            return reply.status(200).send({
+                created: true,
+                note,
+            });
         } catch (error) {
             if (error instanceof InvalidNoteAuthoringInputError) {
                 throw createAppError(400, 'INVALID_NOTE_INPUT', error.message);
@@ -375,7 +373,7 @@ export const createMcpNoteWriteBaselineHandler = (
             },
         }),
 ): Controller => {
-    return async (req, res) => {
+    return async (req, reply) => {
         const noteId = resolvePositiveNoteId(req.body?.id);
         const note = await findNoteBaseline(noteId);
 
@@ -383,11 +381,9 @@ export const createMcpNoteWriteBaselineHandler = (
             throw createAppError(404, 'NOTE_NOT_FOUND', 'The requested note was not found.');
         }
 
-        res.status(200)
-            .json({
-                note: serializeNoteWriteBaseline(note),
-            })
-            .end();
+        return reply.status(200).send({
+            note: serializeNoteWriteBaseline(note),
+        });
     };
 };
 
@@ -395,7 +391,7 @@ export const createMcpPatchNoteMarkdownHandler = (
     patchMarkdown = patchNoteMarkdown,
     emitEvent: EmitServerEvent = emitServerEvent,
 ): Controller => {
-    return async (req, res) => {
+    return async (req, reply) => {
         const { id, expectedUpdatedAt, baseMarkdownSha256, intent, selector, operation, policy } = req.body ?? {};
         const noteId = resolvePositiveNoteId(id);
         const resolvedExpectedUpdatedAt = resolveOptionalString(
@@ -432,7 +428,7 @@ export const createMcpPatchNoteMarkdownHandler = (
             });
         }
 
-        res.status(200).json(result).end();
+        return reply.status(200).send(result);
     };
 };
 
@@ -440,7 +436,7 @@ export const createMcpAppendNoteMarkdownHandler = (
     appendMarkdown = appendNoteMarkdown,
     emitEvent: EmitServerEvent = emitServerEvent,
 ): Controller => {
-    return async (req, res) => {
+    return async (req, reply) => {
         const { id, expectedUpdatedAt, baseMarkdownSha256, intent, insertion, placement, separator, policy } =
             req.body ?? {};
         const noteId = resolvePositiveNoteId(id);
@@ -483,7 +479,7 @@ export const createMcpAppendNoteMarkdownHandler = (
             });
         }
 
-        res.status(200).json(result).end();
+        return reply.status(200).send(result);
     };
 };
 
@@ -491,7 +487,7 @@ export const createMcpReplaceNoteMarkdownHandler = (
     replaceMarkdown = replaceNoteMarkdown,
     emitEvent: EmitServerEvent = emitServerEvent,
 ): Controller => {
-    return async (req, res) => {
+    return async (req, reply) => {
         const { id, expectedUpdatedAt, baseMarkdownSha256, intent, replacement, policy } = req.body ?? {};
         const noteId = resolvePositiveNoteId(id);
         const resolvedExpectedUpdatedAt = resolveOptionalString(
@@ -531,7 +527,7 @@ export const createMcpReplaceNoteMarkdownHandler = (
             });
         }
 
-        res.status(200).json(result).end();
+        return reply.status(200).send(result);
     };
 };
 
@@ -539,7 +535,7 @@ export const createMcpUpdateNoteMetadataHandler = (
     updateMetadata = updateNoteMetadata,
     emitEvent: EmitServerEvent = emitServerEvent,
 ): Controller => {
-    return async (req, res) => {
+    return async (req, reply) => {
         const { id, expectedUpdatedAt, title, layout, properties } = req.body ?? {};
         const noteId = resolvePositiveNoteId(id);
         const resolvedLayout = resolveNoteLayout(layout);
@@ -578,7 +574,7 @@ export const createMcpUpdateNoteMetadataHandler = (
             });
         }
 
-        res.status(200).json(result).end();
+        return reply.status(200).send(result);
     };
 };
 
@@ -586,7 +582,7 @@ export const createMcpDeleteNoteHandler = (
     deleteNote = deleteNoteById,
     emitEvent: EmitServerEvent = emitServerEvent,
 ): Controller => {
-    return async (req, res) => {
+    return async (req, reply) => {
         const id = Number(req.body?.id);
 
         if (!Number.isInteger(id) || id <= 0) {
@@ -605,11 +601,9 @@ export const createMcpDeleteNoteHandler = (
             noteId: deletedNote.id,
         });
 
-        res.status(200)
-            .json({
-                deleted: true,
-                note: deletedNote,
-            })
-            .end();
+        return reply.status(200).send({
+            deleted: true,
+            note: deletedNote,
+        });
     };
 };

@@ -36,7 +36,7 @@ const createUploadValidationError = (error: ImageValidationError) => {
 };
 
 export const createUploadImageHandler = (persistImage: PersistImage = persistUploadedImage): Controller => {
-    return async (req, res) => {
+    return async (req, reply) => {
         const { image } = req.body ?? {};
 
         if (typeof image !== 'string') {
@@ -69,6 +69,6 @@ export const createUploadImageHandler = (persistImage: PersistImage = persistUpl
             extension: validatedImage.extension,
         });
 
-        res.status(200).json(createUploadResponse(uploadedImage)).end();
+        return reply.status(200).send(createUploadResponse(uploadedImage));
     };
 };

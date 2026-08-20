@@ -1,4 +1,5 @@
-import session, { type SessionData } from 'express-session';
+import type { SessionStore } from '@fastify/session';
+import type { Session } from 'fastify';
 
 export const AUTH_SESSION_IDLE_TIMEOUT_MS = 7 * 24 * 60 * 60 * 1000;
 export const ANONYMOUS_SESSION_IDLE_TIMEOUT_MS = 30 * 60 * 1000;
@@ -12,14 +13,10 @@ type StoredSession = {
     updatedAt: number;
 };
 
-type AuthSessionData = SessionData & {
-    authenticated?: boolean;
-};
+const serializeSession = (data: Session) => JSON.stringify(data);
 
-const serializeSession = (data: SessionData) => JSON.stringify(data);
-
-const deserializeSession = (data: string): SessionData => {
-    const parsed = JSON.parse(data) as SessionData;
+const deserializeSession = (data: string): Session => {
+    const parsed = JSON.parse(data) as Session;
     const expires = parsed.cookie?.expires;
 
     if (typeof expires === 'string') {
@@ -29,9 +26,9 @@ const deserializeSession = (data: string): SessionData => {
     return parsed;
 };
 
-const isAuthenticatedSession = (data: SessionData) => Boolean((data as AuthSessionData).authenticated);
+const isAuthenticatedSession = (data: Session) => Boolean(data.authenticated);
 
-const getSessionExpiry = (data: SessionData, now = Date.now()) => {
+const getSessionExpiry = (data: Session, now = Date.now()) => {
     const expires = data.cookie?.expires;
     const ttlMs = isAuthenticatedSession(data) ? AUTH_SESSION_IDLE_TIMEOUT_MS : ANONYMOUS_SESSION_IDLE_TIMEOUT_MS;
     const fallbackExpiresAt = now + ttlMs;
@@ -47,20 +44,18 @@ const getSessionExpiry = (data: SessionData, now = Date.now()) => {
     return fallbackExpiresAt;
 };
 
-export class TtlMemorySessionStore extends session.Store {
+export class TtlMemorySessionStore implements SessionStore {
     private readonly sessions = new Map<string, StoredSession>();
     private readonly pruneTimer: NodeJS.Timeout;
 
     constructor(private readonly options: { maxSessions?: number; pruneIntervalMs?: number } = {}) {
-        super();
-
         this.pruneTimer = setInterval(() => {
             this.pruneExpiredSessions();
         }, options.pruneIntervalMs ?? AUTH_SESSION_PRUNE_INTERVAL_MS);
         this.pruneTimer.unref?.();
     }
 
-    get(sid: string, callback: (error: unknown, session?: SessionData | null) => void) {
+    get(sid: string, callback: (error: unknown, session?: Session | null) => void) {
         try {
             const entry = this.sessions.get(sid);
 
@@ -81,7 +76,7 @@ export class TtlMemorySessionStore extends session.Store {
         }
     }
 
-    set(sid: string, data: SessionData, callback?: (error?: unknown) => void) {
+    set(sid: string, data: Session, callback: (error?: unknown) => void = () => undefined) {
         try {
             const now = Date.now();
 
@@ -93,18 +88,18 @@ export class TtlMemorySessionStore extends session.Store {
             });
             this.pruneExpiredSessions();
             this.evictOldestSessions();
-            callback?.();
+            callback();
         } catch (error) {
-            callback?.(error);
+            callback(error);
         }
     }
 
-    destroy(sid: string, callback?: (error?: unknown) => void) {
+    destroy(sid: string, callback: (error?: unknown) => void = () => undefined) {
         this.sessions.delete(sid);
-        callback?.();
+        callback();
     }
 
-    touch(sid: string, data: SessionData, callback?: () => void) {
+    touch(sid: string, data: Session, callback?: () => void) {
         const entry = this.sessions.get(sid);
 
         if (entry) {
@@ -121,11 +116,11 @@ export class TtlMemorySessionStore extends session.Store {
         callback?.();
     }
 
-    all(callback: (error: unknown, sessions?: SessionData[] | { [sid: string]: SessionData } | null) => void) {
+    all(callback: (error: unknown, sessions?: Session[] | { [sid: string]: Session } | null) => void) {
         try {
             this.pruneExpiredSessions();
 
-            const sessions: Record<string, SessionData> = {};
+            const sessions: Record<string, Session> = {};
             for (const [sid, entry] of this.sessions) {
                 sessions[sid] = deserializeSession(entry.data);
             }
@@ -187,4 +182,4 @@ export class TtlMemorySessionStore extends session.Store {
     }
 }
 
-export const createSessionStore = (): session.Store => new TtlMemorySessionStore();
+export const createSessionStore = (): SessionStore => new TtlMemorySessionStore();

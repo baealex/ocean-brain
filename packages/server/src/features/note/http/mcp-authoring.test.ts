@@ -19,11 +19,8 @@ const createResponse = () => {
             this.statusCode = code;
             return this;
         },
-        json(payload: unknown) {
+        send(payload: unknown) {
             this.body = payload;
-            return this;
-        },
-        end() {
             return this;
         },
     };

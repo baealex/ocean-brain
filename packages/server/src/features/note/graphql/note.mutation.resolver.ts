@@ -1,5 +1,5 @@
 import type { IResolvers } from '@graphql-tools/utils';
-import type { Request } from 'express';
+import type { FastifyRequest } from 'fastify';
 import { GraphQLError } from 'graphql';
 import { extractBlocksByType, parseNoteContent } from '~/features/note/services/content-blocks.js';
 import { replaceNoteReferences } from '~/features/note/services/note-reference-index.js';
@@ -52,7 +52,7 @@ const replacePlaceholders = async (content: string) => {
     return replacedContent;
 };
 
-const getRequestUserAgent = (req?: Request) => {
+const getRequestUserAgent = (req?: FastifyRequest) => {
     const userAgentHeader = req?.headers['user-agent'];
     return Array.isArray(userAgentHeader) ? userAgentHeader[0] : userAgentHeader;
 };
@@ -132,7 +132,7 @@ export const noteMutationResolvers: NoteMutationResolvers = {
             force?: boolean;
         },
         context: {
-            req?: Request;
+            req?: FastifyRequest;
         },
     ) => {
         const parsedContent = note.content ? parseRequiredNoteContent(note.content) : null;
@@ -202,7 +202,7 @@ export const noteMutationResolvers: NoteMutationResolvers = {
         _,
         { id, expectedUpdatedAt }: { id: string; expectedUpdatedAt: string },
         context: {
-            req?: Request;
+            req?: FastifyRequest;
         },
     ) => {
         try {

@@ -20,16 +20,16 @@ const createMcpAdminStatusResponse = async (service: McpAdminControllerService) 
 export const createMcpAdminStatusHandler = (
     service: McpAdminControllerService = createMcpAdminService(),
 ): Controller => {
-    return async (_req, res) => {
+    return async (_req, reply) => {
         const status = await createMcpAdminStatusResponse(service);
-        res.status(200).json(status).end();
+        return reply.status(200).send(status);
     };
 };
 
 export const createMcpAdminSetEnabledHandler = (
     service: McpAdminControllerService = createMcpAdminService(),
 ): Controller => {
-    return async (req, res) => {
+    return async (req, reply) => {
         const enabled = req.body?.enabled;
         if (typeof enabled !== 'boolean') {
             throw createAppError(400, 'INVALID_MCP_ENABLED', 'enabled must be a boolean.');
@@ -37,30 +37,28 @@ export const createMcpAdminSetEnabledHandler = (
 
         await service.setEnabled(enabled);
         const status = await createMcpAdminStatusResponse(service);
-        res.status(200).json(status).end();
+        return reply.status(200).send(status);
     };
 };
 
 export const createMcpAdminRotateTokenHandler = (
     service: McpAdminControllerService = createMcpAdminService(),
 ): Controller => {
-    return async (_req, res) => {
+    return async (_req, reply) => {
         const result = await service.rotateToken();
-        res.status(200)
-            .json({
-                token: result.token,
-                message: 'Save this token now. It is shown only once.',
-            })
-            .end();
+        return reply.status(200).send({
+            token: result.token,
+            message: 'Save this token now. It is shown only once.',
+        });
     };
 };
 
 export const createMcpAdminRevokeTokenHandler = (
     service: McpAdminControllerService = createMcpAdminService(),
 ): Controller => {
-    return async (_req, res) => {
+    return async (_req, reply) => {
         await service.revokeActiveToken();
         const status = await createMcpAdminStatusResponse(service);
-        res.status(200).json(status).end();
+        return reply.status(200).send(status);
     };
 };

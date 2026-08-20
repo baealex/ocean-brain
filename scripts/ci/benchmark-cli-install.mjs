@@ -64,8 +64,15 @@ const runCommand = (command, commandArgs, options = {}) => {
 
 const resolveNpmCliPath = () => {
     const executableDir = path.dirname(process.execPath);
+    const configuredPrefix = process.env.npm_config_prefix;
     const candidates = [
         process.env.npm_execpath?.endsWith('npm-cli.js') ? process.env.npm_execpath : undefined,
+        configuredPrefix
+            ? path.resolve(configuredPrefix, 'node_modules', 'npm', 'bin', 'npm-cli.js')
+            : undefined,
+        configuredPrefix
+            ? path.resolve(configuredPrefix, 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js')
+            : undefined,
         path.resolve(executableDir, '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js'),
         path.resolve(executableDir, 'node_modules', 'npm', 'bin', 'npm-cli.js'),
         process.env.APPDATA
@@ -159,6 +166,15 @@ const baselineTarball = resolveTarball(positionalArgs[0]);
 const candidateTarball = resolveTarball(positionalArgs[1]);
 const benchmarkRoot = mkdtempSync(path.join(os.tmpdir(), 'ocean-brain-cli-benchmark-'));
 const npmCliPath = resolveNpmCliPath();
+const npmVersion = runCommand(process.execPath, [npmCliPath, '--version']);
+const expectedNpmVersion = process.env.OCEAN_BRAIN_BENCHMARK_NPM_VERSION;
+
+if (expectedNpmVersion && npmVersion !== expectedNpmVersion) {
+    throw new Error(
+        `Expected npm ${expectedNpmVersion} for the benchmark, resolved ${npmVersion} from ${npmCliPath}.`
+    );
+}
+
 const platformLabel = {
     darwin: 'macOS',
     linux: 'Linux',
@@ -243,7 +259,6 @@ try {
 
 const baseline = summarize(results.baseline, baselineTarball);
 const candidate = summarize(results.candidate, candidateTarball);
-const npmVersion = runCommand(process.execPath, [npmCliPath, '--version']);
 const runnerImage = [process.env.ImageOS, process.env.ImageVersion].filter(Boolean).join(' ');
 const rawSampleRows = rawRuns.map(({ label, result, trial }) => [
     `| ${trial}`,

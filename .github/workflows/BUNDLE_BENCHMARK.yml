@@ -105,6 +105,8 @@ jobs:
           path: .artifacts/candidate
 
       - name: Benchmark isolated cold installs
+        env:
+          OCEAN_BRAIN_BENCHMARK_NPM_VERSION: 11.11.0
         run: node scripts/ci/benchmark-cli-install.mjs .artifacts/baseline .artifacts/candidate --trials "${{ inputs.trials }}"
 
       - name: Smoke test bundled npx package

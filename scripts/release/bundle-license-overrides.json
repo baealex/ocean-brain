@@ -1,0 +1,88 @@
+{
+    "overrides": [
+        {
+            "components": [
+                "@baejino/auth@0.1.1",
+                "@baejino/react-ui@0.2.0"
+            ],
+            "license": "MIT",
+            "licenseFile": "licenses/common-package-MIT.txt",
+            "source": "https://spdx.org/licenses/MIT.html"
+        },
+        {
+            "components": [
+                "@graphql-tools/merge@9.2.2",
+                "@graphql-tools/schema@10.0.38",
+                "@graphql-tools/utils@11.2.2"
+            ],
+            "license": "MIT",
+            "licenseFile": "licenses/graphql-tools-MIT.txt",
+            "source": "https://github.com/ardatan/graphql-tools/blob/11f0a218fa8cf9c3600622765cfc734e3f468896/LICENSE"
+        },
+        {
+            "components": [
+                "cross-inspect@1.0.1"
+            ],
+            "license": "MIT",
+            "licenseFile": "licenses/graphql-tools-MIT.txt",
+            "source": "https://github.com/ardatan/graphql-tools/blob/e079a7717ec5a4772cd18547d1f3008800b5c820/LICENSE"
+        },
+        {
+            "components": [
+                "@radix-ui/number@1.1.1",
+                "@radix-ui/react-compose-refs@1.1.2",
+                "@radix-ui/react-context@1.1.2",
+                "@radix-ui/react-direction@1.1.1",
+                "@radix-ui/react-id@1.1.1",
+                "@radix-ui/react-use-callback-ref@1.1.1",
+                "@radix-ui/react-use-escape-keydown@1.1.1",
+                "@radix-ui/react-use-layout-effect@1.1.1",
+                "@radix-ui/react-use-previous@1.1.1",
+                "@radix-ui/react-use-size@1.1.1"
+            ],
+            "license": "MIT",
+            "licenseFile": "licenses/radix-primitives-MIT.txt",
+            "source": "https://github.com/radix-ui/primitives/blob/fcef0668a5c827e5a4baac405474d75680f9a4eb/LICENSE"
+        },
+        {
+            "components": [
+                "abstract-logging@2.0.1"
+            ],
+            "license": "MIT",
+            "licenseFile": "licenses/abstract-logging-MIT.txt",
+            "source": "https://spdx.org/licenses/MIT.html"
+        },
+        {
+            "components": [
+                "bezier-js@6.1.4"
+            ],
+            "license": "MIT",
+            "licenseFile": "licenses/bezier-js-MIT.txt",
+            "source": "https://spdx.org/licenses/MIT.html"
+        },
+        {
+            "components": [
+                "react-force-graph-2d@1.29.1"
+            ],
+            "license": "MIT",
+            "licenseFile": "licenses/react-force-graph-MIT.txt",
+            "source": "https://github.com/vasturiano/react-force-graph/blob/5ee21b693d83f62da569cba6e3cdf31e028406e1/LICENSE"
+        },
+        {
+            "components": [
+                "react-remove-scroll-bar@2.3.8"
+            ],
+            "license": "MIT",
+            "licenseFile": "licenses/react-remove-scroll-bar-MIT.txt",
+            "source": "https://spdx.org/licenses/MIT.html"
+        },
+        {
+            "components": [
+                "saxes@6.0.0"
+            ],
+            "license": "ISC",
+            "licenseFile": "licenses/saxes-ISC.txt",
+            "source": "https://github.com/lddubeau/saxes/blob/211fa0ebec9b628affc09219199639887174bfc3/LICENSE"
+        }
+    ]
+}

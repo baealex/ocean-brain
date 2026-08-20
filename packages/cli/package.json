@@ -19,6 +19,7 @@
     },
     "files": [
         "dist",
+        "LICENSE",
         "SBOM.cdx.json",
         "THIRD_PARTY_NOTICES.txt",
         "scripts/postinstall-prisma.mjs",

@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import type { Plugin, UserConfig } from 'vite';
 
@@ -23,8 +24,15 @@ type RollupOptions = NonNullable<NonNullable<UserConfig['build']>['rollupOptions
 
 const NOTE_PAGE_MODULE_SUFFIX = '/src/pages/Note.tsx';
 const ROUTE_LOADER_MODULE_SUFFIXES = ['/src/route-preload.ts', '/src/router.tsx'];
+const buildRequire = createRequire(import.meta.url);
+const viteEntry = buildRequire.resolve('vite');
 
 const normalizeModuleId = (id: string) => id.replaceAll('\\', '/').split('?')[0] ?? id;
+const isViteRuntimeModule = (id: string) =>
+    id.startsWith('\0vite/') ||
+    id === '\0commonjsHelpers.js' ||
+    id === '\0commonjs-dynamic-modules' ||
+    id.includes('?commonjs-');
 const isRouteLoaderModule = (id: string) => {
     const normalizedId = normalizeModuleId(id);
     return ROUTE_LOADER_MODULE_SUFFIXES.some((suffix) => normalizedId.endsWith(suffix));
@@ -127,14 +135,37 @@ export const createClientBundleMetafilePlugin = (): Plugin => ({
     apply: 'build',
     generateBundle(_options, bundle) {
         const inputs = new Set<string>();
+        const virtualInputs = new Set<string>();
+        const unknownVirtualInputs = new Set<string>();
 
         for (const output of Object.values(bundle)) {
             if (output.type !== 'chunk') continue;
 
-            for (const moduleId of Object.keys(output.modules)) {
-                if (moduleId.startsWith('\0')) continue;
+            for (const [moduleId, moduleDetails] of Object.entries(output.modules)) {
+                if (moduleDetails.renderedLength === 0) continue;
+
+                if (moduleId.startsWith('\0')) {
+                    virtualInputs.add(moduleId);
+
+                    if (isViteRuntimeModule(moduleId)) {
+                        inputs.add(normalizeModuleId(viteEntry));
+                    } else {
+                        unknownVirtualInputs.add(moduleId);
+                    }
+
+                    continue;
+                }
+
                 inputs.add(normalizeModuleId(moduleId));
             }
+        }
+
+        if (unknownVirtualInputs.size > 0) {
+            throw new Error(
+                `Unattributed virtual modules were emitted into the client bundle:\n${[...unknownVirtualInputs]
+                    .sort()
+                    .join('\n')}`,
+            );
         }
 
         this.emitFile({
@@ -143,6 +174,7 @@ export const createClientBundleMetafilePlugin = (): Plugin => ({
             source: `${JSON.stringify(
                 {
                     inputs: Object.fromEntries([...inputs].sort().map((input) => [input, {}])),
+                    virtualInputs: [...virtualInputs].sort(),
                 },
                 null,
                 2,

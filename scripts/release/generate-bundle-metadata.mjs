@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { createHash } from 'node:crypto';
 import {
     existsSync,
     readFileSync,
@@ -17,6 +18,16 @@ const LICENSE_FILE_PATTERN = /^(?:licen[cs]e|copying|notice|copyright|authors)(?
 const readJson = (filePath) => JSON.parse(readFileSync(filePath, 'utf8'));
 
 const normalizeText = (value) => value.replace(/\r\n/g, '\n').trim();
+
+const requireNonEmptyString = (value, field) => {
+    if (typeof value !== 'string' || !value.trim()) {
+        throw new Error(`${field} must be a non-empty string.`);
+    }
+
+    return value.trim();
+};
+
+const sha256File = (filePath) => createHash('sha256').update(readFileSync(filePath)).digest('hex');
 
 const packageRepositoryUrl = (packageJson) => {
     const repository = typeof packageJson.repository === 'string'
@@ -119,13 +130,161 @@ const npmPurl = (name, version) => {
     return `pkg:npm/${namespace}${encodeURIComponent(parts.name)}@${encodeURIComponent(version)}`;
 };
 
-export const collectBundledComponents = (bundles) => {
+const readLicenseOverrides = (manifestPath) => {
+    if (!manifestPath) return new Map();
+
+    const manifest = readJson(manifestPath);
+    if (!Array.isArray(manifest.overrides)) {
+        throw new Error(`${manifestPath} must contain an overrides array.`);
+    }
+
+    const overrides = new Map();
+
+    for (const [index, override] of manifest.overrides.entries()) {
+        const field = `overrides[${index}]`;
+        const license = requireNonEmptyString(override.license, `${field}.license`);
+        const licenseFile = requireNonEmptyString(override.licenseFile, `${field}.licenseFile`);
+        const source = requireNonEmptyString(override.source, `${field}.source`);
+        const licensePath = path.resolve(path.dirname(manifestPath), licenseFile);
+        const document = {
+            name: path.basename(licenseFile),
+            source,
+            text: normalizeText(readFileSync(licensePath, 'utf8')),
+        };
+
+        if (!document.text) {
+            throw new Error(`${licensePath} is empty.`);
+        }
+
+        if (!Array.isArray(override.components) || override.components.length === 0) {
+            throw new Error(`${field}.components must be a non-empty array.`);
+        }
+
+        for (const component of override.components) {
+            const key = requireNonEmptyString(component, `${field}.components[]`);
+            if (overrides.has(key)) {
+                throw new Error(`Duplicate license override for ${key}.`);
+            }
+            overrides.set(key, { document, license });
+        }
+    }
+
+    return overrides;
+};
+
+const collectAssetComponents = (assetManifests) => {
+    const components = [];
+
+    for (const assetManifest of assetManifests) {
+        const manifest = readJson(assetManifest.manifestPath);
+
+        if (!Array.isArray(manifest.components)) {
+            throw new Error(`${assetManifest.manifestPath} must contain a components array.`);
+        }
+
+        for (const [index, entry] of manifest.components.entries()) {
+            const field = `components[${index}]`;
+            const name = requireNonEmptyString(entry.name, `${field}.name`);
+            const version = requireNonEmptyString(entry.version, `${field}.version`);
+            const license = requireNonEmptyString(entry.license, `${field}.license`);
+            const source = requireNonEmptyString(entry.source, `${field}.source`);
+            const sourceArchive = requireNonEmptyString(entry.sourceArchive, `${field}.sourceArchive`);
+
+            if (!Array.isArray(entry.bundles) || entry.bundles.length === 0) {
+                throw new Error(`${field}.bundles must be a non-empty array.`);
+            }
+
+            if (!Array.isArray(entry.assets) || entry.assets.length === 0) {
+                throw new Error(`${field}.assets must be a non-empty array.`);
+            }
+
+            if (!Array.isArray(entry.licenseFiles) || entry.licenseFiles.length === 0) {
+                throw new Error(`${field}.licenseFiles must be a non-empty array.`);
+            }
+
+            const assetFiles = entry.assets.map((asset, assetIndex) => {
+                const assetField = `${field}.assets[${assetIndex}]`;
+                const relativePath = requireNonEmptyString(asset.path, `${assetField}.path`);
+                const expectedSha256 = requireNonEmptyString(asset.sha256, `${assetField}.sha256`).toLowerCase();
+                const assetPath = path.resolve(assetManifest.packageDir, relativePath);
+                const actualSha256 = sha256File(assetPath);
+
+                if (!/^[a-f0-9]{64}$/.test(expectedSha256)) {
+                    throw new Error(`${assetField}.sha256 must be a SHA-256 hex digest.`);
+                }
+
+                if (actualSha256 !== expectedSha256) {
+                    throw new Error(
+                        `Bundled asset hash mismatch for ${assetPath}: expected ${expectedSha256}, got ${actualSha256}.`,
+                    );
+                }
+
+                return { path: relativePath.replaceAll('\\', '/'), sha256: actualSha256 };
+            });
+            const licenseDocuments = entry.licenseFiles.map((licenseFile, licenseIndex) => {
+                const relativePath = requireNonEmptyString(
+                    licenseFile,
+                    `${field}.licenseFiles[${licenseIndex}]`,
+                );
+                const licensePath = path.resolve(assetManifest.packageDir, relativePath);
+                const text = normalizeText(readFileSync(licensePath, 'utf8'));
+
+                if (!text) {
+                    throw new Error(`${licensePath} is empty.`);
+                }
+
+                return { name: relativePath.replaceAll('\\', '/'), text };
+            });
+
+            components.push({
+                name,
+                version,
+                license,
+                author: typeof entry.author === 'string' ? entry.author.trim() || undefined : undefined,
+                repository: typeof entry.repository === 'string' ? entry.repository.trim() || undefined : undefined,
+                source,
+                sourceArchive,
+                bundles: [...new Set(entry.bundles.map((bundle) => requireNonEmptyString(bundle, `${field}.bundles[]`)))].sort(),
+                licenseDocuments,
+                assetFiles: assetFiles.sort((left, right) => left.path.localeCompare(right.path)),
+            });
+        }
+    }
+
+    return components;
+};
+
+const contributingInputs = (metafile) => {
+    const outputs = Object.values(metafile.outputs ?? {});
+
+    if (outputs.length === 0) {
+        return Object.keys(metafile.inputs ?? {});
+    }
+
+    const inputs = new Set();
+
+    for (const output of outputs) {
+        for (const [input, contribution] of Object.entries(output.inputs ?? {})) {
+            if ((contribution.bytesInOutput ?? 0) > 0) {
+                inputs.add(input);
+            }
+        }
+    }
+
+    return [...inputs];
+};
+
+export const collectBundledComponents = (
+    bundles,
+    { assetManifests = [], licenseOverridesPath } = {},
+) => {
     const components = new Map();
+    const licenseOverrides = readLicenseOverrides(licenseOverridesPath);
 
     for (const bundle of bundles) {
         const metafile = readJson(bundle.metafilePath);
 
-        for (const input of Object.keys(metafile.inputs ?? {})) {
+        for (const input of contributingInputs(metafile)) {
             if (input.startsWith('<')) continue;
 
             const inputPath = path.resolve(bundle.packageDir, input);
@@ -160,7 +319,7 @@ export const collectBundledComponents = (bundles) => {
         }
     }
 
-    return [...components.values()]
+    const npmComponents = [...components.values()]
         .map((component) => {
             const documents = new Map();
 
@@ -174,6 +333,25 @@ export const collectBundledComponents = (bundles) => {
                 throw new Error(`Bundled package ${component.name}@${component.version} has no declared license.`);
             }
 
+            if (documents.size === 0) {
+                const key = `${component.name}@${component.version}`;
+                const override = licenseOverrides.get(key);
+
+                if (!override) {
+                    throw new Error(
+                        `Bundled package ${key} has no included license text and no tracked license override.`,
+                    );
+                }
+
+                if (override.license !== component.license) {
+                    throw new Error(
+                        `License override for ${key} declares ${override.license}, but package.json declares ${component.license}.`,
+                    );
+                }
+
+                documents.set(`${override.document.name}\0${override.document.text}`, override.document);
+            }
+
             const license = component.license === 'UNKNOWN'
                 ? `See included ${[...documents.values()].map((document) => document.name).join(', ')}`
                 : component.license;
@@ -185,7 +363,19 @@ export const collectBundledComponents = (bundles) => {
                 licenseDocuments: [...documents.values()],
                 packageRoots: undefined,
             };
-        })
+        });
+    const assetComponents = collectAssetComponents(assetManifests);
+    const componentKeys = new Set(npmComponents.map((component) => `${component.name}@${component.version}`));
+
+    for (const component of assetComponents) {
+        const key = `${component.name}@${component.version}`;
+        if (componentKeys.has(key)) {
+            throw new Error(`Bundled component ${key} is declared by both a JavaScript graph and an asset manifest.`);
+        }
+        componentKeys.add(key);
+    }
+
+    return [...npmComponents, ...assetComponents]
         .sort((left, right) => left.name.localeCompare(right.name) || left.version.localeCompare(right.version));
 };
 
@@ -194,7 +384,7 @@ export const createThirdPartyNotices = (components) => {
         'Ocean Brain Third-Party Notices',
         '=================================',
         '',
-        'This file is generated from the actual esbuild and Rollup input graphs used by the published Ocean Brain CLI.',
+        'This file is generated from the JavaScript that contributes to the published bundles and tracked static assets.',
         'Each component remains subject to its own license. Corresponding source is available from the exact npm package URL listed below.',
         '',
     ];
@@ -217,22 +407,49 @@ export const createThirdPartyNotices = (components) => {
             sections.push(`Repository: ${component.repository}`);
         }
 
-        if (component.licenseDocuments.length === 0) {
+        if (component.assetFiles?.length > 0) {
             sections.push(
-                '',
-                'The npm package did not include a standalone LICENSE, COPYING, or NOTICE file.',
-                'The license identifier above comes from that package\'s published package.json; consult the exact source URL for upstream terms.',
+                ...component.assetFiles.map((asset) => `Bundled asset: ${asset.path} (SHA-256: ${asset.sha256})`),
             );
-        } else {
-            for (const document of component.licenseDocuments) {
-                sections.push('', `--- ${document.name} ---`, '', document.text);
+        }
+
+        for (const document of component.licenseDocuments) {
+            sections.push('', `--- ${document.name} ---`);
+            if (document.source) {
+                sections.push(`License text source: ${document.source}`);
             }
+            sections.push('', document.text);
         }
 
         sections.push('');
     }
 
     return `${sections.join('\n')}\n`;
+};
+
+const KNOWN_SPDX_LICENSE_IDS = new Set([
+    '0BSD',
+    'Apache-2.0',
+    'BSD-2-Clause',
+    'BSD-3-Clause',
+    'BlueOak-1.0.0',
+    'ISC',
+    'MIT',
+    'MIT-0',
+    'MPL-2.0',
+    'OFL-1.1',
+]);
+
+const cycloneDxLicenses = (license) => {
+    if (/\s(?:AND|OR|WITH)\s|[()]/.test(license)) {
+        return [{ expression: license }];
+    }
+
+    if (KNOWN_SPDX_LICENSE_IDS.has(license)) {
+        return [{ license: { id: license } }];
+    }
+
+    return [{ license: { name: license } }];
 };
 
 export const createCycloneDxBom = (cliPackage, components) => {
@@ -254,7 +471,7 @@ export const createCycloneDxBom = (cliPackage, components) => {
             version: component.version,
             scope: 'required',
             purl,
-            licenses: [{ license: { name: component.license } }],
+            licenses: cycloneDxLicenses(component.license),
             externalReferences,
             properties: [
                 { name: 'ocean-brain:bundled-package-name', value: component.name },
@@ -263,6 +480,14 @@ export const createCycloneDxBom = (cliPackage, components) => {
                     name: 'ocean-brain:license-files',
                     value: component.licenseDocuments.map((document) => document.name).join(',') || 'not-included-upstream',
                 },
+                ...(component.assetFiles?.length > 0
+                    ? [{
+                        name: 'ocean-brain:bundled-assets',
+                        value: component.assetFiles
+                            .map((asset) => `${asset.path}#sha256=${asset.sha256}`)
+                            .join(','),
+                    }]
+                    : []),
             ],
         };
     });
@@ -282,14 +507,10 @@ export const createCycloneDxBom = (cliPackage, components) => {
             },
             properties: [{
                 name: 'ocean-brain:sbom-scope',
-                value: 'JavaScript embedded by esbuild and Rollup; package.json dependencies remain external runtime components.',
+                value: 'JavaScript embedded by esbuild and Rollup plus tracked static assets; package.json dependencies remain external runtime components. Dependency relationships are unspecified.',
             }],
         },
         components: componentEntries,
-        dependencies: [
-            { ref: rootPurl, dependsOn: componentEntries.map((component) => component['bom-ref']) },
-            ...componentEntries.map((component) => ({ ref: component['bom-ref'], dependsOn: [] })),
-        ],
     };
 };
 
@@ -298,10 +519,12 @@ export const generateBundleMetadata = ({
     cliPackageJsonPath,
     noticesPath,
     sbomPath,
+    assetManifests = [],
+    licenseOverridesPath,
     cleanupMetafiles = true,
 }) => {
     const cliPackage = readJson(cliPackageJsonPath);
-    const components = collectBundledComponents(bundles);
+    const components = collectBundledComponents(bundles, { assetManifests, licenseOverridesPath });
 
     writeFileSync(noticesPath, createThirdPartyNotices(components), 'utf8');
     writeFileSync(sbomPath, `${JSON.stringify(createCycloneDxBom(cliPackage, components), null, 2)}\n`, 'utf8');
@@ -317,11 +540,12 @@ export const generateBundleMetadata = ({
 
 const main = () => {
     const cliDir = path.join(rootDir, 'packages', 'cli');
+    const clientDir = path.join(rootDir, 'packages', 'client');
     const bundles = [
         {
             name: 'client',
-            packageDir: path.join(rootDir, 'packages', 'client'),
-            metafilePath: path.join(rootDir, 'packages', 'client', 'dist', 'bundle-metafile.json'),
+            packageDir: clientDir,
+            metafilePath: path.join(clientDir, 'dist', 'bundle-metafile.json'),
         },
         {
             name: 'cli',
@@ -339,9 +563,14 @@ const main = () => {
         cliPackageJsonPath: path.join(cliDir, 'package.json'),
         noticesPath: path.join(cliDir, 'THIRD_PARTY_NOTICES.txt'),
         sbomPath: path.join(cliDir, 'SBOM.cdx.json'),
+        assetManifests: [{
+            packageDir: clientDir,
+            manifestPath: path.join(clientDir, 'third-party-assets.json'),
+        }],
+        licenseOverridesPath: path.join(__dirname, 'bundle-license-overrides.json'),
     });
 
-    console.log(`Generated third-party notices and CycloneDX SBOM for ${components.length} bundled packages.`);
+    console.log(`Generated third-party notices and CycloneDX SBOM for ${components.length} bundled components.`);
 };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

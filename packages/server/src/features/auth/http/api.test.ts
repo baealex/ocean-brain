@@ -356,3 +356,13 @@ test('open mode keeps auth endpoints explicit and allows existing open write/que
     assert.equal(mutation.status, 200);
     assert.equal((mutation.body.data as { __typename?: string }).__typename, 'Mutation');
 });
+
+test('GraphQL validation errors remain client errors instead of becoming generic server errors', async (t) => {
+    const { baseUrl } = await startServer(t, createOpenAuthConfig());
+
+    const invalidQuery = await graphRequest(baseUrl, 'query { fieldThatDoesNotExist }');
+    const errors = invalidQuery.body.errors as Array<{ message?: string }>;
+
+    assert.equal(invalidQuery.status, 400);
+    assert.match(errors[0]?.message ?? '', /Cannot query field "fieldThatDoesNotExist"/);
+});

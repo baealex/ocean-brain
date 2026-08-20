@@ -39,7 +39,6 @@ export const createGraphqlRouter = (authConfig: AuthConfig, mcpAdminService: Mcp
                 schema,
                 path: '/graphql',
                 graphiql: false,
-                errorHandler: false,
                 context: createGraphqlContext(authConfig),
             });
         });

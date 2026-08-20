@@ -1,0 +1,102 @@
+name: BUNDLE BENCHMARK
+
+on:
+  push:
+    branches:
+      - feat/server-bundle-windows-benchmark
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bundle-benchmark-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BUNDLE_BASE_SHA: 2c5c0e7a572da149d6bacc8adf3cf3c4f566c4e3
+
+jobs:
+  pack-cli:
+    name: pack ${{ matrix.variant }} CLI
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        variant:
+          - baseline
+          - candidate
+
+    steps:
+      - name: Checkout ${{ matrix.variant }}
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ matrix.variant == 'baseline' && env.BUNDLE_BASE_SHA || github.sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Install pnpm
+        run: npm install --global pnpm@10.25.0
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build publish artifacts
+        run: node scripts/release/prepublish.mjs
+
+      - name: Pack CLI
+        id: pack
+        run: node scripts/ci/pack-cli-tarball.mjs
+
+      - name: Upload ${{ matrix.variant }} tarball
+        uses: actions/upload-artifact@v7
+        with:
+          name: cli-${{ matrix.variant }}
+          path: ${{ steps.pack.outputs.path }}
+          if-no-files-found: error
+          retention-days: 3
+
+  windows-install:
+    name: compare cold install on Windows
+    needs: pack-cli
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout benchmark scripts
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Upgrade npm
+        run: npm install --global npm@11.11.0
+
+      - name: Download baseline tarball
+        uses: actions/download-artifact@v8
+        with:
+          name: cli-baseline
+          path: .artifacts/baseline
+
+      - name: Download bundled tarball
+        uses: actions/download-artifact@v8
+        with:
+          name: cli-candidate
+          path: .artifacts/candidate
+
+      - name: Benchmark isolated cold installs
+        run: node scripts/ci/benchmark-cli-install.mjs .artifacts/baseline .artifacts/candidate --trials 3
+
+      - name: Smoke test bundled npx package
+        shell: pwsh
+        env:
+          CLI_SMOKE_PORT: 16683
+        run: |
+          $tarball = Get-ChildItem .artifacts/candidate/*.tgz | Select-Object -First 1
+          if (-not $tarball) {
+            throw 'Bundled CLI tarball was not found.'
+          }
+          node scripts/ci/smoke-cli-npx.mjs $tarball.FullName

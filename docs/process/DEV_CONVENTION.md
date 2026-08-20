@@ -52,4 +52,3 @@ Full dev mode exposes Fastify APIs, the Vite client, and HMR through the server 
 - Testing rules: `docs/process/TESTING_CONVENTION.md`
 - Query key rules: `docs/process/QUERY_KEY_CONVENTION.md`
 - Deployment/release: `docs/process/DEPLOYMENT_RELEASE_STRATEGY.md`
-- Server benchmark: `docs/process/SERVER_BENCHMARK.md`

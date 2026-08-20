@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, lstatSync, mkdtempSync, readdirSync, rmSync, statSync } from 'node:fs';
+import { appendFileSync, existsSync, lstatSync, mkdtempSync, readdirSync, rmSync, statSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
@@ -43,7 +43,6 @@ const runCommand = (command, commandArgs, options = {}) => {
     const result = spawnSync(command, commandArgs, {
         encoding: 'utf8',
         maxBuffer: 16 * 1024 * 1024,
-        shell: process.platform === 'win32',
         timeout: options.timeoutMs ?? 10 * 60 * 1000,
         env: options.env ?? process.env,
     });
@@ -61,6 +60,39 @@ const runCommand = (command, commandArgs, options = {}) => {
     }
 
     return result.stdout.trim();
+};
+
+const resolveNpmCliPath = () => {
+    const executableDir = path.dirname(process.execPath);
+    const candidates = [
+        process.env.npm_execpath?.endsWith('npm-cli.js') ? process.env.npm_execpath : undefined,
+        path.resolve(executableDir, '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js'),
+        path.resolve(executableDir, 'node_modules', 'npm', 'bin', 'npm-cli.js'),
+        process.env.APPDATA
+            ? path.resolve(process.env.APPDATA, 'npm', 'node_modules', 'npm', 'bin', 'npm-cli.js')
+            : undefined,
+    ].filter(Boolean);
+    const npmCliPath = candidates.find((candidate) => existsSync(candidate));
+
+    if (!npmCliPath) {
+        throw new Error(`Unable to locate npm-cli.js. Checked: ${candidates.join(', ')}`);
+    }
+
+    return npmCliPath;
+};
+
+const resolveInstalledCliEntry = (prefix) => {
+    const candidates = [
+        path.join(prefix, 'node_modules', 'ocean-brain', 'dist', 'index.js'),
+        path.join(prefix, 'lib', 'node_modules', 'ocean-brain', 'dist', 'index.js'),
+    ];
+    const cliEntry = candidates.find((candidate) => existsSync(candidate));
+
+    if (!cliEntry) {
+        throw new Error(`Unable to locate the installed Ocean Brain CLI. Checked: ${candidates.join(', ')}`);
+    }
+
+    return cliEntry;
 };
 
 const measureTree = (root) => {
@@ -94,17 +126,29 @@ const median = (values) => {
     return sorted.length % 2 === 0 ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle];
 };
 
+const metricSummary = (values) => ({
+    median: median(values),
+    minimum: Math.min(...values),
+    maximum: Math.max(...values),
+});
+
 const summarize = (runs, tarball) => ({
     tarballBytes: statSync(tarball).size,
-    installMs: median(runs.map((run) => run.installMs)),
-    launchMs: median(runs.map((run) => run.launchMs)),
-    npmCacheBytes: median(runs.map((run) => run.npmCacheBytes)),
-    installedBytes: median(runs.map((run) => run.installedBytes)),
-    installedFiles: median(runs.map((run) => run.installedFiles)),
+    installMs: metricSummary(runs.map((run) => run.installMs)),
+    launchMs: metricSummary(runs.map((run) => run.launchMs)),
+    npmCacheBytes: metricSummary(runs.map((run) => run.npmCacheBytes)),
+    installedBytes: metricSummary(runs.map((run) => run.installedBytes)),
+    installedFiles: metricSummary(runs.map((run) => run.installedFiles)),
 });
 
 const formatBytes = (bytes) => `${(bytes / 1024 / 1024).toFixed(2)} MiB`;
 const formatMs = (milliseconds) => `${(milliseconds / 1000).toFixed(2)} s`;
+const formatCount = (value) => Math.round(value).toLocaleString('en-US');
+const formatMetric = (summary, formatter) => {
+    const formattedMedian = formatter(summary.median);
+    if (summary.minimum === summary.maximum) return formattedMedian;
+    return `${formattedMedian} (${formatter(summary.minimum)}–${formatter(summary.maximum)})`;
+};
 const improvement = (baseline, candidate) => ((baseline - candidate) / baseline) * 100;
 const formatImprovement = (baseline, candidate) => {
     const value = improvement(baseline, candidate);
@@ -114,13 +158,14 @@ const formatImprovement = (baseline, candidate) => {
 const baselineTarball = resolveTarball(positionalArgs[0]);
 const candidateTarball = resolveTarball(positionalArgs[1]);
 const benchmarkRoot = mkdtempSync(path.join(os.tmpdir(), 'ocean-brain-cli-benchmark-'));
-const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+const npmCliPath = resolveNpmCliPath();
 const platformLabel = {
     darwin: 'macOS',
     linux: 'Linux',
     win32: 'Windows',
 }[process.platform] ?? process.platform;
 const results = { baseline: [], candidate: [] };
+const rawRuns = [];
 
 const benchmarkInstall = (label, tarball, trial) => {
     const runRoot = path.join(benchmarkRoot, `${trial}-${label}`);
@@ -134,8 +179,9 @@ const benchmarkInstall = (label, tarball, trial) => {
 
     const installStartedAt = performance.now();
     runCommand(
-        npmCommand,
+        process.execPath,
         [
+            npmCliPath,
             'install',
             '--global',
             '--prefix',
@@ -153,12 +199,10 @@ const benchmarkInstall = (label, tarball, trial) => {
     const installMs = performance.now() - installStartedAt;
     const installed = measureTree(prefix);
     const npmCache = measureTree(npmCacheDir);
-    const executable = process.platform === 'win32'
-        ? path.join(prefix, 'ocean-brain.cmd')
-        : path.join(prefix, 'bin', 'ocean-brain');
+    const executable = resolveInstalledCliEntry(prefix);
 
     const launchStartedAt = performance.now();
-    const version = runCommand(executable, ['--version'], { env, timeoutMs: 60_000 });
+    const version = runCommand(process.execPath, [executable, '--version'], { env, timeoutMs: 60_000 });
     const launchMs = performance.now() - launchStartedAt;
 
     if (!/^\d+\.\d+\.\d+/.test(version)) {
@@ -185,6 +229,7 @@ try {
             console.log(`Running cold install ${trial}/${trials}: ${label}`);
             const result = benchmarkInstall(label, tarball, trial);
             results[label].push(result);
+            rawRuns.push({ label, result, trial });
             console.log(
                 `${label}: install=${formatMs(result.installMs)}, launch=${formatMs(result.launchMs)}, ` +
                 `cache=${formatBytes(result.npmCacheBytes)}, files=${result.installedFiles}, ` +
@@ -198,22 +243,41 @@ try {
 
 const baseline = summarize(results.baseline, baselineTarball);
 const candidate = summarize(results.candidate, candidateTarball);
+const npmVersion = runCommand(process.execPath, [npmCliPath, '--version']);
+const runnerImage = [process.env.ImageOS, process.env.ImageVersion].filter(Boolean).join(' ');
+const rawSampleRows = rawRuns.map(({ label, result, trial }) => [
+    `| ${trial}`,
+    label,
+    formatMs(result.installMs),
+    formatBytes(result.npmCacheBytes),
+    formatCount(result.installedFiles),
+    formatBytes(result.installedBytes),
+    `${formatMs(result.launchMs)} |`,
+].join(' | '));
 const summary = [
     `## ${platformLabel} CLI cold-install benchmark`,
     '',
-    `Median of ${trials} isolated-cache trial${trials === 1 ? '' : 's'} on Node ${process.version} / npm ${runCommand(npmCommand, ['--version'])}.`,
+    `Median (range) of ${trials} isolated-cache trial${trials === 1 ? '' : 's'} on Node ${process.version} / npm ${npmVersion}${runnerImage ? ` / ${runnerImage}` : ''}.`,
+    'The timer starts from an already-downloaded local Ocean Brain tarball with an empty dependency cache; registry metadata and transfer of the root tarball are excluded.',
     '',
     '| Metric | Baseline | Bundled candidate | Improvement |',
     '| --- | ---: | ---: | ---: |',
     `| Package tarball | ${formatBytes(baseline.tarballBytes)} | ${formatBytes(candidate.tarballBytes)} | ${formatImprovement(baseline.tarballBytes, candidate.tarballBytes)} |`,
-    `| Cold global install | ${formatMs(baseline.installMs)} | ${formatMs(candidate.installMs)} | ${formatImprovement(baseline.installMs, candidate.installMs)} |`,
-    `| Cold npm cache footprint | ${formatBytes(baseline.npmCacheBytes)} | ${formatBytes(candidate.npmCacheBytes)} | ${formatImprovement(baseline.npmCacheBytes, candidate.npmCacheBytes)} |`,
-    `| Installed files | ${Math.round(baseline.installedFiles).toLocaleString('en-US')} | ${Math.round(candidate.installedFiles).toLocaleString('en-US')} | ${formatImprovement(baseline.installedFiles, candidate.installedFiles)} |`,
-    `| Installed size | ${formatBytes(baseline.installedBytes)} | ${formatBytes(candidate.installedBytes)} | ${formatImprovement(baseline.installedBytes, candidate.installedBytes)} |`,
-    `| CLI launch | ${formatMs(baseline.launchMs)} | ${formatMs(candidate.launchMs)} | ${formatImprovement(baseline.launchMs, candidate.launchMs)} |`,
+    `| Cold dependency install from local tarball | ${formatMetric(baseline.installMs, formatMs)} | ${formatMetric(candidate.installMs, formatMs)} | ${formatImprovement(baseline.installMs.median, candidate.installMs.median)} |`,
+    `| Cold npm cache footprint | ${formatMetric(baseline.npmCacheBytes, formatBytes)} | ${formatMetric(candidate.npmCacheBytes, formatBytes)} | ${formatImprovement(baseline.npmCacheBytes.median, candidate.npmCacheBytes.median)} |`,
+    `| Installed files | ${formatMetric(baseline.installedFiles, formatCount)} | ${formatMetric(candidate.installedFiles, formatCount)} | ${formatImprovement(baseline.installedFiles.median, candidate.installedFiles.median)} |`,
+    `| Installed size | ${formatMetric(baseline.installedBytes, formatBytes)} | ${formatMetric(candidate.installedBytes, formatBytes)} | ${formatImprovement(baseline.installedBytes.median, candidate.installedBytes.median)} |`,
+    `| CLI launch (informational) | ${formatMetric(baseline.launchMs, formatMs)} | ${formatMetric(candidate.launchMs, formatMs)} | — |`,
     '',
     'Positive improvement means the bundled candidate is smaller or faster.',
     'The isolated npm cache footprint is a download-volume proxy, not exact wire bytes.',
+    'CLI launch is a single process start per install and is reported only as a diagnostic, not a performance claim.',
+    '',
+    '### Raw samples',
+    '',
+    '| Trial | Variant | Install | npm cache | Files | Installed size | CLI launch |',
+    '| ---: | --- | ---: | ---: | ---: | ---: | ---: |',
+    ...rawSampleRows,
 ].join('\n');
 
 console.log(`\n${summary}`);

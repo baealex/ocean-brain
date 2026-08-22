@@ -59,7 +59,15 @@ For a stable session secret, persistent volumes, open mode, exact version tags, 
 
 ## Development
 
-Source development uses Node.js `22.13+`, pnpm `10.25.0`, and a `packages/*` workspace. Run `pnpm install` to set up dependencies, then `pnpm dev` to start the development server. See [DEV_CONVENTION.md](./docs/process/DEV_CONVENTION.md) and [GIT_CONVENTION.md](./docs/process/GIT_CONVENTION.md) before making changes.
+Source development uses Node.js `22.13+`, pnpm `10.25.0`, and a `packages/*` workspace. Run `pnpm install` to set up dependencies, then start the development server in local-only open mode:
+
+```bash
+OCEAN_BRAIN_ALLOW_INSECURE_NO_AUTH=true \
+HOST=127.0.0.1 \
+pnpm dev
+```
+
+Use password mode instead when the development server must be reachable beyond your own machine. See [DEV_CONVENTION.md](./docs/process/DEV_CONVENTION.md) and [GIT_CONVENTION.md](./docs/process/GIT_CONVENTION.md) before making changes.
 
 ## License
 

@@ -1,6 +1,6 @@
 # Ocean Brain Dev Convention
 
-Updated: 2026-08-19
+Updated: 2026-08-22
 
 ## 1. Base Environment
 - Node.js: `22.13+`
@@ -15,6 +15,16 @@ Updated: 2026-08-19
 - Server start: `pnpm start`
 - Core user-flow integration: `pnpm test:integration`
 - Full browser E2E: `pnpm test:e2e`
+
+The server requires an explicit authentication mode. For local-only development, start it in open mode with the loopback bind:
+
+```bash
+OCEAN_BRAIN_ALLOW_INSECURE_NO_AUTH=true \
+HOST=127.0.0.1 \
+pnpm dev
+```
+
+Use `OCEAN_BRAIN_PASSWORD` together with `OCEAN_BRAIN_SESSION_SECRET` instead when the server must be reachable beyond the local machine.
 
 Both browser test commands build the production app before starting Playwright.
 Install the local browser once with `pnpm exec playwright install chromium` after Playwright is installed or updated.

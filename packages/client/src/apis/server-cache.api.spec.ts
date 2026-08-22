@@ -52,4 +52,10 @@ describe('server-cache.api', () => {
 
         await expect(getServerCache('heroBanner')).resolves.toBe('');
     });
+
+    it('falls back to an empty string when the cache query returns null', async () => {
+        vi.mocked(graphQuery).mockResolvedValue({ type: 'success', cache: null } as never);
+
+        await expect(getServerCache('heroBanner')).resolves.toBe('');
+    });
 });

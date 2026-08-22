@@ -11,7 +11,7 @@ export const cacheType = gql`
 export const cacheQuery = gql`
     type Query {
         allCaches: [Cache!]!
-        cache(key: String!): Cache!
+        cache(key: String!): Cache
     }
 `;
 

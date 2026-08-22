@@ -50,3 +50,14 @@ test('cache resolver forwards the cache key to the query service', async () => {
         value: 'false',
     });
 });
+
+test('cache resolver returns null when the query service has no matching cache', async () => {
+    const resolver = createCacheQueryResolver({
+        findCaches: async () => [],
+        findCacheByKey: async () => null,
+    });
+
+    const result = await resolver(null, { key: 'missing.cache' });
+
+    assert.equal(result, null);
+});

@@ -18,8 +18,9 @@ import {
 const mcpAdminStatusQueryKey = ['mcp-admin', 'status'] as const;
 
 type ClientGuide = 'codex' | 'claude' | 'json';
+type SetupShell = 'posix' | 'powershell';
 
-const shellQuote = (value: string) => {
+const posixShellQuote = (value: string) => {
     if (/^[A-Za-z0-9_./:@$-]+$/.test(value)) {
         return value;
     }
@@ -27,37 +28,77 @@ const shellQuote = (value: string) => {
     return `'${value.replace(/'/g, "'\\''")}'`;
 };
 
-const defaultTokenFilePath = '$HOME/.config/ocean-brain/mcp-token';
+const powershellQuote = (value: string) => `'${value.replace(/'/g, "''")}'`;
 
-const createTokenFileCommand = (tokenFilePath: string, token: string) => {
-    const quotedPath = shellQuote(tokenFilePath);
+const defaultTokenFilePaths: Record<SetupShell, string> = {
+    posix: '$HOME/.config/ocean-brain/mcp-token',
+    powershell: '$HOME\\.config\\ocean-brain\\mcp-token',
+};
+
+const getDefaultSetupShell = (): SetupShell => {
+    return typeof navigator !== 'undefined' && /Windows/i.test(navigator.userAgent) ? 'powershell' : 'posix';
+};
+
+const createPowershellPathExpression = (tokenFilePath: string) => {
+    const homeRelativePath = tokenFilePath.match(/^\$HOME[\\/](.+)$/i)?.[1];
+    if (homeRelativePath) {
+        return `Join-Path $HOME ${powershellQuote(homeRelativePath)}`;
+    }
+
+    return powershellQuote(tokenFilePath);
+};
+
+const createTokenFileCommand = (setupShell: SetupShell, tokenFilePath: string, token: string) => {
+    if (setupShell === 'powershell') {
+        return [
+            `$tokenPath = ${createPowershellPathExpression(tokenFilePath)}`,
+            'New-Item -ItemType Directory -Force -Path (Split-Path -Parent $tokenPath) | Out-Null',
+            `Set-Content -Path $tokenPath -Value ${powershellQuote(token)} -NoNewline -Encoding utf8`,
+        ].join('\n');
+    }
+
+    const quotedPath = posixShellQuote(tokenFilePath);
 
     return [
         `mkdir -p "$(dirname ${quotedPath})"`,
-        `printf '%s' ${shellQuote(token)} > ${quotedPath}`,
+        `printf '%s' ${posixShellQuote(token)} > ${quotedPath}`,
         `chmod 600 ${quotedPath}`,
     ].join('\n');
 };
 
-const buildOceanBrainMcpArgs = (serverUrl: string, tokenFilePath: string) => {
-    return `npx -y ocean-brain mcp --server ${shellQuote(serverUrl)} --token-file ${shellQuote(tokenFilePath)}`;
+const buildOceanBrainMcpArgs = (setupShell: SetupShell, serverUrl: string, tokenFilePath: string) => {
+    const quote = setupShell === 'powershell' ? powershellQuote : posixShellQuote;
+    const commandPrefix = setupShell === 'powershell' ? 'cmd.exe /d /c ' : '';
+    return `${commandPrefix}npx -y ocean-brain mcp --server ${quote(serverUrl)} --token-file ${quote(tokenFilePath)}`;
 };
 
-const createCodexCommand = (serverUrl: string, tokenFilePath: string) => {
-    return `codex mcp add ocean-brain -- ${buildOceanBrainMcpArgs(serverUrl, tokenFilePath)}`;
+const createCodexCommand = (setupShell: SetupShell, serverUrl: string, tokenFilePath: string) => {
+    return `codex mcp add ocean-brain -- ${buildOceanBrainMcpArgs(setupShell, serverUrl, tokenFilePath)}`;
 };
 
-const createClaudeCommand = (serverUrl: string, tokenFilePath: string) => {
-    return `claude mcp add --transport stdio ocean-brain -- ${buildOceanBrainMcpArgs(serverUrl, tokenFilePath)}`;
+const createClaudeCommand = (setupShell: SetupShell, serverUrl: string, tokenFilePath: string) => {
+    return `claude mcp add --transport stdio ocean-brain -- ${buildOceanBrainMcpArgs(setupShell, serverUrl, tokenFilePath)}`;
 };
 
-const createMcpJsonSnippet = (serverUrl: string, tokenFilePath: string) => {
+const createMcpJsonSnippet = (setupShell: SetupShell, serverUrl: string, tokenFilePath: string) => {
+    const command = setupShell === 'powershell' ? 'cmd.exe' : 'npx';
+    const args = [
+        ...(setupShell === 'powershell' ? ['/d', '/c', 'npx'] : []),
+        '-y',
+        'ocean-brain',
+        'mcp',
+        '--server',
+        serverUrl,
+        '--token-file',
+        tokenFilePath,
+    ];
+
     return JSON.stringify(
         {
             mcpServers: {
                 'ocean-brain': {
-                    command: 'npx',
-                    args: ['-y', 'ocean-brain', 'mcp', '--server', serverUrl, '--token-file', tokenFilePath],
+                    command,
+                    args,
                 },
             },
         },
@@ -66,18 +107,24 @@ const createMcpJsonSnippet = (serverUrl: string, tokenFilePath: string) => {
     );
 };
 
-const createConnectionOutput = (clientGuide: ClientGuide, serverUrl: string, tokenFilePath: string, token: string) => {
+const createConnectionOutput = (
+    clientGuide: ClientGuide,
+    setupShell: SetupShell,
+    serverUrl: string,
+    tokenFilePath: string,
+    token: string,
+) => {
     const connectCommand =
         clientGuide === 'codex'
-            ? createCodexCommand(serverUrl, tokenFilePath)
+            ? createCodexCommand(setupShell, serverUrl, tokenFilePath)
             : clientGuide === 'claude'
-              ? createClaudeCommand(serverUrl, tokenFilePath)
-              : createMcpJsonSnippet(serverUrl, tokenFilePath);
+              ? createClaudeCommand(setupShell, serverUrl, tokenFilePath)
+              : createMcpJsonSnippet(setupShell, serverUrl, tokenFilePath);
 
     if (clientGuide === 'json') {
         return [
             `# 1. Create the token file`,
-            createTokenFileCommand(tokenFilePath, token),
+            createTokenFileCommand(setupShell, tokenFilePath, token),
             '',
             '# 2. Add this MCP JSON',
             connectCommand,
@@ -86,7 +133,7 @@ const createConnectionOutput = (clientGuide: ClientGuide, serverUrl: string, tok
 
     return [
         `# 1. Create the token file`,
-        createTokenFileCommand(tokenFilePath, token),
+        createTokenFileCommand(setupShell, tokenFilePath, token),
         '',
         `# 2. Add Ocean Brain to ${clientGuide}`,
         connectCommand,
@@ -114,7 +161,8 @@ const McpSetting = () => {
 
     const [serverUrl, setServerUrl] = useState(() => window.location.origin);
     const [issuedToken, setIssuedToken] = useState('');
-    const [tokenFilePath, setTokenFilePath] = useState(defaultTokenFilePath);
+    const [setupShell, setSetupShell] = useState<SetupShell>(getDefaultSetupShell);
+    const [tokenFilePath, setTokenFilePath] = useState(() => defaultTokenFilePaths[getDefaultSetupShell()]);
     const [clientGuide, setClientGuide] = useState<ClientGuide>('codex');
 
     const { data: status, isLoading } = useQuery({
@@ -151,12 +199,18 @@ const McpSetting = () => {
     const enabled = status?.enabled ?? false;
     const hasActiveToken = status?.hasActiveToken ?? false;
     const canToggle = !isLoading && !setEnabledMutation.isPending;
-    const normalizedTokenFilePath = tokenFilePath.trim() || defaultTokenFilePath;
+    const normalizedTokenFilePath = tokenFilePath.trim() || defaultTokenFilePaths[setupShell];
     const mcpCompatibilityLabel = getMcpCompatibilityLabel(status?.server.mcpVersionRequirement);
     const tokenStatusText = hasActiveToken ? '1 active token' : 'No active token';
     const outputLabel = clientGuide === 'json' ? 'Token file and MCP JSON' : `${clientGuideLabel[clientGuide]} setup`;
     const tokenValue = issuedToken || 'PASTE_TOKEN_HERE';
-    const connectionOutput = createConnectionOutput(clientGuide, serverUrl, normalizedTokenFilePath, tokenValue);
+    const connectionOutput = createConnectionOutput(
+        clientGuide,
+        setupShell,
+        serverUrl,
+        normalizedTokenFilePath,
+        tokenValue,
+    );
     const copyLabel = 'Copy setup';
 
     const sectionHeadingClassName = 'text-fg-tertiary';
@@ -310,6 +364,32 @@ const McpSetting = () => {
                             </summary>
                             <div className="space-y-3 border-t border-border-subtle px-3 py-3">
                                 <div className={fieldGroupClassName}>
+                                    <Label className={fieldLabelClassName}>Setup shell</Label>
+                                    <ToggleGroup
+                                        type="single"
+                                        variant="quiet"
+                                        size="sm"
+                                        value={setupShell}
+                                        onValueChange={(value) => {
+                                            if (value !== 'posix' && value !== 'powershell') {
+                                                return;
+                                            }
+
+                                            setTokenFilePath((currentPath) =>
+                                                currentPath === defaultTokenFilePaths[setupShell]
+                                                    ? defaultTokenFilePaths[value]
+                                                    : currentPath,
+                                            );
+                                            setSetupShell(value);
+                                        }}
+                                        aria-label="Setup shell"
+                                    >
+                                        <ToggleGroupItem value="posix">macOS / Linux</ToggleGroupItem>
+                                        <ToggleGroupItem value="powershell">Windows PowerShell</ToggleGroupItem>
+                                    </ToggleGroup>
+                                </div>
+
+                                <div className={fieldGroupClassName}>
                                     <Label htmlFor="mcp-server-url" className={fieldLabelClassName}>
                                         Ocean Brain URL
                                     </Label>
@@ -326,7 +406,7 @@ const McpSetting = () => {
                                     </Label>
                                     <Input
                                         id="mcp-token-file-path"
-                                        placeholder="/absolute/path/to/ocean-brain-mcp-token.txt"
+                                        placeholder="/absolute/path/to/ocean-brain/mcp-token"
                                         value={tokenFilePath}
                                         onChange={(event) => setTokenFilePath(event.target.value)}
                                     />

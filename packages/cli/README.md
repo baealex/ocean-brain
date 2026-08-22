@@ -2,7 +2,7 @@
 npm package README for the public ocean-brain CLI.
 
 Keep the product overview in the repository README. This file owns the public
-`serve` and `mcp` command interface, including npx auth and storage behavior.
+`serve` and `mcp` command interfaces, including npx auth and storage behavior.
 -->
 
 # ocean-brain CLI
@@ -69,7 +69,7 @@ For a long-lived installation, replace `ocean-brain` in the commands with an exa
 
 ## `mcp`
 
-The `mcp` command starts a stdio MCP server that forwards tool calls to an existing Ocean Brain instance. It does not start the web app.
+The `mcp` command starts the built-in stdio MCP adapter that forwards tool calls to an existing Ocean Brain instance. It does not start the web app.
 
 The MCP tools can search and read notes, query tags and properties, create notes, make targeted Markdown or metadata edits, and move notes to Trash.
 
@@ -87,7 +87,7 @@ First enable MCP access under `Settings > MCP`, issue a token, and save it to a 
         "--server",
         "http://localhost:6683",
         "--token-file",
-        "/absolute/path/to/ocean-brain-mcp-token.txt"
+        "/absolute/path/to/ocean-brain/mcp-token"
       ]
     }
   }
@@ -103,6 +103,8 @@ Set `--server` to the Ocean Brain URL reachable from the machine running the MCP
 | `-s, --server <url>` | Ocean Brain server URL; defaults to `http://localhost:6683` |
 | `--token-file <path>` | Read the bearer token from a file; takes precedence over `--token` |
 | `--token <token>` | Direct bearer-token fallback |
+
+The built-in adapter expands token-file paths that begin with `~`, `$HOME`, `${HOME}`, `%USERPROFILE%`, or `%HOME%`. This keeps copied JSON configurations portable even when the MCP client does not run arguments through a shell. `Settings > MCP` can generate either macOS/Linux shell commands or Windows PowerShell commands.
 
 Prefer `--token-file` so the token is not stored directly in client configuration. Ocean Brain keeps one active MCP token; rotating or revoking it immediately invalidates the previous token. For a long-lived MCP setup, pin an npm package version compatible with the requirement shown in `Settings > MCP`.
 

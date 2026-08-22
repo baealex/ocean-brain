@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import type { FastifyPluginAsync } from 'fastify';
 import { createLoginHandler, createLogoutHandler, createSessionStatusHandler } from '../features/auth/http/api.js';
 import { createUploadImageHandler } from '../features/image/http/upload.js';
 import {
@@ -19,7 +19,7 @@ import { createCsrfProtection, requireSessionForWrite } from '../modules/auth-gu
 import type { AuthConfig } from '../modules/auth-mode.js';
 import { createAuthAttemptRateLimit, createSessionAccessRateLimit } from '../modules/rate-limit.js';
 import { createServerEventsHandler } from '../modules/server-events-handler.js';
-import useAsync from '../modules/use-async.js';
+import type { HttpRoute } from '../types/index.js';
 import { createMcpRouter } from './mcp.js';
 
 type McpAdminApiService = Pick<
@@ -27,93 +27,113 @@ type McpAdminApiService = Pick<
     'getStatus' | 'setEnabled' | 'rotateToken' | 'revokeActiveToken' | 'validatePresentedToken'
 >;
 
-export const createApiRouter = (authConfig: AuthConfig, mcpAdminService: McpAdminApiService) => {
-    const csrfProtection = createCsrfProtection(authConfig);
-    const requireSession = requireSessionForWrite(authConfig);
-    const sessionAccessRateLimit = createSessionAccessRateLimit();
+export const createApiRouter = (authConfig: AuthConfig, mcpAdminService: McpAdminApiService): FastifyPluginAsync => {
+    return async (app) => {
+        const csrfProtection = createCsrfProtection(authConfig);
+        const requireSession = requireSessionForWrite(authConfig);
+        const sessionAccessRateLimit = app.rateLimit(createSessionAccessRateLimit());
 
-    return Router()
-        .use('/mcp', createMcpRouter(authConfig, mcpAdminService))
-        .get('/auth/session', csrfProtection, useAsync(createSessionStatusHandler(authConfig)))
-        .post('/auth/login', csrfProtection, createAuthAttemptRateLimit(), useAsync(createLoginHandler(authConfig)))
-        .post(
+        app.register(createMcpRouter(authConfig, mcpAdminService), { prefix: '/mcp' });
+
+        app.get<HttpRoute>('/auth/session', createSessionStatusHandler(authConfig));
+        app.post<HttpRoute>(
+            '/auth/login',
+            {
+                preHandler: csrfProtection,
+                config: { rateLimit: createAuthAttemptRateLimit() },
+            },
+            createLoginHandler(authConfig),
+        );
+        app.post<HttpRoute>(
             '/auth/logout',
-            sessionAccessRateLimit,
-            requireSession,
-            csrfProtection,
-            useAsync(createLogoutHandler(authConfig)),
-        )
-        .get(
+            {
+                preHandler: [sessionAccessRateLimit, requireSession, csrfProtection],
+            },
+            createLogoutHandler(authConfig),
+        );
+        app.get<HttpRoute>(
             '/mcp-admin/status',
-            sessionAccessRateLimit,
-            requireSession,
-            csrfProtection,
-            useAsync(createMcpAdminStatusHandler(mcpAdminService)),
-        )
-        .post(
+            {
+                preHandler: [sessionAccessRateLimit, requireSession],
+            },
+            createMcpAdminStatusHandler(mcpAdminService),
+        );
+        app.post<HttpRoute>(
             '/mcp-admin/enabled',
-            sessionAccessRateLimit,
-            requireSession,
-            csrfProtection,
-            useAsync(createMcpAdminSetEnabledHandler(mcpAdminService)),
-        )
-        .post(
+            {
+                preHandler: [sessionAccessRateLimit, requireSession, csrfProtection],
+            },
+            createMcpAdminSetEnabledHandler(mcpAdminService),
+        );
+        app.post<HttpRoute>(
             '/mcp-admin/token/rotate',
-            sessionAccessRateLimit,
-            requireSession,
-            csrfProtection,
-            useAsync(createMcpAdminRotateTokenHandler(mcpAdminService)),
-        )
-        .post(
+            {
+                preHandler: [sessionAccessRateLimit, requireSession, csrfProtection],
+            },
+            createMcpAdminRotateTokenHandler(mcpAdminService),
+        );
+        app.post<HttpRoute>(
             '/mcp-admin/token/revoke',
-            sessionAccessRateLimit,
-            requireSession,
-            csrfProtection,
-            useAsync(createMcpAdminRevokeTokenHandler(mcpAdminService)),
-        )
-        .get(
+            {
+                preHandler: [sessionAccessRateLimit, requireSession, csrfProtection],
+            },
+            createMcpAdminRevokeTokenHandler(mcpAdminService),
+        );
+        app.get<HttpRoute>(
             '/search-admin/status',
-            sessionAccessRateLimit,
-            requireSession,
-            csrfProtection,
-            useAsync(createSearchAdminStatusHandler()),
-        )
-        .post(
+            {
+                preHandler: [sessionAccessRateLimit, requireSession],
+            },
+            createSearchAdminStatusHandler(),
+        );
+        app.post<HttpRoute>(
             '/search-admin/config',
-            sessionAccessRateLimit,
-            requireSession,
-            csrfProtection,
-            useAsync(createSearchAdminSaveConfigHandler()),
-        )
-        .post(
+            {
+                preHandler: [sessionAccessRateLimit, requireSession, csrfProtection],
+            },
+            createSearchAdminSaveConfigHandler(),
+        );
+        app.post<HttpRoute>(
             '/search-admin/models',
-            sessionAccessRateLimit,
-            requireSession,
-            csrfProtection,
-            useAsync(createSearchAdminListModelsHandler()),
-        )
-        .post(
+            {
+                preHandler: [sessionAccessRateLimit, requireSession, csrfProtection],
+            },
+            createSearchAdminListModelsHandler(),
+        );
+        app.post<HttpRoute>(
             '/search-admin/test',
-            sessionAccessRateLimit,
-            requireSession,
-            csrfProtection,
-            useAsync(createSearchAdminTestConnectionHandler()),
-        )
-        .post(
+            {
+                preHandler: [sessionAccessRateLimit, requireSession, csrfProtection],
+            },
+            createSearchAdminTestConnectionHandler(),
+        );
+        app.post<HttpRoute>(
             '/search-admin/reindex',
-            sessionAccessRateLimit,
-            requireSession,
-            csrfProtection,
-            useAsync(createSearchAdminReindexHandler()),
-        )
-        .post('/image', sessionAccessRateLimit, requireSession, csrfProtection, useAsync(createUploadImageHandler()))
-        .get('/events', sessionAccessRateLimit, requireSession, csrfProtection, createServerEventsHandler())
-        .use((_req, res) => {
-            res.status(404)
-                .json({
-                    code: 'API_ROUTE_NOT_FOUND',
-                    message: 'The requested API route was not found.',
-                })
-                .end();
+            {
+                preHandler: [sessionAccessRateLimit, requireSession, csrfProtection],
+            },
+            createSearchAdminReindexHandler(),
+        );
+        app.post<HttpRoute>(
+            '/image',
+            {
+                preHandler: [sessionAccessRateLimit, requireSession, csrfProtection],
+            },
+            createUploadImageHandler(),
+        );
+        app.get<HttpRoute>(
+            '/events',
+            {
+                preHandler: [sessionAccessRateLimit, requireSession],
+            },
+            createServerEventsHandler(),
+        );
+
+        app.all<HttpRoute>('/*', (_request, reply) => {
+            return reply.status(404).send({
+                code: 'API_ROUTE_NOT_FOUND',
+                message: 'The requested API route was not found.',
+            });
         });
+    };
 };

@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import type { AddressInfo } from 'node:net';
 import test, { type TestContext } from 'node:test';
 import { createApp } from '~/app.js';
 import { AUTH_SESSION_COOKIE_NAME, type AuthConfig } from '~/modules/auth-mode.js';
@@ -14,13 +13,8 @@ const createPasswordAuthConfig = (): AuthConfig => ({
 
 const startServer = async (t: TestContext, authConfig: AuthConfig) => {
     const app = createApp(authConfig);
-    const server = app.listen(0);
     let closed = false;
-
-    await new Promise<void>((resolve, reject) => {
-        server.once('listening', resolve);
-        server.once('error', reject);
-    });
+    const baseUrl = await app.listen({ port: 0, host: '127.0.0.1' });
 
     const close = async () => {
         if (closed) {
@@ -29,23 +23,12 @@ const startServer = async (t: TestContext, authConfig: AuthConfig) => {
 
         closed = true;
 
-        await new Promise<void>((resolve, reject) => {
-            server.close((error) => {
-                if (error) {
-                    reject(error);
-                    return;
-                }
-
-                resolve();
-            });
-        });
+        await app.close();
     };
 
     t.after(close);
 
-    const address = server.address() as AddressInfo;
-
-    return { baseUrl: `http://127.0.0.1:${address.port}`, close };
+    return { baseUrl, close };
 };
 
 const getSetCookies = (headers: Headers) => {
@@ -117,6 +100,7 @@ const formRequest = async (
     return {
         status: response.status,
         text: await response.text(),
+        contentType: response.headers.get('content-type'),
         location: response.headers.get('location') ?? undefined,
         cookie: mergeCookieHeaders(cookie, toCookieHeader(getSetCookies(response.headers))) || undefined,
     };
@@ -158,6 +142,7 @@ test('password mode blocks client routes until the server-side login form succee
 
     assert.equal(loginPage.status, 200);
     assert.equal(loginPage.headers.get('cache-control'), 'no-store');
+    assert.equal(loginPage.headers.get('content-type'), 'text/html; charset=utf-8');
     assert.match(loginPageHtml, /Ocean Brain/);
     assert.doesNotMatch(loginPageHtml, /Enter the workspace password to continue/);
     assert.doesNotMatch(loginPageHtml, /This session must be authenticated/);
@@ -180,6 +165,7 @@ test('password mode blocks client routes until the server-side login form succee
     );
 
     assert.equal(invalidLogin.status, 401);
+    assert.equal(invalidLogin.contentType, 'text/html; charset=utf-8');
     assert.match(invalidLogin.text, /Invalid password/);
     assert.match(invalidLogin.text, /name="ocean-brain-session-generation"/);
 

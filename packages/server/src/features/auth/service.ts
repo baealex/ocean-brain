@@ -1,7 +1,8 @@
 import { buildAuthSessionResponse } from '@baejino/auth';
 import { compareSharedSecret as compareCommonSharedSecret } from '@baejino/auth/crypto';
 import crypto from 'crypto';
-import type { Request, Response } from 'express';
+import type { FastifyReply, FastifyRequest } from 'fastify';
+import { issueCsrfToken } from '~/modules/auth-guard.js';
 import type { AuthConfig } from '~/modules/auth-mode.js';
 import { sanitizeRedirectPath } from '~/modules/auth-redirect.js';
 import { createAppError } from '~/modules/error-handler.js';
@@ -25,18 +26,15 @@ export const comparePassword = async (password: string, storedHash: string) => {
 
 export const compareSharedSecret = compareCommonSharedSecret;
 
-export const buildSessionResponse = (authConfig: AuthConfig, req: Request) =>
+export const buildSessionResponse = (authConfig: AuthConfig, req: FastifyRequest) =>
     buildAuthSessionResponse(authConfig, Boolean(req.session?.authenticated));
 
-export const setSessionStatusHeaders = (res: Response) => {
-    res.set(AUTH_SESSION_GENERATION_HEADER, getSessionGeneration());
-    res.set('Cache-Control', 'no-store');
+export const setSessionStatusHeaders = (reply: FastifyReply) => {
+    reply.header(AUTH_SESSION_GENERATION_HEADER, getSessionGeneration());
+    reply.header('Cache-Control', 'no-store');
 };
 
-export const refreshCsrfToken = (req: Request) => {
-    const requestWithCsrf = req as Request & { csrfToken?: () => string };
-    requestWithCsrf.csrfToken?.();
-};
+export const refreshCsrfToken = (authConfig: AuthConfig, reply: FastifyReply) => issueCsrfToken(authConfig, reply);
 
 export const assertPasswordLoginAvailable = (authConfig: AuthConfig) => {
     if (authConfig.mode !== 'password') {
@@ -46,34 +44,14 @@ export const assertPasswordLoginAvailable = (authConfig: AuthConfig) => {
     return authConfig.password;
 };
 
-export const regenerateSession = async (req: Request) => {
-    await new Promise<void>((resolve, reject) => {
-        req.session.regenerate((error) => {
-            if (error) {
-                reject(error);
-                return;
-            }
+export const regenerateSession = async (req: FastifyRequest) => req.session.regenerate();
 
-            resolve();
-        });
-    });
-};
-
-export const destroySession = async (req: Request) => {
+export const destroySession = async (req: FastifyRequest) => {
     if (!req.session) {
         return;
     }
 
-    await new Promise<void>((resolve, reject) => {
-        req.session.destroy((error) => {
-            if (error) {
-                reject(error);
-                return;
-            }
-
-            resolve();
-        });
-    });
+    await req.session.destroy();
 };
 
 export { sanitizeRedirectPath };

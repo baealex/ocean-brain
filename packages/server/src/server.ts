@@ -1,4 +1,4 @@
-import { createServer as createNodeHttpServer, type Server as HttpServer } from 'node:http';
+import type { FastifyInstance } from 'fastify';
 
 import { createApp } from './app.js';
 import { ensureNoteReferenceIndex } from './features/note/services/note-reference-index.js';
@@ -6,7 +6,7 @@ import { getDefaultSemanticSearchManager } from './features/search/search-manage
 import { type AuthConfig, logAuthConfig, resolveAuthConfig } from './modules/auth-mode.js';
 import { startDataMaintenanceScheduler } from './modules/data-maintenance.js';
 
-type ServerFactory = (authConfig: AuthConfig) => HttpServer | Promise<HttpServer>;
+type ServerFactory = (authConfig: AuthConfig) => FastifyInstance | Promise<FastifyInstance>;
 
 export type StartServerOptions = {
     serverFactory?: ServerFactory;
@@ -19,9 +19,7 @@ export const startServer = async (options: StartServerOptions = {}) => {
 
     logAuthConfig(authConfig);
 
-    const httpServer = options.serverFactory
-        ? await options.serverFactory(authConfig)
-        : createNodeHttpServer(createApp(authConfig));
+    const app = options.serverFactory ? await options.serverFactory(authConfig) : createApp(authConfig);
 
     getDefaultSemanticSearchManager();
 
@@ -31,21 +29,20 @@ export const startServer = async (options: StartServerOptions = {}) => {
         process.stdout.write(`[maintenance] Rebuilt ${rebuiltReferenceCount} note reference rows\n`);
     }
 
-    httpServer.listen(port, host, () => {
-        process.stdout.write(`http server listen on ${host}:${port} (auth: ${authConfig.mode})\n`);
+    await app.listen({ port, host });
+    process.stdout.write(`http server listen on ${host}:${port} (auth: ${authConfig.mode})\n`);
 
-        startDataMaintenanceScheduler({
-            onResults: (results) => {
-                for (const result of results) {
-                    process.stdout.write(`[maintenance] Reconciled ${result.processedCount} rows for ${result.key}\n`);
-                }
-            },
-            onError: (error) => {
-                const message = error instanceof Error ? error.message : 'Unknown data maintenance error';
-                process.stderr.write(`[maintenance] Background run failed: ${message}\n`);
-            },
-        });
+    startDataMaintenanceScheduler({
+        onResults: (results) => {
+            for (const result of results) {
+                process.stdout.write(`[maintenance] Reconciled ${result.processedCount} rows for ${result.key}\n`);
+            }
+        },
+        onError: (error) => {
+            const message = error instanceof Error ? error.message : 'Unknown data maintenance error';
+            process.stderr.write(`[maintenance] Background run failed: ${message}\n`);
+        },
     });
 
-    return httpServer;
+    return app;
 };

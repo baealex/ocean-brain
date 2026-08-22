@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import type { AddressInfo } from 'node:net';
 import test, { type TestContext } from 'node:test';
 import { createAppWithMcpAuth } from '../src/app.js';
 import type { McpAdminService } from '../src/features/mcp-admin/service.js';
@@ -62,20 +61,11 @@ const createOpenAuthConfig = (): AuthConfig => ({
 
 const startServer = async (t: TestContext, authConfig: AuthConfig, mcpAdminAuth: McpAdminService) => {
     const app = createAppWithMcpAuth(authConfig, mcpAdminAuth);
-    const server = app.listen(0);
+    const baseUrl = await app.listen({ port: 0, host: '127.0.0.1' });
 
-    await new Promise<void>((resolve, reject) => {
-        server.once('listening', resolve);
-        server.once('error', reject);
-    });
+    t.after(() => app.close());
 
-    t.after(() => {
-        server.close();
-    });
-
-    const address = server.address() as AddressInfo;
-
-    return { baseUrl: `http://127.0.0.1:${address.port}` };
+    return { baseUrl };
 };
 
 const graphRequest = async (baseUrl: string, path: string, query: string, bearerToken?: string) => {

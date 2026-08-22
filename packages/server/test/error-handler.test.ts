@@ -1,42 +1,32 @@
 import assert from 'node:assert/strict';
-import type { AddressInfo } from 'node:net';
 import test, { type TestContext } from 'node:test';
-import express from 'express';
+import Fastify, { type FastifyInstance } from 'fastify';
 
 import { createAppError, createErrorHandler } from '../src/modules/error-handler.js';
-import useAsync from '../src/modules/use-async.js';
 
-const startServer = async (t: TestContext) => {
-    const app = express();
-    const server = app.listen(0);
+const openAuthConfig = {
+    mode: 'open' as const,
+    cookieName: 'ocean-brain.sid',
+    source: 'explicit-open' as const,
+};
 
-    await new Promise<void>((resolve, reject) => {
-        server.once('listening', resolve);
-        server.once('error', reject);
-    });
+const startServer = async (t: TestContext, registerRoutes: (app: FastifyInstance) => void) => {
+    const app = Fastify({ logger: false });
+    registerRoutes(app);
+    app.setErrorHandler(createErrorHandler(openAuthConfig));
+    const baseUrl = await app.listen({ port: 0, host: '127.0.0.1' });
 
-    t.after(() => {
-        server.close();
-    });
+    t.after(() => app.close());
 
-    const address = server.address() as AddressInfo;
-
-    return {
-        app,
-        baseUrl: `http://127.0.0.1:${address.port}`,
-    };
+    return baseUrl;
 };
 
 test('error handler returns structured AppError JSON responses', async (t) => {
-    const { app, baseUrl } = await startServer(t);
-
-    app.get(
-        '/app-error',
-        useAsync(async () => {
+    const baseUrl = await startServer(t, (app) => {
+        app.get('/app-error', async () => {
             throw createAppError(418, 'TEST_ERROR', 'Boom');
-        }),
-    );
-    app.use(createErrorHandler());
+        });
+    });
 
     const response = await fetch(`${baseUrl}/app-error`);
 
@@ -48,15 +38,11 @@ test('error handler returns structured AppError JSON responses', async (t) => {
 });
 
 test('error handler converts unexpected errors to a standard 500 response', async (t) => {
-    const { app, baseUrl } = await startServer(t);
-
-    app.get(
-        '/unexpected-error',
-        useAsync(async () => {
+    const baseUrl = await startServer(t, (app) => {
+        app.get('/unexpected-error', async () => {
             throw new Error('Unexpected failure');
-        }),
-    );
-    app.use(createErrorHandler());
+        });
+    });
 
     const response = await fetch(`${baseUrl}/unexpected-error`);
 

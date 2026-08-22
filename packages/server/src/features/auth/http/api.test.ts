@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import type { AddressInfo } from 'node:net';
 import test, { type TestContext } from 'node:test';
 import { createApp } from '~/app.js';
 import { AUTH_SESSION_COOKIE_NAME, type AuthConfig } from '~/modules/auth-mode.js';
@@ -21,13 +20,8 @@ const createOpenAuthConfig = (): AuthConfig => ({
 
 const startServer = async (t: TestContext, authConfig: AuthConfig) => {
     const app = createApp(authConfig);
-    const server = app.listen(0);
     let closed = false;
-
-    await new Promise<void>((resolve, reject) => {
-        server.once('listening', () => resolve());
-        server.once('error', reject);
-    });
+    const baseUrl = await app.listen({ port: 0, host: '127.0.0.1' });
 
     const close = async () => {
         if (closed) {
@@ -36,23 +30,12 @@ const startServer = async (t: TestContext, authConfig: AuthConfig) => {
 
         closed = true;
 
-        await new Promise<void>((resolve, reject) => {
-            server.close((error) => {
-                if (error) {
-                    reject(error);
-                    return;
-                }
-
-                resolve();
-            });
-        });
+        await app.close();
     };
 
     t.after(close);
 
-    const address = server.address() as AddressInfo;
-
-    return { baseUrl: `http://127.0.0.1:${address.port}`, close };
+    return { baseUrl, close };
 };
 
 const getSetCookies = (headers: Headers) => {
@@ -372,4 +355,14 @@ test('open mode keeps auth endpoints explicit and allows existing open write/que
     const mutation = await graphRequest(baseUrl, 'mutation { __typename }');
     assert.equal(mutation.status, 200);
     assert.equal((mutation.body.data as { __typename?: string }).__typename, 'Mutation');
+});
+
+test('GraphQL validation errors remain client errors instead of becoming generic server errors', async (t) => {
+    const { baseUrl } = await startServer(t, createOpenAuthConfig());
+
+    const invalidQuery = await graphRequest(baseUrl, 'query { fieldThatDoesNotExist }');
+    const errors = invalidQuery.body.errors as Array<{ message?: string }>;
+
+    assert.equal(invalidQuery.status, 400);
+    assert.match(errors[0]?.message ?? '', /Cannot query field "fieldThatDoesNotExist"/);
 });

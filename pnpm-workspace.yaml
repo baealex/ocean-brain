@@ -4,17 +4,19 @@ packages:
 catalog:
   '@baejino/auth': 0.1.1
   '@blocknote/core': ^0.49.0
+  '@fastify/cookie': ^11.1.2
+  '@fastify/csrf-protection': ^8.0.1
+  '@fastify/formbody': ^9.0.0
+  '@fastify/rate-limit': ^11.2.0
+  '@fastify/session': ^11.1.2
+  '@fastify/static': ^10.1.3
   '@graphql-tools/schema': ^10.0.38
   '@graphql-tools/utils': ^11.2.2
   '@prisma/client': ^6.19.3
   diff: ^9.0.0
-  express: ^5.2.1
-  express-rate-limit: 8.5.1
-  express-session: ^1.19.0
-  express-winston: ^4.2.0
-  graphql-http: ^1.22.4
+  fastify: ^5.12.1
+  graphql: ^16.12.0
   jsdom: ^25.0.1
-  lusca: ^1.7.0
+  mercurius: ^16.10.0
   prisma: ^6.19.3
   sqlite-vec: 0.1.9
-  winston: ^3.19.0

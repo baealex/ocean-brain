@@ -1,4 +1,6 @@
-import type { ErrorRequestHandler } from 'express';
+import type { FastifyReply, FastifyRequest } from 'fastify';
+import { buildLoginCsrfRedirectPath, isCsrfTokenError, shouldRedirectLoginCsrfFailure } from './auth-guard.js';
+import type { AuthConfig } from './auth-mode.js';
 
 export class AppError extends Error {
     code: string;
@@ -18,55 +20,41 @@ export const createAppError = (status: number, code: string, message: string, de
     return new AppError(status, code, message, details);
 };
 
-const hasErrorType = (error: unknown, type: string) =>
-    error instanceof Error && 'type' in error && (error as Error & { type?: unknown }).type === type;
+export const createErrorHandler = (authConfig: AuthConfig) => {
+    return (error: unknown, request: FastifyRequest, reply: FastifyReply) => {
+        if (reply.sent) {
+            request.log.error({ error }, 'Error occurred after the response was sent');
+            return;
+        }
 
-export const createErrorHandler = (): ErrorRequestHandler => {
-    return (error, _req, res, next) => {
-        if (res.headersSent) {
-            next(error);
+        if (shouldRedirectLoginCsrfFailure(error, request, authConfig)) {
+            void reply.redirect(buildLoginCsrfRedirectPath(request), 303);
             return;
         }
 
         if (error instanceof AppError) {
-            res.status(error.status)
-                .json({
-                    code: error.code,
-                    message: error.message,
-                    ...(error.details ? { details: error.details } : {}),
-                })
-                .end();
+            void reply.status(error.status).send({
+                code: error.code,
+                message: error.message,
+                ...(error.details ? { details: error.details } : {}),
+            });
             return;
         }
 
-        if (hasErrorType(error, 'encoding.unsupported')) {
-            res.status(415)
-                .json({
-                    code: 'UNSUPPORTED_CONTENT_ENCODING',
-                    message: 'Compressed request bodies are not supported.',
-                })
-                .end();
-            return;
-        }
-
-        if (error instanceof Error && error.message.startsWith('CSRF token ')) {
-            res.status(403)
-                .json({
-                    code: 'CSRF_TOKEN_INVALID',
-                    message: error.message,
-                })
-                .end();
+        if (isCsrfTokenError(error)) {
+            void reply.status(403).send({
+                code: 'CSRF_TOKEN_INVALID',
+                message: error instanceof Error ? error.message : 'Invalid CSRF token',
+            });
             return;
         }
 
         const message = error instanceof Error ? error.stack || error.message : String(error);
         process.stderr.write(`[error] ${message}\n`);
 
-        res.status(500)
-            .json({
-                code: 'INTERNAL_SERVER_ERROR',
-                message: 'Internal Server Error',
-            })
-            .end();
+        void reply.status(500).send({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Internal Server Error',
+        });
     };
 };

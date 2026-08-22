@@ -1,26 +1,34 @@
-import { Router } from 'express';
+import type { FastifyPluginAsync } from 'fastify';
 import {
     createLoginPageHandler,
     createLoginPageSubmitHandler,
     createLogoutPageHandler,
 } from '../features/auth/http/pages.js';
-import { createCsrfProtection, createLoginCsrfFailureHandler, requireSessionForWrite } from '../modules/auth-guard.js';
+import { createCsrfProtection, requireSessionForWrite } from '../modules/auth-guard.js';
 import type { AuthConfig } from '../modules/auth-mode.js';
 import { createAuthAttemptRateLimit, createSessionAccessRateLimit } from '../modules/rate-limit.js';
+import type { HttpRoute } from '../types/index.js';
 
-export const createAuthPagesRouter = (authConfig: AuthConfig) => {
-    const csrfProtection = createCsrfProtection(authConfig);
-    const sessionAccessRateLimit = createSessionAccessRateLimit();
+export const createAuthPagesRouter = (authConfig: AuthConfig): FastifyPluginAsync => {
+    return async (app) => {
+        const csrfProtection = createCsrfProtection(authConfig);
 
-    return Router()
-        .get('/login', csrfProtection, createLoginPageHandler(authConfig))
-        .post('/login', csrfProtection, createAuthAttemptRateLimit(), createLoginPageSubmitHandler(authConfig))
-        .post(
+        app.get<HttpRoute>('/login', createLoginPageHandler(authConfig));
+        app.post<HttpRoute>(
+            '/login',
+            {
+                preHandler: csrfProtection,
+                config: { rateLimit: createAuthAttemptRateLimit() },
+            },
+            createLoginPageSubmitHandler(authConfig),
+        );
+        app.post<HttpRoute>(
             '/logout',
-            sessionAccessRateLimit,
-            requireSessionForWrite(authConfig),
-            csrfProtection,
+            {
+                preHandler: [requireSessionForWrite(authConfig), csrfProtection],
+                config: { rateLimit: createSessionAccessRateLimit() },
+            },
             createLogoutPageHandler(authConfig),
-        )
-        .use(createLoginCsrfFailureHandler(authConfig));
+        );
+    };
 };

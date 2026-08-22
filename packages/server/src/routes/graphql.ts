@@ -1,5 +1,5 @@
-import { type Request, type Response, Router } from 'express';
-import { createHandler } from 'graphql-http/lib/use/express';
+import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
+import mercurius from 'mercurius';
 import type { McpAdminService } from '../features/mcp-admin/service.js';
 import { createCsrfProtection, isAuthenticatedRequest, requireSessionForGraphql } from '../modules/auth-guard.js';
 import type { AuthConfig } from '../modules/auth-mode.js';
@@ -7,37 +7,40 @@ import { createMcpAuthMiddleware, createReadOnlyMcpValidationRule } from '../mod
 import schema from '../schema/index.js';
 
 type McpGraphqlService = Pick<McpAdminService, 'getStatus' | 'validatePresentedToken'>;
-type GraphqlRequestContext = { raw: Request; context: { res: Response } };
 
-const createGraphqlContext = (authConfig: AuthConfig) => (req: GraphqlRequestContext) => ({
+const createGraphqlContext = (authConfig: AuthConfig) => (request: FastifyRequest, reply: FastifyReply) => ({
     authMode: authConfig.mode,
-    isAuthenticated: isAuthenticatedRequest(req.raw),
-    req: req.raw,
-    res: req.context.res,
+    isAuthenticated: isAuthenticatedRequest(request),
+    req: request,
+    res: reply,
 });
 
-export const createGraphqlRouter = (authConfig: AuthConfig, mcpAdminService: McpGraphqlService) => {
-    const csrfProtection = createCsrfProtection(authConfig);
+export const createGraphqlRouter = (authConfig: AuthConfig, mcpAdminService: McpGraphqlService): FastifyPluginAsync => {
+    return async (app) => {
+        app.register(async (mcpEndpoint) => {
+            mcpEndpoint.addHook('preHandler', createMcpAuthMiddleware(authConfig, mcpAdminService));
+            mcpEndpoint.register(mercurius, {
+                schema,
+                path: '/graphql/mcp',
+                graphiql: false,
+                errorFormatter: (execution, context) => ({
+                    ...mercurius.defaultErrorFormatter(execution, context),
+                    statusCode: 200,
+                }),
+                context: createGraphqlContext(authConfig),
+                validationRules: [createReadOnlyMcpValidationRule()],
+            });
+        });
 
-    return Router()
-        .use(
-            '/mcp',
-            createMcpAuthMiddleware(authConfig, mcpAdminService),
-            createHandler({
+        app.register(async (sessionEndpoint) => {
+            sessionEndpoint.addHook('preHandler', requireSessionForGraphql(authConfig));
+            sessionEndpoint.addHook('preHandler', createCsrfProtection(authConfig));
+            sessionEndpoint.register(mercurius, {
                 schema,
+                path: '/graphql',
+                graphiql: false,
                 context: createGraphqlContext(authConfig),
-                validationRules: (_req, _args, specifiedRules) => {
-                    return [...specifiedRules, createReadOnlyMcpValidationRule()];
-                },
-            }),
-        )
-        .use(
-            '/',
-            requireSessionForGraphql(authConfig),
-            csrfProtection,
-            createHandler({
-                schema,
-                context: createGraphqlContext(authConfig),
-            }),
-        );
+            });
+        });
+    };
 };

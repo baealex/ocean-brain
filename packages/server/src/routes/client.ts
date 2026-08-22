@@ -1,14 +1,22 @@
-import express, { type RequestHandler, Router } from 'express';
-import { rateLimit } from 'express-rate-limit';
-import path from 'path';
-import { createCsrfProtection, isAuthenticatedRequest } from '../modules/auth-guard.js';
+import path from 'node:path';
+import fastifyStatic from '@fastify/static';
+import type { FastifyPluginAsync, FastifyReply, FastifyRequest, preHandlerHookHandler } from 'fastify';
+import { isAuthenticatedRequest, issueCsrfToken } from '../modules/auth-guard.js';
 import type { AuthConfig } from '../modules/auth-mode.js';
+import { createImageAssetRateLimit } from '../modules/rate-limit.js';
 import { paths } from '../paths.js';
 
-const IMAGE_ASSET_RATE_LIMIT_MESSAGE = 'Too many image asset requests. Please try again later.';
+export type ClientContentHandler = (request: FastifyRequest, reply: FastifyReply) => Promise<unknown> | unknown;
 
-const isClientDocumentRequest = (req: express.Request) => {
-    return req.method === 'GET' && Boolean(req.headers.accept?.includes('text/html')) && path.extname(req.path) === '';
+const getRequestPath = (request: FastifyRequest) => request.url.split('?')[0] || '/';
+
+const isClientDocumentRequest = (request: FastifyRequest) => {
+    const accept = request.headers.accept;
+    return (
+        request.method === 'GET' &&
+        Boolean(accept?.includes('text/html')) &&
+        path.extname(getRequestPath(request)) === ''
+    );
 };
 
 const shouldBlockClientRoute = (authConfig: AuthConfig, requestPath: string, authenticated: boolean) => {
@@ -28,106 +36,82 @@ const shouldBlockClientRoute = (authConfig: AuthConfig, requestPath: string, aut
     return path.extname(requestPath) === '';
 };
 
-const createImageAssetAuthRateLimit = (authConfig: AuthConfig) =>
-    rateLimit({
-        windowMs: 15 * 60 * 1000,
-        limit: 10,
-        standardHeaders: true,
-        legacyHeaders: false,
-        skip: (req) => authConfig.mode !== 'password' || isAuthenticatedRequest(req),
-        handler: (_req, res) => {
-            res.setHeader('Cache-Control', 'no-store');
-            res.status(429).json({
-                code: 'IMAGE_ASSET_RATE_LIMITED',
-                message: IMAGE_ASSET_RATE_LIMIT_MESSAGE,
-            });
-        },
-    });
-
-const createProtectedImageAssetsMiddleware = (authConfig: AuthConfig): RequestHandler => {
-    return (req, res, next) => {
-        if (authConfig.mode !== 'password' || isAuthenticatedRequest(req)) {
-            next();
+const createProtectedImageAssetsMiddleware = (authConfig: AuthConfig): preHandlerHookHandler => {
+    return (request, reply, done) => {
+        if (authConfig.mode !== 'password' || isAuthenticatedRequest(request)) {
+            done();
             return;
         }
 
-        res.setHeader('Cache-Control', 'no-store');
-
-        if (req.headers.accept?.includes('text/html')) {
-            const redirectPath = encodeURIComponent(req.originalUrl || req.url || '/');
-            res.redirect(303, `/login?next=${redirectPath}`);
+        if (request.headers.accept?.includes('text/html')) {
+            const redirectPath = encodeURIComponent(request.url || '/');
+            void reply.redirect(`/login?next=${redirectPath}`, 303);
             return;
         }
 
-        res.status(401).end();
+        void reply.status(401).send();
     };
 };
 
-const createClientRouteCsrfTokenMiddleware = (authConfig: AuthConfig) => {
-    const csrfProtection = createCsrfProtection(authConfig);
+const setImageHeaders = (authConfig: AuthConfig, reply: FastifyReply) => {
+    reply.header('X-Content-Type-Options', 'nosniff');
 
-    return (req: express.Request, res: express.Response, next: express.NextFunction) => {
-        if (path.extname(req.path) !== '') {
-            next();
-            return;
-        }
-
-        csrfProtection(req, res, next);
-    };
+    if (authConfig.mode === 'password') {
+        reply.header('Cache-Control', 'no-store');
+    }
 };
 
-const createProductionClientContentRouter = () =>
-    Router()
-        .use(express.static(paths.clientDist, { extensions: ['html'] }))
-        .get(/.*/, (req, res, next) => {
-            if (!isClientDocumentRequest(req)) {
-                next();
-                return;
-            }
+const createProductionClientContentHandler = (): ClientContentHandler => {
+    return (request, reply) => {
+        if (isClientDocumentRequest(request)) {
+            return reply.sendFile('index.html', paths.clientDist);
+        }
 
-            res.sendFile('index.html', { root: paths.clientDist });
-        })
-        .use((_req, res) => {
-            res.setHeader('X-Content-Type-Options', 'nosniff');
-            res.status(404).end();
-        });
+        const filePath = getRequestPath(request).replace(/^\/+/, '');
+        return reply.sendFile(filePath, paths.clientDist, { extensions: ['html'] });
+    };
+};
 
 export const createClientRouter = (
     authConfig: AuthConfig,
-    clientContentMiddleware: RequestHandler = createProductionClientContentRouter(),
-) =>
-    Router()
-        .use(
-            '/assets/images',
-            createImageAssetAuthRateLimit(authConfig),
-            createProtectedImageAssetsMiddleware(authConfig),
-            express.static(paths.imageDir, {
-                setHeaders: (res) => {
-                    res.setHeader('X-Content-Type-Options', 'nosniff');
+    clientContentHandler: ClientContentHandler = createProductionClientContentHandler(),
+): FastifyPluginAsync => {
+    return async (app) => {
+        app.register(fastifyStatic, { serve: false });
 
-                    if (authConfig.mode === 'password') {
-                        res.setHeader('Cache-Control', 'no-store');
-                    }
+        app.get<{ Params: { '*': string } }>(
+            '/assets/images/*',
+            {
+                onRequest: (_request, reply, done) => {
+                    setImageHeaders(authConfig, reply);
+                    done();
                 },
-            }),
-            (_req, res) => {
-                res.setHeader('X-Content-Type-Options', 'nosniff');
-
-                if (authConfig.mode === 'password') {
-                    res.setHeader('Cache-Control', 'no-store');
-                }
-
-                res.status(404).end();
+                preHandler: createProtectedImageAssetsMiddleware(authConfig),
+                config: { rateLimit: createImageAssetRateLimit(authConfig) },
             },
-        )
-        .use((req, res, next) => {
-            if (shouldBlockClientRoute(authConfig, req.path, isAuthenticatedRequest(req))) {
-                const redirectPath = encodeURIComponent(req.originalUrl || '/');
-                res.redirect(303, `/login?next=${redirectPath}`);
-                return;
+            (request, reply) => {
+                return reply.sendFile(request.params['*'], paths.imageDir, { cacheControl: false });
+            },
+        );
+
+        const handleClientRequest = async (request: FastifyRequest, reply: FastifyReply) => {
+            const requestPath = getRequestPath(request);
+            if (shouldBlockClientRoute(authConfig, requestPath, isAuthenticatedRequest(request))) {
+                return reply.redirect(`/login?next=${encodeURIComponent(request.url || '/')}`, 303);
             }
 
-            next();
-        })
-        .use(createClientRouteCsrfTokenMiddleware(authConfig))
-        .use(clientContentMiddleware);
+            if (path.extname(requestPath) === '') {
+                issueCsrfToken(authConfig, reply);
+            }
+
+            return clientContentHandler(request, reply);
+        };
+
+        app.get('/', handleClientRequest);
+        app.get('/*', handleClientRequest);
+
+        app.setNotFoundHandler((_request, reply) => {
+            return reply.header('X-Content-Type-Options', 'nosniff').status(404).send();
+        });
+    };
+};

@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
-import type { AddressInfo } from 'node:net';
 import test from 'node:test';
-import type { Response } from 'express';
+import type { FastifyReply } from 'fastify';
 import { createApp } from '~/app.js';
 import { AUTH_SESSION_COOKIE_NAME, type AuthConfig } from '~/modules/auth-mode.js';
 import {
@@ -18,16 +17,13 @@ const createResponse = () => {
             this.statusCode = code;
             return this;
         },
-        json(body: unknown) {
+        send(body: unknown) {
             this.body = body;
-            return this;
-        },
-        end() {
             return this;
         },
     };
 
-    return response as typeof response & Response;
+    return response as typeof response & FastifyReply;
 };
 
 const passwordAuthConfig: AuthConfig = {
@@ -39,14 +35,9 @@ const passwordAuthConfig: AuthConfig = {
 };
 
 test('semantic search administration endpoints require an authenticated session', async (t) => {
-    const server = createApp(passwordAuthConfig).listen(0);
-    await new Promise<void>((resolve, reject) => {
-        server.once('listening', resolve);
-        server.once('error', reject);
-    });
-    t.after(() => server.close());
-
-    const address = server.address() as AddressInfo;
+    const app = createApp(passwordAuthConfig);
+    const baseUrl = await app.listen({ port: 0, host: '127.0.0.1' });
+    t.after(() => app.close());
     const providerConfig = {
         enabled: true,
         baseUrl: 'http://127.0.0.1:1234/v1',
@@ -62,7 +53,7 @@ test('semantic search administration endpoints require an authenticated session'
     ];
 
     for (const [path, init] of requests) {
-        const response = await fetch(`http://127.0.0.1:${address.port}${path}`, {
+        const response = await fetch(`${baseUrl}${path}`, {
             ...init,
             headers: init?.body ? { 'Content-Type': 'application/json' } : undefined,
         });

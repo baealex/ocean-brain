@@ -1,11 +1,10 @@
-import { createServer as createNodeHttpServer } from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import express, { type RequestHandler } from 'express';
+import type { ClientContentHandler } from '../src/routes/client.js';
 import { createServer as createViteServer, type ViteDevServer } from 'vite';
 
-import { createApp } from '../src/app.js';
+import { createApp, createFastifyApplication } from '../src/app.js';
 import { startServer } from '../src/server.js';
 
 const devDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -15,28 +14,53 @@ process.env.OCEAN_BRAIN_VITE_MIDDLEWARE_MODE = 'true';
 
 let viteServer: ViteDevServer | undefined;
 
+const createViteContentHandler = (vite: ViteDevServer): ClientContentHandler => {
+    return (request, reply) => {
+        reply.hijack();
+
+        return new Promise<void>((resolve) => {
+            const response = reply.raw;
+            const settle = () => {
+                response.off('finish', settle);
+                response.off('close', settle);
+                resolve();
+            };
+
+            response.on('finish', settle);
+            response.on('close', settle);
+            vite.middlewares(request.raw, response, (error: unknown) => {
+                if (response.writableEnded) {
+                    return;
+                }
+
+                response.statusCode = error ? 500 : 404;
+                response.end(error instanceof Error ? error.message : undefined);
+            });
+        });
+    };
+};
+
 try {
     await startServer({
         serverFactory: async (authConfig) => {
-            const application = express();
-            const httpServer = createNodeHttpServer(application);
+            const application = createFastifyApplication();
 
             viteServer = await createViteServer({
                 root: clientRoot,
                 configFile: path.join(clientRoot, 'vite.config.ts'),
                 appType: 'spa',
                 server: {
-                    middlewareMode: { server: httpServer },
-                    hmr: { server: httpServer },
+                    middlewareMode: { server: application.server },
+                    hmr: { server: application.server },
                 },
             });
 
             createApp(authConfig, {
                 application,
-                clientContentMiddleware: viteServer.middlewares as unknown as RequestHandler,
+                clientContentHandler: createViteContentHandler(viteServer),
             });
 
-            return httpServer;
+            return application;
         },
     });
 } catch (error) {

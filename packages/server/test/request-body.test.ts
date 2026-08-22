@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import type { AddressInfo } from 'node:net';
 import test from 'node:test';
 import { gzipSync } from 'node:zlib';
 import { createApp } from '../src/app.js';
@@ -15,33 +14,16 @@ const passwordAuthConfig: AuthConfig = {
 
 test('server rejects compressed JSON request bodies before authentication', async (t) => {
     const app = createApp(passwordAuthConfig);
-    const server = app.listen(0);
+    const baseUrl = await app.listen({ port: 0, host: '127.0.0.1' });
 
-    await new Promise<void>((resolve, reject) => {
-        server.once('listening', resolve);
-        server.once('error', reject);
-    });
+    t.after(() => app.close());
 
-    t.after(async () => {
-        await new Promise<void>((resolve, reject) => {
-            server.close((error) => {
-                if (error) {
-                    reject(error);
-                    return;
-                }
-
-                resolve();
-            });
-        });
-    });
-
-    const address = server.address() as AddressInfo;
     const expandedBody = JSON.stringify({ padding: 'a'.repeat(8 * 1024 * 1024) });
     const compressedBody = gzipSync(expandedBody);
 
     assert.ok(compressedBody.length < 16 * 1024);
 
-    const response = await fetch(`http://127.0.0.1:${address.port}/api/image`, {
+    const response = await fetch(`${baseUrl}/api/image`, {
         method: 'POST',
         headers: {
             'Content-Encoding': 'gzip',

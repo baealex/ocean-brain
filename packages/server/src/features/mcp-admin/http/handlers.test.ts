@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import type { AddressInfo } from 'node:net';
 import test, { type TestContext } from 'node:test';
 import { createAppWithMcpAuth } from '~/app.js';
 import { AUTH_SESSION_COOKIE_NAME, type AuthConfig } from '~/modules/auth-mode.js';
@@ -54,19 +53,11 @@ const startServer = async (
     mcpAdminService: McpAdminService = createStubMcpAdminService(),
 ) => {
     const app = createAppWithMcpAuth(authConfig, mcpAdminService);
-    const server = app.listen(0);
+    const baseUrl = await app.listen({ port: 0, host: '127.0.0.1' });
 
-    await new Promise<void>((resolve, reject) => {
-        server.once('listening', resolve);
-        server.once('error', reject);
-    });
+    t.after(() => app.close());
 
-    t.after(() => {
-        server.close();
-    });
-
-    const address = server.address() as AddressInfo;
-    return { baseUrl: `http://127.0.0.1:${address.port}` };
+    return { baseUrl };
 };
 
 const getSetCookies = (headers: Headers) => {
@@ -138,6 +129,7 @@ const jsonRequest = async (
         status: response.status,
         body: (await response.json()) as Record<string, unknown>,
         cookie: mergeCookieHeaders(requestCookie, toCookieHeader(getSetCookies(response.headers))) || undefined,
+        rateLimitRemaining: response.headers.get('ratelimit-remaining'),
     };
 };
 
@@ -154,6 +146,7 @@ test('GET /api/mcp-admin/status requires authenticated session in password mode'
     const status = await jsonRequest(baseUrl, '/api/mcp-admin/status', 'GET');
     assert.equal(status.status, 401);
     assert.equal(status.body.code, 'UNAUTHORIZED');
+    assert.equal(status.rateLimitRemaining, '299');
 });
 
 test('POST /api/mcp-admin/token/rotate returns plaintext token once for authenticated session', async (t) => {
@@ -184,6 +177,20 @@ test('POST /api/mcp-admin/enabled toggles enabled state for authenticated sessio
     assert.equal(typeof serverInfo.version, 'string');
     assert.equal(serverInfo.mcpVersionRequirement, '0.11.x');
     assert.equal(serverInfo.mcp?.compatibilityRequirement, '0.11.x');
+});
+
+test('protected API routes share one session access rate limit', async (t) => {
+    const service = createStubMcpAdminService({ enabled: false });
+    const { baseUrl } = await startServer(t, createPasswordAuthConfig(), service);
+    const cookie = await login(baseUrl);
+
+    const status = await jsonRequest(baseUrl, '/api/mcp-admin/status', 'GET', undefined, cookie);
+    assert.equal(status.status, 200);
+    assert.equal(status.rateLimitRemaining, '299');
+
+    const enabled = await jsonRequest(baseUrl, '/api/mcp-admin/enabled', 'POST', { enabled: true }, cookie);
+    assert.equal(enabled.status, 200);
+    assert.equal(enabled.rateLimitRemaining, '298');
 });
 
 test('POST /api/mcp-admin/token/revoke revokes active token for authenticated session', async (t) => {

@@ -1,99 +1,83 @@
 import { buildUnauthorizedGraphqlPayload, buildUnauthorizedPayload } from '@baejino/auth';
-import type { ErrorRequestHandler, NextFunction, Request, RequestHandler, Response } from 'express';
-import session from 'express-session';
+import type { FastifyReply, FastifyRequest, preHandlerHookHandler } from 'fastify';
 import type { ValidationRule } from 'graphql';
 import { GraphQLError } from 'graphql';
-import lusca from 'lusca';
 import type { AuthConfig } from './auth-mode.js';
 import { sanitizeRedirectPath } from './auth-redirect.js';
-import { AUTH_SESSION_IDLE_TIMEOUT_MS, createSessionStore } from './session-store.js';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
+const CSRF_COOKIE_NAME = 'XSRF-TOKEN';
 
-export const isAuthenticatedRequest = (req: Request) => Boolean(req.session?.authenticated);
+export const isAuthenticatedRequest = (request: FastifyRequest) => Boolean(request.session?.authenticated);
 
-export const createSessionMiddleware = (authConfig: AuthConfig): RequestHandler => {
+export const issueCsrfToken = (authConfig: AuthConfig, reply: FastifyReply) => {
     if (authConfig.mode !== 'password') {
-        return (_req, _res, next) => next();
+        return undefined;
     }
 
-    return session({
-        secret: authConfig.sessionSecret,
-        name: authConfig.cookieName,
-        store: createSessionStore(),
-        resave: false,
-        saveUninitialized: false,
-        rolling: true,
-        cookie: {
-            maxAge: AUTH_SESSION_IDLE_TIMEOUT_MS,
-            httpOnly: true,
-            sameSite: 'lax',
-            secure: process.env.NODE_ENV === 'production',
-            path: '/',
-        },
+    const token = reply.generateCsrf();
+    reply.setCookie(CSRF_COOKIE_NAME, token, {
+        httpOnly: false,
+        path: '/',
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
     });
+    return token;
 };
 
-export const createCsrfProtection = (authConfig: AuthConfig): RequestHandler => {
+export const createCsrfProtection = (authConfig: AuthConfig): preHandlerHookHandler => {
     if (authConfig.mode !== 'password') {
-        return (_req, _res, next) => next();
+        return (_request, _reply, done) => done();
     }
 
-    return lusca.csrf({
-        angular: true,
-        cookie: {
-            options: {
-                path: '/',
-                sameSite: 'lax',
-                secure: process.env.NODE_ENV === 'production',
-            },
-        },
-    });
+    return (request, reply, done) => {
+        if (request.method === 'GET' || request.method === 'HEAD' || request.method === 'OPTIONS') {
+            done();
+            return;
+        }
+
+        request.server.csrfProtection(request, reply, done);
+    };
 };
 
-const isCsrfTokenError = (error: unknown) => error instanceof Error && error.message.startsWith('CSRF token ');
+export const isCsrfTokenError = (error: unknown) =>
+    error instanceof Error &&
+    ('code' in error
+        ? error.code === 'FST_CSRF_INVALID_TOKEN' || error.code === 'FST_CSRF_MISSING_SECRET'
+        : error.message.toLowerCase().includes('csrf'));
 
-const buildLoginRedirectPath = (req: Request) => {
-    const nextPath = sanitizeRedirectPath(req.body?.next);
+export const buildLoginCsrfRedirectPath = (request: FastifyRequest) => {
+    const body = request.body as Record<string, unknown> | undefined;
+    const nextPath = sanitizeRedirectPath(body?.next);
     return `/login?next=${encodeURIComponent(nextPath)}`;
 };
 
-export const createLoginCsrfFailureHandler = (authConfig: AuthConfig): ErrorRequestHandler => {
-    return (error, req, res, next) => {
-        if (
-            authConfig.mode !== 'password' ||
-            !isCsrfTokenError(error) ||
-            req.method !== 'POST' ||
-            req.path !== '/login' ||
-            isAuthenticatedRequest(req)
-        ) {
-            next(error);
+export const shouldRedirectLoginCsrfFailure = (error: unknown, request: FastifyRequest, authConfig: AuthConfig) =>
+    authConfig.mode === 'password' &&
+    isCsrfTokenError(error) &&
+    request.method === 'POST' &&
+    request.url.split('?')[0] === '/login' &&
+    !isAuthenticatedRequest(request);
+
+export const requireSessionForWrite = (authConfig: AuthConfig): preHandlerHookHandler => {
+    return (request, reply, done) => {
+        if (authConfig.mode === 'open' || isAuthenticatedRequest(request)) {
+            done();
             return;
         }
 
-        res.redirect(303, buildLoginRedirectPath(req));
+        void reply.code(401).headers(JSON_HEADERS).send(buildUnauthorizedPayload());
     };
 };
 
-export const requireSessionForWrite = (authConfig: AuthConfig): RequestHandler => {
-    return (req: Request, res: Response, next: NextFunction) => {
-        if (authConfig.mode === 'open' || isAuthenticatedRequest(req)) {
-            next();
+export const requireSessionForGraphql = (authConfig: AuthConfig): preHandlerHookHandler => {
+    return (request, reply, done) => {
+        if (authConfig.mode === 'open' || isAuthenticatedRequest(request)) {
+            done();
             return;
         }
 
-        res.status(401).set(JSON_HEADERS).json(buildUnauthorizedPayload()).end();
-    };
-};
-
-export const requireSessionForGraphql = (authConfig: AuthConfig): RequestHandler => {
-    return (req: Request, res: Response, next: NextFunction) => {
-        if (authConfig.mode === 'open' || isAuthenticatedRequest(req)) {
-            next();
-            return;
-        }
-
-        res.status(401).set(JSON_HEADERS).json(buildUnauthorizedGraphqlPayload()).end();
+        void reply.code(401).headers(JSON_HEADERS).send(buildUnauthorizedGraphqlPayload());
     };
 };
 

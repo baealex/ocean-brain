@@ -1,23 +1,11 @@
 import { expect, type Page, test } from '@playwright/test';
+import { collectRuntimeErrors } from './helpers/runtime-errors';
 
 const signIn = async (page: Page) => {
     await page.goto('/');
     await page.getByLabel('Password').fill('e2e-password');
     await page.getByRole('button', { name: 'Sign in' }).click();
     await expect(page).toHaveURL((url) => url.pathname === '/');
-};
-
-const collectRuntimeErrors = (page: Page) => {
-    const errors: string[] = [];
-
-    page.on('pageerror', (error) => errors.push(error.message));
-    page.on('console', (message) => {
-        if (message.type() === 'error') {
-            errors.push(message.text());
-        }
-    });
-
-    return errors;
 };
 
 test('production note chunks render after navigation and a direct hard refresh', async ({ page }) => {

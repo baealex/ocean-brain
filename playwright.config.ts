@@ -1,11 +1,20 @@
+import path from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
 
-const port = Number(process.env.E2E_PORT ?? 6684);
+const rootDir = process.cwd();
+const inheritedPort = process.env.PLAYWRIGHT_TEST_BASE_URL
+    ? Number(new URL(process.env.PLAYWRIGHT_TEST_BASE_URL).port)
+    : undefined;
+const defaultPort = 6684 + (process.pid % 1000);
+const port = Number(process.env.E2E_PORT ?? inheritedPort ?? defaultPort);
 const baseURL = `http://127.0.0.1:${port}`;
+const runId = (process.env.E2E_RUN_ID ?? `${Date.now()}-${process.pid}`).replace(/[^a-zA-Z0-9_-]/g, '-');
 
 export default defineConfig({
     testDir: './tests/e2e',
     timeout: 30_000,
+    workers: 1,
+    outputDir: path.join(rootDir, 'test-results', `e2e-${runId}`),
     expect: {
         timeout: 5_000,
     },
@@ -20,25 +29,18 @@ export default defineConfig({
         },
     ],
     webServer: {
-        command: [
-            'rm -rf .tmp/e2e',
-            'mkdir -p .tmp/e2e/data/assets/images',
-            'rm -rf packages/server/client',
-            'mkdir -p packages/server/client',
-            'cp -R packages/client/dist packages/server/client/dist',
-            [
-                `DATABASE_URL="file:$PWD/.tmp/e2e/data/db.sqlite3"`,
-                'OCEAN_BRAIN_DATA_DIR="$PWD/.tmp/e2e/data"',
-                'OCEAN_BRAIN_IMAGE_DIR="$PWD/.tmp/e2e/data/assets/images"',
-                'OCEAN_BRAIN_PASSWORD="e2e-password"',
-                'OCEAN_BRAIN_SESSION_SECRET="e2e-session-secret-for-browser-tests"',
-                'HOST="127.0.0.1"',
-                `PORT="${port}"`,
-                'pnpm start',
-            ].join(' '),
-        ].join(' && '),
-        url: baseURL,
-        reuseExistingServer: !process.env.CI,
+        command: 'node scripts/test/start-e2e-server.mjs',
+        cwd: rootDir,
+        env: {
+            E2E_CLIENT_DIST: path.join(rootDir, 'packages/client/dist'),
+            E2E_PORT: String(port),
+        },
+        port,
+        reuseExistingServer: false,
+        gracefulShutdown: {
+            signal: 'SIGTERM',
+            timeout: 5_000,
+        },
         timeout: 120_000,
     },
 });

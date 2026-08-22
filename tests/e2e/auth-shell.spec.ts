@@ -1,10 +1,8 @@
 import { expect, test } from '@playwright/test';
+import { collectRuntimeErrors } from './helpers/runtime-errors';
 
 test('unauthenticated users see the login page and authenticated users load the app shell', async ({ page }) => {
-    const pageErrors: Error[] = [];
-    page.on('pageerror', (error) => {
-        pageErrors.push(error);
-    });
+    const runtimeErrors = collectRuntimeErrors(page);
 
     await page.goto('/');
 
@@ -19,5 +17,5 @@ test('unauthenticated users see the login page and authenticated users load the 
     await expect(page).toHaveURL((url) => url.pathname === '/');
     await expect(page.locator('#root')).not.toBeEmpty();
 
-    expect(pageErrors).toEqual([]);
+    expect(runtimeErrors).toEqual([]);
 });

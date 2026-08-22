@@ -1,6 +1,6 @@
 # Ocean Brain Testing Convention
 
-Updated: 2026-08-01
+Updated: 2026-08-22
 
 ## 1. Philosophy
 - Tests are executable feedback, not coverage theater.
@@ -114,6 +114,8 @@ Prefer these replacements:
 - Install or refresh the local browser with `pnpm exec playwright install chromium` when the Playwright version changes.
 - `pnpm test:integration` builds the production app and runs the core note flow.
 - `pnpm test:e2e` builds the production app and runs the full browser suite.
+
+Playwright starts the production server with a fresh temporary SQLite database and data directory for every invocation. The directory is removed when the server exits, and an existing server is never reused. The default browser port is derived from the runner process; set `E2E_PORT` to override it.
 
 ## 13. Source Notes
 - The Pragmatic Programmer tips: testing is a perspective into code, write the failing test before fixing bugs, prove assumptions, test significant states, use tracer bullets, and finish only when tests pass.

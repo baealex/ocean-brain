@@ -19,11 +19,13 @@ interface BlockNoteInline {
     styles?: Record<string, unknown>;
 }
 
-interface BlockNoteTableCell {
+interface ModernBlockNoteTableCell {
     type: 'tableCell';
     props?: Record<string, unknown>;
     content?: BlockNoteInline[];
 }
+
+type BlockNoteTableCell = BlockNoteInline[] | ModernBlockNoteTableCell;
 
 interface BlockNoteTableRow {
     cells?: BlockNoteTableCell[];
@@ -170,10 +172,14 @@ function mapBlockContent(
         ...content,
         rows: content.rows?.map((row) => ({
             ...row,
-            cells: row.cells?.map((cell) => ({
-                ...cell,
-                content: cell.content?.map(mapInline),
-            })),
+            cells: row.cells?.map((cell) =>
+                Array.isArray(cell)
+                    ? cell.map(mapInline)
+                    : {
+                          ...cell,
+                          content: cell.content?.map(mapInline),
+                      },
+            ),
         })),
     };
 }
@@ -196,10 +202,18 @@ async function mapBlockContentAsync(
             (content.rows ?? []).map(async (row) => ({
                 ...row,
                 cells: await Promise.all(
-                    (row.cells ?? []).map(async (cell) => ({
-                        ...cell,
-                        content: cell.content ? (await Promise.all(cell.content.map(mapInline))).flat() : cell.content,
-                    })),
+                    (row.cells ?? []).map(async (cell) => {
+                        if (Array.isArray(cell)) {
+                            return (await Promise.all(cell.map(mapInline))).flat();
+                        }
+
+                        return {
+                            ...cell,
+                            content: cell.content
+                                ? (await Promise.all(cell.content.map(mapInline))).flat()
+                                : cell.content,
+                        };
+                    }),
                 ),
             })),
         ),
@@ -220,7 +234,7 @@ function visitBlockContent(content: BlockNoteContent | undefined, visitInline: (
 
     for (const row of content.rows ?? []) {
         for (const cell of row.cells ?? []) {
-            for (const inline of cell.content ?? []) {
+            for (const inline of Array.isArray(cell) ? cell : (cell.content ?? [])) {
                 visitInline(inline);
             }
         }

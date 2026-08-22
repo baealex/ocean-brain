@@ -181,6 +181,61 @@ test('blocksToMarkdown does not drop the whole note when table blocks are presen
     assert.match(markdown, /Summary/);
 });
 
+test('blocksToMarkdown preserves legacy array table cells', async () => {
+    const content = JSON.stringify([
+        {
+            id: 'heading-1',
+            type: 'heading',
+            props: {
+                backgroundColor: 'default',
+                textColor: 'default',
+                textAlignment: 'left',
+                level: 2,
+            },
+            content: [{ type: 'text', text: 'Legacy table', styles: {} }],
+            children: [],
+        },
+        {
+            id: 'table-1',
+            type: 'table',
+            props: {
+                textColor: 'default',
+                backgroundColor: 'default',
+            },
+            content: {
+                type: 'tableContent',
+                rows: [
+                    {
+                        cells: [
+                            [{ type: 'text', text: 'Name', styles: {} }],
+                            [{ type: 'text', text: 'Value', styles: {} }],
+                        ],
+                    },
+                    {
+                        cells: [
+                            [{ type: 'text', text: 'Project', styles: {} }],
+                            [
+                                { type: 'tag', props: { id: '12', tag: '@project' } },
+                                { type: 'text', text: ' ', styles: {} },
+                                { type: 'reference', props: { id: '44', title: 'Reference Note' } },
+                            ],
+                        ],
+                    },
+                ],
+            },
+            children: [],
+        },
+    ]);
+
+    const markdown = await blocksToMarkdown(content);
+
+    assert.match(markdown, /Legacy table/);
+    assert.match(markdown, /Name/);
+    assert.match(markdown, /Value/);
+    assert.match(markdown, /\[@project\]/);
+    assert.match(markdown, /\[\[Reference Note\]\]\(note:44\)/);
+});
+
 test('blocksToMarkdown serializes tags using explicit bracket syntax', async () => {
     const content = JSON.stringify([
         {
@@ -1218,6 +1273,44 @@ test('extractTagIdsFromContentJson collects tags from table cells', () => {
     );
 
     assert.deepEqual(tagIds.sort(), ['12', '34']);
+});
+
+test('legacy array table cells remain visible to metadata extraction', () => {
+    const content = JSON.stringify([
+        {
+            id: 'table-1',
+            type: 'table',
+            content: {
+                type: 'tableContent',
+                rows: [
+                    {
+                        cells: [
+                            [
+                                {
+                                    type: 'tag',
+                                    props: {
+                                        id: '12',
+                                        tag: '@project',
+                                    },
+                                },
+                                {
+                                    type: 'reference',
+                                    props: {
+                                        id: '44',
+                                        title: 'Reference Note',
+                                    },
+                                },
+                            ],
+                        ],
+                    },
+                ],
+            },
+            children: [],
+        },
+    ]);
+
+    assert.deepEqual(extractTagIdsFromContentJson(content), ['12']);
+    assert.equal(countReferenceInlinesFromContentJson(content), 1);
 });
 
 test('countReferenceInlinesFromContentJson counts structured note references', () => {

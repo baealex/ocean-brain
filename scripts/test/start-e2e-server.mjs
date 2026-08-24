@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(scriptDir, '..', '..');
-const port = process.env.E2E_PORT ?? '6684';
+const port = process.env.E2E_PORT ?? '0';
 const clientDist = path.resolve(process.env.E2E_CLIENT_DIST ?? path.join(rootDir, 'packages/client/dist'));
 
 if (!existsSync(path.join(clientDist, 'index.html'))) {

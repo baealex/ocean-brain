@@ -115,7 +115,7 @@ Prefer these replacements:
 - `pnpm test:integration` builds the production app and runs the core note flow.
 - `pnpm test:e2e` builds the production app and runs the full browser suite.
 
-Playwright starts the production server with a fresh temporary SQLite database and data directory for every invocation. The directory is removed when the server exits, and an existing server is never reused. The default browser port is derived from the runner process; set `E2E_PORT` to override it.
+Playwright starts the production server with a fresh temporary SQLite database and data directory for every invocation. The directory is removed when the server exits, and an existing server is never reused. By default, the server binds to port `0` so the operating system assigns an available loopback port; set `E2E_PORT` to use an explicit port for debugging.
 
 ## 13. Source Notes
 - The Pragmatic Programmer tips: testing is a perspective into code, write the failing test before fixing bugs, prove assumptions, test significant states, use tracer bullets, and finish only when tests pass.

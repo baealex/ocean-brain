@@ -6,15 +6,17 @@ type RollupOptions = NonNullable<NonNullable<UserConfig['build']>['rollupOptions
 /**
  * Client bundle safety contract:
  *
- * 1. Keep route-preload as an independent entry. A normal module script in
+ * 1. Force production NODE_ENV during builds. Vite preserves inherited values,
+ *    which can otherwise select React's development runtime.
+ * 2. Keep route-preload as an independent entry. A normal module script in
  *    index.html is merged into the app entry and cannot start route downloads
  *    early enough for cold note URLs.
- * 2. Manually group only dependencies owned exclusively by the Note route.
+ * 3. Manually group only dependencies owned exclusively by the Note route.
  *    Object-form manualChunks pulls React and other transitive dependencies into
  *    note chunks, which makes the home entry load them again.
- * 3. Keep note-runtime together. Splitting its editor/markup/support packages
+ * 4. Keep note-runtime together. Splitting its editor/markup/support packages
  *    produced circular chunks and production-only initialization risk.
- * 4. Do not silence the remaining note-runtime size warning. It is route-only;
+ * 5. Do not silence the remaining note-runtime size warning. It is route-only;
  *    scripts/ci/check-client-bundle.mjs enforces the actual initial-load budget.
  *
  * Production behavior is guarded by the bundle check and
@@ -94,6 +96,15 @@ const createNoteOnlyManualChunks = () => {
         return owners.size === 1 && owner?.endsWith(NOTE_PAGE_MODULE_SUFFIX) ? getNoteChunkName(id) : undefined;
     };
 };
+
+export const createProductionBuildEnvironmentPlugin = (): Plugin => ({
+    name: 'ocean-brain-production-build-environment',
+    config(_config, { command }) {
+        if (command === 'build') {
+            process.env.NODE_ENV = 'production';
+        }
+    },
+});
 
 export const createRoutePreloadPlugin = (): Plugin => {
     let command: 'build' | 'serve' = 'serve';

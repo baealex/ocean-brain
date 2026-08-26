@@ -1,5 +1,6 @@
-import { expect, type Page, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import { collectRuntimeErrors } from './helpers/runtime-errors';
+import { expect, test } from './fixtures';
 
 const signIn = async (page: Page) => {
     await page.goto('/');
@@ -130,6 +131,11 @@ test('Math formula slash commands render accessible formulas after a hard refres
 test('production graph chunks render after a direct hard refresh', async ({ page }) => {
     const runtimeErrors = collectRuntimeErrors(page);
     await signIn(page);
+
+    await page.getByRole('button', { name: /Open a new note/ }).click();
+    await page.getByRole('textbox', { name: 'Note title' }).fill('Graph production smoke');
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(page.getByRole('status')).toContainText('Saved');
 
     await page.goto('/graph');
     await expect(page.getByRole('heading', { name: 'Knowledge Graph' })).toBeVisible();

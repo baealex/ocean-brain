@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { collectRuntimeErrors } from './helpers/runtime-errors';
 
 test('unauthenticated users see the login page and authenticated users load the app shell', async ({ page }) => {

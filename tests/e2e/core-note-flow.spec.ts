@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { collectRuntimeErrors } from './helpers/runtime-errors';
 
 test('users can capture, save, find, and reopen a note', async ({ page }) => {

@@ -1,6 +1,6 @@
 # Ocean Brain Testing Convention
 
-Updated: 2026-08-22
+Updated: 2026-08-26
 
 ## 1. Philosophy
 - Tests are executable feedback, not coverage theater.
@@ -115,7 +115,9 @@ Prefer these replacements:
 - `pnpm test:integration` builds the production app and runs the core note flow.
 - `pnpm test:e2e` builds the production app and runs the full browser suite.
 
-Playwright starts the production server with a fresh temporary SQLite database and data directory for every invocation. The directory is removed when the server exits, and an existing server is never reused. By default, the server binds to port `0` so the operating system assigns an available loopback port; set `E2E_PORT` to use an explicit port for debugging.
+Server tests must run through the package `test` or `test:ci` scripts. The runner migrates a temporary SQLite template, gives every Node test worker its own database copy and data directory, and restores the database, search index, images, and other data files before every test. The setup assigns and verifies persistent paths inside the temporary worker directory, and the complete run directory is removed afterward.
+
+Every Playwright test starts its own production server with a fresh temporary SQLite database and data directory. Tests never reuse an existing server or another test's persistent state. The directory is removed when the server exits. By default, each server binds to port `0` so the operating system assigns an available loopback port. Set `E2E_PORT` only for a single test or a `--workers=1` debugging run because one explicit port cannot be shared by parallel test servers.
 
 ## 13. Source Notes
 - The Pragmatic Programmer tips: testing is a perspective into code, write the failing test before fixing bugs, prove assumptions, test significant states, use tracer bullets, and finish only when tests pass.

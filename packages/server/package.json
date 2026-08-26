@@ -11,8 +11,8 @@
         "start": "node dist/start.js",
         "lint": "biome check .",
         "format": "biome check --write .",
-        "test": "tsx --tsconfig tsconfig.json --test \"src/**/*.test.ts\" \"test/**/*.test.ts\"",
-        "test:ci": "tsx --tsconfig tsconfig.json --test \"src/**/*.test.ts\" \"test/**/*.test.ts\"",
+        "test": "node ../../scripts/test/run-server-tests.mjs",
+        "test:ci": "node ../../scripts/test/run-server-tests.mjs",
         "type-check": "tsc --noEmit"
     },
     "dependencies": {

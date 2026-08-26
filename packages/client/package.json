@@ -11,7 +11,7 @@
         "preview": "vite preview",
         "test": "vitest",
         "test:ci": "vitest run --coverage",
-        "type-check": "tsc --noEmit"
+        "type-check": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json"
     },
     "dependencies": {
         "@baejino/auth": "0.1.1",
@@ -61,7 +61,7 @@
         "jsdom": "^29.1.1",
         "react-grab": "^0.1.32",
         "tailwindcss": "^4.1.18",
-        "typescript": "^5.9.3",
+        "typescript": "^7.0.2",
         "vite": "^7.3.5",
         "vitest": "^4.1.4"
     }

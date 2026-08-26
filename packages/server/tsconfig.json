@@ -4,17 +4,18 @@
         "esModuleInterop": true,
         "allowSyntheticDefaultImports": true,
         "moduleResolution": "Node16",
-        "baseUrl": "src",
         "target": "ES2022",
         "module": "Node16",
+        "rootDir": "..",
         "strict": true,
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
         "declaration": true,
         "declarationMap": true,
         "sourceMap": true,
+        "types": ["node"],
         "paths": {
-            "~/*": ["./*"]
+            "~/*": ["./src/*"]
         }
     },
     "include": ["src/**/*", "dev/**/*"],

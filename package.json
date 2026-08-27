@@ -26,7 +26,8 @@
     "check:deps": "node scripts/ci/check-cli-server-runtime-deps.mjs"
   },
   "devDependencies": {
-    "@playwright/test": "^1.61.1"
+    "@playwright/test": "^1.61.1",
+    "@types/node": "^22.15.0"
   },
   "pnpm": {
     "overrides": {

@@ -19,9 +19,8 @@
         "noUnusedParameters": true,
         "noFallthroughCasesInSwitch": true,
         "types": ["vitest/globals"],
-        "baseUrl": "./src",
         "paths": {
-            "~/*": ["./*"]
+            "~/*": ["./src/*"]
         }
     },
     "references": [

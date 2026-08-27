@@ -1,6 +1,7 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import type { ViteDevServer } from 'vite';
 import { defineConfig } from 'vitest/config';
 
 import {
@@ -37,7 +38,7 @@ export default defineConfig({
             ? [
                   {
                       name: 'ocean-brain-dev-auth-gate',
-                      configureServer(server) {
+                      configureServer(server: ViteDevServer) {
                           server.middlewares.use(createDevAuthGateMiddleware({ backendOrigin }));
                       },
                   },

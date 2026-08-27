@@ -1,13 +1,8 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
+import { collectRuntimeErrors } from './helpers/runtime-errors';
 
 test('users can capture, save, find, and reopen a note', async ({ page }) => {
-    const runtimeErrors: string[] = [];
-    page.on('pageerror', (error) => runtimeErrors.push(error.message));
-    page.on('console', (message) => {
-        if (message.type() === 'error') {
-            runtimeErrors.push(message.text());
-        }
-    });
+    const runtimeErrors = collectRuntimeErrors(page);
 
     await page.goto('/');
     await page.getByLabel('Password').fill('e2e-password');

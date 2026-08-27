@@ -61,7 +61,7 @@ export interface EmbeddingApiKeyInput {
 
 interface SearchManagerDependencies {
     configStore: SemanticSearchConfigStore;
-    vectorIndex: SemanticVectorIndex & SemanticNoteSyncStore;
+    vectorIndex: SemanticVectorIndex & SemanticNoteSyncStore & { close?: () => Promise<void> };
     listNotes: () => Promise<SemanticSearchNoteInput[]>;
     findNotes: (noteIds: number[]) => Promise<SemanticSearchNoteInput[]>;
     apiKeyStore: EmbeddingApiKeyStore;
@@ -465,6 +465,23 @@ export class SemanticSearchManager {
         }
     }
 
+    async close() {
+        this.stopBackgroundSync();
+
+        const activeOperations: Promise<unknown>[] = [];
+        if (this.activeReindex) {
+            activeOperations.push(this.activeReindex);
+        }
+        if (this.activeNoteSync) {
+            activeOperations.push(this.activeNoteSync);
+        }
+        if (this.activeReconciliation) {
+            activeOperations.push(this.activeReconciliation);
+        }
+        await Promise.allSettled(activeOperations);
+        await this.dependencies.vectorIndex.close?.();
+    }
+
     async trySearch(query: string, limit: number): Promise<SemanticSearchAttempt> {
         const status = await this.getStatus();
         if (!status.available) {
@@ -501,6 +518,7 @@ export class SemanticSearchManager {
 }
 
 let defaultSemanticSearchManager: SemanticSearchManager | null = null;
+let defaultSemanticSearchUnsubscribers: Array<() => void> = [];
 
 export const getDefaultSemanticSearchManager = () => {
     if (!defaultSemanticSearchManager) {
@@ -530,14 +548,28 @@ export const getDefaultSemanticSearchManager = () => {
                 }),
             apiKeyStore: new FileEmbeddingApiKeyStore(paths.embeddingApiKey),
         });
-        subscribeServerEvents((event) => {
-            void defaultSemanticSearchManager?.scheduleNoteSync(Number(event.noteId)).catch(() => undefined);
-        });
-        subscribeSemanticSearchNoteChanges((noteId) => {
-            void defaultSemanticSearchManager?.scheduleNoteSync(noteId).catch(() => undefined);
-        });
+        defaultSemanticSearchUnsubscribers = [
+            subscribeServerEvents((event) => {
+                void defaultSemanticSearchManager?.scheduleNoteSync(Number(event.noteId)).catch(() => undefined);
+            }),
+            subscribeSemanticSearchNoteChanges((noteId) => {
+                void defaultSemanticSearchManager?.scheduleNoteSync(noteId).catch(() => undefined);
+            }),
+        ];
         defaultSemanticSearchManager.startBackgroundSync();
     }
 
     return defaultSemanticSearchManager;
+};
+
+export const closeDefaultSemanticSearchManager = async () => {
+    const manager = defaultSemanticSearchManager;
+    defaultSemanticSearchManager = null;
+
+    for (const unsubscribe of defaultSemanticSearchUnsubscribers) {
+        unsubscribe();
+    }
+    defaultSemanticSearchUnsubscribers = [];
+
+    await manager?.close();
 };

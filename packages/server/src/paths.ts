@@ -11,10 +11,11 @@ const DATA_DIR = process.env.OCEAN_BRAIN_DATA_DIR || '.';
 const IMAGE_DIR = process.env.OCEAN_BRAIN_IMAGE_DIR || path.resolve(DATA_DIR, 'assets/images');
 const SEARCH_INDEX_PATH = process.env.OCEAN_BRAIN_SEARCH_INDEX_PATH || path.resolve(DATA_DIR, 'search.sqlite3');
 const EMBEDDING_API_KEY_PATH = path.resolve(DATA_DIR, 'embedding-api-key');
+const CLIENT_DIST = process.env.OCEAN_BRAIN_CLIENT_DIST || path.resolve(PACKAGE_ROOT, 'client/dist');
 
 export const paths = {
     packageRoot: path.resolve(PACKAGE_ROOT),
-    clientDist: path.resolve(PACKAGE_ROOT, 'client/dist'),
+    clientDist: path.resolve(CLIENT_DIST),
     imageDir: path.resolve(IMAGE_DIR),
     searchIndex: path.resolve(SEARCH_INDEX_PATH),
     embeddingApiKey: path.resolve(EMBEDDING_API_KEY_PATH),

@@ -24,7 +24,7 @@ const invalidResponseShape = (field: string, details: unknown): GraphQueryErrorR
 
 export const getServerCache = async (key: CacheName) => {
     try {
-        const response = await graphQuery<{ cache?: CacheItem }, { key: CacheName }>(
+        const response = await graphQuery<{ cache?: CacheItem | null }, { key: CacheName }>(
             `
         query GetServerCache($key: String!) {
             cache(key: $key) {

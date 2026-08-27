@@ -7,6 +7,7 @@ import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastif
 import { createMcpAdminService, type McpAdminService } from './features/mcp-admin/service.js';
 import { purgeExpiredNoteSnapshots } from './features/note/services/snapshot.js';
 import { purgeExpiredTrashedNotes } from './features/note/services/trash.js';
+import { closeDefaultSemanticSearchManager } from './features/search/search-manager.js';
 import type { AuthConfig } from './modules/auth-mode.js';
 import { createAppError, createErrorHandler } from './modules/error-handler.js';
 import { AUTH_SESSION_IDLE_TIMEOUT_MS, createSessionStore } from './modules/session-store.js';
@@ -114,9 +115,14 @@ export const createAppWithMcpAuth = (
 ) => {
     const app = options.application ?? createFastifyApplication(options);
 
-    void Promise.all([purgeExpiredNoteSnapshots(), purgeExpiredTrashedNotes()]).catch((error) => {
+    const startupCleanup = Promise.all([purgeExpiredNoteSnapshots(), purgeExpiredTrashedNotes()]).catch((error) => {
         const message = error instanceof Error ? error.message : 'Unknown recovery cleanup error';
         process.stderr.write(`[recovery] Startup cleanup failed: ${message}\n`);
+    });
+
+    app.addHook('onClose', async () => {
+        await startupCleanup;
+        await closeDefaultSemanticSearchManager();
     });
 
     registerRequestInfrastructure(app, authConfig);

@@ -29,8 +29,8 @@ export const startServer = async (options: StartServerOptions = {}) => {
         process.stdout.write(`[maintenance] Rebuilt ${rebuiltReferenceCount} note reference rows\n`);
     }
 
-    await app.listen({ port, host });
-    process.stdout.write(`http server listen on ${host}:${port} (auth: ${authConfig.mode})\n`);
+    const address = await app.listen({ port, host });
+    process.stdout.write(`http server listen on ${address} (auth: ${authConfig.mode})\n`);
 
     startDataMaintenanceScheduler({
         onResults: (results) => {

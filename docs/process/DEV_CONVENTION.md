@@ -1,6 +1,6 @@
 # Ocean Brain Dev Convention
 
-Updated: 2026-08-22
+Updated: 2026-08-30
 
 ## 1. Base Environment
 - Node.js: `22.13+`
@@ -12,6 +12,7 @@ Updated: 2026-08-22
 - Client only: `pnpm dev:client`
 - Server only: `pnpm dev:server`
 - Full build: `pnpm build`
+- Full pre-PR validation: `pnpm validate`
 - Server start: `pnpm start`
 - Core user-flow integration: `pnpm test:integration`
 - Full browser E2E: `pnpm test:e2e`
@@ -32,11 +33,16 @@ Install the local browser once with `pnpm exec playwright install chromium` afte
 Full dev mode exposes Fastify APIs, the Vite client, and HMR through the server port (`6683` by default). Client-only mode keeps the standalone Vite server and development proxy for isolated frontend work. Server-only mode runs Fastify with the existing built client fallback and does not start Vite.
 
 ## 3. Standard Quality Checks
+
+Run `pnpm validate` before opening a PR. It executes the repository's complete validation contract in this order:
+
 - `pnpm check:encoding`
 - `pnpm lint`
-- `pnpm test:ci`
 - `pnpm type-check`
+- `pnpm test:ci`
 - `pnpm build`
+
+The individual commands remain available for validating a changed scope while developing. The pull request CI uses `pnpm validate` so local and CI validation cannot drift silently.
 
 ## 4. Minimum Rules Before PR
 1. Complete local validation for changed scope.

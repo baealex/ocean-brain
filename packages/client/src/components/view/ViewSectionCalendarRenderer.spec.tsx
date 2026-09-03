@@ -43,6 +43,7 @@ const renderCalendar = (
     onNavigationStateChange = vi.fn(),
     section = createSection(),
     calendarDateProperty?: ComponentProps<typeof ViewSectionCalendarRenderer>['calendarDateProperty'],
+    navigationState: ViewSectionRouteState = { calendar: { year: 2026, month: 8 } },
 ) => {
     const { Wrapper } = createQueryClientWrapper();
 
@@ -50,7 +51,7 @@ const renderCalendar = (
         <ViewSectionCalendarRenderer
             section={section}
             calendarDateProperty={calendarDateProperty}
-            navigationState={{ calendar: { year: 2026, month: 8 } }}
+            navigationState={navigationState}
             onNavigationStateChange={onNavigationStateChange}
         />,
         { wrapper: Wrapper },
@@ -97,14 +98,19 @@ describe('<ViewSectionCalendarRenderer />', () => {
 
     it('stores month navigation in the owning section URL state', async () => {
         const user = userEvent.setup();
-        const { onNavigationStateChange } = renderCalendar();
+        const { onNavigationStateChange } = renderCalendar(vi.fn(), createSection(), undefined, {});
+        const nextMonth = new Date();
+        nextMonth.setDate(1);
+        nextMonth.setMonth(nextMonth.getMonth() + 1);
 
         await user.click(screen.getByRole('button', { name: 'Next month' }));
 
         const updater = onNavigationStateChange.mock.calls[0]?.[0] as (
             current: ViewSectionRouteState,
         ) => ViewSectionRouteState;
-        expect(updater({})).toEqual({ calendar: { year: 2026, month: 9 } });
+        expect(updater({})).toEqual({
+            calendar: { year: nextMonth.getFullYear(), month: nextMonth.getMonth() + 1 },
+        });
     });
 
     it('places date properties on their saved day without timezone shifting', async () => {

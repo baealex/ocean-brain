@@ -487,6 +487,265 @@ html.dark .bn-mantine .bn-menu-dropdown {
     content: var(--index) ".";
     white-space: nowrap;
 }
+[data-external-change],
+[data-external-removal] {
+    scroll-margin-block: 72px;
+}
+
+.bn-block:has(> .note-ai-update) {
+    position: relative;
+}
+
+.note-ai-update {
+    z-index: 6;
+    display: block;
+    width: 100%;
+    height: 0;
+    margin: 0;
+    color: var(--fg-secondary);
+    font-family: var(--bn-font-family);
+    line-height: 1.45;
+    pointer-events: none;
+    user-select: none;
+}
+
+.note-ai-update[data-open='true'] {
+    z-index: 20;
+}
+
+.note-ai-update__summary {
+    position: absolute;
+    inset-block-start: 2px;
+    inset-inline-end: 0;
+    display: inline-flex;
+    min-height: 28px;
+    align-items: center;
+    gap: 3px;
+    padding: 4px 3px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--fg-secondary);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    list-style: none;
+    pointer-events: auto;
+    white-space: nowrap;
+    animation: note-ai-update-arrive 320ms ease-out;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.note-ai-update__summary:hover,
+.note-ai-update__summary:focus-visible,
+.note-ai-update[data-open='true'] > .note-ai-update__summary {
+    background: var(--hover-subtle);
+    color: var(--fg-default);
+}
+
+.note-ai-update__glyph {
+    display: inline-grid;
+    width: 14px;
+    height: 14px;
+    flex: 0 0 14px;
+    place-items: center;
+    border-radius: 5px;
+    background: var(--accent-soft-primary);
+    color: var(--accent-primary);
+    font-size: 0.5625rem;
+    line-height: 1;
+}
+
+.note-ai-update__panel {
+    position: static;
+    z-index: 1;
+    width: min(420px, 100%);
+    margin-inline-start: auto;
+    padding: 12px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    background: var(--elevated);
+    pointer-events: auto;
+}
+
+.note-ai-update__comparison-scope {
+    margin-bottom: 1px;
+    color: var(--fg-tertiary);
+    font-size: 0.6875rem;
+    font-weight: 600;
+}
+
+.note-ai-update__comparison-row {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
+    gap: 10px;
+    padding-block: 8px;
+}
+
+.note-ai-update__comparison-row + .note-ai-update__comparison-row {
+    border-top: 1px solid var(--border-subtle);
+}
+
+.note-ai-update__comparison-label {
+    color: var(--fg-tertiary);
+    font-size: 0.6875rem;
+    font-weight: 600;
+}
+
+.note-ai-update__comparison-text {
+    max-height: 144px;
+    overflow: auto;
+    color: var(--fg-secondary);
+    font-size: 0.8125rem;
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+    scrollbar-color: var(--border-secondary) transparent;
+    scrollbar-width: thin;
+    user-select: text;
+    white-space: pre-wrap;
+}
+
+.note-ai-update__comparison-text[data-review-value='now'] {
+    color: var(--fg-default);
+}
+
+.note-ai-update__actions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-end;
+    gap: 5px;
+    margin-top: 4px;
+    padding-top: 9px;
+    border-top: 1px solid var(--border-subtle);
+}
+
+.note-ai-update__action-scope {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-size: 0.6875rem;
+    line-height: 1.35;
+}
+
+.note-ai-update__action-scope-title {
+    color: var(--fg-secondary);
+    font-weight: 600;
+}
+
+.note-ai-update__action-scope-status {
+    color: var(--fg-tertiary);
+}
+
+.note-ai-update__action-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 4px;
+}
+
+.note-ai-update__action {
+    min-height: 30px;
+    padding: 5px 8px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--fg-secondary);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.note-ai-update__action:hover,
+.note-ai-update__action:focus-visible {
+    background: var(--hover-subtle);
+    color: var(--fg-default);
+}
+
+.note-ai-update__action--primary {
+    color: var(--fg-default);
+}
+
+@media (min-width: 901px) {
+    .bn-block:has(> .note-ai-update) > .bn-block-content {
+        box-sizing: border-box;
+        padding-inline-end: 92px;
+    }
+
+    .bn-block:has(> .note-ai-update[data-review-kind='deleted']) > .bn-block-content {
+        padding-inline-end: 132px;
+    }
+
+    .note-ai-update:not([data-open='true']) > .note-ai-update__summary {
+        inset-block-start: auto;
+        inset-block-end: 2px;
+    }
+
+    .note-ai-update[data-open='true'] {
+        display: flex;
+        height: auto;
+        flex-direction: column;
+        align-items: flex-end;
+        margin-block: 6px 10px;
+    }
+
+    .note-ai-update[data-open='true'] > .note-ai-update__summary {
+        position: static;
+    }
+
+    .note-ai-update__panel {
+        margin-block-start: 4px;
+        box-shadow: none;
+    }
+}
+
+@keyframes note-ai-update-arrive {
+    from {
+        opacity: 0;
+        transform: translateX(-5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .note-ai-update__summary {
+        animation: none;
+    }
+}
+
+@media (max-width: 900px) {
+    .note-ai-update {
+        position: relative;
+        height: auto;
+        margin: 1px 0 5px;
+    }
+
+    .note-ai-update__summary {
+        position: static;
+        min-height: 40px;
+        margin-inline-start: -3px;
+        padding: 7px 8px 7px 3px;
+    }
+
+    .note-ai-update__panel {
+        position: static;
+        width: 100%;
+        margin: 3px 0 10px;
+        box-shadow: none;
+    }
+
+    .note-ai-update__comparison-row {
+        grid-template-columns: 48px minmax(0, 1fr);
+        gap: 8px;
+    }
+}
+
 /* Match BlockNote side menu hitbox to the chosen heading typography. */
 .bn-mantine .bn-side-menu[data-block-type='heading'][data-level='1'] {
     height: 36px;

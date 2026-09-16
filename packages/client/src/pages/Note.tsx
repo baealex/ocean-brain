@@ -16,7 +16,7 @@ import {
 import { ReminderPanel } from '~/components/reminder';
 import { AuxiliaryPanel, PageLayout, Skeleton } from '~/components/shared';
 import Editor from '~/components/shared/Editor';
-import { Text, useToast } from '~/components/ui';
+import { Button, Text, useToast } from '~/components/ui';
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
 import { useNoteEditorSession } from '~/hooks/useNoteEditorSession';
 import type { NoteLayout } from '~/models/note.model';
@@ -193,6 +193,17 @@ export function NoteContent({ id }: NoteContentProps) {
                 />
 
                 <div className="flex flex-col gap-5">
+                    {externalChange.isApplying && externalChange.reloadFailed && (
+                        <div
+                            className="fixed bottom-4 right-4 z-20 flex items-center gap-2 rounded-[12px] border border-border-subtle bg-elevated px-3 py-2 text-sm text-fg-secondary"
+                            role="alert"
+                        >
+                            Could not load the AI update.
+                            <Button variant="ghost" size="sm" onClick={externalChange.onRetry}>
+                                Retry update
+                            </Button>
+                        </div>
+                    )}
                     <NotePropertiesPanel
                         ref={properties.ref}
                         noteId={id}

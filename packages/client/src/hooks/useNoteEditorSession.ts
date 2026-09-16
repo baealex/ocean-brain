@@ -258,6 +258,7 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
     useEffect(() => {
         if (hasSessionUnsavedChanges) {
             if (
+                saveStatus !== 'conflict' &&
                 note.updatedAt !== serverUpdatedAtRef.current &&
                 (compareNoteVersions(note.updatedAt, serverUpdatedAtRef.current) ?? 0) > 0
             ) {
@@ -286,13 +287,17 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
 
             commitAcceptedVersion(note.updatedAt);
 
-            if (currentEditorContent === undefined || currentEditorContent !== note.content) {
+            if (externalNoteChange?.type === 'updated' && externalNoteChange.source === 'mcp') {
+                editorRef.current?.applyExternalContent(note.content);
+                setEditorContentOverride(null);
+            } else if (currentEditorContent === undefined || currentEditorContent !== note.content) {
                 setEditorContentOverride(null);
                 setEditorRevision((revision) => revision + 1);
             }
         }
     }, [
         commitAcceptedVersion,
+        externalNoteChange,
         hasSessionUnsavedChanges,
         note.content,
         note.layout,
@@ -300,21 +305,22 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
         note.title,
         note.updatedAt,
         pauseForConflict,
+        saveStatus,
         serverUpdatedAtRef,
     ]);
 
     useEffect(() => {
         if (
             externalNoteChange?.type !== 'updated' ||
-            saveStatus === 'conflict' ||
-            externalNoteChange.updatedAt !== note.updatedAt
+            hasSessionUnsavedChanges ||
+            (compareNoteVersions(note.updatedAt, externalNoteChange.updatedAt) ?? -1) < 0
         ) {
             return;
         }
 
         commitAcceptedVersion(note.updatedAt);
         setExternalNoteChange(null);
-    }, [commitAcceptedVersion, externalNoteChange, note.updatedAt, saveStatus]);
+    }, [commitAcceptedVersion, externalNoteChange, hasSessionUnsavedChanges, note.updatedAt]);
 
     useEffect(() => {
         return subscribeServerEvent((event) => {
@@ -324,7 +330,11 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
                 editSessionId: editSessionIdRef.current,
                 loadedUpdatedAt: note.updatedAt,
                 acceptedUpdatedAt: serverUpdatedAtRef.current,
-                hasUnsavedChanges: hasSessionUnsavedChanges,
+                hasUnsavedChanges:
+                    hasSessionUnsavedChanges ||
+                    getPendingDraft() !== null ||
+                    hasPendingPropertyChangesRef.current ||
+                    hasPendingWrites(),
             });
 
             if (decision.type === 'ignore') {
@@ -336,8 +346,20 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
             }
 
             setExternalNoteChange(decision.change);
+            if (!decision.shouldPauseSave && decision.change.type === 'updated' && decision.change.source === 'mcp') {
+                void refetchNote();
+            }
         });
-    }, [hasSessionUnsavedChanges, note.updatedAt, noteId, pauseForConflict, serverUpdatedAtRef]);
+    }, [
+        getPendingDraft,
+        hasPendingWrites,
+        hasSessionUnsavedChanges,
+        note.updatedAt,
+        noteId,
+        pauseForConflict,
+        refetchNote,
+        serverUpdatedAtRef,
+    ]);
 
     const handleContentChange = useCallback(() => {
         queueSave(buildDraft(title));
@@ -685,12 +707,24 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
             value: externalNoteChange,
             isConflict: isConflictedExternalUpdate,
             hasConflictDraft: conflictDraft !== null,
-            isBlocking: isBlockingExternalNoteChange({
-                change: externalNoteChange,
-                isConflict: isConflictedExternalUpdate,
-                loadedUpdatedAt: note.updatedAt,
-            }),
+            isBlocking:
+                !(
+                    externalNoteChange?.type === 'updated' &&
+                    externalNoteChange.source === 'mcp' &&
+                    !isConflictedExternalUpdate
+                ) &&
+                isBlockingExternalNoteChange({
+                    change: externalNoteChange,
+                    isConflict: isConflictedExternalUpdate,
+                    loadedUpdatedAt: note.updatedAt,
+                }),
             isReloading: noteQuery.isRefetching,
+            isApplying:
+                externalNoteChange?.type === 'updated' &&
+                externalNoteChange.source === 'mcp' &&
+                !isConflictedExternalUpdate,
+            reloadFailed: noteQuery.isRefetchError,
+            onRetry: () => void refetchNote(),
             onReload: handleReloadExternalChange,
             onOverwrite: handleOverwriteConflict,
         },

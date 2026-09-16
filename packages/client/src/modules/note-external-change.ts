@@ -78,5 +78,9 @@ export const isBlockingExternalNoteChange = ({
         return false;
     }
 
-    return !(change.type === 'updated' && !isConflict && change.updatedAt === loadedUpdatedAt);
+    return !(
+        change.type === 'updated' &&
+        !isConflict &&
+        (compareNoteVersions(loadedUpdatedAt, change.updatedAt) ?? -1) >= 0
+    );
 };

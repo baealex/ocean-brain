@@ -87,6 +87,10 @@ vi.mock('~/components/shared/Editor', async () => {
             getContent: () => contentRef.current,
             getMarkdown: () => contentRef.current,
             getHtml: () => contentRef.current,
+            applyExternalContent: (nextContent: string) => {
+                contentRef.current = nextContent;
+                setValue(nextContent);
+            },
         }));
 
         return (
@@ -325,7 +329,7 @@ describe('<NoteContent /> external change handling', () => {
         expect(screen.getByPlaceholderText('Title')).toHaveValue('Local title');
     });
 
-    it('shows MCP as the source for MCP note updates', async () => {
+    it('loads a clean MCP update without opening a modal', async () => {
         const initialNote = createNote({
             title: 'Initial title',
             updatedAt: '1779700001000',
@@ -335,17 +339,101 @@ describe('<NoteContent /> external change handling', () => {
 
         expect(await screen.findByPlaceholderText('Title')).toHaveValue('Initial title');
 
+        vi.mocked(fetchNote).mockResolvedValue({
+            type: 'success',
+            note: createNote({ title: 'MCP title', updatedAt: '1779700002000' }),
+        });
+
         act(() => {
             publishServerEvent({
                 type: 'mcp.note.updated',
                 source: 'mcp',
                 noteId: initialNote.id,
-                updatedAt: '1779700002000',
+                updatedAt: new Date(1779700002000).toISOString(),
             });
         });
 
-        expect(await screen.findByRole('dialog', { name: 'This note changed through MCP' })).toBeInTheDocument();
-        expect(screen.getByText(/An MCP client changed this note while it was open here/)).toBeInTheDocument();
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        expect(await screen.findByDisplayValue('MCP title')).toBeInTheDocument();
+        await waitFor(() => expect(screen.queryByText('Loading MCP update…')).not.toBeInTheDocument());
+    });
+
+    it('preserves a draft typed while an MCP refresh is in flight', async () => {
+        const user = userEvent.setup();
+        const initialNote = createNote();
+        renderNote(initialNote);
+        await screen.findByPlaceholderText('Title');
+        const remote = createDeferred<Awaited<ReturnType<typeof fetchNote>>>();
+        vi.mocked(fetchNote).mockReturnValueOnce(remote.promise);
+
+        act(() =>
+            publishServerEvent({
+                type: 'mcp.note.updated',
+                source: 'mcp',
+                noteId: initialNote.id,
+                updatedAt: '1779700002000',
+            }),
+        );
+        await user.type(screen.getByPlaceholderText('Title'), ' local draft');
+        await act(async () => {
+            remote.resolve({
+                type: 'success',
+                note: createNote({ title: 'Remote title', updatedAt: '1779700002000' }),
+            });
+            await remote.promise;
+        });
+
+        expect(await screen.findByRole('dialog')).toBeInTheDocument();
+        expect(screen.getByPlaceholderText('Title')).toHaveValue('Initial title local draft');
+        expect(updateNote).not.toHaveBeenCalled();
+    });
+
+    it('keeps an existing draft when an MCP event arrives', async () => {
+        const user = userEvent.setup();
+        renderNote(createNote());
+        await user.type(await screen.findByPlaceholderText('Title'), ' local draft');
+
+        act(() =>
+            publishServerEvent({
+                type: 'mcp.note.updated',
+                source: 'mcp',
+                noteId: '1',
+                updatedAt: '1779700002000',
+            }),
+        );
+
+        expect(await screen.findByRole('dialog')).toBeInTheDocument();
+        expect(screen.getByPlaceholderText('Title')).toHaveValue('Initial title local draft');
+        expect(updateNote).not.toHaveBeenCalled();
+    });
+
+    it('offers a non-blocking retry when an MCP refresh fails', async () => {
+        const user = userEvent.setup();
+        renderNote(createNote());
+        await screen.findByPlaceholderText('Title');
+        vi.mocked(fetchNote).mockResolvedValueOnce({
+            type: 'error',
+            category: 'network',
+            errors: [{ code: 'NETWORK_ERROR', message: 'Offline' }],
+        });
+
+        act(() =>
+            publishServerEvent({
+                type: 'mcp.note.updated',
+                source: 'mcp',
+                noteId: '1',
+                updatedAt: '1779700002000',
+            }),
+        );
+        const retry = await screen.findByRole('button', { name: 'Retry update' });
+        vi.mocked(fetchNote).mockResolvedValue({
+            type: 'success',
+            note: createNote({ title: 'Retried title', updatedAt: '1779700002000' }),
+        });
+        await user.click(retry);
+
+        expect(await screen.findByDisplayValue('Retried title')).toBeInTheDocument();
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
 
     it('keeps local editor content after saving local content edits', async () => {

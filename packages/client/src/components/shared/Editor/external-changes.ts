@@ -10,6 +10,11 @@ export interface BlockChange {
     kind: 'added' | 'modified';
 }
 
+// Small edits align directly; large rewrites first exclude blocks that cannot match the other document.
+const MAX_DIRECT_EDIT_DISTANCE = 128;
+
+const blocksMatch = (a: ComparedBlock, b: ComparedBlock) => a.id === b.id || a.fingerprint === b.fingerprint;
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
     value !== null && typeof value === 'object' && !Array.isArray(value);
 
@@ -44,13 +49,63 @@ const readBlocks = (content: string): ComparedBlock[] => {
     return blocks;
 };
 
+const findMatchableBlocks = (blocks: ComparedBlock[], other: ComparedBlock[]) => {
+    const ids = new Set(other.map((block) => block.id));
+    const fingerprints = new Set(other.map((block) => block.fingerprint));
+    return blocks
+        .map((block, index) => ({ ...block, index }))
+        .filter((block) => ids.has(block.id) || fingerprints.has(block.fingerprint));
+};
+
+const compareWithIndexedCandidates = (before: ComparedBlock[], after: ComparedBlock[]): BlockChange[] => {
+    const oldCandidates = findMatchableBlocks(before, after);
+    const newCandidates = findMatchableBlocks(after, before);
+    // Keep exact sequence alignment for repeated/copied text rather than greedily consuming a later match.
+    const parts = diffArrays(oldCandidates, newCandidates, { comparator: blocksMatch });
+
+    const changes: BlockChange[] = [];
+    let oldStart = 0;
+    let newStart = 0;
+    const markUnmatched = (oldEnd: number, newEnd: number) => {
+        const replacedCount = Math.min(oldEnd - oldStart, newEnd - newStart);
+        for (let index = newStart; index < newEnd; index++) {
+            changes.push({ id: after[index].id, kind: index - newStart < replacedCount ? 'modified' : 'added' });
+        }
+    };
+
+    let oldCandidateIndex = 0;
+    let newCandidateIndex = 0;
+    for (const part of parts) {
+        if (part.removed) {
+            oldCandidateIndex += part.value.length;
+        } else if (part.added) {
+            newCandidateIndex += part.value.length;
+        } else {
+            for (let offset = 0; offset < part.value.length; offset++) {
+                const previous = oldCandidates[oldCandidateIndex + offset];
+                const current = newCandidates[newCandidateIndex + offset];
+                markUnmatched(previous.index, current.index);
+                if (previous.fingerprint !== current.fingerprint) changes.push({ id: current.id, kind: 'modified' });
+                oldStart = previous.index + 1;
+                newStart = current.index + 1;
+            }
+            oldCandidateIndex += part.value.length;
+            newCandidateIndex += part.value.length;
+        }
+    }
+    markUnmatched(before.length, after.length);
+    return changes;
+};
+
 export function compareEditorBlocks(previous: string, next: string) {
     const before = readBlocks(previous);
     const after = readBlocks(next);
     const changes: BlockChange[] = [];
     const parts = diffArrays(before, after, {
-        comparator: (a, b) => a.id === b.id || a.fingerprint === b.fingerprint,
+        comparator: blocksMatch,
+        maxEditLength: MAX_DIRECT_EDIT_DISTANCE,
     });
+    if (!parts) return { changes: compareWithIndexedCandidates(before, after) };
     let oldIndex = 0;
     let newIndex = 0;
     for (let index = 0; index < parts.length; index++) {

@@ -1,6 +1,8 @@
+import { useMatches } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 
 import DemoSidebarPromoSlot from '~/components/demo/DemoSidebarPromoSlot';
+import { INTEGRATION_ROUTE } from '~/modules/url';
 
 import LayoutShell from './LayoutShell';
 import SidebarHeroBanner from './SidebarHeroBanner';
@@ -14,8 +16,13 @@ interface SiteLayoutProps {
 }
 
 const SiteLayout = ({ children }: SiteLayoutProps) => {
+    // Read the rendered matches; resolvedLocation updates after the new outlet is painted.
+    const isAppRoute = useMatches({
+        select: (matches) => matches.some((match) => match.routeId === INTEGRATION_ROUTE),
+    });
     return (
         <LayoutShell
+            contentMode={isAppRoute ? 'app' : 'page'}
             sidebar={
                 <>
                     <SidebarHeroBanner />

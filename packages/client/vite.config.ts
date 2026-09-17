@@ -48,6 +48,15 @@ export default defineConfig({
     resolve: {
         alias: [
             {
+                find: '~/apis/integration-adapter',
+                replacement: path.resolve(
+                    __dirname,
+                    isLocalOnlyDemoBuild
+                        ? './src/apis/integration-adapter.local.ts'
+                        : './src/apis/integration-adapter.ts',
+                ),
+            },
+            {
                 find: '~/components/demo/DemoSidebarPromoSlot',
                 replacement: path.resolve(__dirname, demoSidebarPromoSlotPath),
             },

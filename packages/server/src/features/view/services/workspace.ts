@@ -569,7 +569,7 @@ const parseViewId = (id: string) => {
     return numericId;
 };
 
-const serializeViewSection = (section: DbViewSection): ViewSectionRecord => {
+export const serializeViewSection = (section: DbViewSection): ViewSectionRecord => {
     const query = parseStoredViewQuery(section.query);
 
     return {
@@ -1211,19 +1211,15 @@ export const getViewSectionBoardColumn = async (
     return { totalCount, notes };
 };
 
-export const getNotesByPropertiesWithDb = async (
+export const getNotesByQueryWithDb = async (
     db: ViewDbClient,
     input: ViewNotesQueryInput,
     pagination?: {
         limit?: number;
         offset?: number;
     },
-): Promise<ViewSectionNotesResult> => {
+) => {
     const normalizedQuery = normalizeViewNotesQueryInput(input);
-
-    if (normalizedQuery.propertyFilters.length === 0) {
-        throw new InvalidNotePropertyInputError('At least one property filter is required.');
-    }
 
     const query = {
         ...normalizedQuery,
@@ -1245,10 +1241,25 @@ export const getNotesByPropertiesWithDb = async (
     ]);
 
     return {
+        query,
         totalCount,
         notes,
     };
 };
+
+export const getNotesByPropertiesWithDb = async (
+    db: ViewDbClient,
+    input: ViewNotesQueryInput,
+    pagination?: { limit?: number; offset?: number },
+): Promise<ViewSectionNotesResult> => {
+    if (!input.propertyFilters?.length) {
+        throw new InvalidNotePropertyInputError('At least one property filter is required.');
+    }
+    return getNotesByQueryWithDb(db, input, pagination);
+};
+
+export const getNotesByQuery = (input: ViewNotesQueryInput, pagination?: { limit?: number; offset?: number }) =>
+    getNotesByQueryWithDb(models, input, pagination);
 
 export const getNotesByProperties = async (
     input: ViewNotesQueryInput,

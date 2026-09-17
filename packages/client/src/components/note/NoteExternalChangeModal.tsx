@@ -6,7 +6,7 @@ interface NoteExternalChangeModalProps {
     isDeleted: boolean;
     isConflict: boolean;
     hasDraft: boolean;
-    source: 'web' | 'mcp' | 'unknown';
+    source: 'web' | 'mcp' | 'integration' | 'unknown';
     isReloading: boolean;
     onReload: () => void;
     onOverwrite: () => void;
@@ -15,6 +15,8 @@ interface NoteExternalChangeModalProps {
 }
 
 const getSourceLabel = (source: NoteExternalChangeModalProps['source']) => {
+    if (source === 'integration')
+        return { actor: 'An integration', place: 'an integration', target: 'integration version' };
     if (source === 'mcp') {
         return {
             actor: 'An MCP client',

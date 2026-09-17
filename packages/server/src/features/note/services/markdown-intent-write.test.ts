@@ -12,6 +12,35 @@ const createNote = (input?: { content?: string; updatedAt?: Date }) => ({
     updatedAt: input?.updatedAt ?? new Date('2026-05-28T00:00:00.000Z'),
 });
 
+test('applied writes return preservation warnings to the caller', async () => {
+    const service = createMarkdownIntentWriteService({
+        findNoteById: async () => createNote({ content: '[@old] [[Related]](note:2) Original' }),
+        renderMarkdown: async (content) => content,
+        parseMarkdownToContentJson: async (markdown) => markdown,
+        extractTagIds: () => [],
+        updateNote: async (input) => ({
+            note: {
+                ...createNote(),
+                content: input.data.content ?? '',
+                pinned: false,
+                order: 0,
+                createdAt: new Date('2026-05-28T00:00:00Z'),
+            },
+            snapshot: { id: '1', createdAt: '2026-05-28T00:00:00Z' },
+        }),
+    });
+    const result = await service.replaceNoteMarkdown({
+        id: 7,
+        expectedUpdatedAt: '2026-05-28T00:00:00Z',
+        intent: 'Remove old classification',
+        replacement: 'Original',
+        policy: { preserveTags: 'warn', preserveReferences: 'warn' },
+    });
+    assert.equal(result.status, 'applied');
+    if (result.status !== 'applied') throw new Error('Expected applied write');
+    assert.deepEqual(result.warnings, ['TAG_TOKEN_COUNT_DECREASED', 'REFERENCE_TOKEN_COUNT_DECREASED']);
+});
+
 test('markdown intent write applies an exact text patch through guarded update and snapshot', async () => {
     const updates: unknown[] = [];
     const service = createMarkdownIntentWriteService({

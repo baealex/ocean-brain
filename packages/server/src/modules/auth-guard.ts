@@ -27,7 +27,32 @@ export const issueCsrfToken = (authConfig: AuthConfig, reply: FastifyReply) => {
 
 export const createCsrfProtection = (authConfig: AuthConfig): preHandlerHookHandler => {
     if (authConfig.mode !== 'password') {
-        return (_request, _reply, done) => done();
+        return (request, reply, done) => {
+            if (request.method === 'GET' || request.method === 'HEAD' || request.method === 'OPTIONS') {
+                done();
+                return;
+            }
+            // Embedded integration pages have an opaque Origin. Even an explicitly open
+            // local server must not let them bypass integration grants through owner APIs.
+            const origin = request.headers.origin;
+            if (origin) {
+                let sameHost = false;
+                try {
+                    const url = new URL(origin);
+                    sameHost = ['http:', 'https:'].includes(url.protocol) && url.host === request.headers.host;
+                } catch {
+                    sameHost = false;
+                }
+                if (!sameHost) {
+                    void reply.status(403).send({
+                        code: 'FORBIDDEN_ORIGIN',
+                        message: 'Owner writes require the Ocean Brain page origin.',
+                    });
+                    return;
+                }
+            }
+            done();
+        };
     }
 
     return (request, reply, done) => {

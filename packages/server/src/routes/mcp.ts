@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify';
+import type { IntegrationPermission } from '../features/integration/manifest.js';
 import type { McpAdminService } from '../features/mcp-admin/service.js';
 import {
     createMcpAppendNoteMarkdownHandler,
@@ -18,27 +19,48 @@ type McpRouteService = Pick<McpAdminService, 'getStatus' | 'validatePresentedTok
 
 export const createMcpRouter = (authConfig: AuthConfig, mcpAdminService: McpRouteService): FastifyPluginAsync => {
     return async (app) => {
-        const requireMcpAuth = createMcpAuthMiddleware(authConfig, mcpAdminService);
+        const requireMcpAuth = (permission: IntegrationPermission) =>
+            createMcpAuthMiddleware(authConfig, mcpAdminService, permission);
 
-        app.post<HttpRoute>('/notes/create', { preHandler: requireMcpAuth }, createMcpCreateNoteHandler());
-        app.post<HttpRoute>('/notes/baseline', { preHandler: requireMcpAuth }, createMcpNoteWriteBaselineHandler());
+        app.post<HttpRoute>(
+            '/notes/create',
+            { preHandler: requireMcpAuth('notes:create') },
+            createMcpCreateNoteHandler(),
+        );
+        app.post<HttpRoute>(
+            '/notes/baseline',
+            { preHandler: requireMcpAuth('notes:read') },
+            createMcpNoteWriteBaselineHandler(),
+        );
         app.post<HttpRoute>(
             '/notes/patch-markdown',
-            { preHandler: requireMcpAuth },
+            { preHandler: requireMcpAuth('notes:update') },
             createMcpPatchNoteMarkdownHandler(),
         );
         app.post<HttpRoute>(
             '/notes/append-markdown',
-            { preHandler: requireMcpAuth },
+            { preHandler: requireMcpAuth('notes:update') },
             createMcpAppendNoteMarkdownHandler(),
         );
-        app.post<HttpRoute>('/notes/metadata', { preHandler: requireMcpAuth }, createMcpUpdateNoteMetadataHandler());
+        app.post<HttpRoute>(
+            '/notes/metadata',
+            { preHandler: requireMcpAuth('notes:update') },
+            createMcpUpdateNoteMetadataHandler(),
+        );
         app.post<HttpRoute>(
             '/notes/replace-markdown',
-            { preHandler: requireMcpAuth },
+            { preHandler: requireMcpAuth('notes:update') },
             createMcpReplaceNoteMarkdownHandler(),
         );
-        app.post<HttpRoute>('/notes/delete', { preHandler: requireMcpAuth }, createMcpDeleteNoteHandler());
-        app.post<HttpRoute>('/tags/create', { preHandler: requireMcpAuth }, createMcpCreateTagHandler());
+        app.post<HttpRoute>(
+            '/notes/delete',
+            { preHandler: requireMcpAuth('notes:delete') },
+            createMcpDeleteNoteHandler(),
+        );
+        app.post<HttpRoute>(
+            '/tags/create',
+            { preHandler: requireMcpAuth('notes:update') },
+            createMcpCreateTagHandler(),
+        );
     };
 };

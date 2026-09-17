@@ -6,12 +6,11 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import {
     createMcpRequestHeaders,
-    normalizeOceanBrainTagName,
     OCEAN_BRAIN_MCP_CLIENT_VERSION_HEADER,
     OCEAN_BRAIN_MCP_COMPATIBILITY_VERSION,
     OCEAN_BRAIN_MCP_COMPATIBILITY_VERSION_HEADER,
-    OCEAN_BRAIN_MCP_VERSION_HEADER,
     OCEAN_BRAIN_MCP_TOOLS,
+    OCEAN_BRAIN_MCP_VERSION_HEADER,
     registerMcpTools,
 } from '../src/mcp.js';
 
@@ -20,20 +19,17 @@ test('createMcpRequestHeaders includes MCP compatibility and client version head
 
     assert.equal(headers['Content-Type'], 'application/json');
     assert.equal(headers.Authorization, 'Bearer token-a');
-    assert.equal(OCEAN_BRAIN_MCP_COMPATIBILITY_VERSION, '0.11.0');
+    assert.equal(OCEAN_BRAIN_MCP_COMPATIBILITY_VERSION, '0.14.0');
     assert.equal(headers[OCEAN_BRAIN_MCP_VERSION_HEADER], OCEAN_BRAIN_MCP_COMPATIBILITY_VERSION);
     assert.equal(headers[OCEAN_BRAIN_MCP_COMPATIBILITY_VERSION_HEADER], OCEAN_BRAIN_MCP_COMPATIBILITY_VERSION);
     assert.match(headers[OCEAN_BRAIN_MCP_CLIENT_VERSION_HEADER], /^\d+\.\d+\.\d+/);
 });
 
-test('normalizeOceanBrainTagName rejects hash-prefixed tags', () => {
-    assert.throws(() => normalizeOceanBrainTagName('#project'), /use @, not #/);
-    assert.equal(normalizeOceanBrainTagName('project'), '@project');
-    assert.equal(normalizeOceanBrainTagName('@project'), '@project');
-});
-
 test('MCP note search gives every explicit mode one result contract with pagination', async () => {
-    const requests: Array<{ query: string; variables?: Record<string, unknown> }> = [];
+    const requests: Array<{
+        query: string;
+        variables?: Record<string, unknown>;
+    }> = [];
     const graphqlRequest = async (
         _serverUrl: string,
         _token: string | undefined,
@@ -49,27 +45,31 @@ test('MCP note search gives every explicit mode one result contract with paginat
                 semanticUsed: true,
                 semanticError: null,
                 matches: [{ noteId: '17', lexical: false, semantic: true }],
-                notes: [{
-                    id: '17',
-                    title: 'Deployment decision',
-                    updatedAt: '2026-07-26T00:00:00.000Z',
-                    tags: [{ id: '1', name: '@project' }],
-                    contentPreview: 'Use the hybrid search path.',
-                }],
+                notes: [
+                    {
+                        id: '17',
+                        title: 'Deployment decision',
+                        updatedAt: '2026-07-26T00:00:00.000Z',
+                        tags: [{ id: '1', name: '@project' }],
+                        contentPreview: 'Use the hybrid search path.',
+                    },
+                ],
             },
         };
     };
 
     const server = new McpServer({ name: 'ocean-brain-test', version: '0.0.0' });
-    const client = new Client({ name: 'ocean-brain-test-client', version: '0.0.0' });
+    const client = new Client({
+        name: 'ocean-brain-test-client',
+        version: '0.0.0',
+    });
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
 
     try {
-        registerMcpTools(server, 'http://localhost:6683', 'test-token', { graphqlRequest });
-        await Promise.all([
-            server.connect(serverTransport),
-            client.connect(clientTransport),
-        ]);
+        registerMcpTools(server, 'http://localhost:6683', 'test-token', {
+            graphqlRequest,
+        });
+        await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
 
         for (const mode of ['hybrid', 'lexical', 'semantic'] as const) {
             const result = await client.callTool({
@@ -89,18 +89,21 @@ test('MCP note search gives every explicit mode one result contract with paginat
             }
 
             assert.deepEqual(JSON.parse(content.text), {
+                page: { limit: 20, offset: 5, hasMore: false, nextOffset: null },
                 totalCount: 1,
                 semanticAvailable: true,
                 semanticUsed: true,
                 semanticError: null,
                 matches: [{ noteId: '17', lexical: false, semantic: true }],
-                notes: [{
-                    id: '17',
-                    title: 'Deployment decision',
-                    updatedAt: '2026-07-26T00:00:00.000Z',
-                    tags: ['@project'],
-                    preview: 'Use the hybrid search path.',
-                }],
+                notes: [
+                    {
+                        id: '17',
+                        title: 'Deployment decision',
+                        updatedAt: '2026-07-26T00:00:00.000Z',
+                        tags: ['@project'],
+                        preview: 'Use the hybrid search path.',
+                    },
+                ],
             });
         }
 
@@ -125,7 +128,10 @@ test('MCP note search gives every explicit mode one result contract with paginat
 });
 
 test('MCP note search defaults to hybrid mode when mode is omitted', async () => {
-    const requests: Array<{ query: string; variables?: Record<string, unknown> }> = [];
+    const requests: Array<{
+        query: string;
+        variables?: Record<string, unknown>;
+    }> = [];
     const graphqlRequest = async (
         _serverUrl: string,
         _token: string | undefined,
@@ -141,27 +147,31 @@ test('MCP note search defaults to hybrid mode when mode is omitted', async () =>
                 semanticUsed: true,
                 semanticError: null,
                 matches: [{ noteId: '23', lexical: true, semantic: true }],
-                notes: [{
-                    id: '23',
-                    title: 'Hybrid search',
-                    updatedAt: '2026-07-26T00:00:00.000Z',
-                    tags: [{ id: '2', name: '@search' }],
-                    contentPreview: 'Use the new hybrid search contract.',
-                }],
+                notes: [
+                    {
+                        id: '23',
+                        title: 'Hybrid search',
+                        updatedAt: '2026-07-26T00:00:00.000Z',
+                        tags: [{ id: '2', name: '@search' }],
+                        contentPreview: 'Use the new hybrid search contract.',
+                    },
+                ],
             },
         };
     };
 
     const server = new McpServer({ name: 'ocean-brain-test', version: '0.0.0' });
-    const client = new Client({ name: 'ocean-brain-test-client', version: '0.0.0' });
+    const client = new Client({
+        name: 'ocean-brain-test-client',
+        version: '0.0.0',
+    });
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
 
     try {
-        registerMcpTools(server, 'http://localhost:6683', 'test-token', { graphqlRequest });
-        await Promise.all([
-            server.connect(serverTransport),
-            client.connect(clientTransport),
-        ]);
+        registerMcpTools(server, 'http://localhost:6683', 'test-token', {
+            graphqlRequest,
+        });
+        await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
 
         const result = await client.callTool({
             name: OCEAN_BRAIN_MCP_TOOLS.searchNotes,
@@ -185,18 +195,21 @@ test('MCP note search defaults to hybrid mode when mode is omitted', async () =>
         }
 
         assert.deepEqual(JSON.parse(content.text), {
+            page: { limit: 10, offset: 0, hasMore: false, nextOffset: null },
             totalCount: 1,
             semanticAvailable: true,
             semanticUsed: true,
             semanticError: null,
             matches: [{ noteId: '23', lexical: true, semantic: true }],
-            notes: [{
-                id: '23',
-                title: 'Hybrid search',
-                updatedAt: '2026-07-26T00:00:00.000Z',
-                tags: ['@search'],
-                preview: 'Use the new hybrid search contract.',
-            }],
+            notes: [
+                {
+                    id: '23',
+                    title: 'Hybrid search',
+                    updatedAt: '2026-07-26T00:00:00.000Z',
+                    tags: ['@search'],
+                    preview: 'Use the new hybrid search contract.',
+                },
+            ],
         });
     } finally {
         await client.close();

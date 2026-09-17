@@ -2,6 +2,7 @@ import type { IResolvers } from '@graphql-tools/utils';
 import type { Prisma } from '~/models.js';
 import models from '~/models.js';
 import type { Pagination, SearchFilter } from '~/types/index.js';
+import { normalizeTagName } from '../services/organization.js';
 
 type TagQueryResolvers = NonNullable<IResolvers['Query']>;
 type TagSortBy = 'referenceCount' | 'name';
@@ -25,7 +26,16 @@ const getTagOrderBy = (sortBy: TagSortBy, sortOrder: TagSortOrder): Prisma.TagOr
     return { [sortBy]: sortOrder };
 };
 
-export const tagQueryResolvers: TagQueryResolvers = {
+export const tagQueryResolvers = {
+    tagsByNames: async (_, { names }: { names: string[] }) => {
+        if (names.length > 100) {
+            throw new Error('At most 100 tag names may be resolved at once.');
+        }
+        return models.tag.findMany({
+            where: { name: { in: [...new Set(names.map(normalizeTagName))] } },
+            orderBy: { name: 'asc' },
+        });
+    },
     allTags: async (
         _,
         {
@@ -54,4 +64,4 @@ export const tagQueryResolvers: TagQueryResolvers = {
             tags: await tags,
         };
     },
-};
+} satisfies TagQueryResolvers;

@@ -4,6 +4,7 @@ export {
     ArrowDown,
     ArrowLeft,
     ArrowRight,
+    ArrowSquareOut,
     ArrowUp,
     ArrowUUpRight as Redo,
     Bell,

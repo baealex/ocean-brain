@@ -1,6 +1,30 @@
 import { gql } from '~/modules/graphql.js';
 
 export const viewType = gql`
+    type NotesQueryConditions {
+        tagNames: [String!]!
+        mode: TagMatchMode!
+        propertyFilters: [ViewPropertyFilter!]!
+        sortBy: ViewSortBy!
+        sortOrder: ViewSortOrder!
+    }
+
+    type NotesQueryResult {
+        query: NotesQueryConditions!
+        totalCount: Int!
+        notes: [Note!]!
+    }
+
+    type ViewSectionListing { section: ViewSection!, tabTitle: String! }
+    type ViewSectionListings { totalCount: Int!, sections: [ViewSectionListing!]! }
+    type ViewReadRow { note: Note!, groupValue: String, calendarDate: String }
+    type ViewGroupProperty { key: String!, name: String!, options: [NotePropertyOption!]! }
+    type ViewReadResult {
+        section: ViewSection!
+        totalCount: Int!
+        rows: [ViewReadRow!]!
+        groupProperty: ViewGroupProperty
+    }
     type ViewWorkspace {
         activeTabId: ID
         tabs: [ViewTab!]!
@@ -142,6 +166,9 @@ export const viewType = gql`
 
 export const viewQuery = gql`
     type Query {
+        notesByQuery(input: NotesByPropertiesInput!, pagination: PaginationInput): NotesQueryResult!
+        viewSections(query: String, pagination: PaginationInput): ViewSectionListings!
+        readViewSection(id: ID!, pagination: PaginationInput, propertyKeys: [String!], groupValue: String, dateRange: DateRangeInput): ViewReadResult!
         viewWorkspace: ViewWorkspace!
         viewSection(id: ID!): ViewSection
         viewSectionNotes(

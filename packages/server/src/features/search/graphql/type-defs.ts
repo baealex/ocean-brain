@@ -11,7 +11,10 @@ export const searchTypeDefs = gql`
         noteId: ID!
         lexical: Boolean!
         semantic: Boolean!
+        excerpt: SearchNoteExcerpt
     }
+
+    type SearchNoteExcerpt { text: String!, source: String!, start: Int!, end: Int! }
 
     type SearchRelatedNote {
         id: ID!

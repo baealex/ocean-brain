@@ -1,4 +1,5 @@
 import type { IResolvers } from '@graphql-tools/utils';
+import { buildNoteSearchExcerpt } from '~/features/note/services/search.js';
 import { type HybridNoteSearchResult, type SearchMode, searchNotesHybrid } from '../hybrid-search.js';
 import { searchRelatedNotes } from '../related-notes.js';
 
@@ -29,12 +30,20 @@ type SearchRelatedNotes = (noteId: number, limit: number) => Promise<Awaited<Ret
 
 export const createSearchNotesResolver = (search: SearchNotes = searchNotesHybrid) => {
     return async (_: unknown, { query, pagination, mode = 'HYBRID' }: SearchNotesResolverInput) => {
-        return search({
+        const result = await search({
             query,
             limit: Math.min(50, Math.max(0, pagination.limit)),
             offset: Math.max(0, pagination.offset),
             mode: mode.toLowerCase() as SearchMode,
         });
+        const notes = new Map(result.notes.map((note) => [note.id, note]));
+        return {
+            ...result,
+            matches: result.matches.map((match) => {
+                const note = notes.get(match.noteId);
+                return { ...match, excerpt: match.lexical && note ? buildNoteSearchExcerpt(note, query) : null };
+            }),
+        };
     };
 };
 

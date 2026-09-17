@@ -144,6 +144,7 @@ export interface UpdateNoteMetadataInput {
 
 export interface AppliedMarkdownWriteResult {
     status: 'applied';
+    warnings: string[];
     note: {
         id: string;
         updatedAt: string;
@@ -374,6 +375,7 @@ const applyMarkdownPlan = async (
 
     return {
         status: 'applied',
+        warnings: input.plan.warnings,
         note: {
             id: String(updateResult.note.id),
             updatedAt: updateResult.note.updatedAt.toISOString(),

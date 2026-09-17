@@ -213,6 +213,26 @@ export const buildNoteContentPreview = (content: string) => {
     return extractVisibleSearchTextFromContent(content).slice(0, NOTE_CONTENT_PREVIEW_MAX_LENGTH);
 };
 
+export const buildNoteSearchExcerpt = (note: Pick<SearchableNoteLike, 'title' | 'content'>, query: string) => {
+    const terms = parseNoteSearchQuery(query).included;
+    const text = extractVisibleSearchTextFromContent(note.content);
+    for (const [source, value] of [
+        ['body', text],
+        ['title', note.title],
+    ] as const) {
+        // Search the original string: lowercasing can expand Unicode characters and shift offsets.
+        const positions = terms
+            .map((term) => new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'iu').exec(value)?.index ?? -1)
+            .filter((index) => index >= 0);
+        if (!positions.length) continue;
+        const matchStart = Math.min(...positions);
+        const start = Math.max(0, matchStart - 80);
+        const end = Math.min(value.length, Math.max(start + 240, matchStart + 80));
+        return { text: value.slice(start, end), source, start, end };
+    }
+    return null;
+};
+
 export const matchesNoteSearchQuery = (note: SearchableNoteLike, query: string | NoteSearchQuery) => {
     const parsedQuery = typeof query === 'string' ? parseNoteSearchQuery(query) : query;
 

@@ -5,6 +5,9 @@ import { OCEAN_BRAIN_MCP_TOOLS } from '../src/mcp.js';
 
 test('Ocean Brain MCP tool names use explicit product-prefixed names', () => {
     assert.deepEqual(OCEAN_BRAIN_MCP_TOOLS, {
+        queryNotes: 'ocean_brain_query_notes',
+        listViews: 'ocean_brain_list_views',
+        readView: 'ocean_brain_read_view',
         searchNotes: 'ocean_brain_search_notes',
         readNote: 'ocean_brain_read_note',
         createNote: 'ocean_brain_create_note',
@@ -14,13 +17,7 @@ test('Ocean Brain MCP tool names use explicit product-prefixed names', () => {
         replaceNoteMarkdown: 'ocean_brain_replace_note_markdown',
         listTags: 'ocean_brain_list_tags',
         listProperties: 'ocean_brain_list_properties',
-        queryNotesByProperties: 'ocean_brain_query_notes_by_properties',
-        listNotesByTag: 'ocean_brain_list_notes_by_tag',
-        listNotesByTags: 'ocean_brain_list_notes_by_tags',
-        listRecentNotes: 'ocean_brain_list_recent_notes',
-        findNoteCleanupCandidates: 'ocean_brain_find_note_cleanup_candidates',
-        createTag: 'ocean_brain_create_tag',
-        deleteNote: 'ocean_brain_delete_note'
+        deleteNote: 'ocean_brain_delete_note',
     });
 });
 

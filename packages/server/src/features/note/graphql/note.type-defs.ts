@@ -107,7 +107,7 @@ export const noteType = gql`
         order: Int!
         layout: NoteLayout!
         tags: [Tag!]!
-        properties: [NoteProperty!]!
+        properties(keys: [String!]): [NoteProperty!]!
     }
 
     type NoteProperty {
@@ -271,6 +271,17 @@ export const noteQuery = gql`
         links: [GraphLink!]!
     }
 
+    type NoteContentRange { start: Int!, end: Int!, totalLength: Int!, sectionEnd: Int!, hasMore: Boolean!, nextOffset: Int }
+    type NoteHeadingCandidate { heading: String!, level: Int!, start: Int!, end: Int! }
+    type NoteReadResult {
+        status: String!
+        reason: String
+        message: String
+        note: Note!
+        markdown: String!
+        contentRange: NoteContentRange
+        candidates: [NoteHeadingCandidate!]!
+    }
     type Query {
         allNotes(searchFilter: SearchFilterInput, pagination: PaginationInput): Notes!
         tagNotes(searchFilter: SearchFilterInput, pagination: PaginationInput): Notes!
@@ -280,6 +291,7 @@ export const noteQuery = gql`
         imageNotes(src: String!): [Note!]!
         backReferences(id: ID!): [Note]!
         note(id: ID!): Note!
+        noteRead(id: ID!, offset: Int, maxLength: Int, heading: String, expectedUpdatedAt: String): NoteReadResult!
         noteCleanupCandidates(query: String, pagination: PaginationInput): [NoteCleanupCandidate!]!
         noteCleanupPreview(id: ID!): NoteCleanupPreview
         noteSnapshots(id: ID!, limit: Int): [NoteSnapshot!]!

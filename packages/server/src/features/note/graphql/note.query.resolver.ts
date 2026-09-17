@@ -25,6 +25,7 @@ import type { Note, Prisma } from '~/models.js';
 import models from '~/models.js';
 import { runDataMaintenanceInBackground } from '~/modules/data-maintenance.js';
 import type { Pagination, SearchFilter } from '~/types/index.js';
+import { type MarkdownReadInput, readMarkdownRange } from '../services/markdown-read.js';
 
 interface AllNotesResolverDeps {
     countNotes: (args: { where?: Prisma.NoteWhereInput }) => Promise<number>;
@@ -548,6 +549,11 @@ export const noteQueryResolvers: NoteQueryResolvers = {
         }),
     backReferences: createBackReferencesQueryResolver(),
     note: createNoteQueryResolver(),
+    noteRead: async (_: unknown, { id, ...input }: MarkdownReadInput & { id: string }) => {
+        const note = await createNoteQueryResolver()(_, { id });
+        const { blocksToMarkdown } = await import('~/modules/blocknote.js');
+        return { note, ...readMarkdownRange(await blocksToMarkdown(note.content), note.updatedAt, input) };
+    },
     noteCleanupCandidates: async (
         _,
         {

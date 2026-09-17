@@ -72,3 +72,7 @@ Use password mode instead when the development server must be reachable beyond y
 ## License
 
 Ocean Brain is available under the [MIT License](./LICENSE).
+
+## Integrations
+
+Manage the built-in MCP integration and independently hosted apps in **Settings → Integrations**, with separate credentials and read/create/edit/delete permissions for each connection. External apps can add an optional page and top-bar shortcut; they run on their own service. Built-in keyword and semantic search remain native features. See the [integration guide](docs/INTEGRATIONS.md) for connection setup and runnable API examples.

@@ -2,6 +2,7 @@
 node_modules
 /data
 /assets
+.tmp
 .conor
 CLAUDE.md
 packages/server/dist
@@ -17,3 +18,4 @@ docs/private/
 coverage
 .tmp/e2e/
 test-results/
+/examples/

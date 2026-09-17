@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import mercurius from 'mercurius';
+import { integrationReadSchema } from '../features/integration/schema.js';
 import type { McpAdminService } from '../features/mcp-admin/service.js';
 import { createCsrfProtection, isAuthenticatedRequest, requireSessionForGraphql } from '../modules/auth-guard.js';
 import type { AuthConfig } from '../modules/auth-mode.js';
@@ -20,7 +21,7 @@ export const createGraphqlRouter = (authConfig: AuthConfig, mcpAdminService: Mcp
         app.register(async (mcpEndpoint) => {
             mcpEndpoint.addHook('preHandler', createMcpAuthMiddleware(authConfig, mcpAdminService));
             mcpEndpoint.register(mercurius, {
-                schema,
+                schema: integrationReadSchema,
                 path: '/graphql/mcp',
                 graphiql: false,
                 errorFormatter: (execution, context) => ({

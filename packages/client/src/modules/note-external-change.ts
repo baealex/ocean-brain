@@ -1,7 +1,7 @@
 import type { ServerEvent } from '~/modules/server-events';
 import { compareNoteVersions } from './note-version';
 
-export type ExternalNoteChangeSource = 'web' | 'mcp' | 'unknown';
+export type ExternalNoteChangeSource = 'web' | 'mcp' | 'integration' | 'unknown';
 
 export type ExternalNoteChange =
     | { type: 'updated'; updatedAt: string; source: ExternalNoteChangeSource }
@@ -28,7 +28,7 @@ export const classifyExternalNoteEvent = ({
     acceptedUpdatedAt,
     hasUnsavedChanges,
 }: ClassifyExternalNoteEventInput): ExternalNoteEventDecision => {
-    if (event.noteId !== noteId || event.type === 'mcp.note.created') {
+    if (event.noteId !== noteId || event.type === 'mcp.note.created' || event.type === 'integration.note.created') {
         return { type: 'ignore' };
     }
 
@@ -36,7 +36,7 @@ export const classifyExternalNoteEvent = ({
         return { type: 'ignore' };
     }
 
-    if (event.type === 'mcp.note.deleted') {
+    if (event.type === 'mcp.note.deleted' || event.type === 'integration.note.deleted') {
         return {
             type: 'notify',
             change: { type: 'deleted', source: event.source },

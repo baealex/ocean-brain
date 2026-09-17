@@ -4,6 +4,7 @@ import fastifyFormbody from '@fastify/formbody';
 import fastifyRateLimit from '@fastify/rate-limit';
 import fastifySession from '@fastify/session';
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
+import { createIntegrationService } from './features/integration/service.js';
 import { createMcpAdminService, type McpAdminService } from './features/mcp-admin/service.js';
 import { purgeExpiredNoteSnapshots } from './features/note/services/snapshot.js';
 import { purgeExpiredTrashedNotes } from './features/note/services/trash.js';
@@ -114,6 +115,7 @@ export const createAppWithMcpAuth = (
     options: CreateAppOptions = {},
 ) => {
     const app = options.application ?? createFastifyApplication(options);
+    app.addHook('onReady', async () => createIntegrationService().ensureNativeConnections());
 
     const startupCleanup = Promise.all([purgeExpiredNoteSnapshots(), purgeExpiredTrashedNotes()]).catch((error) => {
         const message = error instanceof Error ? error.message : 'Unknown recovery cleanup error';

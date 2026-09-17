@@ -1,6 +1,10 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
 declare module 'fastify' {
+    interface FastifyRequest {
+        integration?: import('../features/integration/service.js').IntegrationPrincipal;
+    }
+
     interface Session {
         authenticated?: boolean;
     }

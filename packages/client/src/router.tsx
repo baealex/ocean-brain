@@ -13,6 +13,7 @@ import {
     validateCalendarSearch,
     validateGraphSearch,
     validateHomeSearch,
+    validateIntegrationsSearch,
     validatePaginationSearch,
     validateReminderSearch,
     validateSearchPageSearch,
@@ -24,9 +25,11 @@ import {
     CALENDAR_ROUTE,
     GRAPH_ROUTE,
     HOME_ROUTE,
+    INTEGRATION_ROUTE,
     NOTE_ROUTE,
     REMINDERS_ROUTE,
     SEARCH_ROUTE,
+    SETTINGS_INTEGRATIONS_ROUTE,
     SETTINGS_MANAGE_IMAGE_DETAIL_ROUTE,
     SETTINGS_MANAGE_IMAGE_ROUTE,
     SETTINGS_MCP_ROUTE,
@@ -161,6 +164,18 @@ const settingsRoute = createRoute({
     ),
 });
 
+const integrationsSettingsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: SETTINGS_INTEGRATIONS_ROUTE,
+    validateSearch: validateIntegrationsSearch,
+    component: lazyRouteComponent(() => import('~/pages/setting/integrations')),
+});
+const integrationRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: INTEGRATION_ROUTE,
+    component: lazyRouteComponent(() => import('~/pages/Integration')),
+});
+
 const mcpRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: SETTINGS_MCP_ROUTE,
@@ -243,6 +258,8 @@ const routeTree = rootRoute.addChildren([
     settingsRoute,
     searchSettingsRoute,
     mcpRoute,
+    integrationsSettingsRoute,
+    integrationRoute,
     trashRoute,
     manageImageRoute,
     manageImageDetailRoute,

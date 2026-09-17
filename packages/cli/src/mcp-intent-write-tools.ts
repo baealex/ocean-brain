@@ -68,8 +68,8 @@ const markdownAppendPlacementSchema = z.discriminatedUnion('type', [
 
 const markdownWritePolicySchema = z.object({
     allowNoop: z.boolean().optional(),
-    preserveTags: z.union([z.boolean(), z.literal('warn')]).optional(),
-    preserveReferences: z.union([z.boolean(), z.literal('warn')]).optional()
+    preserveTags: z.union([z.boolean(), z.literal('warn')]).optional().describe('true blocks tag-token count decreases; warn reports decreases. Does not preserve individual tag identities.'),
+    preserveReferences: z.union([z.boolean(), z.literal('warn')]).optional().describe('true blocks reference-count decreases; warn reports decreases. Does not preserve individual reference identities.')
 }).optional();
 
 const markdownWriteBaselineFields = {
@@ -167,7 +167,7 @@ export const registerIntentWriteTools = (
                 operation,
                 ...(policy ? { policy } : {})
             };
-            const result = await jsonRequest<DirectWriteResult>(serverUrl, writeToken, '/api/mcp/notes/patch-markdown', payload);
+            const result = await jsonRequest<DirectWriteResult>(serverUrl, writeToken, '/api/integrations/v1/notes/patch-markdown', payload);
 
             return createMcpJsonToolResult(result);
         }
@@ -197,7 +197,7 @@ export const registerIntentWriteTools = (
                 ...(separator ? { separator } : {}),
                 ...(policy ? { policy } : {})
             };
-            const result = await jsonRequest<DirectWriteResult>(serverUrl, writeToken, '/api/mcp/notes/append-markdown', payload);
+            const result = await jsonRequest<DirectWriteResult>(serverUrl, writeToken, '/api/integrations/v1/notes/append-markdown', payload);
 
             return createMcpJsonToolResult(result);
         }
@@ -222,7 +222,7 @@ export const registerIntentWriteTools = (
                 ...(layout ? { layout } : {}),
                 ...(properties ? { properties } : {})
             };
-            const result = await jsonRequest<DirectWriteResult>(serverUrl, writeToken, '/api/mcp/notes/metadata', payload);
+            const result = await jsonRequest<DirectWriteResult>(serverUrl, writeToken, '/api/integrations/v1/notes/metadata', payload);
 
             return createMcpJsonToolResult(result);
         }
@@ -248,7 +248,7 @@ export const registerIntentWriteTools = (
                 replacement,
                 ...(policy ? { policy } : {})
             };
-            const result = await jsonRequest<DirectWriteResult>(serverUrl, writeToken, '/api/mcp/notes/replace-markdown', payload);
+            const result = await jsonRequest<DirectWriteResult>(serverUrl, writeToken, '/api/integrations/v1/notes/replace-markdown', payload);
 
             return createMcpJsonToolResult(result);
         }

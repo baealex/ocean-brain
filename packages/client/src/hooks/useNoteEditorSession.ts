@@ -12,7 +12,7 @@ import {
     updateNoteProperties,
 } from '~/apis/note.api';
 import type { NotePropertiesPanelRef } from '~/components/note/NotePropertiesPanel';
-import type { EditorRef } from '~/components/shared/Editor';
+import type { EditorRef, ExternalEditorUpdate } from '~/components/shared/Editor';
 import type { Note, NoteLayout } from '~/models/note.model';
 import { replaceFixedPlaceholder } from '~/modules/fixed-placeholder';
 import { createMarkdownDocumentExport } from '~/modules/note-export';
@@ -81,12 +81,17 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
     const appliedNoteVersionRef = useRef(note.updatedAt);
 
     const [title, setTitle] = useState(note.title);
+    const [documentProperties, setDocumentProperties] = useState(note.properties);
     const [isPinned, setIsPinned] = useState(note.pinned);
     const [layout, setLayoutState] = useState<NoteLayout>(note.layout || 'wide');
     const layoutRef = useRef(layout);
     const [externalNoteChange, setExternalNoteChange] = useState<ExternalNoteChange | null>(null);
     const [editorContentOverride, setEditorContentOverride] = useState<string | null>(null);
     const [editorRevision, setEditorRevision] = useState(0);
+    const [externalEditorUpdate, setExternalEditorUpdate] = useState<ExternalEditorUpdate | null>(null);
+    const handleClearChangeMarks = useCallback(() => setExternalEditorUpdate(null), []);
+    const [automaticRefreshFailed, setAutomaticRefreshFailed] = useState(false);
+    const pendingMcpUpdateRef = useRef(false);
     const [lastSavedAt, setLastSavedAt] = useState(() => formatNoteTime(note.updatedAt));
     const [lastSavedVersion, setLastSavedVersion] = useState(note.updatedAt);
     const [saveConfirmationRevision, setSaveConfirmationRevision] = useState(0);
@@ -175,7 +180,8 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
     const saveController = useNoteSaveController({
         noteId,
         initialContent: note.content,
-        initialUpdatedAt: note.updatedAt,
+        // A refetch is not an accepted baseline until the session's dirty guards allow it.
+        initialUpdatedAt: appliedNoteVersionRef.current,
         editSessionIdRef,
         serverVersionRef,
         executeWrite,
@@ -256,7 +262,7 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
     });
 
     useEffect(() => {
-        if (hasSessionUnsavedChanges) {
+        if (hasSessionUnsavedChanges || getPendingDraft()) {
             if (
                 note.updatedAt !== serverUpdatedAtRef.current &&
                 (compareNoteVersions(note.updatedAt, serverUpdatedAtRef.current) ?? 0) > 0
@@ -278,6 +284,7 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
         }
 
         setIsPinned(note.pinned);
+        setDocumentProperties(note.properties);
         setLayout(note.layout || 'wide');
         setTitle(note.title);
 
@@ -287,16 +294,24 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
             commitAcceptedVersion(note.updatedAt);
 
             if (currentEditorContent === undefined || currentEditorContent !== note.content) {
+                setExternalEditorUpdate(
+                    pendingMcpUpdateRef.current && currentEditorContent !== undefined
+                        ? { previousContent: currentEditorContent, viewport: editorRef.current?.captureViewport() }
+                        : null,
+                );
                 setEditorContentOverride(null);
                 setEditorRevision((revision) => revision + 1);
             }
+            pendingMcpUpdateRef.current = false;
         }
     }, [
         commitAcceptedVersion,
         hasSessionUnsavedChanges,
+        getPendingDraft,
         note.content,
         note.layout,
         note.pinned,
+        note.properties,
         note.title,
         note.updatedAt,
         pauseForConflict,
@@ -306,6 +321,8 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
     useEffect(() => {
         if (
             externalNoteChange?.type !== 'updated' ||
+            hasSessionUnsavedChanges ||
+            getPendingDraft() ||
             saveStatus === 'conflict' ||
             externalNoteChange.updatedAt !== note.updatedAt
         ) {
@@ -314,17 +331,29 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
 
         commitAcceptedVersion(note.updatedAt);
         setExternalNoteChange(null);
-    }, [commitAcceptedVersion, externalNoteChange, note.updatedAt, saveStatus]);
+    }, [
+        commitAcceptedVersion,
+        externalNoteChange,
+        getPendingDraft,
+        hasSessionUnsavedChanges,
+        note.updatedAt,
+        saveStatus,
+    ]);
 
     useEffect(() => {
-        return subscribeServerEvent((event) => {
+        let active = true;
+        const unsubscribe = subscribeServerEvent((event) => {
             const decision = classifyExternalNoteEvent({
                 event,
                 noteId,
                 editSessionId: editSessionIdRef.current,
                 loadedUpdatedAt: note.updatedAt,
                 acceptedUpdatedAt: serverUpdatedAtRef.current,
-                hasUnsavedChanges: hasSessionUnsavedChanges,
+                hasUnsavedChanges:
+                    hasSessionUnsavedChanges ||
+                    getPendingDraft() !== null ||
+                    hasPendingPropertyChangesRef.current ||
+                    hasPendingWrites(),
             });
 
             if (decision.type === 'ignore') {
@@ -336,8 +365,28 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
             }
 
             setExternalNoteChange(decision.change);
+            if (event.type === 'mcp.note.updated' && !decision.shouldPauseSave) {
+                pendingMcpUpdateRef.current = true;
+                setAutomaticRefreshFailed(false);
+                void refetchNote().then((result) => {
+                    if (active && result.error) setAutomaticRefreshFailed(true);
+                });
+            }
         });
-    }, [hasSessionUnsavedChanges, note.updatedAt, noteId, pauseForConflict, serverUpdatedAtRef]);
+        return () => {
+            active = false;
+            unsubscribe();
+        };
+    }, [
+        getPendingDraft,
+        hasPendingWrites,
+        hasSessionUnsavedChanges,
+        note.updatedAt,
+        noteId,
+        pauseForConflict,
+        refetchNote,
+        serverUpdatedAtRef,
+    ]);
 
     const handleContentChange = useCallback(() => {
         queueSave(buildDraft(title));
@@ -493,7 +542,9 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
         layoutConflictRef.current = null;
         commitAcceptedVersion(response.data.updatedAt);
         setTitle(response.data.title);
+        setDocumentProperties(response.data.properties);
         setLayout(response.data.layout || 'wide');
+        setExternalEditorUpdate(null);
         setEditorContentOverride(null);
         setEditorRevision((revision) => revision + 1);
         setExternalNoteChange(null);
@@ -592,6 +643,7 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
         }
 
         setEditorContentOverride(localDraft.content);
+        setExternalEditorUpdate(null);
         setEditorRevision((revision) => revision + 1);
         restoreLocalDraft(localDraft);
     }, [localDraft, restoreLocalDraft]);
@@ -635,6 +687,7 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
                 setLayout(restoredNote.layout || 'wide');
                 setIsPinned(restoredNote.pinned);
                 setEditorContentOverride(restoredNote.content);
+                setExternalEditorUpdate(null);
                 setEditorRevision((revision) => revision + 1);
                 return response;
             });
@@ -652,7 +705,7 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
             isPinned,
             layout,
             getLayout: () => layoutRef.current,
-            properties: note.properties,
+            properties: documentProperties,
             createdAt: formatNoteTime(note.createdAt),
             onTitleChange: handleTitleChange,
             onLayoutSave: handleLayoutSave,
@@ -662,6 +715,8 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
             ref: editorRef,
             key: `${noteId}:${editorRevision}`,
             content: editorContentOverride ?? note.content,
+            externalUpdate: externalEditorUpdate,
+            onClearChangeMarks: handleClearChangeMarks,
             getContent: () => editorRef.current?.getContent() ?? '',
             getHtml: () => editorRef.current?.getHtml(),
             getMarkdown: () => editorRef.current?.getMarkdown(),
@@ -685,11 +740,18 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
             value: externalNoteChange,
             isConflict: isConflictedExternalUpdate,
             hasConflictDraft: conflictDraft !== null,
-            isBlocking: isBlockingExternalNoteChange({
-                change: externalNoteChange,
-                isConflict: isConflictedExternalUpdate,
-                loadedUpdatedAt: note.updatedAt,
-            }),
+            isBlocking:
+                !(
+                    externalNoteChange?.source === 'mcp' &&
+                    externalNoteChange.type === 'updated' &&
+                    !isConflictedExternalUpdate &&
+                    !automaticRefreshFailed
+                ) &&
+                isBlockingExternalNoteChange({
+                    change: externalNoteChange,
+                    isConflict: isConflictedExternalUpdate,
+                    loadedUpdatedAt: note.updatedAt,
+                }),
             isReloading: noteQuery.isRefetching,
             onReload: handleReloadExternalChange,
             onOverwrite: handleOverwriteConflict,

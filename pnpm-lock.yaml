@@ -211,6 +211,9 @@ importers:
       dayjs:
         specifier: ^1.11.19
         version: 1.11.19
+      diff:
+        specifier: 9.0.0
+        version: 9.0.0
       jszip:
         specifier: ^3.10.1
         version: 3.10.1
@@ -223,6 +226,12 @@ importers:
       nanoid:
         specifier: ^5.1.16
         version: 5.1.16
+      prosemirror-state:
+        specifier: 1.4.4
+        version: 1.4.4
+      prosemirror-view:
+        specifier: 1.42.3
+        version: 1.42.3
       react:
         specifier: ^19.2.4
         version: 19.2.4

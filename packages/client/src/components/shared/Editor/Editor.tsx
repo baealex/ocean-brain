@@ -1,7 +1,7 @@
 import { BlockNoteView } from '@blocknote/mantine';
 import { useCreateBlockNote } from '@blocknote/react';
 import '@blocknote/mantine/style.css';
-import { forwardRef, type ClipboardEvent as ReactClipboardEvent, useImperativeHandle } from 'react';
+import { forwardRef, type ClipboardEvent as ReactClipboardEvent, useImperativeHandle, useLayoutEffect } from 'react';
 import { uploadImage } from '~/apis/image.api';
 import schema, { CommandView, ReferenceView, TagView } from '~/components/schema';
 import { useToast } from '~/components/ui';
@@ -22,103 +22,129 @@ import {
     UNSUPPORTED_IMAGE_UPLOAD_MESSAGE,
 } from '~/modules/image-upload-policy';
 import { useTheme } from '~/store/theme';
+import { ExternalChangeExtension } from './external-change-extension';
+import { captureEditorViewport, type EditorViewport, restoreEditorViewport } from './external-changes';
+
+export interface ExternalEditorUpdate {
+    previousContent: string;
+    viewport?: EditorViewport;
+}
 
 interface EditorProps {
     content?: string;
     currentNoteId?: string;
     editable?: boolean;
     onChange?: () => void;
+    externalUpdate?: ExternalEditorUpdate | null;
+    onClearChangeMarks?: () => void;
 }
 
 export interface EditorRef {
     getContent: () => string;
     getMarkdown: () => string;
     getHtml: () => string;
+    captureViewport: () => EditorViewport;
 }
 
-const Editor = forwardRef<EditorRef, EditorProps>(({ content, currentNoteId, editable, onChange }, ref) => {
-    const { theme } = useTheme((state) => state);
-    const toast = useToast();
+const Editor = forwardRef<EditorRef, EditorProps>(
+    ({ content, currentNoteId, editable, onChange, externalUpdate, onClearChangeMarks }, ref) => {
+        const { theme } = useTheme((state) => state);
+        const toast = useToast();
 
-    const editor = useCreateBlockNote(
-        {
-            schema,
-            initialContent: (content && JSON.parse(content)) || undefined,
-            pasteHandler: (context) => handleBlockNotePaste(context),
-            uploadFile: async (file, blockId) => {
-                const removePendingBlock = () => {
-                    if (blockId && editor.getBlock(blockId)) {
-                        editor.removeBlocks([blockId]);
+        const editor = useCreateBlockNote(
+            {
+                schema,
+                extensions: [ExternalChangeExtension()],
+                initialContent: (content && JSON.parse(content)) || undefined,
+                pasteHandler: (context) => handleBlockNotePaste(context),
+                uploadFile: async (file, blockId) => {
+                    const removePendingBlock = () => {
+                        if (blockId && editor.getBlock(blockId)) {
+                            editor.removeBlocks([blockId]);
+                        }
+                    };
+
+                    if (!isSupportedImageUploadType(file.type)) {
+                        removePendingBlock();
+                        toast(UNSUPPORTED_IMAGE_UPLOAD_MESSAGE);
+                        throw new Error(UNSUPPORTED_IMAGE_UPLOAD_MESSAGE);
                     }
-                };
 
-                if (!isSupportedImageUploadType(file.type)) {
-                    removePendingBlock();
-                    toast(UNSUPPORTED_IMAGE_UPLOAD_MESSAGE);
-                    throw new Error(UNSUPPORTED_IMAGE_UPLOAD_MESSAGE);
-                }
+                    try {
+                        return await uploadImage({ base64: await fileToBase64(file) });
+                    } catch (error) {
+                        removePendingBlock();
+                        toast(FAILED_IMAGE_UPLOAD_MESSAGE);
+                        throw error;
+                    }
+                },
+            },
+            [toast],
+        );
 
-                try {
-                    return await uploadImage({ base64: await fileToBase64(file) });
-                } catch (error) {
-                    removePendingBlock();
-                    toast(FAILED_IMAGE_UPLOAD_MESSAGE);
-                    throw error;
-                }
-            },
-        },
-        [toast],
-    );
+        useLayoutEffect(() => {
+            const extension = editor.getExtension(ExternalChangeExtension);
+            if (!externalUpdate) {
+                const viewport = captureEditorViewport(editor.domElement);
+                extension?.clearChanges();
+                restoreEditorViewport(viewport);
+                return;
+            }
+            extension?.showChanges(externalUpdate.previousContent, onClearChangeMarks);
+            restoreEditorViewport(externalUpdate.viewport);
+        }, [editor, externalUpdate, onClearChangeMarks]);
 
-    useImperativeHandle(ref, () => {
-        return {
-            getContent: () => {
-                return JSON.stringify(editor.document);
-            },
-            getMarkdown: () => {
-                const prepared = prepareBlocksForMarkdown(editor.document as unknown as MarkdownBlock[]);
-                const markdown = editor.blocksToMarkdownLossy(
-                    prepared.blocks as Parameters<typeof editor.blocksToMarkdownLossy>[0],
-                );
+        useImperativeHandle(ref, () => {
+            return {
+                captureViewport: () => captureEditorViewport(editor.domElement),
+                getContent: () => {
+                    return JSON.stringify(editor.document);
+                },
+                getMarkdown: () => {
+                    const prepared = prepareBlocksForMarkdown(editor.document as unknown as MarkdownBlock[]);
+                    const markdown = editor.blocksToMarkdownLossy(
+                        prepared.blocks as Parameters<typeof editor.blocksToMarkdownLossy>[0],
+                    );
 
-                return formatBlockNoteMarkdownForExport(
-                    restoreTagPlaceholdersInMarkdown(markdown, prepared.placeholderToTag),
-                );
-            },
-            getHtml: () => {
-                return editor.blocksToHTMLLossy(editor.document);
-            },
+                    return formatBlockNoteMarkdownForExport(
+                        restoreTagPlaceholdersInMarkdown(markdown, prepared.placeholderToTag),
+                    );
+                },
+                getHtml: () => {
+                    return editor.blocksToHTMLLossy(editor.document);
+                },
+            };
+        });
+
+        const handleClipboardWrite = (event: ReactClipboardEvent) => {
+            normalizeBlockNoteCopy(event.clipboardData);
         };
-    });
 
-    const handleClipboardWrite = (event: ReactClipboardEvent) => {
-        normalizeBlockNoteCopy(event.clipboardData);
-    };
-
-    return (
-        <BlockNoteView
-            slashMenu={false}
-            theme={theme}
-            editor={editor}
-            editable={editable}
-            onChange={onChange}
-            onCopy={handleClipboardWrite}
-            onCut={handleClipboardWrite}
-        >
-            <CommandView editor={editor} />
-            <ReferenceView
-                currentNoteId={currentNoteId}
-                onClick={(content) => {
-                    editor.insertInlineContent([content, ' ']);
-                }}
-            />
-            <TagView
-                onClick={(content) => {
-                    editor.insertInlineContent([content, ' ']);
-                }}
-            />
-        </BlockNoteView>
-    );
-});
+        return (
+            <BlockNoteView
+                slashMenu={false}
+                theme={theme}
+                editor={editor}
+                editable={editable}
+                onChange={onChange}
+                onCopy={handleClipboardWrite}
+                onCut={handleClipboardWrite}
+            >
+                <CommandView editor={editor} />
+                <ReferenceView
+                    currentNoteId={currentNoteId}
+                    onClick={(content) => {
+                        editor.insertInlineContent([content, ' ']);
+                    }}
+                />
+                <TagView
+                    onClick={(content) => {
+                        editor.insertInlineContent([content, ' ']);
+                    }}
+                />
+            </BlockNoteView>
+        );
+    },
+);
 
 export default Editor;

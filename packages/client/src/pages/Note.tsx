@@ -211,6 +211,8 @@ export function NoteContent({ id }: NoteContentProps) {
                         content={editor.content}
                         currentNoteId={id}
                         onChange={editor.onChange}
+                        externalUpdate={editor.externalUpdate}
+                        onClearChangeMarks={editor.onClearChangeMarks}
                     />
 
                     <NoteReminders noteId={id} />

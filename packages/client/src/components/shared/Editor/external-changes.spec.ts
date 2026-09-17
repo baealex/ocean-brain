@@ -48,4 +48,61 @@ describe('editor change awareness', () => {
             ).changes,
         ).toEqual([]);
     });
+
+    it('keeps repeated unchanged blocks unmarked during a large rewrite', () => {
+        const before = Array.from({ length: 600 }, (_, i) => block(`old-${i}`, i % 20 === 0 ? 'Keep' : `Old ${i}`));
+        const after = Array.from({ length: 600 }, (_, i) => block(`new-${i}`, i % 20 === 0 ? 'Keep' : `New ${i}`));
+
+        const { changes } = compareEditorBlocks(JSON.stringify(before), JSON.stringify(after));
+
+        expect(changes).toEqual(after.filter((_, i) => i % 20 !== 0).map(({ id }) => ({ id, kind: 'modified' })));
+    });
+
+    it('marks an extra repeated paragraph instead of matching an earlier occurrence twice', () => {
+        const before = Array.from({ length: 600 }, (_, i) => block(`old-${i}`, i % 20 === 0 ? 'Keep' : `Remove ${i}`));
+        const after = [...Array.from({ length: 30 }, (_, i) => block(`new-${i}`, 'Keep')), block('extra', 'Keep')];
+
+        const { changes } = compareEditorBlocks(JSON.stringify(before), JSON.stringify(after));
+
+        expect(changes).toEqual([{ id: 'extra', kind: 'modified' }]);
+    });
+
+    it('marks edits to retained block IDs after a large rewrite and distinguishes appended content', () => {
+        const before = [
+            ...Array.from({ length: 600 }, (_, i) => block(`old-${i}`, `Old ${i}`)),
+            block('retained', 'Old ending'),
+        ];
+        const after = [
+            ...Array.from({ length: 600 }, (_, i) => block(`new-${i}`, `New ${i}`)),
+            block('retained', 'New ending'),
+            block('added', 'Extra paragraph'),
+        ];
+
+        const { changes } = compareEditorBlocks(JSON.stringify(before), JSON.stringify(after));
+
+        expect(changes).toHaveLength(602);
+        expect(changes.slice(-2)).toEqual([
+            { id: 'retained', kind: 'modified' },
+            { id: 'added', kind: 'added' },
+        ]);
+    });
+
+    it.each([
+        false,
+        true,
+    ])('marks only a large prefix insertion containing copied text (regenerated IDs: %s)', (regenerateIds) => {
+        const before = Array.from({ length: 200 }, (_, i) => block(`kept-${i}`, `Paragraph ${i}`));
+        const inserted = [
+            block('new-copy', 'Paragraph 199'),
+            ...Array.from({ length: 129 }, (_, i) => block(`new-${i}`, `Inserted ${i}`)),
+        ];
+        const after = [
+            ...inserted,
+            ...before.map((value, i) => ({ ...value, id: regenerateIds ? `regenerated-${i}` : value.id })),
+        ];
+
+        const { changes } = compareEditorBlocks(JSON.stringify(before), JSON.stringify(after));
+
+        expect(changes).toEqual(inserted.map(({ id }) => ({ id, kind: 'added' })));
+    });
 });

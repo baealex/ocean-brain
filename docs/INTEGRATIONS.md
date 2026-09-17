@@ -182,7 +182,7 @@ Migration `0020` creates the platform records under their original names. Migrat
 
 The initial platform migration creates the built-in MCP integration record, preserves `MCP_ENABLED`, and copies the latest active MCP token hash and timestamps. Users do not need to regenerate that token. Thereafter both integration settings and the legacy MCP administration API use the new records as the single authority.
 
-Token preservation does not preserve the previous tool catalog. This release uses MCP compatibility `0.12`: upgrade the server and MCP adapter together and reconnect the client. See the [MCP migration guide](../packages/cli/README.md#migration-to-mcp-compatibility-012) for removed tools and their replacements.
+Token preservation does not preserve the previous tool catalog. This release uses MCP compatibility `0.14`: upgrade the server and MCP adapter together and reconnect the client. See the [MCP migration guide](../packages/cli/README.md#migration-to-mcp-compatibility-014) for removed tools and their replacements.
 
 `/graphql/mcp`, `/api/mcp/*`, and `/api/mcp-admin/*` remain compatibility routes. The CLI now uses `/api/integrations/v1/*`. The CLI still speaks MCP over stdio; the new HTTP paths are the application's data API, not an HTTP MCP JSON-RPC endpoint.
 

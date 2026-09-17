@@ -80,15 +80,15 @@ Use these shortcode labels exactly:
 ### 3-5. Release Impact Labels
 Every PR must have exactly one release impact label before review/merge. Pick the highest applicable impact.
 
-- `release: major`: breaking change, migration requirement, removed/renamed public behavior, or incompatible API/CLI/config change
-- `release: minor`: backward-compatible feature, new endpoint/tool/command, new user-visible capability, or backward-compatible output enrichment
+- `release: major`: the first stable `1.0.0` release, a breaking change after `1.0.0`, or a destructive/manual migration that requires a major upgrade boundary
+- `release: minor`: backward-compatible feature, new endpoint/tool/command, new user-visible capability, backward-compatible output enrichment, or an intentionally documented incompatible contract change while the app remains on `0.x`
 - `release: patch`: backward-compatible bug fix, documentation-only change, tests, refactor, maintenance, or performance improvement that should be included in release notes
 - `release: no-impact`: operational or repository-only changes that do not affect released npm/Docker artifacts, runtime behavior, user-visible product behavior, public APIs, CLI/MCP contracts, or release notes
 
 Examples:
 - Preserving Markdown hard breaks: `release: patch`
 - Adding `[[title]](note:id)` reference Markdown support: `release: minor`
-- Removing or changing an existing MCP/CLI contract incompatibly: `release: major`
+- Removing or changing an existing MCP/CLI contract incompatibly before `1.0.0`: `release: minor`; after `1.0.0`: `release: major`
 - CI test speedups, CI-only workflow tuning, and test runner configuration with no released artifact behavior change: `release: no-impact`
 - Local demo-only changes that are not shipped as the default product behavior: `release: no-impact`
 - Local development environment, documentation process, editor/tooling, or repository maintenance changes with no runtime/release effect: `release: no-impact`

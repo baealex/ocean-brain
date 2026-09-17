@@ -112,9 +112,9 @@ For example, pass this to `ocean_brain_query_notes` after discovering the proper
 
 `create_note` accepts `properties: {"set":[{"key":"state","value":"todo"}]}` using the same value format as metadata edits. Definitions and select options must already exist. Validation failures leave no partial note; note and property persistence share a transaction. Markdown `[@tag]` tokens create tags as needed. Body edits retain version/hash checks and pre-edit snapshots.
 
-### Migration to MCP compatibility 0.12
+### Migration to MCP compatibility 0.14
 
-Update the server and MCP adapter together, then reconnect the host so it refreshes the tool catalog. Compatibility 0.11 clients are rejected with an upgrade message. The MCP compatibility version is separate from the npm package version.
+Update the server and MCP adapter together, then reconnect the host so it refreshes the tool catalog. Earlier compatibility clients are rejected with an upgrade message. The MCP compatibility version is a separate contract from the npm package version, but this release intentionally aligns both at 0.14.0.
 
 `oceanBrain.mcpCompatibilityVersion` identifies the MCP contract, not a minimum npm package version. The server accepts adapters whose compatibility major and minor numbers match its own, regardless of the app release number. An app release alone does not change this value; incompatible MCP contract changes do.
 

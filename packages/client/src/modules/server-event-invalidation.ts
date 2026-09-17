@@ -118,13 +118,16 @@ export const invalidateQueriesForNoteDelete = async (queryClient: QueryClient) =
 export const invalidateQueriesForServerEvent = async (queryClient: QueryClient, event: ServerEvent) => {
     switch (event.type) {
         case 'mcp.note.created':
+        case 'integration.note.created':
         case 'web.note.updated':
             await invalidateQueriesForNoteChange(queryClient);
             return;
         case 'mcp.note.updated':
+        case 'integration.note.updated':
             await invalidateMany(queryClient, [...noteChangeInvalidations, propertyKeysInvalidation]);
             return;
         case 'mcp.note.deleted':
+        case 'integration.note.deleted':
             await invalidateQueriesForNoteDelete(queryClient);
             return;
     }

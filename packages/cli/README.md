@@ -73,7 +73,63 @@ The `mcp` command starts the built-in stdio MCP adapter that forwards tool calls
 
 The MCP tools can search and read notes, query tags and properties, create notes, make targeted Markdown or metadata edits, and move notes to Trash.
 
-First enable MCP access under `Settings > MCP`, issue a token, and save it to a local file. Then configure the MCP client, for example:
+### Tools and response contracts
+
+The default catalog contains 13 tools. All names start with `ocean_brain_`:
+
+| Tools | Purpose |
+| --- | --- |
+| `search_notes` | Keyword/semantic search, with preview, match flags and a lexical excerpt when available |
+| `query_notes` | Recent notes or combined tag/property conditions; no body loading |
+| `read_note` | Metadata, Markdown ranges/sections, and back references |
+| `list_tags`, `list_properties` | Discover tags in use and existing property definitions/options |
+| `list_views`, `read_view` | Discover saved sections and read list/table/board/calendar results |
+| `create_note` | Create Markdown and existing property values together |
+| `append_note_markdown`, `patch_note_markdown`, `replace_note_markdown` | Append, target a local change, or intentionally replace a body |
+| `update_note_metadata` | Change title/layout/property values with an expected version |
+| `delete_note` | Move a note to Trash |
+
+Every successful JSON tool response has both `structuredContent` and equivalent JSON text. `read_note` keeps human-readable Markdown text and exposes `{note, markdown, backReferences, contentRange, status}` in `structuredContent`. Code consumers should use `result.structuredContent`; do not JSON-parse `read_note` text. Check `isError` before using any result. Failed writes and ambiguous targets set `isError: true`; recovery candidates remain in the structured result. Applied Markdown writes include `warnings`, including tag/reference count decreases under the `warn` policy. The preserve policies guard counts, not the identity of individual tags or links.
+
+Page limits must be positive integers; offsets must be nonnegative integers. Oversized limits are capped at 50 for search, query and views, or 100 for tag/property discovery. Responses include the applied limit and next offset under `page`. These are live offset pages, not a frozen snapshot of the database.
+
+`query_notes` with `{}` returns 20 recently updated notes. Supply `tagNames` for one or more tags (`project` and `@project` are equivalent); `mode` combines only tags. Property filters always use AND. All view operators are supported: `equals`, `notEquals`, `contains`, `notContains`, `before`, `after`, `exists`, `notExists`. Negative value comparisons require the property to exist; use `notExists` for missing values. `contains`/`notContains` apply to text/URL and `before`/`after` to dates/numbers. Only requested `propertyKeys` are returned; the default is no properties. Unknown tag names appear in `missingTags`.
+
+For example, pass this to `ocean_brain_query_notes` after discovering the property definition:
+
+```json
+{
+  "tagNames": ["project"],
+  "propertyFilters": [{"key": "state", "valueType": "select", "operator": "equals", "value": "doing"}],
+  "propertyKeys": ["state"],
+  "limit": 20
+}
+```
+
+`list_views` searches section/tab titles and returns stable section IDs, including distinct sections with the same title. `read_view` returns saved settings and paged rows without changing the active tab. Tables use their saved property columns unless `propertyKeys` is supplied. Boards return the grouping property, options and each row's group; omit `groupValue` for all columns or pass `null` for unclassified notes. Calendars require `dateRange: {"start":"2026-09-01","end":"2026-10-01"}`: start is inclusive, end exclusive, and the range cannot exceed 32 days. Results use the saved date field and are paginated in the database. `section.limit` is the saved UI display count; `page.limit` is the requested result count.
+
+`read_note` defaults to 1,000 UTF-16 code units. Use `offset` to continue or `heading` for an exact Markdown heading; these options are mutually exclusive. Repeated headings return candidates with `start`/`end` positions. `contentRange` reports the returned range, full length, selected section end and next offset. Pass the returned `note.updatedAt` unchanged as `expectedUpdatedAt` on later pages to detect intervening edits. For section continuation, bound `maxLength` by `sectionEnd - nextOffset`. Boundaries avoid splitting emoji surrogate pairs; a one-unit page can therefore return two units. `maxLength: 0` reads the remaining document or entire selected section. Back references remain included on every page. Search excerpt offsets refer to extracted visible text, not editable Markdown positions.
+
+`create_note` accepts `properties: {"set":[{"key":"state","value":"todo"}]}` using the same value format as metadata edits. Definitions and select options must already exist. Validation failures leave no partial note; note and property persistence share a transaction. Markdown `[@tag]` tokens create tags as needed. Body edits retain version/hash checks and pre-edit snapshots.
+
+### Migration to MCP compatibility 0.12
+
+Update the server and MCP adapter together, then reconnect the host so it refreshes the tool catalog. Compatibility 0.11 clients are rejected with an upgrade message. The MCP compatibility version is separate from the npm package version.
+
+| Removed tool suffix | Replacement |
+| --- | --- |
+| `list_notes_by_tag` | `query_notes` with `tagNames: [tag]` |
+| `list_notes_by_tags` | `query_notes` with `tagNames` and `mode` |
+| `list_recent_notes` | `query_notes` with no filters (default limit changes from 10 to 20) |
+| `query_notes_by_properties` | `query_notes`; specify `propertyKeys` for values previously requested via `includeProperties` |
+| `create_tag` | Include `[@tag]` in note Markdown |
+| `find_note_cleanup_candidates` | Search/query, read relevant candidates, then use `delete_note` for the selected IDs |
+
+Removed names are not retained as hidden catalog aliases. View/definition editing, batch reads/writes and trash restoration are outside this catalog.
+
+### Connect an MCP client
+
+Open `Settings > Integrations`, expand MCP, and choose `MCP connection setup`. Enable MCP access, issue a token, and save it to a local file. Then configure the MCP client, for example:
 
 ```json
 {
@@ -106,7 +162,7 @@ Set `--server` to the Ocean Brain URL reachable from the machine running the MCP
 
 The built-in adapter expands token-file paths that begin with `~`, `$HOME`, `${HOME}`, `%USERPROFILE%`, or `%HOME%`. This keeps copied JSON configurations portable even when the MCP client does not run arguments through a shell. `Settings > MCP` can generate either macOS/Linux shell commands or Windows PowerShell commands.
 
-Prefer `--token-file` so the token is not stored directly in client configuration. Ocean Brain keeps one active MCP token; rotating or revoking it immediately invalidates the previous token. For a long-lived MCP setup, pin an npm package version compatible with the requirement shown in `Settings > MCP`.
+Prefer `--token-file` so the token is not stored directly in client configuration. Ocean Brain keeps one active MCP token; rotating or revoking it immediately invalidates the previous token. For a long-lived MCP setup, pin an npm package version compatible with the requirement shown on the MCP connection setup page.
 
 ## Links
 
@@ -115,3 +171,16 @@ Prefer `--token-file` so the token is not stored directly in client configuratio
 - [Source code](https://github.com/baealex/ocean-brain)
 - [Issues](https://github.com/baealex/ocean-brain/issues)
 - [MIT License](https://github.com/baealex/ocean-brain/blob/main/LICENSE)
+
+### Built-in MCP integration
+
+MCP is a built-in Ocean Brain integration. Manage its read/create/edit/delete
+permissions in **Settings → Integrations**, and use the MCP connection setup page for
+client configuration. Existing tokens are preserved by the platform migration.
+The CLI uses `/api/integrations/v1/graphql` and `/api/integrations/v1/notes/*`; legacy MCP
+routes remain server-side aliases with the same permission checks. These HTTP
+APIs carry application requests; MCP transport remains stdio.
+
+External apps use the same scoped API without MCP compatibility headers. They run
+independently; registering a manifest does not install or execute their code. See
+the [integration developer guide](../../docs/INTEGRATIONS.md) for runnable API examples.

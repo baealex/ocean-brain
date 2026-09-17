@@ -115,6 +115,10 @@ export interface GraphRouteSearch {
     selected?: string;
 }
 
+export interface IntegrationsRouteSearch {
+    connection?: string;
+}
+
 export interface ViewNotesRouteSearch extends PaginationRouteSearch {
     sectionId: string;
 }
@@ -177,6 +181,11 @@ export const validateCalendarSearch = (search: SearchRecord): CalendarRouteSearc
 export const validateGraphSearch = (search: SearchRecord): GraphRouteSearch => {
     const selected = parseString(search.selected, '').trim();
     return selected ? { selected } : {};
+};
+
+export const validateIntegrationsSearch = (search: SearchRecord): IntegrationsRouteSearch => {
+    const connection = parseString(search.connection).trim();
+    return connection ? { connection } : {};
 };
 
 export const validateViewsSearch = (search: SearchRecord): ViewsRouteSearch => {

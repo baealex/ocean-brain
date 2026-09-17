@@ -1,9 +1,12 @@
+import { QueryClientProvider } from '@tanstack/react-query';
 import { createRootRoute, createRoute, createRouter, Outlet, RouterProvider } from '@tanstack/react-router';
 import { act, render, screen, within } from '@testing-library/react';
-
 import { GRAPH_ROUTE, HOME_ROUTE, SEARCH_ROUTE, VIEWS_ROUTE } from '~/modules/url';
+import { createTestQueryClient } from '~/test/test-utils';
 
 import TopNavigation from './TopNavigation';
+
+vi.mock('~/apis/integration.api', () => ({ fetchIntegrations: vi.fn(async () => []) }));
 
 describe('<TopNavigation />', () => {
     it('renders the primary navigation items', async () => {
@@ -32,7 +35,11 @@ describe('<TopNavigation />', () => {
 
         const router = createRouter({ routeTree: rootRoute.addChildren([homeRoute, graphRoute]) });
 
-        render(<RouterProvider router={router} />);
+        render(
+            <QueryClientProvider client={createTestQueryClient()}>
+                <RouterProvider router={router} />
+            </QueryClientProvider>,
+        );
         await act(async () => {
             await router.load();
         });

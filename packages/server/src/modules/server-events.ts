@@ -22,12 +22,24 @@ export interface McpNoteDeletedServerEvent extends BaseMcpNoteServerEvent {
     type: 'mcp.note.deleted';
 }
 
-export type ServerEvent = McpNoteCreatedServerEvent | McpNoteUpdatedServerEvent | McpNoteDeletedServerEvent;
+export type IntegrationNoteServerEvent = {
+    id: string;
+    noteId: string;
+    source: 'integration';
+    connectionId: string;
+} & (
+    | { type: 'integration.note.created' | 'integration.note.updated'; updatedAt: string }
+    | { type: 'integration.note.deleted' }
+);
 
-export type ServerEventInput =
-    | Omit<McpNoteCreatedServerEvent, 'id'>
-    | Omit<McpNoteUpdatedServerEvent, 'id'>
-    | Omit<McpNoteDeletedServerEvent, 'id'>;
+export type ServerEvent =
+    | McpNoteCreatedServerEvent
+    | McpNoteUpdatedServerEvent
+    | McpNoteDeletedServerEvent
+    | IntegrationNoteServerEvent;
+
+type WithoutId<T> = T extends { id: string } ? Omit<T, 'id'> : never;
+export type ServerEventInput = WithoutId<ServerEvent>;
 
 type ServerEventListener = (event: ServerEvent) => void;
 

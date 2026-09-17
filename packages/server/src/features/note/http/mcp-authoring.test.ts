@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { AppError } from '~/modules/error-handler.js';
+import { InvalidNotePropertyInputError } from '../services/properties.js';
 import {
     createMcpAppendNoteMarkdownHandler,
     createMcpCreateNoteHandler,
@@ -27,6 +28,27 @@ const createResponse = () => {
 
     return response;
 };
+
+test('MCP create forwards property values and maps validation errors without emitting a creation event', async () => {
+    let received: unknown;
+    const events: unknown[] = [];
+    const handler = createMcpCreateNoteHandler(
+        async (input) => {
+            received = input;
+            throw new InvalidNotePropertyInputError('Property state option missing is not defined.');
+        },
+        (event) => events.push(event),
+    );
+    const body = { title: 'Task', properties: { set: [{ key: 'state', value: 'missing' }] } };
+    await assert.rejects(handler({ body } as never, createResponse() as never), (error: unknown) => {
+        assert.ok(error instanceof AppError);
+        assert.equal(error.status, 400);
+        assert.equal(error.code, 'INVALID_NOTE_PROPERTIES');
+        return true;
+    });
+    assert.deepEqual(received, body);
+    assert.deepEqual(events, []);
+});
 
 test('mcp create note handler rejects missing note title', async () => {
     const handler = createMcpCreateNoteHandler(async () => ({
@@ -201,6 +223,7 @@ test('mcp patch note markdown handler forwards validated patch input and emits e
             receivedInput = input;
             return {
                 status: 'applied',
+                warnings: [],
                 note: { id: '7', updatedAt: '2026-04-02T00:00:00.000Z' },
                 change: { summary: 'patched', changedLineCount: 1, changedCharCount: 6 },
                 snapshot: { id: '12', label: 'MCP', createdAt: '2026-04-02T00:00:00.000Z' },
@@ -268,6 +291,7 @@ test('mcp patch note markdown handler emits an updated event only after apply', 
     const handler = createMcpPatchNoteMarkdownHandler(
         async () => ({
             status: 'applied',
+            warnings: [],
             note: {
                 id: '7',
                 updatedAt: '2026-04-02T00:00:00.000Z',
@@ -322,6 +346,7 @@ test('mcp append note markdown handler validates append placement and separator 
         receivedInput = input;
         return {
             status: 'applied',
+            warnings: [],
             note: { id: '7', updatedAt: '2026-04-02T00:00:00.000Z' },
             change: { summary: 'append', changedLineCount: 1, changedCharCount: 10 },
             snapshot: { id: '13', label: 'MCP', createdAt: '2026-04-02T00:00:00.000Z' },
@@ -368,6 +393,7 @@ test('mcp replace note markdown handler forwards full replacement input', async 
         receivedInput = input;
         return {
             status: 'applied',
+            warnings: [],
             note: { id: '7', updatedAt: '2026-04-02T00:00:00.000Z' },
             change: { summary: 'replace', changedLineCount: 6, changedCharCount: 42 },
             snapshot: { id: '14', label: 'MCP', createdAt: '2026-04-02T00:00:00.000Z' },

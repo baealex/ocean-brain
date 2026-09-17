@@ -29,6 +29,7 @@ export const tagType = gql`
 export const tagQuery = gql`
     type Query {
         allTags(searchFilter: SearchFilterInput, pagination: PaginationInput): Tags!
+        tagsByNames(names: [String!]!): [Tag!]!
     }
 `;
 

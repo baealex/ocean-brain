@@ -175,8 +175,8 @@ test('POST /api/mcp-admin/enabled toggles enabled state for authenticated sessio
         version?: unknown;
     };
     assert.equal(typeof serverInfo.version, 'string');
-    assert.equal(serverInfo.mcpVersionRequirement, '0.11.x');
-    assert.equal(serverInfo.mcp?.compatibilityRequirement, '0.11.x');
+    assert.equal(serverInfo.mcpVersionRequirement, '0.12.x');
+    assert.equal(serverInfo.mcp?.compatibilityRequirement, '0.12.x');
 });
 
 test('protected API routes share one session access rate limit', async (t) => {

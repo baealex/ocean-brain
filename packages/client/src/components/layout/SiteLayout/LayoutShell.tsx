@@ -60,12 +60,11 @@ const centerClassName = classNames(
     'min-w-0',
     'flex-1',
     'flex-col',
-    'overflow-x-hidden',
-    'overflow-y-auto',
     'overscroll-contain',
     '[scrollbar-gutter:stable]',
 );
 const topClassName = classNames(
+    'shrink-0',
     'sticky',
     'top-0',
     'z-[1001]',
@@ -106,9 +105,10 @@ interface LayoutShellProps {
     sidebar: ReactNode;
     topNavigation: ReactNode;
     children?: ReactNode;
+    contentMode?: 'page' | 'app';
 }
 
-const LayoutShell = ({ sidebar, topNavigation, children }: LayoutShellProps) => {
+const LayoutShell = ({ sidebar, topNavigation, children, contentMode = 'page' }: LayoutShellProps) => {
     const pathname = useLocation({ select: (location) => location.pathname });
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const sidebarId = 'site-layout-sidebar';
@@ -138,11 +138,24 @@ const LayoutShell = ({ sidebar, topNavigation, children }: LayoutShellProps) => 
             >
                 {sidebar}
             </aside>
-            <main className={centerClassName}>
+            <main
+                className={classNames(
+                    centerClassName,
+                    contentMode === 'app' ? 'overflow-hidden' : 'overflow-x-hidden overflow-y-auto',
+                )}
+            >
                 <div className={topClassName}>
                     <div className={topContentClassName}>{topNavigation}</div>
                 </div>
-                <div className={contentClassName}>{children}</div>
+                <div
+                    className={
+                        contentMode === 'app'
+                            ? 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden'
+                            : contentClassName
+                    }
+                >
+                    {children}
+                </div>
                 <RestoreParentScroll />
             </main>
         </div>

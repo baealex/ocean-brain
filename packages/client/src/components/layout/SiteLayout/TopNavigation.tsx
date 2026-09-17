@@ -1,7 +1,7 @@
 import { Link, useLocation } from '@tanstack/react-router';
 import { Fragment } from 'react';
-
 import * as Icon from '~/components/icon';
+import IntegrationNavigation from '~/components/integration/IntegrationNavigation';
 import { Text } from '~/components/ui';
 import { getSearchShortcutLabel } from '~/modules/keyboard-shortcuts';
 import {
@@ -93,6 +93,7 @@ const TopNavigation = () => {
                     </Fragment>
                 );
             })}
+            <IntegrationNavigation />
         </nav>
     );
 };

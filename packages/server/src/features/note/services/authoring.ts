@@ -1,6 +1,15 @@
 import models, { type NoteLayout } from '~/models.js';
 import { extractTagIdsFromContentJson, markdownToBlocksJson } from '~/modules/blocknote.js';
 import { replaceNoteReferences } from './note-reference-index.js';
+import {
+    type NotePropertiesByKeyPatchInput,
+    type NotePropertiesPatchInput,
+    resolveNotePropertiesPatchValueTypes,
+    type SerializedNoteProperty,
+    serializeNoteProperties,
+    setNotePropertyValues,
+    validateNotePropertiesPatchValues,
+} from './properties.js';
 import { buildNoteSearchProjection } from './search.js';
 
 interface PlaceholderRecord {
@@ -9,6 +18,7 @@ interface PlaceholderRecord {
 }
 
 interface NoteRecord {
+    properties?: SerializedNoteProperty[];
     id: number;
     title: string;
     layout: NoteLayout;
@@ -17,11 +27,13 @@ interface NoteRecord {
 }
 
 interface NoteAuthoringDeps {
+    validateProperties: (patch: NotePropertiesByKeyPatchInput) => Promise<NotePropertiesPatchInput>;
     createNote: (input: {
         title: string;
         content: string;
         layout?: NoteLayout;
         tagIds?: string[];
+        properties?: NotePropertiesPatchInput;
     }) => Promise<NoteRecord>;
     findPlaceholders: (templates: string[]) => Promise<PlaceholderRecord[]>;
     parseMarkdownToContentJson: (markdown: string) => Promise<string>;
@@ -29,12 +41,14 @@ interface NoteAuthoringDeps {
 }
 
 export interface CreateNoteAuthoringInput {
+    properties?: Pick<NotePropertiesByKeyPatchInput, 'set'>;
     title: string;
     markdown?: string;
     layout?: NoteLayout;
 }
 
 export interface AuthoredNoteSummary {
+    properties?: SerializedNoteProperty[];
     id: string;
     title: string;
     layout: NoteLayout;
@@ -53,6 +67,7 @@ const PLACEHOLDER_PREFIX = '{%';
 const PLACEHOLDER_SUFFIX = '%}';
 
 const serializeNote = (note: NoteRecord): AuthoredNoteSummary => ({
+    ...(note.properties ? { properties: note.properties } : {}),
     id: String(note.id),
     title: note.title,
     layout: note.layout,
@@ -100,6 +115,7 @@ export const createNoteAuthoringService = (deps: NoteAuthoringDeps) => {
                 throw new InvalidNoteAuthoringInputError('A note title is required.');
             }
 
+            const properties = input.properties ? await deps.validateProperties(input.properties) : undefined;
             const replacedTitle = await replacePlaceholders(title);
             const replacedMarkdown = await replacePlaceholders(input.markdown ?? '');
             const content = await deps.parseMarkdownToContentJson(replacedMarkdown);
@@ -108,6 +124,7 @@ export const createNoteAuthoringService = (deps: NoteAuthoringDeps) => {
                 title: replacedTitle,
                 content,
                 tagIds,
+                ...(properties ? { properties } : {}),
                 ...(input.layout ? { layout: input.layout } : {}),
             });
 
@@ -117,6 +134,8 @@ export const createNoteAuthoringService = (deps: NoteAuthoringDeps) => {
 };
 
 const defaultNoteAuthoringService = createNoteAuthoringService({
+    validateProperties: async (patch) =>
+        validateNotePropertiesPatchValues(await resolveNotePropertiesPatchValueTypes(patch)),
     createNote: async (input) => {
         return models.$transaction(async (tx) => {
             const note = await tx.note.create({
@@ -132,9 +151,14 @@ const defaultNoteAuthoringService = createNoteAuthoringService({
                 },
             });
 
+            if (input.properties) await setNotePropertyValues(tx, note.id, input.properties);
             await replaceNoteReferences(tx, note.id, input.content);
-
-            return note;
+            const properties = await tx.noteProperty.findMany({
+                where: { noteId: note.id },
+                include: { definition: true, option: true },
+                orderBy: { definition: { key: 'asc' } },
+            });
+            return { ...note, properties: serializeNoteProperties(properties) };
         });
     },
     findPlaceholders: async (templates) => {

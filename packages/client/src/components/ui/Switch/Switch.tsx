@@ -37,7 +37,7 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(
                     aria-hidden="true"
                     className={classNames(
                         'pointer-events-none inline-block h-5 w-5 rounded-full shadow-sm transition-transform duration-200',
-                        checked ? 'translate-x-5 bg-white' : 'translate-x-0 bg-fg-secondary',
+                        checked ? 'translate-x-5 bg-fg-on-filled' : 'translate-x-0 bg-fg-secondary',
                     )}
                 />
             </button>

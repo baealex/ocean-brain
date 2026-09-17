@@ -788,9 +788,50 @@ export const validateNotePropertiesPatchValues = async (
     return normalizedPatch;
 };
 
-export const listNoteProperties = async (noteId: number) => {
+export const setNotePropertyValues = async (
+    tx: Prisma.TransactionClient,
+    id: number,
+    patch: NotePropertiesPatchInput,
+) => {
+    const normalizedPatch = normalizePatch(patch);
+    for (const item of normalizedPatch.set) {
+        const definition = await tx.propertyDefinition.findUnique({ where: { key: item.key } });
+
+        if (!definition) {
+            throw new InvalidNotePropertyInputError(
+                `Property ${item.key} is not defined. Create it in property settings first.`,
+            );
+        }
+
+        if (definition.valueType !== item.valueType) {
+            throw new InvalidNotePropertyInputError(
+                `Property ${item.key} already uses ${definition.valueType} values.`,
+            );
+        }
+
+        const valueData = await buildTypedValueData(item, definition.id, tx);
+
+        await tx.noteProperty.upsert({
+            where: {
+                noteId_propertyDefinitionId: {
+                    noteId: id,
+                    propertyDefinitionId: definition.id,
+                },
+            },
+            create: {
+                noteId: id,
+                propertyDefinitionId: definition.id,
+                ...valueData,
+            },
+            update: valueData,
+        });
+    }
+};
+
+export const listNoteProperties = async (noteId: number, keys?: string[] | null) => {
+    if (keys?.length === 0) return [];
     const properties = await models.noteProperty.findMany({
-        where: { noteId },
+        where: { noteId, ...(keys ? { definition: { key: { in: keys.map(normalizePropertyKey) } } } : {}) },
         include: { definition: true, option: true },
         orderBy: [{ definition: { key: 'asc' } }],
     });
@@ -1155,38 +1196,7 @@ export const updateNotePropertiesWithVersionGuardAndSnapshot = async ({
                 })),
             };
 
-            for (const item of normalizedPatch.set) {
-                const definition = await tx.propertyDefinition.findUnique({ where: { key: item.key } });
-
-                if (!definition) {
-                    throw new InvalidNotePropertyInputError(
-                        `Property ${item.key} is not defined. Create it in property settings first.`,
-                    );
-                }
-
-                if (definition.valueType !== item.valueType) {
-                    throw new InvalidNotePropertyInputError(
-                        `Property ${item.key} already uses ${definition.valueType} values.`,
-                    );
-                }
-
-                const valueData = await buildTypedValueData(item, definition.id, tx);
-
-                await tx.noteProperty.upsert({
-                    where: {
-                        noteId_propertyDefinitionId: {
-                            noteId: id,
-                            propertyDefinitionId: definition.id,
-                        },
-                    },
-                    create: {
-                        noteId: id,
-                        propertyDefinitionId: definition.id,
-                        ...valueData,
-                    },
-                    update: valueData,
-                });
-            }
+            await setNotePropertyValues(tx, id, normalizedPatch);
 
             if (normalizedPatch.deleteKeys.length > 0) {
                 const definitions = await tx.propertyDefinition.findMany({

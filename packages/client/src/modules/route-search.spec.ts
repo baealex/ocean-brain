@@ -5,6 +5,7 @@ import {
     validateCalendarSearch,
     validateGraphSearch,
     validateHomeSearch,
+    validateIntegrationsSearch,
     validatePaginationSearch,
     validateReminderSearch,
     validateSearchPageSearch,
@@ -125,6 +126,16 @@ describe('route-search validators', () => {
         expect(validateGraphSearch({ selected: 'note-17' })).toEqual({ selected: 'note-17' });
         expect(validateGraphSearch({ selected: '  ' })).toEqual({});
         expect(validateGraphSearch({ selected: 17 })).toEqual({});
+    });
+
+    it('normalizes the expanded integration connection without retaining unrelated input', () => {
+        expect(validateIntegrationsSearch({ connection: ' inbox ', unrelated: 'value' })).toEqual({
+            connection: 'inbox',
+        });
+        expect(validateIntegrationsSearch({ connection: ['mcp', 'inbox'] })).toEqual({ connection: 'mcp' });
+        expect(validateIntegrationsSearch({ connection: '  ' })).toEqual({});
+        expect(validateIntegrationsSearch({ connection: { id: 'inbox' } })).toEqual({});
+        expect(validateIntegrationsSearch({ connection: 17 })).toEqual({});
     });
 
     it('normalizes view-notes search values', () => {

@@ -20,6 +20,7 @@ import type { AuthConfig } from '../modules/auth-mode.js';
 import { createAuthAttemptRateLimit, createSessionAccessRateLimit } from '../modules/rate-limit.js';
 import { createServerEventsHandler } from '../modules/server-events-handler.js';
 import type { HttpRoute } from '../types/index.js';
+import { createIntegrationRouter } from './integrations.js';
 import { createMcpRouter } from './mcp.js';
 
 type McpAdminApiService = Pick<
@@ -34,6 +35,7 @@ export const createApiRouter = (authConfig: AuthConfig, mcpAdminService: McpAdmi
         const sessionAccessRateLimit = app.rateLimit(createSessionAccessRateLimit());
 
         app.register(createMcpRouter(authConfig, mcpAdminService), { prefix: '/mcp' });
+        app.register(createIntegrationRouter(authConfig));
 
         app.get<HttpRoute>('/auth/session', createSessionStatusHandler(authConfig));
         app.post<HttpRoute>(

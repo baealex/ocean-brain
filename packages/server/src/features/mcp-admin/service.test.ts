@@ -1,199 +1,28 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-
+import { createIntegrationService } from '../integration/service.js';
 import { createMcpAdminService } from './service.js';
 
-interface TokenRow {
-    id: number;
-    tokenHash: string;
-    createdAt: Date;
-    lastUsedAt: Date | null;
-    revokedAt: Date | null;
-}
-
-interface FakeDb {
-    cache: {
-        findUnique: (args: { where: { key: string } }) => Promise<{
-            key: string;
-            value: string;
-            id: number;
-            createdAt: Date;
-            updatedAt: Date;
-        } | null>;
-        upsert: (args: {
-            where: { key: string };
-            create: { key: string; value: string };
-            update: { value: string };
-        }) => Promise<{
-            id: number;
-            key: string;
-            value: string;
-            createdAt: Date;
-            updatedAt: Date;
-        }>;
-    };
-    mcpToken: {
-        findFirst: (args: {
-            where: { revokedAt: Date | null };
-            orderBy: { createdAt: 'desc' | 'asc' };
-        }) => Promise<TokenRow | null>;
-        updateMany: (args: {
-            where: { revokedAt: Date | null };
-            data: { revokedAt: Date };
-        }) => Promise<{ count: number }>;
-        create: (args: { data: { tokenHash: string } }) => Promise<TokenRow>;
-        update: (args: { where: { id: number }; data: { lastUsedAt: Date } }) => Promise<TokenRow>;
-    };
-    $transaction: <T>(callback: (tx: FakeDb) => Promise<T>) => Promise<T>;
-}
-
-const createFakeDb = () => {
-    const cacheStore = new Map<string, string>();
-    const tokens: TokenRow[] = [];
-    let nextId = 1;
-
-    const fakeDb: FakeDb = {
-        cache: {
-            async findUnique({ where }: { where: { key: string } }) {
-                const value = cacheStore.get(where.key);
-                if (value === undefined) {
-                    return null;
-                }
-
-                return {
-                    key: where.key,
-                    value,
-                    id: 1,
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                };
-            },
-            async upsert({
-                where,
-                create,
-                update,
-            }: {
-                where: { key: string };
-                create: { key: string; value: string };
-                update: { value: string };
-            }) {
-                const nextValue = cacheStore.has(where.key) ? update.value : create.value;
-                cacheStore.set(where.key, nextValue);
-
-                return {
-                    id: 1,
-                    key: where.key,
-                    value: nextValue,
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                };
-            },
-        },
-        mcpToken: {
-            async findFirst({
-                where,
-                orderBy,
-            }: {
-                where: { revokedAt: Date | null };
-                orderBy: { createdAt: 'desc' | 'asc' };
-            }) {
-                const matches = tokens.filter((token) => token.revokedAt === where.revokedAt);
-                matches.sort((left, right) => {
-                    if (orderBy.createdAt === 'asc') {
-                        return left.createdAt.getTime() - right.createdAt.getTime();
-                    }
-
-                    return right.createdAt.getTime() - left.createdAt.getTime();
-                });
-
-                return matches[0] ?? null;
-            },
-            async updateMany({ where, data }: { where: { revokedAt: Date | null }; data: { revokedAt: Date } }) {
-                let count = 0;
-                for (const token of tokens) {
-                    if (token.revokedAt === where.revokedAt) {
-                        token.revokedAt = data.revokedAt;
-                        count += 1;
-                    }
-                }
-
-                return { count };
-            },
-            async create({ data }: { data: { tokenHash: string } }) {
-                const row: TokenRow = {
-                    id: nextId,
-                    tokenHash: data.tokenHash,
-                    createdAt: new Date(),
-                    lastUsedAt: null,
-                    revokedAt: null,
-                };
-                nextId += 1;
-                tokens.push(row);
-                return row;
-            },
-            async update({ where, data }: { where: { id: number }; data: { lastUsedAt: Date } }) {
-                const row = tokens.find((token) => token.id === where.id);
-                if (!row) {
-                    throw new Error(`Missing token row ${where.id}`);
-                }
-                row.lastUsedAt = data.lastUsedAt;
-                return row;
-            },
-        },
-        async $transaction<T>(callback: (tx: FakeDb) => Promise<T>) {
-            return callback(fakeDb);
-        },
-    };
-
-    return { fakeDb, cacheStore, tokens };
-};
-
-test('defaults enabled=false when cache key is missing', async () => {
-    const { fakeDb } = createFakeDb();
-    const service = createMcpAdminService(fakeDb as never);
-
-    const status = await service.getStatus();
-
-    assert.equal(status.enabled, false);
-    assert.equal(status.hasActiveToken, false);
-    assert.equal(status.token, null);
-});
-
-test('setEnabled persists MCP_ENABLED through cache upsert', async () => {
-    const { fakeDb, cacheStore } = createFakeDb();
-    const service = createMcpAdminService(fakeDb as never);
-
-    await service.setEnabled(true);
-    const status = await service.getStatus();
-
-    assert.equal(cacheStore.get('MCP_ENABLED'), 'true');
-    assert.equal(status.enabled, true);
-});
-
-test('rotateToken revokes previous active token and returns new plaintext once', async () => {
-    const { fakeDb, tokens } = createFakeDb();
-    const service = createMcpAdminService(fakeDb as never);
-
-    const first = await service.rotateToken();
-    const second = await service.rotateToken();
-
-    assert.ok(first.token.length > 0);
-    assert.ok(second.token.length > 0);
-    assert.notEqual(first.token, second.token);
-    assert.equal(tokens.filter((token) => token.revokedAt === null).length, 1);
-    assert.equal(tokens.length, 2);
-    assert.equal(tokens[0].revokedAt instanceof Date, true);
-});
-
-test('validatePresentedToken accepts the active token and updates lastUsedAt', async () => {
-    const { fakeDb, tokens } = createFakeDb();
-    const service = createMcpAdminService(fakeDb as never);
-
-    const rotated = await service.rotateToken();
-    const accepted = await service.validatePresentedToken(rotated.token);
-    const rejected = await service.validatePresentedToken('invalid-token');
-
-    assert.deepEqual(accepted, { ok: true });
-    assert.deepEqual(rejected, { ok: false, reason: 'forbidden' });
-    assert.ok(tokens[0]?.lastUsedAt instanceof Date);
+test('MCP administration uses the native integration connection and credentials', async () => {
+    const integrations = createIntegrationService();
+    const mcp = createMcpAdminService(integrations);
+    await mcp.revokeActiveToken();
+    await mcp.setEnabled(false);
+    assert.deepEqual(await mcp.getStatus(), { enabled: false, hasActiveToken: false, token: null });
+    assert.deepEqual(await mcp.validatePresentedToken('missing'), { ok: false, reason: 'not_configured' });
+    await mcp.setEnabled(true);
+    const first = await mcp.rotateToken();
+    assert.equal((await integrations.get('mcp')).enabled, true);
+    assert.equal((await mcp.validatePresentedToken(first.token)).ok, true);
+    assert.ok((await mcp.getStatus()).token?.lastUsedAt);
+    await integrations.update('mcp', { grantedPermissions: ['notes:read'] });
+    assert.deepEqual(await mcp.validatePresentedToken(first.token), { ok: true, permissions: ['notes:read'] });
+    const second = await mcp.rotateToken();
+    assert.deepEqual(await mcp.validatePresentedToken(first.token), { ok: false, reason: 'forbidden' });
+    assert.equal((await mcp.validatePresentedToken(second.token)).ok, true);
+    await integrations.update('mcp', { enabled: false });
+    assert.equal((await mcp.getStatus()).enabled, false);
+    assert.equal((await mcp.validatePresentedToken(second.token)).ok, false);
+    await mcp.revokeActiveToken();
+    assert.equal((await mcp.getStatus()).hasActiveToken, false);
 });

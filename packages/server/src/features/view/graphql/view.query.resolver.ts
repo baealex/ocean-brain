@@ -12,6 +12,7 @@ import {
     type ViewNotesQueryInput,
 } from '~/features/view/services/workspace.js';
 import type { Pagination } from '~/types/index.js';
+import { mcpViewQueryResolvers } from './mcp.query.resolver.js';
 
 type ViewQueryResolvers = NonNullable<IResolvers['Query']>;
 
@@ -34,6 +35,7 @@ export const createViewQueryResolvers = (
         getViewWorkspace,
     },
 ): ViewQueryResolvers => ({
+    ...mcpViewQueryResolvers,
     viewWorkspace: async () => {
         return deps.getViewWorkspace();
     },

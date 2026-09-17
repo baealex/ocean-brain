@@ -14,8 +14,10 @@ import {
     useConfirm,
     useToast,
 } from '~/components/ui';
+import { queryKeys } from '~/modules/query-key-factory';
+import { SETTINGS_INTEGRATIONS_ROUTE } from '~/modules/url';
 
-const mcpAdminStatusQueryKey = ['mcp-admin', 'status'] as const;
+const mcpAdminStatusQueryKey = queryKeys.mcp.status();
 
 type ClientGuide = 'codex' | 'claude' | 'json';
 type SetupShell = 'posix' | 'powershell';
@@ -174,6 +176,7 @@ const McpSetting = () => {
         mutationFn: setMcpEnabled,
         onSuccess: (nextStatus) => {
             queryClient.setQueryData(mcpAdminStatusQueryKey, nextStatus);
+            void queryClient.invalidateQueries({ queryKey: queryKeys.integrations.all(), exact: false });
             toast(nextStatus.enabled ? 'MCP access enabled.' : 'MCP access disabled.');
         },
     });
@@ -183,7 +186,8 @@ const McpSetting = () => {
         onSuccess: async ({ token }) => {
             setIssuedToken(token);
             toast('New MCP token issued. Previous token is no longer valid.');
-            await queryClient.invalidateQueries({ queryKey: mcpAdminStatusQueryKey });
+            await queryClient.invalidateQueries({ queryKey: mcpAdminStatusQueryKey, exact: true });
+            await queryClient.invalidateQueries({ queryKey: queryKeys.integrations.all(), exact: false });
         },
     });
 
@@ -192,6 +196,7 @@ const McpSetting = () => {
         onSuccess: (nextStatus) => {
             setIssuedToken('');
             queryClient.setQueryData(mcpAdminStatusQueryKey, nextStatus);
+            void queryClient.invalidateQueries({ queryKey: queryKeys.integrations.all(), exact: false });
             toast('MCP token revoked. Existing client configs will stop working.');
         },
     });
@@ -281,6 +286,9 @@ const McpSetting = () => {
             }
         >
             <div className="flex flex-col gap-4">
+                <a href={SETTINGS_INTEGRATIONS_ROUTE} className="text-sm underline">
+                    Manage integration permissions
+                </a>
                 <section className="flex flex-col gap-3" aria-labelledby="mcp-connect-heading">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="space-y-1">

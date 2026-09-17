@@ -95,7 +95,7 @@ describe('registerIntentWriteTools', () => {
         // Assert
         assert.deepEqual(requests, [
             {
-                pathName: '/api/mcp/notes/patch-markdown',
+                pathName: '/api/integrations/v1/notes/patch-markdown',
                 body: {
                     id: '7',
                     intent: 'Patch one sentence',
@@ -254,7 +254,7 @@ describe('registerIntentWriteTools', () => {
             {
                 serverUrl: 'http://localhost:6683',
                 token: 'write-token',
-                pathName: '/api/mcp/notes/metadata',
+                pathName: '/api/integrations/v1/notes/metadata',
                 body: {
                     id: '7',
                     expectedUpdatedAt: '2026-06-04T10:00:00.000Z',
@@ -269,7 +269,7 @@ describe('registerIntentWriteTools', () => {
             {
                 serverUrl: 'http://localhost:6683',
                 token: 'write-token',
-                pathName: '/api/mcp/notes/replace-markdown',
+                pathName: '/api/integrations/v1/notes/replace-markdown',
                 body: {
                     id: '8',
                     baseMarkdownSha256: 'hash-a',
@@ -279,8 +279,8 @@ describe('registerIntentWriteTools', () => {
                 }
             }
         ]);
-        assert.equal(metadataResult.pathName, '/api/mcp/notes/metadata');
-        assert.equal(replaceResult.pathName, '/api/mcp/notes/replace-markdown');
+        assert.equal(metadataResult.pathName, '/api/integrations/v1/notes/metadata');
+        assert.equal(replaceResult.pathName, '/api/integrations/v1/notes/replace-markdown');
     });
 
     test('describes write tools by edit unit instead of confirmation flow', () => {

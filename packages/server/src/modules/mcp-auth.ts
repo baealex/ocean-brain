@@ -1,6 +1,8 @@
-import type { FastifyRequest, preHandlerAsyncHookHandler } from 'fastify';
+import type { FastifyReply, FastifyRequest, preHandlerAsyncHookHandler } from 'fastify';
 import type { ValidationRule } from 'graphql';
 import { GraphQLError } from 'graphql';
+import type { IntegrationPermission } from '../features/integration/manifest.js';
+import type { McpTokenValidationResult } from '../features/mcp-admin/service.js';
 
 import {
     getOceanBrainVersionInfo,
@@ -9,11 +11,6 @@ import {
     parseMajorMinorVersion,
 } from './app-version.js';
 import type { AuthConfig } from './auth-mode.js';
-
-export interface McpTokenValidationResult {
-    ok: boolean;
-    reason?: 'not_configured' | 'forbidden';
-}
 
 export interface McpAdminAuthPort {
     getStatus: () => Promise<{ enabled: boolean }>;
@@ -79,6 +76,7 @@ const readBearerToken = (authorizationHeader?: string) => {
 export const createMcpAuthMiddleware = (
     _authConfig: AuthConfig,
     mcpAdminAuth: McpAdminAuthPort,
+    permission: IntegrationPermission = 'notes:read',
 ): preHandlerAsyncHookHandler => {
     return async (req, reply) => {
         const status = await mcpAdminAuth.getStatus();
@@ -118,38 +116,23 @@ export const createMcpAuthMiddleware = (
             return;
         }
 
-        const versionInfo = getOceanBrainVersionInfo();
-        const mcpCompatibilityVersion = readMcpCompatibilityVersion(req);
-        const mcpClientVersion = readMcpClientVersion(req);
-
-        if (
-            !mcpCompatibilityVersion ||
-            !isMcpVersionCompatible(versionInfo.mcp.compatibilityVersion, mcpCompatibilityVersion)
-        ) {
+        if (!validation.permissions.includes(permission)) {
             await reply
-                .status(426)
-                .headers(JSON_HEADERS)
-                .send({
-                    code: 'MCP_VERSION_INCOMPATIBLE',
-                    message: createMcpVersionCompatibilityMessage({
-                        serverVersion: versionInfo.version,
-                        requiredMcpCompatibilityVersion: versionInfo.mcp.compatibilityRequirement,
-                        mcpCompatibilityVersion,
-                        mcpClientVersion,
-                    }),
-                    serverVersion: versionInfo.version,
-                    mcpVersion: mcpClientVersion ?? mcpCompatibilityVersion ?? null,
-                    mcpClientVersion: mcpClientVersion ?? null,
-                    mcpCompatibilityVersion: mcpCompatibilityVersion ?? null,
-                    requiredMcpVersion: versionInfo.mcpVersionRequirement,
-                    requiredMcpCompatibilityVersion: versionInfo.mcp.compatibilityRequirement,
-                    releaseUrl: versionInfo.releaseUrl,
-                });
+                .status(403)
+                .send({ code: 'INTEGRATION_PERMISSION_DENIED', message: `Permission required: ${permission}` });
+            return;
         }
+        req.integration = {
+            connectionId: 'mcp',
+            integrationId: 'ocean-brain.mcp',
+            native: true,
+            permissions: validation.permissions,
+        };
+        await enforceMcpCompatibility(req, reply);
     };
 };
 
-export const createReadOnlyMcpValidationRule = (): ValidationRule => {
+export const createReadOnlyMcpValidationRule = (message = 'MCP endpoint is read-only'): ValidationRule => {
     return (context) => {
         return {
             OperationDefinition(node) {
@@ -158,7 +141,7 @@ export const createReadOnlyMcpValidationRule = (): ValidationRule => {
                 }
 
                 context.reportError(
-                    new GraphQLError('MCP endpoint is read-only', {
+                    new GraphQLError(message, {
                         nodes: [node],
                         extensions: { code: 'FORBIDDEN' },
                     }),
@@ -166,4 +149,35 @@ export const createReadOnlyMcpValidationRule = (): ValidationRule => {
             },
         };
     };
+};
+
+export const enforceMcpCompatibility = async (req: FastifyRequest, reply: FastifyReply) => {
+    const versionInfo = getOceanBrainVersionInfo();
+    const mcpCompatibilityVersion = readMcpCompatibilityVersion(req);
+    const mcpClientVersion = readMcpClientVersion(req);
+
+    if (
+        !mcpCompatibilityVersion ||
+        !isMcpVersionCompatible(versionInfo.mcp.compatibilityVersion, mcpCompatibilityVersion)
+    ) {
+        await reply
+            .status(426)
+            .headers(JSON_HEADERS)
+            .send({
+                code: 'MCP_VERSION_INCOMPATIBLE',
+                message: createMcpVersionCompatibilityMessage({
+                    serverVersion: versionInfo.version,
+                    requiredMcpCompatibilityVersion: versionInfo.mcp.compatibilityRequirement,
+                    mcpCompatibilityVersion,
+                    mcpClientVersion,
+                }),
+                serverVersion: versionInfo.version,
+                mcpVersion: mcpClientVersion ?? mcpCompatibilityVersion ?? null,
+                mcpClientVersion: mcpClientVersion ?? null,
+                mcpCompatibilityVersion: mcpCompatibilityVersion ?? null,
+                requiredMcpVersion: versionInfo.mcpVersionRequirement,
+                requiredMcpCompatibilityVersion: versionInfo.mcp.compatibilityRequirement,
+                releaseUrl: versionInfo.releaseUrl,
+            });
+    }
 };

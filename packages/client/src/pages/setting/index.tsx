@@ -5,9 +5,10 @@ import * as Icon from '~/components/icon';
 import { PageLayout } from '~/components/shared';
 import { Text } from '~/components/ui';
 import { formatVersionLabel, OCEAN_BRAIN_RELEASES_URL } from '~/modules/app-version';
+import { queryKeys } from '~/modules/query-key-factory';
 import {
+    SETTINGS_INTEGRATIONS_ROUTE,
     SETTINGS_MANAGE_IMAGE_ROUTE,
-    SETTINGS_MCP_ROUTE,
     SETTINGS_PLACEHOLDER_ROUTE,
     SETTINGS_PROPERTIES_ROUTE,
     SETTINGS_SEARCH_ROUTE,
@@ -15,7 +16,7 @@ import {
 } from '~/modules/url';
 import { useTheme } from '~/store/theme';
 
-const mcpAdminStatusQueryKey = ['mcp-admin', 'status'] as const;
+const mcpAdminStatusQueryKey = queryKeys.mcp.status();
 
 const Setting = () => {
     const { theme, toggleTheme } = useTheme((state) => state);
@@ -165,17 +166,17 @@ const Setting = () => {
                             </div>
                             <Icon.ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-fg-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-fg-secondary" />
                         </Link>
-                        <Link to={SETTINGS_MCP_ROUTE} className={itemClassName}>
+                        <Link to={SETTINGS_INTEGRATIONS_ROUTE} className={itemClassName}>
                             <div className="flex min-w-0 items-start gap-3">
                                 <span className={leadingClassName}>
                                     <Icon.LinkIcon className={iconClassName} />
                                 </span>
                                 <div className={contentClassName}>
                                     <Text as="div" variant="body" weight="medium">
-                                        MCP
+                                        Integrations
                                     </Text>
                                     <Text as="div" variant="meta" tone="secondary">
-                                        Connect Codex, Claude, or another MCP client.
+                                        Connect MCP clients and external apps.
                                     </Text>
                                 </div>
                             </div>

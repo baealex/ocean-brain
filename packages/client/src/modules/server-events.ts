@@ -1,6 +1,15 @@
 export const MCP_NOTE_SERVER_EVENT_TYPES = ['mcp.note.created', 'mcp.note.updated', 'mcp.note.deleted'] as const;
+export const INTEGRATION_NOTE_SERVER_EVENT_TYPES = [
+    'integration.note.created',
+    'integration.note.updated',
+    'integration.note.deleted',
+] as const;
 export const WEB_NOTE_SERVER_EVENT_TYPES = ['web.note.updated'] as const;
-export const NOTE_SERVER_EVENT_TYPES = [...MCP_NOTE_SERVER_EVENT_TYPES, ...WEB_NOTE_SERVER_EVENT_TYPES] as const;
+export const NOTE_SERVER_EVENT_TYPES = [
+    ...MCP_NOTE_SERVER_EVENT_TYPES,
+    ...INTEGRATION_NOTE_SERVER_EVENT_TYPES,
+    ...WEB_NOTE_SERVER_EVENT_TYPES,
+] as const;
 
 export type McpNoteServerEventType = (typeof MCP_NOTE_SERVER_EVENT_TYPES)[number];
 export type WebNoteServerEventType = (typeof WEB_NOTE_SERVER_EVENT_TYPES)[number];
@@ -37,7 +46,17 @@ export interface WebNoteUpdatedServerEvent extends BaseWebNoteServerEvent {
     updatedAt: string;
 }
 
+export type IntegrationNoteServerEvent = {
+    noteId: string;
+    source: 'integration';
+    connectionId: string;
+} & (
+    | { type: 'integration.note.created' | 'integration.note.updated'; updatedAt: string }
+    | { type: 'integration.note.deleted' }
+);
+
 export type ServerEvent =
+    | IntegrationNoteServerEvent
     | McpNoteCreatedServerEvent
     | McpNoteUpdatedServerEvent
     | McpNoteDeletedServerEvent
@@ -60,19 +79,20 @@ const isRecord = (value: unknown): value is Record<string, unknown> => {
 const isMcpNoteServerEvent = (value: unknown): value is ServerEvent => {
     if (
         !isRecord(value) ||
-        value.source !== 'mcp' ||
+        (value.source !== 'mcp' && value.source !== 'integration') ||
         typeof value.noteId !== 'string' ||
         typeof value.type !== 'string'
     ) {
         return false;
     }
 
-    if (value.type === 'mcp.note.deleted') {
+    if (value.source === 'integration' && typeof value.connectionId !== 'string') return false;
+    if (value.type === `${value.source}.note.deleted`) {
         return true;
     }
 
     if (
-        (value.type === 'mcp.note.created' || value.type === 'mcp.note.updated') &&
+        (value.type === `${value.source}.note.created` || value.type === `${value.source}.note.updated`) &&
         typeof value.updatedAt === 'string'
     ) {
         return true;

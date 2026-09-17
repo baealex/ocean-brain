@@ -14,10 +14,101 @@
     }
 }
 
+@keyframes external-change-gradient-flow {
+    from {
+        background-position-x: 0%;
+    }
+
+    to {
+        background-position-x: -200%;
+    }
+}
+
 .bn-editor {
+    --external-change-gradient: linear-gradient(
+        90deg,
+        rgb(139 92 246 / 60%) 0%,
+        rgb(236 72 153 / 60%) 24%,
+        rgb(192 132 252 / 60%) 50%,
+        rgb(244 114 182 / 60%) 74%,
+        rgb(139 92 246 / 60%) 100%
+    );
+
     background: transparent !important;
     padding-inline: 54px 0 !important;
     overflow-wrap: anywhere !important;
+}
+
+html.dark .bn-editor {
+    --external-change-gradient: linear-gradient(
+        90deg,
+        rgb(167 139 250 / 60%) 0%,
+        rgb(244 114 182 / 60%) 24%,
+        rgb(216 180 254 / 60%) 50%,
+        rgb(249 168 212 / 60%) 74%,
+        rgb(167 139 250 / 60%) 100%
+    );
+}
+
+.bn-editor .note-change-text {
+    background-image: var(--external-change-gradient);
+    background-position: 0 calc(100% - 2px);
+    background-repeat: repeat-x;
+    background-size: 200% 3px;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    animation: external-change-gradient-flow 3.2s linear infinite;
+}
+
+.note-change-status {
+    color: #7c3aed;
+    --external-change-label-gradient: linear-gradient(90deg, #7c3aed, #be185d 24%, #9333ea 50%, #be185d 74%, #7c3aed);
+}
+
+html.dark .note-change-status {
+    color: #a78bfa;
+    --external-change-label-gradient: linear-gradient(90deg, #a78bfa, #f472b6 24%, #d8b4fe 50%, #f9a8d4 74%, #a78bfa);
+}
+
+.note-change-status__label {
+    background-image: var(--external-change-label-gradient);
+    background-size: 200% 100%;
+    background-repeat: repeat-x;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    animation: external-change-gradient-flow 3.2s linear infinite;
+}
+
+.note-change-review {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-block: 8px 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.5;
+}
+
+.note-change-review__done {
+    padding: 4px 0;
+    color: var(--fg-secondary);
+    background: transparent;
+    border: 0;
+    outline: none;
+    cursor: pointer;
+
+    &:hover {
+        color: var(--fg-default);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bn-editor .note-change-text,
+    .note-change-status__label {
+        background-position-x: 50%;
+        animation: none;
+    }
 }
 
 .bn-container {

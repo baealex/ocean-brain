@@ -84,6 +84,7 @@ vi.mock('~/components/shared/Editor', async () => {
         }, [content]);
 
         React.useImperativeHandle(ref, () => ({
+            captureViewport: () => ({ scroll: [] }),
             getContent: () => contentRef.current,
             getMarkdown: () => contentRef.current,
             getHtml: () => contentRef.current,
@@ -325,7 +326,7 @@ describe('<NoteContent /> external change handling', () => {
         expect(screen.getByPlaceholderText('Title')).toHaveValue('Local title');
     });
 
-    it('shows MCP as the source for MCP note updates', async () => {
+    it('loads MCP updates without a confirmation or saving the remote body back', async () => {
         const initialNote = createNote({
             title: 'Initial title',
             updatedAt: '1779700001000',
@@ -334,6 +335,13 @@ describe('<NoteContent /> external change handling', () => {
         renderNote(initialNote);
 
         expect(await screen.findByPlaceholderText('Title')).toHaveValue('Initial title');
+
+        const remoteNote = createNote({
+            title: 'AI title',
+            content: createContent('AI body'),
+            updatedAt: '1779700002000',
+        });
+        vi.mocked(fetchNote).mockResolvedValue({ type: 'success', note: remoteNote });
 
         act(() => {
             publishServerEvent({
@@ -344,8 +352,87 @@ describe('<NoteContent /> external change handling', () => {
             });
         });
 
-        expect(await screen.findByRole('dialog', { name: 'This note changed through MCP' })).toBeInTheDocument();
-        expect(screen.getByText(/An MCP client changed this note while it was open here/)).toBeInTheDocument();
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        await waitFor(() => expect(screen.getByLabelText('Editor')).toHaveValue(remoteNote.content));
+        expect(screen.getByPlaceholderText('Title')).toHaveValue('AI title');
+        expect(updateNote).not.toHaveBeenCalled();
+    });
+
+    it('preserves typing that starts while an automatic MCP refresh is in flight', async () => {
+        const user = userEvent.setup();
+        const initialNote = createNote();
+        renderNote(initialNote);
+        const title = await screen.findByPlaceholderText('Title');
+        const refresh = createDeferred<Awaited<ReturnType<typeof fetchNote>>>();
+        vi.mocked(fetchNote).mockReturnValueOnce(refresh.promise);
+
+        act(() =>
+            publishServerEvent({ type: 'mcp.note.updated', source: 'mcp', noteId: '1', updatedAt: '1779700002000' }),
+        );
+        await user.clear(title);
+        await user.type(title, 'My new thought');
+        await act(async () => {
+            refresh.resolve({ type: 'success', note: createNote({ title: 'AI title', updatedAt: '1779700002000' }) });
+            await refresh.promise;
+        });
+
+        expect(title).toHaveValue('My new thought');
+        expect(await screen.findByRole('dialog', { name: /Save paused/ })).toBeInTheDocument();
+        expect(updateNote).not.toHaveBeenCalled();
+    });
+
+    it('keeps the current body and offers reload when automatic refresh fails', async () => {
+        renderNote(createNote());
+        await screen.findByLabelText('Editor');
+        vi.mocked(fetchNote).mockResolvedValue({
+            type: 'error',
+            category: 'network',
+            errors: [{ code: 'NETWORK_ERROR', message: 'Offline' }],
+        });
+
+        act(() =>
+            publishServerEvent({ type: 'mcp.note.updated', source: 'mcp', noteId: '1', updatedAt: '1779700002000' }),
+        );
+
+        expect(await screen.findByRole('button', { name: 'Reload latest' })).toBeInTheDocument();
+        expect(screen.getByLabelText('Editor')).toHaveValue(createContent('Initial body'));
+    });
+
+    it('preserves property edits made while an automatic MCP refresh is in flight', async () => {
+        const user = userEvent.setup();
+        const property = {
+            key: 'summary',
+            name: 'Summary',
+            value: 'Initial summary',
+            valueType: 'text' as const,
+            createdAt: '1779700000000',
+            updatedAt: '1779700000000',
+        };
+        renderNote(createNote({ properties: [property] }));
+        const propertyInput = await screen.findByRole('textbox', { name: 'Property value' });
+        const refresh = createDeferred<Awaited<ReturnType<typeof fetchNote>>>();
+        vi.mocked(fetchNote).mockReturnValueOnce(refresh.promise);
+
+        act(() =>
+            publishServerEvent({ type: 'mcp.note.updated', source: 'mcp', noteId: '1', updatedAt: '1779700002000' }),
+        );
+        await user.clear(propertyInput);
+        await user.type(propertyInput, 'My unsaved summary');
+        await act(async () => {
+            refresh.resolve({
+                type: 'success',
+                note: createNote({
+                    properties: [{ ...property, value: 'AI summary', updatedAt: '1779700002000' }],
+                    updatedAt: '1779700002000',
+                }),
+            });
+            await refresh.promise;
+        });
+
+        expect(await screen.findByRole('dialog', { name: /Save paused/ })).toBeInTheDocument();
+        expect(propertyInput).toBeInTheDocument();
+        expect(propertyInput).toHaveValue('My unsaved summary');
+        expect(updateNoteProperties).not.toHaveBeenCalled();
     });
 
     it('keeps local editor content after saving local content edits', async () => {

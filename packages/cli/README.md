@@ -116,6 +116,8 @@ For example, pass this to `ocean_brain_query_notes` after discovering the proper
 
 Update the server and MCP adapter together, then reconnect the host so it refreshes the tool catalog. Compatibility 0.11 clients are rejected with an upgrade message. The MCP compatibility version is separate from the npm package version.
 
+`oceanBrain.mcpCompatibilityVersion` identifies the MCP contract, not a minimum npm package version. The server accepts adapters whose compatibility major and minor numbers match its own, regardless of the app release number. An app release alone does not change this value; incompatible MCP contract changes do.
+
 | Removed tool suffix | Replacement |
 | --- | --- |
 | `list_notes_by_tag` | `query_notes` with `tagNames: [tag]` |
@@ -174,13 +176,6 @@ Prefer `--token-file` so the token is not stored directly in client configuratio
 
 ### Built-in MCP integration
 
-MCP is a built-in Ocean Brain integration. Manage its read/create/edit/delete
-permissions in **Settings → Integrations**, and use the MCP connection setup page for
-client configuration. Existing tokens are preserved by the platform migration.
-The CLI uses `/api/integrations/v1/graphql` and `/api/integrations/v1/notes/*`; legacy MCP
-routes remain server-side aliases with the same permission checks. These HTTP
-APIs carry application requests; MCP transport remains stdio.
+MCP is a built-in Ocean Brain integration. Manage its read/create/edit/delete permissions in **Settings → Integrations**, and use the MCP connection setup page for client configuration. Existing tokens are preserved by the platform migration. The CLI uses `/api/integrations/v1/graphql` and `/api/integrations/v1/notes/*`; legacy MCP routes remain server-side aliases with the same permission checks. These HTTP APIs carry application requests; MCP transport remains stdio.
 
-External apps use the same scoped API without MCP compatibility headers. They run
-independently; registering a manifest does not install or execute their code. See
-the [integration developer guide](../../docs/INTEGRATIONS.md) for runnable API examples.
+External apps use the same scoped API without MCP compatibility headers. They run independently; registering a manifest does not install or execute their code. See the [integration developer guide](../../docs/INTEGRATIONS.md) for runnable API examples.

@@ -1,6 +1,6 @@
 # Ocean Brain Documentation Convention
 
-Updated: 2026-08-18
+Updated: 2026-09-18
 
 ## 1. Purpose
 
@@ -70,3 +70,7 @@ Before approving a documentation change, check:
 - Close the pull request with a short, specific explanation when it duplicates existing guidance, has no clear reader benefit, or is out of scope.
 
 For a decline, explain the repository rule and point to the canonical document when possible. Keep the decision about the change, not the contributor.
+
+## 7. Markdown source formatting
+
+Write each prose paragraph on one source line and separate paragraphs with a blank line. Do not insert line breaks to meet a character limit such as 80 columns; use the editor's visual word wrapping. Keep structural line breaks for headings, list items, tables, code blocks, and intentional hard breaks.

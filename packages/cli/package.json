@@ -39,6 +39,7 @@
         "@fastify/cookie": "catalog:",
         "@fastify/csrf-protection": "catalog:",
         "@fastify/formbody": "catalog:",
+        "@fastify/http-proxy": "catalog:",
         "@fastify/rate-limit": "catalog:",
         "@fastify/session": "catalog:",
         "@fastify/static": "catalog:",

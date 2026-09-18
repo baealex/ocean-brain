@@ -4,6 +4,7 @@ import fastifyFormbody from '@fastify/formbody';
 import fastifyRateLimit from '@fastify/rate-limit';
 import fastifySession from '@fastify/session';
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
+import type { AppGatewayOptions } from './features/app-gateway/gateway.js';
 import { createIntegrationService } from './features/integration/service.js';
 import { createMcpAdminService, type McpAdminService } from './features/mcp-admin/service.js';
 import { purgeExpiredNoteSnapshots } from './features/note/services/snapshot.js';
@@ -13,7 +14,13 @@ import type { AuthConfig } from './modules/auth-mode.js';
 import { createAppError, createErrorHandler } from './modules/error-handler.js';
 import { AUTH_SESSION_IDLE_TIMEOUT_MS, createSessionStore } from './modules/session-store.js';
 import type { ClientContentHandler } from './routes/client.js';
-import { createApiRouter, createAuthPagesRouter, createClientRouter, createGraphqlRouter } from './routes/index.js';
+import {
+    createApiRouter,
+    createAppGatewayRouter,
+    createAuthPagesRouter,
+    createClientRouter,
+    createGraphqlRouter,
+} from './routes/index.js';
 
 const MAX_REQUEST_BODY_BYTES = 50 * 1024 * 1024;
 
@@ -22,6 +29,7 @@ export type CreateFastifyApplicationOptions = {
 };
 
 export type CreateAppOptions = CreateFastifyApplicationOptions & {
+    appGateway?: AppGatewayOptions;
     application?: FastifyInstance;
     clientContentHandler?: ClientContentHandler;
 };
@@ -129,6 +137,7 @@ export const createAppWithMcpAuth = (
 
     registerRequestInfrastructure(app, authConfig);
     app.setErrorHandler(createErrorHandler(authConfig));
+    app.register(createAppGatewayRouter(authConfig, options.appGateway));
     app.register(createApiRouter(authConfig, mcpAdminService), { prefix: '/api' });
     app.register(createAuthPagesRouter(authConfig));
     app.register(createGraphqlRouter(authConfig, mcpAdminService));

@@ -2,6 +2,8 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 
 declare module 'fastify' {
     interface FastifyRequest {
+        appGatewayCorsAllowed?: boolean;
+        appGatewayInstallation?: import('../features/app-gateway/gateway.js').AppGatewayInstallation | null;
         integration?: import('../features/integration/service.js').IntegrationPrincipal;
     }
 

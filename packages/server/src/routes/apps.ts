@@ -157,6 +157,15 @@ export const createAppGatewayRouter = (
                     throw createAppError(401, unauthorized.code, unauthorized.message);
                 }
                 request.appGatewayInstallation = await resolveGatewayInstallation(options, installationId);
+                const requestUrl = new URL(request.url, 'http://ocean-brain.invalid');
+                const publicRoot = `${APP_GATEWAY_PUBLIC_PREFIX}/${installationId}`;
+                if (
+                    !isWebSocketUpgrade(request) &&
+                    ['GET', 'HEAD'].includes(request.method) &&
+                    requestUrl.pathname === publicRoot
+                ) {
+                    return reply.redirect(`${publicRoot}/${requestUrl.search}`, 308);
+                }
                 if (
                     request.headers.origin === 'null' &&
                     !['GET', 'HEAD'].includes(request.method) &&

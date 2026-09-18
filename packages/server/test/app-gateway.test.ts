@@ -308,6 +308,27 @@ test('managed app gateway rewrites runner redirects to the public app subpath', 
     assert.equal(response.headers.get('location'), '/apps/search-1/results?q=ocean');
 });
 
+test('managed app gateway canonicalizes an installation root before relative app requests resolve', async (t) => {
+    let runnerRequests = 0;
+    const runner = createServer((_request, response) => {
+        runnerRequests += 1;
+        response.end('unexpected');
+    });
+    const runnerOrigin = await listen(runner);
+    t.after(() => closeServer(runner));
+    const baseUrl = await startOceanBrain(t, openAuth, createGatewayOptions(runnerOrigin));
+    const access = await issueGatewayAccess(baseUrl);
+
+    const response = await fetch(`${baseUrl}/apps/search-1?source=navigation`, {
+        headers: { Cookie: access.cookie },
+        redirect: 'manual',
+    });
+
+    assert.equal(response.status, 308);
+    assert.equal(response.headers.get('location'), '/apps/search-1/?source=navigation');
+    assert.equal(runnerRequests, 0);
+});
+
 test('managed app gateway blocks anonymous access before contacting the runner', async (t) => {
     let runnerRequests = 0;
     const runner = createServer((_request, response) => {

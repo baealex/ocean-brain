@@ -1,4 +1,5 @@
 import models, { type Note, type NoteLayout, Prisma, type PropertyValueType, type ViewDisplayType } from '~/models.js';
+import { emitNoteChange } from './change-events.js';
 import { buildNoteSearchProjection } from './search.js';
 import { captureNoteBaseline } from './snapshot.js';
 import { createNoteVersionConflictError, MissingNoteVersionError, parseNoteVersion } from './write-conflict.js';
@@ -914,7 +915,7 @@ export const updateNotePropertyDefinition = async ({
 }): Promise<SerializedNotePropertyKey | null> => {
     const normalizedKey = normalizePropertyKey(key);
 
-    return models.$transaction(async (tx) => {
+    const result = await models.$transaction(async (tx) => {
         const definition = await tx.propertyDefinition.findUnique({
             where: { key: normalizedKey },
             include: {
@@ -929,6 +930,8 @@ export const updateNotePropertyDefinition = async ({
         if (!definition) {
             return null;
         }
+
+        let affectedNoteIds: number[] = [];
 
         const nextName = input.name !== undefined ? normalizePropertyName(input.name, definition.key) : definition.name;
         const shouldUpdateOptions = input.options !== undefined;
@@ -1046,13 +1049,28 @@ export const updateNotePropertyDefinition = async ({
             }
         }
 
+        if (definition._count.properties > 0 && (nextName !== definition.name || nextOptions !== null)) {
+            const affectedNotes = await tx.noteProperty.findMany({
+                where: { propertyDefinitionId: definition.id },
+                select: { noteId: true },
+                distinct: ['noteId'],
+            });
+            affectedNoteIds = affectedNotes.map((property) => property.noteId);
+        }
+
         const updatedDefinition = await tx.propertyDefinition.findUniqueOrThrow({
             where: { id: definition.id },
             include: { options: { orderBy: { order: 'asc' } }, _count: { select: { properties: true } } },
         });
 
-        return serializePropertyDefinition(updatedDefinition);
+        return { definition: serializePropertyDefinition(updatedDefinition), affectedNoteIds };
     });
+
+    if (!result) return null;
+    for (const noteId of result.affectedNoteIds) {
+        emitNoteChange({ type: 'note.updated', noteId, affectsSearchIndex: false });
+    }
+    return result.definition;
 };
 
 export const deleteNotePropertyDefinition = async ({
@@ -1064,7 +1082,7 @@ export const deleteNotePropertyDefinition = async ({
 }): Promise<SerializedNotePropertyDeleteResult | null> => {
     const normalizedKey = normalizePropertyKey(key);
 
-    return models.$transaction(async (tx) => {
+    const result = await models.$transaction(async (tx) => {
         const definition = await tx.propertyDefinition.findUnique({
             where: { key: normalizedKey },
             include: { _count: { select: { properties: true } } },
@@ -1098,7 +1116,14 @@ export const deleteNotePropertyDefinition = async ({
             throw new NotePropertyDeleteConfirmationRequiredError(normalizedKey, affectedNoteCount);
         }
 
+        let affectedNoteIds: number[] = [];
         if (affectedNoteCount > 0) {
+            const affectedNotes = await tx.noteProperty.findMany({
+                where: { propertyDefinitionId: definition.id },
+                select: { noteId: true },
+                distinct: ['noteId'],
+            });
+            affectedNoteIds = affectedNotes.map((property) => property.noteId);
             await tx.note.updateMany({
                 where: {
                     properties: {
@@ -1118,13 +1143,22 @@ export const deleteNotePropertyDefinition = async ({
         });
 
         return {
-            key: definition.key,
-            name: definition.name,
-            valueType: definition.valueType,
-            affectedNoteCount,
-            deleted: true,
+            result: {
+                key: definition.key,
+                name: definition.name,
+                valueType: definition.valueType,
+                affectedNoteCount,
+                deleted: true,
+            },
+            affectedNoteIds,
         };
     });
+
+    if (!result) return null;
+    for (const noteId of result.affectedNoteIds) {
+        emitNoteChange({ type: 'note.updated', noteId, affectsSearchIndex: false });
+    }
+    return result.result;
 };
 
 interface UpdateNotePropertiesWithVersionGuardInput {

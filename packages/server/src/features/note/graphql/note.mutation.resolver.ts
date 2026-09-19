@@ -1,6 +1,7 @@
 import type { IResolvers } from '@graphql-tools/utils';
 import type { FastifyRequest } from 'fastify';
 import { GraphQLError } from 'graphql';
+import { emitNoteChange } from '~/features/note/services/change-events.js';
 import { extractBlocksByType, parseNoteContent } from '~/features/note/services/content-blocks.js';
 import { replaceNoteReferences } from '~/features/note/services/note-reference-index.js';
 import {
@@ -23,7 +24,6 @@ import {
     isMissingNoteVersionError,
     isNoteVersionConflictError,
 } from '~/features/note/services/write-conflict.js';
-import { notifySemanticSearchNoteChanged } from '~/features/search/note-change.js';
 import models from '~/models.js';
 import type { NoteInput } from '~/types/index.js';
 
@@ -113,7 +113,7 @@ export const noteMutationResolvers: NoteMutationResolvers = {
 
             return noteResult;
         });
-        notifySemanticSearchNoteChanged(noteResult.id);
+        emitNoteChange({ type: 'note.created', noteId: noteResult.id });
         return noteResult;
     },
     updateNote: async (
@@ -156,7 +156,7 @@ export const noteMutationResolvers: NoteMutationResolvers = {
                 throw 'NOT FOUND';
             }
 
-            notifySemanticSearchNoteChanged(updatedNote.id);
+            emitNoteChange({ type: 'note.updated', noteId: updatedNote.id });
             return updatedNote;
         } catch (error) {
             if (isNoteVersionConflictError(error)) {
@@ -195,7 +195,7 @@ export const noteMutationResolvers: NoteMutationResolvers = {
             throw 'NOT FOUND';
         }
 
-        notifySemanticSearchNoteChanged(Number(id));
+        emitNoteChange({ type: 'note.deleted', noteId: Number(id) });
         return true;
     },
     restoreNoteSnapshot: async (
@@ -215,7 +215,7 @@ export const noteMutationResolvers: NoteMutationResolvers = {
                 throw 'NOT FOUND';
             }
 
-            notifySemanticSearchNoteChanged(note.id);
+            emitNoteChange({ type: 'note.updated', noteId: note.id });
             return note;
         } catch (error) {
             if (isNoteVersionConflictError(error)) {
@@ -246,7 +246,7 @@ export const noteMutationResolvers: NoteMutationResolvers = {
             throw 'NOT FOUND';
         }
 
-        notifySemanticSearchNoteChanged(note.id);
+        emitNoteChange({ type: 'note.created', noteId: note.id });
         return note;
     },
     purgeTrashedNote: async (_, { id }: { id: string }) => {
@@ -256,7 +256,6 @@ export const noteMutationResolvers: NoteMutationResolvers = {
             throw 'NOT FOUND';
         }
 
-        notifySemanticSearchNoteChanged(Number(id));
         return true;
     },
     createNotePropertyKey: async (_, { input }: { input: NotePropertyDefinitionInput }) => {
@@ -354,6 +353,7 @@ export const noteMutationResolvers: NoteMutationResolvers = {
                 throw 'NOT FOUND';
             }
 
+            emitNoteChange({ type: 'note.updated', noteId: note.id, affectsSearchIndex: false });
             return note;
         } catch (error) {
             if (error instanceof InvalidNotePropertyInputError) {
@@ -393,11 +393,14 @@ export const noteMutationResolvers: NoteMutationResolvers = {
             throw error;
         }
     },
-    pinNote: (_, { id, pinned }: { id: string; pinned: boolean }) =>
-        models.note.update({
+    pinNote: async (_, { id, pinned }: { id: string; pinned: boolean }) => {
+        const note = await models.note.update({
             where: { id: Number(id) },
             data: { pinned: Boolean(pinned) },
-        }),
+        });
+        emitNoteChange({ type: 'note.updated', noteId: note.id, affectsSearchIndex: false });
+        return note;
+    },
     reorderNotes: async (_, { notes }: { notes: Array<{ id: string; order: number }> }) => {
         const updatePromises = notes.map(({ id, order }) =>
             models.note.update({
@@ -406,6 +409,10 @@ export const noteMutationResolvers: NoteMutationResolvers = {
             }),
         );
 
-        return Promise.all(updatePromises);
+        const updatedNotes = await Promise.all(updatePromises);
+        for (const note of updatedNotes) {
+            emitNoteChange({ type: 'note.updated', noteId: note.id, affectsSearchIndex: false });
+        }
+        return updatedNotes;
     },
 };

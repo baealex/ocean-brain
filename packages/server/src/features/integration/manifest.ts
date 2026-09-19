@@ -12,7 +12,7 @@ export interface IntegrationManifest {
     version: string;
     description: string;
     permissions: IntegrationPermission[];
-    launch?: { url: string; mode: 'external' | 'iframe' };
+    launch?: { url: string; mode: 'external' | 'iframe' } | { mode: 'managed' };
 }
 
 export const MCP_INTEGRATION_MANIFEST: IntegrationManifest = {
@@ -73,8 +73,13 @@ export const parseManifest = (value: unknown): IntegrationManifest => {
         return invalid('An integration requesting write access must also request notes:read.');
     }
     if (value.launch !== undefined) {
-        if (!isRecord(value.launch) || !['external', 'iframe'].includes(String(value.launch.mode))) {
-            return invalid('launch requires a url and mode (external or iframe).');
+        if (!isRecord(value.launch) || !['external', 'iframe', 'managed'].includes(String(value.launch.mode))) {
+            return invalid('launch requires managed mode or a url with external or iframe mode.');
+        }
+        if (value.launch.mode === 'managed') {
+            if (value.launch.url !== undefined) return invalid('A managed launch cannot provide a url.');
+            manifest.launch = { mode: 'managed' };
+            return manifest;
         }
         let url: URL;
         try {

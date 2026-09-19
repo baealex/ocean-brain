@@ -2,6 +2,8 @@ import classNames from 'classnames';
 import { type ComponentPropsWithoutRef, useCallback, useEffect, useRef, useState } from 'react';
 import { issueManagedAppAccess } from '~/apis/app-gateway.api';
 import { Button, Text } from '~/components/ui';
+import { DEFAULT_INTEGRATION_APP_LOCATION, normalizeIntegrationAppLocation } from '~/modules/integration-app-bridge';
+import { IntegrationAppFrame } from './IntegrationAppFrame';
 
 const ACCESS_REFRESH_LEEWAY_MS = 60_000;
 const ACCESS_REFRESH_RETRY_MS = 10_000;
@@ -14,19 +16,23 @@ interface InstallationFrameState {
 
 export interface ManagedAppFrameProps
     extends Omit<ComponentPropsWithoutRef<'iframe'>, 'referrerPolicy' | 'sandbox' | 'src' | 'srcDoc' | 'title'> {
+    appLocation?: string;
     installationId: string;
+    onLocationChange?: (location: string) => void;
+    onOpenNote?: (noteId: string) => void;
     title: string;
 }
 
-const isAppReadyMessage = (event: MessageEvent) =>
-    event.origin === 'null' &&
-    typeof event.data === 'object' &&
-    event.data !== null &&
-    event.data.type === 'ocean-brain:app-ready' &&
-    event.data.version === 1;
-
-export function ManagedAppFrame({ installationId, title, className, ...iframeProps }: ManagedAppFrameProps) {
-    const iframeRef = useRef<HTMLIFrameElement>(null);
+export function ManagedAppFrame({
+    appLocation = DEFAULT_INTEGRATION_APP_LOCATION,
+    installationId,
+    onLocationChange,
+    onOpenNote,
+    title,
+    className,
+    ...iframeProps
+}: ManagedAppFrameProps) {
+    const contentWindowRef = useRef<Window | null>(null);
     const accessTokenRef = useRef<string | undefined>(undefined);
     const accessExpiresAtRef = useRef(0);
     const [installationState, setInstallationState] = useState<InstallationFrameState>({
@@ -36,25 +42,24 @@ export function ManagedAppFrame({ installationId, title, className, ...iframePro
     const [retryVersion, setRetryVersion] = useState(0);
     const frameState = installationState.installationId === installationId ? installationState.state : 'loading';
 
-    const sendAccessToken = useCallback(() => {
+    const sendAccessToken = useCallback((contentWindow = contentWindowRef.current) => {
         const token = accessTokenRef.current;
-        if (!token) return;
-        iframeRef.current?.contentWindow?.postMessage({ type: 'ocean-brain:app-access', version: 1, token }, '*');
+        if (!token || !contentWindow) return;
+        contentWindow.postMessage({ type: 'ocean-brain:app-access', version: 1, token }, '*');
     }, []);
-
-    useEffect(() => {
-        const receiveAppMessage = (event: MessageEvent) => {
-            if (event.source !== iframeRef.current?.contentWindow || !isAppReadyMessage(event)) return;
-            sendAccessToken();
-        };
-        window.addEventListener('message', receiveAppMessage);
-        return () => window.removeEventListener('message', receiveAppMessage);
-    }, [sendAccessToken]);
+    const handleAppReady = useCallback(
+        (contentWindow: Window) => {
+            contentWindowRef.current = contentWindow;
+            sendAccessToken(contentWindow);
+        },
+        [sendAccessToken],
+    );
 
     useEffect(() => {
         let disposed = false;
         let refreshTimer: number | undefined;
         let requestController: AbortController | undefined;
+        contentWindowRef.current = null;
         accessTokenRef.current = undefined;
         accessExpiresAtRef.current = 0;
         setInstallationState({ installationId, state: 'loading' });
@@ -127,15 +132,19 @@ export function ManagedAppFrame({ installationId, title, className, ...iframePro
         );
     }
 
+    const location = normalizeIntegrationAppLocation(appLocation) ?? DEFAULT_INTEGRATION_APP_LOCATION;
+
     return (
-        <iframe
+        <IntegrationAppFrame
             {...iframeProps}
-            ref={iframeRef}
             title={title}
-            src={`/apps/${encodeURIComponent(installationId)}/`}
+            src={`/apps/${encodeURIComponent(installationId)}${location}`}
+            appLocation={location}
+            onAppReady={handleAppReady}
+            onLocationChange={onLocationChange}
+            onOpenNote={onOpenNote}
             sandbox="allow-downloads allow-forms allow-modals allow-scripts"
-            referrerPolicy="no-referrer"
-            className={classNames('border-0 bg-surface', className)}
+            className={classNames(className)}
         />
     );
 }

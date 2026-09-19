@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 
 import { createApp } from './app.js';
+import { createEnvironmentAppGatewayOptions } from './features/app-gateway/environment.js';
 import { ensureNoteReferenceIndex } from './features/note/services/note-reference-index.js';
 import { getDefaultSemanticSearchManager } from './features/search/search-manager.js';
 import { type AuthConfig, logAuthConfig, resolveAuthConfig } from './modules/auth-mode.js';
@@ -19,7 +20,9 @@ export const startServer = async (options: StartServerOptions = {}) => {
 
     logAuthConfig(authConfig);
 
-    const app = options.serverFactory ? await options.serverFactory(authConfig) : createApp(authConfig);
+    const app = options.serverFactory
+        ? await options.serverFactory(authConfig)
+        : createApp(authConfig, { appGateway: createEnvironmentAppGatewayOptions() });
 
     getDefaultSemanticSearchManager();
 

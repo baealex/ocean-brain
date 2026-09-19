@@ -68,7 +68,14 @@ test('manifest validation rejects incompatible contracts and unsafe entry URLs',
     assert.throws(() => parseManifest({ ...manifest, apiVersion: 2 }), /supported/);
     assert.throws(() => parseManifest({ ...manifest, schemaVersion: 2 }), /supported/);
     assert.throws(() => parseManifest({ ...manifest, permissions: ['admin'] }), /supported/);
-    assert.equal(parseManifest(manifest).launch?.url, 'http://127.0.0.1:7777/');
+    const parsedLaunch = parseManifest(manifest).launch;
+    assert.ok(parsedLaunch && 'url' in parsedLaunch);
+    assert.equal(parsedLaunch.url, 'http://127.0.0.1:7777/');
+    assert.deepEqual(parseManifest({ ...manifest, launch: { mode: 'managed' } }).launch, { mode: 'managed' });
+    assert.throws(
+        () => parseManifest({ ...manifest, launch: { mode: 'managed', url: 'https://example.com' } }),
+        /cannot/,
+    );
 });
 
 test('platform migration preserves enabled state and the latest active MCP credential', () => {

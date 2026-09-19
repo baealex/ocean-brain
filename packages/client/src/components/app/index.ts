@@ -1,3 +1,4 @@
+export { IntegrationAppFrame } from './IntegrationAppFrame';
 export { ManagedAppFrame } from './ManagedAppFrame';
 export { default as Providers } from './Providers';
 export { QueryBoundary } from './QueryBoundary';

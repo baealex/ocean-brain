@@ -35,6 +35,15 @@ describe('<ManagedAppFrame />', () => {
         });
 
         expect(postMessage).toHaveBeenCalledWith(
+            {
+                type: 'ocean-brain:host-context',
+                version: 1,
+                capabilities: ['location', 'open-note'],
+                location: '/',
+            },
+            '*',
+        );
+        expect(postMessage).toHaveBeenCalledWith(
             { type: 'ocean-brain:app-access', version: 1, token: access.token },
             '*',
         );

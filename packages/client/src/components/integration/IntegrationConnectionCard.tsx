@@ -10,9 +10,10 @@ import {
     updateIntegration,
 } from '~/apis/integration.api';
 import * as Icon from '~/components/icon';
-import { Button, Input, Label, Switch, Text, Textarea, useConfirm, useToast } from '~/components/ui';
+import { Button, Input, Label, Switch, Text, useConfirm, useToast } from '~/components/ui';
 import { queryKeys } from '~/modules/query-key-factory';
 import { INTEGRATION_ROUTE, SETTINGS_MCP_ROUTE } from '~/modules/url';
+import IntegrationManifestEditor from './IntegrationManifestEditor';
 import IntegrationPermissions from './IntegrationPermissions';
 
 export default function IntegrationConnectionCard({
@@ -29,7 +30,6 @@ export default function IntegrationConnectionCard({
     const toast = useToast();
     const panelId = useId();
     const [token, setToken] = useState('');
-    const [upgrade, setUpgrade] = useState('');
     const invalidate = async () => {
         await Promise.all([
             queryClient.invalidateQueries({ queryKey: queryKeys.integrations.all(), exact: false }),
@@ -95,7 +95,9 @@ export default function IntegrationConnectionCard({
                         {launch && (
                             <div className="flex w-full flex-col gap-3">
                                 <Text as="p" variant="meta" tone="secondary" className="break-all">
-                                    {launch.url}
+                                    {launch.mode === 'managed'
+                                        ? `Managed by Ocean Brain at /apps/${integration.id}/`
+                                        : launch.url}
                                 </Text>
                                 <div className="flex flex-wrap items-center gap-3">
                                     <Switch
@@ -216,33 +218,12 @@ export default function IntegrationConnectionCard({
                             <Icon.ChevronRight className="h-3.5 w-3.5 transition-transform group-open:rotate-90" />
                             Update app manifest
                         </summary>
-                        <div className="mt-3 flex flex-col gap-2">
-                            <Textarea
-                                aria-label={`Updated manifest for ${integration.manifest.name}`}
-                                value={upgrade}
-                                onChange={(event) => setUpgrade(event.target.value)}
-                                rows={6}
-                                className="font-mono text-xs"
-                                disabled={action.isPending}
-                            />
-                            <Text as="p" variant="meta" tone="secondary">
-                                New permissions stay unapproved until you enable them above.
-                            </Text>
-                            <Button
-                                variant="subtle"
-                                size="sm"
-                                className="self-start"
-                                disabled={action.isPending || !upgrade.trim()}
-                                onClick={() =>
-                                    run(async () => {
-                                        await updateIntegration({ id: integration.id, manifest: JSON.parse(upgrade) });
-                                        setUpgrade('');
-                                    })
-                                }
-                            >
-                                Update manifest
-                            </Button>
-                        </div>
+                        <IntegrationManifestEditor
+                            connectionId={integration.id}
+                            manifest={integration.manifest}
+                            disabled={action.isPending}
+                            onSave={(manifest) => run(() => updateIntegration({ id: integration.id, manifest }))}
+                        />
                     </details>
                 )}
                 <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-3">

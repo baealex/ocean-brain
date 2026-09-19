@@ -8,7 +8,7 @@ export interface IntegrationManifest {
     description: string;
     version: string;
     permissions: IntegrationPermission[];
-    launch?: { url: string; mode: 'external' | 'iframe' };
+    launch?: { url: string; mode: 'external' | 'iframe' } | { mode: 'managed' };
 }
 export interface IntegrationConnection {
     id: string;

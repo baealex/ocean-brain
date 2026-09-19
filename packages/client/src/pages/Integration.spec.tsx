@@ -1,13 +1,21 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
+import * as appGatewayApi from '~/apis/app-gateway.api';
 import * as api from '~/apis/integration.api';
 import { createTestQueryClient } from '~/test/test-utils';
 import IntegrationPage from './Integration';
 
 vi.mock('~/apis/integration.api', () => ({ fetchIntegrations: vi.fn() }));
+vi.mock('~/apis/app-gateway.api', () => ({ issueManagedAppAccess: vi.fn() }));
+const routerMocks = vi.hoisted(() => ({
+    navigate: vi.fn(),
+    search: {} as { app?: string },
+}));
 vi.mock('@tanstack/react-router', () => ({
     useParams: () => ({ connectionId: 'inbox' }),
+    useSearch: () => routerMocks.search,
+    useNavigate: () => routerMocks.navigate,
     Link: ({ children, to }: { children: ReactNode; to: string }) => <a href={to}>{children}</a>,
 }));
 const integration: api.IntegrationConnection = {
@@ -37,7 +45,17 @@ const renderPage = () =>
         </QueryClientProvider>,
     );
 
-it('embeds only an enabled integration without sharing origin or session capabilities', async () => {
+beforeEach(() => {
+    routerMocks.navigate.mockReset();
+    routerMocks.search = {};
+    vi.mocked(appGatewayApi.issueManagedAppAccess).mockResolvedValue({
+        installationId: 'inbox',
+        token: 'managed-access-token',
+        expiresAt: new Date(Date.now() + 300_000).toISOString(),
+    });
+});
+
+it('embeds an enabled integration in a sandbox with the app bridge', async () => {
     vi.mocked(api.fetchIntegrations).mockResolvedValue([integration]);
     renderPage();
     const frame = await screen.findByTitle('Inbox');
@@ -45,6 +63,38 @@ it('embeds only an enabled integration without sharing origin or session capabil
     expect(frame).toHaveAttribute('referrerpolicy', 'no-referrer');
     expect(frame).toHaveAttribute('src', 'http://127.0.0.1:7777/');
     expect(screen.getByRole('link', { name: 'Open in a new tab' })).toHaveAttribute('rel', 'noopener noreferrer');
+});
+
+it('restores app state from the host URL and handles app navigation messages', async () => {
+    routerMocks.search = { app: '/?query=whale&sort=updated&page=2' };
+    vi.mocked(api.fetchIntegrations).mockResolvedValue([integration]);
+    renderPage();
+    const frame = await screen.findByTitle('Inbox');
+    expect(frame).toHaveAttribute('src', 'http://127.0.0.1:7777/?query=whale&sort=updated&page=2');
+
+    act(() => {
+        window.dispatchEvent(
+            new MessageEvent('message', {
+                origin: 'null',
+                source: frame.contentWindow,
+                data: { type: 'ocean-brain:location-change', version: 1, location: '/?query=coral&page=1' },
+            }),
+        );
+        window.dispatchEvent(
+            new MessageEvent('message', {
+                origin: 'null',
+                source: frame.contentWindow,
+                data: { type: 'ocean-brain:open-note', version: 1, noteId: '42' },
+            }),
+        );
+    });
+
+    expect(routerMocks.navigate).toHaveBeenCalledWith({
+        to: '/integrations/$connectionId',
+        params: { connectionId: 'inbox' },
+        search: { app: '/?query=coral&page=1' },
+    });
+    expect(routerMocks.navigate).toHaveBeenCalledWith({ to: '/$id', params: { id: '42' } });
 });
 
 it('does not load a disabled integration page', async () => {
@@ -64,4 +114,18 @@ it('uses an external link instead of embedding the host origin', async () => {
     renderPage();
     expect(await screen.findByText('Open this app in a new tab to use its service.')).toBeInTheDocument();
     expect(screen.queryByTitle('Inbox')).not.toBeInTheDocument();
+});
+
+it('opens a managed integration through the Ocean Brain app gateway', async () => {
+    vi.mocked(api.fetchIntegrations).mockResolvedValue([
+        {
+            ...integration,
+            manifest: { ...integration.manifest, launch: { mode: 'managed' } },
+        },
+    ]);
+    renderPage();
+    const frame = await screen.findByTitle('Inbox');
+    expect(frame).toHaveAttribute('src', '/apps/inbox/');
+    expect(frame).toHaveAttribute('sandbox', 'allow-downloads allow-forms allow-modals allow-scripts');
+    expect(screen.queryByRole('link', { name: 'Open in a new tab' })).not.toBeInTheDocument();
 });

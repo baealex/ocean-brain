@@ -5,6 +5,7 @@ import type { ClientContentHandler } from '../src/routes/client.js';
 import { createServer as createViteServer, type ViteDevServer } from 'vite';
 
 import { createApp, createFastifyApplication } from '../src/app.js';
+import { createEnvironmentAppGatewayOptions } from '../src/features/app-gateway/environment.js';
 import { startServer } from '../src/server.js';
 
 const devDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -57,6 +58,7 @@ try {
 
             createApp(authConfig, {
                 application,
+                appGateway: createEnvironmentAppGatewayOptions(),
                 clientContentHandler: createViteContentHandler(viteServer),
             });
 

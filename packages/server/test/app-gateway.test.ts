@@ -127,7 +127,7 @@ const login = async (baseUrl: string) => {
     return cookieHeader([...csrfCookies, ...getSetCookies(response.headers)]);
 };
 
-const issueGatewayAccess = async (baseUrl: string, cookies?: string) => {
+const issueGatewayAccess = async (baseUrl: string, cookies?: string, origin?: string) => {
     const csrfCookie = cookies
         ?.split('; ')
         .find((cookie) => cookie.startsWith('XSRF-TOKEN='))
@@ -136,6 +136,7 @@ const issueGatewayAccess = async (baseUrl: string, cookies?: string) => {
         method: 'POST',
         headers: {
             ...(cookies ? { Cookie: cookies } : {}),
+            ...(origin ? { Origin: origin } : {}),
             ...(csrfCookie ? { 'X-XSRF-TOKEN': decodeURIComponent(csrfCookie) } : {}),
         },
     });
@@ -189,7 +190,9 @@ test('managed app HTTP requests use the fixed runner path without leaking browse
     const runnerOrigin = await listen(runner);
     t.after(() => closeServer(runner));
     const baseUrl = await startOceanBrain(t, openAuth, createGatewayOptions(runnerOrigin));
-    const access = await issueGatewayAccess(baseUrl);
+    const publicUrl = new URL(baseUrl);
+    publicUrl.protocol = 'https:';
+    const access = await issueGatewayAccess(baseUrl, undefined, publicUrl.origin);
 
     const response = await fetch(`${baseUrl}/apps/search-1/api/items?limit=2`, {
         method: 'POST',
@@ -219,9 +222,50 @@ test('managed app HTTP requests use the fixed runner path without leaking browse
     assert.equal(received.headers?.['x-ocean-brain-app-id'], INSTALLATION.appId);
     assert.equal(received.headers?.['x-ocean-brain-installation-id'], INSTALLATION.id);
     assert.equal(received.headers?.['x-forwarded-prefix'], '/apps/search-1');
+    assert.equal(received.headers?.['x-forwarded-proto'], 'https');
     assert.equal(response.headers.get('set-cookie'), null);
     assert.equal(response.headers.get('access-control-allow-origin'), 'null');
     assert.match(response.headers.get('content-security-policy') ?? '', /sandbox/);
+});
+
+test('managed app HTTP requests preserve form-encoded request bodies', async (t) => {
+    let receivedBody = '';
+    const runner = createServer(async (request, response) => {
+        receivedBody = await readBody(request);
+        response.statusCode = 204;
+        response.end();
+    });
+    const runnerOrigin = await listen(runner);
+    t.after(() => closeServer(runner));
+    const baseUrl = await startOceanBrain(t, openAuth, createGatewayOptions(runnerOrigin));
+    const access = await issueGatewayAccess(baseUrl);
+    const body = 'title=Ocean+Brain&tags=proxy%2Cinbox';
+
+    const response = await fetch(`${baseUrl}/apps/search-1/notes`, {
+        method: 'POST',
+        headers: {
+            Cookie: access.cookie,
+            Origin: 'null',
+            'Content-Type': 'application/x-www-form-urlencoded',
+            [APP_GATEWAY_ACCESS_HEADER]: access.token,
+        },
+        body,
+    });
+
+    assert.equal(response.status, 204);
+    assert.equal(receivedBody, body);
+});
+
+test('managed app access rejects a foreign browser origin', async (t) => {
+    const baseUrl = await startOceanBrain(t, openAuth, createGatewayOptions('http://127.0.0.1:1'));
+
+    const response = await fetch(`${baseUrl}/api/app-gateway/installations/search-1/access`, {
+        method: 'POST',
+        headers: { Origin: 'https://untrusted.example' },
+    });
+
+    assert.equal(response.status, 403);
+    assert.equal((await response.json()).code, 'FORBIDDEN_ORIGIN');
 });
 
 test('sandboxed app API responses require the in-memory access token for CORS', async (t) => {

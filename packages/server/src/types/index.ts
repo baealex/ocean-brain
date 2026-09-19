@@ -4,6 +4,7 @@ declare module 'fastify' {
     interface FastifyRequest {
         appGatewayCorsAllowed?: boolean;
         appGatewayInstallation?: import('../features/app-gateway/gateway.js').AppGatewayInstallation | null;
+        appGatewayPublicProtocol?: 'http' | 'https' | null;
         integration?: import('../features/integration/service.js').IntegrationPrincipal;
     }
 

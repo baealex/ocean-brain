@@ -47,6 +47,21 @@ const isWebSocketUpgrade = (request: FastifyRequest) => request.headers.upgrade?
 
 const getHeaderValue = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
+const getPublicProtocol = (request: FastifyRequest): 'http' | 'https' => {
+    const origin = getHeaderValue(request.headers.origin);
+    if (origin && origin !== 'null') {
+        try {
+            const url = new URL(origin);
+            if (url.host === request.headers.host && (url.protocol === 'http:' || url.protocol === 'https:')) {
+                return url.protocol.slice(0, -1) as 'http' | 'https';
+            }
+        } catch {
+            // Origin validation reports malformed values before this helper is used.
+        }
+    }
+    return request.protocol === 'https' ? 'https' : 'http';
+};
+
 const requireAllowedOrigin = (request: FastifyRequest) => {
     const origin = request.headers.origin;
     if (!origin || origin === 'null') return;
@@ -119,7 +134,7 @@ export const createAppGatewayRouter = (
             async (request, reply) => {
                 requireAllowedOrigin(request);
                 const installation = await resolveGatewayInstallation(options, request.params.installationId);
-                const grant = access.issue(installation.id);
+                const grant = access.issue(installation.id, getPublicProtocol(request));
                 return reply
                     .header('Cache-Control', 'no-store')
                     .setCookie(APP_GATEWAY_ACCESS_COOKIE_NAME, grant.token, {
@@ -136,8 +151,12 @@ export const createAppGatewayRouter = (
                     });
             },
         );
+        // The application-wide form parser turns form bodies into objects before reply-from can forward them.
+        // Keep managed app payloads as streams so the runner receives the original bytes for every content type.
+        app.removeContentTypeParser('application/x-www-form-urlencoded');
         app.decorateRequest('appGatewayCorsAllowed', false);
         app.decorateRequest('appGatewayInstallation', null);
+        app.decorateRequest('appGatewayPublicProtocol', null);
         app.register(fastifyHttpProxy, {
             upstream: options.runnerOrigin,
             prefix: PROXY_PREFIX,
@@ -152,10 +171,12 @@ export const createAppGatewayRouter = (
                 const accessToken = isWebSocketUpgrade(request)
                     ? extractAppGatewayAccessToken(request.headers['sec-websocket-protocol'])
                     : (headerToken ?? extractAppGatewayAccessCookie(request.headers.cookie));
-                if (!access.verify(installationId, accessToken)) {
+                const accessGrant = access.resolve(installationId, accessToken);
+                if (!accessGrant) {
                     const unauthorized = buildUnauthorizedPayload();
                     throw createAppError(401, unauthorized.code, unauthorized.message);
                 }
+                request.appGatewayPublicProtocol = accessGrant.publicProtocol;
                 request.appGatewayInstallation = await resolveGatewayInstallation(options, installationId);
                 const requestUrl = new URL(request.url, 'http://ocean-brain.invalid');
                 const publicRoot = `${APP_GATEWAY_PUBLIC_PREFIX}/${installationId}`;

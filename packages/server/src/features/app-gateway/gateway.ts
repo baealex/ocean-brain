@@ -161,7 +161,7 @@ const addGatewayHeaders = (
         authorization: `Bearer ${options.runnerToken}`,
         'x-forwarded-host': request.headers.host,
         'x-forwarded-prefix': `${APP_GATEWAY_PUBLIC_PREFIX}/${installation.id}`,
-        'x-forwarded-proto': request.protocol,
+        'x-forwarded-proto': request.appGatewayPublicProtocol ?? request.protocol,
         'x-ocean-brain-app-id': installation.appId,
         'x-ocean-brain-installation-id': installation.id,
     } satisfies IncomingHttpHeaders;

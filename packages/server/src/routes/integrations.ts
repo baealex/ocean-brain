@@ -1,6 +1,10 @@
 import type { FastifyPluginAsync } from 'fastify';
 import mercurius from 'mercurius';
 import { requireIntegrationPermission } from '../features/integration/auth.js';
+import {
+    createIntegrationNoteCatalogHandler,
+    createIntegrationNoteEventsHandler,
+} from '../features/integration/note-sync.js';
 import { integrationReadSchema } from '../features/integration/schema.js';
 import { createIntegrationService } from '../features/integration/service.js';
 import {
@@ -43,6 +47,16 @@ export const createIntegrationRouter =
                         apiVersion: 1,
                         ...request.integration,
                     }),
+                );
+                api.get<HttpRoute>(
+                    '/events',
+                    { preHandler: requireIntegrationPermission('notes:read', service) },
+                    createIntegrationNoteEventsHandler(),
+                );
+                api.post<HttpRoute>(
+                    '/notes/catalog',
+                    { preHandler: requireIntegrationPermission('notes:read', service) },
+                    createIntegrationNoteCatalogHandler(),
                 );
                 api.post<HttpRoute>(
                     '/notes/create',

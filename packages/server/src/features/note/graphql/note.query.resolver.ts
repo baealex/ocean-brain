@@ -1,4 +1,5 @@
 import type { IResolvers } from '@graphql-tools/utils';
+import { emitNoteChange } from '~/features/note/services/change-events.js';
 import { getNoteCleanupPreview, listNoteCleanupCandidates } from '~/features/note/services/cleanup.js';
 import {
     buildNoteGraph,
@@ -424,7 +425,7 @@ export const createNoteQueryResolver = (
         }
 
         try {
-            return await deps.updateNoteContent({
+            const updatedNote = await deps.updateNoteContent({
                 id: note.id,
                 updatedAt: note.updatedAt,
                 content: newContent,
@@ -433,6 +434,8 @@ export const createNoteQueryResolver = (
                     content: newContent,
                 }),
             });
+            emitNoteChange({ type: 'note.updated', noteId: updatedNote.id });
+            return updatedNote;
         } catch (error) {
             if (deps.isRecordNotFoundError(error)) {
                 return note;

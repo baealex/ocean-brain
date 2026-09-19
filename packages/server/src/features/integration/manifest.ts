@@ -12,7 +12,7 @@ export interface IntegrationManifest {
     version: string;
     description: string;
     permissions: IntegrationPermission[];
-    launch?: { url: string; mode: 'external' | 'iframe' };
+    launch?: { url: string; mode: 'external' | 'iframe' } | { mode: 'proxied' };
 }
 
 export const MCP_INTEGRATION_MANIFEST: IntegrationManifest = {
@@ -73,8 +73,13 @@ export const parseManifest = (value: unknown): IntegrationManifest => {
         return invalid('An integration requesting write access must also request notes:read.');
     }
     if (value.launch !== undefined) {
-        if (!isRecord(value.launch) || !['external', 'iframe'].includes(String(value.launch.mode))) {
-            return invalid('launch requires a url and mode (external or iframe).');
+        if (!isRecord(value.launch) || !['external', 'iframe', 'proxied'].includes(String(value.launch.mode))) {
+            return invalid('launch requires proxied mode or a url with external or iframe mode.');
+        }
+        if (value.launch.mode === 'proxied') {
+            if (value.launch.url !== undefined) return invalid('A proxied launch cannot provide a url.');
+            manifest.launch = { mode: 'proxied' };
+            return manifest;
         }
         let url: URL;
         try {
@@ -89,6 +94,38 @@ export const parseManifest = (value: unknown): IntegrationManifest => {
         manifest.launch = { url: url.href, mode: value.launch.mode === 'iframe' ? 'iframe' : 'external' };
     }
     return manifest;
+};
+
+export const parseIntegrationProxyUrl = (value: unknown) => {
+    if (typeof value !== 'string' || !value.trim() || value.length > 2000) {
+        throw createAppError(
+            400,
+            'INVALID_INTEGRATION_PROXY_URL',
+            'The private app URL must be a nonempty string of at most 2000 characters.',
+        );
+    }
+
+    let url: URL;
+    try {
+        url = new URL(value.trim());
+    } catch {
+        throw createAppError(400, 'INVALID_INTEGRATION_PROXY_URL', 'The private app URL must be an absolute URL.');
+    }
+    if (
+        !['http:', 'https:'].includes(url.protocol) ||
+        url.username ||
+        url.password ||
+        url.pathname !== '/' ||
+        url.search ||
+        url.hash
+    ) {
+        throw createAppError(
+            400,
+            'INVALID_INTEGRATION_PROXY_URL',
+            'The private app URL must be an HTTP(S) origin without credentials, a path, query, or fragment.',
+        );
+    }
+    return url.origin;
 };
 
 export const validateGrants = (value: unknown, manifest: IntegrationManifest) => {

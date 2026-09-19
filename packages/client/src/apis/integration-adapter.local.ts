@@ -6,6 +6,7 @@ const unavailable = (): never => {
 export const connectIntegration = async (_input: {
     manifest: unknown;
     grantedPermissions: IntegrationPermission[];
+    proxyUrl?: string;
 }): Promise<IntegrationConnection> => unavailable();
 export const updateIntegration = async (_input: IntegrationUpdate & { id: string }): Promise<IntegrationConnection> =>
     unavailable();

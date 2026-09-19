@@ -5,6 +5,7 @@ import {
     validateCalendarSearch,
     validateGraphSearch,
     validateHomeSearch,
+    validateIntegrationSearch,
     validateIntegrationsSearch,
     validatePaginationSearch,
     validateReminderSearch,
@@ -136,6 +137,18 @@ describe('route-search validators', () => {
         expect(validateIntegrationsSearch({ connection: '  ' })).toEqual({});
         expect(validateIntegrationsSearch({ connection: { id: 'inbox' } })).toEqual({});
         expect(validateIntegrationsSearch({ connection: 17 })).toEqual({});
+    });
+
+    it('keeps only safe integration app locations', () => {
+        expect(validateIntegrationSearch({ app: '/?query=whale&tag=ocean&page=2', unrelated: 'value' })).toEqual({
+            app: '/?query=whale&tag=ocean&page=2',
+        });
+        expect(validateIntegrationSearch({ app: '/' })).toEqual({});
+        expect(validateIntegrationSearch({ app: 'https://example.com/' })).toEqual({});
+        expect(validateIntegrationSearch({ app: '/../settings' })).toEqual({});
+        expect(validateIntegrationSearch({ app: '/%2e%2e/settings' })).toEqual({});
+        expect(validateIntegrationSearch({ app: '/%252e%252e/settings' })).toEqual({});
+        expect(validateIntegrationSearch({ app: ['/?page=2', '/?page=3'] })).toEqual({ app: '/?page=2' });
     });
 
     it('normalizes view-notes search values', () => {

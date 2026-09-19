@@ -8,12 +8,13 @@ export interface IntegrationManifest {
     description: string;
     version: string;
     permissions: IntegrationPermission[];
-    launch?: { url: string; mode: 'external' | 'iframe' };
+    launch?: { url: string; mode: 'external' | 'iframe' } | { mode: 'proxied' };
 }
 export interface IntegrationConnection {
     id: string;
     native: boolean;
     manifest: IntegrationManifest;
+    proxyConfigured: boolean;
     enabled: boolean;
     pinned: boolean;
     grantedPermissions: IntegrationPermission[];
@@ -26,4 +27,5 @@ export interface IntegrationUpdate {
     pinned?: boolean;
     grantedPermissions?: IntegrationPermission[];
     manifest?: unknown;
+    proxyUrl?: string;
 }

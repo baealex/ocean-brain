@@ -4,6 +4,7 @@ import type { SearchMode } from '~/apis/search.api';
 import type { SortBy, SortOrder } from '~/components/shared/NoteFilters';
 import type { ReminderPriority } from '~/models/reminder.model';
 import { HOME_DEFAULT_LIMIT, HOME_LIMIT_OPTIONS, type HomeLimit } from '~/modules/home-pagination';
+import { normalizeIntegrationAppLocation } from '~/modules/integration-app-bridge';
 import { TAG_DEFAULT_LIMIT, TAG_LIMIT_OPTIONS, type TagLimit } from '~/modules/tag-pagination';
 import { normalizeViewRouteState, type ViewRouteState } from '~/modules/view-route-state';
 
@@ -119,6 +120,10 @@ export interface IntegrationsRouteSearch {
     connection?: string;
 }
 
+export interface IntegrationRouteSearch {
+    app?: string;
+}
+
 export interface ViewNotesRouteSearch extends PaginationRouteSearch {
     sectionId: string;
 }
@@ -186,6 +191,11 @@ export const validateGraphSearch = (search: SearchRecord): GraphRouteSearch => {
 export const validateIntegrationsSearch = (search: SearchRecord): IntegrationsRouteSearch => {
     const connection = parseString(search.connection).trim();
     return connection ? { connection } : {};
+};
+
+export const validateIntegrationSearch = (search: SearchRecord): IntegrationRouteSearch => {
+    const app = normalizeIntegrationAppLocation(getFirstValue(search.app));
+    return app && app !== '/' ? { app } : {};
 };
 
 export const validateViewsSearch = (search: SearchRecord): ViewsRouteSearch => {

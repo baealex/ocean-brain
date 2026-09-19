@@ -2,6 +2,9 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 
 declare module 'fastify' {
     interface FastifyRequest {
+        appGatewayCorsAllowed?: boolean;
+        appGatewayConnection?: import('../features/app-gateway/gateway.js').ResolvedAppGatewayConnection | null;
+        appGatewayPublicProtocol?: 'http' | 'https' | null;
         integration?: import('../features/integration/service.js').IntegrationPrincipal;
     }
 

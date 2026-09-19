@@ -13,6 +13,7 @@ import {
     validateCalendarSearch,
     validateGraphSearch,
     validateHomeSearch,
+    validateIntegrationSearch,
     validateIntegrationsSearch,
     validatePaginationSearch,
     validateReminderSearch,
@@ -173,6 +174,7 @@ const integrationsSettingsRoute = createRoute({
 const integrationRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: INTEGRATION_ROUTE,
+    validateSearch: validateIntegrationSearch,
     component: lazyRouteComponent(() => import('~/pages/Integration')),
 });
 

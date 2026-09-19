@@ -95,6 +95,7 @@ export const createIntegrationRouter =
                     const connection = await service.connect({
                         manifest: request.body.manifest,
                         grantedPermissions: request.body.grantedPermissions,
+                        proxyUrl: request.body.proxyUrl,
                     });
                     return reply.status(201).send(connection);
                 });

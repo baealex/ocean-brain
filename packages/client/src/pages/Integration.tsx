@@ -1,16 +1,38 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link, useParams } from '@tanstack/react-router';
+import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
+import { useCallback } from 'react';
 import { fetchIntegrations } from '~/apis/integration.api';
+import { IntegrationAppFrame, ProxiedAppFrame } from '~/components/app';
 import * as Icon from '~/components/icon';
 import { PageLayout } from '~/components/shared';
 import { Button, Text } from '~/components/ui';
+import { DEFAULT_INTEGRATION_APP_LOCATION, resolveIntegrationAppSource } from '~/modules/integration-app-bridge';
 import { queryKeys } from '~/modules/query-key-factory';
-import { INTEGRATION_ROUTE, SETTINGS_INTEGRATIONS_ROUTE } from '~/modules/url';
+import { INTEGRATION_ROUTE, NOTE_ROUTE, SETTINGS_INTEGRATIONS_ROUTE } from '~/modules/url';
 
 export default function IntegrationPage() {
     const { connectionId } = useParams({ from: INTEGRATION_ROUTE });
+    const { app } = useSearch({ from: INTEGRATION_ROUTE });
+    const navigate = useNavigate();
     const query = useQuery({ queryKey: queryKeys.integrations.list(), queryFn: fetchIntegrations });
     const integration = query.data?.find((item) => item.id === connectionId);
+    const appLocation = app ?? DEFAULT_INTEGRATION_APP_LOCATION;
+    const handleLocationChange = useCallback(
+        (location: string) => {
+            void navigate({
+                to: INTEGRATION_ROUTE,
+                params: { connectionId },
+                search: location === DEFAULT_INTEGRATION_APP_LOCATION ? {} : { app: location },
+            });
+        },
+        [connectionId, navigate],
+    );
+    const handleOpenNote = useCallback(
+        (noteId: string) => {
+            void navigate({ to: NOTE_ROUTE, params: { id: noteId } });
+        },
+        [navigate],
+    );
     if (query.isPending)
         return (
             <div className="p-4">
@@ -40,9 +62,12 @@ export default function IntegrationPage() {
             </div>
         );
     const launch = integration.manifest.launch;
-    const url = new URL(launch.url);
+    const proxied = launch.mode === 'proxied';
+    const url = proxied ? undefined : new URL(launch.url);
     const canEmbed =
+        !proxied &&
         launch.mode === 'iframe' &&
+        url !== undefined &&
         url.origin !== window.location.origin &&
         !(window.location.protocol === 'https:' && url.protocol !== 'https:');
     return (
@@ -63,20 +88,45 @@ export default function IntegrationPage() {
                                 <span className="sr-only sm:not-sr-only">Manage access</span>
                             </Link>
                         </Button>
-                        <Button asChild variant="ghost" size="sm" className="min-h-11">
-                            <a href={launch.url} target="_blank" rel="noopener noreferrer" title="Open in a new tab">
-                                <Icon.ArrowSquareOut aria-hidden="true" className="h-4 w-4" />
-                                <span className="sr-only sm:not-sr-only">Open in a new tab</span>
-                            </a>
-                        </Button>
+                        {!proxied && (
+                            <Button asChild variant="ghost" size="sm" className="min-h-11">
+                                <a
+                                    href={launch.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title="Open in a new tab"
+                                >
+                                    <Icon.ArrowSquareOut aria-hidden="true" className="h-4 w-4" />
+                                    <span className="sr-only sm:not-sr-only">Open in a new tab</span>
+                                </a>
+                            </Button>
+                        )}
                     </div>
                 </header>
-                {canEmbed ? (
-                    <iframe
+                {proxied && !integration.proxyConfigured ? (
+                    <div className="flex flex-1 items-center justify-center p-6">
+                        <Text as="p" tone="secondary">
+                            Configure this app's private URL before opening it through Ocean Brain.
+                        </Text>
+                    </div>
+                ) : proxied ? (
+                    <ProxiedAppFrame
+                        key={integration.id}
+                        connectionId={integration.id}
+                        appLocation={appLocation}
+                        onLocationChange={handleLocationChange}
+                        onOpenNote={handleOpenNote}
                         title={integration.manifest.name}
-                        src={launch.url}
-                        sandbox="allow-scripts allow-forms"
-                        referrerPolicy="no-referrer"
+                        className="min-h-0 w-full flex-1"
+                    />
+                ) : canEmbed ? (
+                    <IntegrationAppFrame
+                        key={`${integration.id}:${url.href}`}
+                        title={integration.manifest.name}
+                        src={resolveIntegrationAppSource(url.href, appLocation)}
+                        appLocation={appLocation}
+                        onLocationChange={handleLocationChange}
+                        onOpenNote={handleOpenNote}
                         className="min-h-0 w-full flex-1 border-0 bg-surface"
                     />
                 ) : (

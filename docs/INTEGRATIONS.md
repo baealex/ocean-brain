@@ -1,10 +1,10 @@
 # Ocean Brain integrations
 
-Ocean Brain supports built-in integrations and independently hosted external apps. MCP is the built-in integration. Keyword and semantic search remain native search features; external search apps do not replace the search bar or MCP search tool.
+Ocean Brain supports built-in integrations and separately running integration apps. MCP is the built-in integration. Keyword and semantic search remain native search features; integration search apps do not replace the search bar or MCP search tool.
 
 ## Terminology
 
-**Integrations** connect MCP clients or external apps through approved data access. An **external app** runs on its own service; Ocean Brain provides access management and an optional page entry. Registering its manifest does not install or run its code. **Plugins** refers to installable code packages that Ocean Brain would load and execute. That runtime is not currently provided.
+**Integrations** connect MCP clients or apps through approved data access. An **integration app** runs in a separate process; Ocean Brain provides access management and an optional page entry. It can be opened at its own URL or placed behind Ocean Brain's proxied app gateway. Registering its manifest does not install or run its code. **Plugins** refers to installable code packages that Ocean Brain would load and execute. That runtime is not currently provided.
 
 Routes, source modules, and database models use `integration` terminology. Settings live at `/setting/integrations`; an app page lives at `/integrations/:connectionId`. A connection is one registration of an integration: `connectionId` identifies that registration, while `integrationId` is the stable manifest identifier shared by registrations of the same app.
 
@@ -22,7 +22,7 @@ An app can use notes, tags, and existing properties as its shared data store: fo
 
 1. Create an independent backend using the HTTP requests and runnable Node example below. Node's built-in `fetch` is sufficient; other backend languages can call the same HTTP API.
 2. Give your app a stable manifest `id`, describe its purpose, and request the permissions its features use. Add `launch` for a page; omit it for a background job.
-3. Register the manifest in **Settings → Integrations → Connect app**. The owner chooses grants and generates a token for this connection.
+3. Register the manifest in **Settings → Integrations → Connect app**. The owner chooses grants, enters the server-only private URL for a proxied page, and generates a token for this connection.
 4. Configure the app backend with `OCEAN_BRAIN_URL` and `OCEAN_BRAIN_INTEGRATION_TOKEN`, start it, and enable the connection.
 5. Call `GET /api/integrations/v1/me` to check the connection and actual grants. Use GraphQL for reads and the note endpoints below for writes. A browser page submits to your backend; the backend holds the token and calls Ocean Brain.
 6. Open the app from settings. Test with a permission removed, with the connection disabled, and after token revocation. Handle denied access in the app UI.
@@ -46,7 +46,7 @@ An external app owns its deployment and updates. Deliver its manifest alongside 
 
 `id` is a stable lowercase identifier; `ocean-brain.*` is reserved for built-in integrations. Multiple connections of the same external app have independent credentials and grants. `version` identifies the app's own release. `schemaVersion` describes the manifest format, and `apiVersion` selects the core API major version. Currently both must be `1`; unsupported versions are rejected.
 
-`launch` is optional for headless automation. Its mode is `external` or `iframe`. URLs must be absolute HTTPS URLs without embedded credentials; HTTP is allowed only for `localhost`, `127.0.0.1`, or `[::1]` during local development. Ocean Brain reads the submitted manifest; it does not fetch arbitrary manifest URLs or load third-party code into its server process.
+`launch` is optional for headless automation. `external` opens an absolute URL in a new tab, `iframe` embeds an absolute URL, and `proxied` embeds the app through Ocean Brain at `/apps/:connectionId/`. External and iframe URLs must use HTTPS without embedded credentials; HTTP is allowed only for `localhost`, `127.0.0.1`, or `[::1]` during local development. A proxied launch contains only `{ "mode": "proxied" }`. The owner enters its private HTTP(S) origin separately when connecting the app, so the address is stored on the server and is never part of the manifest or management API response. Ocean Brain reads the submitted manifest and does not load app code into its server process.
 
 Use **Update app manifest** to update an existing connection. The identifier cannot change. Previously approved permissions are intersected with the new request; additional permissions require an explicit grant. Updating a manifest never requires a database migration or replaces the token.
 
@@ -77,7 +77,7 @@ Disabling or revoking stops subsequent API requests. Data already copied to an e
 
 ## Integration API v1
 
-Send `Authorization: Bearer <connection-token>` from the external app’s backend. Keep it out of page URLs, iframe attributes, browser storage, and distributed frontend code. No browser session bridge or cross-origin browser API access is provided.
+Send `Authorization: Bearer <connection-token>` from the integration app’s backend. Keep it out of page URLs, iframe attributes, browser storage, and distributed frontend code. The iframe bridge described below does not expose the owner's browser session or an integration connection token, and it does not turn the data API into a cross-origin browser API.
 
 - `GET /api/integrations/v1/me`: authenticated connection identity and granted permissions.
 - `POST /api/integrations/v1/graphql`: the read-only data API, requiring `notes:read`.
@@ -164,21 +164,66 @@ Metadata and Markdown writes use a version guard so an app can detect intervenin
 
 ### Owner management API
 
-The host management API is `/api/integration-admin/connections`: GET returns `{connections: [...]}`, POST registers `{manifest, grantedPermissions}`, PATCH `/:id` updates grants, enabled, pinned, or manifest, and DELETE `/:id` disconnects. POST `/:id/token/rotate` returns one plaintext token, and POST `/:id/token/revoke` revokes it. These endpoints require owner authentication; an integration cannot approve its own permissions.
+The host management API is `/api/integration-admin/connections`: GET returns `{connections: [...]}`, POST registers `{manifest, grantedPermissions, proxyUrl?}`, PATCH `/:id` updates grants, enabled, pinned, manifest, or the private `proxyUrl`, and DELETE `/:id` disconnects. Responses expose only `proxyConfigured`; they never return the private URL. A proxied connection requires an HTTP(S) origin without credentials, a path, query, or fragment. POST `/:id/token/rotate` returns one plaintext token, and POST `/:id/token/revoke` revokes it. These endpoints require owner authentication; an integration cannot approve its own permissions.
 
-## Page isolation
+## App pages and direct proxy
 
-Embedded apps fill the available workspace below a compact host toolbar. The app owns its responsive layout and document scrolling. Support narrow screens and light/dark colors in the app itself; the Note Inbox example uses CSS `prefers-color-scheme` without accessing the host DOM or receiving a session bridge.
+Embedded apps fill the available workspace below a compact host toolbar. The app owns its responsive layout and document scrolling. Support narrow screens and light/dark colors in the app itself, preferably with CSS `prefers-color-scheme`; an app cannot read or style the host DOM.
 
-Embedded pages use `sandbox="allow-scripts allow-forms"` and `referrerpolicy="no-referrer"`. They receive no host token or session API bridge. Same-origin pages and HTTP pages inside an HTTPS host open externally instead. External pages can also decline embedding through their own CSP; the new-tab link is always available.
+An iframe launch loads the manifest URL directly in the browser. It is useful when every browser can reach that URL, but a public Ocean Brain page cannot make another user's browser reach a private service on the Ocean Brain server's `localhost`.
 
-The sandbox deliberately does not grant origin/storage access, parent navigation, or popup capabilities. Apps requiring those capabilities should use external mode. See the [iframe sandbox reference](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/iframe#sandbox) for browser behavior. The example uses server-rendered forms and keeps the Ocean Brain credential in its server environment.
+A proxied launch solves that topology mismatch. The browser loads `/apps/:connectionId/` from Ocean Brain, and Ocean Brain forwards the request directly to that connection's private URL. Ocean Brain and the app must share a network path: for example, both processes can use the same host loopback interface, or both containers can use one private Docker network. Relative scripts, styles, fetches, redirects, streaming responses, and WebSocket upgrades stay under the connection subpath. The app should generate relative URLs and honor `X-Forwarded-Prefix`. Ocean Brain removes browser cookies, owner authorization, forwarding headers, app-gateway headers, and unsafe upstream response headers at the boundary.
+
+The sandbox gives the app an opaque browser origin. Module scripts and other CORS-enabled subresources must opt into credentials so the short-lived connection cookie reaches the gateway, and the app response must allow the opaque `null` origin with credentials. For example, use `crossorigin="use-credentials"` on module scripts and stylesheets. Vite's production HTML defaults to anonymous `crossorigin`, so a proxied Vite app must replace that attribute or provide an equivalent credentialed asset loader.
+
+The owner configures a private URL such as `http://127.0.0.1:7778` on the connection. A browser request for `/apps/:connectionId/search` becomes a direct server request for `http://127.0.0.1:7778/search`. Ocean Brain supplies trusted `X-Ocean-Brain-Integration-Id`, `X-Ocean-Brain-Connection-Id`, `X-Forwarded-Host`, `X-Forwarded-Proto`, and `X-Forwarded-Prefix` headers. There is no App Runner, global runner port, runner environment variable, or shared runner secret.
+
+Proxied mode is a direct reverse-proxy and isolation contract, not an installer. The current release does not pull images, create containers, allocate storage, or supervise app processes. A future installer can create the app process and save its resulting private URL without changing the public `/apps/:connectionId/` route.
+
+Direct iframe pages use `sandbox="allow-scripts allow-forms"`. Proxied pages add downloads and modal dialogs but still omit `allow-same-origin`, parent navigation, popups, and unrestricted storage. Both use `referrerpolicy="no-referrer"`. Same-origin iframe targets and HTTP targets inside an HTTPS host open externally. An app can also decline direct embedding with its own CSP.
+
+### Iframe bridge v1
+
+Every embedded app can use a small `postMessage` bridge for host navigation and history. This is a UI bridge; note content still comes from the integration API through the app backend.
+
+| Direction | Message | Purpose |
+| --- | --- | --- |
+| App → host | `{ type: "ocean-brain:app-ready", version: 1 }` | Start bridge negotiation after the app installs its message listener. |
+| Host → app | `{ type: "ocean-brain:host-context", version: 1, capabilities: ["location", "open-note"], location }` | Confirm the host and provide the current relative app location. |
+| App → host | `{ type: "ocean-brain:location-change", version: 1, location }` | Add app state to Ocean Brain's browser history. |
+| Host → app | `{ type: "ocean-brain:location", version: 1, location }` | Restore app state after browser back or forward. |
+| App → host | `{ type: "ocean-brain:open-note", version: 1, noteId }` | Open the actual Ocean Brain note page. |
+| Host → proxied app | `{ type: "ocean-brain:app-access", version: 1, token }` | Supply a short-lived grant for browser requests through this proxied connection path. |
+
+The app location is a relative path, query, and optional fragment beginning with `/`, such as `/?query=coral&tag=research&page=2`. Ocean Brain stores it in the host route's `app` query parameter. When a user changes a meaningful view state, the app sends `location-change`; when it receives `location`, it restores controls and results without reloading the iframe. Avoid emitting an entry for every keystroke. Use submitted searches, filter changes, selected records, and pagination as history boundaries.
+
+Apps must install their listener before sending `app-ready`, accept bridge messages only when `event.source === window.parent`, and check `version === 1`. The host accepts messages only from the rendered iframe's `contentWindow` and its opaque sandbox origin. App locations are length-limited, normalized, and rejected when they contain a scheme, backslash, encoded slash, or dot traversal segment.
+
+```js
+window.addEventListener('message', (event) => {
+    if (event.source !== window.parent || event.data?.version !== 1) return;
+    if (event.data.type === 'ocean-brain:location') restoreAppState(event.data.location);
+    if (event.data.type === 'ocean-brain:host-context') restoreAppState(event.data.location);
+});
+
+window.parent.postMessage({ type: 'ocean-brain:app-ready', version: 1 }, '*');
+
+function publishSearch(location) {
+    window.parent.postMessage({ type: 'ocean-brain:location-change', version: 1, location }, '*');
+}
+
+function openNote(noteId) {
+    window.parent.postMessage({ type: 'ocean-brain:open-note', version: 1, noteId }, '*');
+}
+```
+
+The proxied `app-access` value is not an integration token and cannot call `/api/integrations/v1/*`. It is bound to one connection, expires quickly, and belongs only in requests back through that app's `/apps/:connectionId/` path. The app backend continues to hold its long-lived integration token and enforce its own user or connection isolation.
 
 ## Storage, compatibility, and migration
 
 The platform adds `IntegrationConnection` and `IntegrationCredential` once. Manifests and grants are validated JSON documents stored as data. External apps own their settings, indexes, persistence, and migrations; adding or upgrading one does not add core tables, Prisma enums, routes, or imports. Built-in integration definitions live in a code registry; startup creates missing connection records without overwriting existing grants or credentials. Adding a native integration also needs no new integration-specific table.
 
-Migration `0020` creates the platform records under their original names. Migration `0021` renames them to `IntegrationConnection` and `IntegrationCredential`, including the `integrationId` and `connectionId` columns, without replacing IDs, manifests, grants, enabled/pinned states, credentials, or timestamps. Both run automatically on a new database; a database already on `0020` only needs the rename.
+Migration `0020` creates the platform records under their original names. Migration `0021` renames them to `IntegrationConnection` and `IntegrationCredential`, including the `integrationId` and `connectionId` columns, without replacing IDs, manifests, grants, enabled/pinned states, credentials, or timestamps. Migration `0022` adds the shared private proxy URL field. It converts the unreleased `managed` launch experiment to `proxied` and disables those connections until the owner enters a private URL. These migrations run automatically; installing or upgrading an individual integration app does not add another core migration.
 
 The initial platform migration creates the built-in MCP integration record, preserves `MCP_ENABLED`, and copies the latest active MCP token hash and timestamps. Users do not need to regenerate that token. Thereafter both integration settings and the legacy MCP administration API use the new records as the single authority.
 

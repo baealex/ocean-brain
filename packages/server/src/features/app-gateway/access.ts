@@ -9,7 +9,7 @@ export const APP_GATEWAY_ACCESS_TTL_MS = 5 * 60 * 1000;
 const MAX_ACTIVE_ACCESS_TOKENS = 1_024;
 
 interface AccessGrant {
-    installationId: string;
+    connectionId: string;
     expiresAt: number;
     publicProtocol: 'http' | 'https';
 }
@@ -54,7 +54,7 @@ export const createAppGatewayAccessService = () => {
         }
     };
 
-    const resolve = (installationId: string, token: string | undefined) => {
+    const resolve = (connectionId: string, token: string | undefined) => {
         if (!token) return undefined;
         const now = Date.now();
         const tokenHash = hashToken(token);
@@ -63,21 +63,21 @@ export const createAppGatewayAccessService = () => {
             grants.delete(tokenHash);
             return undefined;
         }
-        return grant.installationId === installationId ? grant : undefined;
+        return grant.connectionId === connectionId ? grant : undefined;
     };
 
     return {
-        issue(installationId: string, publicProtocol: AccessGrant['publicProtocol'] = 'http') {
+        issue(connectionId: string, publicProtocol: AccessGrant['publicProtocol'] = 'http') {
             const now = Date.now();
             prune(now);
             const token = randomBytes(32).toString('base64url');
             const expiresAt = now + APP_GATEWAY_ACCESS_TTL_MS;
-            grants.set(hashToken(token), { installationId, expiresAt, publicProtocol });
+            grants.set(hashToken(token), { connectionId, expiresAt, publicProtocol });
             return { token, expiresAt: new Date(expiresAt).toISOString() };
         },
         resolve,
-        verify(installationId: string, token: string | undefined) {
-            return Boolean(resolve(installationId, token));
+        verify(connectionId: string, token: string | undefined) {
+            return Boolean(resolve(connectionId, token));
         },
     };
 };

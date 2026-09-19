@@ -1,6 +1,6 @@
 import classNames from 'classnames';
 import { type ComponentPropsWithoutRef, useCallback, useEffect, useRef, useState } from 'react';
-import { issueManagedAppAccess } from '~/apis/app-gateway.api';
+import { issueProxiedAppAccess } from '~/apis/app-gateway.api';
 import { Button, Text } from '~/components/ui';
 import { DEFAULT_INTEGRATION_APP_LOCATION, normalizeIntegrationAppLocation } from '~/modules/integration-app-bridge';
 import { IntegrationAppFrame } from './IntegrationAppFrame';
@@ -9,38 +9,38 @@ const ACCESS_REFRESH_LEEWAY_MS = 60_000;
 const ACCESS_REFRESH_RETRY_MS = 10_000;
 
 type FrameState = 'error' | 'loading' | 'ready';
-interface InstallationFrameState {
-    installationId: string;
+interface ConnectionFrameState {
+    connectionId: string;
     state: FrameState;
 }
 
-export interface ManagedAppFrameProps
+export interface ProxiedAppFrameProps
     extends Omit<ComponentPropsWithoutRef<'iframe'>, 'referrerPolicy' | 'sandbox' | 'src' | 'srcDoc' | 'title'> {
     appLocation?: string;
-    installationId: string;
+    connectionId: string;
     onLocationChange?: (location: string) => void;
     onOpenNote?: (noteId: string) => void;
     title: string;
 }
 
-export function ManagedAppFrame({
+export function ProxiedAppFrame({
     appLocation = DEFAULT_INTEGRATION_APP_LOCATION,
-    installationId,
+    connectionId,
     onLocationChange,
     onOpenNote,
     title,
     className,
     ...iframeProps
-}: ManagedAppFrameProps) {
+}: ProxiedAppFrameProps) {
     const contentWindowRef = useRef<Window | null>(null);
     const accessTokenRef = useRef<string | undefined>(undefined);
     const accessExpiresAtRef = useRef(0);
-    const [installationState, setInstallationState] = useState<InstallationFrameState>({
-        installationId,
+    const [connectionState, setConnectionState] = useState<ConnectionFrameState>({
+        connectionId,
         state: 'loading',
     });
     const [retryVersion, setRetryVersion] = useState(0);
-    const frameState = installationState.installationId === installationId ? installationState.state : 'loading';
+    const frameState = connectionState.connectionId === connectionId ? connectionState.state : 'loading';
 
     const sendAccessToken = useCallback((contentWindow = contentWindowRef.current) => {
         const token = accessTokenRef.current;
@@ -62,7 +62,7 @@ export function ManagedAppFrame({
         contentWindowRef.current = null;
         accessTokenRef.current = undefined;
         accessExpiresAtRef.current = 0;
-        setInstallationState({ installationId, state: 'loading' });
+        setConnectionState({ connectionId, state: 'loading' });
 
         const schedule = (delay: number) => {
             window.clearTimeout(refreshTimer);
@@ -72,11 +72,11 @@ export function ManagedAppFrame({
             requestController?.abort();
             requestController = new AbortController();
             try {
-                const access = await issueManagedAppAccess(installationId, requestController.signal);
+                const access = await issueProxiedAppAccess(connectionId, requestController.signal);
                 if (disposed) return;
                 const expiresAt = Date.parse(access.expiresAt);
                 if (
-                    access.installationId !== installationId ||
+                    access.connectionId !== connectionId ||
                     !access.token ||
                     !Number.isFinite(expiresAt) ||
                     expiresAt <= Date.now()
@@ -85,7 +85,7 @@ export function ManagedAppFrame({
                 }
                 accessTokenRef.current = access.token;
                 accessExpiresAtRef.current = expiresAt;
-                setInstallationState({ installationId, state: 'ready' });
+                setConnectionState({ connectionId, state: 'ready' });
                 sendAccessToken();
                 schedule(Math.max(1_000, expiresAt - Date.now() - ACCESS_REFRESH_LEEWAY_MS));
             } catch {
@@ -95,7 +95,7 @@ export function ManagedAppFrame({
                     return;
                 }
                 accessTokenRef.current = undefined;
-                setInstallationState({ installationId, state: 'error' });
+                setConnectionState({ connectionId, state: 'error' });
             }
         };
 
@@ -105,7 +105,7 @@ export function ManagedAppFrame({
             requestController?.abort();
             window.clearTimeout(refreshTimer);
         };
-    }, [installationId, retryVersion, sendAccessToken]);
+    }, [connectionId, retryVersion, sendAccessToken]);
 
     if (frameState === 'loading') {
         return (
@@ -138,7 +138,7 @@ export function ManagedAppFrame({
         <IntegrationAppFrame
             {...iframeProps}
             title={title}
-            src={`/apps/${encodeURIComponent(installationId)}${location}`}
+            src={`/apps/${encodeURIComponent(connectionId)}${location}`}
             appLocation={location}
             onAppReady={handleAppReady}
             onLocationChange={onLocationChange}

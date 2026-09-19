@@ -7,7 +7,7 @@ import { createTestQueryClient } from '~/test/test-utils';
 import IntegrationPage from './Integration';
 
 vi.mock('~/apis/integration.api', () => ({ fetchIntegrations: vi.fn() }));
-vi.mock('~/apis/app-gateway.api', () => ({ issueManagedAppAccess: vi.fn() }));
+vi.mock('~/apis/app-gateway.api', () => ({ issueProxiedAppAccess: vi.fn() }));
 const routerMocks = vi.hoisted(() => ({
     navigate: vi.fn(),
     search: {} as { app?: string },
@@ -23,6 +23,7 @@ const integration: api.IntegrationConnection = {
     native: false,
     enabled: true,
     pinned: true,
+    proxyConfigured: false,
     grantedPermissions: ['notes:read'],
     token: null,
     createdAt: '',
@@ -48,9 +49,9 @@ const renderPage = () =>
 beforeEach(() => {
     routerMocks.navigate.mockReset();
     routerMocks.search = {};
-    vi.mocked(appGatewayApi.issueManagedAppAccess).mockResolvedValue({
-        installationId: 'inbox',
-        token: 'managed-access-token',
+    vi.mocked(appGatewayApi.issueProxiedAppAccess).mockResolvedValue({
+        connectionId: 'inbox',
+        token: 'proxied-access-token',
         expiresAt: new Date(Date.now() + 300_000).toISOString(),
     });
 });
@@ -116,11 +117,12 @@ it('uses an external link instead of embedding the host origin', async () => {
     expect(screen.queryByTitle('Inbox')).not.toBeInTheDocument();
 });
 
-it('opens a managed integration through the Ocean Brain app gateway', async () => {
+it('opens a proxied integration through the Ocean Brain app gateway', async () => {
     vi.mocked(api.fetchIntegrations).mockResolvedValue([
         {
             ...integration,
-            manifest: { ...integration.manifest, launch: { mode: 'managed' } },
+            proxyConfigured: true,
+            manifest: { ...integration.manifest, launch: { mode: 'proxied' } },
         },
     ]);
     renderPage();
@@ -128,4 +130,17 @@ it('opens a managed integration through the Ocean Brain app gateway', async () =
     expect(frame).toHaveAttribute('src', '/apps/inbox/');
     expect(frame).toHaveAttribute('sandbox', 'allow-downloads allow-forms allow-modals allow-scripts');
     expect(screen.queryByRole('link', { name: 'Open in a new tab' })).not.toBeInTheDocument();
+});
+
+it('asks for a private URL before opening an unconfigured proxied integration', async () => {
+    vi.mocked(api.fetchIntegrations).mockResolvedValue([
+        {
+            ...integration,
+            manifest: { ...integration.manifest, launch: { mode: 'proxied' } },
+        },
+    ]);
+    renderPage();
+
+    expect(await screen.findByText(/Configure this app's private URL/)).toBeInTheDocument();
+    expect(screen.queryByTitle('Inbox')).not.toBeInTheDocument();
 });

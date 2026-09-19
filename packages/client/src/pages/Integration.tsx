@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { useCallback } from 'react';
 import { fetchIntegrations } from '~/apis/integration.api';
-import { IntegrationAppFrame, ManagedAppFrame } from '~/components/app';
+import { IntegrationAppFrame, ProxiedAppFrame } from '~/components/app';
 import * as Icon from '~/components/icon';
 import { PageLayout } from '~/components/shared';
 import { Button, Text } from '~/components/ui';
@@ -62,10 +62,10 @@ export default function IntegrationPage() {
             </div>
         );
     const launch = integration.manifest.launch;
-    const managed = launch.mode === 'managed';
-    const url = managed ? undefined : new URL(launch.url);
+    const proxied = launch.mode === 'proxied';
+    const url = proxied ? undefined : new URL(launch.url);
     const canEmbed =
-        !managed &&
+        !proxied &&
         launch.mode === 'iframe' &&
         url !== undefined &&
         url.origin !== window.location.origin &&
@@ -88,7 +88,7 @@ export default function IntegrationPage() {
                                 <span className="sr-only sm:not-sr-only">Manage access</span>
                             </Link>
                         </Button>
-                        {!managed && (
+                        {!proxied && (
                             <Button asChild variant="ghost" size="sm" className="min-h-11">
                                 <a
                                     href={launch.url}
@@ -103,10 +103,16 @@ export default function IntegrationPage() {
                         )}
                     </div>
                 </header>
-                {managed ? (
-                    <ManagedAppFrame
+                {proxied && !integration.proxyConfigured ? (
+                    <div className="flex flex-1 items-center justify-center p-6">
+                        <Text as="p" tone="secondary">
+                            Configure this app's private URL before opening it through Ocean Brain.
+                        </Text>
+                    </div>
+                ) : proxied ? (
+                    <ProxiedAppFrame
                         key={integration.id}
-                        installationId={integration.id}
+                        connectionId={integration.id}
                         appLocation={appLocation}
                         onLocationChange={handleLocationChange}
                         onOpenNote={handleOpenNote}

@@ -3,11 +3,9 @@ import type { FastifyRequest, RawServerBase, RequestGenericInterface } from 'fas
 import { createAppError } from '~/modules/error-handler.js';
 
 export const APP_GATEWAY_PUBLIC_PREFIX = '/apps';
-export const APP_RUNNER_PROXY_PREFIX = '/v1/apps';
 
 const APP_IDENTIFIER_PATTERN = /^[a-z0-9](?:[a-z0-9._-]{0,126}[a-z0-9])?$/;
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
-const MIN_RUNNER_TOKEN_LENGTH = 32;
 
 const BLOCKED_REQUEST_HEADERS = new Set([
     'authorization',
@@ -34,21 +32,23 @@ const BLOCKED_REQUEST_HEADERS = new Set([
 
 const WEBSOCKET_REQUEST_HEADERS = ['accept-language', 'origin', 'user-agent'] as const;
 
-export interface AppGatewayInstallation {
+export interface AppGatewayConnection {
     id: string;
-    appId: string;
+    integrationId: string;
     enabled: boolean;
+    proxyUrl: string | null;
+}
+
+export interface ResolvedAppGatewayConnection extends AppGatewayConnection {
+    proxyUrl: string;
 }
 
 export interface AppGatewayOptions {
-    runnerOrigin: string;
-    runnerToken: string;
-    resolveInstallation: (installationId: string) => Promise<AppGatewayInstallation | null>;
+    resolveConnection: (connectionId: string) => Promise<AppGatewayConnection | null>;
     requestTimeoutMs?: number;
 }
 
 export interface ResolvedAppGatewayOptions extends AppGatewayOptions {
-    runnerOrigin: string;
     requestTimeoutMs: number;
 }
 
@@ -57,24 +57,8 @@ export type AppGatewayRequest = FastifyRequest<RequestGenericInterface, RawServe
 export const isAppIdentifier = (value: string) => APP_IDENTIFIER_PATTERN.test(value);
 
 export const resolveAppGatewayOptions = (options: AppGatewayOptions): ResolvedAppGatewayOptions => {
-    let runnerUrl: URL;
-    try {
-        runnerUrl = new URL(options.runnerOrigin);
-    } catch {
-        throw new Error('The app runner origin must be a valid absolute URL.');
-    }
-
-    if (!['http:', 'https:'].includes(runnerUrl.protocol)) {
-        throw new Error('The app runner origin must use HTTP or HTTPS.');
-    }
-    if (runnerUrl.username || runnerUrl.password || runnerUrl.pathname !== '/' || runnerUrl.search || runnerUrl.hash) {
-        throw new Error('The app runner origin cannot contain credentials, a path, a query, or a fragment.');
-    }
-    if (options.runnerToken.length < MIN_RUNNER_TOKEN_LENGTH) {
-        throw new Error(`The app runner token must contain at least ${MIN_RUNNER_TOKEN_LENGTH} characters.`);
-    }
-    if (typeof options.resolveInstallation !== 'function') {
-        throw new Error('The app gateway requires an installation resolver.');
+    if (typeof options.resolveConnection !== 'function') {
+        throw new Error('The app gateway requires a connection resolver.');
     }
 
     const requestTimeoutMs = options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
@@ -82,30 +66,54 @@ export const resolveAppGatewayOptions = (options: AppGatewayOptions): ResolvedAp
         throw new Error('The app gateway request timeout must be between 1000 and 120000 milliseconds.');
     }
 
-    return {
-        ...options,
-        runnerOrigin: runnerUrl.origin,
-        requestTimeoutMs,
-    };
+    return { ...options, requestTimeoutMs };
 };
 
-export const resolveGatewayInstallation = async (options: ResolvedAppGatewayOptions, installationId: string) => {
-    if (!isAppIdentifier(installationId)) {
-        throw createAppError(400, 'INVALID_APP_INSTALLATION_ID', 'The app installation id is invalid.');
+const normalizeProxyUrl = (value: string | null) => {
+    if (!value) return null;
+    let url: URL;
+    try {
+        url = new URL(value);
+    } catch {
+        return null;
+    }
+    if (
+        !['http:', 'https:'].includes(url.protocol) ||
+        url.username ||
+        url.password ||
+        url.pathname !== '/' ||
+        url.search ||
+        url.hash
+    ) {
+        return null;
+    }
+    return url.origin;
+};
+
+export const resolveAppGatewayConnection = async (
+    options: ResolvedAppGatewayOptions,
+    connectionId: string,
+): Promise<ResolvedAppGatewayConnection> => {
+    if (!isAppIdentifier(connectionId)) {
+        throw createAppError(400, 'INVALID_APP_CONNECTION_ID', 'The app connection id is invalid.');
     }
 
-    const installation = await options.resolveInstallation(installationId);
-    if (!installation) {
-        throw createAppError(404, 'APP_INSTALLATION_NOT_FOUND', 'The app installation was not found.');
+    const connection = await options.resolveConnection(connectionId);
+    if (!connection) {
+        throw createAppError(404, 'APP_CONNECTION_NOT_FOUND', 'The proxied app connection was not found.');
     }
-    if (installation.id !== installationId || !isAppIdentifier(installation.appId)) {
-        throw createAppError(502, 'INVALID_APP_RUNNER_STATE', 'The app runner returned an invalid installation.');
+    if (connection.id !== connectionId || !isAppIdentifier(connection.integrationId)) {
+        throw createAppError(502, 'INVALID_APP_PROXY_STATE', 'The proxied app connection is invalid.');
     }
-    if (!installation.enabled) {
-        throw createAppError(503, 'APP_INSTALLATION_DISABLED', 'The app installation is disabled.');
+    if (!connection.enabled) {
+        throw createAppError(503, 'APP_CONNECTION_DISABLED', 'The proxied app connection is disabled.');
+    }
+    const proxyUrl = normalizeProxyUrl(connection.proxyUrl);
+    if (!proxyUrl) {
+        throw createAppError(503, 'APP_PROXY_NOT_CONFIGURED', 'The proxied app URL is not configured.');
     }
 
-    return installation;
+    return { ...connection, proxyUrl };
 };
 
 export const validateAppGatewayRequestPath = (requestUrl: string) => {
@@ -146,40 +154,40 @@ const withoutBlockedHeaders = (headers: IncomingHttpHeaders) => {
     return forwarded;
 };
 
-const addGatewayHeaders = (
-    request: AppGatewayRequest,
-    headers: IncomingHttpHeaders,
-    options: ResolvedAppGatewayOptions,
-) => {
-    const installation = request.appGatewayInstallation;
-    if (!installation) {
+const addGatewayHeaders = (request: AppGatewayRequest, headers: IncomingHttpHeaders) => {
+    const connection = request.appGatewayConnection;
+    if (!connection) {
         throw createAppError(502, 'APP_GATEWAY_CONTEXT_MISSING', 'The app gateway request context is missing.');
     }
 
     return {
         ...headers,
-        authorization: `Bearer ${options.runnerToken}`,
         'x-forwarded-host': request.headers.host,
-        'x-forwarded-prefix': `${APP_GATEWAY_PUBLIC_PREFIX}/${installation.id}`,
+        'x-forwarded-prefix': `${APP_GATEWAY_PUBLIC_PREFIX}/${connection.id}`,
         'x-forwarded-proto': request.appGatewayPublicProtocol ?? request.protocol,
-        'x-ocean-brain-app-id': installation.appId,
-        'x-ocean-brain-installation-id': installation.id,
+        'x-ocean-brain-connection-id': connection.id,
+        'x-ocean-brain-integration-id': connection.integrationId,
     } satisfies IncomingHttpHeaders;
 };
 
-export const createRunnerRequestHeaders = (
-    request: AppGatewayRequest,
-    headers: IncomingHttpHeaders,
-    options: ResolvedAppGatewayOptions,
-) => addGatewayHeaders(request, withoutBlockedHeaders(headers), options);
+export const createProxyRequestHeaders = (request: AppGatewayRequest, headers: IncomingHttpHeaders) =>
+    addGatewayHeaders(request, withoutBlockedHeaders(headers));
 
-export const createRunnerWebSocketHeaders = (request: AppGatewayRequest, options: ResolvedAppGatewayOptions) => {
+export const createProxyWebSocketHeaders = (request: AppGatewayRequest) => {
     const headers: IncomingHttpHeaders = {};
     for (const name of WEBSOCKET_REQUEST_HEADERS) {
         const value = request.headers[name];
         if (value !== undefined) headers[name] = value;
     }
-    return addGatewayHeaders(request, headers, options);
+    return addGatewayHeaders(request, headers);
+};
+
+export const getAppGatewayUpstream = (request: AppGatewayRequest) => {
+    const connection = request.appGatewayConnection;
+    if (!connection) {
+        throw createAppError(502, 'APP_GATEWAY_CONTEXT_MISSING', 'The app gateway request context is missing.');
+    }
+    return connection.proxyUrl;
 };
 
 const getHeader = (headers: IncomingHttpHeaders, name: string) => {
@@ -189,32 +197,29 @@ const getHeader = (headers: IncomingHttpHeaders, name: string) => {
 
 const isWithinPath = (path: string, prefix: string) => path === prefix || path.startsWith(`${prefix}/`);
 
-const rewriteRunnerLocation = (location: string, request: AppGatewayRequest, options: ResolvedAppGatewayOptions) => {
-    const installation = request.appGatewayInstallation;
-    if (!installation) return undefined;
+const rewriteProxyLocation = (location: string, request: AppGatewayRequest) => {
+    const connection = request.appGatewayConnection;
+    if (!connection) return undefined;
 
-    const publicPrefix = `${APP_GATEWAY_PUBLIC_PREFIX}/${installation.id}`;
-    const runnerPrefix = `${APP_RUNNER_PROXY_PREFIX}/${installation.id}`;
+    const publicPrefix = `${APP_GATEWAY_PUBLIC_PREFIX}/${connection.id}`;
     const requestUrl = new URL(request.url, 'http://ocean-brain.invalid');
     const requestSuffix = isWithinPath(requestUrl.pathname, publicPrefix)
-        ? requestUrl.pathname.slice(publicPrefix.length)
+        ? requestUrl.pathname.slice(publicPrefix.length) || '/'
         : '/';
-    const runnerRequestUrl = new URL(`${runnerPrefix}${requestSuffix}${requestUrl.search}`, options.runnerOrigin);
+    const upstreamRequestUrl = new URL(`${requestSuffix}${requestUrl.search}`, `${connection.proxyUrl}/`);
 
     let destination: URL;
     try {
-        destination = new URL(location, runnerRequestUrl);
+        destination = new URL(location, upstreamRequestUrl);
     } catch {
         return undefined;
     }
 
-    if (destination.origin !== options.runnerOrigin) return undefined;
+    if (destination.origin !== connection.proxyUrl) return undefined;
     if (isWithinPath(destination.pathname, publicPrefix)) {
         return `${destination.pathname}${destination.search}${destination.hash}`;
     }
-    if (!isWithinPath(destination.pathname, runnerPrefix)) return undefined;
-
-    return `${publicPrefix}${destination.pathname.slice(runnerPrefix.length)}${destination.search}${destination.hash}`;
+    return `${publicPrefix}${destination.pathname}${destination.search}${destination.hash}`;
 };
 
 const appendVary = (current: string | string[] | undefined, value: string) => {
@@ -228,11 +233,7 @@ const appendVary = (current: string | string[] | undefined, value: string) => {
 const APP_SANDBOX_POLICY =
     "sandbox allow-downloads allow-forms allow-modals allow-scripts; frame-ancestors 'self'; object-src 'none'";
 
-export const createGatewayResponseHeaders = (
-    source: IncomingHttpHeaders,
-    request: AppGatewayRequest,
-    options: ResolvedAppGatewayOptions,
-) => {
+export const createGatewayResponseHeaders = (source: IncomingHttpHeaders, request: AppGatewayRequest) => {
     const headers = { ...source };
     delete headers['set-cookie'];
     delete headers['set-cookie2'];
@@ -249,7 +250,7 @@ export const createGatewayResponseHeaders = (
 
     const location = getHeader(headers, 'location');
     if (location) {
-        const rewrittenLocation = rewriteRunnerLocation(location, request, options);
+        const rewrittenLocation = rewriteProxyLocation(location, request);
         if (rewrittenLocation) headers.location = rewrittenLocation;
         else delete headers.location;
     }
@@ -261,6 +262,7 @@ export const createGatewayResponseHeaders = (
     headers['permissions-policy'] = 'camera=(), geolocation=(), microphone=(), payment=(), usb=()';
     headers['referrer-policy'] = 'no-referrer';
     headers['x-content-type-options'] = 'nosniff';
+    headers['cache-control'] ??= 'private, no-store';
 
     if (request.appGatewayCorsAllowed) {
         headers['access-control-allow-origin'] = 'null';

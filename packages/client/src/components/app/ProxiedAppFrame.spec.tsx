@@ -1,22 +1,22 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { issueManagedAppAccess } from '~/apis/app-gateway.api';
-import { ManagedAppFrame } from './ManagedAppFrame';
+import { issueProxiedAppAccess } from '~/apis/app-gateway.api';
+import { ProxiedAppFrame } from './ProxiedAppFrame';
 
-vi.mock('~/apis/app-gateway.api', () => ({ issueManagedAppAccess: vi.fn() }));
+vi.mock('~/apis/app-gateway.api', () => ({ issueProxiedAppAccess: vi.fn() }));
 
 const access = {
-    installationId: 'search-1',
+    connectionId: 'search-1',
     token: 'short-lived-access-token',
     expiresAt: new Date(Date.now() + 300_000).toISOString(),
 };
 
-describe('<ManagedAppFrame />', () => {
+describe('<ProxiedAppFrame />', () => {
     beforeEach(() => {
-        vi.mocked(issueManagedAppAccess).mockResolvedValue(access);
+        vi.mocked(issueProxiedAppAccess).mockResolvedValue(access);
     });
 
     it('opens the canonical sandboxed app path and answers its ready handshake', async () => {
-        render(<ManagedAppFrame installationId="search-1" title="Search app" className="h-full" />);
+        render(<ProxiedAppFrame connectionId="search-1" title="Search app" className="h-full" />);
 
         const iframe = await screen.findByTitle('Search app');
         expect(iframe).toHaveAttribute('src', '/apps/search-1/');
@@ -50,7 +50,7 @@ describe('<ManagedAppFrame />', () => {
     });
 
     it('does not give an access token to messages from another window or origin', async () => {
-        render(<ManagedAppFrame installationId="search-1" title="Search app" />);
+        render(<ProxiedAppFrame connectionId="search-1" title="Search app" />);
         const iframe = await screen.findByTitle('Search app');
         const postMessage = vi.spyOn(iframe.contentWindow as Window, 'postMessage');
 
@@ -75,14 +75,14 @@ describe('<ManagedAppFrame />', () => {
     });
 
     it('offers a retry when the access grant cannot be issued', async () => {
-        vi.mocked(issueManagedAppAccess).mockRejectedValueOnce(new Error('runner unavailable'));
-        render(<ManagedAppFrame installationId="search-1" title="Search app" />);
+        vi.mocked(issueProxiedAppAccess).mockRejectedValueOnce(new Error('proxy unavailable'));
+        render(<ProxiedAppFrame connectionId="search-1" title="Search app" />);
 
         expect(await screen.findByRole('alert')).toHaveTextContent('Could not open this app.');
-        vi.mocked(issueManagedAppAccess).mockResolvedValueOnce(access);
+        vi.mocked(issueProxiedAppAccess).mockResolvedValueOnce(access);
         fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
 
         await waitFor(() => expect(screen.getByTitle('Search app')).toBeInTheDocument());
-        expect(issueManagedAppAccess).toHaveBeenCalledTimes(2);
+        expect(issueProxiedAppAccess).toHaveBeenCalledTimes(2);
     });
 });

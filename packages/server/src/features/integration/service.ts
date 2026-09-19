@@ -6,6 +6,7 @@ import {
     type IntegrationPermission,
     MCP_CONNECTION_ID,
     NATIVE_INTEGRATIONS,
+    parseIntegrationProxyUrl,
     parseManifest,
     parsePermissions,
     validateGrants,
@@ -32,6 +33,7 @@ const toConnection = (
     id: row.id,
     native: row.native,
     manifest: resolveManifest(row),
+    proxyConfigured: row.proxyUrl !== null,
     grantedPermissions: parsePermissions(JSON.parse(row.grantedPermissions)),
     enabled: row.enabled,
     pinned: row.pinned,
@@ -48,6 +50,18 @@ const toConnection = (
 
 // Never return credential hashes through management APIs.
 const credentialSummary = { select: { id: true, createdAt: true, lastUsedAt: true } } as const;
+
+const parseConnectionProxyUrl = (manifest: ReturnType<typeof parseManifest>, value: unknown) => {
+    if (manifest.launch?.mode === 'proxied') return parseIntegrationProxyUrl(value);
+    if (value !== undefined) {
+        throw createAppError(
+            400,
+            'UNEXPECTED_INTEGRATION_PROXY_URL',
+            'A private app URL can only be configured for proxied launches.',
+        );
+    }
+    return null;
+};
 
 export const createIntegrationService = (db: PrismaClient = models) => {
     const get = async (id: string) => {
@@ -84,7 +98,7 @@ export const createIntegrationService = (db: PrismaClient = models) => {
             });
             return rows.map(toConnection);
         },
-        async connect(input: { manifest: unknown; grantedPermissions?: unknown }) {
+        async connect(input: { manifest: unknown; grantedPermissions?: unknown; proxyUrl?: unknown }) {
             const manifest = parseManifest(input.manifest);
             if (manifest.id.startsWith('ocean-brain.'))
                 throw createAppError(
@@ -93,10 +107,12 @@ export const createIntegrationService = (db: PrismaClient = models) => {
                     'The ocean-brain namespace is reserved for native integrations.',
                 );
             const grantedPermissions = validateGrants(input.grantedPermissions ?? [], manifest);
+            const proxyUrl = parseConnectionProxyUrl(manifest, input.proxyUrl);
             const row = await db.integrationConnection.create({
                 data: {
                     integrationId: manifest.id,
                     manifest: JSON.stringify(manifest),
+                    proxyUrl,
                     grantedPermissions: JSON.stringify(grantedPermissions),
                 },
                 include: { credential: credentialSummary },
@@ -105,7 +121,13 @@ export const createIntegrationService = (db: PrismaClient = models) => {
         },
         async update(
             id: string,
-            input: { manifest?: unknown; grantedPermissions?: unknown; enabled?: unknown; pinned?: unknown },
+            input: {
+                manifest?: unknown;
+                proxyUrl?: unknown;
+                grantedPermissions?: unknown;
+                enabled?: unknown;
+                pinned?: unknown;
+            },
         ) {
             return db.$transaction(async (tx) => {
                 const current = await tx.integrationConnection.findUnique({ where: { id } });
@@ -117,22 +139,45 @@ export const createIntegrationService = (db: PrismaClient = models) => {
                         'NATIVE_INTEGRATION_MANIFEST',
                         'Native integration manifests are managed by Ocean Brain.',
                     );
-                const manifest =
-                    input.manifest === undefined ? resolveManifest(current) : parseManifest(input.manifest);
+                for (const key of ['enabled', 'pinned'] as const) {
+                    if (input[key] !== undefined && typeof input[key] !== 'boolean')
+                        throw createAppError(400, 'INVALID_INTEGRATION_SETTING', `${key} must be a boolean.`);
+                }
+                const currentManifest = resolveManifest(current);
+                const manifest = input.manifest === undefined ? currentManifest : parseManifest(input.manifest);
                 if (manifest.id !== current.integrationId)
                     throw createAppError(400, 'INTEGRATION_ID_CHANGED', 'An upgrade cannot change the integration id.');
                 const previousGrants = parsePermissions(JSON.parse(current.grantedPermissions)).filter((permission) =>
                     manifest.permissions.includes(permission),
                 );
                 const grantedPermissions = validateGrants(input.grantedPermissions ?? previousGrants, manifest);
-                for (const key of ['enabled', 'pinned'] as const) {
-                    if (input[key] !== undefined && typeof input[key] !== 'boolean')
-                        throw createAppError(400, 'INVALID_INTEGRATION_SETTING', `${key} must be a boolean.`);
+                let proxyUrl = current.proxyUrl;
+                if (manifest.launch?.mode === 'proxied') {
+                    if (input.proxyUrl !== undefined) proxyUrl = parseIntegrationProxyUrl(input.proxyUrl);
+                    const enteringProxiedMode =
+                        input.manifest !== undefined && currentManifest.launch?.mode !== 'proxied';
+                    if ((enteringProxiedMode || input.enabled === true) && !proxyUrl) {
+                        throw createAppError(
+                            400,
+                            'INTEGRATION_PROXY_URL_REQUIRED',
+                            'Configure a private app URL before enabling a proxied integration.',
+                        );
+                    }
+                } else {
+                    if (input.proxyUrl !== undefined) {
+                        throw createAppError(
+                            400,
+                            'UNEXPECTED_INTEGRATION_PROXY_URL',
+                            'A private app URL can only be configured for proxied launches.',
+                        );
+                    }
+                    proxyUrl = null;
                 }
                 const row = await tx.integrationConnection.update({
                     where: { id },
                     data: {
                         manifest: JSON.stringify(manifest),
+                        proxyUrl,
                         grantedPermissions: JSON.stringify(grantedPermissions),
                         ...(typeof input.enabled === 'boolean' ? { enabled: input.enabled } : {}),
                         ...(typeof input.pinned === 'boolean' ? { pinned: input.pinned } : {}),

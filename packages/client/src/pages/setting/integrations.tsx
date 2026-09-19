@@ -23,6 +23,8 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTrigger,
+    Input,
+    Label,
     Text,
     Textarea,
 } from '~/components/ui';
@@ -31,7 +33,9 @@ import { SETTINGS_INTEGRATIONS_ROUTE } from '~/modules/url';
 
 const Route = getRouteApi(SETTINGS_INTEGRATIONS_ROUTE);
 
-const previewManifest = (text: string): { name: string; permissions: IntegrationPermission[] } | null => {
+const previewManifest = (
+    text: string,
+): { name: string; permissions: IntegrationPermission[]; proxied: boolean } | null => {
     try {
         const value: unknown = JSON.parse(text);
         if (
@@ -47,7 +51,13 @@ const previewManifest = (text: string): { name: string; permissions: Integration
             INTEGRATION_PERMISSIONS.some((supported) => permission === supported),
         );
         if (permissions.length !== value.permissions.length) return null;
-        return { name: value.name, permissions: [...new Set(permissions)] };
+        const launch =
+            'launch' in value && typeof value.launch === 'object' && value.launch !== null ? value.launch : null;
+        return {
+            name: value.name,
+            permissions: [...new Set(permissions)],
+            proxied: Boolean(launch && 'mode' in launch && launch.mode === 'proxied'),
+        };
     } catch {
         return null;
     }
@@ -62,13 +72,21 @@ export default function IntegrationsSettings() {
     const [isAdding, setIsAdding] = useState(false);
     const [fileName, setFileName] = useState('');
     const [manifestText, setManifestText] = useState('');
+    const [proxyUrl, setProxyUrl] = useState('');
     const [grantedPermissions, setGrants] = useState<IntegrationPermission[]>([]);
     const [fileError, setFileError] = useState('');
+    const preview = previewManifest(manifestText);
     const integrations = useQuery({ queryKey: queryKeys.integrations.list(), queryFn: fetchIntegrations });
     const connect = useMutation({
-        mutationFn: () => connectIntegration({ manifest: JSON.parse(manifestText), grantedPermissions }),
+        mutationFn: () =>
+            connectIntegration({
+                manifest: JSON.parse(manifestText),
+                grantedPermissions,
+                ...(preview?.proxied ? { proxyUrl: proxyUrl.trim() } : {}),
+            }),
         onSuccess: async (integration) => {
             setManifestText('');
+            setProxyUrl('');
             setGrants([]);
             setFileName('');
             setIsAdding(false);
@@ -76,7 +94,6 @@ export default function IntegrationsSettings() {
             await queryClient.invalidateQueries({ queryKey: queryKeys.integrations.all(), exact: false });
         },
     });
-    const preview = previewManifest(manifestText);
     const groups = [
         {
             title: 'Built-in integrations',
@@ -167,6 +184,7 @@ export default function IntegrationsSettings() {
                                     const file = event.target.files?.[0];
                                     if (!file) return;
                                     setManifestText('');
+                                    setProxyUrl('');
                                     setGrants([]);
                                     setFileName(file.name);
                                     connect.reset();
@@ -200,6 +218,7 @@ export default function IntegrationsSettings() {
                             disabled={connect.isPending}
                             onChange={(event) => {
                                 setManifestText(event.target.value);
+                                setProxyUrl('');
                                 setGrants([]);
                                 setFileName('');
                                 setFileError('');
@@ -218,6 +237,23 @@ export default function IntegrationsSettings() {
                                 onChange={setGrants}
                                 disabled={connect.isPending}
                             />
+                            {preview.proxied && (
+                                <div className="flex flex-col gap-2">
+                                    <Label htmlFor="new-integration-proxy-url">Private app URL</Label>
+                                    <Input
+                                        id="new-integration-proxy-url"
+                                        type="url"
+                                        value={proxyUrl}
+                                        placeholder="http://127.0.0.1:7778"
+                                        disabled={connect.isPending}
+                                        onChange={(event) => setProxyUrl(event.target.value)}
+                                    />
+                                    <Text as="p" variant="meta" tone="secondary">
+                                        Ocean Brain stores this address on the server and proxies the app through its
+                                        own /apps path.
+                                    </Text>
+                                </div>
+                            )}
                             <Text as="p" variant="meta" tone="secondary">
                                 Starts disabled. Generate a token and configure it in the external app before enabling
                                 access.
@@ -244,7 +280,11 @@ export default function IntegrationsSettings() {
                     <Button variant="ghost" disabled={connect.isPending} onClick={closeDialog}>
                         Cancel
                     </Button>
-                    <Button disabled={!preview} isLoading={connect.isPending} onClick={() => connect.mutate()}>
+                    <Button
+                        disabled={!preview || (preview.proxied && !proxyUrl.trim())}
+                        isLoading={connect.isPending}
+                        onClick={() => connect.mutate()}
+                    >
                         Connect app
                     </Button>
                 </DialogFooter>

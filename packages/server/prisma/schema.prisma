@@ -30,6 +30,7 @@ model IntegrationConnection {
   integrationId      String
   native             Boolean                @default(false)
   manifest           String
+  proxyUrl           String?
   grantedPermissions String                 @default("[]")
   enabled            Boolean                @default(false)
   pinned             Boolean                @default(false)

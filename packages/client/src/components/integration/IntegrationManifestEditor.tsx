@@ -3,9 +3,9 @@ import type { IntegrationManifest } from '~/apis/integration.api';
 import * as Icon from '~/components/icon';
 import { Button, Input, Label, Select, SelectItem, Text, Textarea } from '~/components/ui';
 
-type LaunchMode = 'none' | 'managed' | 'iframe' | 'external';
+type LaunchMode = 'none' | 'proxied' | 'iframe' | 'external';
 
-const launchModes = new Set<LaunchMode>(['managed', 'iframe', 'external']);
+const launchModes = new Set<LaunchMode>(['proxied', 'iframe', 'external']);
 
 const formatManifest = (manifest: unknown) => JSON.stringify(manifest, null, 2);
 
@@ -38,7 +38,7 @@ const getText = (manifest: Record<string, unknown> | null, field: string) => {
 };
 
 const modeDescription: Record<LaunchMode, string> = {
-    managed: 'Ocean Brain serves the app through its configured runner at the connection’s /apps path.',
+    proxied: 'Ocean Brain requests the private app URL and serves it from the connection’s /apps path.',
     iframe: 'Ocean Brain embeds this URL. The user’s browser must be able to reach it.',
     external: 'Ocean Brain opens this URL outside the app.',
     none: 'This integration provides API access without an app page.',
@@ -47,42 +47,51 @@ const modeDescription: Record<LaunchMode, string> = {
 export default function IntegrationManifestEditor({
     connectionId,
     manifest,
+    proxyConfigured,
     disabled,
     onSave,
 }: {
     connectionId: string;
     manifest: IntegrationManifest;
+    proxyConfigured: boolean;
     disabled?: boolean;
-    onSave: (manifest: unknown) => void;
+    onSave: (input: { manifest: unknown; proxyUrl?: string }) => void;
 }) {
     const fieldId = useId();
     const savedText = formatManifest(manifest);
     const [draftText, setDraftText] = useState(savedText);
+    const [proxyUrl, setProxyUrl] = useState('');
 
-    useEffect(() => setDraftText(savedText), [savedText]);
+    useEffect(() => {
+        setDraftText(savedText);
+        setProxyUrl('');
+    }, [savedText]);
 
     const draft = parseManifestObject(draftText);
     const launch = getLaunch(draft);
     const launchMode = getLaunchMode(draft);
     const launchUrl = typeof launch?.url === 'string' ? launch.url : '';
-    const changed = Boolean(draft && JSON.stringify(draft) !== JSON.stringify(manifest));
-    const dirty = draftText !== savedText;
+    const changed = Boolean(draft && (JSON.stringify(draft) !== JSON.stringify(manifest) || proxyUrl.trim()));
+    const dirty = draftText !== savedText || Boolean(proxyUrl);
     const launchUrlMissing = (launchMode === 'iframe' || launchMode === 'external') && !launchUrl.trim();
+    const proxyUrlMissing = launchMode === 'proxied' && !proxyConfigured && !proxyUrl.trim();
 
     const updateDraft = (update: (current: Record<string, unknown>) => Record<string, unknown>) => {
         if (!draft) return;
         setDraftText(formatManifest(update(draft)));
     };
     const updateText = (field: string, value: string) => updateDraft((current) => ({ ...current, [field]: value }));
-    const updateLaunchMode = (mode: LaunchMode) =>
+    const updateLaunchMode = (mode: LaunchMode) => {
+        if (mode !== 'proxied') setProxyUrl('');
         updateDraft((current) => {
             if (mode === 'none') {
                 const { launch: _launch, ...withoutLaunch } = current;
                 return withoutLaunch;
             }
-            if (mode === 'managed') return { ...current, launch: { mode } };
+            if (mode === 'proxied') return { ...current, launch: { mode } };
             return { ...current, launch: { mode, url: launchUrl } };
         });
+    };
 
     return (
         <div className="mt-3 flex flex-col gap-4">
@@ -126,7 +135,7 @@ export default function IntegrationManifestEditor({
                         disabled={disabled || !draft}
                         onValueChange={(value) => updateLaunchMode(value as LaunchMode)}
                     >
-                        <SelectItem value="managed">Managed proxy</SelectItem>
+                        <SelectItem value="proxied">Proxied through Ocean Brain</SelectItem>
                         <SelectItem value="iframe">Embedded iframe</SelectItem>
                         <SelectItem value="external">External link</SelectItem>
                         <SelectItem value="none">No app page</SelectItem>
@@ -150,10 +159,28 @@ export default function IntegrationManifestEditor({
                         />
                     </div>
                 )}
+                {launchMode === 'proxied' && (
+                    <div className="flex flex-col gap-2 sm:col-span-2">
+                        <Label htmlFor={`${fieldId}-proxy-url`}>Private app URL</Label>
+                        <Input
+                            id={`${fieldId}-proxy-url`}
+                            type="url"
+                            value={proxyUrl}
+                            placeholder={
+                                proxyConfigured ? 'Configured — enter a URL to replace it' : 'http://127.0.0.1:7778'
+                            }
+                            disabled={disabled || !draft}
+                            onChange={(event) => setProxyUrl(event.target.value)}
+                        />
+                        <Text as="p" variant="meta" tone="secondary">
+                            Stored only on the Ocean Brain server and never included in the manifest or API response.
+                        </Text>
+                    </div>
+                )}
             </div>
             <Text as="p" variant="meta" tone="secondary">
-                {launchMode === 'managed'
-                    ? `${modeDescription.managed} Current path: /apps/${connectionId}/`
+                {launchMode === 'proxied'
+                    ? `${modeDescription.proxied} Public path: /apps/${connectionId}/`
                     : modeDescription[launchMode]}
             </Text>
             <details className="group rounded-[14px] border border-border-subtle px-3 py-2">
@@ -178,21 +205,37 @@ export default function IntegrationManifestEditor({
                     The app ID cannot change. New requested permissions stay unapproved until you enable them above.
                 </Text>
             </details>
-            {launchUrlMissing && (
+            {(launchUrlMissing || proxyUrlMissing) && (
                 <Text as="p" role="alert" variant="meta" tone="error">
-                    Enter an app URL for this launch mode.
+                    {proxyUrlMissing
+                        ? 'Enter the private app URL for this connection.'
+                        : 'Enter an app URL for this launch mode.'}
                 </Text>
             )}
             <div className="flex flex-wrap gap-2">
                 <Button
                     variant="subtle"
                     size="sm"
-                    disabled={disabled || !draft || !changed || launchUrlMissing}
-                    onClick={() => draft && onSave(draft)}
+                    disabled={disabled || !draft || !changed || launchUrlMissing || proxyUrlMissing}
+                    onClick={() =>
+                        draft &&
+                        onSave({
+                            manifest: draft,
+                            ...(launchMode === 'proxied' && proxyUrl.trim() ? { proxyUrl: proxyUrl.trim() } : {}),
+                        })
+                    }
                 >
                     Update manifest
                 </Button>
-                <Button variant="ghost" size="sm" disabled={disabled || !dirty} onClick={() => setDraftText(savedText)}>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={disabled || !dirty}
+                    onClick={() => {
+                        setDraftText(savedText);
+                        setProxyUrl('');
+                    }}
+                >
                     Reset
                 </Button>
             </div>

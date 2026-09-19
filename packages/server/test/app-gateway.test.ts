@@ -10,14 +10,14 @@ import {
     APP_GATEWAY_ACCESS_PROTOCOL_PREFIX,
     APP_GATEWAY_PROTOCOL,
 } from '../src/features/app-gateway/access.js';
-import type { AppGatewayInstallation, AppGatewayOptions } from '../src/features/app-gateway/gateway.js';
+import type { AppGatewayConnection, AppGatewayOptions } from '../src/features/app-gateway/gateway.js';
 import { AUTH_SESSION_COOKIE_NAME, type AuthConfig } from '../src/modules/auth-mode.js';
 
-const RUNNER_TOKEN = 'runner-token-that-is-longer-than-thirty-two-characters';
-const INSTALLATION: AppGatewayInstallation = {
+const CONNECTION: AppGatewayConnection = {
     id: 'search-1',
-    appId: 'ocean-brain.elasticsearch',
+    integrationId: 'ocean-brain.elasticsearch',
     enabled: true,
+    proxyUrl: null,
 };
 const openAuth = { mode: 'open', cookieName: AUTH_SESSION_COOKIE_NAME, source: 'explicit-open' } as const;
 const passwordAuth: AuthConfig = {
@@ -55,13 +55,11 @@ const readBody = (request: IncomingMessage) =>
     });
 
 const createGatewayOptions = (
-    runnerOrigin: string,
-    resolveInstallation: AppGatewayOptions['resolveInstallation'] = async (id) =>
-        id === INSTALLATION.id ? INSTALLATION : null,
+    proxyUrl: string,
+    resolveConnection: AppGatewayOptions['resolveConnection'] = async (id) =>
+        id === CONNECTION.id ? { ...CONNECTION, proxyUrl } : null,
 ): AppGatewayOptions => ({
-    runnerOrigin,
-    runnerToken: RUNNER_TOKEN,
-    resolveInstallation,
+    resolveConnection,
 });
 
 const startOceanBrain = async (t: TestContext, authConfig: AuthConfig, appGateway?: AppGatewayOptions) => {
@@ -132,7 +130,7 @@ const issueGatewayAccess = async (baseUrl: string, cookies?: string, origin?: st
         ?.split('; ')
         .find((cookie) => cookie.startsWith('XSRF-TOKEN='))
         ?.slice('XSRF-TOKEN='.length);
-    const response = await fetch(`${baseUrl}/api/app-gateway/installations/search-1/access`, {
+    const response = await fetch(`${baseUrl}/api/app-gateway/connections/search-1/access`, {
         method: 'POST',
         headers: {
             ...(cookies ? { Cookie: cookies } : {}),
@@ -142,8 +140,8 @@ const issueGatewayAccess = async (baseUrl: string, cookies?: string, origin?: st
     });
     assert.equal(response.status, 200);
     assert.equal(response.headers.get('cache-control'), 'no-store');
-    const payload = (await response.json()) as { installationId: string; token: string; expiresAt: string };
-    assert.equal(payload.installationId, INSTALLATION.id);
+    const payload = (await response.json()) as { connectionId: string; token: string; expiresAt: string };
+    assert.equal(payload.connectionId, CONNECTION.id);
     assert.ok(Date.parse(payload.expiresAt) > Date.now());
     const accessCookie = getSetCookies(response.headers).find((cookie) =>
         cookie.startsWith(`${APP_GATEWAY_ACCESS_COOKIE_NAME}=`),
@@ -174,9 +172,9 @@ const requestRawPath = (baseUrl: string, path: string) =>
         request.end();
     });
 
-test('managed app HTTP requests use the fixed runner path without leaking browser credentials', async (t) => {
+test('proxied app HTTP requests use the direct target path without leaking browser credentials', async (t) => {
     let received: { url?: string; method?: string; headers?: IncomingMessage['headers']; body?: string } = {};
-    const runner = createServer(async (request, response) => {
+    const target = createServer(async (request, response) => {
         received = {
             url: request.url,
             method: request.method,
@@ -184,12 +182,12 @@ test('managed app HTTP requests use the fixed runner path without leaking browse
             body: await readBody(request),
         };
         response.setHeader('Content-Type', 'application/json');
-        response.setHeader('Set-Cookie', 'runner-session=must-not-reach-browser; Path=/');
+        response.setHeader('Set-Cookie', 'target-session=must-not-reach-browser; Path=/');
         response.end(JSON.stringify({ proxied: true }));
     });
-    const runnerOrigin = await listen(runner);
-    t.after(() => closeServer(runner));
-    const baseUrl = await startOceanBrain(t, openAuth, createGatewayOptions(runnerOrigin));
+    const targetOrigin = await listen(target);
+    t.after(() => closeServer(target));
+    const baseUrl = await startOceanBrain(t, openAuth, createGatewayOptions(targetOrigin));
     const publicUrl = new URL(baseUrl);
     publicUrl.protocol = 'https:';
     const access = await issueGatewayAccess(baseUrl, undefined, publicUrl.origin);
@@ -202,42 +200,46 @@ test('managed app HTTP requests use the fixed runner path without leaking browse
             Origin: 'null',
             'Content-Type': 'text/plain',
             [APP_GATEWAY_ACCESS_HEADER]: access.token,
-            'X-Ocean-Brain-App-Id': 'spoofed-app',
+            'X-Ocean-Brain-Integration-Id': 'spoofed-integration',
             'X-Forwarded-Client-Cert': 'spoofed-certificate',
             'X-XSRF-TOKEN': 'browser-csrf-secret',
         },
-        body: 'hello runner',
+        body: 'hello target',
     });
 
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), { proxied: true });
-    assert.equal(received.url, '/v1/apps/search-1/api/items?limit=2');
+    assert.equal(received.url, '/api/items?limit=2');
     assert.equal(received.method, 'POST');
-    assert.equal(received.body, 'hello runner');
-    assert.equal(received.headers?.authorization, `Bearer ${RUNNER_TOKEN}`);
+    assert.equal(received.body, 'hello target');
+    assert.equal(received.headers?.authorization, undefined);
     assert.equal(received.headers?.cookie, undefined);
     assert.equal(received.headers?.['x-forwarded-client-cert'], undefined);
     assert.equal(received.headers?.[APP_GATEWAY_ACCESS_HEADER], undefined);
     assert.equal(received.headers?.['x-xsrf-token'], undefined);
-    assert.equal(received.headers?.['x-ocean-brain-app-id'], INSTALLATION.appId);
-    assert.equal(received.headers?.['x-ocean-brain-installation-id'], INSTALLATION.id);
+    assert.equal(received.headers?.['x-ocean-brain-integration-id'], CONNECTION.integrationId);
+    assert.equal(received.headers?.['x-ocean-brain-connection-id'], CONNECTION.id);
     assert.equal(received.headers?.['x-forwarded-prefix'], '/apps/search-1');
     assert.equal(received.headers?.['x-forwarded-proto'], 'https');
     assert.equal(response.headers.get('set-cookie'), null);
     assert.equal(response.headers.get('access-control-allow-origin'), 'null');
     assert.match(response.headers.get('content-security-policy') ?? '', /sandbox/);
+    assert.equal(
+        response.headers.get('permissions-policy'),
+        'camera=(), geolocation=(), microphone=(), payment=(), usb=()',
+    );
 });
 
-test('managed app HTTP requests preserve form-encoded request bodies', async (t) => {
+test('proxied app HTTP requests preserve form-encoded request bodies', async (t) => {
     let receivedBody = '';
-    const runner = createServer(async (request, response) => {
+    const target = createServer(async (request, response) => {
         receivedBody = await readBody(request);
         response.statusCode = 204;
         response.end();
     });
-    const runnerOrigin = await listen(runner);
-    t.after(() => closeServer(runner));
-    const baseUrl = await startOceanBrain(t, openAuth, createGatewayOptions(runnerOrigin));
+    const targetOrigin = await listen(target);
+    t.after(() => closeServer(target));
+    const baseUrl = await startOceanBrain(t, openAuth, createGatewayOptions(targetOrigin));
     const access = await issueGatewayAccess(baseUrl);
     const body = 'title=Ocean+Brain&tags=proxy%2Cinbox';
 
@@ -256,10 +258,10 @@ test('managed app HTTP requests preserve form-encoded request bodies', async (t)
     assert.equal(receivedBody, body);
 });
 
-test('managed app access rejects a foreign browser origin', async (t) => {
+test('proxied app access rejects a foreign browser origin', async (t) => {
     const baseUrl = await startOceanBrain(t, openAuth, createGatewayOptions('http://127.0.0.1:1'));
 
-    const response = await fetch(`${baseUrl}/api/app-gateway/installations/search-1/access`, {
+    const response = await fetch(`${baseUrl}/api/app-gateway/connections/search-1/access`, {
         method: 'POST',
         headers: { Origin: 'https://untrusted.example' },
     });
@@ -269,13 +271,13 @@ test('managed app access rejects a foreign browser origin', async (t) => {
 });
 
 test('sandboxed app API responses require the in-memory access token for CORS', async (t) => {
-    const runner = createServer((_request, response) => {
+    const target = createServer((_request, response) => {
         response.setHeader('Content-Type', 'application/json');
         response.end(JSON.stringify({ private: true }));
     });
-    const runnerOrigin = await listen(runner);
-    t.after(() => closeServer(runner));
-    const baseUrl = await startOceanBrain(t, openAuth, createGatewayOptions(runnerOrigin));
+    const targetOrigin = await listen(target);
+    t.after(() => closeServer(target));
+    const baseUrl = await startOceanBrain(t, openAuth, createGatewayOptions(targetOrigin));
     const access = await issueGatewayAccess(baseUrl);
 
     const response = await fetch(`${baseUrl}/apps/search-1/api/private`, {
@@ -286,15 +288,15 @@ test('sandboxed app API responses require the in-memory access token for CORS', 
     assert.equal(response.headers.get('access-control-allow-origin'), null);
 });
 
-test('sandboxed app writes require the in-memory access token before reaching the runner', async (t) => {
-    let runnerRequests = 0;
-    const runner = createServer((_request, response) => {
-        runnerRequests += 1;
+test('sandboxed app writes require the in-memory access token before reaching the target', async (t) => {
+    let targetRequests = 0;
+    const target = createServer((_request, response) => {
+        targetRequests += 1;
         response.end('unexpected');
     });
-    const runnerOrigin = await listen(runner);
-    t.after(() => closeServer(runner));
-    const baseUrl = await startOceanBrain(t, openAuth, createGatewayOptions(runnerOrigin));
+    const targetOrigin = await listen(target);
+    t.after(() => closeServer(target));
+    const baseUrl = await startOceanBrain(t, openAuth, createGatewayOptions(targetOrigin));
     const access = await issueGatewayAccess(baseUrl);
 
     const response = await fetch(`${baseUrl}/apps/search-1/api/private`, {
@@ -303,19 +305,19 @@ test('sandboxed app writes require the in-memory access token before reaching th
     });
 
     assert.equal(response.status, 403);
-    assert.equal(runnerRequests, 0);
+    assert.equal(targetRequests, 0);
 });
 
 test('sandboxed app assets receive CORS without exposing the access token', async (t) => {
     let accessHeader: string | undefined;
-    const runner = createServer((request, response) => {
+    const target = createServer((request, response) => {
         accessHeader = request.headers[APP_GATEWAY_ACCESS_HEADER] as string | undefined;
         response.setHeader('Content-Type', 'text/javascript');
         response.end('export default true;');
     });
-    const runnerOrigin = await listen(runner);
-    t.after(() => closeServer(runner));
-    const baseUrl = await startOceanBrain(t, openAuth, createGatewayOptions(runnerOrigin));
+    const targetOrigin = await listen(target);
+    t.after(() => closeServer(target));
+    const baseUrl = await startOceanBrain(t, openAuth, createGatewayOptions(targetOrigin));
     const access = await issueGatewayAccess(baseUrl);
 
     const response = await fetch(`${baseUrl}/apps/search-1/assets/app.js`, {
@@ -331,16 +333,16 @@ test('sandboxed app assets receive CORS without exposing the access token', asyn
     assert.equal(accessHeader, undefined);
 });
 
-test('managed app gateway rewrites runner redirects to the public app subpath', async (t) => {
-    let runnerOrigin = '';
-    const runner = createServer((_request, response) => {
+test('proxied app gateway rewrites target redirects to the public app subpath', async (t) => {
+    let targetOrigin = '';
+    const target = createServer((_request, response) => {
         response.statusCode = 302;
-        response.setHeader('Location', `${runnerOrigin}/v1/apps/search-1/results?q=ocean`);
+        response.setHeader('Location', `${targetOrigin}/results?q=ocean`);
         response.end();
     });
-    runnerOrigin = await listen(runner);
-    t.after(() => closeServer(runner));
-    const baseUrl = await startOceanBrain(t, openAuth, createGatewayOptions(runnerOrigin));
+    targetOrigin = await listen(target);
+    t.after(() => closeServer(target));
+    const baseUrl = await startOceanBrain(t, openAuth, createGatewayOptions(targetOrigin));
     const access = await issueGatewayAccess(baseUrl);
 
     const response = await fetch(`${baseUrl}/apps/search-1/search`, {
@@ -352,15 +354,15 @@ test('managed app gateway rewrites runner redirects to the public app subpath', 
     assert.equal(response.headers.get('location'), '/apps/search-1/results?q=ocean');
 });
 
-test('managed app gateway canonicalizes an installation root before relative app requests resolve', async (t) => {
-    let runnerRequests = 0;
-    const runner = createServer((_request, response) => {
-        runnerRequests += 1;
+test('proxied app gateway canonicalizes a connection root before relative app requests resolve', async (t) => {
+    let targetRequests = 0;
+    const target = createServer((_request, response) => {
+        targetRequests += 1;
         response.end('unexpected');
     });
-    const runnerOrigin = await listen(runner);
-    t.after(() => closeServer(runner));
-    const baseUrl = await startOceanBrain(t, openAuth, createGatewayOptions(runnerOrigin));
+    const targetOrigin = await listen(target);
+    t.after(() => closeServer(target));
+    const baseUrl = await startOceanBrain(t, openAuth, createGatewayOptions(targetOrigin));
     const access = await issueGatewayAccess(baseUrl);
 
     const response = await fetch(`${baseUrl}/apps/search-1?source=navigation`, {
@@ -370,96 +372,103 @@ test('managed app gateway canonicalizes an installation root before relative app
 
     assert.equal(response.status, 308);
     assert.equal(response.headers.get('location'), '/apps/search-1/?source=navigation');
-    assert.equal(runnerRequests, 0);
+    assert.equal(targetRequests, 0);
 });
 
-test('managed app gateway blocks anonymous access before contacting the runner', async (t) => {
-    let runnerRequests = 0;
-    const runner = createServer((_request, response) => {
-        runnerRequests += 1;
+test('proxied app gateway blocks anonymous access before contacting the target', async (t) => {
+    let targetRequests = 0;
+    const target = createServer((_request, response) => {
+        targetRequests += 1;
         response.end('unexpected');
     });
-    const runnerOrigin = await listen(runner);
-    t.after(() => closeServer(runner));
-    const baseUrl = await startOceanBrain(t, passwordAuth, createGatewayOptions(runnerOrigin));
+    const targetOrigin = await listen(target);
+    t.after(() => closeServer(target));
+    const baseUrl = await startOceanBrain(t, passwordAuth, createGatewayOptions(targetOrigin));
 
     const response = await fetch(`${baseUrl}/apps/search-1/`);
 
     assert.equal(response.status, 401);
     assert.equal((await response.json()).code, 'UNAUTHORIZED');
-    assert.equal(runnerRequests, 0);
+    assert.equal(targetRequests, 0);
 });
 
-test('managed app gateway blocks disabled installations before contacting the runner', async (t) => {
-    let runnerRequests = 0;
-    const runner = createServer((_request, response) => {
-        runnerRequests += 1;
+test('proxied app gateway blocks disabled connections before contacting the target', async (t) => {
+    let targetRequests = 0;
+    const target = createServer((_request, response) => {
+        targetRequests += 1;
         response.end('unexpected');
     });
-    const runnerOrigin = await listen(runner);
-    t.after(() => closeServer(runner));
-    let installation = INSTALLATION;
+    const targetOrigin = await listen(target);
+    t.after(() => closeServer(target));
+    let connection: AppGatewayConnection = { ...CONNECTION, proxyUrl: targetOrigin };
     const baseUrl = await startOceanBrain(
         t,
         openAuth,
-        createGatewayOptions(runnerOrigin, async () => installation),
+        createGatewayOptions(targetOrigin, async () => connection),
     );
     const access = await issueGatewayAccess(baseUrl);
-    installation = { ...INSTALLATION, enabled: false };
+    connection = { ...connection, enabled: false };
 
     const response = await fetch(`${baseUrl}/apps/search-1/`, { headers: { Cookie: access.cookie } });
 
     assert.equal(response.status, 503);
-    assert.equal((await response.json()).code, 'APP_INSTALLATION_DISABLED');
-    assert.equal(runnerRequests, 0);
+    assert.equal((await response.json()).code, 'APP_CONNECTION_DISABLED');
+    assert.equal(targetRequests, 0);
 });
 
-test('unconfigured app gateway owns the app path instead of falling through to the client', async (t) => {
-    const baseUrl = await startOceanBrain(t, openAuth);
+test('proxied app gateway blocks requests when the private URL is removed after an access grant', async (t) => {
+    let connection: AppGatewayConnection = { ...CONNECTION, proxyUrl: 'http://127.0.0.1:1' };
+    const baseUrl = await startOceanBrain(
+        t,
+        openAuth,
+        createGatewayOptions(connection.proxyUrl, async () => connection),
+    );
+    const access = await issueGatewayAccess(baseUrl);
+    connection = { ...connection, proxyUrl: null };
 
-    const response = await fetch(`${baseUrl}/apps/search-1/`);
+    const response = await fetch(`${baseUrl}/apps/search-1/`, { headers: { Cookie: access.cookie } });
 
     assert.equal(response.status, 503);
-    assert.equal((await response.json()).code, 'APP_RUNNER_UNAVAILABLE');
+    assert.equal((await response.json()).code, 'APP_PROXY_NOT_CONFIGURED');
 });
 
-test('managed app gateway rejects path traversal before it reaches the runner', async (t) => {
-    let runnerRequests = 0;
-    const runner = createServer((_request, response) => {
-        runnerRequests += 1;
+test('proxied app gateway rejects path traversal before it reaches the target', async (t) => {
+    let targetRequests = 0;
+    const target = createServer((_request, response) => {
+        targetRequests += 1;
         response.end('unexpected');
     });
-    const runnerOrigin = await listen(runner);
-    t.after(() => closeServer(runner));
-    const baseUrl = await startOceanBrain(t, openAuth, createGatewayOptions(runnerOrigin));
+    const targetOrigin = await listen(target);
+    t.after(() => closeServer(target));
+    const baseUrl = await startOceanBrain(t, openAuth, createGatewayOptions(targetOrigin));
 
     const status = await requestRawPath(baseUrl, '/apps/search-1/dir\\..\\..\\admin');
 
     assert.equal(status, 400);
-    assert.equal(runnerRequests, 0);
+    assert.equal(targetRequests, 0);
 });
 
-test('managed app WebSockets use the same runner path and credential boundary', async (t) => {
+test('proxied app WebSockets use the same target path and credential boundary', async (t) => {
     let upgradeUrl: string | undefined;
     let upgradeHeaders: IncomingMessage['headers'] | undefined;
-    const runner = createServer();
-    const runnerSockets = new WebSocketServer({ noServer: true });
-    runner.on('upgrade', (request, socket, head) => {
+    const target = createServer();
+    const targetSockets = new WebSocketServer({ noServer: true });
+    target.on('upgrade', (request, socket, head) => {
         upgradeUrl = request.url;
         upgradeHeaders = request.headers;
-        runnerSockets.handleUpgrade(request, socket, head, (webSocket) => {
-            runnerSockets.emit('connection', webSocket, request);
+        targetSockets.handleUpgrade(request, socket, head, (webSocket) => {
+            targetSockets.emit('connection', webSocket, request);
         });
     });
-    runnerSockets.on('connection', (socket) => {
+    targetSockets.on('connection', (socket) => {
         socket.on('message', (data) => socket.send(`echo:${data.toString()}`));
     });
-    const runnerOrigin = await listen(runner);
+    const targetOrigin = await listen(target);
     t.after(async () => {
-        runnerSockets.close();
-        await closeServer(runner);
+        targetSockets.close();
+        await closeServer(target);
     });
-    const baseUrl = await startOceanBrain(t, passwordAuth, createGatewayOptions(runnerOrigin));
+    const baseUrl = await startOceanBrain(t, passwordAuth, createGatewayOptions(targetOrigin));
     const sessionCookie = await login(baseUrl);
     const access = await issueGatewayAccess(baseUrl, sessionCookie);
     const socket = new WebSocket(
@@ -469,7 +478,7 @@ test('managed app WebSockets use the same runner path and credential boundary', 
             headers: {
                 Authorization: 'Bearer browser-secret',
                 Cookie: `${sessionCookie}; ${access.cookie}; unrelated=browser-secret`,
-                'X-Ocean-Brain-App-Id': 'spoofed-app',
+                'X-Ocean-Brain-Integration-Id': 'spoofed-integration',
             },
         },
     );
@@ -481,11 +490,11 @@ test('managed app WebSockets use the same runner path and credential boundary', 
     await waitForWebSocketClose(socket);
 
     assert.equal(message, 'echo:ping');
-    assert.equal(upgradeUrl, '/v1/apps/search-1/live');
-    assert.equal(upgradeHeaders?.authorization, `Bearer ${RUNNER_TOKEN}`);
+    assert.equal(upgradeUrl, '/live');
+    assert.equal(upgradeHeaders?.authorization, undefined);
     assert.equal(upgradeHeaders?.cookie, undefined);
     assert.equal(upgradeHeaders?.['sec-websocket-protocol'], APP_GATEWAY_PROTOCOL);
     assert.doesNotMatch(upgradeHeaders?.['sec-websocket-protocol'] ?? '', new RegExp(access.token));
-    assert.equal(upgradeHeaders?.['x-ocean-brain-app-id'], INSTALLATION.appId);
-    assert.equal(upgradeHeaders?.['x-ocean-brain-installation-id'], INSTALLATION.id);
+    assert.equal(upgradeHeaders?.['x-ocean-brain-integration-id'], CONNECTION.integrationId);
+    assert.equal(upgradeHeaders?.['x-ocean-brain-connection-id'], CONNECTION.id);
 });

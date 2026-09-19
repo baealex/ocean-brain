@@ -1,15 +1,15 @@
 import axios from 'axios';
 
-export interface ManagedAppAccessGrant {
-    installationId: string;
+export interface ProxiedAppAccessGrant {
+    connectionId: string;
     token: string;
     expiresAt: string;
 }
 
-export const issueManagedAppAccess = async (installationId: string, signal?: AbortSignal) =>
+export const issueProxiedAppAccess = async (connectionId: string, signal?: AbortSignal) =>
     (
-        await axios.post<ManagedAppAccessGrant>(
-            `/api/app-gateway/installations/${encodeURIComponent(installationId)}/access`,
+        await axios.post<ProxiedAppAccessGrant>(
+            `/api/app-gateway/connections/${encodeURIComponent(connectionId)}/access`,
             undefined,
             { signal },
         )

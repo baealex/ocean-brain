@@ -1,5 +1,5 @@
 import classNames from 'classnames';
-import { type ComponentPropsWithoutRef, useEffect, useRef } from 'react';
+import { type ComponentPropsWithoutRef, useEffect, useLayoutEffect, useRef } from 'react';
 import {
     DEFAULT_INTEGRATION_APP_LOCATION,
     INTEGRATION_APP_BRIDGE_VERSION,
@@ -51,7 +51,7 @@ export function IntegrationAppFrame({
     const latestLocationRef = useRef(location);
     latestLocationRef.current = location;
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         const receiveAppMessage = (event: MessageEvent) => {
             const contentWindow = iframeRef.current?.contentWindow ?? null;
             if (!isBridgeMessage(event, contentWindow) || !contentWindow) return;

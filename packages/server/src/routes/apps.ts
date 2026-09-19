@@ -12,35 +12,28 @@ import {
 } from '../features/app-gateway/access.js';
 import {
     APP_GATEWAY_PUBLIC_PREFIX,
-    APP_RUNNER_PROXY_PREFIX,
     type AppGatewayOptions,
     type AppGatewayRequest,
     createGatewayResponseHeaders,
-    createRunnerRequestHeaders,
-    createRunnerWebSocketHeaders,
+    createProxyRequestHeaders,
+    createProxyWebSocketHeaders,
+    getAppGatewayUpstream,
+    resolveAppGatewayConnection,
     resolveAppGatewayOptions,
-    resolveGatewayInstallation,
     validateAppGatewayRequestPath,
 } from '../features/app-gateway/gateway.js';
-import { createCsrfProtection, isAuthenticatedRequest, requireSessionForWrite } from '../modules/auth-guard.js';
+import { createCsrfProtection, requireSessionForWrite } from '../modules/auth-guard.js';
 import type { AuthConfig } from '../modules/auth-mode.js';
 import { createAppError } from '../modules/error-handler.js';
 import { createSessionAccessRateLimit } from '../modules/rate-limit.js';
 
-const PROXY_PREFIX = `${APP_GATEWAY_PUBLIC_PREFIX}/:installationId`;
-const RUNNER_PREFIX = `${APP_RUNNER_PROXY_PREFIX}/:installationId`;
+const PROXY_PREFIX = `${APP_GATEWAY_PUBLIC_PREFIX}/:connectionId`;
 const SUPPORTED_METHODS = 'DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT';
 const CORS_ASSET_DESTINATIONS = new Set(['audio', 'font', 'image', 'manifest', 'script', 'style', 'video', 'worker']);
 
-const getInstallationId = (request: FastifyRequest) => {
-    const params = request.params as { installationId?: unknown };
-    return typeof params.installationId === 'string' ? params.installationId : '';
-};
-
-const requireAppGatewaySession = (authConfig: AuthConfig, request: FastifyRequest) => {
-    if (authConfig.mode === 'open' || isAuthenticatedRequest(request)) return;
-    const unauthorized = buildUnauthorizedPayload();
-    throw createAppError(401, unauthorized.code, unauthorized.message);
+const getConnectionId = (request: FastifyRequest) => {
+    const params = request.params as { connectionId?: unknown };
+    return typeof params.connectionId === 'string' ? params.connectionId : '';
 };
 
 const isWebSocketUpgrade = (request: FastifyRequest) => request.headers.upgrade?.toLowerCase() === 'websocket';
@@ -95,15 +88,9 @@ const sendCorsPreflight = (request: FastifyRequest, reply: FastifyReply) => {
         .send();
 };
 
-const createUnavailableHandler = (authConfig: AuthConfig) => async (request: FastifyRequest) => {
-    requireAllowedOrigin(request);
-    requireAppGatewaySession(authConfig, request);
-    throw createAppError(503, 'APP_RUNNER_UNAVAILABLE', 'The managed app runner is not configured.');
-};
-
 export const createAppGatewayRouter = (
     authConfig: AuthConfig,
-    gatewayOptions?: AppGatewayOptions,
+    gatewayOptions: AppGatewayOptions,
 ): FastifyPluginAsync => {
     return async (app) => {
         const accessRouteOptions = {
@@ -113,73 +100,65 @@ export const createAppGatewayRouter = (
                 createCsrfProtection(authConfig),
             ],
         };
-        if (!gatewayOptions) {
-            const unavailable = createUnavailableHandler(authConfig);
-            app.post('/api/app-gateway/installations/:installationId/access', accessRouteOptions, unavailable);
-            app.all(PROXY_PREFIX, unavailable);
-            app.all(`${PROXY_PREFIX}/*`, unavailable);
-            return;
-        }
-
         const options = resolveAppGatewayOptions(gatewayOptions);
         const access = createAppGatewayAccessService();
         const wsClientOptions = {
             headers: {},
             rewriteRequestHeaders: (_headers: Record<string, string>, request: AppGatewayRequest) =>
-                createRunnerWebSocketHeaders(request, options),
+                createProxyWebSocketHeaders(request),
         };
-        app.post<{ Params: { installationId: string } }>(
-            '/api/app-gateway/installations/:installationId/access',
+        app.post<{ Params: { connectionId: string } }>(
+            '/api/app-gateway/connections/:connectionId/access',
             accessRouteOptions,
             async (request, reply) => {
                 requireAllowedOrigin(request);
-                const installation = await resolveGatewayInstallation(options, request.params.installationId);
-                const grant = access.issue(installation.id, getPublicProtocol(request));
+                const connection = await resolveAppGatewayConnection(options, request.params.connectionId);
+                const grant = access.issue(connection.id, getPublicProtocol(request));
                 return reply
                     .header('Cache-Control', 'no-store')
                     .setCookie(APP_GATEWAY_ACCESS_COOKIE_NAME, grant.token, {
                         httpOnly: true,
                         maxAge: APP_GATEWAY_ACCESS_TTL_MS / 1000,
-                        path: `${APP_GATEWAY_PUBLIC_PREFIX}/${installation.id}`,
+                        path: `${APP_GATEWAY_PUBLIC_PREFIX}/${connection.id}`,
                         // The sandbox has an opaque origin, so app subresources need an explicitly cross-site cookie.
                         sameSite: 'none',
                         secure: true,
                     })
                     .send({
-                        installationId: installation.id,
+                        connectionId: connection.id,
                         ...grant,
                     });
             },
         );
         // The application-wide form parser turns form bodies into objects before reply-from can forward them.
-        // Keep managed app payloads as streams so the runner receives the original bytes for every content type.
+        // Keep proxied app payloads as streams so the target receives the original bytes for every content type.
         app.removeContentTypeParser('application/x-www-form-urlencoded');
         app.decorateRequest('appGatewayCorsAllowed', false);
-        app.decorateRequest('appGatewayInstallation', null);
+        app.decorateRequest('appGatewayConnection', null);
         app.decorateRequest('appGatewayPublicProtocol', null);
         app.register(fastifyHttpProxy, {
-            upstream: options.runnerOrigin,
+            upstream: '',
             prefix: PROXY_PREFIX,
-            rewritePrefix: RUNNER_PREFIX,
+            rewritePrefix: '/',
             websocket: true,
             preHandler: async (request, reply) => {
                 validateAppGatewayRequestPath(request.url);
                 requireAllowedOrigin(request);
                 if (isCorsPreflight(request)) return sendCorsPreflight(request, reply);
-                const installationId = getInstallationId(request);
+                const connectionId = getConnectionId(request);
                 const headerToken = getHeaderValue(request.headers[APP_GATEWAY_ACCESS_HEADER]);
                 const accessToken = isWebSocketUpgrade(request)
                     ? extractAppGatewayAccessToken(request.headers['sec-websocket-protocol'])
                     : (headerToken ?? extractAppGatewayAccessCookie(request.headers.cookie));
-                const accessGrant = access.resolve(installationId, accessToken);
+                const accessGrant = access.resolve(connectionId, accessToken);
                 if (!accessGrant) {
                     const unauthorized = buildUnauthorizedPayload();
                     throw createAppError(401, unauthorized.code, unauthorized.message);
                 }
                 request.appGatewayPublicProtocol = accessGrant.publicProtocol;
-                request.appGatewayInstallation = await resolveGatewayInstallation(options, installationId);
+                request.appGatewayConnection = await resolveAppGatewayConnection(options, connectionId);
                 const requestUrl = new URL(request.url, 'http://ocean-brain.invalid');
-                const publicRoot = `${APP_GATEWAY_PUBLIC_PREFIX}/${installationId}`;
+                const publicRoot = `${APP_GATEWAY_PUBLIC_PREFIX}/${connectionId}`;
                 if (
                     !isWebSocketUpgrade(request) &&
                     ['GET', 'HEAD'].includes(request.method) &&
@@ -207,16 +186,17 @@ export const createAppGatewayRouter = (
             },
             replyOptions: {
                 timeout: options.requestTimeoutMs,
-                rewriteRequestHeaders: (request, headers) => createRunnerRequestHeaders(request, headers, options),
+                getUpstream: (request) => getAppGatewayUpstream(request as AppGatewayRequest),
+                rewriteRequestHeaders: (request, headers) => createProxyRequestHeaders(request, headers),
                 rewriteHeaders: (headers, request) =>
-                    request ? createGatewayResponseHeaders(headers, request, options) : headers,
+                    request ? createGatewayResponseHeaders(headers, request) : headers,
                 onError: (reply, { error }) => {
                     const timeout = error.name === 'TimeoutError' || error.message.toLowerCase().includes('timeout');
                     return reply.status(timeout ? 504 : 502).send({
-                        code: timeout ? 'APP_RUNNER_TIMEOUT' : 'APP_RUNNER_UNAVAILABLE',
+                        code: timeout ? 'APP_PROXY_TIMEOUT' : 'APP_PROXY_UNAVAILABLE',
                         message: timeout
-                            ? 'The managed app did not respond in time.'
-                            : 'The managed app runner could not be reached.',
+                            ? 'The proxied app did not respond in time.'
+                            : 'The proxied app could not be reached.',
                     });
                 },
             },

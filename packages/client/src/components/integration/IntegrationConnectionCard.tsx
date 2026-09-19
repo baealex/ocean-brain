@@ -73,7 +73,10 @@ export default function IntegrationConnectionCard({
                     <Switch
                         aria-label={`Enable ${integration.manifest.name}`}
                         checked={integration.enabled}
-                        disabled={action.isPending}
+                        disabled={
+                            action.isPending ||
+                            (integration.manifest.launch?.mode === 'proxied' && !integration.proxyConfigured)
+                        }
                         onCheckedChange={(enabled) => run(() => updateIntegration({ id: integration.id, enabled }))}
                     />
                 </div>
@@ -95,8 +98,8 @@ export default function IntegrationConnectionCard({
                         {launch && (
                             <div className="flex w-full flex-col gap-3">
                                 <Text as="p" variant="meta" tone="secondary" className="break-all">
-                                    {launch.mode === 'managed'
-                                        ? `Managed by Ocean Brain at /apps/${integration.id}/`
+                                    {launch.mode === 'proxied'
+                                        ? `${integration.proxyConfigured ? 'Private URL configured' : 'Private URL required'} · /apps/${integration.id}/`
                                         : launch.url}
                                 </Text>
                                 <div className="flex flex-wrap items-center gap-3">
@@ -109,14 +112,15 @@ export default function IntegrationConnectionCard({
                                         }
                                     />
                                     <Label htmlFor={`pin-${integration.id}`}>Show in top bar</Label>
-                                    {integration.enabled && (
-                                        <Button asChild variant="ghost" size="sm">
-                                            <Link to={INTEGRATION_ROUTE} params={{ connectionId: integration.id }}>
-                                                Open app
-                                                <Icon.ArrowRight className="h-4 w-4" />
-                                            </Link>
-                                        </Button>
-                                    )}
+                                    {integration.enabled &&
+                                        (launch.mode !== 'proxied' || integration.proxyConfigured) && (
+                                            <Button asChild variant="ghost" size="sm">
+                                                <Link to={INTEGRATION_ROUTE} params={{ connectionId: integration.id }}>
+                                                    Open app
+                                                    <Icon.ArrowRight className="h-4 w-4" />
+                                                </Link>
+                                            </Button>
+                                        )}
                                 </div>
                             </div>
                         )}
@@ -221,8 +225,9 @@ export default function IntegrationConnectionCard({
                         <IntegrationManifestEditor
                             connectionId={integration.id}
                             manifest={integration.manifest}
+                            proxyConfigured={integration.proxyConfigured}
                             disabled={action.isPending}
-                            onSave={(manifest) => run(() => updateIntegration({ id: integration.id, manifest }))}
+                            onSave={(input) => run(() => updateIntegration({ id: integration.id, ...input }))}
                         />
                     </details>
                 )}

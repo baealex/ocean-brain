@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import test from 'node:test';
 import { issueMcpToken } from '~/modules/mcp-token.js';
-import { type IntegrationManifest, parseManifest } from './manifest.js';
+import { type IntegrationManifest, parseIntegrationProxyUrl, parseManifest } from './manifest.js';
 import { createIntegrationService } from './service.js';
 
 const applyMigration = (db: DatabaseSync, name: string) =>
@@ -71,11 +71,38 @@ test('manifest validation rejects incompatible contracts and unsafe entry URLs',
     const parsedLaunch = parseManifest(manifest).launch;
     assert.ok(parsedLaunch && 'url' in parsedLaunch);
     assert.equal(parsedLaunch.url, 'http://127.0.0.1:7777/');
-    assert.deepEqual(parseManifest({ ...manifest, launch: { mode: 'managed' } }).launch, { mode: 'managed' });
+    assert.deepEqual(parseManifest({ ...manifest, launch: { mode: 'proxied' } }).launch, { mode: 'proxied' });
     assert.throws(
-        () => parseManifest({ ...manifest, launch: { mode: 'managed', url: 'https://example.com' } }),
+        () => parseManifest({ ...manifest, launch: { mode: 'proxied', url: 'https://example.com' } }),
         /cannot/,
     );
+    assert.equal(parseIntegrationProxyUrl('http://elastic-search:7778/'), 'http://elastic-search:7778');
+    for (const url of ['file:///tmp/app', 'http://user:secret@example.com', 'http://example.com/app', 'relative']) {
+        assert.throws(() => parseIntegrationProxyUrl(url), /private app URL/i);
+    }
+});
+
+test('proxied connections require a private URL without returning it to management clients', async () => {
+    const service = createIntegrationService();
+    const proxiedManifest: IntegrationManifest = { ...manifest, launch: { mode: 'proxied' } };
+
+    await assert.rejects(service.connect({ manifest: proxiedManifest }), /private app URL/i);
+    const connection = await service.connect({
+        manifest: proxiedManifest,
+        grantedPermissions: ['notes:read'],
+        proxyUrl: 'http://127.0.0.1:7778/',
+    });
+    try {
+        assert.equal(connection.proxyConfigured, true);
+        assert.equal(JSON.stringify(connection).includes('127.0.0.1:7778'), false);
+        await service.update(connection.id, { proxyUrl: 'http://elastic-search:7778' });
+        await service.update(connection.id, { enabled: true });
+        const direct = await service.update(connection.id, { manifest });
+        assert.equal(direct.proxyConfigured, false);
+        await assert.rejects(service.update(connection.id, { manifest: proxiedManifest }), /private app URL/i);
+    } finally {
+        await service.disconnect(connection.id);
+    }
 });
 
 test('platform migration preserves enabled state and the latest active MCP credential', () => {
@@ -161,6 +188,34 @@ test('integration rename preserves existing external connections and enforces cr
         );
         db.prepare('DELETE FROM IntegrationConnection WHERE id = ?').run('existing-inbox');
         assert.equal(db.prepare('SELECT COUNT(*) AS count FROM IntegrationCredential').get()?.count, 0);
+    } finally {
+        db.close();
+    }
+});
+
+test('proxy migration disables legacy runner connections until a private URL is configured', () => {
+    const db = new DatabaseSync(':memory:');
+    try {
+        db.exec(`
+            CREATE TABLE Cache (key TEXT, value TEXT);
+            CREATE TABLE McpToken (id INTEGER, tokenHash TEXT, createdAt DATETIME, lastUsedAt DATETIME, revokedAt DATETIME);
+        `);
+        applyMigration(db, '20260917120000_0020_plugin_installations');
+        applyMigration(db, '20260917150000_0021_integration_connections');
+        const legacyManifest = JSON.stringify({ ...manifest, launch: { mode: 'managed' } });
+        db.prepare(`
+            INSERT INTO IntegrationConnection (id, integrationId, manifest, enabled, updatedAt)
+            VALUES (?, ?, ?, 1, ?)
+        `).run('legacy-proxy', manifest.id, legacyManifest, '2026-09-19');
+
+        applyMigration(db, '20260919090000_0022_integration_proxy_url');
+
+        const migrated = db
+            .prepare('SELECT manifest, proxyUrl, enabled FROM IntegrationConnection WHERE id = ?')
+            .get('legacy-proxy');
+        assert.equal(JSON.parse(String(migrated?.manifest)).launch.mode, 'proxied');
+        assert.equal(migrated?.proxyUrl, null);
+        assert.equal(migrated?.enabled, 0);
     } finally {
         db.close();
     }

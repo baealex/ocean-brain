@@ -4,6 +4,7 @@ import fastifyFormbody from '@fastify/formbody';
 import fastifyRateLimit from '@fastify/rate-limit';
 import fastifySession from '@fastify/session';
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
+import { createDatabaseAppGatewayOptions } from './features/app-gateway/database.js';
 import type { AppGatewayOptions } from './features/app-gateway/gateway.js';
 import { createIntegrationService } from './features/integration/service.js';
 import { createMcpAdminService, type McpAdminService } from './features/mcp-admin/service.js';
@@ -137,7 +138,7 @@ export const createAppWithMcpAuth = (
 
     registerRequestInfrastructure(app, authConfig);
     app.setErrorHandler(createErrorHandler(authConfig));
-    app.register(createAppGatewayRouter(authConfig, options.appGateway));
+    app.register(createAppGatewayRouter(authConfig, options.appGateway ?? createDatabaseAppGatewayOptions()));
     app.register(createApiRouter(authConfig, mcpAdminService), { prefix: '/api' });
     app.register(createAuthPagesRouter(authConfig));
     app.register(createGraphqlRouter(authConfig, mcpAdminService));

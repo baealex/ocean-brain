@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createAppGatewayAccessService } from './access.js';
 
-test('app gateway access tokens authorize only the installation that issued them', () => {
+test('app gateway access tokens authorize only the connection that issued them', () => {
     const access = createAppGatewayAccessService();
     const grant = access.issue('search-1', 'https');
 

@@ -1,4 +1,5 @@
 import { EventEmitter } from 'node:events';
+import { emitNoteChange, type NoteChangeEventType } from '~/features/note/services/change-events.js';
 
 export type McpNoteServerEventType = 'mcp.note.created' | 'mcp.note.updated' | 'mcp.note.deleted';
 
@@ -58,6 +59,9 @@ export const emitServerEvent = (event: ServerEventInput) => {
     } as ServerEvent;
 
     serverEventEmitter.emit(SERVER_EVENT_CHANNEL, nextEvent);
+
+    const type = event.type.replace(/^(mcp|integration)\./, '') as NoteChangeEventType;
+    emitNoteChange({ type, noteId: Number(event.noteId) });
 
     return nextEvent;
 };

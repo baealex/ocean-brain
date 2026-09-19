@@ -2,6 +2,8 @@
 
 Ocean Brain supports built-in integrations and separately running integration apps. MCP is the built-in integration. Keyword and semantic search remain native search features; integration search apps do not replace the search bar or MCP search tool.
 
+Integration apps are intended for capabilities that benefit from a separate process or more compute: speech-to-note capture, Elasticsearch or RAG indexes, publishing, backups, automations, and hosted premium services. They can read or author Ocean Brain data and present their own page. A future plugin runtime would cover internal editor commands, panels, themes, and native search replacement instead.
+
 ## Terminology
 
 **Integrations** connect MCP clients or apps through approved data access. An **integration app** runs in a separate process; Ocean Brain provides access management and an optional page entry. It can be opened at its own URL or placed behind Ocean Brain's proxied app gateway. Registering its manifest does not install or run its code. **Plugins** refers to installable code packages that Ocean Brain would load and execute. That runtime is not currently provided.
@@ -24,7 +26,7 @@ An app can use notes, tags, and existing properties as its shared data store: fo
 2. Give your app a stable manifest `id`, describe its purpose, and request the permissions its features use. Add `launch` for a page; omit it for a background job.
 3. Register the manifest in **Settings → Integrations → Connect app**. The owner chooses grants, enters the server-only private URL for a proxied page, and generates a token for this connection.
 4. Configure the app backend with `OCEAN_BRAIN_URL` and `OCEAN_BRAIN_INTEGRATION_TOKEN`, start it, and enable the connection.
-5. Call `GET /api/integrations/v1/me` to check the connection and actual grants. Use GraphQL for reads and the note endpoints below for writes. A browser page submits to your backend; the backend holds the token and calls Ocean Brain.
+5. Call `GET /api/integrations/v1/me` to check the connection and actual grants. Use GraphQL for reads, the note endpoints below for writes, and periodic note catalog reconciliation for a synchronized local index. Add the event stream only when the app needs lower update latency. A browser page submits to your backend; the backend holds the token and calls Ocean Brain.
 6. Open the app from settings. Test with a permission removed, with the connection disabled, and after token revocation. Handle denied access in the app UI.
 
 An external app owns its deployment and updates. Deliver its manifest alongside the service and document how users configure the server URL and connection token. Registering a new app does not require a core code change or database migration.
@@ -54,7 +56,7 @@ Use **Update app manifest** to update an existing connection. The identifier can
 
 | Permission | Access |
 | --- | --- |
-| `notes:read` | All current notes and their content, tags, properties, saved views, and search results |
+| `notes:read` | All current notes and their content, tags, properties, saved views, search results, live note events, and the note version catalog |
 | `notes:create` | Create notes, including inline tags and existing property values |
 | `notes:update` | Edit note Markdown and metadata |
 | `notes:delete` | Move notes to Ocean Brain's trash through the existing delete operation |
@@ -80,7 +82,9 @@ Disabling or revoking stops subsequent API requests. Data already copied to an e
 Send `Authorization: Bearer <connection-token>` from the integration app’s backend. Keep it out of page URLs, iframe attributes, browser storage, and distributed frontend code. The iframe bridge described below does not expose the owner's browser session or an integration connection token, and it does not turn the data API into a cross-origin browser API.
 
 - `GET /api/integrations/v1/me`: authenticated connection identity and granted permissions.
+- `GET /api/integrations/v1/events`: optional live note change stream, requiring `notes:read`.
 - `POST /api/integrations/v1/graphql`: the read-only data API, requiring `notes:read`.
+- `POST /api/integrations/v1/notes/catalog`: keyset-paginated note IDs and versions for reconciliation, requiring `notes:read`.
 - `POST /api/integrations/v1/notes/create`: requires `notes:create`.
 - `POST /api/integrations/v1/notes/baseline`: requires `notes:read`.
 - `POST /api/integrations/v1/notes/metadata`: requires `notes:update`.
@@ -109,6 +113,20 @@ Example create request:
 ```
 
 Create returns `{ "created": true, "note": { ... } }`. For metadata changes, send `id`, the note's `expectedUpdatedAt`, and the fields to change (`title`, `layout`, or `properties`). Read the current property definitions before setting property values. Markdown authoring operations retain the intent, selectors, version guards, conflict results, and warnings documented in the [CLI authoring contract](../packages/cli/README.md). Delete accepts `{ "id": "123" }`.
+
+### Note synchronization
+
+`POST /notes/catalog` is the synchronization baseline and does not require a persistent connection. Poll the complete catalog at an interval appropriate for the app, compare it with local records, fetch missing or changed notes through GraphQL, and remove local records absent from the catalog. Near-real-time search may poll more frequently than publishing or backup jobs; avoid a short fixed interval when the app does not need low latency.
+
+The first request, such as `{ "limit": 500 }`, returns current `{id, updatedAt}` entries ordered by ID, a `propertySchemaHash`, plus `hasMore` and `nextAfterId`; send the returned ID as `{ "afterId": "...", "limit": 500 }` for the next page. If the property schema hash changed, refresh the shared property definitions and any indexed note representation that includes property names or options.
+
+Apps that need changes sooner than their polling interval may also open `GET /events`, an authenticated server-sent event stream for an integration backend. It sends `note.created`, `note.updated`, and `note.deleted` invalidations containing `noteId` and `occurredAt`. Re-read a created or updated note through GraphQL, remove a deleted note from the external store, and debounce repeated events for the same note when an editor is saving frequently.
+
+The stream is deliberately transient. Ocean Brain does not write event rows, retain cursors, or replay `Last-Event-ID`, so normal editing does not grow a change-log table. A server restart, network gap, slow-consumer disconnect, or access change ends the stream. Disabling the connection, removing `notes:read`, rotating the token, or revoking it closes active streams. One connection can keep at most two streams open. Treat the stream as a latency optimization, not as a durable job queue or the sole record of an irreversible action.
+
+When using the stream, open it first and buffer incoming note IDs, read the complete catalog, reconcile the external store, then re-read the buffered IDs before processing live events normally. If the stream disconnects during this sequence, discard the partial run and start it again. Repeat catalog reconciliation after every gap and periodically during long-running connections. This keeps recovery stateless on Ocean Brain while still covering edits and deletions that happen during catalog pagination.
+
+Use a backend HTTP client because the bearer token belongs on the app server. Browser `EventSource` cannot attach the required authorization header and must not receive the long-lived integration token.
 
 ### Backend walkthrough: read, create, update, delete
 
@@ -221,7 +239,7 @@ The proxied `app-access` value is not an integration token and cannot call `/api
 
 ## Storage, compatibility, and migration
 
-The platform adds `IntegrationConnection` and `IntegrationCredential` once. Manifests and grants are validated JSON documents stored as data. External apps own their settings, indexes, persistence, and migrations; adding or upgrading one does not add core tables, Prisma enums, routes, or imports. Built-in integration definitions live in a code registry; startup creates missing connection records without overwriting existing grants or credentials. Adding a native integration also needs no new integration-specific table.
+The platform adds `IntegrationConnection` and `IntegrationCredential` once. Manifests and grants are validated JSON documents stored as data. External apps own their settings, indexes, persistence, and migrations; adding or upgrading one does not add core tables, Prisma enums, routes, or imports. Built-in integration definitions live in a code registry; startup creates missing connection records without overwriting existing grants or credentials. Adding a native integration also needs no new integration-specific table. Live note events remain in memory and the catalog reads the existing `Note` table, so synchronization adds no event-log migration or retained event storage.
 
 Migration `0020` creates the platform records under their original names. Migration `0021` renames them to `IntegrationConnection` and `IntegrationCredential`, including the `integrationId` and `connectionId` columns, without replacing IDs, manifests, grants, enabled/pinned states, credentials, or timestamps. Migration `0022` adds the shared private proxy URL field. It converts the unreleased `managed` launch experiment to `proxied` and disables those connections until the owner enters a private URL. These migrations run automatically; installing or upgrading an individual integration app does not add another core migration.
 
@@ -235,4 +253,4 @@ Normal server startup applies Prisma migrations. Back up the database before an 
 
 Future additive v1 API changes should preserve existing contracts. A breaking contract needs a new API major version while the old version remains available for a documented migration window. App-specific configuration versions belong to the external app, independently of the core manifest and API versions.
 
-This release does not provide an in-process plugin runtime, marketplace, native search replacement hooks, editor extension hooks, or durable change delivery. The UI's transient change notifications are not an external synchronization API. External indexers can poll note IDs and `updatedAt`, fetch changed notes, and reconcile deletions against a complete ID listing. These reads do not provide a stable snapshot across pages; an indexer must account for concurrent edits. Change cursors, deletion tombstones, and event replay are not currently provided.
+This release does not provide an in-process plugin runtime, marketplace, native search replacement hooks, editor extension hooks, outbound webhooks, or durable change replay. The authenticated integration event stream is the supported live synchronization signal; the browser UI's own transient notifications are not an external API. The note catalog is not a frozen historical snapshot, which is why consumers connect the stream before catalog pagination and repeat reconciliation after a gap. Change cursors and retained deletion tombstones are not provided.

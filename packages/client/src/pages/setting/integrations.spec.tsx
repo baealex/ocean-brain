@@ -125,10 +125,10 @@ it('manages connection activation, navigation and one-time credentials', async (
     vi.mocked(api.rotateIntegrationToken).mockResolvedValue({ token: 'one-time-test-token' });
     const user = userEvent.setup();
     const router = await renderPage();
-    await user.click(await screen.findByRole('switch', { name: 'Enable Inbox' }));
-    await waitFor(() => expect(api.updateIntegration).toHaveBeenCalledWith({ id: 'inbox', enabled: true }));
     expect(screen.queryByRole('button', { name: 'Generate token' })).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Configure Inbox' }));
+    await user.click(await screen.findByRole('button', { name: 'Continue setup' }));
+    await user.click(screen.getByRole('switch', { name: 'Enable Inbox' }));
+    await waitFor(() => expect(api.updateIntegration).toHaveBeenCalledWith({ id: 'inbox', enabled: true }));
     expect(router.state.location.search).toEqual({ connection: 'inbox' });
     await waitFor(() => expect(screen.getByRole('switch', { name: 'Show in top bar' })).toBeEnabled());
     await user.click(screen.getByRole('switch', { name: 'Show in top bar' }));
@@ -157,7 +157,7 @@ it('prefills manifest settings and changes an app to proxied mode with a private
     await renderPage();
 
     await user.click(await screen.findByRole('button', { name: 'Configure Inbox' }));
-    await user.click(screen.getByText('Update app manifest'));
+    await user.click(screen.getByText('App settings'));
 
     expect(screen.getByLabelText('App name')).toHaveValue('Inbox');
     expect(screen.getByLabelText('Description')).toHaveValue('Read and create notes.');
@@ -216,4 +216,111 @@ it('opens the connection selected by a direct settings URL', async () => {
     await renderPage('?connection=inbox');
     expect(await screen.findByRole('button', { name: 'Configure Inbox' })).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('button', { name: 'Generate token' })).toBeVisible();
+});
+
+it('distinguishes allowed access from actual activity and refreshes app-reported failures', async () => {
+    const active = {
+        ...connected,
+        enabled: true,
+        token: { id: 'token', createdAt: connected.createdAt, lastUsedAt: null },
+    };
+    vi.mocked(api.fetchIntegrations).mockResolvedValue([active]);
+    const user = userEvent.setup();
+    await renderPage();
+    expect(await screen.findByText('Waiting for first access')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Open app' })).toBeVisible();
+    expect(screen.queryByRole('switch', { name: 'Enable Inbox' })).not.toBeInTheDocument();
+    vi.mocked(api.fetchIntegrations).mockResolvedValue([
+        {
+            ...active,
+            token: { ...active.token, lastUsedAt: new Date().toISOString() },
+            statusReport: {
+                state: 'failed',
+                message: 'Publishing failed. Reconnect your publishing account in the app.',
+                reportedAt: new Date().toISOString(),
+            },
+        },
+    ]);
+    await user.click(screen.getByRole('button', { name: 'Refresh status' }));
+    expect(await screen.findByText('Needs attention')).toBeVisible();
+    expect(screen.getByText('Publishing failed. Reconnect your publishing account in the app.')).toBeVisible();
+    vi.mocked(api.fetchIntegrations).mockRejectedValue(new Error('Network unavailable'));
+    await user.click(screen.getByRole('button', { name: 'Refresh status' }));
+    expect(
+        await screen.findByText('Status could not be refreshed. Displayed activity may be out of date.'),
+    ).toBeVisible();
+    expect(screen.getByText('Needs attention')).toBeVisible();
+});
+
+it('opens apps that request no note access without requiring a token', async () => {
+    vi.mocked(api.fetchIntegrations).mockResolvedValue([
+        { ...connected, enabled: true, manifest: { ...manifest, permissions: [] }, grantedPermissions: [] },
+    ]);
+    const user = userEvent.setup();
+    await renderPage();
+    expect(await screen.findByText('App enabled')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Open app' })).toHaveAttribute('href', '/integrations/inbox');
+    expect(screen.queryByText('Setup needed')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Configure Inbox' }));
+    expect(screen.queryByText('Save a token in your app.')).not.toBeInTheDocument();
+});
+
+it('shows the MCP setup action before settings and pairs On with Off for access', async () => {
+    const mcp = { ...connected, id: 'mcp', native: true, manifest: { ...manifest, name: 'MCP', launch: undefined } };
+    vi.mocked(api.fetchIntegrations).mockResolvedValue([mcp]);
+    vi.mocked(api.updateIntegration).mockImplementation(async ({ enabled }) => {
+        const updated = { ...mcp, enabled: Boolean(enabled) };
+        vi.mocked(api.fetchIntegrations).mockResolvedValue([updated]);
+        return updated;
+    });
+    const user = userEvent.setup();
+    await renderPage();
+    expect(await screen.findByRole('link', { name: 'Set up MCP' })).toHaveAttribute('href', '/setting/mcp');
+    expect(screen.queryByRole('switch', { name: 'Enable MCP' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Configure MCP' }));
+    expect(screen.getByText('Off', { exact: true })).toBeVisible();
+    await user.click(screen.getByRole('switch', { name: 'Enable MCP' }));
+    expect(await screen.findByText('On', { exact: true })).toBeVisible();
+    expect(screen.getByRole('switch', { name: 'Enable MCP' })).toBeChecked();
+    expect(screen.getByText('Setup needed')).toBeVisible();
+    await user.click(screen.getByRole('switch', { name: 'Enable MCP' }));
+    expect(await screen.findByText('Off', { exact: true })).toBeVisible();
+});
+
+it('shows an overdue running report without claiming the app is offline', async () => {
+    vi.mocked(api.fetchIntegrations).mockResolvedValue([
+        {
+            ...connected,
+            enabled: true,
+            token: { id: 'token', createdAt: connected.createdAt, lastUsedAt: connected.createdAt },
+            statusReport: { state: 'running', message: 'Indexing notes', reportedAt: connected.createdAt },
+        },
+    ]);
+    await renderPage('?connection=inbox');
+    expect(await screen.findByText('Progress update overdue')).toBeVisible();
+    expect(screen.getByText(/Check the app before retrying/)).toBeVisible();
+});
+
+it('offers a read-only research task when MCP cannot create notes', async () => {
+    vi.mocked(api.fetchIntegrations).mockResolvedValue([
+        {
+            ...connected,
+            id: 'mcp',
+            native: true,
+            enabled: true,
+            manifest: { ...manifest, name: 'MCP' },
+            token: { id: 'token', createdAt: connected.createdAt, lastUsedAt: null },
+        },
+    ]);
+    const user = userEvent.setup();
+    await renderPage('?connection=mcp');
+    expect(await screen.findByRole('button', { name: 'Copy research request' })).toBeDisabled();
+    await user.type(screen.getByLabelText('What would you like to research?'), 'Project decisions');
+    await user.click(screen.getByText('Preview request'));
+    expect(screen.getByLabelText<HTMLTextAreaElement>('Research request').value).toContain(
+        'without changing any notes',
+    );
+    expect(screen.getByLabelText<HTMLTextAreaElement>('Research request').value).toContain('Project decisions');
+    await user.click(screen.getByRole('button', { name: 'Copy research request' }));
+    expect(await navigator.clipboard.readText()).toContain('Project decisions');
 });

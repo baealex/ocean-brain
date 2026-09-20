@@ -20,6 +20,7 @@ export interface IntegrationConnection {
     grantedPermissions: IntegrationPermission[];
     createdAt: string;
     updatedAt: string;
+    statusReport?: { state: 'running' | 'succeeded' | 'failed'; message: string; reportedAt: string } | null;
     token: { id: string; createdAt: string; lastUsedAt: string | null } | null;
 }
 export interface IntegrationUpdate {

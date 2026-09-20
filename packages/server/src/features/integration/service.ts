@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import models, { type IntegrationConnection, type PrismaClient } from '~/models.js';
 import { createAppError } from '~/modules/error-handler.js';
 import { issueIntegrationToken } from '~/modules/integration-token.js';
+import { emitIntegrationAccessChanged } from './access-events.js';
 import {
     type IntegrationPermission,
     MCP_CONNECTION_ID,
@@ -129,7 +130,7 @@ export const createIntegrationService = (db: PrismaClient = models) => {
                 pinned?: unknown;
             },
         ) {
-            return db.$transaction(async (tx) => {
+            const connection = await db.$transaction(async (tx) => {
                 const current = await tx.integrationConnection.findUnique({ where: { id } });
                 if (!current)
                     throw createAppError(404, 'INTEGRATION_NOT_FOUND', 'The integration connection was not found.');
@@ -186,6 +187,10 @@ export const createIntegrationService = (db: PrismaClient = models) => {
                 });
                 return toConnection(row);
             });
+            if (input.enabled !== undefined || input.grantedPermissions !== undefined || input.manifest !== undefined) {
+                emitIntegrationAccessChanged(id);
+            }
+            return connection;
         },
         async disconnect(id: string) {
             const connection = await get(id);
@@ -196,6 +201,7 @@ export const createIntegrationService = (db: PrismaClient = models) => {
                     'Native integrations can be disabled, but cannot be disconnected.',
                 );
             await db.integrationConnection.delete({ where: { id } });
+            emitIntegrationAccessChanged(id);
         },
         async rotateToken(id: string) {
             await get(id);
@@ -205,11 +211,13 @@ export const createIntegrationService = (db: PrismaClient = models) => {
                 create: { connectionId: id, tokenHash: token.hash },
                 update: { tokenHash: token.hash, createdAt: new Date(), lastUsedAt: null },
             });
+            emitIntegrationAccessChanged(id);
             return { token: token.plaintext };
         },
         async revokeToken(id: string) {
             await get(id);
             await db.integrationCredential.deleteMany({ where: { connectionId: id } });
+            emitIntegrationAccessChanged(id);
         },
         async authenticate(token: string): Promise<IntegrationPrincipal | null> {
             const tokenHash = createHash('sha256').update(token, 'utf8').digest('hex');

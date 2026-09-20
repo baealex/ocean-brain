@@ -1,5 +1,5 @@
+import { subscribeNoteChanges } from '~/features/note/services/change-events.js';
 import models from '~/models.js';
-import { subscribeServerEvents } from '~/modules/server-events.js';
 import { paths } from '~/paths.js';
 import {
     createEmbeddingApiKeyFingerprint,
@@ -13,7 +13,6 @@ import {
     type EmbeddingProviderConfig,
     listOpenAiCompatibleEmbeddingModels,
 } from './embedding-client.js';
-import { subscribeSemanticSearchNoteChanges } from './note-change.js';
 import {
     buildNoteEmbeddingChunks,
     NOTE_EMBEDDING_TEXT_SCHEMA_VERSION,
@@ -549,11 +548,9 @@ export const getDefaultSemanticSearchManager = () => {
             apiKeyStore: new FileEmbeddingApiKeyStore(paths.embeddingApiKey),
         });
         defaultSemanticSearchUnsubscribers = [
-            subscribeServerEvents((event) => {
-                void defaultSemanticSearchManager?.scheduleNoteSync(Number(event.noteId)).catch(() => undefined);
-            }),
-            subscribeSemanticSearchNoteChanges((noteId) => {
-                void defaultSemanticSearchManager?.scheduleNoteSync(noteId).catch(() => undefined);
+            subscribeNoteChanges((event) => {
+                if (!event.affectsSearchIndex) return;
+                void defaultSemanticSearchManager?.scheduleNoteSync(event.noteId).catch(() => undefined);
             }),
         ];
         defaultSemanticSearchManager.startBackgroundSync();

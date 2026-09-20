@@ -12,6 +12,7 @@ import {
     parsePermissions,
     validateGrants,
 } from './manifest.js';
+import { parseStatusUpdate, readStatusReport } from './status-report.js';
 
 export interface IntegrationPrincipal {
     connectionId: string;
@@ -29,7 +30,9 @@ const resolveManifest = (row: IntegrationConnection) => {
 };
 
 const toConnection = (
-    row: IntegrationConnection & { credential: { id: string; createdAt: Date; lastUsedAt: Date | null } | null },
+    row: IntegrationConnection & {
+        credential: { id: string; createdAt: Date; lastUsedAt: Date | null; statusReport: string | null } | null;
+    },
 ) => ({
     id: row.id,
     native: row.native,
@@ -40,6 +43,7 @@ const toConnection = (
     pinned: row.pinned,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+    statusReport: readStatusReport(row.credential?.statusReport ?? null),
     token: row.credential
         ? {
               id: row.credential.id,
@@ -50,7 +54,7 @@ const toConnection = (
 });
 
 // Never return credential hashes through management APIs.
-const credentialSummary = { select: { id: true, createdAt: true, lastUsedAt: true } } as const;
+const credentialSummary = { select: { id: true, createdAt: true, lastUsedAt: true, statusReport: true } } as const;
 
 const parseConnectionProxyUrl = (manifest: ReturnType<typeof parseManifest>, value: unknown) => {
     if (manifest.launch?.mode === 'proxied') return parseIntegrationProxyUrl(value);
@@ -174,6 +178,17 @@ export const createIntegrationService = (db: PrismaClient = models) => {
                     }
                     proxyUrl = null;
                 }
+                if (
+                    input.enabled !== undefined ||
+                    input.grantedPermissions !== undefined ||
+                    input.manifest !== undefined ||
+                    input.proxyUrl !== undefined
+                ) {
+                    await tx.integrationCredential.updateMany({
+                        where: { connectionId: id },
+                        data: { statusReport: null },
+                    });
+                }
                 const row = await tx.integrationConnection.update({
                     where: { id },
                     data: {
@@ -209,7 +224,7 @@ export const createIntegrationService = (db: PrismaClient = models) => {
             await db.integrationCredential.upsert({
                 where: { connectionId: id },
                 create: { connectionId: id, tokenHash: token.hash },
-                update: { tokenHash: token.hash, createdAt: new Date(), lastUsedAt: null },
+                update: { tokenHash: token.hash, createdAt: new Date(), lastUsedAt: null, statusReport: null },
             });
             emitIntegrationAccessChanged(id);
             return { token: token.plaintext };
@@ -218,6 +233,29 @@ export const createIntegrationService = (db: PrismaClient = models) => {
             await get(id);
             await db.integrationCredential.deleteMany({ where: { connectionId: id } });
             emitIntegrationAccessChanged(id);
+        },
+        async reportStatus(token: string, input: unknown) {
+            const update = parseStatusUpdate(input);
+            const tokenHash = createHash('sha256').update(token, 'utf8').digest('hex');
+            return db.$transaction(async (tx) => {
+                const credential = await tx.integrationCredential.findUnique({
+                    where: { tokenHash },
+                    include: { connection: true },
+                });
+                if (
+                    !credential?.connection.enabled ||
+                    !parsePermissions(JSON.parse(credential.connection.grantedPermissions)).includes('notes:read') ||
+                    !resolveManifest(credential.connection).permissions.includes('notes:read')
+                ) {
+                    throw createAppError(403, 'INTEGRATION_ACCESS_DENIED', 'This connection cannot report activity.');
+                }
+                const report = { ...update, reportedAt: new Date().toISOString() };
+                await tx.integrationCredential.update({
+                    where: { tokenHash },
+                    data: { statusReport: JSON.stringify(report) },
+                });
+                return report;
+            });
         },
         async authenticate(token: string): Promise<IntegrationPrincipal | null> {
             const tokenHash = createHash('sha256').update(token, 'utf8').digest('hex');

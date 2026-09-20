@@ -29,7 +29,7 @@ test('an external app preserves navigation and applies permission changes', asyn
     await page.getByRole('button', { name: 'Connect app' }).click();
     const connect = page.getByRole('dialog', { name: 'Connect an external app' });
     const fileChooserPromise = page.waitForEvent('filechooser');
-    await connect.getByRole('button', { name: 'Choose file' }).click();
+    await connect.getByLabel('App manifest file').click();
     const fileChooser = await fileChooserPromise;
     await fileChooser.setFiles({
         name: 'manifest.json',
@@ -61,12 +61,29 @@ test('an external app preserves navigation and applies permission changes', asyn
                 },
             });
         manifest.launch.url = inboxUrl;
-        await card.getByText('Update app manifest', { exact: true }).click();
-        await card.getByLabel('Updated manifest for Note Inbox').fill(JSON.stringify(manifest));
+        await card.getByText('App settings', { exact: true }).click();
+        await card.getByLabel('App URL', { exact: true }).fill(inboxUrl);
         await card.getByRole('button', { name: 'Update manifest', exact: true }).click();
         await expect(card.getByText(`${inboxUrl}/`, { exact: true })).toBeVisible();
+        await card.getByText('App settings', { exact: true }).click();
+        await card.getByRole('button', { name: 'Hide token' }).click();
         await card.getByRole('switch', { name: 'Enable Note Inbox' }).click();
         await expect(card.getByRole('switch', { name: 'Enable Note Inbox' })).toBeChecked();
+        await expect(card.getByText('Waiting for first access', { exact: true })).toBeVisible();
+        const reported = await page.request.post(`${e2eServer.url}/api/integrations/v1/status`, {
+            headers: { authorization: `Bearer ${token}` },
+            data: { state: 'failed', message: 'Publishing account disconnected. Open the app to reconnect it.' },
+        });
+        expect(reported.ok()).toBeTruthy();
+        await page.getByRole('button', { name: 'Refresh status' }).click();
+        await expect(card.getByText('Needs attention', { exact: true })).toBeVisible();
+        await expect(card.getByText('Publishing account disconnected. Open the app to reconnect it.')).toBeVisible();
+        await page.screenshot({ path: testInfo.outputPath('integration-status-desktop.png'), fullPage: true });
+        await page.setViewportSize({ width: 390, height: 844 });
+        await expect(card.getByText('Needs attention', { exact: true })).toBeVisible();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
+        await page.screenshot({ path: testInfo.outputPath('integration-status-mobile.png'), fullPage: true });
+        await page.setViewportSize({ width: 1280, height: 720 });
         await card.getByRole('switch', { name: 'Show in top bar' }).click();
         const settingsUrl = page.url();
         const connectionId = new URL(settingsUrl).searchParams.get('connection');

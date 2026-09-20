@@ -76,7 +76,11 @@ export default function IntegrationsSettings() {
     const [grantedPermissions, setGrants] = useState<IntegrationPermission[]>([]);
     const [fileError, setFileError] = useState('');
     const preview = previewManifest(manifestText);
-    const integrations = useQuery({ queryKey: queryKeys.integrations.list(), queryFn: fetchIntegrations });
+    const integrations = useQuery({
+        queryKey: queryKeys.integrations.list(),
+        queryFn: fetchIntegrations,
+        refetchInterval: 10_000,
+    });
     const connect = useMutation({
         mutationFn: () =>
             connectIntegration({
@@ -106,60 +110,85 @@ export default function IntegrationsSettings() {
     };
     return (
         <Dialog open={isAdding} onOpenChange={(open) => !connect.isPending && setIsAdding(open)}>
-            <PageLayout
-                title="Integrations"
-                description="Manage MCP and external apps connected to your notes."
-                headerRight={
-                    <DialogTrigger asChild>
-                        <Button>
-                            <Icon.Plus className="h-4 w-4" />
-                            Connect app
-                        </Button>
-                    </DialogTrigger>
-                }
-            >
-                <div className="flex flex-col gap-6">
-                    {integrations.isPending && <Text as="p">Loading integrations…</Text>}
-                    {integrations.error && (
-                        <div role="alert">
-                            <Text as="p">Could not load integrations.</Text>
-                            <Button variant="subtle" onClick={() => integrations.refetch()}>
-                                Retry
+            <div className="w-full max-w-5xl">
+                <PageLayout
+                    title="Integrations"
+                    headerRight={
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="min-h-11 min-w-11"
+                                aria-label="Refresh status"
+                                title="Refresh status"
+                                disabled={integrations.isFetching}
+                                onClick={() => integrations.refetch()}
+                            >
+                                <Icon.Refresh aria-hidden="true" className="h-4 w-4" />
                             </Button>
+                            <DialogTrigger asChild>
+                                <Button>
+                                    <Icon.Plus className="h-4 w-4" />
+                                    Connect app
+                                </Button>
+                            </DialogTrigger>
                         </div>
-                    )}
-                    {integrations.data &&
-                        groups.map((group) => (
-                            <section key={group.title} aria-label={group.title} className="flex flex-col gap-3">
-                                <Text as="h2" variant="label" weight="medium" tone="tertiary">
-                                    {group.title}
+                    }
+                >
+                    <div className="flex flex-col gap-6">
+                        {integrations.isPending && <Text as="p">Loading integrations…</Text>}
+                        {integrations.error && (
+                            <div role="alert">
+                                <Text as="p">
+                                    {integrations.data
+                                        ? 'Status could not be refreshed. Displayed activity may be out of date.'
+                                        : 'Could not load integrations.'}
                                 </Text>
-                                {group.integrations.map((integration) => (
-                                    <IntegrationConnectionCard
-                                        key={integration.id}
-                                        integration={integration}
-                                        expanded={expandedId === integration.id}
-                                        onExpandedChange={() =>
-                                            setExpandedId(expandedId === integration.id ? undefined : integration.id)
-                                        }
-                                    />
-                                ))}
-                                {group.integrations.length === 0 && (
-                                    <Text as="p" variant="meta" tone="secondary" className="py-3">
-                                        {group.title === 'External apps'
-                                            ? 'No external apps connected.'
-                                            : 'No built-in integrations available.'}
+                                <Button variant="subtle" onClick={() => integrations.refetch()}>
+                                    Retry
+                                </Button>
+                            </div>
+                        )}
+                        {integrations.data &&
+                            groups.map((group) => (
+                                <section key={group.title} aria-label={group.title} className="flex flex-col gap-3">
+                                    <Text as="h2" variant="label" weight="medium" tone="tertiary">
+                                        {group.title}
                                     </Text>
-                                )}
-                            </section>
-                        ))}
-                </div>
-            </PageLayout>
+                                    {group.integrations.map((integration) => (
+                                        <IntegrationConnectionCard
+                                            key={integration.id}
+                                            integration={integration}
+                                            expanded={expandedId === integration.id}
+                                            onExpandedChange={() =>
+                                                setExpandedId(
+                                                    expandedId === integration.id ? undefined : integration.id,
+                                                )
+                                            }
+                                        />
+                                    ))}
+                                    {group.integrations.length === 0 && (
+                                        <Text as="p" variant="meta" tone="secondary" className="py-3">
+                                            {group.title === 'External apps'
+                                                ? 'No external apps connected.'
+                                                : 'No built-in integrations available.'}
+                                        </Text>
+                                    )}
+                                </section>
+                            ))}
+                        {integrations.dataUpdatedAt > 0 && !integrations.isError && (
+                            <Text as="p" variant="micro" tone="tertiary">
+                                Updated {new Date(integrations.dataUpdatedAt).toLocaleTimeString()}
+                            </Text>
+                        )}
+                    </div>
+                </PageLayout>
+            </div>
             <DialogContent variant="form">
                 <DialogHeader title="Connect an external app" onClose={closeDialog} />
                 <DialogBody className="space-y-5">
                     <DialogDescription>
-                        Connect an app running on its own service using its manifest file.
+                        Choose your app’s connection file. The app must be running separately.
                     </DialogDescription>
                     <div className="flex items-center gap-3">
                         <label
@@ -249,14 +278,12 @@ export default function IntegrationsSettings() {
                                         onChange={(event) => setProxyUrl(event.target.value)}
                                     />
                                     <Text as="p" variant="meta" tone="secondary">
-                                        Ocean Brain stores this address on the server and proxies the app through its
-                                        own /apps path.
+                                        Must be reachable from your Ocean Brain server.
                                     </Text>
                                 </div>
                             )}
                             <Text as="p" variant="meta" tone="secondary">
-                                Starts disabled. Generate a token and configure it in the external app before enabling
-                                access.
+                                Access starts off.
                             </Text>
                         </div>
                     )}

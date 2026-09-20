@@ -21,6 +21,65 @@ const manifest = {
 };
 const openAuth = { mode: 'open', cookieName: AUTH_SESSION_COOKIE_NAME, source: 'explicit-open' } as const;
 
+test('app status reports are bounded, persistent, scoped to credentials and cleared on access changes', async (t) => {
+    const app = createApp(openAuth, { logger: false });
+    t.after(() => app.close());
+    const service = createIntegrationService();
+    const first = await service.connect({ manifest, grantedPermissions: ['notes:read'] });
+    const other = await service.connect({ manifest, grantedPermissions: ['notes:read'] });
+    t.after(async () => {
+        await service.disconnect(first.id);
+        await service.disconnect(other.id);
+    });
+    let token = (await service.rotateToken(first.id)).token;
+    const report = (payload: unknown) =>
+        app.inject({
+            method: 'POST',
+            url: '/api/integrations/v1/status',
+            payload: JSON.stringify(payload),
+            // JSON is explicit so malformed contracts exercise the same parser as external apps.
+            headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+        });
+    assert.equal((await report({ state: 'running', message: 'Reading notes' })).statusCode, 403);
+    await service.update(first.id, { enabled: true });
+    const received = await report({
+        state: 'running',
+        message: 'Reading notes',
+        connectionId: other.id,
+        reportedAt: '2000-01-01',
+    });
+    assert.equal(received.statusCode, 200);
+    assert.equal(received.json().state, 'running');
+    assert.notEqual(received.json().reportedAt, '2000-01-01');
+    assert.deepEqual((await createIntegrationService().get(first.id)).statusReport, received.json());
+    assert.equal((await service.get(other.id)).statusReport, null);
+    for (const payload of [
+        null,
+        {},
+        { state: 'healthy', message: 'ok' },
+        { state: 'failed', message: ' ' },
+        { state: 'failed', message: 'x'.repeat(301) },
+        { state: 'failed', message: 'line\nbreak' },
+    ]) {
+        assert.equal((await report(payload)).statusCode, 400);
+    }
+    assert.equal((await report({ state: 'succeeded', message: 'Saved a summary' })).statusCode, 200);
+    assert.equal((await service.get(first.id)).statusReport?.state, 'succeeded');
+    await service.update(first.id, { pinned: true });
+    assert.equal((await service.get(first.id)).statusReport?.state, 'succeeded');
+    await service.update(first.id, { grantedPermissions: [] });
+    assert.equal((await service.get(first.id)).statusReport, null);
+    assert.equal((await report({ state: 'failed', message: 'No access' })).statusCode, 403);
+    await service.update(first.id, { grantedPermissions: ['notes:read'] });
+    await report({ state: 'failed', message: 'Check the app settings and retry there' });
+    token = (await service.rotateToken(first.id)).token;
+    assert.equal((await service.get(first.id)).statusReport, null);
+    await report({ state: 'running', message: 'Trying again' });
+    await service.revokeToken(first.id);
+    assert.equal((await service.get(first.id)).statusReport, null);
+    assert.equal((await report({ state: 'running', message: 'Late update' })).statusCode, 403);
+});
+
 test('external integration API enforces grants, keeps browser/admin APIs private and reports authored events', async (t) => {
     const app = createApp(openAuth, { logger: false });
     t.after(() => app.close());

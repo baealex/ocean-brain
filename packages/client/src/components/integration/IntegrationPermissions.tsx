@@ -50,8 +50,7 @@ export default function IntegrationPermissions({
                 ))}
             </div>
             <Text as="p" variant="meta" tone="secondary" className="mt-3">
-                Only permissions requested by this app are shown. Reading includes all notes, tags, properties, and
-                views. Write access also requires reading.
+                Read access covers all notes, tags, properties, and views. Writing also requires reading.
             </Text>
         </fieldset>
     );

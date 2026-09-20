@@ -18,6 +18,14 @@ An external app can provide a page that opens from settings. **Show in top bar**
 
 Local experiments may be kept under `examples/`, which is excluded from Git. The API examples below are self-contained and do not require those local apps.
 
+## Check connection status and try a first task
+
+Settings → Integrations shows each app’s purpose, current status, and next action without opening its settings. Use **Set up MCP** to connect an AI client, **Continue setup** to finish an external connection, or **Open app** to use a configured app. The gear button opens permissions, credentials, and the **Integration access** switch, consistently labeled **On** or **Off**. Access permission is separate from actual activity. A connection can need setup, have access paused, be waiting for its first API access, or have recorded access. The timestamp records authentication with the current token, not a successful task or proof that the app is still online. Status refreshes every ten seconds while the page is visible; **Refresh status** checks immediately. If refresh fails, the page keeps the last information and marks it as potentially out of date.
+
+After connecting the built-in MCP integration, expand its card and use **Try it with your notes**. Enter a topic, preview and copy the research request, then paste it into your connected AI client. With read and create access, the request asks the client to save a new summary with links to the source notes. With read-only access, it asks for an answer in the conversation without modifying notes. Copying a request does not execute it or confirm a result; open the returned note link to review the actual output.
+
+Apps can optionally report work in progress, completion, or a problem using the status endpoint below. These reports are explicitly attributed to the app. A running report older than five minutes is marked **Progress update overdue**; check the app before retrying because it may still be working. A historical completion report is not a live health check.
+
 ## Build your first integration
 
 An app can use notes, tags, and existing properties as its shared data store: for example, a capture inbox, task dashboard, or external search index. The API works with Ocean Brain's note model. App-specific tables, private settings, job queues, and search indexes belong in the app's own storage. There is no arbitrary SQL endpoint, app-defined core table API, or per-app private note namespace.
@@ -50,7 +58,7 @@ An external app owns its deployment and updates. Deliver its manifest alongside 
 
 `launch` is optional for headless automation. `external` opens an absolute URL in a new tab, `iframe` embeds an absolute URL, and `proxied` embeds the app through Ocean Brain at `/apps/:connectionId/`. External and iframe URLs must use HTTPS without embedded credentials; HTTP is allowed only for `localhost`, `127.0.0.1`, or `[::1]` during local development. A proxied launch contains only `{ "mode": "proxied" }`. The owner enters its private HTTP(S) origin separately when connecting the app, so the address is stored on the server and is never part of the manifest or management API response. Ocean Brain reads the submitted manifest and does not load app code into its server process.
 
-Use **Update app manifest** to update an existing connection. The identifier cannot change. Previously approved permissions are intersected with the new request; additional permissions require an explicit grant. Updating a manifest never requires a database migration or replaces the token.
+Use **App settings** to update an existing connection. The identifier cannot change. Previously approved permissions are intersected with the new request; additional permissions require an explicit grant. Updating a manifest never requires a database migration or replaces the token.
 
 ## Permissions
 
@@ -69,7 +77,7 @@ An app that edits and deletes notes can request all four in its manifest:
 "permissions": ["notes:read", "notes:create", "notes:update", "notes:delete"]
 ```
 
-For an existing connection, use **Update app manifest** with the same `id` and the new permission list. Then explicitly enable **Edit notes** and **Delete notes**. The existing token can be reused; new requests do not automatically become grants. Requesting a permission does not add an editor or delete button to the external app: its developer implements those features and calls the corresponding API.
+For an existing connection, use **App settings** with the same `id` and the new permission list. Then explicitly enable **Edit notes** and **Delete notes**. The existing token can be reused; new requests do not automatically become grants. Requesting a permission does not add an editor or delete button to the external app: its developer implements those features and calls the corresponding API.
 
 These are connection-wide permissions, not per-note access rules. Writes also require `notes:read`, because authoring responses and conflict checks contain note data. Manifests request permissions; the server authorizes only the grants saved by the owner. MCP uses the same grant checks, including on legacy routes.
 
@@ -82,6 +90,7 @@ Disabling or revoking stops subsequent API requests. Data already copied to an e
 Send `Authorization: Bearer <connection-token>` from the integration app’s backend. Keep it out of page URLs, iframe attributes, browser storage, and distributed frontend code. The iframe bridge described below does not expose the owner's browser session or an integration connection token, and it does not turn the data API into a cross-origin browser API.
 
 - `GET /api/integrations/v1/me`: authenticated connection identity and granted permissions.
+- `POST /api/integrations/v1/status`: report the app’s latest task status, requiring `notes:read`.
 - `GET /api/integrations/v1/events`: optional live note change stream, requiring `notes:read`.
 - `POST /api/integrations/v1/graphql`: the read-only data API, requiring `notes:read`.
 - `POST /api/integrations/v1/notes/catalog`: keyset-paginated note IDs and versions for reconciliation, requiring `notes:read`.
@@ -113,6 +122,20 @@ Example create request:
 ```
 
 Create returns `{ "created": true, "note": { ... } }`. For metadata changes, send `id`, the note's `expectedUpdatedAt`, and the fields to change (`title`, `layout`, or `properties`). Read the current property definitions before setting property values. Markdown authoring operations retain the intent, selectors, version guards, conflict results, and warnings documented in the [CLI authoring contract](../packages/cli/README.md). Delete accepts `{ "id": "123" }`.
+
+### App-reported task status
+
+An app backend can send `POST /api/integrations/v1/status` with its connection token:
+
+```json
+{ "state": "running", "message": "Reading source notes for your summary." }
+```
+
+`state` must be `running`, `succeeded`, or `failed`. `message` is a plain-text, nonempty description of at most 300 characters without control characters. For failures, explain what the user can do next, for example: `Publishing account disconnected. Open the app to reconnect it.` Do not include credentials, private URLs, raw stack traces, or note content. A successful response returns the accepted state and message plus a server-generated `reportedAt` ISO timestamp.
+
+The token determines the connection; the caller cannot select another connection or set the report time. Send running updates at meaningful stages (at least once per minute for long-running tasks), then report success only after verifying the resulting operation. For authoring APIs, an HTTP 200 alone does not mean a write was applied. Report failures with a recovery action. Await reports in order; this endpoint stores the last received report and does not order concurrent jobs.
+
+The owner’s connection response includes `statusReport: {state, message, reportedAt} | null`. One bounded report is persisted on the current credential, with no growing event history. Token rotation or revocation clears it, as do access, manifest, and app address changes. Pinning does not clear it. Existing apps need no changes; without reports the UI shows only setup and authenticated access. This endpoint is an observation channel, not a job runner, durable queue, automatic retry mechanism, or independent verification of the app’s claim.
 
 ### Note synchronization
 
@@ -241,7 +264,7 @@ The proxied `app-access` value is not an integration token and cannot call `/api
 
 The platform adds `IntegrationConnection` and `IntegrationCredential` once. Manifests and grants are validated JSON documents stored as data. External apps own their settings, indexes, persistence, and migrations; adding or upgrading one does not add core tables, Prisma enums, routes, or imports. Built-in integration definitions live in a code registry; startup creates missing connection records without overwriting existing grants or credentials. Adding a native integration also needs no new integration-specific table. Live note events remain in memory and the catalog reads the existing `Note` table, so synchronization adds no event-log migration or retained event storage.
 
-Migration `0020` creates the platform records under their original names. Migration `0021` renames them to `IntegrationConnection` and `IntegrationCredential`, including the `integrationId` and `connectionId` columns, without replacing IDs, manifests, grants, enabled/pinned states, credentials, or timestamps. Migration `0022` adds the shared private proxy URL field. It converts the unreleased `managed` launch experiment to `proxied` and disables those connections until the owner enters a private URL. These migrations run automatically; installing or upgrading an individual integration app does not add another core migration.
+Migration `0020` creates the platform records under their original names. Migration `0021` renames them to `IntegrationConnection` and `IntegrationCredential`, including the `integrationId` and `connectionId` columns, without replacing IDs, manifests, grants, enabled/pinned states, credentials, or timestamps. Migration `0022` adds the shared private proxy URL field. It converts the unreleased `managed` launch experiment to `proxied` and disables those connections until the owner enters a private URL. Migration `0023` adds a nullable status report to the current credential; existing connections and tokens are preserved. These migrations run automatically; installing or upgrading an individual integration app does not add another core migration.
 
 The initial platform migration creates the built-in MCP integration record, preserves `MCP_ENABLED`, and copies the latest active MCP token hash and timestamps. Users do not need to regenerate that token. Thereafter both integration settings and the legacy MCP administration API use the new records as the single authority.
 

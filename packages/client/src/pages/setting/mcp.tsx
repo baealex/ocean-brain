@@ -272,7 +272,7 @@ const McpSetting = () => {
             headerRight={
                 <div className="inline-flex items-center gap-3 rounded-[14px] border border-border-subtle bg-muted px-3 py-2">
                     <Text as="span" variant="meta" weight="medium" tone="secondary">
-                        MCP access {enabled ? 'on' : 'off'}
+                        MCP access · {enabled ? 'On' : 'Off'}
                     </Text>
                     <Switch
                         aria-label="MCP access"

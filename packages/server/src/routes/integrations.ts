@@ -48,6 +48,12 @@ export const createIntegrationRouter =
                         ...request.integration,
                     }),
                 );
+                api.post<HttpRoute>(
+                    '/status',
+                    { bodyLimit: 2048, preHandler: requireIntegrationPermission('notes:read', service) },
+                    async (request) =>
+                        service.reportStatus(request.headers.authorization?.slice(7).trim() ?? '', request.body),
+                );
                 api.get<HttpRoute>(
                     '/events',
                     { preHandler: requireIntegrationPermission('notes:read', service) },

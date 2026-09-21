@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { fetchMcpAdminStatus, revokeMcpToken, rotateMcpToken, setMcpEnabled } from '~/apis/mcp-admin.api';
 import * as Icon from '~/components/icon';
 import { Button, PageLayout } from '~/components/shared';
+import PageBackLink from '~/components/shared/PageBackLink';
 import {
     Input,
     Label,
@@ -15,7 +17,7 @@ import {
     useToast,
 } from '~/components/ui';
 import { queryKeys } from '~/modules/query-key-factory';
-import { SETTINGS_INTEGRATIONS_ROUTE } from '~/modules/url';
+import { SETTINGS_INTEGRATION_DETAIL_ROUTE, SETTINGS_INTEGRATIONS_ROUTE } from '~/modules/url';
 
 const mcpAdminStatusQueryKey = queryKeys.mcp.status();
 
@@ -268,6 +270,7 @@ const McpSetting = () => {
         <PageLayout
             title="MCP"
             variant="default"
+            backLink={<PageBackLink to={SETTINGS_INTEGRATIONS_ROUTE}>Integrations</PageBackLink>}
             description="Connect this Ocean Brain instance to MCP clients."
             headerRight={
                 <div className="inline-flex items-center gap-3 rounded-[14px] border border-border-subtle bg-muted px-3 py-2">
@@ -286,9 +289,14 @@ const McpSetting = () => {
             }
         >
             <div className="flex flex-col gap-4">
-                <a href={SETTINGS_INTEGRATIONS_ROUTE} className="text-sm underline">
+                <Link
+                    to={SETTINGS_INTEGRATION_DETAIL_ROUTE}
+                    params={{ connectionId: 'mcp' }}
+                    search={{ section: 'access' }}
+                    className="text-sm underline"
+                >
                     Manage integration permissions
-                </a>
+                </Link>
                 <section className="flex flex-col gap-3" aria-labelledby="mcp-connect-heading">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="space-y-1">

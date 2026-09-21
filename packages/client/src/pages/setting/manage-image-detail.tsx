@@ -1,13 +1,13 @@
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
-import { getRouteApi, Link } from '@tanstack/react-router';
-import { Helmet } from 'react-helmet';
+import { getRouteApi } from '@tanstack/react-router';
 import { deleteImage, fetchImage } from '~/apis/image.api';
 import { fetchImageNotes } from '~/apis/note.api';
 import { setServerCache } from '~/apis/server-cache.api';
 import { QueryBoundary } from '~/components/app';
 import * as Icon from '~/components/icon';
 import { NoteListItem } from '~/components/note';
-import { Image as ImageComponent, Skeleton, SurfaceCard } from '~/components/shared';
+import { Image as ImageComponent, PageLayout, Skeleton, SurfaceCard } from '~/components/shared';
+import PageBackLink from '~/components/shared/PageBackLink';
 import { Button, Text, Tooltip, useConfirm, useToast } from '~/components/ui';
 import { queryKeys } from '~/modules/query-key-factory';
 import { SETTINGS_MANAGE_IMAGE_DETAIL_ROUTE, SETTINGS_MANAGE_IMAGE_ROUTE } from '~/modules/url';
@@ -15,8 +15,6 @@ import { getImageDeleteConfirmation } from './image-delete-confirmation';
 
 const Route = getRouteApi(SETTINGS_MANAGE_IMAGE_DETAIL_ROUTE);
 
-const backLinkClassName =
-    'mb-4 inline-flex items-center gap-1 text-fg-secondary transition-colors hover:text-fg-default';
 const previewFrameClassName = 'flex h-[248px] items-center justify-center bg-muted/25 p-3 sm:h-[352px]';
 const previewImageClassName = 'h-full w-full rounded-[12px] object-contain';
 const sectionHeaderClassName =
@@ -282,16 +280,15 @@ const ManageImageDetail = () => {
     const { page } = Route.useSearch();
 
     return (
-        <div className="w-full">
-            <Helmet>
-                <title>Image Detail | Ocean Brain</title>
-            </Helmet>
-            <Link to={SETTINGS_MANAGE_IMAGE_ROUTE} search={{ page }} className={backLinkClassName}>
-                <Icon.ChevronLeft size={16} />
-                <Text as="span" variant="meta" weight="medium" className="text-current">
+        <PageLayout
+            title="Image Detail"
+            variant="none"
+            backLink={
+                <PageBackLink to={SETTINGS_MANAGE_IMAGE_ROUTE} search={{ page }}>
                     Back to Images
-                </Text>
-            </Link>
+                </PageBackLink>
+            }
+        >
             <Text as="h1" variant="heading" weight="bold" tracking="tighter" className="sr-only">
                 Image Detail
             </Text>
@@ -303,7 +300,7 @@ const ManageImageDetail = () => {
             >
                 <ManageImageDetailContent id={id} />
             </QueryBoundary>
-        </div>
+        </PageLayout>
     );
 };
 

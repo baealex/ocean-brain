@@ -128,7 +128,10 @@ it('opens a proxied integration through the Ocean Brain app gateway', async () =
     renderPage();
     const frame = await screen.findByTitle('Inbox');
     expect(frame).toHaveAttribute('src', '/apps/inbox/');
-    expect(frame).toHaveAttribute('sandbox', 'allow-downloads allow-forms allow-modals allow-scripts');
+    expect(frame).toHaveAttribute(
+        'sandbox',
+        'allow-downloads allow-forms allow-modals allow-scripts allow-same-site-none-cookies',
+    );
     expect(screen.queryByRole('link', { name: 'Open in a new tab' })).not.toBeInTheDocument();
 });
 

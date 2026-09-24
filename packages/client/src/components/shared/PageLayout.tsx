@@ -9,6 +9,7 @@ interface PageLayoutProps {
     variant?: 'default' | 'subtle' | 'none';
     description?: ReactNode;
     headerRight?: ReactNode;
+    backLink?: ReactNode;
     children: ReactNode;
 }
 
@@ -58,6 +59,7 @@ export default function PageLayout({
     variant = 'default',
     description,
     headerRight,
+    backLink,
     children,
 }: PageLayoutProps) {
     return (
@@ -65,6 +67,7 @@ export default function PageLayout({
             <Helmet>
                 <title>{title ? `${title} | Ocean Brain` : 'Ocean Brain'}</title>
             </Helmet>
+            {backLink && <div className="mb-3">{backLink}</div>}
             {variant === 'default' && (
                 <div className="mb-5 border-b border-border-subtle/80 pb-4">
                     <div

@@ -45,13 +45,67 @@ describe('<IntegrationAppFrame />', () => {
             {
                 type: 'ocean-brain:host-context',
                 version: 1,
-                capabilities: ['location', 'open-note'],
+                capabilities: ['location', 'open-note', 'appearance'],
                 location: '/?query=whale',
+                appearance: expect.objectContaining({ theme: 'light', variables: expect.any(Object) }),
             },
             '*',
         );
         expect(onLocationChange).toHaveBeenCalledWith('/?query=coral&page=2');
         expect(onOpenNote).toHaveBeenCalledWith('17');
+    });
+
+    it('shares the current palette and updates it without reloading the app', async () => {
+        const root = document.documentElement;
+        const previousClass = root.className;
+        const previousStyle = root.getAttribute('style');
+        try {
+            root.classList.add('dark');
+            root.style.setProperty('--page-bg', '#101318');
+            render(<IntegrationAppFrame title="Themed app" src="https://app.example/?query=whale" />);
+            const frame = screen.getByTitle('Themed app');
+            const postMessage = vi.spyOn(frame.contentWindow as Window, 'postMessage');
+            act(() => {
+                window.dispatchEvent(
+                    new MessageEvent('message', {
+                        origin: 'null',
+                        source: frame.contentWindow,
+                        data: { type: 'ocean-brain:app-ready', version: 1 },
+                    }),
+                );
+            });
+            expect(postMessage).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    type: 'ocean-brain:host-context',
+                    appearance: expect.objectContaining({
+                        theme: 'dark',
+                        variables: expect.objectContaining({ '--page-bg': '#101318' }),
+                    }),
+                }),
+                '*',
+            );
+            postMessage.mockClear();
+            await act(async () => {
+                root.classList.remove('dark');
+                root.style.setProperty('--page-bg', '#f2f5f8');
+            });
+            expect(postMessage).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    type: 'ocean-brain:appearance',
+                    appearance: expect.objectContaining({
+                        theme: 'light',
+                        variables: expect.objectContaining({ '--page-bg': '#f2f5f8' }),
+                    }),
+                }),
+                '*',
+            );
+            expect(screen.getByTitle('Themed app')).toBe(frame);
+            expect(frame).toHaveAttribute('src', 'https://app.example/?query=whale');
+        } finally {
+            root.className = previousClass;
+            if (previousStyle === null) root.removeAttribute('style');
+            else root.setAttribute('style', previousStyle);
+        }
     });
 
     it('restores host history state without reloading the iframe', () => {

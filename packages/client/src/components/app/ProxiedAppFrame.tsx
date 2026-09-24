@@ -143,7 +143,7 @@ export function ProxiedAppFrame({
             onAppReady={handleAppReady}
             onLocationChange={onLocationChange}
             onOpenNote={onOpenNote}
-            sandbox="allow-downloads allow-forms allow-modals allow-scripts"
+            sandbox="allow-downloads allow-forms allow-modals allow-scripts allow-same-site-none-cookies"
             className={classNames(className)}
         />
     );

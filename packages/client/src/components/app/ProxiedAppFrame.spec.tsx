@@ -20,7 +20,10 @@ describe('<ProxiedAppFrame />', () => {
 
         const iframe = await screen.findByTitle('Search app');
         expect(iframe).toHaveAttribute('src', '/apps/search-1/');
-        expect(iframe).toHaveAttribute('sandbox', 'allow-downloads allow-forms allow-modals allow-scripts');
+        expect(iframe).toHaveAttribute(
+            'sandbox',
+            'allow-downloads allow-forms allow-modals allow-scripts allow-same-site-none-cookies',
+        );
         expect(iframe).toHaveAttribute('referrerpolicy', 'no-referrer');
         const postMessage = vi.spyOn(iframe.contentWindow as Window, 'postMessage');
 
@@ -38,8 +41,9 @@ describe('<ProxiedAppFrame />', () => {
             {
                 type: 'ocean-brain:host-context',
                 version: 1,
-                capabilities: ['location', 'open-note'],
+                capabilities: ['location', 'open-note', 'appearance'],
                 location: '/',
+                appearance: expect.objectContaining({ theme: 'light', variables: expect.any(Object) }),
             },
             '*',
         );

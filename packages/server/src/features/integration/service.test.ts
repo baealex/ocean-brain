@@ -193,7 +193,7 @@ test('integration rename preserves existing external connections and enforces cr
     }
 });
 
-test('proxy migration disables legacy runner connections until a private URL is configured', () => {
+test('integration extension migration preserves existing connections and credentials', () => {
     const db = new DatabaseSync(':memory:');
     try {
         db.exec(`
@@ -202,20 +202,30 @@ test('proxy migration disables legacy runner connections until a private URL is 
         `);
         applyMigration(db, '20260917120000_0020_plugin_installations');
         applyMigration(db, '20260917150000_0021_integration_connections');
-        const legacyManifest = JSON.stringify({ ...manifest, launch: { mode: 'managed' } });
+        const existingManifest = JSON.stringify(manifest);
         db.prepare(`
             INSERT INTO IntegrationConnection (id, integrationId, manifest, enabled, updatedAt)
             VALUES (?, ?, ?, 1, ?)
-        `).run('legacy-proxy', manifest.id, legacyManifest, '2026-09-19');
+        `).run('existing-inbox', manifest.id, existingManifest, '2026-09-19');
+        const token = issueMcpToken();
+        db.prepare(`
+            INSERT INTO IntegrationCredential (connectionId, id, tokenHash)
+            VALUES (?, ?, ?)
+        `).run('existing-inbox', 'existing-credential', token.hash);
 
         applyMigration(db, '20260919090000_0022_integration_proxy_url');
 
         const migrated = db
             .prepare('SELECT manifest, proxyUrl, enabled FROM IntegrationConnection WHERE id = ?')
-            .get('legacy-proxy');
-        assert.equal(JSON.parse(String(migrated?.manifest)).launch.mode, 'proxied');
+            .get('existing-inbox');
+        assert.equal(migrated?.manifest, existingManifest);
         assert.equal(migrated?.proxyUrl, null);
-        assert.equal(migrated?.enabled, 0);
+        assert.equal(migrated?.enabled, 1);
+        const credential = db
+            .prepare('SELECT tokenHash, statusReport FROM IntegrationCredential WHERE connectionId = ?')
+            .get('existing-inbox');
+        assert.equal(credential?.tokenHash, token.hash);
+        assert.equal(credential?.statusReport, null);
     } finally {
         db.close();
     }

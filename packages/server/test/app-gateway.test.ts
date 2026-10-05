@@ -230,6 +230,31 @@ test('proxied app HTTP requests use the direct target path without leaking brows
     );
 });
 
+test('proxied private app responses override upstream public caching', async (t) => {
+    const target = createServer((_request, response) => {
+        response.setHeader('Cache-Control', 'public, max-age=3600');
+        response.setHeader('CDN-Cache-Control', 'public, max-age=3600');
+        response.setHeader('Cloudflare-CDN-Cache-Control', 'public, max-age=3600');
+        response.setHeader('Surrogate-Control', 'max-age=3600');
+        response.end('private app data');
+    });
+    const targetOrigin = await listen(target);
+    t.after(() => closeServer(target));
+    const baseUrl = await startOceanBrain(t, openAuth, createGatewayOptions(targetOrigin));
+    const access = await issueGatewayAccess(baseUrl);
+
+    const response = await fetch(`${baseUrl}/apps/search-1/api/private`, {
+        headers: { [APP_GATEWAY_ACCESS_HEADER]: access.token },
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(await response.text(), 'private app data');
+    assert.equal(response.headers.get('cache-control'), 'private, no-store');
+    assert.equal(response.headers.get('cdn-cache-control'), null);
+    assert.equal(response.headers.get('cloudflare-cdn-cache-control'), null);
+    assert.equal(response.headers.get('surrogate-control'), null);
+});
+
 test('proxied app HTTP requests preserve form-encoded request bodies', async (t) => {
     let receivedBody = '';
     const target = createServer(async (request, response) => {

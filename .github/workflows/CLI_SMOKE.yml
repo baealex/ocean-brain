@@ -33,6 +33,9 @@ jobs:
         id: pack
         run: node scripts/ci/pack-cli-tarball.mjs
 
+      - name: Audit packed CLI installation
+        run: node scripts/ci/audit-cli-tarball.mjs "${{ steps.pack.outputs.path }}"
+
       - name: Upload CLI tarball
         uses: actions/upload-artifact@v7
         with:

@@ -79,6 +79,8 @@ git push origin v0.3.1
 3. Builds `ocean-brain` (CLI)
 4. Copies artifacts into `packages/cli/server/**`
 - Result: only CLI is published to npm, with bundled server/client artifacts and registry-compatible dependency ranges.
+- Prepublish bundles the patched Prisma CLI dependency tree using the workspace security overrides, so npm/npx installations retain patched transitive dependencies. Native engines are downloaded/generated for the installation platform by the existing Prisma postinstall.
+- `CLI_SMOKE` audits an isolated installation of the packed tarball before testing it across platforms.
 
 ## 6. Release Preparation Runbook
 1. Verify release package

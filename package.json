@@ -16,7 +16,7 @@
     "lint": "pnpm --parallel -r run --if-present lint",
     "test": "pnpm test:scripts && pnpm --parallel -r run --if-present test",
     "test:ci": "pnpm check:deps && pnpm test:scripts && pnpm --parallel -r run --if-present test:ci",
-    "test:scripts": "node --test scripts/ci/smoke-cli-npx.test.mjs scripts/release/prepublish.test.mjs",
+    "test:scripts": "node --test scripts/ci/smoke-cli-npx.test.mjs scripts/ci/resolve-build-aliases.test.mjs scripts/release/prepublish.test.mjs",
     "test:integration": "pnpm build && playwright test tests/e2e/core-note-flow.spec.ts",
     "test:e2e": "pnpm build && playwright test",
     "type-check": "pnpm --parallel -r run --if-present type-check",
@@ -24,7 +24,8 @@
     "cli": "node scripts/release/prepublish.mjs && node packages/cli/dist/index.js",
     "release:bump": "node scripts/release/bump-version.mjs",
     "prepublish": "node scripts/release/prepublish.mjs",
-    "check:deps": "node scripts/ci/check-cli-server-runtime-deps.mjs"
+    "check:deps": "node scripts/ci/check-cli-server-runtime-deps.mjs",
+    "check:security": "pnpm audit"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
@@ -37,7 +38,14 @@
       "esbuild": "0.28.1",
       "seroval": "1.5.6",
       "hono@<4.13.5": ">=4.13.5",
-      "smol-toml@<=1.7.0": ">=1.7.1"
+      "smol-toml@<=1.7.0": ">=1.7.1",
+      "undici@<7.29.1": ">=7.29.1 <8",
+      "dompurify@<3.4.16": ">=3.4.16 <4",
+      "fast-uri@>=2 <2.4.7": ">=2.4.7 <3",
+      "fast-uri@>=3 <3.1.8": ">=3.1.8 <4",
+      "fast-uri@>=4 <4.1.5": ">=4.1.5 <5",
+      "ip-address@<10.7.1": ">=10.7.1 <11",
+      "brace-expansion@>=5 <5.0.12": ">=5.0.12 <6"
     }
   }
 }

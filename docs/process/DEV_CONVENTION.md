@@ -44,6 +44,8 @@ Run `pnpm validate` before opening a PR. It executes the repository's complete v
 
 The individual commands remain available for validating a changed scope while developing. The pull request CI uses `pnpm validate` so local and CI validation cannot drift silently.
 
+Run `pnpm check:security` to audit all workspace dependencies, including development tools. Pull request CI runs this separately from `pnpm validate` because the advisory database requires network access. Resolve every reported vulnerability; do not suppress advisories to make the audit pass.
+
 ## 4. Minimum Rules Before PR
 1. Complete local validation for changed scope.
 2. Push only when CI is expected to pass.

@@ -247,6 +247,9 @@ export const createGatewayResponseHeaders = (source: IncomingHttpHeaders, reques
     delete headers['access-control-allow-credentials'];
     delete headers['proxy-authenticate'];
     delete headers['www-authenticate'];
+    delete headers['cdn-cache-control'];
+    delete headers['cloudflare-cdn-cache-control'];
+    delete headers['surrogate-control'];
 
     const location = getHeader(headers, 'location');
     if (location) {
@@ -262,7 +265,8 @@ export const createGatewayResponseHeaders = (source: IncomingHttpHeaders, reques
     headers['permissions-policy'] = 'camera=(), geolocation=(), microphone=(), payment=(), usb=()';
     headers['referrer-policy'] = 'no-referrer';
     headers['x-content-type-options'] = 'nosniff';
-    headers['cache-control'] ??= 'private, no-store';
+    // Every response is gated by an access grant, even when the upstream permits public caching.
+    headers['cache-control'] = 'private, no-store';
 
     if (request.appGatewayCorsAllowed) {
         headers['access-control-allow-origin'] = 'null';

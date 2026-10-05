@@ -25,5 +25,8 @@ jobs:
       - name: Prisma Generate
         run: pnpm --filter @ocean-brain/server exec prisma generate
 
+      - name: Audit all dependencies
+        run: pnpm check:security
+
       - name: Validate
         run: pnpm validate

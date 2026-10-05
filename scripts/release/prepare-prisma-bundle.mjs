@@ -11,6 +11,7 @@ const require = createRequire(new URL('../../package.json', import.meta.url));
 export const preparePrismaBundle = () => {
     const root = JSON.parse(readFileSync(path.join(rootDir, 'package.json'), 'utf8'));
     const prisma = JSON.parse(readFileSync(require.resolve('prisma/package.json'), 'utf8'));
+    const client = JSON.parse(readFileSync(require.resolve('@prisma/client/package.json'), 'utf8'));
     const temporaryDirectory = mkdtempSync(path.join(os.tmpdir(), 'cli-prisma-bundle-'));
     const runNpm = (args) => execFileSync(process.platform === 'win32' ? 'npm.cmd' : 'npm', args, {
         cwd: temporaryDirectory,
@@ -20,7 +21,7 @@ export const preparePrismaBundle = () => {
     try {
         writeFileSync(path.join(temporaryDirectory, 'package.json'), JSON.stringify({
             private: true,
-            dependencies: { prisma: prisma.version },
+            dependencies: { prisma: prisma.version, '@prisma/client': client.version },
             overrides: root.pnpm.overrides,
         }));
         // Ship JavaScript only; Prisma generates/downloads engines for the installation platform.

@@ -29,7 +29,7 @@
         "@phosphor-icons/react": "^2.1.10",
         "@radix-ui/react-slot": "^1.2.4",
         "@tanstack/react-query": "^5.90.21",
-        "@tanstack/react-router": "^1.166.3",
+        "@tanstack/react-router": "^1.170.45",
         "@tanstack/react-virtual": "^3.14.3",
         "axios": "^1.20.0",
         "class-variance-authority": "^0.7.1",
@@ -37,8 +37,8 @@
         "dayjs": "^1.11.19",
         "diff": "9.0.0",
         "jszip": "^3.10.1",
-        "katex": "^0.18.1",
-        "mermaid": "^11.16.1",
+        "katex": "0.18.10",
+        "mermaid": "^11.17.2",
         "nanoid": "^5.1.16",
         "prosemirror-state": "1.4.4",
         "prosemirror-view": "1.42.3",
@@ -60,12 +60,12 @@
         "@types/react-dom": "^19.2.3",
         "@types/react-helmet": "^6.1.11",
         "@vitejs/plugin-react": "^5.1.4",
-        "@vitest/coverage-v8": "^4.1.11",
+        "@vitest/coverage-v8": "^4.1.12",
         "jsdom": "^29.1.1",
         "react-grab": "^0.1.32",
         "tailwindcss": "^4.1.18",
         "typescript": "^7.0.2",
-        "vite": "^7.3.5",
-        "vitest": "^4.1.11"
+        "vite": "^7.3.7",
+        "vitest": "^4.1.12"
     }
 }

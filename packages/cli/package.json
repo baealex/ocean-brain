@@ -45,7 +45,7 @@
         "@fastify/static": "catalog:",
         "@graphql-tools/schema": "catalog:",
         "@graphql-tools/utils": "catalog:",
-        "@modelcontextprotocol/sdk": "^1.29.0",
+        "@modelcontextprotocol/sdk": "^1.32.0",
         "@prisma/client": "catalog:",
         "commander": "^14.0.3",
         "diff": "catalog:",

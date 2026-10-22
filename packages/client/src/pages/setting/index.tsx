@@ -9,6 +9,7 @@ import { queryKeys } from '~/modules/query-key-factory';
 import {
     SETTINGS_INTEGRATIONS_ROUTE,
     SETTINGS_MANAGE_IMAGE_ROUTE,
+    SETTINGS_NAVIGATION_ROUTE,
     SETTINGS_PLACEHOLDER_ROUTE,
     SETTINGS_PROPERTIES_ROUTE,
     SETTINGS_SEARCH_ROUTE,
@@ -40,37 +41,55 @@ const Setting = () => {
     const releasesUrl = versionInfo?.releaseUrl ?? OCEAN_BRAIN_RELEASES_URL;
 
     return (
-        <PageLayout title="Settings" description="Manage display, workspace tools, and advanced connections">
+        <PageLayout title="Settings" description="Manage display, workspace tools, and advanced connections.">
             <div className="flex flex-col gap-6">
                 <section className="flex flex-col gap-3">
                     <Text as="p" variant="label" weight="medium" className={sectionLabelClassName}>
                         Appearance
                     </Text>
-                    <button type="button" className={itemClassName} onClick={toggleTheme}>
-                        <div className="flex min-w-0 items-start gap-3">
-                            <span className={leadingClassName}>
-                                <Icon.Palette className={iconClassName} />
-                            </span>
-                            <div className={contentClassName}>
-                                <Text as="div" variant="body" weight="medium">
-                                    Theme
-                                </Text>
-                                <Text as="div" variant="meta" tone="secondary">
-                                    Switch between light and dark mode.
-                                </Text>
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <button type="button" className={itemClassName} onClick={toggleTheme}>
+                            <div className="flex min-w-0 items-start gap-3">
+                                <span className={leadingClassName}>
+                                    <Icon.Palette className={iconClassName} />
+                                </span>
+                                <div className={contentClassName}>
+                                    <Text as="div" variant="body" weight="medium">
+                                        Theme
+                                    </Text>
+                                    <Text as="div" variant="meta" tone="secondary">
+                                        Switch between light and dark mode.
+                                    </Text>
+                                </div>
                             </div>
-                        </div>
-                        <div className="mt-0.5 flex shrink-0 items-center gap-2 text-fg-tertiary">
-                            <Text as="span" variant="meta" weight="medium" tone="secondary">
-                                {theme === 'dark' ? 'Dark' : 'Light'}
-                            </Text>
-                            {theme === 'dark' ? (
-                                <Icon.Moon className="h-4 w-4" weight="fill" />
-                            ) : (
-                                <Icon.Sun className="h-4 w-4" weight="fill" />
-                            )}
-                        </div>
-                    </button>
+                            <div className="mt-0.5 flex shrink-0 items-center gap-2 text-fg-tertiary">
+                                <Text as="span" variant="meta" weight="medium" tone="secondary">
+                                    {theme === 'dark' ? 'Dark' : 'Light'}
+                                </Text>
+                                {theme === 'dark' ? (
+                                    <Icon.Moon className="h-4 w-4" weight="fill" />
+                                ) : (
+                                    <Icon.Sun className="h-4 w-4" weight="fill" />
+                                )}
+                            </div>
+                        </button>
+                        <Link to={SETTINGS_NAVIGATION_ROUTE} className={itemClassName}>
+                            <div className="flex min-w-0 items-start gap-3">
+                                <span className={leadingClassName}>
+                                    <Icon.Menu className={iconClassName} />
+                                </span>
+                                <div className={contentClassName}>
+                                    <Text as="div" variant="body" weight="medium">
+                                        Navigation
+                                    </Text>
+                                    <Text as="div" variant="meta" tone="secondary">
+                                        Reorder or hide top bar menus.
+                                    </Text>
+                                </div>
+                            </div>
+                            <Icon.ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-fg-tertiary" />
+                        </Link>
+                    </div>
                 </section>
 
                 <section className="flex flex-col gap-3">

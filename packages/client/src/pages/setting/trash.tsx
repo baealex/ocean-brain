@@ -23,7 +23,7 @@ import { NOTE_ROUTE, SETTINGS_TRASH_ROUTE } from '~/modules/url';
 const PAGE_SIZE = 25;
 const Route = getRouteApi(SETTINGS_TRASH_ROUTE);
 const TRASH_RETENTION_DAYS = 30;
-const PAGE_DESCRIPTION = `Deleted notes stay here for ${TRASH_RETENTION_DAYS} days before permanent removal`;
+const PAGE_DESCRIPTION = `Deleted notes stay here for ${TRASH_RETENTION_DAYS} days before permanent removal.`;
 const PERMANENT_DELETE_REFERENCE_WARNING = {
     title: 'Permanently delete note?',
     description:

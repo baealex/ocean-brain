@@ -8,6 +8,7 @@ import {
     createMcpAdminStatusHandler,
 } from '../features/mcp-admin/http/handlers.js';
 import type { McpAdminService } from '../features/mcp-admin/service.js';
+import { createNavigationService } from '../features/navigation/service.js';
 import {
     createSearchAdminListModelsHandler,
     createSearchAdminReindexHandler,
@@ -36,6 +37,16 @@ export const createApiRouter = (authConfig: AuthConfig, mcpAdminService: McpAdmi
 
         app.register(createMcpRouter(authConfig, mcpAdminService), { prefix: '/mcp' });
         app.register(createIntegrationRouter(authConfig));
+
+        const navigation = createNavigationService();
+        app.get('/navigation-settings', { preHandler: [sessionAccessRateLimit, requireSession] }, () =>
+            navigation.get(),
+        );
+        app.put<HttpRoute>(
+            '/navigation-settings',
+            { bodyLimit: 64 * 1024, preHandler: [sessionAccessRateLimit, requireSession, csrfProtection] },
+            (request) => navigation.save(request.body),
+        );
 
         app.get<HttpRoute>('/auth/session', createSessionStatusHandler(authConfig));
         app.post<HttpRoute>(

@@ -101,7 +101,7 @@ const ManageImage = () => {
                     }}
                     render={({ images, totalCount }) => {
                         const heading = totalCount > 0 ? `Images (${totalCount})` : undefined;
-                        const description = 'Review and manage the images you uploaded inside notes';
+                        const description = 'Review and manage the images you uploaded inside notes.';
 
                         if (images.length === 0) {
                             return (

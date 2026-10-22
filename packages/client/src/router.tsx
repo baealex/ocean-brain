@@ -37,6 +37,7 @@ import {
     SETTINGS_MANAGE_IMAGE_DETAIL_ROUTE,
     SETTINGS_MANAGE_IMAGE_ROUTE,
     SETTINGS_MCP_ROUTE,
+    SETTINGS_NAVIGATION_ROUTE,
     SETTINGS_PLACEHOLDER_ROUTE,
     SETTINGS_PROPERTIES_ROUTE,
     SETTINGS_ROUTE,
@@ -193,6 +194,11 @@ const integrationSettingsRoute = createRoute({
     validateSearch: validateIntegrationSettingsSearch,
     component: lazyRouteComponent(() => import('~/pages/setting/integration-detail')),
 });
+const navigationSettingsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: SETTINGS_NAVIGATION_ROUTE,
+    component: lazyRouteComponent(() => import('~/pages/setting/navigation')),
+});
 const integrationRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: INTEGRATION_ROUTE,
@@ -280,6 +286,7 @@ const routeTree = rootRoute.addChildren([
     tagNotesRoute,
     viewNotesRoute,
     settingsRoute,
+    navigationSettingsRoute,
     searchSettingsRoute,
     mcpRoute,
     integrationsSettingsRoute,

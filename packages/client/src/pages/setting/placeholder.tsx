@@ -102,7 +102,7 @@ const Placeholder = () => {
     const addCardIconClassName =
         'inline-flex h-[34px] w-[34px] items-center justify-center rounded-full border border-border-subtle bg-surface text-current transition-colors group-hover:border-border-secondary/70';
     const heading = customPlaceholderCount > 0 ? `Placeholders (${customPlaceholderCount})` : undefined;
-    const description = 'Create tokens that get replaced with values when you clone a note';
+    const description = 'Create tokens that get replaced with values when you clone a note.';
 
     return (
         <PageLayout

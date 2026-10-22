@@ -1,5 +1,12 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import {
+    createMemoryHistory,
+    createRootRoute,
+    createRoute,
+    createRouter,
+    RouterProvider,
+} from '@tanstack/react-router';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { McpAdminStatus } from '~/apis/mcp-admin.api';
 import * as mcpAdminApi from '~/apis/mcp-admin.api';
@@ -32,18 +39,25 @@ const createMcpStatus = (overrides: Partial<McpAdminStatus> = {}): McpAdminStatu
     ...overrides,
 });
 
-const renderPage = () => {
+const renderPage = async () => {
+    const root = createRootRoute();
+    const route = createRoute({ getParentRoute: () => root, path: '/setting/mcp', component: McpSetting });
+    const router = createRouter({
+        routeTree: root.addChildren([route]),
+        history: createMemoryHistory({ initialEntries: ['/setting/mcp'] }),
+    });
     const queryClient = createTestQueryClient();
 
     render(
         <QueryClientProvider client={queryClient}>
             <ConfirmProvider>
                 <ToastProvider>
-                    <McpSetting />
+                    <RouterProvider router={router} />
                 </ToastProvider>
             </ConfirmProvider>
         </QueryClientProvider>,
     );
+    await act(async () => router.load());
 };
 
 describe('<McpSetting />', () => {
@@ -54,7 +68,7 @@ describe('<McpSetting />', () => {
     it('shows origin-based Ocean Brain URL', async () => {
         vi.mocked(mcpAdminApi.fetchMcpAdminStatus).mockResolvedValue(createMcpStatus());
 
-        renderPage();
+        await renderPage();
 
         expect(await screen.findByLabelText(/ocean brain url/i)).toHaveValue(window.location.origin);
     });
@@ -76,7 +90,7 @@ describe('<McpSetting />', () => {
             }),
         );
 
-        renderPage();
+        await renderPage();
 
         expect(await screen.findByText('MCP compatibility 0.9.x')).toBeInTheDocument();
     });
@@ -84,7 +98,7 @@ describe('<McpSetting />', () => {
     it('uses the built-in ocean-brain MCP command for every client guide', async () => {
         vi.mocked(mcpAdminApi.fetchMcpAdminStatus).mockResolvedValue(createMcpStatus());
 
-        renderPage();
+        await renderPage();
 
         expect(((await screen.findByLabelText('Codex setup')) as HTMLTextAreaElement).value).toContain(
             'npx -y ocean-brain mcp',
@@ -106,7 +120,7 @@ describe('<McpSetting />', () => {
     it('generates a PowerShell setup for Windows clients', async () => {
         vi.mocked(mcpAdminApi.fetchMcpAdminStatus).mockResolvedValue(createMcpStatus());
 
-        renderPage();
+        await renderPage();
 
         await userEvent.click(await screen.findByText('Connection options'));
         await userEvent.click(screen.getByRole('radio', { name: 'Windows PowerShell' }));
@@ -127,7 +141,7 @@ describe('<McpSetting />', () => {
         vi.mocked(mcpAdminApi.fetchMcpAdminStatus).mockResolvedValue(createMcpStatus());
         vi.mocked(mcpAdminApi.setMcpEnabled).mockResolvedValue(createMcpStatus({ enabled: true }));
 
-        renderPage();
+        await renderPage();
 
         const toggle = await screen.findByRole('switch', { name: /mcp access/i });
         await userEvent.click(toggle);

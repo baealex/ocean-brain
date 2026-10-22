@@ -6,6 +6,7 @@ import {
     validateGraphSearch,
     validateHomeSearch,
     validateIntegrationSearch,
+    validateIntegrationSettingsSearch,
     validateIntegrationsSearch,
     validatePaginationSearch,
     validateReminderSearch,
@@ -129,7 +130,7 @@ describe('route-search validators', () => {
         expect(validateGraphSearch({ selected: 17 })).toEqual({});
     });
 
-    it('normalizes the expanded integration connection without retaining unrelated input', () => {
+    it('normalizes the legacy integration connection without retaining unrelated input', () => {
         expect(validateIntegrationsSearch({ connection: ' inbox ', unrelated: 'value' })).toEqual({
             connection: 'inbox',
         });
@@ -137,6 +138,18 @@ describe('route-search validators', () => {
         expect(validateIntegrationsSearch({ connection: '  ' })).toEqual({});
         expect(validateIntegrationsSearch({ connection: { id: 'inbox' } })).toEqual({});
         expect(validateIntegrationsSearch({ connection: 17 })).toEqual({});
+    });
+
+    it('keeps only supported settings sections and an explicit setup flag', () => {
+        expect(validateIntegrationSettingsSearch({ section: 'access', setup: 'true', token: 'ignored' })).toEqual({
+            section: 'access',
+            setup: true,
+        });
+        expect(validateIntegrationSettingsSearch({ section: 'advanced' })).toEqual({ section: 'advanced' });
+        expect(validateIntegrationSettingsSearch({ section: ['access', 'advanced'], setup: 'false' })).toEqual({
+            section: 'access',
+        });
+        expect(validateIntegrationSettingsSearch({ section: 'unknown', setup: 'unknown' })).toEqual({});
     });
 
     it('keeps only safe integration app locations', () => {

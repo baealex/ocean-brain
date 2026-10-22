@@ -8,7 +8,7 @@ import { PageLayout } from '~/components/shared';
 import { Button, Text } from '~/components/ui';
 import { DEFAULT_INTEGRATION_APP_LOCATION, resolveIntegrationAppSource } from '~/modules/integration-app-bridge';
 import { queryKeys } from '~/modules/query-key-factory';
-import { INTEGRATION_ROUTE, NOTE_ROUTE, SETTINGS_INTEGRATIONS_ROUTE } from '~/modules/url';
+import { INTEGRATION_ROUTE, NOTE_ROUTE, SETTINGS_INTEGRATION_DETAIL_ROUTE } from '~/modules/url';
 
 export default function IntegrationPage() {
     const { connectionId } = useParams({ from: INTEGRATION_ROUTE });
@@ -55,7 +55,7 @@ export default function IntegrationPage() {
             <div className="p-4">
                 <PageLayout title="App unavailable">
                     <Text as="p">This app is disconnected, disabled, or has no page.</Text>
-                    <Link to={SETTINGS_INTEGRATIONS_ROUTE} search={{ connection: connectionId }}>
+                    <Link to={SETTINGS_INTEGRATION_DETAIL_ROUTE} params={{ connectionId }}>
                         Manage integrations
                     </Link>
                 </PageLayout>
@@ -80,8 +80,9 @@ export default function IntegrationPage() {
                     <div className="flex shrink-0 items-center gap-1">
                         <Button asChild variant="ghost" size="sm" className="min-h-11">
                             <Link
-                                to={SETTINGS_INTEGRATIONS_ROUTE}
-                                search={{ connection: connectionId }}
+                                to={SETTINGS_INTEGRATION_DETAIL_ROUTE}
+                                params={{ connectionId }}
+                                search={{ section: 'access' }}
                                 title="Manage access"
                             >
                                 <Icon.Gear aria-hidden="true" className="h-4 w-4" />

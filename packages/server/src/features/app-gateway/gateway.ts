@@ -231,7 +231,7 @@ const appendVary = (current: string | string[] | undefined, value: string) => {
 };
 
 const APP_SANDBOX_POLICY =
-    "sandbox allow-downloads allow-forms allow-modals allow-scripts; frame-ancestors 'self'; object-src 'none'";
+    "sandbox allow-downloads allow-forms allow-modals allow-scripts allow-same-site-none-cookies; frame-ancestors 'self'; object-src 'none'";
 
 export const createGatewayResponseHeaders = (source: IncomingHttpHeaders, request: AppGatewayRequest) => {
     const headers = { ...source };

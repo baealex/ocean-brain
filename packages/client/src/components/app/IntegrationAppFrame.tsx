@@ -1,5 +1,6 @@
 import classNames from 'classnames';
 import { type ComponentPropsWithoutRef, useEffect, useLayoutEffect, useRef } from 'react';
+import { getIntegrationAppAppearance } from '~/modules/integration-app-appearance';
 import {
     DEFAULT_INTEGRATION_APP_LOCATION,
     INTEGRATION_APP_BRIDGE_VERSION,
@@ -28,8 +29,9 @@ const sendHostContext = (contentWindow: Window, location: string) => {
         {
             type: 'ocean-brain:host-context',
             version: INTEGRATION_APP_BRIDGE_VERSION,
-            capabilities: ['location', 'open-note'],
+            capabilities: ['location', 'open-note', 'appearance'],
             location,
+            appearance: getIntegrationAppAppearance(),
         },
         '*',
     );
@@ -46,6 +48,7 @@ export function IntegrationAppFrame({
     ...iframeProps
 }: IntegrationAppFrameProps) {
     const iframeRef = useRef<HTMLIFrameElement>(null);
+    const appReadyRef = useRef(false);
     const initialSourceRef = useRef(iframeProps.src);
     const location = normalizeIntegrationAppLocation(appLocation) ?? DEFAULT_INTEGRATION_APP_LOCATION;
     const latestLocationRef = useRef(location);
@@ -57,6 +60,7 @@ export function IntegrationAppFrame({
             if (!isBridgeMessage(event, contentWindow) || !contentWindow) return;
 
             if (event.data.type === 'ocean-brain:app-ready') {
+                appReadyRef.current = true;
                 sendHostContext(contentWindow, latestLocationRef.current);
                 onAppReady?.(contentWindow);
                 return;
@@ -75,6 +79,22 @@ export function IntegrationAppFrame({
         window.addEventListener('message', receiveAppMessage);
         return () => window.removeEventListener('message', receiveAppMessage);
     }, [onAppReady, onLocationChange, onOpenNote]);
+
+    useEffect(() => {
+        const observer = new MutationObserver(() => {
+            if (!appReadyRef.current) return;
+            iframeRef.current?.contentWindow?.postMessage(
+                {
+                    type: 'ocean-brain:appearance',
+                    version: INTEGRATION_APP_BRIDGE_VERSION,
+                    appearance: getIntegrationAppAppearance(),
+                },
+                '*',
+            );
+        });
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style'] });
+        return () => observer.disconnect();
+    }, []);
 
     useEffect(() => {
         const contentWindow = iframeRef.current?.contentWindow;

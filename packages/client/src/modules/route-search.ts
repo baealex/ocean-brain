@@ -120,6 +120,11 @@ export interface IntegrationsRouteSearch {
     connection?: string;
 }
 
+export interface IntegrationSettingsSearch {
+    section?: 'access' | 'advanced';
+    setup?: boolean;
+}
+
 export interface IntegrationRouteSearch {
     app?: string;
 }
@@ -191,6 +196,14 @@ export const validateGraphSearch = (search: SearchRecord): GraphRouteSearch => {
 export const validateIntegrationsSearch = (search: SearchRecord): IntegrationsRouteSearch => {
     const connection = parseString(search.connection).trim();
     return connection ? { connection } : {};
+};
+
+export const validateIntegrationSettingsSearch = (search: SearchRecord): IntegrationSettingsSearch => {
+    const section = getFirstValue(search.section);
+    return {
+        ...(section === 'access' || section === 'advanced' ? { section } : {}),
+        ...(parseBoolean(search.setup) ? { setup: true } : {}),
+    };
 };
 
 export const validateIntegrationSearch = (search: SearchRecord): IntegrationRouteSearch => {

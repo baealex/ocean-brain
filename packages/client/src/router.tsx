@@ -14,6 +14,7 @@ import {
     validateGraphSearch,
     validateHomeSearch,
     validateIntegrationSearch,
+    validateIntegrationSettingsSearch,
     validateIntegrationsSearch,
     validatePaginationSearch,
     validateReminderSearch,
@@ -30,6 +31,8 @@ import {
     NOTE_ROUTE,
     REMINDERS_ROUTE,
     SEARCH_ROUTE,
+    SETTINGS_INTEGRATION_CONNECT_ROUTE,
+    SETTINGS_INTEGRATION_DETAIL_ROUTE,
     SETTINGS_INTEGRATIONS_ROUTE,
     SETTINGS_MANAGE_IMAGE_DETAIL_ROUTE,
     SETTINGS_MANAGE_IMAGE_ROUTE,
@@ -169,7 +172,26 @@ const integrationsSettingsRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: SETTINGS_INTEGRATIONS_ROUTE,
     validateSearch: validateIntegrationsSearch,
+    beforeLoad: ({ search }) => {
+        if (search.connection)
+            throw redirect({
+                to: SETTINGS_INTEGRATION_DETAIL_ROUTE,
+                params: { connectionId: search.connection },
+                replace: true,
+            });
+    },
     component: lazyRouteComponent(() => import('~/pages/setting/integrations')),
+});
+const integrationConnectRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: SETTINGS_INTEGRATION_CONNECT_ROUTE,
+    component: lazyRouteComponent(() => import('~/pages/setting/integration-connect')),
+});
+const integrationSettingsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: SETTINGS_INTEGRATION_DETAIL_ROUTE,
+    validateSearch: validateIntegrationSettingsSearch,
+    component: lazyRouteComponent(() => import('~/pages/setting/integration-detail')),
 });
 const integrationRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -261,6 +283,8 @@ const routeTree = rootRoute.addChildren([
     searchSettingsRoute,
     mcpRoute,
     integrationsSettingsRoute,
+    integrationConnectRoute,
+    integrationSettingsRoute,
     integrationRoute,
     trashRoute,
     manageImageRoute,

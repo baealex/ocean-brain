@@ -8,11 +8,11 @@ Integration apps are intended for capabilities that benefit from a separate proc
 
 **Integrations** connect MCP clients or apps through approved data access. An **integration app** runs in a separate process; Ocean Brain provides access management and an optional page entry. It can be opened at its own URL or placed behind Ocean Brain's proxied app gateway. Registering its manifest does not install or run its code. **Plugins** refers to installable code packages that Ocean Brain would load and execute. That runtime is not currently provided.
 
-Routes, source modules, and database models use `integration` terminology. Settings live at `/setting/integrations`; an app page lives at `/integrations/:connectionId`. A connection is one registration of an integration: `connectionId` identifies that registration, while `integrationId` is the stable manifest identifier shared by registrations of the same app.
+Routes, source modules, and database models use `integration` terminology. The connection list lives at `/setting/integrations`, and each connection has a settings page at `/setting/integrations/:connectionId`; an app page lives at `/integrations/:connectionId`. A connection is one registration of an integration: `connectionId` identifies that registration, while `integrationId` is the stable manifest identifier shared by registrations of the same app.
 
 ## Connect an external app
 
-Open **Settings → Integrations → Connect app**, choose the developer's manifest JSON file, and approve its requested permissions. A new connection starts disabled. Generate a token, configure it in the external service, and enable the connection. Tokens are shown only when generated; replacing or revoking one affects only that connection.
+Open **Settings → Integrations → Connect app → External app**, choose the developer's manifest JSON file, and approve its requested permissions. A new connection starts disabled. Choose **Continue** to review access, then **Connect app** to register it. Generate a token, save it in the external service, and choose **Enable connection**. Apps that request no note access do not need a token. Tokens are shown only when generated; replacing or revoking one affects only that connection.
 
 An external app can provide a page that opens from settings. **Show in top bar** adds a shortcut while the connection is enabled. Disconnecting an external app revokes its token and removes its entry, without deleting Ocean Brain notes or attempting to delete the external service's data. The built-in MCP integration can be disabled but cannot be disconnected. Its existing connection setup page remains available.
 
@@ -20,9 +20,11 @@ Local experiments may be kept under `examples/`, which is excluded from Git. The
 
 ## Check connection status and try a first task
 
-Settings → Integrations shows each app’s purpose, current status, and next action without opening its settings. Use **Set up MCP** to connect an AI client, **Continue setup** to finish an external connection, or **Open app** to use a configured app. The gear button opens permissions, credentials, and the **Integration access** switch, consistently labeled **On** or **Off**. Access permission is separate from actual activity. A connection can need setup, have access paused, be waiting for its first API access, or have recorded access. The timestamp records authentication with the current token, not a successful task or proof that the app is still online. Status refreshes every ten seconds while the page is visible; **Refresh status** checks immediately. If refresh fails, the page keeps the last information and marks it as potentially out of date.
+Settings → Integrations lists registered apps with a short status and links to **Open app** and **Settings**. MCP stays visible before it is connected, with a **Connect AI client** action. The same flow is available under **Connect app → AI client**. **Settings** opens a separate page. **Overview** groups the latest activity result and report time in a status panel, with connection and top-bar switches below; **Access** contains note permissions and tokens; **Advanced** contains the external app's manifest, address, and disconnect action. Permission edits take effect after **Save access**. Incomplete connections can resume with **Connect** or be removed under **Settings → Advanced**.
 
-After connecting the built-in MCP integration, expand its card and use **Try it with your notes**. Enter a topic, preview and copy the research request, then paste it into your connected AI client. With read and create access, the request asks the client to save a new summary with links to the source notes. With read-only access, it asks for an answer in the conversation without modifying notes. Copying a request does not execute it or confirm a result; open the returned note link to review the actual output.
+**On** and **Off** describe access, not app health. **Waiting for app** means the current token has not been used. A last-used timestamp records authentication, not a successful task or proof that the app is still online. Status refreshes every ten seconds while the page is visible; **Refresh status** on the overview checks immediately. If refresh fails, the page keeps the last information and marks it as potentially out of date.
+
+After connecting MCP, open its **Settings → Overview → Try with your notes**. Enter a topic, preview and copy the research request, then paste it into your AI client. With read and create access, the request asks the client to save a summary with source links. With read-only access, it asks for an answer without modifying notes. Copying a request does not execute it or confirm a result.
 
 Apps can optionally report work in progress, completion, or a problem using the status endpoint below. These reports are explicitly attributed to the app. A running report older than five minutes is marked **Progress update overdue**; check the app before retrying because it may still be working. A historical completion report is not a live health check.
 
@@ -32,7 +34,7 @@ An app can use notes, tags, and existing properties as its shared data store: fo
 
 1. Create an independent backend using the HTTP requests and runnable Node example below. Node's built-in `fetch` is sufficient; other backend languages can call the same HTTP API.
 2. Give your app a stable manifest `id`, describe its purpose, and request the permissions its features use. Add `launch` for a page; omit it for a background job.
-3. Register the manifest in **Settings → Integrations → Connect app**. The owner chooses grants, enters the server-only private URL for a proxied page, and generates a token for this connection.
+3. Register the manifest in **Settings → Integrations → Connect app → External app**. The owner chooses grants, enters the server-only private URL for a proxied page, and generates a token for this connection.
 4. Configure the app backend with `OCEAN_BRAIN_URL` and `OCEAN_BRAIN_INTEGRATION_TOKEN`, start it, and enable the connection.
 5. Call `GET /api/integrations/v1/me` to check the connection and actual grants. Use GraphQL for reads, the note endpoints below for writes, and periodic note catalog reconciliation for a synchronized local index. Add the event stream only when the app needs lower update latency. A browser page submits to your backend; the backend holds the token and calls Ocean Brain.
 6. Open the app from settings. Test with a permission removed, with the connection disabled, and after token revocation. Handle denied access in the app UI.
@@ -58,7 +60,7 @@ An external app owns its deployment and updates. Deliver its manifest alongside 
 
 `launch` is optional for headless automation. `external` opens an absolute URL in a new tab, `iframe` embeds an absolute URL, and `proxied` embeds the app through Ocean Brain at `/apps/:connectionId/`. External and iframe URLs must use HTTPS without embedded credentials; HTTP is allowed only for `localhost`, `127.0.0.1`, or `[::1]` during local development. A proxied launch contains only `{ "mode": "proxied" }`. The owner enters its private HTTP(S) origin separately when connecting the app, so the address is stored on the server and is never part of the manifest or management API response. Ocean Brain reads the submitted manifest and does not load app code into its server process.
 
-Use **App settings** to update an existing connection. The identifier cannot change. Previously approved permissions are intersected with the new request; additional permissions require an explicit grant. Updating a manifest never requires a database migration or replaces the token.
+Use **Settings → Advanced** to update an existing connection. The identifier cannot change. Previously approved permissions are intersected with the new request; additional permissions require an explicit grant. Updating a manifest never requires a database migration or replaces the token.
 
 ## Permissions
 
@@ -77,7 +79,7 @@ An app that edits and deletes notes can request all four in its manifest:
 "permissions": ["notes:read", "notes:create", "notes:update", "notes:delete"]
 ```
 
-For an existing connection, use **App settings** with the same `id` and the new permission list. Then explicitly enable **Edit notes** and **Delete notes**. The existing token can be reused; new requests do not automatically become grants. Requesting a permission does not add an editor or delete button to the external app: its developer implements those features and calls the corresponding API.
+For an existing connection, use **Settings → Advanced** with the same `id` and the new permission list. Then select **Edit notes** and **Delete notes** under **Access** and choose **Save access**. The existing token can be reused; new requests do not automatically become grants. Requesting a permission does not add an editor or delete button to the external app: its developer implements those features and calls the corresponding API.
 
 These are connection-wide permissions, not per-note access rules. Writes also require `notes:read`, because authoring responses and conflict checks contain note data. Manifests request permissions; the server authorizes only the grants saved by the owner. MCP uses the same grant checks, including on legacy routes.
 
@@ -217,6 +219,8 @@ A proxied launch solves that topology mismatch. The browser loads `/apps/:connec
 
 The sandbox gives the app an opaque browser origin. Module scripts and other CORS-enabled subresources must opt into credentials so the short-lived connection cookie reaches the gateway, and the app response must allow the opaque `null` origin with credentials. For example, use `crossorigin="use-credentials"` on module scripts and stylesheets. Vite's production HTML defaults to anonymous `crossorigin`, so a proxied Vite app must replace that attribute or provide an equivalent credentialed asset loader.
 
+The host's iframe and gateway CSP include `allow-same-site-none-cookies`, allowing the connection's `SameSite=None` cookie on same-site requests in supporting browsers even when third-party cookies are blocked. The app retains its opaque origin and cannot read the host document or cookies. If an app supplies its own CSP `sandbox` directive, it must include this token too. See the [Chrome sandbox cookie policy](https://privacysandbox.google.com/blog/sandbox-allow-same-site-none-cookies) for the browser behavior.
+
 The owner configures a private URL such as `http://127.0.0.1:7778` on the connection. A browser request for `/apps/:connectionId/search` becomes a direct server request for `http://127.0.0.1:7778/search`. Ocean Brain supplies trusted `X-Ocean-Brain-Integration-Id`, `X-Ocean-Brain-Connection-Id`, `X-Forwarded-Host`, `X-Forwarded-Proto`, and `X-Forwarded-Prefix` headers. There is no App Runner, global runner port, runner environment variable, or shared runner secret.
 
 Proxied mode is a direct reverse-proxy and isolation contract, not an installer. The current release does not pull images, create containers, allocate storage, or supervise app processes. A future installer can create the app process and save its resulting private URL without changing the public `/apps/:connectionId/` route.
@@ -225,12 +229,13 @@ Direct iframe pages use `sandbox="allow-scripts allow-forms"`. Proxied pages add
 
 ### Iframe bridge v1
 
-Every embedded app can use a small `postMessage` bridge for host navigation and history. This is a UI bridge; note content still comes from the integration API through the app backend.
+Every embedded app can use a small `postMessage` bridge for host navigation, history, and appearance. This is a UI bridge; note content still comes from the integration API through the app backend.
 
 | Direction | Message | Purpose |
 | --- | --- | --- |
 | App → host | `{ type: "ocean-brain:app-ready", version: 1 }` | Start bridge negotiation after the app installs its message listener. |
-| Host → app | `{ type: "ocean-brain:host-context", version: 1, capabilities: ["location", "open-note"], location }` | Confirm the host and provide the current relative app location. |
+| Host → app | `{ type: "ocean-brain:host-context", version: 1, capabilities: ["location", "open-note", "appearance"], location, appearance }` | Confirm the host and provide the current relative app location and appearance. |
+| Host → app | `{ type: "ocean-brain:appearance", version: 1, appearance }` | Update the app's colors when the host theme changes, without reloading it. |
 | App → host | `{ type: "ocean-brain:location-change", version: 1, location }` | Add app state to Ocean Brain's browser history. |
 | Host → app | `{ type: "ocean-brain:location", version: 1, location }` | Restore app state after browser back or forward. |
 | App → host | `{ type: "ocean-brain:open-note", version: 1, noteId }` | Open the actual Ocean Brain note page. |
@@ -259,6 +264,14 @@ function openNote(noteId) {
 ```
 
 The proxied `app-access` value is not an integration token and cannot call `/api/integrations/v1/*`. It is bound to one connection, expires quickly, and belongs only in requests back through that app's `/apps/:connectionId/` path. The app backend continues to hold its long-lived integration token and enforce its own user or connection isolation.
+
+### Embedded app appearance
+
+Ocean Brain's reference apps follow the existing page, search, and form patterns. Use the host's typography, spacing, surfaces, and button hierarchy; keep the app's primary task prominent. A separate brand header, decorative background, fixed content width, or explanation footer should not be the default embedded experience. The client [design guidance](../packages/client/README.md) points to the shared components and styles.
+
+The optional `appearance` capability provides `{ theme: "light" | "dark", fontFamily, variables }`. `variables` maps public CSS color names to their current values: page and surface colors, foregrounds, borders, button colors, and highlights. The allowlist is defined in [`integration-app-appearance.ts`](../packages/client/src/modules/integration-app-appearance.ts). Apps can apply recognized variables to their own document, set its `color-scheme`, and use the supplied font family with fonts they bundle. Only visual values cross this bridge; apps do not receive stylesheets, host DOM access, or credentials through it.
+
+Apply the initial appearance from `host-context` and subsequent `ocean-brain:appearance` messages. Retain standalone defaults when the capability is absent. Theme changes must preserve the app's current input, results, and history. This is an additive v1 capability; older apps can ignore it.
 
 ## Storage, compatibility, and migration
 

@@ -224,6 +224,8 @@ test('proxied app HTTP requests use the direct target path without leaking brows
     assert.equal(response.headers.get('set-cookie'), null);
     assert.equal(response.headers.get('access-control-allow-origin'), 'null');
     assert.match(response.headers.get('content-security-policy') ?? '', /sandbox/);
+    assert.match(response.headers.get('content-security-policy') ?? '', /allow-same-site-none-cookies/);
+    assert.doesNotMatch(response.headers.get('content-security-policy') ?? '', /allow-same-origin/);
     assert.equal(
         response.headers.get('permissions-policy'),
         'camera=(), geolocation=(), microphone=(), payment=(), usb=()',

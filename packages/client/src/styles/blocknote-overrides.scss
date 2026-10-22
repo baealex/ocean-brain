@@ -384,11 +384,12 @@ html.dark .bn-mantine .bn-menu-dropdown {
 }
 
 .bn-editor [data-content-type="table"] table {
-    overflow: hidden;
+    min-width: max-content;
+    overflow: visible;
     background: var(--elevated);
-    border: 1px solid var(--border-subtle);
-    border-radius: 10px;
-    border-collapse: separate;
+    border: 1px solid var(--border);
+    border-radius: 0;
+    border-collapse: collapse;
     border-spacing: 0;
 }
 
@@ -397,9 +398,7 @@ html.dark .bn-mantine .bn-menu-dropdown {
     min-width: 112px;
     padding: 8px 10px;
     background: var(--elevated);
-    border: 0;
-    border-right: 1px solid var(--border-subtle);
-    border-bottom: 1px solid var(--border-subtle);
+    border: 1px solid var(--border);
     color: var(--fg-default);
     vertical-align: top;
 }
@@ -408,14 +407,6 @@ html.dark .bn-mantine .bn-menu-dropdown {
     background: var(--muted);
     color: var(--fg-muted);
     font-weight: 600;
-}
-
-.bn-editor [data-content-type="table"] tr > :last-child {
-    border-right: 0;
-}
-
-.bn-editor [data-content-type="table"] tr:last-child > * {
-    border-bottom: 0;
 }
 
 .bn-editor [data-content-type="table"] th:hover,

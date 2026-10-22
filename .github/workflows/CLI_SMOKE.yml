@@ -84,4 +84,7 @@ jobs:
           echo "path=$tarball" >> "$GITHUB_OUTPUT"
 
       - name: Smoke test `npx ocean-brain`
+        env:
+          CLI_SMOKE_READY_TIMEOUT_MS: ${{ runner.os == 'Windows' && '600000' || '120000' }}
+          npm_config_loglevel: info
         run: node scripts/ci/smoke-cli-npx.mjs "${{ steps.tarball.outputs.path }}"

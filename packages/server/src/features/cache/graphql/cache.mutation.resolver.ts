@@ -1,6 +1,14 @@
 import type { IResolvers } from '@graphql-tools/utils';
 
 import models, { type Cache } from '~/models.js';
+import { createAppError } from '~/modules/error-handler.js';
+import { NAVIGATION_SETTINGS_KEY } from '../../navigation/service.js';
+
+const requireEditableCacheKey = (key: string) => {
+    if (key === NAVIGATION_SETTINGS_KEY) {
+        throw createAppError(400, 'RESERVED_SETTINGS_KEY', 'Use menu settings to change the navigation layout.');
+    }
+};
 
 type CacheRecord = Pick<Cache, 'id' | 'key' | 'value'>;
 type CacheMutationInput = Pick<Cache, 'key' | 'value'>;
@@ -33,6 +41,7 @@ const createCacheMutationService = (): CacheMutationService => ({
 
 export const createSetCacheMutationResolver = (service: CacheMutationService = createCacheMutationService()) => {
     return async (_: unknown, { key, value }: CacheMutationInput) => {
+        requireEditableCacheKey(key);
         const decodedValue = decodeURIComponent(value);
         const existingCache = await service.findCacheByKey(key);
 
@@ -52,6 +61,7 @@ export const createSetCacheMutationResolver = (service: CacheMutationService = c
 
 export const createDeleteCacheMutationResolver = (service: CacheMutationService = createCacheMutationService()) => {
     return async (_: unknown, { key }: Pick<Cache, 'key'>) => {
+        requireEditableCacheKey(key);
         await service.deleteCache(key);
         return true;
     };

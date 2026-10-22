@@ -7,6 +7,9 @@ import { createTestQueryClient } from '~/test/test-utils';
 import TopNavigation from './TopNavigation';
 
 vi.mock('~/apis/integration.api', () => ({ fetchIntegrations: vi.fn(async () => []) }));
+vi.mock('~/apis/navigation-settings.api', () => ({
+    fetchNavigationSettings: vi.fn(async () => ({ preferences: null, revision: null, status: 'ready' })),
+}));
 
 describe('<TopNavigation />', () => {
     it('renders the primary navigation items', async () => {

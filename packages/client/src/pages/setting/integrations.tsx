@@ -19,6 +19,7 @@ export default function IntegrationsSettings() {
     return (
         <PageLayout
             title="Integrations"
+            description="Connect external apps and manage their access, activity, and top bar visibility."
             headerRight={
                 <Button asChild className="w-full sm:w-auto">
                     <Link to={SETTINGS_INTEGRATION_CONNECT_ROUTE}>

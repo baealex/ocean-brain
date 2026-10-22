@@ -40,6 +40,7 @@ const normalizePlaceholderFields = (fields?: FetchPlaceholdersParams['fields']) 
 };
 
 export const queryKeys = {
+    navigation: { settings: () => ['navigation', 'settings'] as const },
     integrations: { all: () => ['integrations'] as const, list: () => ['integrations', 'list'] as const },
     mcp: { status: () => ['mcp-admin', 'status'] as const },
     notes: {

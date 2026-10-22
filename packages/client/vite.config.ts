@@ -48,6 +48,15 @@ export default defineConfig({
     resolve: {
         alias: [
             {
+                find: '~/apis/navigation-settings-adapter',
+                replacement: path.resolve(
+                    __dirname,
+                    isLocalOnlyDemoBuild
+                        ? './src/apis/navigation-settings-adapter.local.ts'
+                        : './src/apis/navigation-settings-adapter.ts',
+                ),
+            },
+            {
                 find: '~/apis/integration-adapter',
                 replacement: path.resolve(
                     __dirname,

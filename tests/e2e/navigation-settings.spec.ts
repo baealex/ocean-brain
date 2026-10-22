@@ -61,7 +61,8 @@ test('menu layout persists mixed order and visibility, shares app pins and reset
         exact: true,
     });
     await searchHandle.focus();
-    await page.keyboard.press('Space');
+    // The keyboard sensor attaches movement listeners after the activation event.
+    await page.keyboard.press('Space', { delay: 50 });
     await expect(searchHandle).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByRole('status')).toContainText('droppable area core:search');
     await page.keyboard.press('ArrowDown');
@@ -132,10 +133,13 @@ test('menu layout persists mixed order and visibility, shares app pins and reset
 
     await page.setViewportSize({ width: 390, height: 844 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
-    await page.getByRole('button', { name: 'Reorder Inbox', exact: true }).focus();
-    await page.keyboard.press('Space');
+    await inboxHandle.focus();
+    await page.keyboard.press('Space', { delay: 50 });
+    await expect(inboxHandle).toHaveAttribute('aria-pressed', 'true');
     await page.keyboard.press('ArrowDown');
+    await expect(page.getByRole('status')).toContainText('droppable area core:notes');
     await page.keyboard.press('Space');
+    await expect(inboxHandle).not.toHaveAttribute('aria-pressed', 'true');
     await expect(rows.first()).toContainText('Notes');
     await page.getByRole('button', { name: 'Cancel', exact: true }).click();
     await expect(rows.first()).toContainText('Inbox');

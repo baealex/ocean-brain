@@ -1,7 +1,10 @@
+# syntax=docker/dockerfile:1
 FROM node:24.22.1-trixie-slim@sha256:43b9ba1142b8dcf33fa8f922ca1be85714adc444e0586c7cf7726daaeabc1bea AS install
 
 ARG VERSION=latest
-RUN npm i -g --omit=dev --no-audit --no-fund ocean-brain@${VERSION} \
+ARG PACKAGE_SPEC=ocean-brain@${VERSION}
+RUN --mount=type=bind,target=/build \
+    npm i -g --omit=dev --no-audit --no-fund "${PACKAGE_SPEC}" \
     && APP_ROOT="$(npm root -g)/ocean-brain" \
     && find "$APP_ROOT" -type f \( \
         -name '*.map' -o \

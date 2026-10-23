@@ -1,4 +1,4 @@
-FROM node:22-trixie-slim@sha256:e6d9a389d34ff9678438af985c9913fbd1eb6ed36e80fea56644f4b4f6dd70ba AS install
+FROM node:24.22.1-trixie-slim@sha256:43b9ba1142b8dcf33fa8f922ca1be85714adc444e0586c7cf7726daaeabc1bea AS install
 
 ARG VERSION=latest
 RUN npm i -g --omit=dev --no-audit --no-fund ocean-brain@${VERSION} \
@@ -13,7 +13,7 @@ RUN npm i -g --omit=dev --no-audit --no-fund ocean-brain@${VERSION} \
 
 # Keep the current root-user behavior so existing host bind mounts remain writable.
 # The distroless runtime still removes the shell and package manager.
-FROM gcr.io/distroless/nodejs22-debian13:latest@sha256:4693a48bdba4a676bf3f0c0a66c106c242ba3167fbc97d5008171c37d96dee12
+FROM gcr.io/distroless/nodejs24-debian13:latest@sha256:c23cc7262662efd642cd9c9d61783d10f600321f7bafdd37c8a82365ffaa2aa6
 
 COPY --from=install /usr/local/lib/node_modules/ocean-brain /usr/local/lib/node_modules/ocean-brain
 COPY --from=install /runtime/data /data

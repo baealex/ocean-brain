@@ -137,6 +137,27 @@ async function assertGraphql() {
     }
 }
 
+function assertNodeRuntime() {
+    const script = `
+        const [major, minor, patch] = process.versions.node.split('.').map(Number);
+        if (major !== 24 || minor < 22 || (minor === 22 && patch < 1)) {
+            throw new Error('Docker runtime must use Node.js 24.22.1 or newer in the 24.x release line; found ' + process.version);
+        }
+        if (require('node:zlib').constants.BROTLI_DECODER_ERROR_FORMAT_BLOCK_SWITCH !== -17) {
+            throw new Error('Docker runtime is missing the Brotli CVE-2026-111497 fix');
+        }
+        console.log('Node.js runtime verification passed: ' + process.version + ' (' + process.arch + ')');
+    `;
+
+    run('docker', [
+        'run',
+        '--rm',
+        '--entrypoint', '/nodejs/bin/node',
+        image,
+        '-e', script
+    ]);
+}
+
 function assertSqliteVectorExtension() {
     const appModules = '/usr/local/lib/node_modules/ocean-brain/node_modules';
     const script = `
@@ -180,6 +201,7 @@ async function main() {
     await pullWithRetry();
 
     try {
+        assertNodeRuntime();
         assertSqliteVectorExtension();
         run('docker', [
             'run',

@@ -1,6 +1,6 @@
 # Ocean Brain Deployment and Release Strategy
 
-Updated: 2026-09-18
+Updated: 2026-10-23
 
 ## 1. Current Deployment Channels
 1. npm distribution
@@ -11,6 +11,7 @@ Updated: 2026-09-18
 - Image: `baealex/ocean-brain`
 - Tags: `latest`, `<version>`
 - Multi-arch targets: `linux/amd64`, `linux/arm64`
+- Installation and final distroless runtime images use Node.js 24.22.1 or newer in the 24.x release line, including the CVE-2026-111497 fix. Update both pinned image digests when upgrading the runtime.
 
 3. Source-based run
 - `pnpm install && pnpm build && pnpm start`
@@ -70,6 +71,7 @@ git push origin v0.3.1
 - Runs after successful `publish-docker-manifest`
 - Pulls `baealex/ocean-brain:<version>` with retry to tolerate registry propagation delay.
 - Runs the published Docker image and verifies the web shell, auth session endpoint, and GraphQL endpoint.
+- Checks the final image's Node.js version and Brotli security fix before startup, and verifies the native SQLite vector extension.
 - Creates the GitHub Release with auto-generated notes (`generate_release_notes: true`) only after Docker verification passes.
 
 ## 5. Prepublish Build Strategy

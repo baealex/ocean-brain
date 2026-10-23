@@ -45,34 +45,47 @@ git push origin v0.3.1
   `https://github.com/baealex/ocean-brain/releases/tag/vX.Y.Z`
 
 ## 4. Release Pipeline Details
-1. `publish-npm`
+1. `build-package`
 - Installs Node 22 and pnpm
+- Confirms that the tag matches the CLI package version before preparing or publishing artifacts.
 - Runs `node scripts/release/prepublish.mjs`
 - Packs the CLI with `pnpm pack` so workspace `catalog:` dependencies are resolved in the tarball.
-- Publishes that tarball with `npm publish --provenance --access public`.
+- Audits an isolated installation of the packed tarball before either publishing channel starts.
+- Shares the tarball as a workflow artifact with both publishing channels. It is retained for seven days to allow failed jobs to be retried without rebuilding.
+
+2. `publish-npm`
+- Runs after successful `build-package`, in parallel with `publish-docker`.
+- Downloads and publishes the shared tarball with `npm publish --provenance --access public`.
 - Uses npm trusted publishing (OIDC) via GitHub Actions
 
-2. `verify-npm`
+3. `verify-npm`
 - Runs after successful `publish-npm`
-- Waits for `ocean-brain@<version>` to become visible on npm with retry before verification.
+- Polls for `ocean-brain@<version>` with a 30-minute step timeout, allowing for npm's publish-time scanning. Each metadata request has a 10-second timeout with no internal retry.
+- Checks that the published package's integrity matches the shared tarball before executing it.
 - Runs `npx ocean-brain@<version>` smoke verification against the actually published package.
 
-3. `publish-docker`
-- Runs only after successful `verify-npm`
+4. `publish-docker`
+- Runs after successful `build-package`, independently of npm publishing and verification.
+- Installs the shared tarball directly inside each architecture's image; it does not wait for this package version to be published on npm.
+- Uses the tarball directory as the Docker build context and passes its mounted path as `PACKAGE_SPEC`. Local builds can still use `VERSION` to install an existing npm release.
 - Extracts version from tag (`vX.Y.Z` -> `X.Y.Z`)
 - Builds and pushes per architecture via DockerHub
 - Requires `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`
 
-4. `publish-docker-manifest`
+5. `publish-docker-manifest`
 - Combines architecture digests into one manifest
 - Pushes final tags: `<version>`, `latest`
 
-5. `verify-docker`
+6. `verify-docker`
 - Runs after successful `publish-docker-manifest`
+- Runs on native amd64 and arm64 runners; both must pass.
 - Pulls `baealex/ocean-brain:<version>` with retry to tolerate registry propagation delay.
 - Runs the published Docker image and verifies the web shell, auth session endpoint, and GraphQL endpoint.
 - Checks the final image's Node.js version and Brotli security fix before startup, and verifies the native SQLite vector extension.
-- Creates the GitHub Release with auto-generated notes (`generate_release_notes: true`) only after Docker verification passes.
+
+7. `create-release`
+- Runs only after both `verify-npm` and `verify-docker` pass.
+- Creates the GitHub Release with auto-generated notes (`generate_release_notes: true`).
 
 ## 5. Prepublish Build Strategy
 - `scripts/release/prepublish.mjs` standardizes release artifacts.
@@ -148,10 +161,10 @@ git push origin v<version>
 gh run list --workflow RELEASE.yml --limit 5
 ```
 
-- Wait for npm publish, npm verification, Docker publish, manifest, and Docker verification jobs to finish.
+- Wait for `build-package`, both publishing channels, all verification jobs, and `create-release` to finish.
 
 9. Finalize GitHub Release note
-- Open the created release page after `verify-docker` creates it.
+- Open the created release page after `create-release` finishes.
 - For patch releases, start from GitHub generated notes and preserve the PR-linked bullet format.
 - For minor and major releases, treat auto-generated notes as a draft and replace the body with the final note before sharing the release externally.
 
@@ -192,7 +205,17 @@ git ls-remote --tags origin v<version>
 gh run list --workflow RELEASE.yml --limit 10
 ```
 
-4. If the tag exists but no `RELEASE` run started, recreate the tag explicitly
+4. If a `RELEASE` run failed, retry only its failed jobs
+
+```bash
+gh run rerun <run-id> --failed
+```
+
+- npm can acknowledge publication while the package is still being scanned. If availability verification times out, confirm that the version is visible with `npm view ocean-brain@<version> version`, then retry the failed jobs.
+- Preserve successful publication jobs. Do not republish the package or recreate the tag to retry verification.
+- Shared package and Docker digest artifacts are retained for seven days. Retry within this window to reuse them.
+
+5. If the tag exists and no `RELEASE` run was ever created, recreate the tag explicitly
 
 ```bash
 git checkout main
@@ -203,7 +226,7 @@ git tag v<version>
 git push origin v<version>
 ```
 
-5. Re-check release creation
+6. Re-check release creation
 
 ```bash
 gh run list --workflow RELEASE.yml --limit 10

@@ -94,7 +94,7 @@ git push origin v0.3.1
 - Runs only after both `verify-npm` and `verify-docker` pass.
 - Creates the GitHub Release with auto-generated notes (`generate_release_notes: true`).
 
-`IMAGE SECURITY` also scans both architectures of the published `latest` image daily, using one resolved immutable manifest digest for the entire run. It can be dispatched manually for a specific published tag. This detects new advisories without requiring another image build; it uses the same report and failure policy as release scanning. Runtime version and Brotli fix checks remain separate because package scanning does not cover every embedded binary.
+`IMAGE SECURITY` also scans both architectures of the published `latest` image daily, using one resolved immutable manifest digest for the entire run. It can be dispatched manually for a specific published tag. Reports are separated by tag and architecture so an older-tag scan cannot replace the current `latest` analysis. This detects new advisories without requiring another image build; it uses the same report and failure policy as release scanning. Runtime version and Brotli fix checks remain separate because package scanning does not cover every embedded binary.
 
 ## 5. Prepublish Build Strategy
 - `scripts/release/prepublish.mjs` standardizes release artifacts.

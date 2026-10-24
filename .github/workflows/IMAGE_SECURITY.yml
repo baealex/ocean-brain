@@ -66,4 +66,4 @@ jobs:
         with:
           image-ref: ${{ needs.resolve-image.outputs.image-ref }}
           platform: ${{ matrix.platform }}
-          report-name: image-security-${{ matrix.arch }}
+          report-name: image-security-${{ inputs.tag || 'latest' }}-${{ matrix.arch }}

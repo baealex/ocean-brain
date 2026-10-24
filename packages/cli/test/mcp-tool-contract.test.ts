@@ -11,6 +11,7 @@ import { createMcpJsonToolResult, createMcpTextToolResult, noteLayoutSchema } fr
 interface JsonSchema {
     additionalProperties?: boolean;
     anyOf?: JsonSchema[];
+    oneOf?: JsonSchema[];
     const?: unknown;
     default?: unknown;
     enum?: unknown[];
@@ -184,13 +185,15 @@ describe('Ocean Brain MCP stdio contract', () => {
                 assert.ok(matchedVariant, `${discriminator} schema variant should exist`);
                 return matchedVariant;
             };
-            const selectorVariants = property(OCEAN_BRAIN_MCP_TOOLS.patchNoteMarkdown, 'selector').anyOf;
+            const selectorSchema = property(OCEAN_BRAIN_MCP_TOOLS.patchNoteMarkdown, 'selector');
+            const selectorVariants = selectorSchema.oneOf ?? selectorSchema.anyOf;
             assert.deepEqual([...(variant(selectorVariants, 'exact_text').required ?? [])].sort(), ['text', 'type']);
             assert.deepEqual(
                 [...(variant(selectorVariants, 'match_candidate').required ?? [])].sort(),
                 ['type', 'text', 'matchIndex', 'lineStart', 'matchSha256', 'surroundingHash'].sort(),
             );
-            const operationVariants = property(OCEAN_BRAIN_MCP_TOOLS.patchNoteMarkdown, 'operation').anyOf;
+            const operationSchema = property(OCEAN_BRAIN_MCP_TOOLS.patchNoteMarkdown, 'operation');
+            const operationVariants = operationSchema.oneOf ?? operationSchema.anyOf;
             assert.deepEqual([...(variant(operationVariants, 'replace').required ?? [])].sort(), [
                 'replacement',
                 'type',

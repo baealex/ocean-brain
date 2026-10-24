@@ -1,0 +1,111 @@
+name: Scan Docker image
+description: Inventory image vulnerabilities, publish reports, and reject fixable high-severity findings
+
+inputs:
+  image-ref:
+    description: Immutable image reference to scan
+    required: true
+  platform:
+    description: Target image platform
+    required: true
+  report-name:
+    description: Unique artifact name for this platform
+    required: true
+  ref:
+    description: Git ref for GitHub code scanning
+    required: false
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v7
+      with:
+        node-version: '^22.23.4'
+
+    - name: Install pinned Trivy
+      shell: bash
+      run: |
+        case "$RUNNER_ARCH" in
+          X64)
+            archive=trivy_0.76.1_Linux-64bit.tar.gz
+            checksum=c7cbe3137fb8a48a17574bede3dd6beb16742d1e9772929940fc90082c39d9c0
+            ;;
+          ARM64)
+            archive=trivy_0.76.1_Linux-ARM64.tar.gz
+            checksum=e174dff2a6dba5e3ae41f8d0537a6324405bd08132497340304c6b20e0f16a1f
+            ;;
+          *) echo "Unsupported scanner architecture: $RUNNER_ARCH" >&2; exit 1 ;;
+        esac
+        install_dir="$(mktemp -d "$RUNNER_TEMP/trivy.XXXXXX")"
+        curl --fail --location --retry 3 --max-time 180 \
+          "https://github.com/aquasecurity/trivy/releases/download/v0.76.1/$archive" \
+          --output "$install_dir/$archive"
+        echo "$checksum  $install_dir/$archive" | sha256sum --check
+        tar -xzf "$install_dir/$archive" -C "$install_dir" trivy
+        echo "$install_dir" >> "$GITHUB_PATH"
+
+    - name: Cache vulnerability database
+      uses: actions/cache@v5
+      with:
+        path: ${{ runner.temp }}/trivy-cache
+        key: trivy-0.76.1-${{ runner.os }}-${{ runner.arch }}-${{ github.run_id }}
+        restore-keys: |
+          trivy-0.76.1-${{ runner.os }}-${{ runner.arch }}-
+
+    - name: Scan final image
+      id: scan
+      shell: bash
+      env:
+        IMAGE_REF: ${{ inputs.image-ref }}
+        IMAGE_PLATFORM: ${{ inputs.platform }}
+      run: |
+        if [[ ! "$IMAGE_REF" =~ ^baealex/ocean-brain@sha256:[a-f0-9]{64}$ ]]; then
+          echo 'Expected an immutable image digest from the project Docker repository' >&2
+          exit 1
+        fi
+        mkdir -p image-security-report
+        trivy image --cache-dir "$RUNNER_TEMP/trivy-cache" \
+          --image-src remote --platform "$IMAGE_PLATFORM" \
+          --scanners vuln --pkg-types os,library --list-all-pkgs \
+          --ignorefile /dev/null --ignore-unfixed=false \
+          --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL --exit-code 0 --no-progress \
+          --format json --output image-security-report/results.json \
+          --timeout 10m "$IMAGE_REF"
+
+    - name: Convert full report to SARIF
+      id: sarif
+      shell: bash
+      run: trivy convert --format sarif --output image-security-report/results.sarif image-security-report/results.json
+
+    - name: Summarize findings
+      id: report
+      shell: bash
+      env:
+        IMAGE_REF: ${{ inputs.image-ref }}
+      run: node scripts/ci/report-image-security.mjs image-security-report/results.json "$IMAGE_REF"
+
+    - name: Upload full vulnerability reports
+      if: always() && steps.scan.outcome == 'success'
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ inputs.report-name }}
+        path: image-security-report/
+        if-no-files-found: error
+        retention-days: 30
+
+    - name: Publish findings to GitHub Security
+      if: always() && steps.sarif.outcome == 'success' && steps.report.outcome == 'success'
+      uses: github/codeql-action/upload-sarif@v4
+      with:
+        sarif_file: image-security-report/results.sarif
+        category: docker-image/${{ inputs.report-name }}
+        ref: ${{ inputs.ref || github.ref }}
+        sha: ${{ github.sha }}
+
+    - name: Reject fixable high-severity vulnerabilities
+      if: always() && steps.report.outcome == 'success' && steps.report.outputs.blocking_count != '0'
+      shell: bash
+      run: |
+        echo '::error::Image contains fixable HIGH/CRITICAL vulnerabilities. See the job summary and report artifact; update the affected image or dependencies before publishing release tags.'
+        exit 1

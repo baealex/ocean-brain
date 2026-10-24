@@ -1,6 +1,6 @@
 # Ocean Brain Deployment and Release Strategy
 
-Updated: 2026-10-23
+Updated: 2026-10-24
 
 ## 1. Current Deployment Channels
 1. npm distribution
@@ -72,20 +72,29 @@ git push origin v0.3.1
 - Builds and pushes per architecture via DockerHub
 - Requires `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`
 
-5. `publish-docker-manifest`
+5. `scan-docker`
+- Scans each final architecture image by its immutable digest before version and `latest` tags are published. The existing build is reused.
+- Uses a pinned Trivy release with verified binary checksums to inventory OS packages and application libraries.
+- Publishes all severities, including findings without fixes, to GitHub Security, the Actions job summary, and JSON/SARIF artifacts retained for 30 days.
+- Blocks tag publication for HIGH/CRITICAL findings with a published fix. Scanner errors and missing OS/library coverage also fail the job.
+
+6. `publish-docker-manifest`
+- Requires both architecture scans to pass.
 - Combines architecture digests into one manifest
 - Pushes final tags: `<version>`, `latest`
 
-6. `verify-docker`
+7. `verify-docker`
 - Runs after successful `publish-docker-manifest`
 - Runs on native amd64 and arm64 runners; both must pass.
 - Pulls `baealex/ocean-brain:<version>` with retry to tolerate registry propagation delay.
 - Runs the published Docker image and verifies the web shell, auth session endpoint, and GraphQL endpoint.
 - Checks the final image's Node.js version and Brotli security fix before startup, and verifies the native SQLite vector extension.
 
-7. `create-release`
+8. `create-release`
 - Runs only after both `verify-npm` and `verify-docker` pass.
 - Creates the GitHub Release with auto-generated notes (`generate_release_notes: true`).
+
+`IMAGE SECURITY` also scans both architectures of the published `latest` image daily, using one resolved immutable manifest digest for the entire run. It can be dispatched manually for a specific published tag. Reports are separated by tag and architecture so an older-tag scan cannot replace the current `latest` analysis. This detects new advisories without requiring another image build; it uses the same report and failure policy as release scanning. Runtime version and Brotli fix checks remain separate because package scanning does not cover every embedded binary.
 
 ## 5. Prepublish Build Strategy
 - `scripts/release/prepublish.mjs` standardizes release artifacts.

@@ -326,6 +326,18 @@ describe('registerIntentWriteTools', () => {
 });
 
 describe('metadataPropertyPatchSchema', () => {
+    test('rejects an oversized property batch before accumulating per-item validation errors', () => {
+        const result = metadataPropertyPatchSchema.safeParse({
+            set: Array.from({ length: 10_000 }, () => ({ key: '', value: 0 }))
+        });
+
+        assert.equal(result.success, false);
+        if (!result.success) {
+            assert.equal(result.error.issues.length, 1);
+            assert.equal(result.error.issues[0].code, 'too_big');
+        }
+    });
+
     test('accepts concise set and delete patches', () => {
         // Arrange
         const patch = {

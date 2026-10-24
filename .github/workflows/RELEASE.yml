@@ -204,8 +204,59 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  publish-docker-manifest:
+  scan-docker:
     needs: publish-docker
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            platform: linux/amd64
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux/arm64
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Download candidate digest
+        uses: actions/download-artifact@v8
+        with:
+          name: digest-${{ strategy.job-index }}
+          path: .tmp/digest
+
+      - name: Resolve candidate image
+        id: image
+        shell: bash
+        run: |
+          digest_files=(.tmp/digest/*)
+          if [ "${#digest_files[@]}" -ne 1 ]; then
+            echo 'Expected exactly one candidate image digest' >&2
+            exit 1
+          fi
+          digest="$(basename "${digest_files[0]}")"
+          if [[ ! "$digest" =~ ^[a-f0-9]{64}$ ]]; then
+            echo 'Invalid candidate image digest' >&2
+            exit 1
+          fi
+          echo "ref=${IMAGE}@sha256:$digest" >> "$GITHUB_OUTPUT"
+
+      - name: Scan candidate image before release tags
+        uses: ./.github/actions/scan-docker-image
+        with:
+          image-ref: ${{ steps.image.outputs.ref }}
+          platform: ${{ matrix.platform }}
+          report-name: release-image-security-${{ matrix.arch }}
+          ref: refs/heads/main
+
+  publish-docker-manifest:
+    needs: [publish-docker, scan-docker]
     runs-on: ubuntu-latest
     steps:
       - name: Extract version from tag

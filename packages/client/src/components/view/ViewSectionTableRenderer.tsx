@@ -222,6 +222,7 @@ export default function ViewSectionTableRenderer({
     surface = 'flush',
 }: ViewSectionTableRendererProps) {
     const columns = resolveTableColumns(section, notes, availableProperties);
+    const isTitlePinned = columns[0]?.kind === 'base' && columns[0].key === 'title';
     const tableWidth = getTableWidth(columns);
     const surfaceClassName =
         surface === 'card'
@@ -253,7 +254,7 @@ export default function ViewSectionTableRenderer({
         const sortBy = SORTABLE_TABLE_COLUMNS[column.key];
         const label = getViewTableColumnLabel(column.key);
         const isActiveSort = sortBy ? activeSortBy === sortBy : false;
-        const isTitle = column.key === 'title';
+        const isTitle = column.key === 'title' && isTitlePinned;
 
         return (
             <th
@@ -336,7 +337,10 @@ export default function ViewSectionTableRenderer({
                 return (
                     <td
                         key={column.key}
-                        className="relative px-3 py-2.5 align-middle lg:sticky lg:left-0 lg:z-10"
+                        className={classNames(
+                            'relative px-3 py-2.5 align-middle',
+                            isTitlePinned && 'lg:sticky lg:left-0 lg:z-10',
+                        )}
                         style={{ background: stickyCellBackground }}
                     >
                         <span

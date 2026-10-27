@@ -37,7 +37,14 @@ import {
     ViewTabBar,
     ViewTabDialog,
 } from '~/components/view';
-import type { ViewSection, ViewsWorkspace, ViewTab } from '~/models/view.model';
+import type {
+    ViewDisplayOptions,
+    ViewSection,
+    ViewSortBy,
+    ViewSortOrder,
+    ViewsWorkspace,
+    ViewTab,
+} from '~/models/view.model';
 import { queryKeys } from '~/modules/query-key-factory';
 import { VIEWS_ROUTE } from '~/modules/url';
 import {
@@ -77,6 +84,8 @@ interface SortableViewSectionProps {
     onEdit: () => void;
     onDuplicate: () => void;
     onDelete: () => void;
+    onSaveSort: (sortBy: ViewSortBy, sortOrder: ViewSortOrder) => Promise<void>;
+    onSaveColumns: (options: ViewDisplayOptions) => Promise<boolean>;
     onMoveUp?: () => void;
     onMoveDown?: () => void;
     navigationState: ViewSectionRouteState;
@@ -92,6 +101,8 @@ const SortableViewSection = ({
     onEdit,
     onDuplicate,
     onDelete,
+    onSaveSort,
+    onSaveColumns,
     onMoveUp,
     onMoveDown,
     navigationState,
@@ -123,6 +134,8 @@ const SortableViewSection = ({
                 onEdit={onEdit}
                 onDuplicate={onDuplicate}
                 onDelete={onDelete}
+                onSaveSort={onSaveSort}
+                onSaveColumns={onSaveColumns}
                 onMoveUp={onMoveUp}
                 onMoveDown={onMoveDown}
                 navigationState={navigationState}
@@ -441,6 +454,54 @@ export default function Views() {
         setSectionDialogState(null);
     };
 
+    const handleSaveSectionSort = async (section: ViewSection, sortBy: ViewSortBy, sortOrder: ViewSortOrder) => {
+        try {
+            const response = await updateViewSection(section.id, buildViewSectionInput(section, { sortBy, sortOrder }));
+
+            if (response.type === 'error') {
+                toast(response.errors[0]?.message ?? 'Failed to save the default sort.');
+                return;
+            }
+
+            queryClient.setQueryData<ViewsWorkspace>(queryKeys.views.workspace(), (current) =>
+                current
+                    ? {
+                          ...current,
+                          tabs: current.tabs.map((tab) => ({
+                              ...tab,
+                              sections: tab.sections.map((candidate) =>
+                                  candidate.id === section.id ? { ...candidate, sortBy, sortOrder } : candidate,
+                              ),
+                          })),
+                      }
+                    : current,
+            );
+            handleSectionNavigationStateChange(section.id, (current) =>
+                current.sort?.by === sortBy && current.sort.order === sortOrder
+                    ? { ...current, sort: undefined }
+                    : current,
+            );
+            await invalidateViews();
+        } catch {
+            toast('Failed to save the default sort.');
+        }
+    };
+
+    const handleSaveSectionColumns = async (section: ViewSection, displayOptions: ViewDisplayOptions) => {
+        try {
+            const response = await updateViewSection(section.id, buildViewSectionInput(section, { displayOptions }));
+            if (response.type === 'error') {
+                toast(response.errors[0]?.message ?? 'Failed to save the table columns.');
+                return false;
+            }
+            await invalidateViews();
+            return true;
+        } catch {
+            toast('Failed to save the table columns.');
+            return false;
+        }
+    };
+
     const handleDuplicateSection = async (section: ViewSection) => {
         const response = await createViewSection(section.tabId, {
             ...buildViewSectionInput(section),
@@ -618,6 +679,12 @@ export default function Views() {
                                                             }
                                                             onDuplicate={() => void handleDuplicateSection(section)}
                                                             onDelete={() => void handleDeleteSection(section.id)}
+                                                            onSaveSort={(sortBy, sortOrder) =>
+                                                                handleSaveSectionSort(section, sortBy, sortOrder)
+                                                            }
+                                                            onSaveColumns={(options) =>
+                                                                handleSaveSectionColumns(section, options)
+                                                            }
                                                             onMoveUp={
                                                                 index > 0
                                                                     ? () =>

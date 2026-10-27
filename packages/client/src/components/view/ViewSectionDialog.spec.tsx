@@ -53,6 +53,70 @@ const createSection = (patch: Partial<ViewSection> = {}): ViewSection => ({
 });
 
 describe('<ViewSectionDialog />', () => {
+    it('saves the chosen table column order while keeping title visible', async () => {
+        const user = userEvent.setup();
+        const onSubmit = vi.fn();
+        render(
+            <ViewSectionDialog
+                open
+                mode="edit"
+                initialSection={createSection({ displayType: 'table' })}
+                availableTags={[]}
+                availableProperties={[]}
+                onClose={vi.fn()}
+                onSubmit={onSubmit}
+            />,
+        );
+
+        await user.click(screen.getByText('Table columns', { selector: 'summary' }));
+        await user.click(screen.getByRole('button', { name: 'Actions for Tags column' }));
+        await user.click(screen.getByRole('menuitem', { name: 'Move up' }));
+        await user.click(screen.getByRole('button', { name: 'Save section' }));
+
+        expect(onSubmit).toHaveBeenCalledWith(
+            expect.objectContaining({
+                displayOptions: expect.objectContaining({
+                    tableColumns: ['tags', 'title', 'properties', 'createdAt', 'updatedAt'],
+                }),
+            }),
+        );
+        expect(screen.getByRole('checkbox', { name: 'Show Title column' })).toBeChecked();
+        expect(screen.getByRole('checkbox', { name: 'Show Title column' })).toBeDisabled();
+    });
+
+    it('saves the order of selected property columns', async () => {
+        const user = userEvent.setup();
+        const onSubmit = vi.fn();
+        render(
+            <ViewSectionDialog
+                open
+                mode="edit"
+                initialSection={createSection({
+                    displayType: 'table',
+                    displayOptions: { ...createSection().displayOptions, tablePropertyKeys: ['source', 'priority'] },
+                })}
+                availableTags={[]}
+                availableProperties={[
+                    createProperty(),
+                    createProperty({ key: 'priority', name: 'Priority', valueType: 'number' }),
+                ]}
+                onClose={vi.fn()}
+                onSubmit={onSubmit}
+            />,
+        );
+
+        await user.click(screen.getByText('Table columns', { selector: 'summary' }));
+        await user.click(screen.getByRole('button', { name: 'Actions for Priority column' }));
+        await user.click(screen.getByRole('menuitem', { name: 'Move up' }));
+        await user.click(screen.getByRole('button', { name: 'Save section' }));
+
+        expect(onSubmit).toHaveBeenCalledWith(
+            expect.objectContaining({
+                displayOptions: expect.objectContaining({ tablePropertyKeys: ['priority', 'source'] }),
+            }),
+        );
+    });
+
     it('submits a board grouped by the selected property', async () => {
         const user = userEvent.setup();
         const handleSubmit = vi.fn();
@@ -104,6 +168,7 @@ describe('<ViewSectionDialog />', () => {
         );
 
         await user.click(screen.getByRole('radio', { name: 'Show as table' }));
+        await user.click(screen.getByText('Table columns', { selector: 'summary' }));
         await user.click(screen.getByRole('checkbox', { name: 'Show Tags column' }));
         await user.click(screen.getByRole('checkbox', { name: 'Show Properties column' }));
         await user.click(screen.getByRole('checkbox', { name: 'Show Created column' }));
@@ -141,7 +206,8 @@ describe('<ViewSectionDialog />', () => {
         );
 
         await user.click(screen.getByRole('radio', { name: 'Show as table' }));
-        await user.click(screen.getByRole('checkbox', { name: 'Show Status property column' }));
+        await user.click(screen.getByText('Table columns', { selector: 'summary' }));
+        await user.click(screen.getByRole('radio', { name: 'Choose columns' }));
         await user.click(screen.getByRole('button', { name: 'Create section' }));
 
         expect(handleSubmit).toHaveBeenCalledWith(

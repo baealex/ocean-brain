@@ -3,7 +3,6 @@ import type { NotePropertyKeySummary } from '~/apis/note.api';
 import { ModalActionRow } from '~/components/shared';
 import {
     Button,
-    Checkbox,
     Input,
     Label,
     Modal,
@@ -31,15 +30,15 @@ import {
     DEFAULT_VIEW_CALENDAR_DATE_FIELD,
     DEFAULT_VIEW_TABLE_COLUMNS,
     getViewPropertyOperatorLabel,
-    getViewTableColumnLabel,
     getViewTagMatchLabel,
-    MAX_VIEW_TABLE_PROPERTY_COLUMNS,
     normalizeViewCalendarDateField,
     normalizeViewDisplayOptions,
     normalizeViewTableColumns,
     normalizeViewTablePropertyKeys,
     normalizeViewTagNames,
 } from '~/modules/view-dashboard';
+
+import ViewTableColumnsEditor from './ViewTableColumnsEditor';
 
 export interface ViewSectionDialogDraft {
     title: string;
@@ -74,7 +73,6 @@ interface ViewSectionDialogProps {
 
 const PROPERTY_PLACEHOLDER_VALUE = '__choose_property__';
 const BOARD_GROUP_PLACEHOLDER_VALUE = '__choose_board_group__';
-const TABLE_COLUMN_OPTIONS: ViewTableColumn[] = ['title', 'tags', 'properties', 'createdAt', 'updatedAt'];
 
 const getInitialLimitValue = (section?: ViewSection | null) => String(section?.limit ?? 5);
 const getInitialDisplayTypeValue = (section?: ViewSection | null): ViewDisplayType => section?.displayType ?? 'list';
@@ -246,32 +244,6 @@ export default function ViewSectionDialog({
         calendarDateField === 'property' &&
         Boolean(calendarDatePropertyKey) &&
         !calendarDateProperties.some((property) => property.key === calendarDatePropertyKey);
-
-    const toggleTableColumn = (column: ViewTableColumn) => {
-        if (column === 'title') {
-            return;
-        }
-
-        setTableColumns((currentColumns) => {
-            if (currentColumns.includes(column)) {
-                const nextColumns = currentColumns.filter((currentColumn) => currentColumn !== column);
-                return nextColumns.length > 0 ? nextColumns : currentColumns;
-            }
-
-            return normalizeViewTableColumns([...currentColumns, column]);
-        });
-        setFormError('');
-    };
-
-    const toggleTablePropertyKey = (key: string) => {
-        setTablePropertyKeys((current) => {
-            if (current.includes(key)) {
-                return current.filter((currentKey) => currentKey !== key);
-            }
-
-            return current.length >= MAX_VIEW_TABLE_PROPERTY_COLUMNS ? current : [...current, key];
-        });
-    };
 
     const toggleTagName = (tagName: string) => {
         const nextTagNames = selectedTagNames.includes(tagName)
@@ -501,105 +473,20 @@ export default function ViewSectionDialog({
                             </ToggleGroupItem>
                         </ToggleGroup>
                         {displayType === 'table' ? (
-                            <div className="border-t border-border-subtle/80 pt-3">
-                                <div className="flex flex-wrap items-center justify-between gap-2">
-                                    <Label size="sm">Table columns</Label>
-                                    <Text as="span" variant="meta" tone="tertiary">
-                                        {tableColumns.includes('properties') && tablePropertyKeys.length === 0
-                                            ? 'Properties automatic'
-                                            : `${
-                                                  tableColumns.length -
-                                                  (tableColumns.includes('properties') ? 1 : 0) +
-                                                  (tableColumns.includes('properties') ? tablePropertyKeys.length : 0)
-                                              } shown`}
-                                    </Text>
+                            <details className="border-t border-border-subtle/80 pt-3">
+                                <summary className="focus-ring-soft cursor-pointer rounded-[8px] text-sm font-medium text-fg-secondary outline-none">
+                                    Table columns
+                                </summary>
+                                <div className="mt-3">
+                                    <ViewTableColumnsEditor
+                                        columns={tableColumns}
+                                        propertyKeys={tablePropertyKeys}
+                                        availableProperties={availableProperties}
+                                        onColumnsChange={setTableColumns}
+                                        onPropertyKeysChange={setTablePropertyKeys}
+                                    />
                                 </div>
-                                <div className="mt-3 grid grid-cols-2 gap-2">
-                                    {TABLE_COLUMN_OPTIONS.map((column) => {
-                                        const label = getViewTableColumnLabel(column);
-
-                                        return (
-                                            <div key={column} className="flex items-center gap-2 px-1 py-2">
-                                                <Checkbox
-                                                    size="sm"
-                                                    checked={tableColumns.includes(column)}
-                                                    disabled={column === 'title'}
-                                                    aria-label={`Show ${label} column`}
-                                                    onChange={() => toggleTableColumn(column)}
-                                                />
-                                                <Text as="span" variant="label" tone="secondary">
-                                                    {label}
-                                                </Text>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                                <Text as="p" variant="meta" tone="tertiary" className="mt-2">
-                                    Title is always shown because it opens the note.
-                                </Text>
-                                {tableColumns.includes('properties') ? (
-                                    <div className="mt-3 border-t border-border-subtle/80 pt-3">
-                                        <div className="flex flex-wrap items-center justify-between gap-2">
-                                            <div>
-                                                <Text as="p" variant="label" weight="semibold">
-                                                    Property columns
-                                                </Text>
-                                                <Text as="p" variant="meta" tone="tertiary" className="mt-0.5">
-                                                    Select up to {MAX_VIEW_TABLE_PROPERTY_COLUMNS} properties to
-                                                    compare.
-                                                </Text>
-                                            </div>
-                                            <Text as="span" variant="meta" tone="tertiary">
-                                                {tablePropertyKeys.length > 0
-                                                    ? `${tablePropertyKeys.length} selected`
-                                                    : 'Automatic'}
-                                            </Text>
-                                        </div>
-                                        {availableProperties.length > 0 ? (
-                                            <div className="mt-3 grid grid-cols-2 gap-2">
-                                                {availableProperties.map((property) => {
-                                                    const isSelected = tablePropertyKeys.includes(property.key);
-                                                    const isSelectionFull =
-                                                        tablePropertyKeys.length >= MAX_VIEW_TABLE_PROPERTY_COLUMNS;
-
-                                                    return (
-                                                        <div
-                                                            key={property.key}
-                                                            className="flex min-w-0 items-center gap-2 px-1 py-2"
-                                                        >
-                                                            <Checkbox
-                                                                size="sm"
-                                                                checked={isSelected}
-                                                                disabled={!isSelected && isSelectionFull}
-                                                                aria-label={`Show ${property.name} property column`}
-                                                                onChange={() => toggleTablePropertyKey(property.key)}
-                                                            />
-                                                            <div className="min-w-0">
-                                                                <Text as="p" variant="label" tone="secondary" truncate>
-                                                                    {property.name}
-                                                                </Text>
-                                                                <Text as="p" variant="micro" tone="tertiary">
-                                                                    {property.valueType}
-                                                                </Text>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        ) : (
-                                            <Text as="p" variant="meta" tone="tertiary" className="mt-3">
-                                                Shared properties will appear here after you create them.
-                                            </Text>
-                                        )}
-                                        {tablePropertyKeys.length === 0 && availableProperties.length > 0 ? (
-                                            <Text as="p" variant="meta" tone="tertiary" className="mt-2">
-                                                Automatic mode shows up to three properties relevant to the current
-                                                notes.
-                                            </Text>
-                                        ) : null}
-                                    </div>
-                                ) : null}
-                            </div>
+                            </details>
                         ) : null}
                         {displayType === 'board' ? (
                             <div className="border-t border-border-subtle/80 pt-3">

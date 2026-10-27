@@ -1,21 +1,43 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import type { NotePropertyKeySummary } from '~/apis/note.api';
 import { fetchViewSectionNotes } from '~/apis/view.api';
+import * as Icon from '~/components/icon';
 import { Dropdown, Pagination, SurfaceCard } from '~/components/shared';
-import { MoreButton, Text } from '~/components/ui';
-import type { ViewSection, ViewSortBy, ViewSortOrder } from '~/models/view.model';
+import {
+    Button,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuRadioGroup,
+    DropdownMenuRadioItem,
+    DropdownMenuTrigger,
+    MoreButton,
+    Text,
+} from '~/components/ui';
+import type { ViewDisplayOptions, ViewSection, ViewSortBy, ViewSortOrder } from '~/models/view.model';
 import { queryKeys } from '~/modules/query-key-factory';
 import { formatViewPropertyFilter, getViewDisplayTypeLabel, getViewTagMatchToken } from '~/modules/view-dashboard';
 import type { ViewSectionRouteState, ViewSectionRouteStateUpdater } from '~/modules/view-route-state';
 import ViewChip from './ViewChip';
 import ViewSectionRenderer from './ViewSectionRenderer';
+import ViewTableColumnsDialog from './ViewTableColumnsDialog';
+
+const SORT_CHOICES: { by: ViewSortBy; order: ViewSortOrder; label: string }[] = [
+    { by: 'updatedAt', order: 'desc', label: 'Recently updated' },
+    { by: 'updatedAt', order: 'asc', label: 'Least recently updated' },
+    { by: 'createdAt', order: 'desc', label: 'Newest notes first' },
+    { by: 'createdAt', order: 'asc', label: 'Oldest notes first' },
+    { by: 'title', order: 'asc', label: 'Title: A to Z' },
+    { by: 'title', order: 'desc', label: 'Title: Z to A' },
+];
 
 interface ViewSectionCardProps {
     section: ViewSection;
     onEdit: () => void;
     onDuplicate: () => void;
     onDelete: () => void;
+    onSaveSort: (sortBy: ViewSortBy, sortOrder: ViewSortOrder) => Promise<void>;
+    onSaveColumns: (options: ViewDisplayOptions) => Promise<boolean>;
     onMoveUp?: () => void;
     onMoveDown?: () => void;
     dragHandle?: React.ReactNode;
@@ -32,6 +54,8 @@ export default function ViewSectionCard({
     onEdit,
     onDuplicate,
     onDelete,
+    onSaveSort,
+    onSaveColumns,
     onMoveUp,
     onMoveDown,
     dragHandle,
@@ -42,12 +66,16 @@ export default function ViewSectionCard({
     navigationState = {},
     onNavigationStateChange = () => undefined,
 }: ViewSectionCardProps) {
+    const [isSavingSort, setIsSavingSort] = useState(false);
+    const [isColumnsOpen, setIsColumnsOpen] = useState(false);
     const isBoard = section.displayType === 'board';
     const isCalendar = section.displayType === 'calendar';
     const page = navigationState.page ?? 1;
     const offset = (page - 1) * section.limit;
     const sortBy = navigationState.sort?.by ?? section.sortBy;
     const sortOrder = navigationState.sort?.order ?? section.sortOrder;
+    const hasCustomSort = sortBy !== section.sortBy || sortOrder !== section.sortOrder;
+    const sortLabel = SORT_CHOICES.find((choice) => choice.by === sortBy && choice.order === sortOrder)?.label;
 
     const { data, isPending, isError, isPlaceholderData, refetch } = useQuery({
         queryKey: queryKeys.views.sectionNotes(section.id, {
@@ -92,15 +120,31 @@ export default function ViewSectionCard({
               ? 'Updated date'
               : 'Created date';
 
+    const setSectionSort = (nextSortBy: ViewSortBy, nextSortOrder: ViewSortOrder) => {
+        onNavigationStateChange((current) => ({
+            ...current,
+            page: 1,
+            sort:
+                nextSortBy === section.sortBy && nextSortOrder === section.sortOrder
+                    ? undefined
+                    : { by: nextSortBy, order: nextSortOrder },
+        }));
+    };
+
     const updateSectionSort = (nextSortBy: ViewSortBy) => {
         const nextSortOrder: ViewSortOrder =
             sortBy === nextSortBy ? (sortOrder === 'asc' ? 'desc' : 'asc') : nextSortBy === 'title' ? 'asc' : 'desc';
 
-        onNavigationStateChange((current) => ({
-            ...current,
-            page: 1,
-            sort: { by: nextSortBy, order: nextSortOrder },
-        }));
+        setSectionSort(nextSortBy, nextSortOrder);
+    };
+
+    const saveSort = async () => {
+        setIsSavingSort(true);
+        try {
+            await onSaveSort(sortBy, sortOrder);
+        } finally {
+            setIsSavingSort(false);
+        }
     };
 
     useEffect(() => {
@@ -187,6 +231,83 @@ export default function ViewSectionCard({
                 />
             </div>
 
+            {!isBoard && !isCalendar ? (
+                <div
+                    role="group"
+                    aria-label={`${section.title} sort`}
+                    className="flex flex-wrap items-center gap-2 border-b border-border-subtle/75 px-4 py-2"
+                >
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                aria-label={`Sort: ${sortLabel}`}
+                                disabled={isSavingSort}
+                            >
+                                {sortLabel}
+                                <Icon.ChevronDown className="size-3.5" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start">
+                            <DropdownMenuRadioGroup
+                                value={`${sortBy}:${sortOrder}`}
+                                onValueChange={(value) => {
+                                    const choice = SORT_CHOICES.find(
+                                        (candidate) => `${candidate.by}:${candidate.order}` === value,
+                                    );
+                                    if (choice) setSectionSort(choice.by, choice.order);
+                                }}
+                            >
+                                {SORT_CHOICES.map((choice) => (
+                                    <DropdownMenuRadioItem
+                                        key={`${choice.by}:${choice.order}`}
+                                        value={`${choice.by}:${choice.order}`}
+                                    >
+                                        {choice.label}
+                                    </DropdownMenuRadioItem>
+                                ))}
+                            </DropdownMenuRadioGroup>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    {section.displayType === 'table' ? (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setIsColumnsOpen(true)}
+                            disabled={isSavingSort}
+                        >
+                            <Icon.Grid className="size-4" />
+                            Columns
+                        </Button>
+                    ) : null}
+                    {hasCustomSort ? (
+                        <>
+                            <Button
+                                type="button"
+                                variant="subtle"
+                                size="sm"
+                                isLoading={isSavingSort}
+                                onClick={() => void saveSort()}
+                            >
+                                Save default sort
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                disabled={isSavingSort}
+                                onClick={() => setSectionSort(section.sortBy, section.sortOrder)}
+                            >
+                                Reset sort
+                            </Button>
+                        </>
+                    ) : null}
+                </div>
+            ) : null}
+
             <div className="flex flex-1 flex-col">
                 <ViewSectionRenderer
                     section={section}
@@ -196,7 +317,7 @@ export default function ViewSectionCard({
                     onRetry={() => void refetch()}
                     onEdit={onEdit}
                     onSortChange={updateSectionSort}
-                    isSortPending={isPlaceholderData}
+                    isSortPending={isPlaceholderData || isSavingSort}
                     activeSortBy={sortBy}
                     activeSortOrder={sortOrder}
                     availableProperties={availableProperties}
@@ -230,6 +351,17 @@ export default function ViewSectionCard({
                         />
                     ) : null}
                 </div>
+            ) : null}
+            {isColumnsOpen ? (
+                <ViewTableColumnsDialog
+                    section={section}
+                    availableProperties={availableProperties}
+                    isPropertiesLoading={isPropertiesLoading}
+                    isPropertiesError={isPropertiesError}
+                    onRetryProperties={onRetryProperties}
+                    onClose={() => setIsColumnsOpen(false)}
+                    onSave={onSaveColumns}
+                />
             ) : null}
         </SurfaceCard>
     );

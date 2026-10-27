@@ -92,6 +92,30 @@ describe('<ViewSectionTableRenderer />', () => {
         vi.clearAllMocks();
     });
 
+    it('renders the saved column order including a title column moved away from the start', () => {
+        renderTable({
+            section: createSection({
+                displayOptions: {
+                    ...createSection().displayOptions,
+                    tableColumns: ['updatedAt', 'properties', 'title'],
+                    tablePropertyKeys: ['priority', 'status'],
+                },
+            }),
+            availableProperties: [
+                { key: 'priority', name: 'Priority', valueType: 'number', noteCount: 0, options: [], updatedAt: '0' },
+            ],
+        });
+
+        const headers = screen.getAllByRole('columnheader');
+
+        expect(headers).toHaveLength(4);
+        expect(headers[0]).toHaveAccessibleName(/Updated/);
+        expect(headers[1]).toHaveAccessibleName(/Priority/);
+        expect(headers[2]).toHaveAccessibleName(/Status/);
+        expect(headers[3]).toHaveAccessibleName(/Title/);
+        expect(screen.getByRole('link', { name: 'Ocean Brain task' })).toHaveAttribute('href', '/note-1');
+    });
+
     it('renders note query results as table rows with tags and properties', () => {
         renderTable();
 

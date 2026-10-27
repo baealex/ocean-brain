@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 
@@ -10,12 +10,22 @@ import {
     fetchViewWorkspace,
     reorderViewSections,
     reorderViewTabs,
+    updateViewSection,
 } from '~/apis/view.api';
 import { ConfirmProvider, ToastProvider } from '~/components/ui';
 import type { ViewSection } from '~/models/view.model';
 import { createQueryClientWrapper } from '~/test/test-utils';
 
 import Views from './Views';
+
+beforeAll(() => {
+    Object.defineProperties(HTMLElement.prototype, {
+        hasPointerCapture: { configurable: true, value: () => false },
+        setPointerCapture: { configurable: true, value: () => undefined },
+        releasePointerCapture: { configurable: true, value: () => undefined },
+        scrollIntoView: { configurable: true, value: () => undefined },
+    });
+});
 
 const routerMocks = vi.hoisted(() => ({
     search: {} as Record<string, unknown>,
@@ -148,6 +158,151 @@ describe('<Views />', () => {
         expect(screen.getByRole('button', { name: 'Create first tab' })).toBeInTheDocument();
     });
 
+    it('changes a list sort temporarily without saving the section', async () => {
+        const user = userEvent.setup();
+        routerMocks.search = {
+            tab: 'tab-1',
+            state: { version: 1, sections: { 'section-1': { page: 2 }, 'section-2': { page: 3 } } },
+        };
+        mockActiveWorkspace([createSection()]);
+        renderViews();
+
+        await user.click(await screen.findByRole('button', { name: 'Sort: Recently updated' }));
+        await user.click(await screen.findByRole('menuitemradio', { name: 'Title: A to Z' }));
+
+        expect(routerMocks.navigate.mock.lastCall?.[0].search(routerMocks.search)).toEqual({
+            tab: 'tab-1',
+            state: {
+                version: 1,
+                sections: { 'section-1': { sort: { by: 'title', order: 'asc' } }, 'section-2': { page: 3 } },
+            },
+        });
+        expect(updateViewSection).not.toHaveBeenCalled();
+    });
+
+    it('opens table columns directly without unrelated section settings', async () => {
+        const user = userEvent.setup();
+        mockActiveWorkspace([createSection({ displayType: 'table' })]);
+        renderViews();
+
+        await user.click(await screen.findByRole('button', { name: 'Columns', exact: true }));
+
+        expect(screen.getByRole('heading', { name: 'Table columns' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Reorder Title column' })).toBeInTheDocument();
+        expect(screen.queryByRole('textbox', { name: 'Section name' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Add property filter' })).not.toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'Cancel', exact: true }));
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        expect(updateViewSection).not.toHaveBeenCalled();
+    });
+
+    it('keeps the column draft open when saving fails', async () => {
+        const user = userEvent.setup();
+        mockActiveWorkspace([
+            createSection({
+                displayType: 'table',
+                tagNames: ['@work'],
+                displayOptions: { ...createSection().displayOptions, tableColumns: ['title', 'tags'] },
+            }),
+        ]);
+        vi.mocked(updateViewSection).mockResolvedValue({
+            type: 'error',
+            category: 'network',
+            errors: [{ code: 'NETWORK_ERROR', message: 'Columns could not be saved.' }],
+        });
+        renderViews();
+
+        await user.click(await screen.findByRole('button', { name: 'Columns', exact: true }));
+        await user.click(screen.getByRole('checkbox', { name: 'Show Tags column' }));
+        await user.click(screen.getByRole('button', { name: 'Save columns', exact: true }));
+
+        expect(await screen.findByText('Columns could not be saved.')).toBeInTheDocument();
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
+        expect(screen.getByRole('checkbox', { name: 'Show Tags column' })).not.toBeChecked();
+        expect(updateViewSection).toHaveBeenCalledWith(
+            'section-1',
+            expect.objectContaining({
+                tagNames: ['@work'],
+                displayOptions: expect.objectContaining({ tableColumns: ['title'] }),
+            }),
+        );
+    });
+
+    it('saves the temporary sort without overwriting section filters or other navigation state', async () => {
+        const user = userEvent.setup();
+        routerMocks.search = {
+            tab: 'tab-1',
+            state: {
+                version: 1,
+                sections: { 'section-1': { sort: { by: 'title', order: 'asc' } }, 'section-2': { page: 3 } },
+            },
+        };
+        mockActiveWorkspace([createSection({ tagNames: ['@work'] })]);
+        vi.mocked(updateViewSection).mockResolvedValue({ type: 'success', updateViewSection: { id: 'section-1' } });
+        renderViews();
+
+        await user.click(await screen.findByRole('button', { name: 'Save default sort' }));
+
+        await waitFor(() =>
+            expect(updateViewSection).toHaveBeenCalledWith('section-1', {
+                title: 'First section',
+                displayType: 'list',
+                displayOptions: createSection().displayOptions,
+                tagNames: ['@work'],
+                mode: 'and',
+                propertyFilters: [],
+                sortBy: 'title',
+                sortOrder: 'asc',
+                limit: 5,
+            }),
+        );
+        expect(routerMocks.navigate.mock.lastCall?.[0].search(routerMocks.search)).toEqual({
+            tab: 'tab-1',
+            state: { version: 1, sections: { 'section-2': { page: 3 } } },
+        });
+    });
+
+    it('keeps the temporary sort available for retry when saving fails', async () => {
+        const user = userEvent.setup();
+        routerMocks.search = {
+            state: { version: 1, sections: { 'section-1': { sort: { by: 'title', order: 'asc' } } } },
+        };
+        mockActiveWorkspace([createSection()]);
+        vi.mocked(updateViewSection).mockResolvedValue({
+            type: 'error',
+            category: 'network',
+            errors: [{ code: 'NETWORK_ERROR', message: 'Failed to save the default sort.' }],
+        });
+        renderViews();
+
+        await user.click(await screen.findByRole('button', { name: 'Save default sort' }));
+
+        expect(await screen.findByText('Failed to save the default sort.')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Save default sort' })).toBeEnabled();
+        expect(routerMocks.navigate).not.toHaveBeenCalled();
+    });
+
+    it('resets a temporary sort and its page without saving or changing other sections', async () => {
+        const user = userEvent.setup();
+        routerMocks.search = {
+            tab: 'tab-1',
+            state: {
+                version: 1,
+                sections: { 'section-1': { page: 2, sort: { by: 'title', order: 'asc' } }, 'section-2': { page: 3 } },
+            },
+        };
+        mockActiveWorkspace([createSection()]);
+        renderViews();
+
+        await user.click(await screen.findByRole('button', { name: 'Reset sort' }));
+
+        expect(routerMocks.navigate.mock.lastCall?.[0].search(routerMocks.search)).toEqual({
+            tab: 'tab-1',
+            state: { version: 1, sections: { 'section-2': { page: 3 } } },
+        });
+        expect(updateViewSection).not.toHaveBeenCalled();
+    });
+
     it('restores and updates a table sort through the per-section URL state', async () => {
         const user = userEvent.setup();
         routerMocks.search = {
@@ -202,7 +357,7 @@ describe('<Views />', () => {
             sortOrder: 'desc',
         });
 
-        await user.click(await screen.findByRole('button', { name: /Title/ }));
+        await user.click(within(await screen.findByRole('table')).getByRole('button', { name: /Title/ }));
 
         const navigation = routerMocks.navigate.mock.calls[0]?.[0] as {
             search: (current: typeof routerMocks.search) => Record<string, unknown>;

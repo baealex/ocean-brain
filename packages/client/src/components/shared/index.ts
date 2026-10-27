@@ -12,3 +12,4 @@ export { default as PageLayout } from './PageLayout';
 export { default as RestoreParentScroll } from './RestoreParentScroll';
 export { default as SelectionOptionCard } from './SelectionOptionCard';
 export { default as SurfaceCard } from './SurfaceCard';
+export { default as VerticalSortable } from './VerticalSortable';

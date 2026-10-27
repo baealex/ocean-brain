@@ -172,11 +172,11 @@ describe('route-search validators', () => {
             }),
         ).toEqual({
             page: 1,
-            sectionId: '17',
+            viewId: '17',
         });
     });
 
-    it('normalizes versioned per-section view state', () => {
+    it('migrates bookmarked tab selection and per-section state to groups and views', () => {
         expect(
             validateViewsSearch({
                 tab: ' tab-1 ',
@@ -189,10 +189,10 @@ describe('route-search validators', () => {
                 },
             }),
         ).toEqual({
-            tab: 'tab-1',
+            group: 'tab-1',
             state: {
-                version: 1,
-                sections: {
+                version: 2,
+                views: {
                     'section-1': { page: 2 },
                     'section-2': { columns: { todo: 3 } },
                 },

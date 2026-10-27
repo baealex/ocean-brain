@@ -15,37 +15,37 @@ import {
 } from '~/components/ui';
 import type { Tag } from '~/models/tag.model';
 import type {
+    View,
     ViewCalendarDateField,
     ViewDisplayOptions,
     ViewDisplayType,
     ViewPropertyFilter,
     ViewPropertyFilterOperator,
-    ViewSection,
     ViewSortBy,
     ViewSortOrder,
     ViewTableColumn,
-    ViewTagMatchMode,
+    ViewTagFilterMatchMode,
 } from '~/models/view.model';
 import {
     DEFAULT_VIEW_CALENDAR_DATE_FIELD,
     DEFAULT_VIEW_TABLE_COLUMNS,
     getViewPropertyOperatorLabel,
-    getViewTagMatchLabel,
+    getViewTagFilterMatchLabel,
     normalizeViewCalendarDateField,
     normalizeViewDisplayOptions,
     normalizeViewTableColumns,
     normalizeViewTablePropertyKeys,
-    normalizeViewTagNames,
+    normalizeViewTagFilterNames,
 } from '~/modules/view-dashboard';
 
 import ViewTableColumnsEditor from './ViewTableColumnsEditor';
 
-export interface ViewSectionDialogDraft {
+export interface ViewDialogDraft {
     title: string;
     displayType: ViewDisplayType;
     displayOptions: ViewDisplayOptions;
     tagNames: string[];
-    mode: ViewTagMatchMode;
+    mode: ViewTagFilterMatchMode;
     propertyFilters: Array<Pick<ViewPropertyFilter, 'key' | 'valueType' | 'operator' | 'value'>>;
     sortBy: ViewSortBy;
     sortOrder: ViewSortOrder;
@@ -59,43 +59,42 @@ interface PropertyFilterDraft {
     value: string;
 }
 
-interface ViewSectionDialogProps {
+interface ViewDialogProps {
     open: boolean;
     mode: 'create' | 'edit';
-    initialSection?: ViewSection | null;
+    initialView?: View | null;
     availableTags: Pick<Tag, 'id' | 'name'>[];
     availableProperties: NotePropertyKeySummary[];
     isTagsLoading?: boolean;
     isPropertiesLoading?: boolean;
     onClose: () => void;
-    onSubmit: (draft: ViewSectionDialogDraft) => void;
+    onSubmit: (draft: ViewDialogDraft) => void;
 }
 
 const PROPERTY_PLACEHOLDER_VALUE = '__choose_property__';
 const BOARD_GROUP_PLACEHOLDER_VALUE = '__choose_board_group__';
 
-const getInitialLimitValue = (section?: ViewSection | null) => String(section?.limit ?? 5);
-const getInitialDisplayTypeValue = (section?: ViewSection | null): ViewDisplayType => section?.displayType ?? 'list';
-const getInitialTableColumnsValue = (section?: ViewSection | null): ViewTableColumn[] =>
-    normalizeViewTableColumns(section?.displayOptions?.tableColumns ?? DEFAULT_VIEW_TABLE_COLUMNS);
-const getInitialTablePropertyKeysValue = (section?: ViewSection | null) =>
-    normalizeViewTablePropertyKeys(section?.displayOptions?.tablePropertyKeys);
-const getInitialBoardGroupValue = (section?: ViewSection | null) =>
-    section?.displayOptions?.boardGroupByPropertyKey ?? '';
-const getInitialCalendarDateFieldValue = (section?: ViewSection | null) =>
-    normalizeViewCalendarDateField(section?.displayOptions?.calendarDateField ?? DEFAULT_VIEW_CALENDAR_DATE_FIELD);
-const getInitialCalendarDatePropertyKeyValue = (section?: ViewSection | null) =>
-    section?.displayOptions?.calendarDatePropertyKey ?? '';
-const getInitialModeValue = (section?: ViewSection | null): ViewTagMatchMode => section?.mode ?? 'and';
-const getInitialTagsValue = (section?: ViewSection | null) => (section ? section.tagNames.join(', ') : '');
-const getInitialTitleValue = (section?: ViewSection | null) => section?.title ?? '';
-const getInitialSortByValue = (section?: ViewSection | null): ViewSortBy => section?.sortBy ?? 'updatedAt';
-const getInitialSortOrderValue = (section?: ViewSection | null): ViewSortOrder => section?.sortOrder ?? 'desc';
+const getInitialLimitValue = (view?: View | null) => String(view?.limit ?? 5);
+const getInitialDisplayTypeValue = (view?: View | null): ViewDisplayType => view?.displayType ?? 'list';
+const getInitialTableColumnsValue = (view?: View | null): ViewTableColumn[] =>
+    normalizeViewTableColumns(view?.displayOptions?.tableColumns ?? DEFAULT_VIEW_TABLE_COLUMNS);
+const getInitialTablePropertyKeysValue = (view?: View | null) =>
+    normalizeViewTablePropertyKeys(view?.displayOptions?.tablePropertyKeys);
+const getInitialBoardGroupValue = (view?: View | null) => view?.displayOptions?.boardGroupByPropertyKey ?? '';
+const getInitialCalendarDateFieldValue = (view?: View | null) =>
+    normalizeViewCalendarDateField(view?.displayOptions?.calendarDateField ?? DEFAULT_VIEW_CALENDAR_DATE_FIELD);
+const getInitialCalendarDatePropertyKeyValue = (view?: View | null) =>
+    view?.displayOptions?.calendarDatePropertyKey ?? '';
+const getInitialModeValue = (view?: View | null): ViewTagFilterMatchMode => view?.mode ?? 'and';
+const getInitialTagsValue = (view?: View | null) => (view ? view.tagNames.join(', ') : '');
+const getInitialTitleValue = (view?: View | null) => view?.title ?? '';
+const getInitialSortByValue = (view?: View | null): ViewSortBy => view?.sortBy ?? 'updatedAt';
+const getInitialSortOrderValue = (view?: View | null): ViewSortOrder => view?.sortOrder ?? 'desc';
 
 const createFilterId = (index: number) => `property-filter-${Date.now()}-${index}`;
 
-const toFilterDrafts = (section?: ViewSection | null): PropertyFilterDraft[] => {
-    return (section?.propertyFilters ?? []).map((filter, index) => ({
+const toFilterDrafts = (view?: View | null): PropertyFilterDraft[] => {
+    return (view?.propertyFilters ?? []).map((filter, index) => ({
         id: createFilterId(index),
         key: filter.key,
         operator: filter.operator,
@@ -173,37 +172,35 @@ const getFilterInputPlaceholder = (property: NotePropertyKeySummary, operator: V
     return undefined;
 };
 
-export default function ViewSectionDialog({
+export default function ViewDialog({
     open,
     mode,
-    initialSection = null,
+    initialView = null,
     availableTags,
     availableProperties,
     isTagsLoading = false,
     isPropertiesLoading = false,
     onClose,
     onSubmit,
-}: ViewSectionDialogProps) {
-    const [title, setTitle] = useState(getInitialTitleValue(initialSection));
-    const [displayType, setDisplayType] = useState<ViewDisplayType>(getInitialDisplayTypeValue(initialSection));
-    const [tableColumns, setTableColumns] = useState<ViewTableColumn[]>(getInitialTableColumnsValue(initialSection));
-    const [tablePropertyKeys, setTablePropertyKeys] = useState<string[]>(
-        getInitialTablePropertyKeysValue(initialSection),
-    );
-    const [boardGroupByPropertyKey, setBoardGroupByPropertyKey] = useState(getInitialBoardGroupValue(initialSection));
+}: ViewDialogProps) {
+    const [title, setTitle] = useState(getInitialTitleValue(initialView));
+    const [displayType, setDisplayType] = useState<ViewDisplayType>(getInitialDisplayTypeValue(initialView));
+    const [tableColumns, setTableColumns] = useState<ViewTableColumn[]>(getInitialTableColumnsValue(initialView));
+    const [tablePropertyKeys, setTablePropertyKeys] = useState<string[]>(getInitialTablePropertyKeysValue(initialView));
+    const [boardGroupByPropertyKey, setBoardGroupByPropertyKey] = useState(getInitialBoardGroupValue(initialView));
     const [calendarDateField, setCalendarDateField] = useState<ViewCalendarDateField>(
-        getInitialCalendarDateFieldValue(initialSection),
+        getInitialCalendarDateFieldValue(initialView),
     );
     const [calendarDatePropertyKey, setCalendarDatePropertyKey] = useState(
-        getInitialCalendarDatePropertyKeyValue(initialSection),
+        getInitialCalendarDatePropertyKeyValue(initialView),
     );
-    const [tagInput, setTagInput] = useState(getInitialTagsValue(initialSection));
-    const [matchMode, setMatchMode] = useState<ViewTagMatchMode>(getInitialModeValue(initialSection));
-    const [sortBy, setSortBy] = useState<ViewSortBy>(getInitialSortByValue(initialSection));
-    const [sortOrder, setSortOrder] = useState<ViewSortOrder>(getInitialSortOrderValue(initialSection));
-    const [limit, setLimit] = useState(getInitialLimitValue(initialSection));
-    const [filters, setFilters] = useState<PropertyFilterDraft[]>(toFilterDrafts(initialSection));
-    const [isTagFilterOpen, setIsTagFilterOpen] = useState((initialSection?.tagNames.length ?? 0) > 0);
+    const [tagInput, setTagInput] = useState(getInitialTagsValue(initialView));
+    const [matchMode, setMatchMode] = useState<ViewTagFilterMatchMode>(getInitialModeValue(initialView));
+    const [sortBy, setSortBy] = useState<ViewSortBy>(getInitialSortByValue(initialView));
+    const [sortOrder, setSortOrder] = useState<ViewSortOrder>(getInitialSortOrderValue(initialView));
+    const [limit, setLimit] = useState(getInitialLimitValue(initialView));
+    const [filters, setFilters] = useState<PropertyFilterDraft[]>(toFilterDrafts(initialView));
+    const [isTagFilterOpen, setIsTagFilterOpen] = useState((initialView?.tagNames.length ?? 0) > 0);
     const [formError, setFormError] = useState('');
 
     const propertyByKey = useMemo(
@@ -216,24 +213,24 @@ export default function ViewSectionDialog({
             return;
         }
 
-        setTitle(getInitialTitleValue(initialSection));
-        setDisplayType(getInitialDisplayTypeValue(initialSection));
-        setTableColumns(getInitialTableColumnsValue(initialSection));
-        setTablePropertyKeys(getInitialTablePropertyKeysValue(initialSection));
-        setBoardGroupByPropertyKey(getInitialBoardGroupValue(initialSection));
-        setCalendarDateField(getInitialCalendarDateFieldValue(initialSection));
-        setCalendarDatePropertyKey(getInitialCalendarDatePropertyKeyValue(initialSection));
-        setTagInput(getInitialTagsValue(initialSection));
-        setMatchMode(getInitialModeValue(initialSection));
-        setSortBy(getInitialSortByValue(initialSection));
-        setSortOrder(getInitialSortOrderValue(initialSection));
-        setLimit(getInitialLimitValue(initialSection));
-        setFilters(toFilterDrafts(initialSection));
-        setIsTagFilterOpen((initialSection?.tagNames.length ?? 0) > 0);
+        setTitle(getInitialTitleValue(initialView));
+        setDisplayType(getInitialDisplayTypeValue(initialView));
+        setTableColumns(getInitialTableColumnsValue(initialView));
+        setTablePropertyKeys(getInitialTablePropertyKeysValue(initialView));
+        setBoardGroupByPropertyKey(getInitialBoardGroupValue(initialView));
+        setCalendarDateField(getInitialCalendarDateFieldValue(initialView));
+        setCalendarDatePropertyKey(getInitialCalendarDatePropertyKeyValue(initialView));
+        setTagInput(getInitialTagsValue(initialView));
+        setMatchMode(getInitialModeValue(initialView));
+        setSortBy(getInitialSortByValue(initialView));
+        setSortOrder(getInitialSortOrderValue(initialView));
+        setLimit(getInitialLimitValue(initialView));
+        setFilters(toFilterDrafts(initialView));
+        setIsTagFilterOpen((initialView?.tagNames.length ?? 0) > 0);
         setFormError('');
-    }, [initialSection, open]);
+    }, [initialView, open]);
 
-    const selectedTagNames = normalizeViewTagNames([tagInput]);
+    const selectedTagNames = normalizeViewTagFilterNames([tagInput]);
     const showTagFilter = isTagFilterOpen || selectedTagNames.length > 0;
     const isAllNotesView = selectedTagNames.length === 0 && filters.length === 0;
     const boardGroupProperties = availableProperties.filter(
@@ -317,15 +314,15 @@ export default function ViewSectionDialog({
 
     return (
         <Modal isOpen={open} onClose={onClose} variant="form" className="sm:max-w-[720px]">
-            <Modal.Header title={mode === 'create' ? 'Create section' : 'Edit section'} onClose={onClose} />
+            <Modal.Header title={mode === 'create' ? 'Create view' : 'Edit view'} onClose={onClose} />
             <Modal.Body>
                 <form
-                    id="view-section-form"
+                    id="view-form"
                     className="flex flex-col gap-5"
                     onSubmit={(event) => {
                         event.preventDefault();
 
-                        const tagNames = normalizeViewTagNames([tagInput]);
+                        const tagNames = normalizeViewTagFilterNames([tagInput]);
 
                         if (showTagFilter && tagNames.length === 0) {
                             setFormError('Choose at least one tag, or remove this tag filter.');
@@ -357,7 +354,7 @@ export default function ViewSectionDialog({
                             displayType === 'board' &&
                             filters.some((filter) => filter.key === boardGroupByPropertyKey)
                         ) {
-                            setFormError('Use different properties for the board columns and the section filter.');
+                            setFormError('Use different properties for the board columns and the view filter.');
                             return;
                         }
 
@@ -412,11 +409,11 @@ export default function ViewSectionDialog({
                     }}
                 >
                     <div className="flex flex-col gap-2">
-                        <Label htmlFor="view-section-title" size="md">
-                            Section name
+                        <Label htmlFor="view-title" size="md">
+                            View name
                         </Label>
                         <Input
-                            id="view-section-title"
+                            id="view-title"
                             value={title}
                             onChange={(event) => setTitle(event.target.value)}
                             placeholder="Doing notes"
@@ -426,7 +423,7 @@ export default function ViewSectionDialog({
 
                     <section className="flex flex-col gap-3 border-b border-border-subtle pb-5">
                         <div className="min-w-0">
-                            <Label size="md">Display</Label>
+                            <Label size="md">Display format</Label>
                             <Text as="p" variant="meta" tone="tertiary" className="mt-1">
                                 Show the same note set as a list, table, property board, or calendar.
                             </Text>
@@ -491,17 +488,13 @@ export default function ViewSectionDialog({
                         {displayType === 'board' ? (
                             <div className="border-t border-border-subtle/80 pt-3">
                                 <div className="flex flex-col gap-2">
-                                    <Label
-                                        id="view-section-board-group-label"
-                                        htmlFor="view-section-board-group"
-                                        size="sm"
-                                    >
+                                    <Label id="view-board-group-label" htmlFor="view-board-group" size="sm">
                                         Board columns
                                     </Label>
                                     <Select
-                                        id="view-section-board-group"
+                                        id="view-board-group"
                                         value={boardGroupByPropertyKey || BOARD_GROUP_PLACEHOLDER_VALUE}
-                                        aria-labelledby="view-section-board-group-label"
+                                        aria-labelledby="view-board-group-label"
                                         className="w-full"
                                         onValueChange={(value) => {
                                             if (value !== BOARD_GROUP_PLACEHOLDER_VALUE) {
@@ -533,21 +526,17 @@ export default function ViewSectionDialog({
                         {displayType === 'calendar' ? (
                             <div className="border-t border-border-subtle/80 pt-3">
                                 <div className="flex flex-col gap-2">
-                                    <Label
-                                        id="view-section-calendar-date-label"
-                                        htmlFor="view-section-calendar-date"
-                                        size="sm"
-                                    >
+                                    <Label id="view-calendar-date-label" htmlFor="view-calendar-date" size="sm">
                                         Place notes by
                                     </Label>
                                     <Select
-                                        id="view-section-calendar-date"
+                                        id="view-calendar-date"
                                         value={
                                             calendarDateField === 'property' && calendarDatePropertyKey
                                                 ? `property:${calendarDatePropertyKey}`
                                                 : calendarDateField
                                         }
-                                        aria-labelledby="view-section-calendar-date-label"
+                                        aria-labelledby="view-calendar-date-label"
                                         className="w-full"
                                         onValueChange={(value) => {
                                             if (value === 'createdAt' || value === 'updatedAt') {
@@ -748,11 +737,11 @@ export default function ViewSectionDialog({
                                 </div>
 
                                 <div className="flex flex-col gap-2">
-                                    <Label htmlFor="view-section-tags" size="sm">
+                                    <Label htmlFor="view-tags" size="sm">
                                         Tag names
                                     </Label>
                                     <Textarea
-                                        id="view-section-tags"
+                                        id="view-tags"
                                         value={tagInput}
                                         onChange={(event) => {
                                             setTagInput(event.target.value);
@@ -781,10 +770,10 @@ export default function ViewSectionDialog({
                                             size="sm"
                                             className="self-start"
                                         >
-                                            <ToggleGroupItem value="and" aria-label={getViewTagMatchLabel('and')}>
+                                            <ToggleGroupItem value="and" aria-label={getViewTagFilterMatchLabel('and')}>
                                                 AND
                                             </ToggleGroupItem>
-                                            <ToggleGroupItem value="or" aria-label={getViewTagMatchLabel('or')}>
+                                            <ToggleGroupItem value="or" aria-label={getViewTagFilterMatchLabel('or')}>
                                                 OR
                                             </ToggleGroupItem>
                                         </ToggleGroup>
@@ -851,7 +840,7 @@ export default function ViewSectionDialog({
                                 Month view
                             </Text>
                             <Text as="p" variant="meta" tone="tertiary" className="mt-1">
-                                Calendar sections use month navigation instead of row sorting or pagination.
+                                Calendar views use month navigation instead of row sorting or pagination.
                             </Text>
                         </div>
                     ) : (
@@ -864,7 +853,7 @@ export default function ViewSectionDialog({
                                     <Text as="p" variant="meta" tone="tertiary" className="col-start-1 row-start-2">
                                         {displayType === 'board'
                                             ? 'Controls how many cards each board column loads at a time.'
-                                            : 'Controls how many matching notes appear on each section page.'}
+                                            : 'Controls how many matching notes appear on each view page.'}
                                     </Text>
                                     <Text
                                         as="span"
@@ -879,13 +868,13 @@ export default function ViewSectionDialog({
 
                             <div className="mt-4 grid gap-4 md:grid-cols-3">
                                 <div className="flex flex-col gap-2">
-                                    <Label id="view-section-sort-by-label" htmlFor="view-section-sort-by" size="sm">
+                                    <Label id="view-sort-by-label" htmlFor="view-sort-by" size="sm">
                                         Sort by
                                     </Label>
                                     <Select
-                                        id="view-section-sort-by"
+                                        id="view-sort-by"
                                         value={sortBy}
-                                        aria-labelledby="view-section-sort-by-label"
+                                        aria-labelledby="view-sort-by-label"
                                         onValueChange={(value) => setSortBy(value as ViewSortBy)}
                                     >
                                         <SelectItem value="updatedAt">Updated time</SelectItem>
@@ -894,17 +883,13 @@ export default function ViewSectionDialog({
                                     </Select>
                                 </div>
                                 <div className="flex flex-col gap-2">
-                                    <Label
-                                        id="view-section-sort-order-label"
-                                        htmlFor="view-section-sort-order"
-                                        size="sm"
-                                    >
+                                    <Label id="view-sort-order-label" htmlFor="view-sort-order" size="sm">
                                         Order
                                     </Label>
                                     <Select
-                                        id="view-section-sort-order"
+                                        id="view-sort-order"
                                         value={sortOrder}
-                                        aria-labelledby="view-section-sort-order-label"
+                                        aria-labelledby="view-sort-order-label"
                                         onValueChange={(value) => setSortOrder(value as ViewSortOrder)}
                                     >
                                         <SelectItem value="desc">Descending</SelectItem>
@@ -912,13 +897,13 @@ export default function ViewSectionDialog({
                                     </Select>
                                 </div>
                                 <div className="flex flex-col gap-2">
-                                    <Label id="view-section-limit-label" htmlFor="view-section-limit" size="sm">
+                                    <Label id="view-limit-label" htmlFor="view-limit" size="sm">
                                         {displayType === 'board' ? 'Cards per load' : 'Rows per page'}
                                     </Label>
                                     <Select
-                                        id="view-section-limit"
+                                        id="view-limit"
                                         value={limit}
-                                        aria-labelledby="view-section-limit-label"
+                                        aria-labelledby="view-limit-label"
                                         onValueChange={setLimit}
                                     >
                                         <SelectItem value="3">
@@ -948,8 +933,8 @@ export default function ViewSectionDialog({
                     <Button type="button" variant="ghost" size="sm" onClick={onClose}>
                         Cancel
                     </Button>
-                    <Button type="submit" size="sm" form="view-section-form">
-                        {mode === 'create' ? 'Create section' : 'Save section'}
+                    <Button type="submit" size="sm" form="view-form">
+                        {mode === 'create' ? 'Create view' : 'Save view'}
                     </Button>
                 </ModalActionRow>
             </Modal.Footer>

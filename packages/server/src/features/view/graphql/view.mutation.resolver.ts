@@ -1,72 +1,72 @@
 import type { IResolvers } from '@graphql-tools/utils';
 import {
-    createViewSection,
-    createViewTab,
-    deleteViewSection,
-    deleteViewTab,
-    reorderViewSections,
-    reorderViewTabs,
-    setActiveViewTab,
-    updateViewSection,
-    updateViewTab,
-    type ViewSectionInput,
+    createView,
+    createViewGroup,
+    deleteView,
+    deleteViewGroup,
+    reorderViewGroups,
+    reorderViews,
+    setActiveViewGroup,
+    updateView,
+    updateViewGroup,
+    type ViewInput,
 } from '~/features/view/services/workspace.js';
 
 type ViewMutationResolvers = NonNullable<IResolvers['Mutation']>;
 
-export const viewMutationResolvers: ViewMutationResolvers = {
-    createViewTab: async (_, { title }: { title: string }) => {
-        return createViewTab(title);
+export const viewMutationResolvers = {
+    createViewGroup: async (_, { title }: { title: string }) => {
+        return createViewGroup(title);
     },
-    updateViewTab: async (_, { id, title }: { id: string; title: string }) => {
-        return updateViewTab(id, title);
+    updateViewGroup: async (_, { id, title }: { id: string; title: string }) => {
+        return updateViewGroup(id, title);
     },
-    deleteViewTab: async (_, { id }: { id: string }) => {
-        return deleteViewTab(id);
+    deleteViewGroup: async (_, { id }: { id: string }) => {
+        return deleteViewGroup(id);
     },
-    setActiveViewTab: async (_, { id }: { id: string }) => {
-        return setActiveViewTab(id);
+    setActiveViewGroup: async (_, { id }: { id: string }) => {
+        return setActiveViewGroup(id);
     },
-    reorderViewTabs: async (_, { tabIds }: { tabIds: string[] }) => {
-        return reorderViewTabs(tabIds);
+    reorderViewGroups: async (_, { groupIds }: { groupIds: string[] }) => {
+        return reorderViewGroups(groupIds);
     },
-    createViewSection: async (
+    createView: async (
         _,
         {
-            tabId,
+            groupId,
             input,
         }: {
-            tabId: string;
-            input: ViewSectionInput;
+            groupId: string;
+            input: ViewInput;
         },
     ) => {
-        return createViewSection(tabId, input);
+        return createView(groupId, input);
     },
-    updateViewSection: async (
+    updateView: async (
         _,
         {
             id,
             input,
         }: {
             id: string;
-            input: ViewSectionInput;
+            input: ViewInput;
         },
     ) => {
-        return updateViewSection(id, input);
+        return updateView(id, input);
     },
-    deleteViewSection: async (_, { id }: { id: string }) => {
-        return deleteViewSection(id);
+    deleteView: async (_, { id }: { id: string }) => {
+        return deleteView(id);
     },
-    reorderViewSections: async (
+    reorderViews: async (
         _,
         {
-            tabId,
-            sectionIds,
+            groupId,
+            viewIds,
         }: {
-            tabId: string;
-            sectionIds: string[];
+            groupId: string;
+            viewIds: string[];
         },
     ) => {
-        return reorderViewSections(tabId, sectionIds);
+        return reorderViews(groupId, viewIds);
     },
-};
+} satisfies ViewMutationResolvers;

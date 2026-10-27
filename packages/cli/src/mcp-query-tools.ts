@@ -20,7 +20,7 @@ export const propertyFilterSchema = z.object({
         ),
 });
 export const queryConditionsSchema = z.object({
-    tagNames: z.array(z.string()),
+    tagNames: z.array(z.string()).describe('Tag filter values used to select notes.'),
     mode: z.enum(['and', 'or']),
     propertyFilters: z.array(propertyFilterSchema.extend({ name: z.string().optional() })),
     sortBy: z.enum(['updatedAt', 'createdAt', 'title']),

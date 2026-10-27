@@ -3,37 +3,37 @@ import { InvalidNotePropertyInputError } from '~/features/note/services/properti
 import models from '~/models.js';
 import {
     buildViewBoardColumnWhere,
-    buildViewSectionCalendarWhere,
-    buildViewSectionWhere,
-    getViewSectionById,
+    buildViewCalendarWhere,
+    buildViewWhere,
+    getViewById,
     normalizeViewCalendarDateRange,
     normalizeViewNotesPagination,
-    serializeViewSection,
+    serializeView,
     type ViewCalendarDateRangeInput,
 } from './workspace.js';
 
-export const listViewSections = async (query = '', pagination?: { limit?: number; offset?: number }) => {
+export const listViews = async (query = '', pagination?: { limit?: number; offset?: number }) => {
     const { limit, offset } = normalizeViewNotesPagination(pagination);
-    const where: Prisma.ViewSectionWhereInput = query.trim()
-        ? { OR: [{ title: { contains: query.trim() } }, { tab: { title: { contains: query.trim() } } }] }
+    const where: Prisma.ViewWhereInput = query.trim()
+        ? { OR: [{ title: { contains: query.trim() } }, { group: { title: { contains: query.trim() } } }] }
         : {};
-    const [totalCount, sections] = await Promise.all([
-        models.viewSection.count({ where }),
-        models.viewSection.findMany({
+    const [totalCount, views] = await Promise.all([
+        models.view.count({ where }),
+        models.view.findMany({
             where,
-            include: { tab: true, tags: { orderBy: { name: 'asc' } } },
-            orderBy: [{ tab: { order: 'asc' } }, { tabId: 'asc' }, { order: 'asc' }, { id: 'asc' }],
+            include: { group: true, tagFilters: { orderBy: { tagName: 'asc' } } },
+            orderBy: [{ group: { order: 'asc' } }, { groupId: 'asc' }, { order: 'asc' }, { id: 'asc' }],
             take: limit,
             skip: offset,
         }),
     ]);
     return {
         totalCount,
-        sections: sections.map((section) => ({ section: serializeViewSection(section), tabTitle: section.tab.title })),
+        views: views.map((view) => ({ view: serializeView(view), groupTitle: view.group.title })),
     };
 };
 
-export interface ReadViewSectionInput {
+export interface ReadViewInput {
     id: string;
     pagination?: { limit?: number; offset?: number };
     groupValue?: string | null;
@@ -41,34 +41,28 @@ export interface ReadViewSectionInput {
     propertyKeys?: string[] | null;
 }
 
-export const readViewSection = async ({
-    id,
-    pagination,
-    groupValue,
-    dateRange,
-    propertyKeys,
-}: ReadViewSectionInput) => {
-    const section = await getViewSectionById(id);
-    if (!section) throw new InvalidNotePropertyInputError('View section not found. Use list_views to find its ID.');
-    if (groupValue !== undefined && section.displayType !== 'board') {
+export const readView = async ({ id, pagination, groupValue, dateRange, propertyKeys }: ReadViewInput) => {
+    const view = await getViewById(id);
+    if (!view) throw new InvalidNotePropertyInputError('Saved view not found. Use list_views to find its ID.');
+    if (groupValue !== undefined && view.displayType !== 'board') {
         throw new InvalidNotePropertyInputError('groupValue is only valid for a board.');
     }
-    if (dateRange && section.displayType !== 'calendar') {
+    if (dateRange && view.displayType !== 'calendar') {
         throw new InvalidNotePropertyInputError('dateRange is only valid for a calendar.');
     }
     const { limit, offset } = normalizeViewNotesPagination(pagination);
     const selectedPropertyKeys =
-        propertyKeys ?? (section.displayType === 'table' ? section.displayOptions.tablePropertyKeys : []);
+        propertyKeys ?? (view.displayType === 'table' ? view.displayOptions.tablePropertyKeys : []);
     const withPropertyKeys = <T>(note: T) => ({ ...note, selectedPropertyKeys });
-    if (section.displayType === 'calendar') {
+    if (view.displayType === 'calendar') {
         if (!dateRange)
             throw new InvalidNotePropertyInputError(
                 'Calendar views require dateRange (start inclusive, end exclusive; at most 32 days).',
             );
         const range = normalizeViewCalendarDateRange(dateRange);
-        const field = section.displayOptions.calendarDateField;
+        const field = view.displayOptions.calendarDateField;
         if (field === 'property') {
-            const key = section.displayOptions.calendarDatePropertyKey;
+            const key = view.displayOptions.calendarDatePropertyKey;
             const definition = key ? await models.propertyDefinition.findUnique({ where: { key } }) : null;
             if (!definition || definition.valueType !== 'date') {
                 throw new InvalidNotePropertyInputError('The calendar date property is unavailable.');
@@ -76,7 +70,7 @@ export const readViewSection = async ({
             const where: Prisma.NotePropertyWhereInput = {
                 propertyDefinitionId: definition.id,
                 dateValue: { gte: range.start, lt: range.end },
-                note: buildViewSectionWhere(section),
+                note: buildViewWhere(view),
             };
             const [totalCount, values] = await Promise.all([
                 models.noteProperty.count({ where }),
@@ -89,7 +83,7 @@ export const readViewSection = async ({
                 }),
             ]);
             return {
-                section,
+                view,
                 totalCount,
                 rows: values.map((value) => ({
                     note: withPropertyKeys(value.note),
@@ -98,29 +92,29 @@ export const readViewSection = async ({
                 groupProperty: null,
             };
         }
-        const where = buildViewSectionCalendarWhere(section, range);
+        const where = buildViewCalendarWhere(view, range);
         const [totalCount, notes] = await Promise.all([
             models.note.count({ where }),
             models.note.findMany({ where, orderBy: [{ [field]: 'asc' }, { id: 'asc' }], take: limit, skip: offset }),
         ]);
         return {
-            section,
+            view,
             totalCount,
             rows: notes.map((note) => ({ note: withPropertyKeys(note), calendarDate: note[field].toISOString() })),
             groupProperty: null,
         };
     }
 
-    const key = section.displayOptions.boardGroupByPropertyKey;
+    const key = view.displayOptions.boardGroupByPropertyKey;
     const groupProperty =
-        section.displayType === 'board' && key
+        view.displayType === 'board' && key
             ? await models.propertyDefinition.findUnique({
                   where: { key },
                   include: { options: { orderBy: [{ order: 'asc' }, { id: 'asc' }] } },
               })
             : null;
-    let where = buildViewSectionWhere(section);
-    if (section.displayType === 'board') {
+    let where = buildViewWhere(view);
+    if (view.displayType === 'board') {
         if (!groupProperty || groupProperty.valueType !== 'select') {
             throw new InvalidNotePropertyInputError('The board grouping property is unavailable.');
         }
@@ -133,14 +127,14 @@ export const readViewSection = async ({
                       );
             if (groupValue !== null && !option)
                 throw new InvalidNotePropertyInputError(`Property ${key} option ${groupValue} is not defined.`);
-            where = buildViewBoardColumnWhere(section, groupProperty.id, option?.id ?? null);
+            where = buildViewBoardColumnWhere(view, groupProperty.id, option?.id ?? null);
         }
     }
     const [totalCount, notes] = await Promise.all([
         models.note.count({ where }),
         models.note.findMany({
             where,
-            orderBy: [{ [section.sortBy]: section.sortOrder }, { id: 'asc' }],
+            orderBy: [{ [view.sortBy]: view.sortOrder }, { id: 'asc' }],
             take: limit,
             skip: offset,
             include: {
@@ -149,7 +143,7 @@ export const readViewSection = async ({
         }),
     ]);
     return {
-        section,
+        view,
         totalCount,
         rows: notes.map((note) => ({
             note: withPropertyKeys(note),

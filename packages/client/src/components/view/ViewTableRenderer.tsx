@@ -6,7 +6,7 @@ import type { NotePropertyKeySummary } from '~/apis/note.api';
 import * as Icon from '~/components/icon';
 import { Button, Text } from '~/components/ui';
 import type { Note, NoteProperty, NotePropertyValueType } from '~/models/note.model';
-import type { ViewSection, ViewSortBy, ViewSortOrder, ViewTableColumn } from '~/models/view.model';
+import type { View, ViewSortBy, ViewSortOrder, ViewTableColumn } from '~/models/view.model';
 import { NOTE_ROUTE } from '~/modules/url';
 import {
     getViewTableColumnLabel,
@@ -15,8 +15,8 @@ import {
 } from '~/modules/view-dashboard';
 import ViewChip from './ViewChip';
 
-interface ViewSectionTableRendererProps {
-    section: ViewSection;
+interface ViewTableRendererProps {
+    view: View;
     notes: Note[];
     isPending: boolean;
     isError: boolean;
@@ -72,7 +72,7 @@ const getColumnWidth = (column: ResolvedTableColumn) =>
     column.kind === 'property' ? getPropertyColumnWidth(column.valueType) : BASE_COLUMN_WIDTHS[column.key];
 
 const resolvePropertyColumns = (
-    section: ViewSection,
+    view: View,
     notes: Note[],
     availableProperties: NotePropertyKeySummary[],
 ): Extract<ResolvedTableColumn, { kind: 'property' }>[] => {
@@ -80,10 +80,10 @@ const resolvePropertyColumns = (
     const notePropertyByKey = new Map(
         notes.flatMap((note) => note.properties ?? []).map((property) => [property.key, property]),
     );
-    const configuredKeys = normalizeViewTablePropertyKeys(section.displayOptions.tablePropertyKeys);
+    const configuredKeys = normalizeViewTablePropertyKeys(view.displayOptions.tablePropertyKeys);
     const automaticKeys = Array.from(
         new Set([
-            ...section.propertyFilters.map((filter) => filter.key),
+            ...view.propertyFilters.map((filter) => filter.key),
             ...notes.flatMap((note) => (note.properties ?? []).map((property) => property.key)),
         ]),
     ).slice(0, 3);
@@ -108,13 +108,13 @@ const resolvePropertyColumns = (
 };
 
 const resolveTableColumns = (
-    section: ViewSection,
+    view: View,
     notes: Note[],
     availableProperties: NotePropertyKeySummary[],
 ): ResolvedTableColumn[] => {
-    const propertyColumns = resolvePropertyColumns(section, notes, availableProperties);
+    const propertyColumns = resolvePropertyColumns(view, notes, availableProperties);
 
-    return normalizeViewTableColumns(section.displayOptions.tableColumns).reduce<ResolvedTableColumn[]>(
+    return normalizeViewTableColumns(view.displayOptions.tableColumns).reduce<ResolvedTableColumn[]>(
         (resolvedColumns, column) => {
             if (column === 'properties') {
                 resolvedColumns.push(...propertyColumns);
@@ -208,20 +208,20 @@ const renderPropertyValue = (property: NoteProperty | undefined) => {
     );
 };
 
-export default function ViewSectionTableRenderer({
-    section,
+export default function ViewTableRenderer({
+    view,
     notes,
     isPending,
     isError,
     onRetry,
     onSortChange,
     isSortPending,
-    activeSortBy = section.sortBy,
-    activeSortOrder = section.sortOrder,
+    activeSortBy = view.sortBy,
+    activeSortOrder = view.sortOrder,
     availableProperties = [],
     surface = 'flush',
-}: ViewSectionTableRendererProps) {
-    const columns = resolveTableColumns(section, notes, availableProperties);
+}: ViewTableRendererProps) {
+    const columns = resolveTableColumns(view, notes, availableProperties);
     const isTitlePinned = columns[0]?.kind === 'base' && columns[0].key === 'title';
     const tableWidth = getTableWidth(columns);
     const surfaceClassName =
@@ -415,7 +415,7 @@ export default function ViewSectionTableRenderer({
     return (
         <div
             className={surfaceClassName}
-            data-scroll-restoration-id={`view-table-${section.id}`}
+            data-scroll-restoration-id={`view-table-${view.id}`}
             aria-label="Scrollable view table"
         >
             <table className="w-full table-fixed border-collapse text-left" style={{ minWidth: tableWidth }}>

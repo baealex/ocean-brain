@@ -106,7 +106,7 @@ Send `Authorization: Bearer <connection-token>` from the integration app’s bac
 
 Missing credentials return 401; denied, disabled, or revoked access returns 403. MCP additionally uses its existing compatibility headers and 426 response. External apps do not send MCP compatibility headers.
 
-The GraphQL schema exposes an explicit set of queries: `allNotes`, `note`, `noteRead`, `backReferences`, `notesByTagNames`, `allTags`, `tagsByNames`, `notePropertyKeys`, `notesByQuery`, `notesByProperties`, `viewSections`, `readViewSection`, and `searchNotes`. Introspection describes their input/output types. Browser/admin queries, cache values, and mutations are not in this schema. Pagination accepts `limit` 1–100 and nonnegative `offset`; omitted pagination uses 25 and 0. Note reads do not persist reference-title changes.
+The GraphQL schema exposes an explicit set of queries: `allNotes`, `note`, `noteRead`, `backReferences`, `notesByTagNames`, `allTags`, `tagsByNames`, `notePropertyKeys`, `notesByQuery`, `notesByProperties`, `views`, `readView`, and `searchNotes` (with `viewSections` and `readViewSection` retained as deprecated compatibility queries). Introspection describes their input/output types. Browser/admin queries, cache values, and mutations are not in this schema. Pagination accepts `limit` 1–100 and nonnegative `offset`; omitted pagination uses 25 and 0. Note reads do not persist reference-title changes.
 
 Example read request:
 

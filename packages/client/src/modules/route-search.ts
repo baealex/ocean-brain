@@ -130,11 +130,14 @@ export interface IntegrationRouteSearch {
 }
 
 export interface ViewNotesRouteSearch extends PaginationRouteSearch {
-    sectionId: string;
+    viewId: string;
 }
 
 export interface ViewsRouteSearch {
-    tab?: string;
+    // Clear legacy keys when the router merges validated search with the old URL.
+    tab?: never;
+    sectionId?: never;
+    group?: string;
     state?: ViewRouteState;
 }
 
@@ -212,16 +215,18 @@ export const validateIntegrationSearch = (search: SearchRecord): IntegrationRout
 };
 
 export const validateViewsSearch = (search: SearchRecord): ViewsRouteSearch => {
-    const tab = parseString(search.tab, '').trim();
+    const group = parseString(search.group ?? search.tab, '').trim();
     const state = normalizeViewRouteState(search.state);
 
     return {
-        ...(tab ? { tab } : {}),
+        tab: undefined,
+        sectionId: undefined,
+        ...(group ? { group } : {}),
         ...(state ? { state } : {}),
     };
 };
 
 export const validateViewNotesSearch = (search: SearchRecord): ViewNotesRouteSearch => ({
     page: parsePositiveInt(search.page, 1),
-    sectionId: parseString(search.sectionId, ''),
+    viewId: parseString(search.viewId ?? search.sectionId, ''),
 });

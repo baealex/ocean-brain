@@ -83,7 +83,7 @@ The default catalog contains 13 tools. All names start with `ocean_brain_`:
 | `query_notes` | Recent notes or combined tag/property conditions; no body loading |
 | `read_note` | Metadata, Markdown ranges/sections, and back references |
 | `list_tags`, `list_properties` | Discover tags in use and existing property definitions/options |
-| `list_views`, `read_view` | Discover saved sections and read list/table/board/calendar results |
+| `list_views`, `read_view` | Discover saved views by view or group name and read list/table/board/calendar results |
 | `create_note` | Create Markdown and existing property values together |
 | `append_note_markdown`, `patch_note_markdown`, `replace_note_markdown` | Append, target a local change, or intentionally replace a body |
 | `update_note_metadata` | Change title/layout/property values with an expected version |
@@ -106,17 +106,23 @@ For example, pass this to `ocean_brain_query_notes` after discovering the proper
 }
 ```
 
-`list_views` searches section/tab titles and returns stable section IDs, including distinct sections with the same title. `read_view` returns saved settings and paged rows without changing the active tab. Tables use their saved property columns unless `propertyKeys` is supplied. Boards return the grouping property, options and each row's group; omit `groupValue` for all columns or pass `null` for unclassified notes. Calendars require `dateRange: {"start":"2026-09-01","end":"2026-10-01"}`: start is inclusive, end exclusive, and the range cannot exceed 32 days. Results use the saved date field and are paginated in the database. `section.limit` is the saved UI display count; `page.limit` is the requested result count.
+Each saved view defines filters, sorting, and a display format. A view group organizes multiple views. `list_views` searches view and view group names and returns `viewId`, `groupTitle`, and the saved `view` definition. Pass `viewId` to `read_view` for saved settings and paged rows. Tables use their saved property columns unless `propertyKeys` is supplied. Boards return the grouping property, options and each row's group; omit `groupValue` for all columns or pass `null` for unclassified notes. Calendars require `dateRange: {"start":"2026-09-01","end":"2026-10-01"}`: start is inclusive, end exclusive, and the range cannot exceed 32 days. `view.limit` is the saved display count; `page.limit` is the requested result count.
+
+Existing view data is migrated automatically on server startup; IDs and saved settings are preserved. Existing view bookmarks and external GraphQL integrations retain their compatibility adapters.
 
 `read_note` defaults to 1,000 UTF-16 code units. Use `offset` to continue or `heading` for an exact Markdown heading; these options are mutually exclusive. Repeated headings return candidates with `start`/`end` positions. `contentRange` reports the returned range, full length, selected section end and next offset. Pass the returned `note.updatedAt` unchanged as `expectedUpdatedAt` on later pages to detect intervening edits. For section continuation, bound `maxLength` by `sectionEnd - nextOffset`. Boundaries avoid splitting emoji surrogate pairs; a one-unit page can therefore return two units. `maxLength: 0` reads the remaining document or entire selected section. Back references remain included on every page. Search excerpt offsets refer to extracted visible text, not editable Markdown positions.
 
 `create_note` accepts `properties: {"set":[{"key":"state","value":"todo"}]}` using the same value format as metadata edits. Definitions and select options must already exist. Validation failures leave no partial note; note and property persistence share a transaction. Markdown `[@tag]` tokens create tags as needed. Body edits retain version/hash checks and pre-edit snapshots.
 
-### Migration to MCP compatibility 0.14
+### Migration to MCP compatibility 0.17
 
-Update the server and MCP adapter together, then reconnect the host so it refreshes the tool catalog. Earlier compatibility clients are rejected with an upgrade message. The MCP compatibility version is a separate contract from the npm package version, but this release intentionally aligns both at 0.14.0.
+The next minor release targets MCP compatibility `0.17.0`, replacing `0.14.0`. Update the server and MCP adapter together, then reconnect the host so it refreshes the tool catalog. Mismatched compatibility versions are rejected with HTTP 426 and an upgrade message.
+
+`read_view` now requires `viewId` instead of `sectionId`. `list_views` returns `viewId`, `groupTitle`, and `view` instead of `sectionId`, `tabTitle`, and `section`; `read_view` returns `view` instead of `section`. The saved definition uses `groupId` instead of `tabId`. MCP does not retain the old field aliases or retry older GraphQL queries. The tool names and catalog size remain unchanged.
 
 `oceanBrain.mcpCompatibilityVersion` identifies the MCP contract, not a minimum npm package version. The server accepts adapters whose compatibility major and minor numbers match its own, regardless of the app release number. An app release alone does not change this value; incompatible MCP contract changes do.
+
+When upgrading from contracts before `0.14`, these tool replacements also apply:
 
 | Removed tool suffix | Replacement |
 | --- | --- |

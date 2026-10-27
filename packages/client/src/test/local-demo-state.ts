@@ -16,7 +16,7 @@ export const createLocalDemoState = (): LocalDemoState => ({
         token: null,
     },
     viewWorkspace: {
-        activeTabId: null,
-        tabs: [],
+        activeGroupId: null,
+        groups: [],
     },
 });

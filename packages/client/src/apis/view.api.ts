@@ -1,16 +1,16 @@
 import type { Note } from '~/models/note.model';
 import type {
+    View,
     ViewDisplayOptions,
     ViewDisplayType,
     ViewPropertyFilter,
-    ViewSection,
     ViewSortBy,
     ViewSortOrder,
     ViewsWorkspace,
 } from '~/models/view.model';
 import { graphQuery } from '~/modules/graph-query';
 
-export interface ViewSectionInput {
+export interface ViewInput {
     title?: string;
     displayType?: ViewDisplayType;
     displayOptions?: ViewDisplayOptions;
@@ -22,9 +22,9 @@ export interface ViewSectionInput {
     limit?: number;
 }
 
-const VIEW_SECTION_FIELDS = `
+const VIEW_FIELDS = `
     id
-    tabId
+    groupId
     title
     displayType
     displayOptions {
@@ -54,36 +54,36 @@ export function fetchViewWorkspace() {
         viewWorkspace: ViewsWorkspace;
     }>(`query FetchViewWorkspace {
         viewWorkspace {
-            activeTabId
-            tabs {
+            activeGroupId
+            groups {
                 id
                 title
                 order
-                sections {
-                    ${VIEW_SECTION_FIELDS}
+                views {
+                    ${VIEW_FIELDS}
                 }
             }
         }
     }`);
 }
 
-export function fetchViewSection(id: string) {
+export function fetchView(id: string) {
     return graphQuery<
         {
-            viewSection: ViewSection | null;
+            view: View | null;
         },
         { id: string }
     >(
-        `query FetchViewSection($id: ID!) {
-            viewSection(id: $id) {
-                ${VIEW_SECTION_FIELDS}
+        `query FetchView($id: ID!) {
+            view(id: $id) {
+                ${VIEW_FIELDS}
             }
         }`,
         { id },
     );
 }
 
-export function fetchViewSectionNotes(
+export function fetchViewNotes(
     id: string,
     {
         limit = 25,
@@ -99,7 +99,7 @@ export function fetchViewSectionNotes(
 ) {
     return graphQuery<
         {
-            viewSectionNotes: {
+            viewNotes: {
                 totalCount: number;
                 notes: Note[];
             };
@@ -111,13 +111,13 @@ export function fetchViewSectionNotes(
             sortOrder?: ViewSortOrder;
         }
     >(
-        `query FetchViewSectionNotes(
+        `query FetchViewNotes(
             $id: ID!
             $pagination: PaginationInput
             $sortBy: ViewSortBy
             $sortOrder: ViewSortOrder
         ) {
-            viewSectionNotes(id: $id, pagination: $pagination, sortBy: $sortBy, sortOrder: $sortOrder) {
+            viewNotes(id: $id, pagination: $pagination, sortBy: $sortBy, sortOrder: $sortOrder) {
                 totalCount
                 notes {
                     id
@@ -162,18 +162,18 @@ export interface ViewCalendarDateRange {
     end: string;
 }
 
-export function fetchViewSectionCalendarNotes(id: string, dateRange: ViewCalendarDateRange) {
+export function fetchViewCalendarNotes(id: string, dateRange: ViewCalendarDateRange) {
     return graphQuery<
         {
-            viewSectionCalendarNotes: ViewCalendarNote[];
+            viewCalendarNotes: ViewCalendarNote[];
         },
         {
             id: string;
             dateRange: ViewCalendarDateRange;
         }
     >(
-        `query FetchViewSectionCalendarNotes($id: ID!, $dateRange: DateRangeInput!) {
-            viewSectionCalendarNotes(id: $id, dateRange: $dateRange) {
+        `query FetchViewCalendarNotes($id: ID!, $dateRange: DateRangeInput!) {
+            viewCalendarNotes(id: $id, dateRange: $dateRange) {
                 id
                 title
                 calendarDate
@@ -190,19 +190,16 @@ export interface ViewBoardColumnResult {
     notes: ViewBoardNote[];
 }
 
-export interface FetchViewSectionBoardColumnParams {
+export interface FetchViewBoardColumnParams {
     optionValue: string | null;
     limit?: number;
     offset?: number;
 }
 
-export function fetchViewSectionBoardColumn(
-    id: string,
-    { optionValue, limit = 5, offset = 0 }: FetchViewSectionBoardColumnParams,
-) {
+export function fetchViewBoardColumn(id: string, { optionValue, limit = 5, offset = 0 }: FetchViewBoardColumnParams) {
     return graphQuery<
         {
-            viewSectionBoardColumn: ViewBoardColumnResult;
+            viewBoardColumn: ViewBoardColumnResult;
         },
         {
             id: string;
@@ -210,8 +207,8 @@ export function fetchViewSectionBoardColumn(
             pagination: { limit: number; offset: number };
         }
     >(
-        `query FetchViewSectionBoardColumn($id: ID!, $optionValue: String, $pagination: PaginationInput) {
-            viewSectionBoardColumn(id: $id, optionValue: $optionValue, pagination: $pagination) {
+        `query FetchViewBoardColumn($id: ID!, $optionValue: String, $pagination: PaginationInput) {
+            viewBoardColumn(id: $id, optionValue: $optionValue, pagination: $pagination) {
                 totalCount
                 notes {
                     id
@@ -228,17 +225,17 @@ export function fetchViewSectionBoardColumn(
     );
 }
 
-export function createViewTab(title: string) {
+export function createViewGroup(title: string) {
     return graphQuery<
         {
-            createViewTab: {
+            createViewGroup: {
                 id: string;
             };
         },
         { title: string }
     >(
-        `mutation CreateViewTab($title: String!) {
-            createViewTab(title: $title) {
+        `mutation CreateViewGroup($title: String!) {
+            createViewGroup(title: $title) {
                 id
             }
         }`,
@@ -246,17 +243,17 @@ export function createViewTab(title: string) {
     );
 }
 
-export function updateViewTab(id: string, title: string) {
+export function updateViewGroup(id: string, title: string) {
     return graphQuery<
         {
-            updateViewTab: {
+            updateViewGroup: {
                 id: string;
             };
         },
         { id: string; title: string }
     >(
-        `mutation UpdateViewTab($id: ID!, $title: String!) {
-            updateViewTab(id: $id, title: $title) {
+        `mutation UpdateViewGroup($id: ID!, $title: String!) {
+            updateViewGroup(id: $id, title: $title) {
                 id
             }
         }`,
@@ -264,36 +261,36 @@ export function updateViewTab(id: string, title: string) {
     );
 }
 
-export function deleteViewTab(id: string) {
+export function deleteViewGroup(id: string) {
     return graphQuery<
         {
-            deleteViewTab: boolean;
+            deleteViewGroup: boolean;
         },
         { id: string }
     >(
-        `mutation DeleteViewTab($id: ID!) {
-            deleteViewTab(id: $id)
+        `mutation DeleteViewGroup($id: ID!) {
+            deleteViewGroup(id: $id)
         }`,
         { id },
     );
 }
 
-export function setActiveViewTab(id: string) {
+export function setActiveViewGroup(id: string) {
     return graphQuery<
         {
-            setActiveViewTab: ViewsWorkspace;
+            setActiveViewGroup: ViewsWorkspace;
         },
         { id: string }
     >(
-        `mutation SetActiveViewTab($id: ID!) {
-            setActiveViewTab(id: $id) {
-                activeTabId
-                tabs {
+        `mutation SetActiveViewGroup($id: ID!) {
+            setActiveViewGroup(id: $id) {
+                activeGroupId
+                groups {
                     id
                     title
                     order
-                    sections {
-                        ${VIEW_SECTION_FIELDS}
+                    views {
+                        ${VIEW_FIELDS}
                     }
                 }
             }
@@ -302,53 +299,53 @@ export function setActiveViewTab(id: string) {
     );
 }
 
-export function reorderViewTabs(tabIds: string[]) {
+export function reorderViewGroups(groupIds: string[]) {
     return graphQuery<
         {
-            reorderViewTabs: Array<{
+            reorderViewGroups: Array<{
                 id: string;
             }>;
         },
-        { tabIds: string[] }
+        { groupIds: string[] }
     >(
-        `mutation ReorderViewTabs($tabIds: [ID!]!) {
-            reorderViewTabs(tabIds: $tabIds) {
+        `mutation ReorderViewGroups($groupIds: [ID!]!) {
+            reorderViewGroups(groupIds: $groupIds) {
                 id
             }
         }`,
-        { tabIds },
+        { groupIds },
     );
 }
 
-export function createViewSection(tabId: string, input: ViewSectionInput) {
+export function createView(groupId: string, input: ViewInput) {
     return graphQuery<
         {
-            createViewSection: {
+            createView: {
                 id: string;
             };
         },
-        { tabId: string; input: ViewSectionInput }
+        { groupId: string; input: ViewInput }
     >(
-        `mutation CreateViewSection($tabId: ID!, $input: ViewSectionInput!) {
-            createViewSection(tabId: $tabId, input: $input) {
+        `mutation CreateView($groupId: ID!, $input: ViewInput!) {
+            createView(groupId: $groupId, input: $input) {
                 id
             }
         }`,
-        { tabId, input },
+        { groupId, input },
     );
 }
 
-export function updateViewSection(id: string, input: ViewSectionInput) {
+export function updateView(id: string, input: ViewInput) {
     return graphQuery<
         {
-            updateViewSection: {
+            updateView: {
                 id: string;
             };
         },
-        { id: string; input: ViewSectionInput }
+        { id: string; input: ViewInput }
     >(
-        `mutation UpdateViewSection($id: ID!, $input: ViewSectionInput!) {
-            updateViewSection(id: $id, input: $input) {
+        `mutation UpdateView($id: ID!, $input: ViewInput!) {
+            updateView(id: $id, input: $input) {
                 id
             }
         }`,
@@ -356,34 +353,34 @@ export function updateViewSection(id: string, input: ViewSectionInput) {
     );
 }
 
-export function deleteViewSection(id: string) {
+export function deleteView(id: string) {
     return graphQuery<
         {
-            deleteViewSection: boolean;
+            deleteView: boolean;
         },
         { id: string }
     >(
-        `mutation DeleteViewSection($id: ID!) {
-            deleteViewSection(id: $id)
+        `mutation DeleteView($id: ID!) {
+            deleteView(id: $id)
         }`,
         { id },
     );
 }
 
-export function reorderViewSections(tabId: string, sectionIds: string[]) {
+export function reorderViews(groupId: string, viewIds: string[]) {
     return graphQuery<
         {
-            reorderViewSections: Array<{
+            reorderViews: Array<{
                 id: string;
             }>;
         },
-        { tabId: string; sectionIds: string[] }
+        { groupId: string; viewIds: string[] }
     >(
-        `mutation ReorderViewSections($tabId: ID!, $sectionIds: [ID!]!) {
-            reorderViewSections(tabId: $tabId, sectionIds: $sectionIds) {
+        `mutation ReorderViews($groupId: ID!, $viewIds: [ID!]!) {
+            reorderViews(groupId: $groupId, viewIds: $viewIds) {
                 id
             }
         }`,
-        { tabId, sectionIds },
+        { groupId, viewIds },
     );
 }

@@ -956,21 +956,21 @@ export const updateNotePropertyDefinition = async ({
             );
 
             if (removedValues.size > 0) {
-                const referencingViewSections = await tx.viewSection.findMany({
+                const referencingViews = await tx.view.findMany({
                     where: { query: { contains: definition.key } },
                     select: { title: true, query: true },
                 });
 
-                for (const section of referencingViewSections) {
+                for (const view of referencingViews) {
                     const removedReferencedValue = findReferencedRemovedPropertyOptionValue({
-                        query: section.query,
+                        query: view.query,
                         key: definition.key,
                         removedValues,
                     });
 
                     if (removedReferencedValue) {
                         throw new InvalidNotePropertyInputError(
-                            `Property option ${removedReferencedValue} is used by view ${section.title} and cannot be removed.`,
+                            `Property option ${removedReferencedValue} is used by view ${view.title} and cannot be removed.`,
                         );
                     }
                 }
@@ -983,21 +983,21 @@ export const updateNotePropertyDefinition = async ({
         });
 
         if (nextName !== definition.name) {
-            const referencingViewSections = await tx.viewSection.findMany({
+            const referencingViews = await tx.view.findMany({
                 where: { query: { contains: definition.key } },
                 select: { id: true, query: true },
             });
 
-            for (const section of referencingViewSections) {
+            for (const view of referencingViews) {
                 const nextQuery = renamePropertyFiltersInViewQuery({
-                    query: section.query,
+                    query: view.query,
                     key: definition.key,
                     name: nextName,
                 });
 
                 if (nextQuery) {
-                    await tx.viewSection.update({
-                        where: { id: section.id },
+                    await tx.view.update({
+                        where: { id: view.id },
                         data: { query: nextQuery },
                     });
                 }
@@ -1074,15 +1074,15 @@ export const deleteNotePropertyDefinition = async ({
             return null;
         }
 
-        const referencingViewSections = await tx.viewSection.findMany({
+        const referencingViews = await tx.view.findMany({
             where: { query: { contains: definition.key } },
             select: { title: true, displayType: true, query: true },
         });
-        const referencingView = referencingViewSections.find((section) =>
+        const referencingView = referencingViews.find((view) =>
             viewQueryReferencesProperty({
-                query: section.query,
+                query: view.query,
                 key: definition.key,
-                displayType: section.displayType,
+                displayType: view.displayType,
             }),
         );
 

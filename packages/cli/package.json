@@ -62,6 +62,6 @@
         "@prisma/client"
     ],
     "oceanBrain": {
-        "mcpCompatibilityVersion": "0.14.0"
+        "mcpCompatibilityVersion": "0.17.0"
     }
 }

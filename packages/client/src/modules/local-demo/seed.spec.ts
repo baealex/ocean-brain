@@ -29,7 +29,7 @@ describe('createLocalDemoSeed', () => {
     it('provides useful states for the views and reminder tours', () => {
         const nowMs = 1_710_000_000_000;
         const seed = createLocalDemoSeed({ tags, nowMs });
-        const displayTypes = seed.viewTabs.flatMap((tab) => tab.sections.map((section) => section.displayType));
+        const displayTypes = seed.viewGroups.flatMap((group) => group.views.map((view) => view.displayType));
         const projectStatuses = seed.notes
             .filter((note) => note.tags.some((tag) => tag.name === '@project'))
             .flatMap((note) => note.properties ?? [])

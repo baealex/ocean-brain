@@ -2,11 +2,11 @@ import { useState } from 'react';
 import type { NotePropertyKeySummary } from '~/apis/note.api';
 import { ModalActionRow } from '~/components/shared';
 import { Button, Modal, Text } from '~/components/ui';
-import type { ViewDisplayOptions, ViewSection, ViewTableColumn } from '~/models/view.model';
+import type { View, ViewDisplayOptions, ViewTableColumn } from '~/models/view.model';
 import ViewTableColumnsEditor from './ViewTableColumnsEditor';
 
 interface ViewTableColumnsDialogProps {
-    section: ViewSection;
+    view: View;
     availableProperties: NotePropertyKeySummary[];
     isPropertiesLoading: boolean;
     isPropertiesError: boolean;
@@ -16,7 +16,7 @@ interface ViewTableColumnsDialogProps {
 }
 
 export default function ViewTableColumnsDialog({
-    section,
+    view,
     availableProperties,
     isPropertiesLoading,
     isPropertiesError,
@@ -24,8 +24,8 @@ export default function ViewTableColumnsDialog({
     onClose,
     onSave,
 }: ViewTableColumnsDialogProps) {
-    const [columns, setColumns] = useState<ViewTableColumn[]>(section.displayOptions.tableColumns);
-    const [propertyKeys, setPropertyKeys] = useState(section.displayOptions.tablePropertyKeys);
+    const [columns, setColumns] = useState<ViewTableColumn[]>(view.displayOptions.tableColumns);
+    const [propertyKeys, setPropertyKeys] = useState(view.displayOptions.tablePropertyKeys);
     const [isSaving, setIsSaving] = useState(false);
 
     const close = () => {
@@ -34,7 +34,7 @@ export default function ViewTableColumnsDialog({
     const save = async () => {
         setIsSaving(true);
         try {
-            if (await onSave({ ...section.displayOptions, tableColumns: columns, tablePropertyKeys: propertyKeys }))
+            if (await onSave({ ...view.displayOptions, tableColumns: columns, tablePropertyKeys: propertyKeys }))
                 onClose();
         } finally {
             setIsSaving(false);

@@ -21,28 +21,28 @@ async function openSavedTable(page: Page) {
     await page.getByRole('button', { name: 'Sign in' }).click();
     await expect(page).toHaveURL((url) => url.pathname === '/');
     const setup = await graph(page, `mutation {
-        tab: createViewTab(title: "Research") { id }
+        group: createViewGroup(title: "Research") { id }
         source: createNotePropertyKey(input: { key: "source", name: "Source", valueType: url }) { key }
         priority: createNotePropertyKey(input: { key: "priority", name: "Priority", valueType: number }) { key }
         alpha: createNote(note: { title: "Alpha", content: "[]" }) { id }
         zulu: createNote(note: { title: "Zulu", content: "[]" }) { id }
     }`);
-    const result = await graph(page, `mutation($tabId: ID!) {
-        createViewSection(tabId: $tabId, input: {
+    const result = await graph(page, `mutation($groupId: ID!) {
+        createView(groupId: $groupId, input: {
             title: "Reading queue", displayType: table,
             displayOptions: { tableColumns: [title, properties, updatedAt], tablePropertyKeys: ["source", "priority"] },
             propertyFilters: [{ key: "priority", valueType: number, operator: notExists }],
             sortBy: createdAt, sortOrder: desc, limit: 5
         }) { id }
-    }`, { tabId: setup.tab.id });
+    }`, { groupId: setup.group.id });
     await page.goto('/views');
     await expect(page.getByRole('table')).toBeVisible();
-    return result.createViewSection.id;
+    return result.createView.id;
 }
 
 test('a temporary sort can become the saved default without losing the view settings', async ({ page }) => {
     const errors = collectRuntimeErrors(page);
-    const sectionId = await openSavedTable(page);
+    const viewId = await openSavedTable(page);
     const sort = page.getByRole('group', { name: 'Reading queue sort' });
 
     await sort.getByRole('button', { name: 'Sort: Newest notes first' }).click();
@@ -54,13 +54,13 @@ test('a temporary sort can become the saved default without losing the view sett
     await expect(sort.getByRole('button', { name: 'Sort: Title: Z to A' })).toBeVisible();
     await expect(page.getByRole('table').getByRole('link').first()).toHaveText('Zulu');
     const saved = await graph(page, `query($id: ID!) {
-        viewSection(id: $id) {
+        view(id: $id) {
             title displayType sortBy sortOrder limit
             propertyFilters { key operator }
             displayOptions { tableColumns tablePropertyKeys }
         }
-    }`, { id: sectionId });
-    expect(saved.viewSection).toEqual({
+    }`, { id: viewId });
+    expect(saved.view).toEqual({
         title: 'Reading queue', displayType: 'table', sortBy: 'title', sortOrder: 'desc', limit: 5,
         propertyFilters: [{ key: 'priority', operator: 'notExists' }],
         displayOptions: { tableColumns: ['title', 'properties', 'updatedAt'], tablePropertyKeys: ['source', 'priority'] },
@@ -136,4 +136,26 @@ test('dragging over an expanded property group previews the new order before sav
     await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(page.getByRole('table').getByRole('columnheader').first()).toContainText('Title');
+});
+
+test('an existing view bookmark preserves selection and upgrades its URL on the next interaction', async ({ page }) => {
+    const viewId = await openSavedTable(page);
+    const legacy = await graph(page, `query($id: ID!) { viewSection(id: $id) { tabId } }`, { id: viewId });
+    const bookmark = new URLSearchParams({
+        tab: JSON.stringify(legacy.viewSection.tabId),
+        state: JSON.stringify({ version: 1, sections: { [viewId]: { sort: { by: 'title', order: 'desc' } } } }),
+    });
+    await page.goto(`/views?${bookmark}`);
+    const sort = page.getByRole('group', { name: 'Reading queue sort' });
+    await expect(sort.getByRole('button', { name: 'Sort: Title: Z to A' })).toBeVisible();
+    await expect(page.getByRole('table').getByRole('link').first()).toHaveText('Zulu');
+
+    await sort.getByRole('button', { name: 'Sort: Title: Z to A' }).click();
+    await page.getByRole('menuitemradio', { name: 'Title: A to Z' }).click();
+
+    await expect(page).toHaveURL((url) => url.searchParams.has('group') && !url.searchParams.has('tab'));
+    const state = JSON.parse(new URL(page.url()).searchParams.get('state') ?? 'null');
+    expect(state).toEqual({ version: 2, views: { [viewId]: { sort: { by: 'title', order: 'asc' } } } });
+    await page.reload();
+    await expect(page.getByRole('table').getByRole('link').first()).toHaveText('Alpha');
 });

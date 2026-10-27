@@ -53,7 +53,7 @@ const EXPECTED_SCHEMA_KEYS: Record<string, string[]> = {
         'tagNames',
     ],
     [OCEAN_BRAIN_MCP_TOOLS.listViews]: ['limit', 'offset', 'query'],
-    [OCEAN_BRAIN_MCP_TOOLS.readView]: ['dateRange', 'groupValue', 'limit', 'offset', 'propertyKeys', 'sectionId'],
+    [OCEAN_BRAIN_MCP_TOOLS.readView]: ['dateRange', 'groupValue', 'limit', 'offset', 'propertyKeys', 'viewId'],
     [OCEAN_BRAIN_MCP_TOOLS.searchNotes]: ['limit', 'mode', 'offset', 'query'],
     [OCEAN_BRAIN_MCP_TOOLS.readNote]: ['expectedUpdatedAt', 'heading', 'id', 'maxLength', 'offset'],
     [OCEAN_BRAIN_MCP_TOOLS.createNote]: ['layout', 'markdown', 'properties', 'title'],
@@ -93,7 +93,7 @@ const EXPECTED_SCHEMA_KEYS: Record<string, string[]> = {
 const EXPECTED_REQUIRED_FIELDS: Record<string, string[]> = {
     [OCEAN_BRAIN_MCP_TOOLS.queryNotes]: [],
     [OCEAN_BRAIN_MCP_TOOLS.listViews]: [],
-    [OCEAN_BRAIN_MCP_TOOLS.readView]: ['sectionId'],
+    [OCEAN_BRAIN_MCP_TOOLS.readView]: ['viewId'],
     [OCEAN_BRAIN_MCP_TOOLS.searchNotes]: ['query'],
     [OCEAN_BRAIN_MCP_TOOLS.readNote]: ['id'],
     [OCEAN_BRAIN_MCP_TOOLS.createNote]: ['title'],

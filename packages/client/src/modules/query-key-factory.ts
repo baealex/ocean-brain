@@ -245,9 +245,9 @@ export const queryKeys = {
     views: {
         all: () => ['views'] as const,
         workspace: () => ['views', 'workspace'] as const,
-        section: (id: string) => ['views', 'section', { id }] as const,
-        sectionNotesAll: () => ['views', 'section-notes'] as const,
-        sectionNotes: (
+        view: (id: string) => ['views', 'view', { id }] as const,
+        viewNotesAll: () => ['views', 'view-notes'] as const,
+        viewNotes: (
             id: string,
             params: {
                 limit?: number;
@@ -258,7 +258,7 @@ export const queryKeys = {
         ) =>
             [
                 'views',
-                'section-notes',
+                'view-notes',
                 {
                     id,
                     limit: params.limit ?? 25,
@@ -267,12 +267,12 @@ export const queryKeys = {
                     sortOrder: params.sortOrder ?? null,
                 },
             ] as const,
-        sectionBoardsAll: () => ['views', 'section-board'] as const,
-        sectionBoardAll: (id: string) => ['views', 'section-board', id] as const,
-        sectionBoardColumnPages: (id: string, groupPropertyKey: string, optionValue: string | null, pageSize: number) =>
+        viewBoardsAll: () => ['views', 'view-board'] as const,
+        viewBoardAll: (id: string) => ['views', 'view-board', id] as const,
+        viewBoardColumnPages: (id: string, groupPropertyKey: string, optionValue: string | null, pageSize: number) =>
             [
                 'views',
-                'section-board',
+                'view-board',
                 id,
                 {
                     groupPropertyKey,
@@ -280,8 +280,8 @@ export const queryKeys = {
                     pageSize,
                 },
             ] as const,
-        sectionCalendarsAll: () => ['views', 'section-calendar'] as const,
-        sectionCalendar: (
+        viewCalendarsAll: () => ['views', 'view-calendar'] as const,
+        viewCalendar: (
             id: string,
             params: {
                 year: number;
@@ -292,7 +292,7 @@ export const queryKeys = {
         ) =>
             [
                 'views',
-                'section-calendar',
+                'view-calendar',
                 id,
                 {
                     year: params.year,

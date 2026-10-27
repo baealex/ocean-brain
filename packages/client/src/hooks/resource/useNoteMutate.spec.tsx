@@ -109,7 +109,7 @@ describe('useNoteMutate', () => {
             exact: false,
         });
         expect(invalidateSpy).toHaveBeenCalledWith({
-            queryKey: queryKeys.views.sectionNotesAll(),
+            queryKey: queryKeys.views.viewNotesAll(),
             exact: false,
         });
     });
@@ -210,7 +210,7 @@ describe('useNoteMutate', () => {
                 exact: false,
             });
             expect(invalidateSpy).toHaveBeenCalledWith({
-                queryKey: queryKeys.views.sectionNotesAll(),
+                queryKey: queryKeys.views.viewNotesAll(),
                 exact: false,
             });
         });

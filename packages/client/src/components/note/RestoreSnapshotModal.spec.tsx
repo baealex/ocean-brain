@@ -134,7 +134,7 @@ describe('<RestoreSnapshotModal />', () => {
         expect(onRestored).toHaveBeenCalledWith(expect.objectContaining({ id: '7' }));
         expect(onClose).toHaveBeenCalledTimes(1);
         expect(invalidateQueries).toHaveBeenCalledWith({
-            queryKey: queryKeys.views.sectionCalendarsAll(),
+            queryKey: queryKeys.views.viewCalendarsAll(),
             exact: false,
         });
     });

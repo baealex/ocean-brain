@@ -12,44 +12,44 @@ const getQueryResolver = (resolvers: unknown, field: string) => {
 
 const createDeps = (overrides: Partial<ViewQueryResolverDeps> = {}): ViewQueryResolverDeps => ({
     getNotesByProperties: async () => ({ totalCount: 0, notes: [] }),
-    getViewSectionBoardColumn: async () => ({ totalCount: 0, notes: [] }),
-    getViewSectionById: async () => null,
-    getViewSectionCalendarNotes: async () => [],
-    getViewSectionNotes: async () => ({ totalCount: 0, notes: [] }),
-    getViewWorkspace: async () => ({ activeTabId: null, tabs: [] }),
+    getViewBoardColumn: async () => ({ totalCount: 0, notes: [] }),
+    getViewById: async () => null,
+    getViewCalendarNotes: async () => [],
+    getViewNotes: async () => ({ totalCount: 0, notes: [] }),
+    getViewWorkspace: async () => ({ activeGroupId: null, groups: [] }),
     ...overrides,
 });
 
-test('viewSectionNotes applies default pagination at the GraphQL boundary', async () => {
+test('viewNotes applies default pagination at the GraphQL boundary', async () => {
     let receivedPagination: unknown;
     const resolvers = createViewQueryResolvers(
         createDeps({
-            getViewSectionNotes: async (_id, pagination) => {
+            getViewNotes: async (_id, pagination) => {
                 receivedPagination = pagination;
                 return { totalCount: 0, notes: [] };
             },
         }),
     );
-    const resolveViewSectionNotes = getQueryResolver(resolvers, 'viewSectionNotes');
+    const resolveViewNotes = getQueryResolver(resolvers, 'viewNotes');
 
-    const result = await resolveViewSectionNotes(null, { id: 'section-1' });
+    const result = await resolveViewNotes(null, { id: 'view-1' });
 
     assert.deepEqual(receivedPagination, { limit: 25, offset: 0 });
     assert.deepEqual(result, { totalCount: 0, notes: [] });
 });
 
-test('viewSectionBoardColumn maps invalid property input to a stable GraphQL error code', async () => {
+test('viewBoardColumn maps invalid property input to a stable GraphQL error code', async () => {
     const resolvers = createViewQueryResolvers(
         createDeps({
-            getViewSectionBoardColumn: async () => {
+            getViewBoardColumn: async () => {
                 throw new InvalidNotePropertyInputError('Unknown board property');
             },
         }),
     );
-    const resolveBoardColumn = getQueryResolver(resolvers, 'viewSectionBoardColumn');
+    const resolveBoardColumn = getQueryResolver(resolvers, 'viewBoardColumn');
 
     await assert.rejects(
-        () => resolveBoardColumn(null, { id: 'section-1' }),
+        () => resolveBoardColumn(null, { id: 'view-1' }),
         (error) =>
             error instanceof GraphQLError &&
             error.message === 'Unknown board property' &&
@@ -57,20 +57,20 @@ test('viewSectionBoardColumn maps invalid property input to a stable GraphQL err
     );
 });
 
-test('viewSectionCalendarNotes maps invalid calendar input to a stable GraphQL error code', async () => {
+test('viewCalendarNotes maps invalid calendar input to a stable GraphQL error code', async () => {
     const resolvers = createViewQueryResolvers(
         createDeps({
-            getViewSectionCalendarNotes: async () => {
+            getViewCalendarNotes: async () => {
                 throw new InvalidNotePropertyInputError('Invalid calendar range');
             },
         }),
     );
-    const resolveCalendarNotes = getQueryResolver(resolvers, 'viewSectionCalendarNotes');
+    const resolveCalendarNotes = getQueryResolver(resolvers, 'viewCalendarNotes');
 
     await assert.rejects(
         () =>
             resolveCalendarNotes(null, {
-                id: 'section-1',
+                id: 'view-1',
                 dateRange: { start: '2026-08-01T00:00:00.000Z', end: '2026-09-01T00:00:00.000Z' },
             }),
         (error) =>

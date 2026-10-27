@@ -133,8 +133,8 @@ test('menu layout persists mixed order and visibility, shares app pins and reset
 
     await page.setViewportSize({ width: 390, height: 844 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
-    await inboxHandle.focus();
-    await page.keyboard.press('Space', { delay: 50 });
+    // Target the handle directly so responsive layout focus changes cannot redirect the key.
+    await inboxHandle.press('Space', { delay: 50 });
     await expect(inboxHandle).toHaveAttribute('aria-pressed', 'true');
     await page.keyboard.press('ArrowDown');
     await expect(page.getByRole('status')).toContainText('droppable area core:notes');

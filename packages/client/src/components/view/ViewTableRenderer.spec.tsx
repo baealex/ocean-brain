@@ -2,8 +2,8 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import type { Note } from '~/models/note.model';
-import type { ViewSection } from '~/models/view.model';
-import ViewSectionTableRenderer from './ViewSectionTableRenderer';
+import type { View } from '~/models/view.model';
+import ViewTableRenderer from './ViewTableRenderer';
 
 vi.mock('@tanstack/react-router', () => ({
     Link: ({
@@ -51,9 +51,9 @@ const createNote = (patch: Partial<Note> = {}): Note => ({
     ...patch,
 });
 
-const createSection = (patch: Partial<ViewSection> = {}): ViewSection => ({
-    id: 'section-1',
-    tabId: 'tab-1',
+const createView = (patch: Partial<View> = {}): View => ({
+    id: 'view-1',
+    groupId: 'group-1',
     title: 'Ocean Brain tasks',
     displayType: 'table',
     displayOptions: {
@@ -73,10 +73,10 @@ const createSection = (patch: Partial<ViewSection> = {}): ViewSection => ({
     ...patch,
 });
 
-const renderTable = (props: Partial<React.ComponentProps<typeof ViewSectionTableRenderer>> = {}) =>
+const renderTable = (props: Partial<React.ComponentProps<typeof ViewTableRenderer>> = {}) =>
     render(
-        <ViewSectionTableRenderer
-            section={createSection()}
+        <ViewTableRenderer
+            view={createView()}
             notes={[createNote()]}
             isPending={false}
             isError={false}
@@ -87,16 +87,16 @@ const renderTable = (props: Partial<React.ComponentProps<typeof ViewSectionTable
         />,
     );
 
-describe('<ViewSectionTableRenderer />', () => {
+describe('<ViewTableRenderer />', () => {
     beforeEach(() => {
         vi.clearAllMocks();
     });
 
     it('renders the saved column order including a title column moved away from the start', () => {
         renderTable({
-            section: createSection({
+            view: createView({
                 displayOptions: {
-                    ...createSection().displayOptions,
+                    ...createView().displayOptions,
                     tableColumns: ['updatedAt', 'properties', 'title'],
                     tablePropertyKeys: ['priority', 'status'],
                 },
@@ -145,7 +145,7 @@ describe('<ViewSectionTableRenderer />', () => {
     it('keeps notes without tags or properties visible with empty table cells', () => {
         renderTable({
             notes: [createNote({ tags: [], properties: [] })],
-            section: createSection({
+            view: createView({
                 displayOptions: {
                     tableColumns: ['title', 'tags', 'properties'],
                     tablePropertyKeys: ['status'],
@@ -172,7 +172,7 @@ describe('<ViewSectionTableRenderer />', () => {
 
     it('respects selected table columns', () => {
         renderTable({
-            section: createSection({
+            view: createView({
                 displayOptions: {
                     tableColumns: ['title', 'updatedAt'],
                     tablePropertyKeys: [],

@@ -1,6 +1,6 @@
 import type { Note, NoteProperty, NotePropertyOption, NotePropertyValueType } from '~/models/note.model';
 import type { Reminder } from '~/models/reminder.model';
-import type { ViewSection, ViewTab } from '~/models/view.model';
+import type { View, ViewGroup } from '~/models/view.model';
 import type { LocalPropertyDefinition, LocalTag } from './types';
 
 interface SeedInput {
@@ -12,7 +12,7 @@ interface SeedOutput {
     notes: Note[];
     propertyDefinitions: LocalPropertyDefinition[];
     reminders: Reminder[];
-    viewTabs: ViewTab[];
+    viewGroups: ViewGroup[];
 }
 
 const paragraphProps = {
@@ -865,27 +865,18 @@ export const createLocalDemoSeed = ({ tags, nowMs }: SeedInput): SeedOutput => {
         },
     ];
 
-    const viewTabs: ViewTab[] = [
+    const viewGroups: ViewGroup[] = [
         {
             id: 'view-tab-overview',
             title: 'Overview',
             order: 0,
-            sections: [
+            views: [
                 {
-                    ...createViewSection(
-                        'view-section-start',
-                        'view-tab-overview',
-                        'Start here',
-                        0,
-                        ['guide'],
-                        [],
-                        'list',
-                        8,
-                    ),
+                    ...createView('view-section-start', 'view-tab-overview', 'Start here', 0, ['guide'], [], 'list', 8),
                     sortBy: 'createdAt',
                     sortOrder: 'asc',
                 },
-                createViewSection(
+                createView(
                     'view-section-project',
                     'view-tab-overview',
                     'Project details',
@@ -901,8 +892,8 @@ export const createLocalDemoSeed = ({ tags, nowMs }: SeedInput): SeedOutput => {
             id: 'view-tab-delivery',
             title: 'Delivery',
             order: 1,
-            sections: [
-                createBoardViewSection('view-section-delivery', 'view-tab-delivery', 'Project delivery', 'status', [
+            views: [
+                createBoardView('view-section-delivery', 'view-tab-delivery', 'Project delivery', 'status', [
                     'project',
                 ]),
             ],
@@ -911,8 +902,8 @@ export const createLocalDemoSeed = ({ tags, nowMs }: SeedInput): SeedOutput => {
             id: 'view-tab-timeline',
             title: 'Timeline',
             order: 2,
-            sections: [
-                createCalendarViewSection(
+            views: [
+                createCalendarView(
                     'view-section-timeline',
                     'view-tab-timeline',
                     'Project timeline',
@@ -928,22 +919,22 @@ export const createLocalDemoSeed = ({ tags, nowMs }: SeedInput): SeedOutput => {
         notes,
         propertyDefinitions: createPropertyDefinitions(createdAt),
         reminders,
-        viewTabs,
+        viewGroups,
     };
 };
 
-const createViewSection = (
+const createView = (
     id: string,
-    tabId: string,
+    groupId: string,
     title: string,
     order: number,
     tagNames: string[],
-    propertyFilters: ViewSection['propertyFilters'],
-    displayType: ViewSection['displayType'] = 'table',
+    propertyFilters: View['propertyFilters'],
+    displayType: View['displayType'] = 'table',
     limit = 25,
-): ViewSection => ({
+): View => ({
     id,
-    tabId,
+    groupId,
     title,
     displayType,
     displayOptions: {
@@ -962,14 +953,14 @@ const createViewSection = (
     order,
 });
 
-const createBoardViewSection = (
+const createBoardView = (
     id: string,
-    tabId: string,
+    groupId: string,
     title: string,
     boardGroupByPropertyKey: string,
     tagNames: string[],
-): ViewSection => ({
-    ...createViewSection(id, tabId, title, 0, tagNames, []),
+): View => ({
+    ...createView(id, groupId, title, 0, tagNames, []),
     displayType: 'board',
     displayOptions: {
         tableColumns: ['title', 'tags', 'properties', 'updatedAt'],
@@ -981,20 +972,20 @@ const createBoardViewSection = (
     limit: 8,
 });
 
-const createCalendarViewSection = (
+const createCalendarView = (
     id: string,
-    tabId: string,
+    groupId: string,
     title: string,
     tagNames: string[],
-    calendarDateField: ViewSection['displayOptions']['calendarDateField'],
+    calendarDateField: View['displayOptions']['calendarDateField'],
     calendarDatePropertyKey: string | null = null,
-): ViewSection => {
-    const section = createViewSection(id, tabId, title, 0, tagNames, [], 'calendar');
+): View => {
+    const view = createView(id, groupId, title, 0, tagNames, [], 'calendar');
 
     return {
-        ...section,
+        ...view,
         displayOptions: {
-            ...section.displayOptions,
+            ...view.displayOptions,
             calendarDateField,
             calendarDatePropertyKey,
         },

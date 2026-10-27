@@ -1,5 +1,5 @@
 import type { Note, NoteLayout, NoteProperty, NotePropertyOption, NotePropertyValueType } from '~/models/note.model';
-import type { ViewSection } from '~/models/view.model';
+import type { View } from '~/models/view.model';
 import { localError, success } from '../response';
 import type { LocalDemoPlugin, LocalTrashNote } from '../types';
 import {
@@ -23,20 +23,20 @@ const toTrashedNotePayload = (note: LocalTrashNote) => ({
     tagNames: note.tags.map((tag) => tag.name),
 });
 
-const viewSectionReferencesProperty = (section: ViewSection, key: string) => {
-    if (section.propertyFilters.some((filter) => filter.key === key)) {
+const viewReferencesProperty = (view: View, key: string) => {
+    if (view.propertyFilters.some((filter) => filter.key === key)) {
         return true;
     }
 
-    if (section.displayType === 'table') {
-        return section.displayOptions.tablePropertyKeys.includes(key);
+    if (view.displayType === 'table') {
+        return view.displayOptions.tablePropertyKeys.includes(key);
     }
 
-    if (section.displayType === 'board') {
-        return section.displayOptions.boardGroupByPropertyKey === key;
+    if (view.displayType === 'board') {
+        return view.displayOptions.boardGroupByPropertyKey === key;
     }
 
-    return section.displayType === 'calendar' && section.displayOptions.calendarDatePropertyKey === key;
+    return view.displayType === 'calendar' && view.displayOptions.calendarDatePropertyKey === key;
 };
 
 export const notesLocalPlugin: LocalDemoPlugin = {
@@ -314,9 +314,9 @@ export const notesLocalPlugin: LocalDemoPlugin = {
         },
         DeleteNotePropertyKey: ({ state, variables, save }) => {
             const key = String(variables.key);
-            const referencingView = state.viewWorkspace.tabs
-                .flatMap((tab) => tab.sections)
-                .find((section) => viewSectionReferencesProperty(section, key));
+            const referencingView = state.viewWorkspace.groups
+                .flatMap((group) => group.views)
+                .find((view) => viewReferencesProperty(view, key));
 
             if (referencingView) {
                 return localError(`Property ${key} is used by view ${referencingView.title} and cannot be deleted.`);

@@ -1,5 +1,6 @@
 import { createLocalDemoSeed } from './seed';
 import type { LocalDemoState } from './types';
+import { migrateViewWorkspace, type PersistedViewsWorkspace } from './view-workspace-compat';
 
 const STORAGE_KEY = 'ocean-brain:local-only-demo:v6';
 const CURRENT_VERSION = 6 as const;
@@ -35,8 +36,8 @@ const createSeedState = (): LocalDemoState => {
             token: null,
         },
         viewWorkspace: {
-            activeTabId: seed.viewTabs[0]?.id ?? null,
-            tabs: seed.viewTabs,
+            activeGroupId: seed.viewGroups[0]?.id ?? null,
+            groups: seed.viewGroups,
         },
     };
 };
@@ -51,22 +52,22 @@ const getLocalStorage = () => {
     }
 };
 
-const normalizeViewWorkspace = (workspace: LocalDemoState['viewWorkspace']): LocalDemoState['viewWorkspace'] => ({
-    ...workspace,
-    tabs: workspace.tabs.map((tab) => ({
-        ...tab,
-        sections: tab.sections.map((section) => ({
-            ...section,
+const normalizeViewWorkspace = (stored: PersistedViewsWorkspace): LocalDemoState['viewWorkspace'] => ({
+    ...migrateViewWorkspace(stored),
+    groups: migrateViewWorkspace(stored).groups.map((group) => ({
+        ...group,
+        views: group.views.map((view) => ({
+            ...view,
             displayOptions: {
-                ...section.displayOptions,
+                ...view.displayOptions,
                 calendarDateField:
-                    section.displayOptions.calendarDateField === 'updatedAt' ||
-                    section.displayOptions.calendarDateField === 'property'
-                        ? section.displayOptions.calendarDateField
+                    view.displayOptions.calendarDateField === 'updatedAt' ||
+                    view.displayOptions.calendarDateField === 'property'
+                        ? view.displayOptions.calendarDateField
                         : 'createdAt',
                 calendarDatePropertyKey:
-                    section.displayOptions.calendarDateField === 'property'
-                        ? section.displayOptions.calendarDatePropertyKey?.trim() || null
+                    view.displayOptions.calendarDateField === 'property'
+                        ? view.displayOptions.calendarDatePropertyKey?.trim() || null
                         : null,
             },
         })),
@@ -77,7 +78,7 @@ const mergeState = (raw: unknown): LocalDemoState => {
     const seed = createSeedState();
     if (!raw || typeof raw !== 'object') return seed;
 
-    const value = raw as Partial<LocalDemoState>;
+    const value = raw as Omit<Partial<LocalDemoState>, 'viewWorkspace'> & { viewWorkspace?: PersistedViewsWorkspace };
 
     return {
         ...seed,
@@ -95,7 +96,9 @@ const mergeState = (raw: unknown): LocalDemoState => {
             : seed.propertyDefinitions,
         mcp: value.mcp && typeof value.mcp === 'object' ? { ...seed.mcp, ...value.mcp } : seed.mcp,
         viewWorkspace:
-            value.viewWorkspace && Array.isArray(value.viewWorkspace.tabs)
+            value.viewWorkspace &&
+            (('groups' in value.viewWorkspace && Array.isArray(value.viewWorkspace.groups)) ||
+                ('tabs' in value.viewWorkspace && Array.isArray(value.viewWorkspace.tabs)))
                 ? normalizeViewWorkspace(value.viewWorkspace)
                 : seed.viewWorkspace,
     };

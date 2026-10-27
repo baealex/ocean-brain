@@ -1,7 +1,7 @@
 import type { IResolvers } from '@graphql-tools/utils';
 import { GraphQLError } from 'graphql';
 import { InvalidNotePropertyInputError } from '~/features/note/services/properties.js';
-import { listViewSections, type ReadViewSectionInput, readViewSection } from '../services/mcp-read.js';
+import { listViews, type ReadViewInput, readView } from '../services/mcp-read.js';
 import { getNotesByQuery, type ViewNotesQueryInput } from '../services/workspace.js';
 
 const queryResult = async <T>(read: () => Promise<T>): Promise<T> => {
@@ -20,9 +20,7 @@ export const mcpViewQueryResolvers = {
         _: unknown,
         { input, pagination }: { input: ViewNotesQueryInput; pagination?: { limit?: number; offset?: number } },
     ) => queryResult(() => getNotesByQuery(input, pagination)),
-    viewSections: (
-        _: unknown,
-        { query, pagination }: { query?: string; pagination?: { limit?: number; offset?: number } },
-    ) => queryResult(() => listViewSections(query, pagination)),
-    readViewSection: (_: unknown, input: ReadViewSectionInput) => queryResult(() => readViewSection(input)),
+    views: (_: unknown, { query, pagination }: { query?: string; pagination?: { limit?: number; offset?: number } }) =>
+        queryResult(() => listViews(query, pagination)),
+    readView: (_: unknown, input: ReadViewInput) => queryResult(() => readView(input)),
 } satisfies NonNullable<IResolvers['Query']>;

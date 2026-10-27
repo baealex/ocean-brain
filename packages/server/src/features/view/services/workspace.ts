@@ -7,7 +7,7 @@ import {
 import { buildNoteTagNamesWhere, type NoteTagMatchMode } from '~/features/note/services/tag-filter.js';
 import models from '~/models.js';
 
-export type ViewTagMatchMode = NoteTagMatchMode;
+export type ViewTagFilterMatchMode = NoteTagMatchMode;
 export type ViewDisplayType = 'list' | 'table' | 'board' | 'calendar';
 export type ViewTableColumn = 'title' | 'tags' | 'properties' | 'createdAt' | 'updatedAt';
 export type ViewCalendarDateField = 'createdAt' | 'updatedAt' | 'property';
@@ -39,14 +39,14 @@ export interface ViewPropertyFilterRecord {
     value: string | null;
 }
 
-export interface ViewSectionRecord {
+export interface ViewRecord {
     id: string;
-    tabId: string;
+    groupId: string;
     title: string;
     displayType: ViewDisplayType;
     displayOptions: ViewDisplayOptionsRecord;
     tagNames: string[];
-    mode: ViewTagMatchMode;
+    mode: ViewTagFilterMatchMode;
     propertyFilters: ViewPropertyFilterRecord[];
     sortBy: ViewSortBy;
     sortOrder: ViewSortOrder;
@@ -54,24 +54,24 @@ export interface ViewSectionRecord {
     order: number;
 }
 
-export interface ViewTabRecord {
+export interface ViewGroupRecord {
     id: string;
     title: string;
     order: number;
-    sections: ViewSectionRecord[];
+    views: ViewRecord[];
 }
 
 export interface ViewWorkspaceRecord {
-    activeTabId: string | null;
-    tabs: ViewTabRecord[];
+    activeGroupId: string | null;
+    groups: ViewGroupRecord[];
 }
 
-export interface ViewSectionInput {
+export interface ViewInput {
     title?: string;
     displayType?: ViewDisplayType;
     displayOptions?: ViewDisplayOptionsInput | null;
     tagNames?: string[] | null;
-    mode?: ViewTagMatchMode;
+    mode?: ViewTagFilterMatchMode;
     propertyFilters?: ViewPropertyFilterInput[] | null;
     sortBy?: ViewSortBy;
     sortOrder?: ViewSortOrder;
@@ -80,7 +80,7 @@ export interface ViewSectionInput {
 
 export interface ViewNotesQueryInput {
     tagNames?: string[] | null;
-    mode?: ViewTagMatchMode;
+    mode?: ViewTagFilterMatchMode;
     propertyFilters?: ViewPropertyFilterInput[] | null;
     sortBy?: ViewSortBy;
     sortOrder?: ViewSortOrder;
@@ -88,7 +88,7 @@ export interface ViewNotesQueryInput {
 
 export interface ViewNotesQueryRecord {
     tagNames: string[];
-    mode: ViewTagMatchMode;
+    mode: ViewTagFilterMatchMode;
     propertyFilters: ViewPropertyFilterRecord[];
     sortBy: ViewSortBy;
     sortOrder: ViewSortOrder;
@@ -109,7 +109,7 @@ export interface ViewDisplayOptionsInput {
     calendarDatePropertyKey?: string | null;
 }
 
-export interface ViewSectionNotesResult {
+export interface ViewNotesResult {
     totalCount: number;
     notes: Note[];
 }
@@ -130,9 +130,9 @@ export interface ViewCalendarDateRangeInput {
 
 const VIEW_WORKSPACE_ID = 1;
 
-export const DEFAULT_VIEW_SECTION_LIMIT = 5;
-export const MIN_VIEW_SECTION_LIMIT = 1;
-export const MAX_VIEW_SECTION_LIMIT = 20;
+export const DEFAULT_VIEW_LIMIT = 5;
+export const MIN_VIEW_LIMIT = 1;
+export const MAX_VIEW_LIMIT = 20;
 export const DEFAULT_VIEW_NOTES_QUERY_LIMIT = 20;
 export const MAX_VIEW_NOTES_QUERY_LIMIT = 50;
 const MAX_VIEW_PROPERTY_FILTERS = 10;
@@ -146,25 +146,25 @@ const DEFAULT_VIEW_CALENDAR_DATE_FIELD: ViewCalendarDateField = 'createdAt';
 
 type ViewDbClient = typeof models | Prisma.TransactionClient;
 
-const orderedViewSectionTagsInclude = {
-    tags: {
+const orderedViewTagFiltersInclude = {
+    tagFilters: {
         orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
     },
-} satisfies Prisma.ViewSectionInclude;
+} satisfies Prisma.ViewInclude;
 
-const orderedViewTabSectionsInclude = {
-    sections: {
+const orderedViewGroupViewsInclude = {
+    views: {
         orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
-        include: orderedViewSectionTagsInclude,
+        include: orderedViewTagFiltersInclude,
     },
-} satisfies Prisma.ViewTabInclude;
+} satisfies Prisma.ViewGroupInclude;
 
-type DbViewSection = Prisma.ViewSectionGetPayload<{
-    include: typeof orderedViewSectionTagsInclude;
+type DbView = Prisma.ViewGetPayload<{
+    include: typeof orderedViewTagFiltersInclude;
 }>;
 
-type DbViewTab = Prisma.ViewTabGetPayload<{
-    include: typeof orderedViewTabSectionsInclude;
+type DbViewGroup = Prisma.ViewGroupGetPayload<{
+    include: typeof orderedViewGroupViewsInclude;
 }>;
 
 const normalizeTagName = (value: string) => {
@@ -185,7 +185,7 @@ const normalizeTagName = (value: string) => {
     return `@${trimmedValue}`;
 };
 
-export const normalizeViewTagNames = (values: string[]) => {
+export const normalizeViewTagFilterNames = (values: string[]) => {
     const normalizedTagNames = values.flatMap((value) => value.split(','));
 
     return Array.from(new Set(normalizedTagNames.map(normalizeTagName).filter(Boolean)));
@@ -423,23 +423,23 @@ const serializeStoredViewQuery = ({ propertyFilters, sortBy, sortOrder, displayO
     });
 };
 
-export const clampViewSectionLimit = (value: number | undefined) => {
+export const clampViewLimit = (value: number | undefined) => {
     const numericValue = typeof value === 'number' ? value : Number.NaN;
 
     if (!Number.isInteger(numericValue)) {
-        return DEFAULT_VIEW_SECTION_LIMIT;
+        return DEFAULT_VIEW_LIMIT;
     }
 
-    return Math.min(MAX_VIEW_SECTION_LIMIT, Math.max(MIN_VIEW_SECTION_LIMIT, numericValue));
+    return Math.min(MAX_VIEW_LIMIT, Math.max(MIN_VIEW_LIMIT, numericValue));
 };
 
-export const normalizeViewTabTitle = (title: string) => {
+export const normalizeViewGroupTitle = (title: string) => {
     const trimmedTitle = title.trim();
 
     return trimmedTitle || 'Untitled View';
 };
 
-const buildDefaultSectionTitle = (tagNames: string[], propertyFilters: ViewPropertyFilterRecord[]) => {
+const buildDefaultViewTitle = (tagNames: string[], propertyFilters: ViewPropertyFilterRecord[]) => {
     if (tagNames.length > 0) {
         return tagNames.slice(0, 2).join(' + ');
     }
@@ -454,8 +454,8 @@ const buildDefaultSectionTitle = (tagNames: string[], propertyFilters: ViewPrope
     return 'All notes';
 };
 
-export const normalizeViewSectionInput = (input: ViewSectionInput) => {
-    const tagNames = normalizeViewTagNames(input.tagNames ?? []);
+export const normalizeViewInput = (input: ViewInput) => {
+    const tagNames = normalizeViewTagFilterNames(input.tagNames ?? []);
     const propertyFilters = normalizeViewPropertyFilters(input.propertyFilters);
     const trimmedTitle = input.title?.trim() ?? '';
     const sortBy = normalizeViewSortBy(input.sortBy);
@@ -464,14 +464,14 @@ export const normalizeViewSectionInput = (input: ViewSectionInput) => {
     const displayType = normalizeViewDisplayType(input.displayType);
 
     if (displayType === 'board' && !displayOptions.boardGroupByPropertyKey) {
-        throw new InvalidNotePropertyInputError('Board sections require a grouping property.');
+        throw new InvalidNotePropertyInputError('Board views require a grouping property.');
     }
 
     if (
         displayType === 'board' &&
         propertyFilters.some((filter) => filter.key === displayOptions.boardGroupByPropertyKey)
     ) {
-        throw new InvalidNotePropertyInputError('A board grouping property cannot also be used as a section filter.');
+        throw new InvalidNotePropertyInputError('A board grouping property cannot also be used as a view filter.');
     }
 
     if (
@@ -479,11 +479,11 @@ export const normalizeViewSectionInput = (input: ViewSectionInput) => {
         displayOptions.calendarDateField === 'property' &&
         !displayOptions.calendarDatePropertyKey
     ) {
-        throw new InvalidNotePropertyInputError('Calendar sections require a date property.');
+        throw new InvalidNotePropertyInputError('Calendar views require a date property.');
     }
 
     return {
-        title: trimmedTitle || buildDefaultSectionTitle(tagNames, propertyFilters),
+        title: trimmedTitle || buildDefaultViewTitle(tagNames, propertyFilters),
         displayType,
         displayOptions,
         tagNames,
@@ -491,13 +491,13 @@ export const normalizeViewSectionInput = (input: ViewSectionInput) => {
         propertyFilters,
         sortBy,
         sortOrder,
-        limit: clampViewSectionLimit(input.limit),
+        limit: clampViewLimit(input.limit),
     } satisfies {
         title: string;
         displayType: ViewDisplayType;
         displayOptions: ViewDisplayOptionsRecord;
         tagNames: string[];
-        mode: ViewTagMatchMode;
+        mode: ViewTagFilterMatchMode;
         propertyFilters: ViewPropertyFilterRecord[];
         sortBy: ViewSortBy;
         sortOrder: ViewSortOrder;
@@ -507,7 +507,7 @@ export const normalizeViewSectionInput = (input: ViewSectionInput) => {
 
 export const normalizeViewNotesQueryInput = (input: ViewNotesQueryInput): ViewNotesQueryRecord => {
     return {
-        tagNames: normalizeViewTagNames(input.tagNames ?? []),
+        tagNames: normalizeViewTagFilterNames(input.tagNames ?? []),
         mode: input.mode === 'or' ? 'or' : 'and',
         propertyFilters: normalizeViewPropertyFilters(input.propertyFilters),
         sortBy: normalizeViewSortBy(input.sortBy),
@@ -526,18 +526,22 @@ export const normalizeViewNotesPagination = (pagination?: { limit?: number; offs
     return { limit, offset };
 };
 
-export const pickNextActiveViewTabId = (tabIds: number[], deletedTabId: number, currentActiveTabId: number | null) => {
-    const remainingTabIds = tabIds.filter((tabId) => tabId !== deletedTabId);
+export const pickNextActiveViewGroupId = (
+    groupIds: number[],
+    deletedGroupId: number,
+    currentActiveGroupId: number | null,
+) => {
+    const remainingGroupIds = groupIds.filter((groupId) => groupId !== deletedGroupId);
 
-    if (remainingTabIds.length === 0) {
+    if (remainingGroupIds.length === 0) {
         return null;
     }
 
-    if (currentActiveTabId !== deletedTabId) {
-        return currentActiveTabId;
+    if (currentActiveGroupId !== deletedGroupId) {
+        return currentActiveGroupId;
     }
 
-    return remainingTabIds[0] ?? null;
+    return remainingGroupIds[0] ?? null;
 };
 
 const ensureValidReorderIds = (currentIds: number[], nextIds: number[]) => {
@@ -569,36 +573,36 @@ const parseViewId = (id: string) => {
     return numericId;
 };
 
-export const serializeViewSection = (section: DbViewSection): ViewSectionRecord => {
-    const query = parseStoredViewQuery(section.query);
+export const serializeView = (view: DbView): ViewRecord => {
+    const query = parseStoredViewQuery(view.query);
 
     return {
-        id: String(section.id),
-        tabId: String(section.tabId),
-        title: section.title,
-        displayType: normalizeViewDisplayType(section.displayType as ViewDisplayType),
+        id: String(view.id),
+        groupId: String(view.groupId),
+        title: view.title,
+        displayType: normalizeViewDisplayType(view.displayType as ViewDisplayType),
         displayOptions: query.displayOptions,
-        tagNames: section.tags.map((tag) => tag.name),
-        mode: section.mode as ViewTagMatchMode,
+        tagNames: view.tagFilters.map((filter) => filter.tagName),
+        mode: view.mode as ViewTagFilterMatchMode,
         propertyFilters: query.propertyFilters,
         sortBy: query.sortBy,
         sortOrder: query.sortOrder,
-        limit: section.limit,
-        order: section.order,
+        limit: view.limit,
+        order: view.order,
     };
 };
 
-const serializeViewTab = (tab: DbViewTab): ViewTabRecord => ({
-    id: String(tab.id),
-    title: tab.title,
-    order: tab.order,
-    sections: tab.sections.map(serializeViewSection),
+const serializeViewGroup = (group: DbViewGroup): ViewGroupRecord => ({
+    id: String(group.id),
+    title: group.title,
+    order: group.order,
+    views: group.views.map(serializeView),
 });
 
-const getOrderedViewTabs = async (db: ViewDbClient) => {
-    return db.viewTab.findMany({
+const getOrderedViewGroups = async (db: ViewDbClient) => {
+    return db.viewGroup.findMany({
         orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
-        include: orderedViewTabSectionsInclude,
+        include: orderedViewGroupViewsInclude,
     });
 };
 
@@ -611,28 +615,28 @@ const ensureViewWorkspace = async (db: ViewDbClient) => {
 };
 
 const readViewWorkspace = async (db: ViewDbClient): Promise<ViewWorkspaceRecord> => {
-    const [workspace, tabs] = await Promise.all([ensureViewWorkspace(db), getOrderedViewTabs(db)]);
+    const [workspace, groups] = await Promise.all([ensureViewWorkspace(db), getOrderedViewGroups(db)]);
 
-    const activeTabId =
-        workspace.activeTabId !== null && tabs.some((tab) => tab.id === workspace.activeTabId)
-            ? String(workspace.activeTabId)
-            : tabs[0]
-              ? String(tabs[0].id)
+    const activeGroupId =
+        workspace.activeGroupId !== null && groups.some((group) => group.id === workspace.activeGroupId)
+            ? String(workspace.activeGroupId)
+            : groups[0]
+              ? String(groups[0].id)
               : null;
 
     return {
-        activeTabId,
-        tabs: tabs.map(serializeViewTab),
+        activeGroupId,
+        groups: groups.map(serializeViewGroup),
     };
 };
 
-const readViewSection = async (db: ViewDbClient, id: number): Promise<ViewSectionRecord | null> => {
-    const section = await db.viewSection.findUnique({
+const readView = async (db: ViewDbClient, id: number): Promise<ViewRecord | null> => {
+    const view = await db.view.findUnique({
         where: { id },
-        include: orderedViewSectionTagsInclude,
+        include: orderedViewTagFiltersInclude,
     });
 
-    return section ? serializeViewSection(section) : null;
+    return view ? serializeView(view) : null;
 };
 
 export const hydratePropertyFilters = async (
@@ -690,23 +694,23 @@ export const hydratePropertyFilters = async (
     });
 };
 
-const buildStoredViewQuery = async (db: ViewDbClient, section: ReturnType<typeof normalizeViewSectionInput>) => {
-    const propertyFilters = await hydratePropertyFilters(db, section.propertyFilters, { validateSelectOptions: true });
+const buildStoredViewQuery = async (db: ViewDbClient, view: ReturnType<typeof normalizeViewInput>) => {
+    const propertyFilters = await hydratePropertyFilters(db, view.propertyFilters, { validateSelectOptions: true });
 
-    if (section.displayType === 'board') {
+    if (view.displayType === 'board') {
         const groupingProperty = await db.propertyDefinition.findUnique({
-            where: { key: section.displayOptions.boardGroupByPropertyKey ?? '' },
+            where: { key: view.displayOptions.boardGroupByPropertyKey ?? '' },
             select: { valueType: true, options: { select: { id: true }, take: 1 } },
         });
 
         if (!groupingProperty) {
             throw new InvalidNotePropertyInputError(
-                `Property ${section.displayOptions.boardGroupByPropertyKey ?? ''} is not defined.`,
+                `Property ${view.displayOptions.boardGroupByPropertyKey ?? ''} is not defined.`,
             );
         }
 
         if (groupingProperty.valueType !== 'select') {
-            throw new InvalidNotePropertyInputError('Board sections can only group by a select property.');
+            throw new InvalidNotePropertyInputError('Board views can only group by a select property.');
         }
 
         if (groupingProperty.options.length === 0) {
@@ -714,8 +718,8 @@ const buildStoredViewQuery = async (db: ViewDbClient, section: ReturnType<typeof
         }
     }
 
-    if (section.displayType === 'calendar' && section.displayOptions.calendarDateField === 'property') {
-        const calendarDatePropertyKey = section.displayOptions.calendarDatePropertyKey ?? '';
+    if (view.displayType === 'calendar' && view.displayOptions.calendarDateField === 'property') {
+        const calendarDatePropertyKey = view.displayOptions.calendarDatePropertyKey ?? '';
         const calendarDateProperty = await db.propertyDefinition.findUnique({
             where: { key: calendarDatePropertyKey },
             select: { valueType: true },
@@ -726,64 +730,64 @@ const buildStoredViewQuery = async (db: ViewDbClient, section: ReturnType<typeof
         }
 
         if (calendarDateProperty.valueType !== 'date') {
-            throw new InvalidNotePropertyInputError('Calendar sections can only use a date property.');
+            throw new InvalidNotePropertyInputError('Calendar views can only use a date property.');
         }
     }
 
     return serializeStoredViewQuery({
         propertyFilters,
-        sortBy: section.sortBy,
-        sortOrder: section.sortOrder,
-        displayOptions: section.displayOptions,
+        sortBy: view.sortBy,
+        sortOrder: view.sortOrder,
+        displayOptions: view.displayOptions,
     });
 };
 
-const getNextTabOrder = async (db: ViewDbClient) => {
-    const lastTab = await db.viewTab.findFirst({
+const getNextGroupOrder = async (db: ViewDbClient) => {
+    const lastGroup = await db.viewGroup.findFirst({
         orderBy: [{ order: 'desc' }, { createdAt: 'desc' }],
         select: { order: true },
     });
 
-    return lastTab ? lastTab.order + 1 : 0;
+    return lastGroup ? lastGroup.order + 1 : 0;
 };
 
-const getNextSectionOrder = async (db: ViewDbClient, tabId: number) => {
-    const lastSection = await db.viewSection.findFirst({
-        where: { tabId },
+const getNextViewOrder = async (db: ViewDbClient, groupId: number) => {
+    const lastView = await db.view.findFirst({
+        where: { groupId },
         orderBy: [{ order: 'desc' }, { createdAt: 'desc' }],
         select: { order: true },
     });
 
-    return lastSection ? lastSection.order + 1 : 0;
+    return lastView ? lastView.order + 1 : 0;
 };
 
-const resequenceViewTabs = async (db: ViewDbClient) => {
-    const tabs = await db.viewTab.findMany({
+const resequenceViewGroups = async (db: ViewDbClient) => {
+    const groups = await db.viewGroup.findMany({
         orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
         select: { id: true },
     });
 
     await Promise.all(
-        tabs.map((tab, index) =>
-            db.viewTab.update({
-                where: { id: tab.id },
+        groups.map((group, index) =>
+            db.viewGroup.update({
+                where: { id: group.id },
                 data: { order: index },
             }),
         ),
     );
 };
 
-const resequenceViewSections = async (db: ViewDbClient, tabId: number) => {
-    const sections = await db.viewSection.findMany({
-        where: { tabId },
+const resequenceViews = async (db: ViewDbClient, groupId: number) => {
+    const views = await db.view.findMany({
+        where: { groupId },
         orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
         select: { id: true },
     });
 
     await Promise.all(
-        sections.map((section, index) =>
-            db.viewSection.update({
-                where: { id: section.id },
+        views.map((view, index) =>
+            db.view.update({
+                where: { id: view.id },
                 data: { order: index },
             }),
         ),
@@ -794,8 +798,8 @@ export const getViewWorkspace = async () => {
     return readViewWorkspace(models);
 };
 
-export const getViewSectionById = async (id: string) => {
-    return readViewSection(models, parseViewId(id));
+export const getViewById = async (id: string) => {
+    return readView(models, parseViewId(id));
 };
 
 const normalizeSelectFilterValue = (value: string) => {
@@ -928,8 +932,8 @@ export const buildViewNotesWhere = (
     return { AND: clauses };
 };
 
-export const buildViewSectionWhere = (section: ViewSectionRecord): Prisma.NoteWhereInput => {
-    return buildViewNotesWhere(section);
+export const buildViewWhere = (view: ViewRecord): Prisma.NoteWhereInput => {
+    return buildViewNotesWhere(view);
 };
 
 export const normalizeViewCalendarDateRange = (dateRange: ViewCalendarDateRangeInput) => {
@@ -949,19 +953,19 @@ export const normalizeViewCalendarDateRange = (dateRange: ViewCalendarDateRangeI
     return { start, end };
 };
 
-export const buildViewSectionCalendarWhere = (
-    section: ViewSectionRecord,
+export const buildViewCalendarWhere = (
+    view: ViewRecord,
     dateRange: { start: Date; end: Date },
     propertyDefinitionId?: number,
 ): Prisma.NoteWhereInput => {
-    const sectionWhere = buildViewSectionWhere(section);
+    const viewWhere = buildViewWhere(view);
 
-    if (section.displayOptions.calendarDateField === 'property' && propertyDefinitionId === undefined) {
+    if (view.displayOptions.calendarDateField === 'property' && propertyDefinitionId === undefined) {
         throw new InvalidNotePropertyInputError('Calendar date property definition is required.');
     }
 
     const dateWhere: Prisma.NoteWhereInput =
-        section.displayOptions.calendarDateField === 'property'
+        view.displayOptions.calendarDateField === 'property'
             ? {
                   properties: {
                       some: {
@@ -974,21 +978,21 @@ export const buildViewSectionCalendarWhere = (
                   },
               }
             : {
-                  [section.displayOptions.calendarDateField]: {
+                  [view.displayOptions.calendarDateField]: {
                       gte: dateRange.start,
                       lt: dateRange.end,
                   },
               };
 
-    return Object.keys(sectionWhere).length === 0 ? dateWhere : { AND: [sectionWhere, dateWhere] };
+    return Object.keys(viewWhere).length === 0 ? dateWhere : { AND: [viewWhere, dateWhere] };
 };
 
 export const buildViewBoardColumnWhere = (
-    section: ViewSectionRecord,
+    view: ViewRecord,
     propertyDefinitionId: number,
     optionId: number | null,
 ): Prisma.NoteWhereInput => {
-    const sectionWhere = buildViewSectionWhere(section);
+    const viewWhere = buildViewWhere(view);
     const columnWhere: Prisma.NoteWhereInput =
         optionId === null
             ? {
@@ -1002,7 +1006,7 @@ export const buildViewBoardColumnWhere = (
                   },
               };
 
-    return Object.keys(sectionWhere).length === 0 ? columnWhere : { AND: [sectionWhere, columnWhere] };
+    return Object.keys(viewWhere).length === 0 ? columnWhere : { AND: [viewWhere, columnWhere] };
 };
 
 const buildViewNotesOrderBy = (
@@ -1011,32 +1015,32 @@ const buildViewNotesOrderBy = (
     return [{ [query.sortBy]: query.sortOrder }, { id: 'asc' }];
 };
 
-const buildViewSectionOrderBy = (section: ViewSectionRecord): Prisma.NoteOrderByWithRelationInput[] => {
-    return buildViewNotesOrderBy(section);
+const buildViewOrderBy = (view: ViewRecord): Prisma.NoteOrderByWithRelationInput[] => {
+    return buildViewNotesOrderBy(view);
 };
 
-export const getViewSectionNotes = async (
+export const getViewNotes = async (
     id: string,
     pagination: {
         limit: number;
         offset: number;
     },
     sort: Pick<ViewNotesQueryInput, 'sortBy' | 'sortOrder'> = {},
-): Promise<ViewSectionNotesResult | null> => {
-    const section = await models.viewSection.findUnique({
+): Promise<ViewNotesResult | null> => {
+    const view = await models.view.findUnique({
         where: { id: parseViewId(id) },
-        include: orderedViewSectionTagsInclude,
+        include: orderedViewTagFiltersInclude,
     });
 
-    if (!section) {
+    if (!view) {
         return null;
     }
 
-    const serializedSection = serializeViewSection(section);
-    const where = buildViewSectionWhere(serializedSection);
+    const serializedView = serializeView(view);
+    const where = buildViewWhere(serializedView);
     const effectiveSort = {
-        sortBy: sort.sortBy ?? serializedSection.sortBy,
-        sortOrder: sort.sortOrder ?? serializedSection.sortOrder,
+        sortBy: sort.sortBy ?? serializedView.sortBy,
+        sortOrder: sort.sortOrder ?? serializedView.sortOrder,
     };
 
     const [totalCount, notes] = await Promise.all([
@@ -1055,30 +1059,30 @@ export const getViewSectionNotes = async (
     };
 };
 
-export const getViewSectionCalendarNotes = async (
+export const getViewCalendarNotes = async (
     id: string,
     dateRangeInput: ViewCalendarDateRangeInput,
 ): Promise<ViewCalendarNote[] | null> => {
-    const section = await models.viewSection.findUnique({
+    const view = await models.view.findUnique({
         where: { id: parseViewId(id) },
-        include: orderedViewSectionTagsInclude,
+        include: orderedViewTagFiltersInclude,
     });
 
-    if (!section) {
+    if (!view) {
         return null;
     }
 
-    const serializedSection = serializeViewSection(section);
+    const serializedView = serializeView(view);
 
-    if (serializedSection.displayType !== 'calendar') {
-        throw new InvalidNotePropertyInputError('This section is not configured as a calendar.');
+    if (serializedView.displayType !== 'calendar') {
+        throw new InvalidNotePropertyInputError('This view is not configured as a calendar.');
     }
 
     const dateRange = normalizeViewCalendarDateRange(dateRangeInput);
-    const dateField = serializedSection.displayOptions.calendarDateField;
+    const dateField = serializedView.displayOptions.calendarDateField;
 
     if (dateField === 'property') {
-        const propertyKey = serializedSection.displayOptions.calendarDatePropertyKey;
+        const propertyKey = serializedView.displayOptions.calendarDatePropertyKey;
         const propertyDefinition = propertyKey
             ? await models.propertyDefinition.findUnique({
                   where: { key: propertyKey },
@@ -1092,7 +1096,7 @@ export const getViewSectionCalendarNotes = async (
 
         const notes = await models.note.findMany({
             orderBy: [{ id: 'asc' }],
-            where: buildViewSectionCalendarWhere(serializedSection, dateRange, propertyDefinition.id),
+            where: buildViewCalendarWhere(serializedView, dateRange, propertyDefinition.id),
             select: {
                 id: true,
                 title: true,
@@ -1117,7 +1121,7 @@ export const getViewSectionCalendarNotes = async (
 
     const notes = await models.note.findMany({
         orderBy: [{ [dateField]: 'asc' }, { id: 'asc' }],
-        where: buildViewSectionCalendarWhere(serializedSection, dateRange),
+        where: buildViewCalendarWhere(serializedView, dateRange),
         select: {
             id: true,
             title: true,
@@ -1133,7 +1137,7 @@ export const getViewSectionCalendarNotes = async (
     }));
 };
 
-export const getViewSectionBoardColumn = async (
+export const getViewBoardColumn = async (
     id: string,
     optionValue: string | null,
     pagination?: {
@@ -1141,25 +1145,25 @@ export const getViewSectionBoardColumn = async (
         offset?: number;
     },
 ): Promise<ViewBoardColumnNotesResult | null> => {
-    const section = await models.viewSection.findUnique({
+    const view = await models.view.findUnique({
         where: { id: parseViewId(id) },
-        include: orderedViewSectionTagsInclude,
+        include: orderedViewTagFiltersInclude,
     });
 
-    if (!section) {
+    if (!view) {
         return null;
     }
 
-    const serializedSection = serializeViewSection(section);
+    const serializedView = serializeView(view);
 
-    if (serializedSection.displayType !== 'board') {
-        throw new InvalidNotePropertyInputError('This section is not configured as a board.');
+    if (serializedView.displayType !== 'board') {
+        throw new InvalidNotePropertyInputError('This view is not configured as a board.');
     }
 
-    const groupingPropertyKey = serializedSection.displayOptions.boardGroupByPropertyKey;
+    const groupingPropertyKey = serializedView.displayOptions.boardGroupByPropertyKey;
 
     if (!groupingPropertyKey) {
-        throw new InvalidNotePropertyInputError('Board sections require a grouping property.');
+        throw new InvalidNotePropertyInputError('Board views require a grouping property.');
     }
 
     const groupingProperty = await models.propertyDefinition.findUnique({
@@ -1191,12 +1195,12 @@ export const getViewSectionBoardColumn = async (
     }
 
     const normalizedPagination = normalizeViewNotesPagination(pagination);
-    const where = buildViewBoardColumnWhere(serializedSection, groupingProperty.id, option?.id ?? null);
+    const where = buildViewBoardColumnWhere(serializedView, groupingProperty.id, option?.id ?? null);
 
     const [totalCount, notes] = await Promise.all([
         models.note.count({ where }),
         models.note.findMany({
-            orderBy: buildViewSectionOrderBy(serializedSection),
+            orderBy: buildViewOrderBy(serializedView),
             where,
             take: normalizedPagination.limit,
             skip: normalizedPagination.offset,
@@ -1251,7 +1255,7 @@ export const getNotesByPropertiesWithDb = async (
     db: ViewDbClient,
     input: ViewNotesQueryInput,
     pagination?: { limit?: number; offset?: number },
-): Promise<ViewSectionNotesResult> => {
+): Promise<ViewNotesResult> => {
     if (!input.propertyFilters?.length) {
         throw new InvalidNotePropertyInputError('At least one property filter is required.');
     }
@@ -1267,247 +1271,247 @@ export const getNotesByProperties = async (
         limit?: number;
         offset?: number;
     },
-): Promise<ViewSectionNotesResult> => {
+): Promise<ViewNotesResult> => {
     return getNotesByPropertiesWithDb(models, input, pagination);
 };
 
-export const createViewTab = async (title: string) => {
+export const createViewGroup = async (title: string) => {
     return models.$transaction(async (tx) => {
         const workspace = await ensureViewWorkspace(tx);
-        const nextTabOrder = await getNextTabOrder(tx);
-        const createdTab = await tx.viewTab.create({
+        const nextGroupOrder = await getNextGroupOrder(tx);
+        const createdGroup = await tx.viewGroup.create({
             data: {
-                title: normalizeViewTabTitle(title),
-                order: nextTabOrder,
+                title: normalizeViewGroupTitle(title),
+                order: nextGroupOrder,
             },
-            include: orderedViewTabSectionsInclude,
+            include: orderedViewGroupViewsInclude,
         });
 
-        if (workspace.activeTabId === null) {
+        if (workspace.activeGroupId === null) {
             await tx.viewWorkspace.update({
                 where: { id: VIEW_WORKSPACE_ID },
-                data: { activeTabId: createdTab.id },
+                data: { activeGroupId: createdGroup.id },
             });
         }
 
-        return serializeViewTab(createdTab);
+        return serializeViewGroup(createdGroup);
     });
 };
 
-export const updateViewTab = async (id: string, title: string) => {
-    const updatedTab = await models.viewTab.update({
+export const updateViewGroup = async (id: string, title: string) => {
+    const updatedGroup = await models.viewGroup.update({
         where: { id: parseViewId(id) },
         data: {
-            title: normalizeViewTabTitle(title),
+            title: normalizeViewGroupTitle(title),
         },
-        include: orderedViewTabSectionsInclude,
+        include: orderedViewGroupViewsInclude,
     });
 
-    return serializeViewTab(updatedTab);
+    return serializeViewGroup(updatedGroup);
 };
 
-export const deleteViewTab = async (id: string) => {
-    const tabId = parseViewId(id);
+export const deleteViewGroup = async (id: string) => {
+    const groupId = parseViewId(id);
 
     return models.$transaction(async (tx) => {
         const workspace = await ensureViewWorkspace(tx);
-        const tabs = await tx.viewTab.findMany({
+        const groups = await tx.viewGroup.findMany({
             orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
             select: { id: true },
         });
 
-        if (!tabs.some((tab) => tab.id === tabId)) {
+        if (!groups.some((group) => group.id === groupId)) {
             return false;
         }
 
-        await tx.viewTab.delete({ where: { id: tabId } });
-        await resequenceViewTabs(tx);
+        await tx.viewGroup.delete({ where: { id: groupId } });
+        await resequenceViewGroups(tx);
 
-        const nextActiveTabId = pickNextActiveViewTabId(
-            tabs.map((tab) => tab.id),
-            tabId,
-            workspace.activeTabId,
+        const nextActiveGroupId = pickNextActiveViewGroupId(
+            groups.map((group) => group.id),
+            groupId,
+            workspace.activeGroupId,
         );
 
         await tx.viewWorkspace.update({
             where: { id: VIEW_WORKSPACE_ID },
-            data: { activeTabId: nextActiveTabId },
+            data: { activeGroupId: nextActiveGroupId },
         });
 
         return true;
     });
 };
 
-export const setActiveViewTab = async (id: string) => {
-    const tabId = parseViewId(id);
+export const setActiveViewGroup = async (id: string) => {
+    const groupId = parseViewId(id);
 
     return models.$transaction(async (tx) => {
         const workspace = await ensureViewWorkspace(tx);
-        const tab = await tx.viewTab.findUnique({
-            where: { id: tabId },
+        const group = await tx.viewGroup.findUnique({
+            where: { id: groupId },
             select: { id: true },
         });
 
-        if (!tab) {
-            throw new Error('View tab not found.');
+        if (!group) {
+            throw new Error('View group not found.');
         }
 
         await tx.viewWorkspace.update({
             where: { id: workspace.id },
-            data: { activeTabId: tabId },
+            data: { activeGroupId: groupId },
         });
 
         return readViewWorkspace(tx);
     });
 };
 
-export const reorderViewTabs = async (tabIds: string[]) => {
-    const nextTabIds = tabIds.map(parseViewId);
+export const reorderViewGroups = async (groupIds: string[]) => {
+    const nextGroupIds = groupIds.map(parseViewId);
 
     return models.$transaction(async (tx) => {
-        const tabs = await tx.viewTab.findMany({
+        const groups = await tx.viewGroup.findMany({
             orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
             select: { id: true },
         });
-        const currentTabIds = tabs.map((tab) => tab.id);
+        const currentGroupIds = groups.map((group) => group.id);
 
-        ensureValidReorderIds(currentTabIds, nextTabIds);
+        ensureValidReorderIds(currentGroupIds, nextGroupIds);
 
         await Promise.all(
-            nextTabIds.map((tabId, index) =>
-                tx.viewTab.update({
-                    where: { id: tabId },
+            nextGroupIds.map((groupId, index) =>
+                tx.viewGroup.update({
+                    where: { id: groupId },
                     data: { order: index },
                 }),
             ),
         );
 
-        const reorderedTabs = await getOrderedViewTabs(tx);
-        return reorderedTabs.map(serializeViewTab);
+        const reorderedGroups = await getOrderedViewGroups(tx);
+        return reorderedGroups.map(serializeViewGroup);
     });
 };
 
-export const createViewSection = async (tabId: string, input: ViewSectionInput) => {
-    const numericTabId = parseViewId(tabId);
-    const nextSection = normalizeViewSectionInput(input);
+export const createView = async (groupId: string, input: ViewInput) => {
+    const numericGroupId = parseViewId(groupId);
+    const nextView = normalizeViewInput(input);
 
     return models.$transaction(async (tx) => {
-        const tab = await tx.viewTab.findUnique({
-            where: { id: numericTabId },
+        const group = await tx.viewGroup.findUnique({
+            where: { id: numericGroupId },
             select: { id: true },
         });
 
-        if (!tab) {
-            throw new Error('View tab not found.');
+        if (!group) {
+            throw new Error('View group not found.');
         }
 
-        const nextSectionOrder = await getNextSectionOrder(tx, numericTabId);
-        const query = await buildStoredViewQuery(tx, nextSection);
+        const nextViewOrder = await getNextViewOrder(tx, numericGroupId);
+        const query = await buildStoredViewQuery(tx, nextView);
 
-        const createdSection = await tx.viewSection.create({
+        const createdView = await tx.view.create({
             data: {
-                tabId: numericTabId,
-                title: nextSection.title,
-                displayType: nextSection.displayType,
+                groupId: numericGroupId,
+                title: nextView.title,
+                displayType: nextView.displayType,
                 query,
-                mode: nextSection.mode,
-                limit: nextSection.limit,
-                order: nextSectionOrder,
-                tags: {
-                    create: nextSection.tagNames.map((tagName, index) => ({
-                        name: tagName,
+                mode: nextView.mode,
+                limit: nextView.limit,
+                order: nextViewOrder,
+                tagFilters: {
+                    create: nextView.tagNames.map((tagName, index) => ({
+                        tagName,
                         order: index,
                     })),
                 },
             },
-            include: orderedViewSectionTagsInclude,
+            include: orderedViewTagFiltersInclude,
         });
 
-        return serializeViewSection(createdSection);
+        return serializeView(createdView);
     });
 };
 
-export const updateViewSection = async (id: string, input: ViewSectionInput) => {
-    const sectionId = parseViewId(id);
-    const nextSection = normalizeViewSectionInput(input);
+export const updateView = async (id: string, input: ViewInput) => {
+    const viewId = parseViewId(id);
+    const nextView = normalizeViewInput(input);
 
     return models.$transaction(async (tx) => {
-        const query = await buildStoredViewQuery(tx, nextSection);
+        const query = await buildStoredViewQuery(tx, nextView);
 
-        const updatedSection = await tx.viewSection.update({
-            where: { id: sectionId },
+        const updatedView = await tx.view.update({
+            where: { id: viewId },
             data: {
-                title: nextSection.title,
-                displayType: nextSection.displayType,
+                title: nextView.title,
+                displayType: nextView.displayType,
                 query,
-                mode: nextSection.mode,
-                limit: nextSection.limit,
-                tags: {
+                mode: nextView.mode,
+                limit: nextView.limit,
+                tagFilters: {
                     deleteMany: {},
-                    create: nextSection.tagNames.map((tagName, index) => ({
-                        name: tagName,
+                    create: nextView.tagNames.map((tagName, index) => ({
+                        tagName,
                         order: index,
                     })),
                 },
             },
-            include: orderedViewSectionTagsInclude,
+            include: orderedViewTagFiltersInclude,
         });
 
-        return serializeViewSection(updatedSection);
+        return serializeView(updatedView);
     });
 };
 
-export const deleteViewSection = async (id: string) => {
-    const sectionId = parseViewId(id);
+export const deleteView = async (id: string) => {
+    const viewId = parseViewId(id);
 
     return models.$transaction(async (tx) => {
-        const section = await tx.viewSection.findUnique({
-            where: { id: sectionId },
-            select: { id: true, tabId: true },
+        const view = await tx.view.findUnique({
+            where: { id: viewId },
+            select: { id: true, groupId: true },
         });
 
-        if (!section) {
+        if (!view) {
             return false;
         }
 
-        await tx.viewSection.delete({
-            where: { id: sectionId },
+        await tx.view.delete({
+            where: { id: viewId },
         });
-        await resequenceViewSections(tx, section.tabId);
+        await resequenceViews(tx, view.groupId);
 
         return true;
     });
 };
 
-export const reorderViewSections = async (tabId: string, sectionIds: string[]) => {
-    const numericTabId = parseViewId(tabId);
-    const nextSectionIds = sectionIds.map(parseViewId);
+export const reorderViews = async (groupId: string, viewIds: string[]) => {
+    const numericGroupId = parseViewId(groupId);
+    const nextViewIds = viewIds.map(parseViewId);
 
     return models.$transaction(async (tx) => {
-        const sections = await tx.viewSection.findMany({
-            where: { tabId: numericTabId },
+        const views = await tx.view.findMany({
+            where: { groupId: numericGroupId },
             orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
             select: { id: true },
         });
-        const currentSectionIds = sections.map((section) => section.id);
+        const currentViewIds = views.map((view) => view.id);
 
-        ensureValidReorderIds(currentSectionIds, nextSectionIds);
+        ensureValidReorderIds(currentViewIds, nextViewIds);
 
         await Promise.all(
-            nextSectionIds.map((sectionId, index) =>
-                tx.viewSection.update({
-                    where: { id: sectionId },
+            nextViewIds.map((viewId, index) =>
+                tx.view.update({
+                    where: { id: viewId },
                     data: { order: index },
                 }),
             ),
         );
 
-        const reorderedSections = await tx.viewSection.findMany({
-            where: { tabId: numericTabId },
+        const reorderedViews = await tx.view.findMany({
+            where: { groupId: numericGroupId },
             orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
-            include: orderedViewSectionTagsInclude,
+            include: orderedViewTagFiltersInclude,
         });
 
-        return reorderedSections.map(serializeViewSection);
+        return reorderedViews.map(serializeView);
     });
 };

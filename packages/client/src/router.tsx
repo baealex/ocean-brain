@@ -6,7 +6,7 @@ import {
     Outlet,
     redirect,
 } from '@tanstack/react-router';
-import { fetchViewSection } from '~/apis/view.api';
+import { fetchView } from '~/apis/view.api';
 import { RouteErrorView, RouteNotFoundView, RoutePendingView } from '~/components/app';
 import { SiteLayout } from '~/components/layout';
 import {
@@ -146,14 +146,14 @@ const viewNotesRoute = createRoute({
     path: VIEW_NOTES_ROUTE,
     validateSearch: validateViewNotesSearch,
     beforeLoad: async ({ search }) => {
-        const sectionResponse = search.sectionId ? await fetchViewSection(search.sectionId).catch(() => null) : null;
-        const section = sectionResponse?.type === 'success' ? sectionResponse.viewSection : null;
+        const viewResponse = search.viewId ? await fetchView(search.viewId).catch(() => null) : null;
+        const view = viewResponse?.type === 'success' ? viewResponse.view : null;
 
         throw redirect({
             to: VIEWS_ROUTE,
             search: {
-                tab: section?.tabId,
-                state: section ? buildLegacyViewNotesRouteState(section.id, search.page, section.limit) : undefined,
+                group: view?.groupId,
+                state: view ? buildLegacyViewNotesRouteState(view.id, search.page, view.limit) : undefined,
             },
             replace: true,
         });

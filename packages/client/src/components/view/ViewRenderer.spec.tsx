@@ -2,8 +2,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import type { Note } from '~/models/note.model';
-import type { ViewSection } from '~/models/view.model';
-import ViewSectionRenderer from './ViewSectionRenderer';
+import type { View } from '~/models/view.model';
+import ViewRenderer from './ViewRenderer';
 
 vi.mock('@tanstack/react-router', () => ({
     Link: ({
@@ -23,9 +23,9 @@ vi.mock('@tanstack/react-router', () => ({
     useNavigate: () => vi.fn(),
 }));
 
-vi.mock('./ViewSectionCalendarRenderer', () => ({
-    default: ({ section }: { section: ViewSection }) => (
-        <div aria-label="View query results as a calendar">{section.displayOptions.calendarDateField}</div>
+vi.mock('./ViewCalendarRenderer', () => ({
+    default: ({ view }: { view: View }) => (
+        <div aria-label="View query results as a calendar">{view.displayOptions.calendarDateField}</div>
     ),
 }));
 
@@ -52,9 +52,9 @@ const createNote = (): Note => ({
     updatedAt: '1780000000000',
 });
 
-const createSection = (patch: Partial<ViewSection> = {}): ViewSection => ({
-    id: 'section-1',
-    tabId: 'tab-1',
+const createView = (patch: Partial<View> = {}): View => ({
+    id: 'view-1',
+    groupId: 'group-1',
     title: 'Ocean Brain tasks',
     displayType: 'list',
     displayOptions: {
@@ -74,10 +74,10 @@ const createSection = (patch: Partial<ViewSection> = {}): ViewSection => ({
     ...patch,
 });
 
-const renderRenderer = (section: ViewSection, onEdit = vi.fn()) =>
+const renderRenderer = (view: View, onEdit = vi.fn()) =>
     render(
-        <ViewSectionRenderer
-            section={section}
+        <ViewRenderer
+            view={view}
             notes={[createNote()]}
             isPending={false}
             isError={false}
@@ -88,9 +88,9 @@ const renderRenderer = (section: ViewSection, onEdit = vi.fn()) =>
         />,
     );
 
-describe('<ViewSectionRenderer />', () => {
-    it('renders list sections with the list renderer', () => {
-        renderRenderer(createSection({ displayType: 'list' }));
+describe('<ViewRenderer />', () => {
+    it('renders list views with the list renderer', () => {
+        renderRenderer(createView({ displayType: 'list' }));
 
         expect(screen.getByRole('link', { name: /Ocean Brain task/i })).toBeInTheDocument();
         expect(screen.getByText('Status')).toBeInTheDocument();
@@ -99,14 +99,14 @@ describe('<ViewSectionRenderer />', () => {
         expect(screen.queryByRole('table')).not.toBeInTheDocument();
     });
 
-    it('renders table sections with the table renderer', () => {
-        renderRenderer(createSection({ displayType: 'table' }));
+    it('renders table views with the table renderer', () => {
+        renderRenderer(createView({ displayType: 'table' }));
 
         expect(screen.getByRole('table', { name: 'View query results as a table' })).toBeInTheDocument();
     });
 
-    it('renders calendar sections with the calendar renderer', () => {
-        renderRenderer(createSection({ displayType: 'calendar' }));
+    it('renders calendar views with the calendar renderer', () => {
+        renderRenderer(createView({ displayType: 'calendar' }));
 
         expect(screen.getByLabelText('View query results as a calendar')).toHaveTextContent('createdAt');
     });
@@ -114,16 +114,16 @@ describe('<ViewSectionRenderer />', () => {
     it('offers calendar recovery when its date property is unavailable', async () => {
         const user = userEvent.setup();
         const handleEdit = vi.fn();
-        const section = createSection({
+        const view = createView({
             displayType: 'calendar',
             displayOptions: {
-                ...createSection().displayOptions,
+                ...createView().displayOptions,
                 calendarDateField: 'property',
                 calendarDatePropertyKey: 'due-date',
             },
         });
 
-        renderRenderer(section, handleEdit);
+        renderRenderer(view, handleEdit);
 
         expect(screen.getByText('Calendar date property is unavailable')).toBeInTheDocument();
         await user.click(screen.getByRole('button', { name: 'Edit calendar' }));

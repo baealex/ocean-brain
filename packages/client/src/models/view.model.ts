@@ -1,4 +1,4 @@
-export type ViewTagMatchMode = 'and' | 'or';
+export type ViewTagFilterMatchMode = 'and' | 'or';
 export type ViewDisplayType = 'list' | 'table' | 'board' | 'calendar';
 export type ViewTableColumn = 'title' | 'tags' | 'properties' | 'createdAt' | 'updatedAt';
 export type ViewCalendarDateField = 'createdAt' | 'updatedAt' | 'property';
@@ -30,14 +30,14 @@ export interface ViewPropertyFilter {
     value?: string | null;
 }
 
-export interface ViewSection {
+export interface View {
     id: string;
-    tabId: string;
+    groupId: string;
     title: string;
     displayType: ViewDisplayType;
     displayOptions: ViewDisplayOptions;
     tagNames: string[];
-    mode: ViewTagMatchMode;
+    mode: ViewTagFilterMatchMode;
     propertyFilters: ViewPropertyFilter[];
     sortBy: ViewSortBy;
     sortOrder: ViewSortOrder;
@@ -45,14 +45,14 @@ export interface ViewSection {
     order: number;
 }
 
-export interface ViewTab {
+export interface ViewGroup {
     id: string;
     title: string;
     order: number;
-    sections: ViewSection[];
+    views: View[];
 }
 
 export interface ViewsWorkspace {
-    activeTabId: string | null;
-    tabs: ViewTab[];
+    activeGroupId: string | null;
+    groups: ViewGroup[];
 }

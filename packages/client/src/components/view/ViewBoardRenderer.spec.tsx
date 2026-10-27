@@ -3,23 +3,23 @@ import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 
 import { updateNoteProperties } from '~/apis/note.api';
-import { fetchViewSectionBoardColumn } from '~/apis/view.api';
+import { fetchViewBoardColumn } from '~/apis/view.api';
 import { ToastProvider } from '~/components/ui';
-import type { ViewSection } from '~/models/view.model';
-import type { ViewSectionRouteState, ViewSectionRouteStateUpdater } from '~/modules/view-route-state';
+import type { View } from '~/models/view.model';
+import type { ViewNavigationState, ViewRouteStateUpdater } from '~/modules/view-route-state';
 import { createQueryClientWrapper } from '~/test/test-utils';
-import ViewSectionBoardRenderer from './ViewSectionBoardRenderer';
+import ViewBoardRenderer from './ViewBoardRenderer';
 
 vi.mock('@tanstack/react-router', () => ({
     Link: ({ children, ...props }: { children: React.ReactNode }) => <a {...props}>{children}</a>,
 }));
 
 vi.mock('~/apis/note.api', () => ({ updateNoteProperties: vi.fn() }));
-vi.mock('~/apis/view.api', () => ({ fetchViewSectionBoardColumn: vi.fn() }));
+vi.mock('~/apis/view.api', () => ({ fetchViewBoardColumn: vi.fn() }));
 
-const section: ViewSection = {
-    id: 'section-1',
-    tabId: 'tab-1',
+const view: View = {
+    id: 'view-1',
+    groupId: 'group-1',
     title: 'Project board',
     displayType: 'board',
     displayOptions: {
@@ -50,13 +50,13 @@ const statusProperty = {
     ],
 };
 
-describe('<ViewSectionBoardRenderer />', () => {
+describe('<ViewBoardRenderer />', () => {
     it('moves a card to another column by updating the grouping property', async () => {
         const user = userEvent.setup();
         let currentOptionValue = 'todo';
-        vi.mocked(fetchViewSectionBoardColumn).mockImplementation(async (_id, { optionValue }) => ({
+        vi.mocked(fetchViewBoardColumn).mockImplementation(async (_id, { optionValue }) => ({
             type: 'success',
-            viewSectionBoardColumn:
+            viewBoardColumn:
                 optionValue === currentOptionValue
                     ? {
                           totalCount: 1,
@@ -78,7 +78,7 @@ describe('<ViewSectionBoardRenderer />', () => {
             </QueryWrapper>
         );
 
-        render(<ViewSectionBoardRenderer section={section} groupProperty={statusProperty} />, { wrapper: Wrapper });
+        render(<ViewBoardRenderer view={view} groupProperty={statusProperty} />, { wrapper: Wrapper });
 
         await user.click(await screen.findByRole('button', { name: 'Move Ocean task' }));
         await user.click(await screen.findByRole('menuitem', { name: 'Move to Doing' }));
@@ -106,10 +106,10 @@ describe('<ViewSectionBoardRenderer />', () => {
 
     it('loads the next board column page on demand', async () => {
         const user = userEvent.setup();
-        const pagedSection = { ...section, limit: 1 };
-        vi.mocked(fetchViewSectionBoardColumn).mockImplementation(async (_id, { optionValue, offset }) => ({
+        const pagedView = { ...view, limit: 1 };
+        vi.mocked(fetchViewBoardColumn).mockImplementation(async (_id, { optionValue, offset }) => ({
             type: 'success',
-            viewSectionBoardColumn:
+            viewBoardColumn:
                 optionValue === 'todo'
                     ? {
                           totalCount: 2,
@@ -127,14 +127,14 @@ describe('<ViewSectionBoardRenderer />', () => {
             </QueryWrapper>
         );
         const ControlledBoard = () => {
-            const [navigationState, setNavigationState] = useState<ViewSectionRouteState>({});
-            const handleNavigationStateChange = (updater: ViewSectionRouteStateUpdater) => {
+            const [navigationState, setNavigationState] = useState<ViewNavigationState>({});
+            const handleNavigationStateChange = (updater: ViewRouteStateUpdater) => {
                 setNavigationState((current) => (typeof updater === 'function' ? updater(current) : updater));
             };
 
             return (
-                <ViewSectionBoardRenderer
-                    section={pagedSection}
+                <ViewBoardRenderer
+                    view={pagedView}
                     groupProperty={statusProperty}
                     navigationState={navigationState}
                     onNavigationStateChange={handleNavigationStateChange}
@@ -147,7 +147,7 @@ describe('<ViewSectionBoardRenderer />', () => {
         await user.click(await screen.findByRole('button', { name: 'Load more (1)' }));
 
         expect(await screen.findByText('Second task')).toBeInTheDocument();
-        expect(fetchViewSectionBoardColumn).toHaveBeenCalledWith('section-1', {
+        expect(fetchViewBoardColumn).toHaveBeenCalledWith('view-1', {
             optionValue: 'todo',
             limit: 1,
             offset: 1,

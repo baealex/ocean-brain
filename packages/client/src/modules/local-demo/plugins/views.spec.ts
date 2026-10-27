@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Note } from '~/models/note.model';
-import type { ViewSection } from '~/models/view.model';
+import type { View } from '~/models/view.model';
 import type { LocalDemoState } from '../types';
 import { viewsLocalPlugin } from './views';
 
@@ -18,7 +18,7 @@ const createNote = (id: string, title: string, createdAt: string, updatedAt: str
     updatedAt,
 });
 
-const createState = (section: ViewSection): LocalDemoState => ({
+const createState = (view: View): LocalDemoState => ({
     version: 6,
     notes: [
         createNote('note-2', 'Beta', '1710000002000', '1710000001000'),
@@ -38,14 +38,14 @@ const createState = (section: ViewSection): LocalDemoState => ({
         token: null,
     },
     viewWorkspace: {
-        activeTabId: 'tab-1',
-        tabs: [{ id: 'tab-1', title: 'Views', order: 0, sections: [section] }],
+        activeGroupId: 'group-1',
+        groups: [{ id: 'group-1', title: 'Views', order: 0, views: [view] }],
     },
 });
 
-const createSection = (sortBy: ViewSection['sortBy'], sortOrder: ViewSection['sortOrder']): ViewSection => ({
-    id: 'section-1',
-    tabId: 'tab-1',
+const createView = (sortBy: View['sortBy'], sortOrder: View['sortOrder']): View => ({
+    id: 'view-1',
+    groupId: 'group-1',
     title: 'All notes',
     displayType: 'list',
     displayOptions: {
@@ -69,44 +69,44 @@ describe('viewsLocalPlugin', () => {
         ['title', 'asc', ['note-1', 'note-2', 'note-3']],
         ['createdAt', 'desc', ['note-3', 'note-2', 'note-1']],
         ['updatedAt', 'asc', ['note-2', 'note-1', 'note-3']],
-    ] as const)('sorts section notes by %s %s like the server', (sortBy, sortOrder, expectedIds) => {
-        const handler = viewsLocalPlugin.graphHandlers?.FetchViewSectionNotes;
+    ] as const)('sorts view notes by %s %s like the server', (sortBy, sortOrder, expectedIds) => {
+        const handler = viewsLocalPlugin.graphHandlers?.FetchViewNotes;
         const response = handler?.({
-            state: createState(createSection(sortBy, sortOrder)),
-            variables: { id: 'section-1', pagination: { limit: 5, offset: 0 } },
+            state: createState(createView(sortBy, sortOrder)),
+            variables: { id: 'view-1', pagination: { limit: 5, offset: 0 } },
             save: () => undefined,
         });
-        const result = response?.viewSectionNotes as { notes: Note[] } | undefined;
+        const result = response?.viewNotes as { notes: Note[] } | undefined;
 
         expect(result?.notes.map((note) => note.id)).toEqual(expectedIds);
     });
 
     it('uses request sorting for URL-restored table state', () => {
-        const handler = viewsLocalPlugin.graphHandlers?.FetchViewSectionNotes;
+        const handler = viewsLocalPlugin.graphHandlers?.FetchViewNotes;
         const response = handler?.({
-            state: createState(createSection('updatedAt', 'desc')),
+            state: createState(createView('updatedAt', 'desc')),
             variables: {
-                id: 'section-1',
+                id: 'view-1',
                 pagination: { limit: 5, offset: 0 },
                 sortBy: 'title',
                 sortOrder: 'asc',
             },
             save: () => undefined,
         });
-        const result = response?.viewSectionNotes as { notes: Note[] } | undefined;
+        const result = response?.viewNotes as { notes: Note[] } | undefined;
 
         expect(result?.notes.map((note) => note.id)).toEqual(['note-1', 'note-2', 'note-3']);
     });
 
-    it('filters calendar sections by their configured date field and visible range', () => {
-        const handler = viewsLocalPlugin.graphHandlers?.FetchViewSectionCalendarNotes;
-        const section = createSection('updatedAt', 'desc');
-        section.displayType = 'calendar';
-        section.displayOptions.calendarDateField = 'createdAt';
+    it('filters calendar views by their configured date field and visible range', () => {
+        const handler = viewsLocalPlugin.graphHandlers?.FetchViewCalendarNotes;
+        const view = createView('updatedAt', 'desc');
+        view.displayType = 'calendar';
+        view.displayOptions.calendarDateField = 'createdAt';
         const response = handler?.({
-            state: createState(section),
+            state: createState(view),
             variables: {
-                id: 'section-1',
+                id: 'view-1',
                 dateRange: {
                     start: new Date(1_710_000_001_500).toISOString(),
                     end: new Date(1_710_000_003_500).toISOString(),
@@ -114,18 +114,18 @@ describe('viewsLocalPlugin', () => {
             },
             save: () => undefined,
         });
-        const notes = response?.viewSectionCalendarNotes as Note[] | undefined;
+        const notes = response?.viewCalendarNotes as Note[] | undefined;
 
         expect(notes?.map((note) => note.id)).toEqual(['note-2', 'note-3']);
     });
 
     it('uses a date property as the calendar placement field', () => {
-        const handler = viewsLocalPlugin.graphHandlers?.FetchViewSectionCalendarNotes;
-        const section = createSection('updatedAt', 'desc');
-        section.displayType = 'calendar';
-        section.displayOptions.calendarDateField = 'property';
-        section.displayOptions.calendarDatePropertyKey = 'due-date';
-        const state = createState(section);
+        const handler = viewsLocalPlugin.graphHandlers?.FetchViewCalendarNotes;
+        const view = createView('updatedAt', 'desc');
+        view.displayType = 'calendar';
+        view.displayOptions.calendarDateField = 'property';
+        view.displayOptions.calendarDatePropertyKey = 'due-date';
+        const state = createState(view);
         state.propertyDefinitions = [
             {
                 key: 'due-date',
@@ -150,7 +150,7 @@ describe('viewsLocalPlugin', () => {
         const response = handler?.({
             state,
             variables: {
-                id: 'section-1',
+                id: 'view-1',
                 dateRange: {
                     start: '2026-08-01T00:00:00.000Z',
                     end: '2026-09-01T00:00:00.000Z',
@@ -159,8 +159,6 @@ describe('viewsLocalPlugin', () => {
             save: () => undefined,
         });
 
-        expect(response?.viewSectionCalendarNotes).toEqual([
-            { id: 'note-2', title: 'Beta', calendarDate: '2026-08-12' },
-        ]);
+        expect(response?.viewCalendarNotes).toEqual([{ id: 'note-2', title: 'Beta', calendarDate: '2026-08-12' }]);
     });
 });

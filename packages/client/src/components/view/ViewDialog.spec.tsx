@@ -3,8 +3,8 @@ import userEvent from '@testing-library/user-event';
 
 import type { NotePropertyKeySummary } from '~/apis/note.api';
 import type { Tag } from '~/models/tag.model';
-import type { ViewSection } from '~/models/view.model';
-import ViewSectionDialog from './ViewSectionDialog';
+import type { View } from '~/models/view.model';
+import ViewDialog from './ViewDialog';
 
 beforeAll(() => {
     Object.defineProperties(HTMLElement.prototype, {
@@ -30,9 +30,9 @@ const createProperty = (patch: Partial<NotePropertyKeySummary> = {}): NoteProper
     ...patch,
 });
 
-const createSection = (patch: Partial<ViewSection> = {}): ViewSection => ({
-    id: 'section-1',
-    tabId: 'tab-1',
+const createView = (patch: Partial<View> = {}): View => ({
+    id: 'view-1',
+    groupId: 'group-1',
     title: 'Ocean Brain tasks',
     displayType: 'list',
     displayOptions: {
@@ -52,15 +52,15 @@ const createSection = (patch: Partial<ViewSection> = {}): ViewSection => ({
     ...patch,
 });
 
-describe('<ViewSectionDialog />', () => {
+describe('<ViewDialog />', () => {
     it('saves the chosen table column order while keeping title visible', async () => {
         const user = userEvent.setup();
         const onSubmit = vi.fn();
         render(
-            <ViewSectionDialog
+            <ViewDialog
                 open
                 mode="edit"
-                initialSection={createSection({ displayType: 'table' })}
+                initialView={createView({ displayType: 'table' })}
                 availableTags={[]}
                 availableProperties={[]}
                 onClose={vi.fn()}
@@ -71,7 +71,7 @@ describe('<ViewSectionDialog />', () => {
         await user.click(screen.getByText('Table columns', { selector: 'summary' }));
         await user.click(screen.getByRole('button', { name: 'Actions for Tags column' }));
         await user.click(screen.getByRole('menuitem', { name: 'Move up' }));
-        await user.click(screen.getByRole('button', { name: 'Save section' }));
+        await user.click(screen.getByRole('button', { name: 'Save view' }));
 
         expect(onSubmit).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -88,12 +88,12 @@ describe('<ViewSectionDialog />', () => {
         const user = userEvent.setup();
         const onSubmit = vi.fn();
         render(
-            <ViewSectionDialog
+            <ViewDialog
                 open
                 mode="edit"
-                initialSection={createSection({
+                initialView={createView({
                     displayType: 'table',
-                    displayOptions: { ...createSection().displayOptions, tablePropertyKeys: ['source', 'priority'] },
+                    displayOptions: { ...createView().displayOptions, tablePropertyKeys: ['source', 'priority'] },
                 })}
                 availableTags={[]}
                 availableProperties={[
@@ -108,7 +108,7 @@ describe('<ViewSectionDialog />', () => {
         await user.click(screen.getByText('Table columns', { selector: 'summary' }));
         await user.click(screen.getByRole('button', { name: 'Actions for Priority column' }));
         await user.click(screen.getByRole('menuitem', { name: 'Move up' }));
-        await user.click(screen.getByRole('button', { name: 'Save section' }));
+        await user.click(screen.getByRole('button', { name: 'Save view' }));
 
         expect(onSubmit).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -131,7 +131,7 @@ describe('<ViewSectionDialog />', () => {
         });
 
         render(
-            <ViewSectionDialog
+            <ViewDialog
                 open
                 mode="create"
                 availableTags={[]}
@@ -142,7 +142,7 @@ describe('<ViewSectionDialog />', () => {
         );
 
         await user.click(screen.getByRole('radio', { name: 'Show as board' }));
-        await user.click(screen.getByRole('button', { name: 'Create section' }));
+        await user.click(screen.getByRole('button', { name: 'Create view' }));
 
         expect(handleSubmit).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -157,7 +157,7 @@ describe('<ViewSectionDialog />', () => {
         const handleSubmit = vi.fn();
 
         render(
-            <ViewSectionDialog
+            <ViewDialog
                 open
                 mode="create"
                 availableTags={[]}
@@ -172,7 +172,7 @@ describe('<ViewSectionDialog />', () => {
         await user.click(screen.getByRole('checkbox', { name: 'Show Tags column' }));
         await user.click(screen.getByRole('checkbox', { name: 'Show Properties column' }));
         await user.click(screen.getByRole('checkbox', { name: 'Show Created column' }));
-        await user.click(screen.getByRole('button', { name: 'Create section' }));
+        await user.click(screen.getByRole('button', { name: 'Create view' }));
 
         expect(handleSubmit).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -195,7 +195,7 @@ describe('<ViewSectionDialog />', () => {
         });
 
         render(
-            <ViewSectionDialog
+            <ViewDialog
                 open
                 mode="create"
                 availableTags={[]}
@@ -208,7 +208,7 @@ describe('<ViewSectionDialog />', () => {
         await user.click(screen.getByRole('radio', { name: 'Show as table' }));
         await user.click(screen.getByText('Table columns', { selector: 'summary' }));
         await user.click(screen.getByRole('radio', { name: 'Choose columns' }));
-        await user.click(screen.getByRole('button', { name: 'Create section' }));
+        await user.click(screen.getByRole('button', { name: 'Create view' }));
 
         expect(handleSubmit).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -217,12 +217,12 @@ describe('<ViewSectionDialog />', () => {
         );
     });
 
-    it('submits a calendar section with the default note date field', async () => {
+    it('submits a calendar view with the default note date field', async () => {
         const user = userEvent.setup();
         const handleSubmit = vi.fn();
 
         render(
-            <ViewSectionDialog
+            <ViewDialog
                 open
                 mode="create"
                 availableTags={[]}
@@ -234,7 +234,7 @@ describe('<ViewSectionDialog />', () => {
 
         await user.click(screen.getByRole('radio', { name: 'Show as calendar' }));
         expect(screen.getByRole('combobox', { name: 'Place notes by' })).toHaveTextContent('Created date');
-        await user.click(screen.getByRole('button', { name: 'Create section' }));
+        await user.click(screen.getByRole('button', { name: 'Create view' }));
 
         expect(handleSubmit).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -254,7 +254,7 @@ describe('<ViewSectionDialog />', () => {
         });
 
         render(
-            <ViewSectionDialog
+            <ViewDialog
                 open
                 mode="create"
                 availableTags={[]}
@@ -267,7 +267,7 @@ describe('<ViewSectionDialog />', () => {
         await user.click(screen.getByRole('radio', { name: 'Show as calendar' }));
         await user.click(screen.getByRole('combobox', { name: 'Place notes by' }));
         await user.click(await screen.findByRole('option', { name: 'Due date · date property' }));
-        await user.click(screen.getByRole('button', { name: 'Create section' }));
+        await user.click(screen.getByRole('button', { name: 'Create view' }));
 
         expect(handleSubmit).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -282,10 +282,10 @@ describe('<ViewSectionDialog />', () => {
 
     it('labels tag match choices as AND and OR with helper text', () => {
         render(
-            <ViewSectionDialog
+            <ViewDialog
                 open
                 mode="edit"
-                initialSection={createSection({ tagNames: ['@product', '@docs'] })}
+                initialView={createView({ tagNames: ['@product', '@docs'] })}
                 availableTags={[createTag('@product', 1), createTag('@docs', 2)]}
                 availableProperties={[]}
                 onClose={vi.fn()}
@@ -301,10 +301,10 @@ describe('<ViewSectionDialog />', () => {
 
     it('exposes existing tag chip selection state', () => {
         render(
-            <ViewSectionDialog
+            <ViewDialog
                 open
                 mode="edit"
-                initialSection={createSection({ tagNames: ['@product'] })}
+                initialView={createView({ tagNames: ['@product'] })}
                 availableTags={[createTag('@product', 1), createTag('@docs', 2)]}
                 availableProperties={[]}
                 onClose={vi.fn()}
@@ -318,13 +318,13 @@ describe('<ViewSectionDialog />', () => {
 
     it('preserves calendar display settings when editing', () => {
         render(
-            <ViewSectionDialog
+            <ViewDialog
                 open
                 mode="edit"
-                initialSection={createSection({
+                initialView={createView({
                     displayType: 'calendar',
                     displayOptions: {
-                        ...createSection().displayOptions,
+                        ...createView().displayOptions,
                         calendarDateField: 'updatedAt',
                     },
                 })}
@@ -342,10 +342,10 @@ describe('<ViewSectionDialog />', () => {
 
     it('labels sort and limit selects through their visible labels', () => {
         render(
-            <ViewSectionDialog
+            <ViewDialog
                 open
                 mode="edit"
-                initialSection={createSection()}
+                initialView={createView()}
                 availableTags={[]}
                 availableProperties={[]}
                 onClose={vi.fn()}
@@ -363,10 +363,10 @@ describe('<ViewSectionDialog />', () => {
         const handleSubmit = vi.fn();
 
         render(
-            <ViewSectionDialog
+            <ViewDialog
                 open
                 mode="edit"
-                initialSection={createSection({
+                initialView={createView({
                     propertyFilters: [
                         {
                             key: 'source',
@@ -389,7 +389,7 @@ describe('<ViewSectionDialog />', () => {
         expect(valueInput).toHaveAttribute('type', 'text');
 
         await user.type(valueInput, 'example.com');
-        await user.click(screen.getByRole('button', { name: 'Save section' }));
+        await user.click(screen.getByRole('button', { name: 'Save view' }));
 
         expect(handleSubmit).toHaveBeenCalledWith(
             expect.objectContaining({

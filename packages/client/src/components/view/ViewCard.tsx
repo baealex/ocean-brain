@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import type { NotePropertyKeySummary } from '~/apis/note.api';
-import { fetchViewSectionNotes } from '~/apis/view.api';
+import { fetchViewNotes } from '~/apis/view.api';
 import * as Icon from '~/components/icon';
 import { Dropdown, Pagination, SurfaceCard } from '~/components/shared';
 import {
@@ -14,12 +14,16 @@ import {
     MoreButton,
     Text,
 } from '~/components/ui';
-import type { ViewDisplayOptions, ViewSection, ViewSortBy, ViewSortOrder } from '~/models/view.model';
+import type { View, ViewDisplayOptions, ViewSortBy, ViewSortOrder } from '~/models/view.model';
 import { queryKeys } from '~/modules/query-key-factory';
-import { formatViewPropertyFilter, getViewDisplayTypeLabel, getViewTagMatchToken } from '~/modules/view-dashboard';
-import type { ViewSectionRouteState, ViewSectionRouteStateUpdater } from '~/modules/view-route-state';
+import {
+    formatViewPropertyFilter,
+    getViewDisplayTypeLabel,
+    getViewTagFilterMatchToken,
+} from '~/modules/view-dashboard';
+import type { ViewNavigationState, ViewRouteStateUpdater } from '~/modules/view-route-state';
 import ViewChip from './ViewChip';
-import ViewSectionRenderer from './ViewSectionRenderer';
+import ViewRenderer from './ViewRenderer';
 import ViewTableColumnsDialog from './ViewTableColumnsDialog';
 
 const SORT_CHOICES: { by: ViewSortBy; order: ViewSortOrder; label: string }[] = [
@@ -31,8 +35,8 @@ const SORT_CHOICES: { by: ViewSortBy; order: ViewSortOrder; label: string }[] = 
     { by: 'title', order: 'desc', label: 'Title: Z to A' },
 ];
 
-interface ViewSectionCardProps {
-    section: ViewSection;
+interface ViewCardProps {
+    view: View;
     onEdit: () => void;
     onDuplicate: () => void;
     onDelete: () => void;
@@ -45,12 +49,12 @@ interface ViewSectionCardProps {
     isPropertiesLoading?: boolean;
     isPropertiesError?: boolean;
     onRetryProperties?: () => void;
-    navigationState?: ViewSectionRouteState;
-    onNavigationStateChange?: (updater: ViewSectionRouteStateUpdater) => void;
+    navigationState?: ViewNavigationState;
+    onNavigationStateChange?: (updater: ViewRouteStateUpdater) => void;
 }
 
-export default function ViewSectionCard({
-    section,
+export default function ViewCard({
+    view,
     onEdit,
     onDuplicate,
     onDelete,
@@ -65,21 +69,21 @@ export default function ViewSectionCard({
     onRetryProperties = () => undefined,
     navigationState = {},
     onNavigationStateChange = () => undefined,
-}: ViewSectionCardProps) {
+}: ViewCardProps) {
     const [isSavingSort, setIsSavingSort] = useState(false);
     const [isColumnsOpen, setIsColumnsOpen] = useState(false);
-    const isBoard = section.displayType === 'board';
-    const isCalendar = section.displayType === 'calendar';
+    const isBoard = view.displayType === 'board';
+    const isCalendar = view.displayType === 'calendar';
     const page = navigationState.page ?? 1;
-    const offset = (page - 1) * section.limit;
-    const sortBy = navigationState.sort?.by ?? section.sortBy;
-    const sortOrder = navigationState.sort?.order ?? section.sortOrder;
-    const hasCustomSort = sortBy !== section.sortBy || sortOrder !== section.sortOrder;
+    const offset = (page - 1) * view.limit;
+    const sortBy = navigationState.sort?.by ?? view.sortBy;
+    const sortOrder = navigationState.sort?.order ?? view.sortOrder;
+    const hasCustomSort = sortBy !== view.sortBy || sortOrder !== view.sortOrder;
     const sortLabel = SORT_CHOICES.find((choice) => choice.by === sortBy && choice.order === sortOrder)?.label;
 
     const { data, isPending, isError, isPlaceholderData, refetch } = useQuery({
-        queryKey: queryKeys.views.sectionNotes(section.id, {
-            limit: section.limit,
+        queryKey: queryKeys.views.viewNotes(view.id, {
+            limit: view.limit,
             offset,
             sortBy,
             sortOrder,
@@ -87,8 +91,8 @@ export default function ViewSectionCard({
         enabled: !isBoard && !isCalendar,
         placeholderData: keepPreviousData,
         async queryFn() {
-            const response = await fetchViewSectionNotes(section.id, {
-                limit: section.limit,
+            const response = await fetchViewNotes(view.id, {
+                limit: view.limit,
                 offset,
                 sortBy,
                 sortOrder,
@@ -98,44 +102,44 @@ export default function ViewSectionCard({
                 throw response;
             }
 
-            return response.viewSectionNotes;
+            return response.viewNotes;
         },
     });
 
     const notes = data?.notes ?? [];
     const totalCount = data?.totalCount ?? 0;
-    const lastPage = Math.max(1, Math.ceil(totalCount / section.limit));
-    const tagMatchToken = getViewTagMatchToken(section.mode);
-    const hasFilters = section.tagNames.length > 0 || section.propertyFilters.length > 0;
+    const lastPage = Math.max(1, Math.ceil(totalCount / view.limit));
+    const tagMatchToken = getViewTagFilterMatchToken(view.mode);
+    const hasFilters = view.tagNames.length > 0 || view.propertyFilters.length > 0;
     const boardGroupProperty = isBoard
-        ? availableProperties.find((property) => property.key === section.displayOptions.boardGroupByPropertyKey)
+        ? availableProperties.find((property) => property.key === view.displayOptions.boardGroupByPropertyKey)
         : null;
     const calendarDateProperty = isCalendar
-        ? availableProperties.find((property) => property.key === section.displayOptions.calendarDatePropertyKey)
+        ? availableProperties.find((property) => property.key === view.displayOptions.calendarDatePropertyKey)
         : null;
     const calendarDateLabel =
-        section.displayOptions.calendarDateField === 'property'
-            ? (calendarDateProperty?.name ?? section.displayOptions.calendarDatePropertyKey ?? 'Date property')
-            : section.displayOptions.calendarDateField === 'updatedAt'
+        view.displayOptions.calendarDateField === 'property'
+            ? (calendarDateProperty?.name ?? view.displayOptions.calendarDatePropertyKey ?? 'Date property')
+            : view.displayOptions.calendarDateField === 'updatedAt'
               ? 'Updated date'
               : 'Created date';
 
-    const setSectionSort = (nextSortBy: ViewSortBy, nextSortOrder: ViewSortOrder) => {
+    const setViewSort = (nextSortBy: ViewSortBy, nextSortOrder: ViewSortOrder) => {
         onNavigationStateChange((current) => ({
             ...current,
             page: 1,
             sort:
-                nextSortBy === section.sortBy && nextSortOrder === section.sortOrder
+                nextSortBy === view.sortBy && nextSortOrder === view.sortOrder
                     ? undefined
                     : { by: nextSortBy, order: nextSortOrder },
         }));
     };
 
-    const updateSectionSort = (nextSortBy: ViewSortBy) => {
+    const updateViewSort = (nextSortBy: ViewSortBy) => {
         const nextSortOrder: ViewSortOrder =
             sortBy === nextSortBy ? (sortOrder === 'asc' ? 'desc' : 'asc') : nextSortBy === 'title' ? 'asc' : 'desc';
 
-        setSectionSort(nextSortBy, nextSortOrder);
+        setViewSort(nextSortBy, nextSortOrder);
     };
 
     const saveSort = async () => {
@@ -163,17 +167,17 @@ export default function ViewSectionCard({
                         {dragHandle && <div className="-mr-1 shrink-0 self-center">{dragHandle}</div>}
                         <div className="min-w-0">
                             <Text as="h2" variant="subheading" weight="semibold" tracking="tight" className="min-w-0">
-                                <span className="truncate">{section.title}</span>
+                                <span className="truncate">{view.title}</span>
                             </Text>
                         </div>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-1.5">
                         <ViewChip className="max-w-full border-border-subtle/80 bg-elevated text-fg-secondary">
-                            {getViewDisplayTypeLabel(section.displayType)}
+                            {getViewDisplayTypeLabel(view.displayType)}
                         </ViewChip>
-                        {isBoard && section.displayOptions.boardGroupByPropertyKey ? (
+                        {isBoard && view.displayOptions.boardGroupByPropertyKey ? (
                             <ViewChip className="max-w-full border-border-subtle/80 bg-subtle text-fg-secondary">
-                                Grouped by {boardGroupProperty?.name ?? section.displayOptions.boardGroupByPropertyKey}
+                                Grouped by {boardGroupProperty?.name ?? view.displayOptions.boardGroupByPropertyKey}
                             </ViewChip>
                         ) : null}
                         {isCalendar ? (
@@ -181,7 +185,7 @@ export default function ViewSectionCard({
                                 {calendarDateLabel}
                             </ViewChip>
                         ) : null}
-                        {section.tagNames.map((tagName, index) => (
+                        {view.tagNames.map((tagName, index) => (
                             <div key={tagName} className="flex min-w-0 items-center gap-1.5">
                                 {index > 0 && (
                                     <span className="px-0.5 text-[10px] font-semibold tracking-[0.08em] text-fg-tertiary/85">
@@ -193,7 +197,7 @@ export default function ViewSectionCard({
                                 </ViewChip>
                             </div>
                         ))}
-                        {section.propertyFilters.map((filter) => (
+                        {view.propertyFilters.map((filter) => (
                             <ViewChip
                                 key={`${filter.key}-${filter.operator}-${filter.value ?? ''}`}
                                 className="max-w-full border-border-subtle/80 bg-subtle text-fg-secondary"
@@ -209,22 +213,22 @@ export default function ViewSectionCard({
                     </div>
                 </div>
                 <Dropdown
-                    button={<MoreButton label="Section actions" />}
+                    button={<MoreButton label="View actions" />}
                     items={[
                         ...(onMoveUp ? [{ name: 'Move up', onClick: onMoveUp }] : []),
                         ...(onMoveDown ? [{ name: 'Move down', onClick: onMoveDown }] : []),
                         ...(onMoveUp || onMoveDown ? [{ type: 'separator' as const }] : []),
                         {
-                            name: 'Edit section',
+                            name: 'Edit view',
                             onClick: onEdit,
                         },
                         {
-                            name: 'Duplicate section',
+                            name: 'Duplicate view',
                             onClick: onDuplicate,
                         },
                         { type: 'separator' },
                         {
-                            name: 'Delete section',
+                            name: 'Delete view',
                             onClick: onDelete,
                         },
                     ]}
@@ -234,7 +238,7 @@ export default function ViewSectionCard({
             {!isBoard && !isCalendar ? (
                 <div
                     role="group"
-                    aria-label={`${section.title} sort`}
+                    aria-label={`${view.title} sort`}
                     className="flex flex-wrap items-center gap-2 border-b border-border-subtle/75 px-4 py-2"
                 >
                     <DropdownMenu>
@@ -257,7 +261,7 @@ export default function ViewSectionCard({
                                     const choice = SORT_CHOICES.find(
                                         (candidate) => `${candidate.by}:${candidate.order}` === value,
                                     );
-                                    if (choice) setSectionSort(choice.by, choice.order);
+                                    if (choice) setViewSort(choice.by, choice.order);
                                 }}
                             >
                                 {SORT_CHOICES.map((choice) => (
@@ -271,7 +275,7 @@ export default function ViewSectionCard({
                             </DropdownMenuRadioGroup>
                         </DropdownMenuContent>
                     </DropdownMenu>
-                    {section.displayType === 'table' ? (
+                    {view.displayType === 'table' ? (
                         <Button
                             type="button"
                             variant="ghost"
@@ -299,7 +303,7 @@ export default function ViewSectionCard({
                                 variant="ghost"
                                 size="sm"
                                 disabled={isSavingSort}
-                                onClick={() => setSectionSort(section.sortBy, section.sortOrder)}
+                                onClick={() => setViewSort(view.sortBy, view.sortOrder)}
                             >
                                 Reset sort
                             </Button>
@@ -309,14 +313,14 @@ export default function ViewSectionCard({
             ) : null}
 
             <div className="flex flex-1 flex-col">
-                <ViewSectionRenderer
-                    section={section}
+                <ViewRenderer
+                    view={view}
                     notes={notes}
                     isPending={isPending}
                     isError={isError}
                     onRetry={() => void refetch()}
                     onEdit={onEdit}
-                    onSortChange={updateSectionSort}
+                    onSortChange={updateViewSort}
                     isSortPending={isPlaceholderData || isSavingSort}
                     activeSortBy={sortBy}
                     activeSortOrder={sortOrder}
@@ -333,7 +337,7 @@ export default function ViewSectionCard({
                 <div className="flex flex-col gap-3 border-t border-border-subtle/75 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                     <Text as="p" variant="meta" tone="tertiary">
                         {isBoard
-                            ? `${section.limit} cards per column load`
+                            ? `${view.limit} cards per column load`
                             : isPending || isPlaceholderData
                               ? 'Loading notes...'
                               : totalCount === 0
@@ -354,7 +358,7 @@ export default function ViewSectionCard({
             ) : null}
             {isColumnsOpen ? (
                 <ViewTableColumnsDialog
-                    section={section}
+                    view={view}
                     availableProperties={availableProperties}
                     isPropertiesLoading={isPropertiesLoading}
                     isPropertiesError={isPropertiesError}

@@ -108,11 +108,11 @@ export default function RestoreSnapshotModal({
                     exact: false,
                 }),
                 queryClient.invalidateQueries({
-                    queryKey: queryKeys.views.sectionNotesAll(),
+                    queryKey: queryKeys.views.viewNotesAll(),
                     exact: false,
                 }),
                 queryClient.invalidateQueries({
-                    queryKey: queryKeys.views.sectionCalendarsAll(),
+                    queryKey: queryKeys.views.viewCalendarsAll(),
                     exact: false,
                 }),
                 queryClient.invalidateQueries({

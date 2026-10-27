@@ -1,8 +1,8 @@
 import type { ViewSortBy, ViewSortOrder } from '~/models/view.model';
 
-export const VIEW_ROUTE_STATE_VERSION = 1 as const;
+export const VIEW_ROUTE_STATE_VERSION = 2 as const;
 
-const MAX_SECTION_STATES = 100;
+const MAX_VIEW_STATES = 100;
 const MAX_COLUMN_STATES = 100;
 const MAX_STATE_KEY_LENGTH = 256;
 const MAX_PAGE = 100_000;
@@ -11,7 +11,7 @@ const MIN_CALENDAR_YEAR = 1970;
 const MAX_CALENDAR_YEAR = 9999;
 const LEGACY_VIEW_NOTES_PAGE_SIZE = 25;
 
-export interface ViewSectionRouteState {
+export interface ViewNavigationState {
     page?: number;
     columns?: Record<string, number>;
     calendar?: {
@@ -26,12 +26,10 @@ export interface ViewSectionRouteState {
 
 export interface ViewRouteState {
     version: typeof VIEW_ROUTE_STATE_VERSION;
-    sections: Record<string, ViewSectionRouteState>;
+    views: Record<string, ViewNavigationState>;
 }
 
-export type ViewSectionRouteStateUpdater =
-    | ViewSectionRouteState
-    | ((current: ViewSectionRouteState) => ViewSectionRouteState);
+export type ViewRouteStateUpdater = ViewNavigationState | ((current: ViewNavigationState) => ViewNavigationState);
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -46,7 +44,7 @@ const normalizeBoardColumnPage = (value: unknown) =>
         ? Math.min(value, MAX_BOARD_COLUMN_PAGES)
         : undefined;
 
-const normalizeSort = (value: unknown): ViewSectionRouteState['sort'] => {
+const normalizeSort = (value: unknown): ViewNavigationState['sort'] => {
     if (!isRecord(value)) {
         return undefined;
     }
@@ -61,7 +59,7 @@ const normalizeSort = (value: unknown): ViewSectionRouteState['sort'] => {
     return { by, order };
 };
 
-const normalizeCalendar = (value: unknown): ViewSectionRouteState['calendar'] => {
+const normalizeCalendar = (value: unknown): ViewNavigationState['calendar'] => {
     if (!isRecord(value)) {
         return undefined;
     }
@@ -85,7 +83,7 @@ const normalizeCalendar = (value: unknown): ViewSectionRouteState['calendar'] =>
     return { year, month };
 };
 
-const normalizeSectionState = (value: unknown): ViewSectionRouteState | undefined => {
+const normalizeViewState = (value: unknown): ViewNavigationState | undefined => {
     if (!isRecord(value)) {
         return undefined;
     }
@@ -118,73 +116,75 @@ const normalizeSectionState = (value: unknown): ViewSectionRouteState | undefine
 };
 
 export const normalizeViewRouteState = (value: unknown): ViewRouteState | undefined => {
-    if (!isRecord(value) || value.version !== VIEW_ROUTE_STATE_VERSION || !isRecord(value.sections)) {
+    if (!isRecord(value)) {
         return undefined;
     }
 
-    const sections = Object.fromEntries(
-        Object.entries(value.sections)
-            .filter(([sectionId]) => isValidStateKey(sectionId))
-            .slice(0, MAX_SECTION_STATES)
-            .flatMap(([sectionId, sectionState]) => {
-                const normalizedState = normalizeSectionState(sectionState);
-                return normalizedState === undefined ? [] : [[sectionId, normalizedState]];
+    const savedViews =
+        value.version === 1 ? value.sections : value.version === VIEW_ROUTE_STATE_VERSION ? value.views : undefined;
+    if (!isRecord(savedViews)) return undefined;
+
+    const views = Object.fromEntries(
+        Object.entries(savedViews)
+            .filter(([viewId]) => isValidStateKey(viewId))
+            .slice(0, MAX_VIEW_STATES)
+            .flatMap(([viewId, viewState]) => {
+                const normalizedState = normalizeViewState(viewState);
+                return normalizedState === undefined ? [] : [[viewId, normalizedState]];
             }),
     );
 
-    return Object.keys(sections).length === 0
+    return Object.keys(views).length === 0
         ? undefined
         : {
               version: VIEW_ROUTE_STATE_VERSION,
-              sections,
+              views,
           };
 };
 
-export const getViewSectionRouteState = (state: ViewRouteState | undefined, sectionId: string): ViewSectionRouteState =>
-    state?.sections[sectionId] ?? {};
+export const getViewRouteState = (state: ViewRouteState | undefined, viewId: string): ViewNavigationState =>
+    state?.views[viewId] ?? {};
 
-export const updateViewSectionRouteState = (
+export const updateViewRouteState = (
     state: ViewRouteState | undefined,
-    sectionId: string,
-    updater: ViewSectionRouteStateUpdater,
+    viewId: string,
+    updater: ViewRouteStateUpdater,
 ): ViewRouteState | undefined => {
-    if (!isValidStateKey(sectionId)) {
+    if (!isValidStateKey(viewId)) {
         return normalizeViewRouteState(state);
     }
 
     const normalizedState = normalizeViewRouteState(state);
-    const currentSectionState = getViewSectionRouteState(normalizedState, sectionId);
-    const nextSectionState = normalizeSectionState(
-        typeof updater === 'function' ? updater(currentSectionState) : updater,
-    );
-    const nextSections = Object.fromEntries(
+    const currentViewState = getViewRouteState(normalizedState, viewId);
+    const nextViewState = normalizeViewState(typeof updater === 'function' ? updater(currentViewState) : updater);
+    const nextViews = Object.fromEntries(
         Object.entries({
-            ...(normalizedState?.sections ?? {}),
-            [sectionId]: nextSectionState,
-        }).filter((entry): entry is [string, ViewSectionRouteState] => entry[1] !== undefined),
+            ...(normalizedState?.views ?? {}),
+            [viewId]: nextViewState,
+        }).filter((entry): entry is [string, ViewNavigationState] => entry[1] !== undefined),
     );
 
-    return Object.keys(nextSections).length === 0
+    return Object.keys(nextViews).length === 0
         ? undefined
         : {
               version: VIEW_ROUTE_STATE_VERSION,
-              sections: nextSections,
+              views: nextViews,
           };
 };
 
 export const buildLegacyViewNotesRouteState = (
-    sectionId: string,
+    viewId: string,
     legacyPage: number,
-    sectionPageSize: number,
+    viewPageSize: number,
 ): ViewRouteState | undefined => {
     if (!Number.isSafeInteger(legacyPage) || legacyPage <= 1) {
         return undefined;
     }
 
     const normalizedPageSize =
-        Number.isSafeInteger(sectionPageSize) && sectionPageSize > 0 ? sectionPageSize : LEGACY_VIEW_NOTES_PAGE_SIZE;
+        Number.isSafeInteger(viewPageSize) && viewPageSize > 0 ? viewPageSize : LEGACY_VIEW_NOTES_PAGE_SIZE;
     const legacyOffset = Math.min(Number.MAX_SAFE_INTEGER, (legacyPage - 1) * LEGACY_VIEW_NOTES_PAGE_SIZE);
-    const sectionPage = Math.min(MAX_PAGE, Math.floor(legacyOffset / normalizedPageSize) + 1);
+    const viewPage = Math.min(MAX_PAGE, Math.floor(legacyOffset / normalizedPageSize) + 1);
 
-    return updateViewSectionRouteState(undefined, sectionId, { page: sectionPage });
+    return updateViewRouteState(undefined, viewId, { page: viewPage });
 };

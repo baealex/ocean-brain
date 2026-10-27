@@ -1,15 +1,15 @@
 import type { NotePropertyKeySummary } from '~/apis/note.api';
 import { Button, Text } from '~/components/ui';
 import type { Note } from '~/models/note.model';
-import type { ViewSection, ViewSortBy, ViewSortOrder } from '~/models/view.model';
-import type { ViewSectionRouteState, ViewSectionRouteStateUpdater } from '~/modules/view-route-state';
-import ViewSectionBoardRenderer from './ViewSectionBoardRenderer';
-import ViewSectionCalendarRenderer from './ViewSectionCalendarRenderer';
-import ViewSectionListRenderer from './ViewSectionListRenderer';
-import ViewSectionTableRenderer from './ViewSectionTableRenderer';
+import type { View, ViewSortBy, ViewSortOrder } from '~/models/view.model';
+import type { ViewNavigationState, ViewRouteStateUpdater } from '~/modules/view-route-state';
+import ViewBoardRenderer from './ViewBoardRenderer';
+import ViewCalendarRenderer from './ViewCalendarRenderer';
+import ViewListRenderer from './ViewListRenderer';
+import ViewTableRenderer from './ViewTableRenderer';
 
-interface ViewSectionRendererProps {
-    section: ViewSection;
+interface ViewRendererProps {
+    view: View;
     notes: Note[];
     isPending: boolean;
     isError: boolean;
@@ -23,8 +23,8 @@ interface ViewSectionRendererProps {
     isPropertiesLoading?: boolean;
     isPropertiesError?: boolean;
     onRetryProperties?: () => void;
-    navigationState?: ViewSectionRouteState;
-    onNavigationStateChange?: (updater: ViewSectionRouteStateUpdater) => void;
+    navigationState?: ViewNavigationState;
+    onNavigationStateChange?: (updater: ViewRouteStateUpdater) => void;
 }
 
 const PropertyMetadataError = ({ displayName, onRetry }: { displayName: string; onRetry: () => void }) => (
@@ -43,8 +43,8 @@ const PropertyMetadataError = ({ displayName, onRetry }: { displayName: string; 
     </div>
 );
 
-export default function ViewSectionRenderer({
-    section,
+export default function ViewRenderer({
+    view,
     notes,
     isPending,
     isError,
@@ -52,19 +52,19 @@ export default function ViewSectionRenderer({
     onEdit,
     onSortChange,
     isSortPending,
-    activeSortBy = section.sortBy,
-    activeSortOrder = section.sortOrder,
+    activeSortBy = view.sortBy,
+    activeSortOrder = view.sortOrder,
     availableProperties = [],
     isPropertiesLoading = false,
     isPropertiesError = false,
     onRetryProperties = () => undefined,
     navigationState = {},
     onNavigationStateChange = () => undefined,
-}: ViewSectionRendererProps) {
-    if (section.displayType === 'board') {
+}: ViewRendererProps) {
+    if (view.displayType === 'board') {
         const groupProperty = availableProperties.find(
             (property) =>
-                property.key === section.displayOptions.boardGroupByPropertyKey && property.valueType === 'select',
+                property.key === view.displayOptions.boardGroupByPropertyKey && property.valueType === 'select',
         );
 
         if (!groupProperty && isPropertiesLoading) {
@@ -100,8 +100,8 @@ export default function ViewSectionRenderer({
         }
 
         return (
-            <ViewSectionBoardRenderer
-                section={section}
+            <ViewBoardRenderer
+                view={view}
                 groupProperty={groupProperty}
                 navigationState={navigationState}
                 onNavigationStateChange={onNavigationStateChange}
@@ -109,10 +109,10 @@ export default function ViewSectionRenderer({
         );
     }
 
-    if (section.displayType === 'table') {
+    if (view.displayType === 'table') {
         return (
-            <ViewSectionTableRenderer
-                section={section}
+            <ViewTableRenderer
+                view={view}
                 notes={notes}
                 isPending={isPending}
                 isError={isError}
@@ -126,17 +126,16 @@ export default function ViewSectionRenderer({
         );
     }
 
-    if (section.displayType === 'calendar') {
+    if (view.displayType === 'calendar') {
         const calendarDateProperty =
-            section.displayOptions.calendarDateField === 'property'
+            view.displayOptions.calendarDateField === 'property'
                 ? availableProperties.find(
                       (property) =>
-                          property.key === section.displayOptions.calendarDatePropertyKey &&
-                          property.valueType === 'date',
+                          property.key === view.displayOptions.calendarDatePropertyKey && property.valueType === 'date',
                   )
                 : undefined;
 
-        if (section.displayOptions.calendarDateField === 'property' && !calendarDateProperty) {
+        if (view.displayOptions.calendarDateField === 'property' && !calendarDateProperty) {
             if (isPropertiesLoading) {
                 return <div className="m-4 h-[320px] animate-pulse rounded-[18px] bg-subtle/50" />;
             }
@@ -163,8 +162,8 @@ export default function ViewSectionRenderer({
         }
 
         return (
-            <ViewSectionCalendarRenderer
-                section={section}
+            <ViewCalendarRenderer
+                view={view}
                 calendarDateProperty={calendarDateProperty}
                 navigationState={navigationState}
                 onNavigationStateChange={onNavigationStateChange}
@@ -172,5 +171,5 @@ export default function ViewSectionRenderer({
         );
     }
 
-    return <ViewSectionListRenderer notes={notes} isPending={isPending} isError={isError} onRetry={onRetry} />;
+    return <ViewListRenderer notes={notes} isPending={isPending} isError={isError} onRetry={onRetry} />;
 }

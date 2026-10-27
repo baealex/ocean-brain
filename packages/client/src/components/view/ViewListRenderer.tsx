@@ -7,14 +7,14 @@ import { timeSince } from '~/modules/time';
 import { NOTE_ROUTE } from '~/modules/url';
 import ViewChip from './ViewChip';
 
-interface ViewSectionListRendererProps {
+interface ViewListRendererProps {
     notes: Note[];
     isPending: boolean;
     isError: boolean;
     onRetry: () => void;
 }
 
-const sectionPreviewRowClassName =
+const viewPreviewRowClassName =
     'group flex min-h-[72px] items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-hover-subtle';
 
 const formatPropertyValue = (property: NoteProperty) => {
@@ -95,7 +95,7 @@ const renderPropertySummary = (note: Note) => {
     );
 };
 
-export default function ViewSectionListRenderer({ notes, isPending, isError, onRetry }: ViewSectionListRendererProps) {
+export default function ViewListRenderer({ notes, isPending, isError, onRetry }: ViewListRendererProps) {
     if (isPending) {
         return (
             <div className="overflow-hidden bg-transparent">
@@ -110,7 +110,7 @@ export default function ViewSectionListRenderer({ notes, isPending, isError, onR
         return (
             <div className="rounded-[16px] border border-border-subtle bg-subtle/30 p-4">
                 <Text as="p" variant="body" weight="semibold">
-                    Failed to load this section
+                    Failed to load this view
                 </Text>
                 <Text as="p" variant="meta" tone="tertiary" className="mt-1">
                     Retry to refresh this saved query.
@@ -140,7 +140,7 @@ export default function ViewSectionListRenderer({ notes, isPending, isError, onR
     return (
         <div className="divide-y divide-border-subtle/70 bg-transparent">
             {notes.map((note) => (
-                <Link key={note.id} to={NOTE_ROUTE} params={{ id: note.id }} className={sectionPreviewRowClassName}>
+                <Link key={note.id} to={NOTE_ROUTE} params={{ id: note.id }} className={viewPreviewRowClassName}>
                     <div className="min-w-0 flex-1">
                         <div className="flex min-w-0 items-center gap-2">
                             {note.pinned ? (

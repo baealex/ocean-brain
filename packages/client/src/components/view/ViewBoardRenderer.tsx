@@ -16,17 +16,17 @@ import classNames from 'classnames';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { NotePropertyKeySummary } from '~/apis/note.api';
 import { updateNoteProperties } from '~/apis/note.api';
-import { fetchViewSectionBoardColumn, type ViewBoardColumnResult, type ViewBoardNote } from '~/apis/view.api';
+import { fetchViewBoardColumn, type ViewBoardColumnResult, type ViewBoardNote } from '~/apis/view.api';
 import * as Icon from '~/components/icon';
 import { Button, Dropdown, Skeleton } from '~/components/shared';
 import { MoreButton, Text, useToast } from '~/components/ui';
 import type { NotePropertyOption } from '~/models/note.model';
-import type { ViewSection } from '~/models/view.model';
+import type { View } from '~/models/view.model';
 import { queryKeys } from '~/modules/query-key-factory';
 import { invalidateQueriesForNoteChange } from '~/modules/server-event-invalidation';
 import { timeSince } from '~/modules/time';
 import { NOTE_ROUTE } from '~/modules/url';
-import type { ViewSectionRouteState, ViewSectionRouteStateUpdater } from '~/modules/view-route-state';
+import type { ViewNavigationState, ViewRouteStateUpdater } from '~/modules/view-route-state';
 
 const UNASSIGNED_COLUMN_ID = 'view-board-column:unassigned';
 
@@ -37,11 +37,11 @@ interface BoardColumnDefinition {
     color: string | null;
 }
 
-interface ViewSectionBoardRendererProps {
-    section: ViewSection;
+interface ViewBoardRendererProps {
+    view: View;
     groupProperty: NotePropertyKeySummary;
-    navigationState?: ViewSectionRouteState;
-    onNavigationStateChange?: (updater: ViewSectionRouteStateUpdater) => void;
+    navigationState?: ViewNavigationState;
+    onNavigationStateChange?: (updater: ViewRouteStateUpdater) => void;
 }
 
 interface BoardCardProps {
@@ -53,7 +53,7 @@ interface BoardCardProps {
 }
 
 interface BoardColumnProps {
-    section: ViewSection;
+    view: View;
     groupProperty: NotePropertyKeySummary;
     column: BoardColumnDefinition;
     columns: BoardColumnDefinition[];
@@ -142,7 +142,7 @@ function BoardCard({ note, column, columns, isMoving, onMove }: BoardCardProps) 
 }
 
 function BoardColumn({
-    section,
+    view,
     groupProperty,
     column,
     columns,
@@ -190,18 +190,13 @@ function BoardColumn({
 
     const { data, isPending, isError, refetch, fetchNextPage, hasNextPage, isFetchingNextPage, isFetchNextPageError } =
         useInfiniteQuery({
-            queryKey: queryKeys.views.sectionBoardColumnPages(
-                section.id,
-                groupProperty.key,
-                column.value,
-                section.limit,
-            ),
+            queryKey: queryKeys.views.viewBoardColumnPages(view.id, groupProperty.key, column.value, view.limit),
             enabled: shouldLoad,
             initialPageParam: 0,
             async queryFn({ pageParam }) {
-                const response = await fetchViewSectionBoardColumn(section.id, {
+                const response = await fetchViewBoardColumn(view.id, {
                     optionValue: column.value,
-                    limit: section.limit,
+                    limit: view.limit,
                     offset: pageParam,
                 });
 
@@ -209,11 +204,11 @@ function BoardColumn({
                     throw response;
                 }
 
-                return response.viewSectionBoardColumn;
+                return response.viewBoardColumn;
             },
             getNextPageParam(lastPage, pages) {
                 const loadedCount = pages.reduce((count, page) => count + page.notes.length, 0);
-                return loadedCount < lastPage.totalCount ? pages.length * section.limit : undefined;
+                return loadedCount < lastPage.totalCount ? pages.length * view.limit : undefined;
             },
         });
 
@@ -246,11 +241,11 @@ function BoardColumn({
             return;
         }
 
-        const lastPageCount = Math.max(1, Math.ceil(totalCount / section.limit));
+        const lastPageCount = Math.max(1, Math.ceil(totalCount / view.limit));
         if (pageCount > lastPageCount) {
             onPageCountChange(lastPageCount);
         }
-    }, [onPageCountChange, pageCount, section.limit, totalCount]);
+    }, [onPageCountChange, pageCount, view.limit, totalCount]);
 
     const assignColumnRef = (node: HTMLElement | null) => {
         columnElementRef.current = node;
@@ -356,12 +351,12 @@ function BoardColumn({
     );
 }
 
-export default function ViewSectionBoardRenderer({
-    section,
+export default function ViewBoardRenderer({
+    view,
     groupProperty,
     navigationState = {},
     onNavigationStateChange = () => undefined,
-}: ViewSectionBoardRendererProps) {
+}: ViewBoardRendererProps) {
     const queryClient = useQueryClient();
     const toast = useToast();
     const scrollRootRef = useRef<HTMLDivElement | null>(null);
@@ -379,7 +374,7 @@ export default function ViewSectionBoardRenderer({
             }
 
             setMovingNoteIds((current) => new Set(current).add(note.id));
-            const boardQueryPrefix = queryKeys.views.sectionBoardAll(section.id);
+            const boardQueryPrefix = queryKeys.views.viewBoardAll(view.id);
             const snapshots = queryClient.getQueriesData<InfiniteData<ViewBoardColumnResult, number>>({
                 queryKey: boardQueryPrefix,
             });
@@ -399,7 +394,7 @@ export default function ViewSectionBoardRenderer({
 
                 const isSource = queryParams.optionValue === sourceValue;
                 const isDestination = queryParams.optionValue === destinationValue;
-                const pageSize = queryParams.pageSize ?? section.limit;
+                const pageSize = queryParams.pageSize ?? view.limit;
                 let nextNotes = cachedColumn.pages
                     .flatMap((page) => page.notes)
                     .filter((candidate) => candidate.id !== note.id);
@@ -468,7 +463,7 @@ export default function ViewSectionBoardRenderer({
                 });
             }
         },
-        [groupProperty.key, groupProperty.name, movingNoteIds, queryClient, section.id, section.limit, toast],
+        [groupProperty.key, groupProperty.name, movingNoteIds, queryClient, view.id, view.limit, toast],
     );
 
     const handleDragEnd = ({ active, over }: DragEndEvent) => {
@@ -487,7 +482,7 @@ export default function ViewSectionBoardRenderer({
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <div
                 ref={scrollRootRef}
-                data-scroll-restoration-id={`view-board-${section.id}`}
+                data-scroll-restoration-id={`view-board-${view.id}`}
                 className="overflow-x-auto overscroll-x-contain px-3 py-3.5 [scrollbar-gutter:stable] sm:px-4"
                 aria-label={`Board grouped by ${groupProperty.name}`}
             >
@@ -495,7 +490,7 @@ export default function ViewSectionBoardRenderer({
                     {columns.map((column, index) => (
                         <BoardColumn
                             key={column.id}
-                            section={section}
+                            view={view}
                             groupProperty={groupProperty}
                             column={column}
                             columns={columns}

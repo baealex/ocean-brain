@@ -26,10 +26,10 @@ test('MCP workflows use one HTTP request, preserve backlinks and structured resu
         sortBy: 'updatedAt',
         sortOrder: 'desc',
     };
-    const section = {
+    const view = {
         ...conditions,
         id: '3',
-        tabId: '1',
+        groupId: '1',
         title: 'Tasks',
         displayType: 'board',
         limit: 5,
@@ -79,17 +79,17 @@ test('MCP workflows use one HTTP request, preserve backlinks and structured resu
                 },
                 backReferences: [{ id: '2', title: 'Linked context' }],
             };
-        } else if (body.query?.includes('viewSections(')) {
+        } else if (body.query?.includes('views(')) {
             data = {
-                viewSections: {
+                views: {
                     totalCount: 1,
-                    sections: [{ tabTitle: 'Project', section }],
+                    views: [{ groupTitle: 'Project', view }],
                 },
             };
-        } else if (body.query?.includes('readViewSection(')) {
+        } else if (body.query?.includes('readView(')) {
             data = {
-                readViewSection: {
-                    section,
+                readView: {
+                    view,
                     totalCount: 1,
                     rows: [{ note, groupValue: null, calendarDate: null }],
                     groupProperty: { key: 'state', name: 'State', options: [] },
@@ -183,16 +183,25 @@ test('MCP workflows use one HTTP request, preserve backlinks and structured resu
             arguments: {},
         });
         assert.notEqual(list.isError, true);
-        const view = await client.callTool({
+        assert.deepEqual(list.structuredContent?.views, [{ viewId: '3', groupTitle: 'Project', view }]);
+        const readView = await client.callTool({
             name: 'ocean_brain_read_view',
-            arguments: { sectionId: '3', groupValue: null },
+            arguments: { viewId: '3', groupValue: null },
         });
-        assert.notEqual(view.isError, true);
+        assert.notEqual(readView.isError, true);
         assert.equal(requests.at(-1)?.body.variables.groupValue, null);
-        assert.deepEqual(view.structuredContent?.selection, {
+        assert.deepEqual(readView.structuredContent?.view, view);
+        assert.deepEqual(readView.structuredContent?.selection, {
             propertyKeys: [],
             groupValue: null,
         });
+        assert.equal(Object.hasOwn(readView.structuredContent ?? {}, 'section'), false);
+        const beforeInvalidViews = requests.length;
+        for (const args of [{}, { sectionId: '3' }, { viewId: '' }]) {
+            const invalidView = await client.callTool({ name: 'ocean_brain_read_view', arguments: args });
+            assert.equal(invalidView.isError, true);
+        }
+        assert.equal(requests.length, beforeInvalidViews);
         for (const status of ['failed', 'needs_disambiguation', 'applied']) {
             writeStatus = status;
             const result = await client.callTool({

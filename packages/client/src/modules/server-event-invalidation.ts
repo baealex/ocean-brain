@@ -30,15 +30,15 @@ const noteChangeInvalidations: QueryInvalidation[] = [
         exact: true,
     },
     {
-        queryKey: queryKeys.views.sectionNotesAll(),
+        queryKey: queryKeys.views.viewNotesAll(),
         exact: false,
     },
     {
-        queryKey: queryKeys.views.sectionBoardsAll(),
+        queryKey: queryKeys.views.viewBoardsAll(),
         exact: false,
     },
     {
-        queryKey: queryKeys.views.sectionCalendarsAll(),
+        queryKey: queryKeys.views.viewCalendarsAll(),
         exact: false,
     },
     {
@@ -66,15 +66,15 @@ const noteDeleteInvalidations: QueryInvalidation[] = [
         exact: false,
     },
     {
-        queryKey: queryKeys.views.sectionNotesAll(),
+        queryKey: queryKeys.views.viewNotesAll(),
         exact: false,
     },
     {
-        queryKey: queryKeys.views.sectionBoardsAll(),
+        queryKey: queryKeys.views.viewBoardsAll(),
         exact: false,
     },
     {
-        queryKey: queryKeys.views.sectionCalendarsAll(),
+        queryKey: queryKeys.views.viewCalendarsAll(),
         exact: false,
     },
     {

@@ -4,7 +4,7 @@ import { graphql } from 'graphql';
 import { createNoteFromMarkdown } from '~/features/note/services/authoring.js';
 import models from '~/models.js';
 import schema from '~/schema/index.js';
-import { createViewSection, createViewTab } from '../services/workspace.js';
+import { createView, createViewGroup } from '../services/workspace.js';
 
 test('new GraphQL contracts serialize saved columns, groups, read ranges and backlinks', async () => {
     await models.propertyDefinition.create({
@@ -27,23 +27,23 @@ test('new GraphQL contracts serialize saved columns, groups, read ranges and bac
         },
     });
     const linking = await createNoteFromMarkdown({ title: 'Backlink', markdown: `[[Target]](note:${note.id})` });
-    const tab = await createViewTab('Tasks');
-    const section = await createViewSection(tab.id, {
+    const group = await createViewGroup('Tasks');
+    const view = await createView(group.id, {
         displayType: 'table',
         displayOptions: { tablePropertyKeys: ['state'] },
         propertyFilters: [{ key: 'state', valueType: 'select', operator: 'exists' }],
     });
-    assert.ok(section);
+    assert.ok(view);
     const result = await graphql({
         schema,
-        source: `query ($id: ID!, $sectionId: ID!) {
+        source: `query ($id: ID!, $viewId: ID!) {
         notesByQuery(input: { propertyFilters: [] }) { totalCount query { tagNames mode sortBy sortOrder } notes { id properties(keys: []) { key } } }
-        viewSections(query: "Tasks") { totalCount sections { tabTitle section { id displayType } } }
-        readViewSection(id: $sectionId) { totalCount rows { note { id properties { key value } } } }
+        views(query: "Tasks") { totalCount views { groupTitle view { id displayType } } }
+        readView(id: $viewId) { totalCount rows { note { id properties { key value } } } }
         noteRead(id: $id, heading: "Result", maxLength: 0) { status markdown note { id updatedAt } contentRange { start end totalLength } }
         backReferences(id: $id) { id }
     }`,
-        variableValues: { id: note.id, sectionId: section.id },
+        variableValues: { id: note.id, viewId: view.id },
     });
     assert.equal(result.errors, undefined, JSON.stringify(result.errors));
     const data = JSON.parse(JSON.stringify(result.data));
@@ -51,8 +51,8 @@ test('new GraphQL contracts serialize saved columns, groups, read ranges and bac
         data.notesByQuery.notes.every((item: { properties: unknown[] }) => item.properties.length === 0),
         true,
     );
-    assert.equal(data.viewSections.totalCount, 1);
-    assert.deepEqual(data.readViewSection.rows[0].note.properties, [{ key: 'state', value: 'todo' }]);
+    assert.equal(data.views.totalCount, 1);
+    assert.deepEqual(data.readView.rows[0].note.properties, [{ key: 'state', value: 'todo' }]);
     assert.match(data.noteRead.markdown, /# Result\n+After/);
     assert.doesNotMatch(data.noteRead.markdown, /Before/);
     assert.deepEqual(data.backReferences, [{ id: linking.id }]);

@@ -16,67 +16,61 @@ import { useCallback, useState } from 'react';
 import { fetchAllNotePropertyKeys, type NotePropertyKeySummary } from '~/apis/note.api';
 import { fetchTags } from '~/apis/tag.api';
 import {
-    createViewSection,
-    createViewTab,
-    deleteViewSection,
-    deleteViewTab,
+    createView,
+    createViewGroup,
+    deleteView,
+    deleteViewGroup,
     fetchViewWorkspace,
-    reorderViewSections,
-    reorderViewTabs,
-    setActiveViewTab,
-    updateViewSection,
-    updateViewTab,
+    reorderViewGroups,
+    reorderViews,
+    setActiveViewGroup,
+    updateView,
+    updateViewGroup,
 } from '~/apis/view.api';
 import * as Icon from '~/components/icon';
 import { Button, Dropdown, Empty, PageLayout, Skeleton, SurfaceCard } from '~/components/shared';
 import { MoreButton, Text, useConfirm, useToast } from '~/components/ui';
-import {
-    ViewSectionCard,
-    ViewSectionDialog,
-    type ViewSectionDialogDraft,
-    ViewTabBar,
-    ViewTabDialog,
-} from '~/components/view';
+import { ViewCard, ViewDialog, type ViewDialogDraft, ViewGroupBar, ViewGroupDialog } from '~/components/view';
 import type {
+    View,
     ViewDisplayOptions,
-    ViewSection,
+    ViewGroup,
     ViewSortBy,
     ViewSortOrder,
     ViewsWorkspace,
-    ViewTab,
 } from '~/models/view.model';
 import { queryKeys } from '~/modules/query-key-factory';
 import { VIEWS_ROUTE } from '~/modules/url';
 import {
-    buildViewSectionInput,
+    buildViewInput,
     EMPTY_VIEWS_WORKSPACE,
-    getActiveViewTab,
-    moveViewSectionInWorkspace,
-    moveViewTabInWorkspace,
-    reorderViewSectionsInWorkspace,
-    reorderViewTabsInWorkspace,
-    setActiveViewTabInWorkspace,
+    getActiveViewGroup,
+    moveViewGroupInWorkspace,
+    moveViewInWorkspace,
+    reorderViewGroupsInWorkspace,
+    reorderViewsInWorkspace,
+    setActiveViewGroupInWorkspace,
     type ViewMoveDirection,
 } from '~/modules/view-dashboard';
 import {
-    getViewSectionRouteState,
-    updateViewSectionRouteState,
-    type ViewSectionRouteState,
-    type ViewSectionRouteStateUpdater,
+    getViewRouteState,
+    updateViewRouteState,
+    type ViewNavigationState,
+    type ViewRouteStateUpdater,
 } from '~/modules/view-route-state';
 
 const Route = getRouteApi(VIEWS_ROUTE);
 
-const pageDescription = 'Save reusable note queries with tags, shared properties, and sorting.';
+const pageDescription = 'Create saved views with filters and display formats, then organize them into view groups.';
 
-type ViewTabDialogState = { mode: 'create' } | { mode: 'edit'; tab: ViewTab } | null;
-type ViewSectionDialogState = { mode: 'create' } | { mode: 'edit'; section: ViewSection } | null;
+type ViewGroupDialogState = { mode: 'create' } | { mode: 'edit'; group: ViewGroup } | null;
+type ViewDialogState = { mode: 'create' } | { mode: 'edit'; view: View } | null;
 
 const dragHandleClassName =
     'focus-ring-soft hidden h-8 w-8 items-center justify-center rounded-[10px] text-fg-default/70 outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default sm:inline-flex touch-none';
 
-interface SortableViewSectionProps {
-    section: ViewSection;
+interface SortableViewProps {
+    view: View;
     availableProperties: NotePropertyKeySummary[];
     isPropertiesLoading: boolean;
     isPropertiesError: boolean;
@@ -88,12 +82,12 @@ interface SortableViewSectionProps {
     onSaveColumns: (options: ViewDisplayOptions) => Promise<boolean>;
     onMoveUp?: () => void;
     onMoveDown?: () => void;
-    navigationState: ViewSectionRouteState;
-    onNavigationStateChange: (sectionId: string, updater: ViewSectionRouteStateUpdater) => void;
+    navigationState: ViewNavigationState;
+    onNavigationStateChange: (viewId: string, updater: ViewRouteStateUpdater) => void;
 }
 
-const SortableViewSection = ({
-    section,
+const SortableView = ({
+    view,
     availableProperties,
     isPropertiesLoading,
     isPropertiesError,
@@ -107,13 +101,13 @@ const SortableViewSection = ({
     onMoveDown,
     navigationState,
     onNavigationStateChange,
-}: SortableViewSectionProps) => {
+}: SortableViewProps) => {
     const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
-        id: section.id,
+        id: view.id,
     });
     const handleNavigationStateChange = useCallback(
-        (updater: ViewSectionRouteStateUpdater) => onNavigationStateChange(section.id, updater),
-        [onNavigationStateChange, section.id],
+        (updater: ViewRouteStateUpdater) => onNavigationStateChange(view.id, updater),
+        [onNavigationStateChange, view.id],
     );
 
     return (
@@ -125,8 +119,8 @@ const SortableViewSection = ({
                 opacity: isDragging ? 0.6 : 1,
             }}
         >
-            <ViewSectionCard
-                section={section}
+            <ViewCard
+                view={view}
                 availableProperties={availableProperties}
                 isPropertiesLoading={isPropertiesLoading}
                 isPropertiesError={isPropertiesError}
@@ -144,7 +138,7 @@ const SortableViewSection = ({
                     <button
                         type="button"
                         ref={setActivatorNodeRef}
-                        aria-label={`Reorder section ${section.title}`}
+                        aria-label={`Reorder view ${view.title}`}
                         {...attributes}
                         {...listeners}
                         className={classNames(dragHandleClassName, isDragging ? 'cursor-grabbing' : 'cursor-grab')}
@@ -163,8 +157,8 @@ export default function Views() {
     const queryClient = useQueryClient();
     const search = Route.useSearch();
     const navigate = Route.useNavigate();
-    const [tabDialogState, setTabDialogState] = useState<ViewTabDialogState>(null);
-    const [sectionDialogState, setSectionDialogState] = useState<ViewSectionDialogState>(null);
+    const [groupDialogState, setGroupDialogState] = useState<ViewGroupDialogState>(null);
+    const [viewDialogState, setViewDialogState] = useState<ViewDialogState>(null);
 
     const {
         data: workspaceData,
@@ -185,8 +179,8 @@ export default function Views() {
     });
 
     const workspace = workspaceData ?? EMPTY_VIEWS_WORKSPACE;
-    const activeTab = workspace.tabs.find((tab) => tab.id === search.tab) ?? getActiveViewTab(workspace);
-    const activeTabIndex = activeTab ? workspace.tabs.findIndex((tab) => tab.id === activeTab.id) : -1;
+    const activeGroup = workspace.groups.find((group) => group.id === search.group) ?? getActiveViewGroup(workspace);
+    const activeGroupIndex = activeGroup ? workspace.groups.findIndex((group) => group.id === activeGroup.id) : -1;
 
     const { data: tagData, isPending: isTagsLoading } = useQuery({
         queryKey: queryKeys.tags.list({ limit: 200 }),
@@ -232,12 +226,12 @@ export default function Views() {
         queryClient.setQueryData(queryKeys.views.workspace(), nextWorkspace);
     };
 
-    const handleSectionNavigationStateChange = useCallback(
-        (sectionId: string, updater: ViewSectionRouteStateUpdater) => {
+    const handleViewNavigationStateChange = useCallback(
+        (viewId: string, updater: ViewRouteStateUpdater) => {
             void navigate({
                 search: (current) => ({
                     ...current,
-                    state: updateViewSectionRouteState(current.state, sectionId, updater),
+                    state: updateViewRouteState(current.state, viewId, updater),
                 }),
                 replace: true,
                 resetScroll: false,
@@ -253,10 +247,10 @@ export default function Views() {
         });
     };
 
-    const persistTabOrder = async (previousWorkspace: ViewsWorkspace, nextWorkspace: ViewsWorkspace) => {
+    const persistGroupOrder = async (previousWorkspace: ViewsWorkspace, nextWorkspace: ViewsWorkspace) => {
         syncWorkspace(nextWorkspace);
 
-        const response = await reorderViewTabs(nextWorkspace.tabs.map((tab) => tab.id));
+        const response = await reorderViewGroups(nextWorkspace.groups.map((group) => group.id));
 
         if (response.type === 'error') {
             syncWorkspace(previousWorkspace);
@@ -267,41 +261,41 @@ export default function Views() {
         await invalidateViews();
     };
 
-    const handleTabDragEnd = async ({ active, over }: DragEndEvent) => {
+    const handleGroupDragEnd = async ({ active, over }: DragEndEvent) => {
         if (!over || active.id === over.id) {
             return;
         }
 
         const previousWorkspace = queryClient.getQueryData<ViewsWorkspace>(queryKeys.views.workspace()) ?? workspace;
-        const nextWorkspace = reorderViewTabsInWorkspace(previousWorkspace, String(active.id), String(over.id));
-        await persistTabOrder(previousWorkspace, nextWorkspace);
+        const nextWorkspace = reorderViewGroupsInWorkspace(previousWorkspace, String(active.id), String(over.id));
+        await persistGroupOrder(previousWorkspace, nextWorkspace);
     };
 
-    const handleMoveActiveTab = async (direction: ViewMoveDirection) => {
-        if (!activeTab) {
+    const handleMoveActiveGroup = async (direction: ViewMoveDirection) => {
+        if (!activeGroup) {
             return;
         }
 
         const previousWorkspace = queryClient.getQueryData<ViewsWorkspace>(queryKeys.views.workspace()) ?? workspace;
-        const nextWorkspace = moveViewTabInWorkspace(previousWorkspace, activeTab.id, direction);
+        const nextWorkspace = moveViewGroupInWorkspace(previousWorkspace, activeGroup.id, direction);
 
         if (nextWorkspace !== previousWorkspace) {
-            await persistTabOrder(previousWorkspace, nextWorkspace);
+            await persistGroupOrder(previousWorkspace, nextWorkspace);
         }
     };
 
-    const handleSelectTab = async (tab: ViewTab) => {
+    const handleSelectGroup = async (group: ViewGroup) => {
         const previousWorkspace = queryClient.getQueryData<ViewsWorkspace>(queryKeys.views.workspace()) ?? workspace;
         const previousSearch = search;
-        const nextWorkspace = setActiveViewTabInWorkspace(previousWorkspace, tab.id);
+        const nextWorkspace = setActiveViewGroupInWorkspace(previousWorkspace, group.id);
 
         syncWorkspace(nextWorkspace);
         await navigate({
-            search: { tab: tab.id, state: undefined },
+            search: { group: group.id, state: undefined },
             resetScroll: false,
         });
 
-        const response = await setActiveViewTab(tab.id);
+        const response = await setActiveViewGroup(group.id);
 
         if (response.type === 'error') {
             syncWorkspace(previousWorkspace);
@@ -310,19 +304,19 @@ export default function Views() {
             return;
         }
 
-        syncWorkspace(response.setActiveViewTab);
+        syncWorkspace(response.setActiveViewGroup);
     };
 
-    const persistSectionOrder = async (previousWorkspace: ViewsWorkspace, nextWorkspace: ViewsWorkspace) => {
-        if (!activeTab) {
+    const persistViewOrder = async (previousWorkspace: ViewsWorkspace, nextWorkspace: ViewsWorkspace) => {
+        if (!activeGroup) {
             return;
         }
 
         syncWorkspace(nextWorkspace);
 
-        const response = await reorderViewSections(
-            activeTab.id,
-            nextWorkspace.tabs.find((tab) => tab.id === activeTab.id)?.sections.map((section) => section.id) ?? [],
+        const response = await reorderViews(
+            activeGroup.id,
+            nextWorkspace.groups.find((group) => group.id === activeGroup.id)?.views.map((view) => view.id) ?? [],
         );
 
         if (response.type === 'error') {
@@ -334,63 +328,63 @@ export default function Views() {
         await invalidateViews();
     };
 
-    const handleSectionDragEnd = async ({ active, over }: DragEndEvent) => {
-        if (!activeTab || !over || active.id === over.id) {
+    const handleViewDragEnd = async ({ active, over }: DragEndEvent) => {
+        if (!activeGroup || !over || active.id === over.id) {
             return;
         }
 
         const previousWorkspace = queryClient.getQueryData<ViewsWorkspace>(queryKeys.views.workspace()) ?? workspace;
-        const nextWorkspace = reorderViewSectionsInWorkspace(
+        const nextWorkspace = reorderViewsInWorkspace(
             previousWorkspace,
-            activeTab.id,
+            activeGroup.id,
             String(active.id),
             String(over.id),
         );
-        await persistSectionOrder(previousWorkspace, nextWorkspace);
+        await persistViewOrder(previousWorkspace, nextWorkspace);
     };
 
-    const handleMoveSection = async (sectionId: string, direction: ViewMoveDirection) => {
-        if (!activeTab) {
+    const handleMoveView = async (viewId: string, direction: ViewMoveDirection) => {
+        if (!activeGroup) {
             return;
         }
 
         const previousWorkspace = queryClient.getQueryData<ViewsWorkspace>(queryKeys.views.workspace()) ?? workspace;
-        const nextWorkspace = moveViewSectionInWorkspace(previousWorkspace, activeTab.id, sectionId, direction);
+        const nextWorkspace = moveViewInWorkspace(previousWorkspace, activeGroup.id, viewId, direction);
 
         if (nextWorkspace !== previousWorkspace) {
-            await persistSectionOrder(previousWorkspace, nextWorkspace);
+            await persistViewOrder(previousWorkspace, nextWorkspace);
         }
     };
 
-    const handleCreateTab = async (title: string) => {
-        const response = await createViewTab(title);
+    const handleCreateGroup = async (title: string) => {
+        const response = await createViewGroup(title);
 
         if (response.type === 'error') {
             toast(response.errors[0].message);
             return;
         }
 
-        const activeTabResponse = await setActiveViewTab(response.createViewTab.id);
-        if (activeTabResponse.type === 'success') {
-            syncWorkspace(activeTabResponse.setActiveViewTab);
+        const activeGroupResponse = await setActiveViewGroup(response.createViewGroup.id);
+        if (activeGroupResponse.type === 'success') {
+            syncWorkspace(activeGroupResponse.setActiveViewGroup);
         } else {
-            toast(activeTabResponse.errors[0].message);
+            toast(activeGroupResponse.errors[0].message);
         }
 
         await invalidateViews();
         await navigate({
-            search: { tab: response.createViewTab.id, state: undefined },
+            search: { group: response.createViewGroup.id, state: undefined },
             resetScroll: false,
         });
-        setTabDialogState(null);
+        setGroupDialogState(null);
     };
 
-    const handleUpdateTab = async (title: string) => {
-        if (!activeTab) {
+    const handleUpdateGroup = async (title: string) => {
+        if (!activeGroup) {
             return;
         }
 
-        const response = await updateViewTab(activeTab.id, title);
+        const response = await updateViewGroup(activeGroup.id, title);
 
         if (response.type === 'error') {
             toast(response.errors[0].message);
@@ -398,19 +392,19 @@ export default function Views() {
         }
 
         await invalidateViews();
-        setTabDialogState(null);
+        setGroupDialogState(null);
     };
 
-    const handleDeleteActiveTab = async () => {
-        if (!activeTab) {
+    const handleDeleteActiveGroup = async () => {
+        if (!activeGroup) {
             return;
         }
 
-        if (!(await confirm('Delete this view tab and all of its sections?'))) {
+        if (!(await confirm('Delete this view group and all of its views?'))) {
             return;
         }
 
-        const response = await deleteViewTab(activeTab.id);
+        const response = await deleteViewGroup(activeGroup.id);
 
         if (response.type === 'error') {
             toast(response.errors[0].message);
@@ -418,15 +412,15 @@ export default function Views() {
         }
 
         await invalidateViews();
-        await navigate({ search: { tab: undefined, state: undefined }, replace: true, resetScroll: false });
+        await navigate({ search: { group: undefined, state: undefined }, replace: true, resetScroll: false });
     };
 
-    const handleCreateSection = async (draft: ViewSectionDialogDraft) => {
-        if (!activeTab) {
+    const handleCreateView = async (draft: ViewDialogDraft) => {
+        if (!activeGroup) {
             return;
         }
 
-        const response = await createViewSection(activeTab.id, draft);
+        const response = await createView(activeGroup.id, draft);
 
         if (response.type === 'error') {
             toast(response.errors[0].message);
@@ -434,29 +428,29 @@ export default function Views() {
         }
 
         await invalidateViews();
-        setSectionDialogState(null);
+        setViewDialogState(null);
     };
 
-    const handleUpdateSection = async (draft: ViewSectionDialogDraft) => {
-        if (!activeTab || !sectionDialogState || sectionDialogState.mode !== 'edit') {
+    const handleUpdateView = async (draft: ViewDialogDraft) => {
+        if (!activeGroup || !viewDialogState || viewDialogState.mode !== 'edit') {
             return;
         }
 
-        const response = await updateViewSection(sectionDialogState.section.id, draft);
+        const response = await updateView(viewDialogState.view.id, draft);
 
         if (response.type === 'error') {
             toast(response.errors[0].message);
             return;
         }
 
-        handleSectionNavigationStateChange(sectionDialogState.section.id, {});
+        handleViewNavigationStateChange(viewDialogState.view.id, {});
         await invalidateViews();
-        setSectionDialogState(null);
+        setViewDialogState(null);
     };
 
-    const handleSaveSectionSort = async (section: ViewSection, sortBy: ViewSortBy, sortOrder: ViewSortOrder) => {
+    const handleSaveViewSort = async (view: View, sortBy: ViewSortBy, sortOrder: ViewSortOrder) => {
         try {
-            const response = await updateViewSection(section.id, buildViewSectionInput(section, { sortBy, sortOrder }));
+            const response = await updateView(view.id, buildViewInput(view, { sortBy, sortOrder }));
 
             if (response.type === 'error') {
                 toast(response.errors[0]?.message ?? 'Failed to save the default sort.');
@@ -467,16 +461,16 @@ export default function Views() {
                 current
                     ? {
                           ...current,
-                          tabs: current.tabs.map((tab) => ({
-                              ...tab,
-                              sections: tab.sections.map((candidate) =>
-                                  candidate.id === section.id ? { ...candidate, sortBy, sortOrder } : candidate,
+                          groups: current.groups.map((group) => ({
+                              ...group,
+                              views: group.views.map((candidate) =>
+                                  candidate.id === view.id ? { ...candidate, sortBy, sortOrder } : candidate,
                               ),
                           })),
                       }
                     : current,
             );
-            handleSectionNavigationStateChange(section.id, (current) =>
+            handleViewNavigationStateChange(view.id, (current) =>
                 current.sort?.by === sortBy && current.sort.order === sortOrder
                     ? { ...current, sort: undefined }
                     : current,
@@ -487,9 +481,9 @@ export default function Views() {
         }
     };
 
-    const handleSaveSectionColumns = async (section: ViewSection, displayOptions: ViewDisplayOptions) => {
+    const handleSaveViewColumns = async (view: View, displayOptions: ViewDisplayOptions) => {
         try {
-            const response = await updateViewSection(section.id, buildViewSectionInput(section, { displayOptions }));
+            const response = await updateView(view.id, buildViewInput(view, { displayOptions }));
             if (response.type === 'error') {
                 toast(response.errors[0]?.message ?? 'Failed to save the table columns.');
                 return false;
@@ -502,10 +496,10 @@ export default function Views() {
         }
     };
 
-    const handleDuplicateSection = async (section: ViewSection) => {
-        const response = await createViewSection(section.tabId, {
-            ...buildViewSectionInput(section),
-            title: `${section.title} copy`,
+    const handleDuplicateView = async (view: View) => {
+        const response = await createView(view.groupId, {
+            ...buildViewInput(view),
+            title: `${view.title} copy`,
         });
 
         if (response.type === 'error') {
@@ -514,26 +508,26 @@ export default function Views() {
         }
 
         await invalidateViews();
-        toast('Section duplicated.');
+        toast('View duplicated.');
     };
 
-    const handleDeleteSection = async (sectionId: string) => {
-        if (!activeTab) {
+    const handleDeleteView = async (viewId: string) => {
+        if (!activeGroup) {
             return;
         }
 
-        if (!(await confirm('Delete this section from the current view tab?'))) {
+        if (!(await confirm('Delete this view from the current group?'))) {
             return;
         }
 
-        const response = await deleteViewSection(sectionId);
+        const response = await deleteView(viewId);
 
         if (response.type === 'error') {
             toast(response.errors[0].message);
             return;
         }
 
-        handleSectionNavigationStateChange(sectionId, {});
+        handleViewNavigationStateChange(viewId, {});
         await invalidateViews();
     };
 
@@ -554,7 +548,7 @@ export default function Views() {
                             Failed to load saved views
                         </Text>
                         <Text as="p" variant="meta" tone="tertiary" className="mt-1">
-                            Retry loading your saved view tabs.
+                            Retry loading your view groups.
                         </Text>
                         <div className="mt-4">
                             <Button type="button" variant="ghost" size="sm" onClick={() => void refetchWorkspace()}>
@@ -562,90 +556,94 @@ export default function Views() {
                             </Button>
                         </div>
                     </SurfaceCard>
-                ) : workspace.tabs.length === 0 ? (
+                ) : workspace.groups.length === 0 ? (
                     <div className="flex flex-col gap-4">
                         <Empty
-                            title="Create your first view tab"
-                            description="Start with a saved view tab, then add sections that query notes by tags, properties, or both."
+                            title="Create your first view group"
+                            description="Create a group, then add views that filter notes by tags, properties, or both."
                             className="h-[320px]"
                         />
                         <div className="flex justify-center">
-                            <Button type="button" onClick={() => setTabDialogState({ mode: 'create' })}>
+                            <Button type="button" onClick={() => setGroupDialogState({ mode: 'create' })}>
                                 <Icon.Plus className="h-4 w-4" />
-                                Create first tab
+                                Create first group
                             </Button>
                         </div>
                     </div>
                 ) : (
                     <div className="flex flex-col gap-5">
-                        <ViewTabBar
-                            tabs={workspace.tabs}
-                            activeTabId={activeTab?.id ?? null}
-                            onSelectTab={handleSelectTab}
-                            onReorderTabs={handleTabDragEnd}
-                            onCreateTab={() => setTabDialogState({ mode: 'create' })}
+                        <ViewGroupBar
+                            groups={workspace.groups}
+                            activeGroupId={activeGroup?.id ?? null}
+                            onSelectGroup={handleSelectGroup}
+                            onReorderGroups={handleGroupDragEnd}
+                            onCreateGroup={() => setGroupDialogState({ mode: 'create' })}
                         />
 
-                        {activeTab && (
+                        {activeGroup && (
                             <div className="flex flex-col gap-5">
                                 <div className="flex flex-col gap-3 border-b border-border-subtle/80 px-1 pb-4 sm:flex-row sm:items-center sm:justify-between">
                                     <div className="min-w-0">
                                         <Text as="h2" variant="subheading" weight="semibold" tracking="tight" truncate>
-                                            {activeTab.title}
+                                            {activeGroup.title}
                                         </Text>
                                         <Text as="p" variant="meta" tone="tertiary" className="mt-1">
-                                            {activeTab.sections.length > 0
-                                                ? `${activeTab.sections.length} section${activeTab.sections.length === 1 ? '' : 's'} in this view`
-                                                : 'Add sections to build this view'}
+                                            {activeGroup.views.length > 0
+                                                ? `${activeGroup.views.length} view${activeGroup.views.length === 1 ? '' : 's'} in this group`
+                                                : 'Add views to this group'}
                                         </Text>
                                     </div>
                                     <div className="inline-flex flex-wrap items-center gap-2 self-start sm:self-center">
                                         <Button
                                             type="button"
                                             size="sm"
-                                            onClick={() => setSectionDialogState({ mode: 'create' })}
+                                            onClick={() => setViewDialogState({ mode: 'create' })}
                                         >
                                             <Icon.Plus className="h-4 w-4" />
-                                            Add section
+                                            Add view
                                         </Button>
                                         <Dropdown
-                                            button={<MoreButton label="View tab actions" />}
+                                            button={<MoreButton label="View group actions" />}
                                             items={[
-                                                ...(activeTabIndex > 0
+                                                ...(activeGroupIndex > 0
                                                     ? [
                                                           {
-                                                              name: 'Move tab left',
-                                                              onClick: () => void handleMoveActiveTab('previous'),
+                                                              name: 'Move group left',
+                                                              onClick: () => void handleMoveActiveGroup('previous'),
                                                           },
                                                       ]
                                                     : []),
-                                                ...(activeTabIndex >= 0 && activeTabIndex < workspace.tabs.length - 1
+                                                ...(activeGroupIndex >= 0 &&
+                                                activeGroupIndex < workspace.groups.length - 1
                                                     ? [
                                                           {
-                                                              name: 'Move tab right',
-                                                              onClick: () => void handleMoveActiveTab('next'),
+                                                              name: 'Move group right',
+                                                              onClick: () => void handleMoveActiveGroup('next'),
                                                           },
                                                       ]
                                                     : []),
-                                                ...(workspace.tabs.length > 1 ? [{ type: 'separator' as const }] : []),
+                                                ...(workspace.groups.length > 1
+                                                    ? [{ type: 'separator' as const }]
+                                                    : []),
                                                 {
-                                                    name: 'Rename tab',
-                                                    onClick: () => setTabDialogState({ mode: 'edit', tab: activeTab }),
+                                                    name: 'Rename group',
+                                                    onClick: () =>
+                                                        setGroupDialogState({ mode: 'edit', group: activeGroup }),
                                                 },
                                                 { type: 'separator' },
                                                 {
-                                                    name: 'Delete tab',
-                                                    onClick: () => void handleDeleteActiveTab(),
+                                                    name: 'Delete group',
+                                                    onClick: () => void handleDeleteActiveGroup(),
                                                 },
                                             ]}
                                         />
                                     </div>
                                 </div>
 
-                                {activeTab.sections.length === 0 ? (
+                                {activeGroup.views.length === 0 ? (
                                     <Empty
-                                        title="Add the first section to this tab"
-                                        description="Sections can pull notes by tags, properties, or both."
+                                        title="Add the first view to this group"
+                                        description="Views filter notes by tags, properties, or both."
                                         className="h-[300px]"
                                     />
                                 ) : (
@@ -654,46 +652,40 @@ export default function Views() {
                                             sensors={sensors}
                                             collisionDetection={closestCenter}
                                             modifiers={[restrictToVerticalAxis]}
-                                            onDragEnd={handleSectionDragEnd}
+                                            onDragEnd={handleViewDragEnd}
                                         >
                                             <SortableContext
-                                                items={activeTab.sections.map((section) => section.id)}
+                                                items={activeGroup.views.map((view) => view.id)}
                                                 strategy={verticalListSortingStrategy}
                                             >
                                                 <div className="flex flex-col gap-4">
-                                                    {activeTab.sections.map((section, index) => (
-                                                        <SortableViewSection
-                                                            key={section.id}
-                                                            section={section}
+                                                    {activeGroup.views.map((view, index) => (
+                                                        <SortableView
+                                                            key={view.id}
+                                                            view={view}
                                                             availableProperties={availableProperties}
                                                             isPropertiesLoading={isPropertiesLoading}
                                                             isPropertiesError={isPropertiesError}
                                                             onRetryProperties={() => void refetchProperties()}
-                                                            navigationState={getViewSectionRouteState(
-                                                                search.state,
-                                                                section.id,
-                                                            )}
-                                                            onNavigationStateChange={handleSectionNavigationStateChange}
-                                                            onEdit={() =>
-                                                                setSectionDialogState({ mode: 'edit', section })
-                                                            }
-                                                            onDuplicate={() => void handleDuplicateSection(section)}
-                                                            onDelete={() => void handleDeleteSection(section.id)}
+                                                            navigationState={getViewRouteState(search.state, view.id)}
+                                                            onNavigationStateChange={handleViewNavigationStateChange}
+                                                            onEdit={() => setViewDialogState({ mode: 'edit', view })}
+                                                            onDuplicate={() => void handleDuplicateView(view)}
+                                                            onDelete={() => void handleDeleteView(view.id)}
                                                             onSaveSort={(sortBy, sortOrder) =>
-                                                                handleSaveSectionSort(section, sortBy, sortOrder)
+                                                                handleSaveViewSort(view, sortBy, sortOrder)
                                                             }
                                                             onSaveColumns={(options) =>
-                                                                handleSaveSectionColumns(section, options)
+                                                                handleSaveViewColumns(view, options)
                                                             }
                                                             onMoveUp={
                                                                 index > 0
-                                                                    ? () =>
-                                                                          void handleMoveSection(section.id, 'previous')
+                                                                    ? () => void handleMoveView(view.id, 'previous')
                                                                     : undefined
                                                             }
                                                             onMoveDown={
-                                                                index < activeTab.sections.length - 1
-                                                                    ? () => void handleMoveSection(section.id, 'next')
+                                                                index < activeGroup.views.length - 1
+                                                                    ? () => void handleMoveView(view.id, 'next')
                                                                     : undefined
                                                             }
                                                         />
@@ -709,37 +701,37 @@ export default function Views() {
                 )}
             </PageLayout>
 
-            <ViewTabDialog
-                open={tabDialogState !== null}
-                mode={tabDialogState?.mode ?? 'create'}
-                initialTitle={tabDialogState?.mode === 'edit' ? tabDialogState.tab.title : ''}
-                onClose={() => setTabDialogState(null)}
+            <ViewGroupDialog
+                open={groupDialogState !== null}
+                mode={groupDialogState?.mode ?? 'create'}
+                initialTitle={groupDialogState?.mode === 'edit' ? groupDialogState.group.title : ''}
+                onClose={() => setGroupDialogState(null)}
                 onSubmit={(title) => {
-                    if (tabDialogState?.mode === 'edit') {
-                        handleUpdateTab(title);
+                    if (groupDialogState?.mode === 'edit') {
+                        handleUpdateGroup(title);
                         return;
                     }
 
-                    handleCreateTab(title);
+                    handleCreateGroup(title);
                 }}
             />
 
-            <ViewSectionDialog
-                open={sectionDialogState !== null}
-                mode={sectionDialogState?.mode ?? 'create'}
-                initialSection={sectionDialogState?.mode === 'edit' ? sectionDialogState.section : null}
+            <ViewDialog
+                open={viewDialogState !== null}
+                mode={viewDialogState?.mode ?? 'create'}
+                initialView={viewDialogState?.mode === 'edit' ? viewDialogState.view : null}
                 availableTags={availableTags}
                 availableProperties={availableProperties}
                 isTagsLoading={isTagsLoading}
                 isPropertiesLoading={isPropertiesLoading}
-                onClose={() => setSectionDialogState(null)}
+                onClose={() => setViewDialogState(null)}
                 onSubmit={(draft) => {
-                    if (sectionDialogState?.mode === 'edit') {
-                        handleUpdateSection(draft);
+                    if (viewDialogState?.mode === 'edit') {
+                        handleUpdateView(draft);
                         return;
                     }
 
-                    handleCreateSection(draft);
+                    handleCreateView(draft);
                 }}
             />
         </>

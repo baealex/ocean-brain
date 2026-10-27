@@ -178,6 +178,37 @@ test('external integration API enforces grants, keeps browser/admin APIs private
     );
 });
 
+test('native MCP rejects the previous contract on common and legacy URLs', async (t) => {
+    const app = createApp(openAuth, { logger: false });
+    t.after(() => app.close());
+    const service = createIntegrationService();
+    await service.update('mcp', { enabled: true, grantedPermissions: ['notes:read', 'notes:create'] });
+    const { token } = await service.rotateToken('mcp');
+    const headers = {
+        authorization: `Bearer ${token}`,
+        [OCEAN_BRAIN_MCP_COMPATIBILITY_VERSION_HEADER]: '0.14.0',
+    };
+
+    for (const url of [
+        '/api/integrations/v1/graphql',
+        '/graphql/mcp',
+        '/api/integrations/v1/notes/create',
+        '/api/mcp/notes/create',
+    ]) {
+        const response = await app.inject({
+            method: 'POST',
+            url,
+            headers,
+            payload: { query: '{ viewSections { totalCount } }' },
+        });
+
+        assert.equal(response.statusCode, 426, url);
+        assert.equal(response.json().code, 'MCP_VERSION_INCOMPATIBLE');
+        assert.equal(response.json().requiredMcpCompatibilityVersion, '0.17.x');
+        assert.match(response.json().message, /Please update Ocean Brain MCP/);
+    }
+});
+
 test('native MCP uses the same grants on common and legacy URLs', async (t) => {
     const app = createApp(openAuth, { logger: false });
     t.after(() => app.close());

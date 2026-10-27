@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { useMemo, useState } from 'react';
 import type { NotePropertyKeySummary } from '~/apis/note.api';
-import { fetchViewSectionCalendarNotes, type ViewCalendarNote } from '~/apis/view.api';
+import { fetchViewCalendarNotes, type ViewCalendarNote } from '~/apis/view.api';
 import {
     CalendarDayView,
     CalendarEntryCard,
@@ -18,9 +18,9 @@ import {
 } from '~/components/calendar/calendar-data';
 import * as Icon from '~/components/icon';
 import { Button, Modal, Text } from '~/components/ui';
-import type { ViewSection } from '~/models/view.model';
+import type { View } from '~/models/view.model';
 import { queryKeys } from '~/modules/query-key-factory';
-import type { ViewSectionRouteState, ViewSectionRouteStateUpdater } from '~/modules/view-route-state';
+import type { ViewNavigationState, ViewRouteStateUpdater } from '~/modules/view-route-state';
 
 const MAX_PREVIEW_NOTES = 2;
 
@@ -28,19 +28,19 @@ interface ViewCalendarDay extends CalendarGridDay {
     notes: ViewCalendarNote[];
 }
 
-interface ViewSectionCalendarRendererProps {
-    section: ViewSection;
+interface ViewCalendarRendererProps {
+    view: View;
     calendarDateProperty?: NotePropertyKeySummary;
-    navigationState: ViewSectionRouteState;
-    onNavigationStateChange: (updater: ViewSectionRouteStateUpdater) => void;
+    navigationState: ViewNavigationState;
+    onNavigationStateChange: (updater: ViewRouteStateUpdater) => void;
 }
 
-const getDateFieldLabel = (section: ViewSection, calendarDateProperty?: NotePropertyKeySummary) => {
-    if (section.displayOptions.calendarDateField === 'property') {
-        return calendarDateProperty?.name ?? section.displayOptions.calendarDatePropertyKey ?? 'Date property';
+const getDateFieldLabel = (view: View, calendarDateProperty?: NotePropertyKeySummary) => {
+    if (view.displayOptions.calendarDateField === 'property') {
+        return calendarDateProperty?.name ?? view.displayOptions.calendarDatePropertyKey ?? 'Date property';
     }
 
-    return section.displayOptions.calendarDateField === 'updatedAt' ? 'Updated date' : 'Created date';
+    return view.displayOptions.calendarDateField === 'updatedAt' ? 'Updated date' : 'Created date';
 };
 
 const getDateOnlyDayKey = (value: string) => {
@@ -97,37 +97,37 @@ const getDayNumberClassName = (day: ViewCalendarDay) => {
     return day.isSunday ? 'font-semibold text-fg-weekend' : 'font-semibold text-fg-secondary';
 };
 
-export default function ViewSectionCalendarRenderer({
-    section,
+export default function ViewCalendarRenderer({
+    view,
     calendarDateProperty,
     navigationState,
     onNavigationStateChange,
-}: ViewSectionCalendarRendererProps) {
+}: ViewCalendarRendererProps) {
     const today = dayjs();
     const year = navigationState.calendar?.year ?? today.year();
     const month = navigationState.calendar?.month ?? today.month() + 1;
     const monthLabel = dayjs(new Date(year, month - 1, 1)).format('MMMM YYYY');
-    const dateField = section.displayOptions.calendarDateField;
+    const dateField = view.displayOptions.calendarDateField;
     const isDateProperty = dateField === 'property';
-    const dateFieldLabel = getDateFieldLabel(section, calendarDateProperty);
+    const dateFieldLabel = getDateFieldLabel(view, calendarDateProperty);
     const dateRange = isDateProperty ? getCalendarDateOnlyMonthRange(year, month) : getCalendarMonthRange(year, month);
     const [selectedDayKey, setSelectedDayKey] = useState<string>();
 
     const { data, isPending, isError, refetch } = useQuery({
-        queryKey: queryKeys.views.sectionCalendar(section.id, {
+        queryKey: queryKeys.views.viewCalendar(view.id, {
             year,
             month,
             dateField,
-            propertyKey: section.displayOptions.calendarDatePropertyKey,
+            propertyKey: view.displayOptions.calendarDatePropertyKey,
         }),
         async queryFn() {
-            const response = await fetchViewSectionCalendarNotes(section.id, dateRange);
+            const response = await fetchViewCalendarNotes(view.id, dateRange);
 
             if (response.type === 'error') {
                 throw response;
             }
 
-            return response.viewSectionCalendarNotes;
+            return response.viewCalendarNotes;
         },
     });
 

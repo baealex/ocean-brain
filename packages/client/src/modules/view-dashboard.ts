@@ -1,26 +1,26 @@
 import type {
+    View,
     ViewCalendarDateField,
     ViewDisplayOptions,
     ViewDisplayType,
+    ViewGroup,
     ViewPropertyFilter,
     ViewPropertyFilterOperator,
-    ViewSection,
     ViewsWorkspace,
-    ViewTab,
     ViewTableColumn,
-    ViewTagMatchMode,
+    ViewTagFilterMatchMode,
 } from '~/models/view.model';
 
-export const DEFAULT_VIEW_SECTION_LIMIT = 5;
-export const MIN_VIEW_SECTION_LIMIT = 1;
-export const MAX_VIEW_SECTION_LIMIT = 20;
+export const DEFAULT_VIEW_LIMIT = 5;
+export const MIN_VIEW_LIMIT = 1;
+export const MAX_VIEW_LIMIT = 20;
 export const MAX_VIEW_TABLE_PROPERTY_COLUMNS = 6;
 export const DEFAULT_VIEW_TABLE_COLUMNS: ViewTableColumn[] = ['title', 'tags', 'properties', 'createdAt', 'updatedAt'];
 export const DEFAULT_VIEW_CALENDAR_DATE_FIELD: ViewCalendarDateField = 'createdAt';
 
 export const EMPTY_VIEWS_WORKSPACE: ViewsWorkspace = {
-    activeTabId: null,
-    tabs: [],
+    activeGroupId: null,
+    groups: [],
 };
 
 const normalizeTagName = (value: string) => {
@@ -72,7 +72,7 @@ const getAdjacentItemId = <TValue extends { id: string }>(
     return currentIndex >= 0 && nextIndex >= 0 && nextIndex < items.length ? items[nextIndex]?.id : undefined;
 };
 
-export const normalizeViewTagNames = (values: unknown[]) => {
+export const normalizeViewTagFilterNames = (values: unknown[]) => {
     const normalizedTagNames = values.flatMap((value) => {
         if (typeof value === 'string') {
             return value.split(',');
@@ -84,82 +84,80 @@ export const normalizeViewTagNames = (values: unknown[]) => {
     return Array.from(new Set(normalizedTagNames.map(normalizeTagName).filter(Boolean)));
 };
 
-export const getActiveViewTab = (workspace: ViewsWorkspace): ViewTab | null => {
-    if (workspace.tabs.length === 0) {
+export const getActiveViewGroup = (workspace: ViewsWorkspace): ViewGroup | null => {
+    if (workspace.groups.length === 0) {
         return null;
     }
 
-    if (!workspace.activeTabId) {
-        return workspace.tabs[0] ?? null;
+    if (!workspace.activeGroupId) {
+        return workspace.groups[0] ?? null;
     }
 
-    return workspace.tabs.find((tab) => tab.id === workspace.activeTabId) ?? workspace.tabs[0] ?? null;
+    return workspace.groups.find((group) => group.id === workspace.activeGroupId) ?? workspace.groups[0] ?? null;
 };
 
-export const setActiveViewTabInWorkspace = (workspace: ViewsWorkspace, tabId: string): ViewsWorkspace => {
-    if (!workspace.tabs.some((tab) => tab.id === tabId)) {
+export const setActiveViewGroupInWorkspace = (workspace: ViewsWorkspace, groupId: string): ViewsWorkspace => {
+    if (!workspace.groups.some((group) => group.id === groupId)) {
         return workspace;
     }
 
     return {
         ...workspace,
-        activeTabId: tabId,
+        activeGroupId: groupId,
     };
 };
 
-export const reorderViewTabsInWorkspace = (
+export const reorderViewGroupsInWorkspace = (
     workspace: ViewsWorkspace,
-    activeTabId: string,
-    overTabId: string,
+    activeGroupId: string,
+    overGroupId: string,
 ): ViewsWorkspace => ({
     ...workspace,
-    tabs: reorderArrayItems(workspace.tabs, activeTabId, overTabId),
+    groups: reorderArrayItems(workspace.groups, activeGroupId, overGroupId),
 });
 
-export const reorderViewSectionsInWorkspace = (
+export const reorderViewsInWorkspace = (
     workspace: ViewsWorkspace,
-    tabId: string,
-    activeSectionId: string,
-    overSectionId: string,
+    groupId: string,
+    activeViewId: string,
+    overViewId: string,
 ): ViewsWorkspace => ({
     ...workspace,
-    tabs: workspace.tabs.map((tab) =>
-        tab.id === tabId
+    groups: workspace.groups.map((group) =>
+        group.id === groupId
             ? {
-                  ...tab,
-                  sections: reorderArrayItems(tab.sections, activeSectionId, overSectionId),
+                  ...group,
+                  views: reorderArrayItems(group.views, activeViewId, overViewId),
               }
-            : tab,
+            : group,
     ),
 });
 
-export const moveViewTabInWorkspace = (
+export const moveViewGroupInWorkspace = (
     workspace: ViewsWorkspace,
-    tabId: string,
+    groupId: string,
     direction: ViewMoveDirection,
 ): ViewsWorkspace => {
-    const adjacentTabId = getAdjacentItemId(workspace.tabs, tabId, direction);
-    return adjacentTabId ? reorderViewTabsInWorkspace(workspace, tabId, adjacentTabId) : workspace;
+    const adjacentGroupId = getAdjacentItemId(workspace.groups, groupId, direction);
+    return adjacentGroupId ? reorderViewGroupsInWorkspace(workspace, groupId, adjacentGroupId) : workspace;
 };
 
-export const moveViewSectionInWorkspace = (
+export const moveViewInWorkspace = (
     workspace: ViewsWorkspace,
-    tabId: string,
-    sectionId: string,
+    groupId: string,
+    viewId: string,
     direction: ViewMoveDirection,
 ): ViewsWorkspace => {
-    const sections = workspace.tabs.find((tab) => tab.id === tabId)?.sections ?? [];
-    const adjacentSectionId = getAdjacentItemId(sections, sectionId, direction);
-    return adjacentSectionId
-        ? reorderViewSectionsInWorkspace(workspace, tabId, sectionId, adjacentSectionId)
-        : workspace;
+    const views = workspace.groups.find((group) => group.id === groupId)?.views ?? [];
+    const adjacentViewId = getAdjacentItemId(views, viewId, direction);
+    return adjacentViewId ? reorderViewsInWorkspace(workspace, groupId, viewId, adjacentViewId) : workspace;
 };
 
-export const getViewTagMatchLabel = (mode: ViewTagMatchMode) => {
+export const getViewTagFilterMatchLabel = (mode: ViewTagFilterMatchMode) => {
     return mode === 'or' ? 'OR — any selected tag' : 'AND — all selected tags';
 };
 
-export const getViewTagMatchToken = (mode: ViewTagMatchMode) => {
+export const getViewTagFilterMatchToken = (mode: ViewTagFilterMatchMode) => {
     return mode === 'or' ? 'OR' : 'AND';
 };
 
@@ -259,29 +257,29 @@ export const formatViewPropertyFilter = (filter: ViewPropertyFilter) => {
     return `${filter.name} ${operatorLabel} ${filter.value ?? ''}`.trim();
 };
 
-export const buildViewSectionInput = (
-    section: ViewSection,
-    overrides: Partial<Pick<ViewSection, 'sortBy' | 'sortOrder' | 'displayOptions' | 'displayType'>> = {},
+export const buildViewInput = (
+    view: View,
+    overrides: Partial<Pick<View, 'sortBy' | 'sortOrder' | 'displayOptions' | 'displayType'>> = {},
 ) => {
-    const nextSection = {
-        ...section,
+    const nextView = {
+        ...view,
         ...overrides,
     };
 
     return {
-        title: nextSection.title,
-        displayType: nextSection.displayType,
-        displayOptions: normalizeViewDisplayOptions(nextSection.displayOptions),
-        tagNames: nextSection.tagNames,
-        mode: nextSection.mode,
-        propertyFilters: nextSection.propertyFilters.map((filter) => ({
+        title: nextView.title,
+        displayType: nextView.displayType,
+        displayOptions: normalizeViewDisplayOptions(nextView.displayOptions),
+        tagNames: nextView.tagNames,
+        mode: nextView.mode,
+        propertyFilters: nextView.propertyFilters.map((filter) => ({
             key: filter.key,
             valueType: filter.valueType,
             operator: filter.operator,
             value: filter.value,
         })),
-        sortBy: nextSection.sortBy,
-        sortOrder: nextSection.sortOrder,
-        limit: nextSection.limit,
+        sortBy: nextView.sortBy,
+        sortOrder: nextView.sortOrder,
+        limit: nextView.limit,
     };
 };

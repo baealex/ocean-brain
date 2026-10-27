@@ -1,18 +1,18 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import models from '~/models.js';
-import { listViewSections, readViewSection } from './mcp-read.js';
+import { listViews, readView } from './mcp-read.js';
 import {
-    createViewSection,
-    createViewTab,
+    createView,
+    createViewGroup,
     getNotesByProperties,
     getNotesByQuery,
-    getViewSectionBoardColumn,
-    getViewSectionCalendarNotes,
-    getViewSectionNotes,
+    getViewBoardColumn,
+    getViewCalendarNotes,
+    getViewNotes,
 } from './workspace.js';
 
-test('MCP query and saved views preserve app note sets, pagination and active tab', async () => {
+test('MCP query and saved views preserve app note sets, pagination and active group', async () => {
     const tag = await models.tag.create({ data: { name: '@mcp-views' } });
     const state = await models.propertyDefinition.create({
         data: {
@@ -45,10 +45,10 @@ test('MCP query and saved views preserve app note sets, pagination and active ta
             }),
         );
     }
-    const tab = await createViewTab('MCP fixtures');
+    const group = await createViewGroup('MCP fixtures');
     const before = await models.viewWorkspace.findUnique({ where: { id: 1 } });
     for (const displayType of ['list', 'table', 'board', 'calendar'] as const) {
-        const section = await createViewSection(tab.id, {
+        const view = await createView(group.id, {
             title: 'Same title',
             displayType,
             tagNames: [tag.name],
@@ -60,49 +60,49 @@ test('MCP query and saved views preserve app note sets, pagination and active ta
                 calendarDatePropertyKey: date.key,
             },
         });
-        assert.ok(section);
+        assert.ok(view);
         const dateRange = { start: '2026-09-17', end: '2026-09-20' };
-        const result = await readViewSection({
-            id: section.id,
+        const result = await readView({
+            id: view.id,
             pagination: { limit: 1, offset: 1 },
             ...(displayType === 'calendar' ? { dateRange } : {}),
         });
         const app =
             displayType === 'calendar'
-                ? await getViewSectionCalendarNotes(section.id, dateRange)
-                : (await getViewSectionNotes(section.id, { limit: 50, offset: 0 }))?.notes;
+                ? await getViewCalendarNotes(view.id, dateRange)
+                : (await getViewNotes(view.id, { limit: 50, offset: 0 }))?.notes;
         assert.equal(result.totalCount, app?.length);
         assert.deepEqual(
             result.rows.map((row) => row.note.id),
             app?.slice(1, 2).map((note) => note.id),
         );
         if (displayType === 'board') {
-            const unclassified = await readViewSection({ id: section.id, groupValue: null });
-            const appColumn = await getViewSectionBoardColumn(section.id, null, { limit: 50 });
+            const unclassified = await readView({ id: view.id, groupValue: null });
+            const appColumn = await getViewBoardColumn(view.id, null, { limit: 50 });
             assert.deepEqual(
                 unclassified.rows.map((row) => row.note.id),
                 appColumn?.notes.map((note) => note.id),
             );
-            const classified = await readViewSection({ id: section.id, groupValue: 'Doing' });
+            const classified = await readView({ id: view.id, groupValue: 'Doing' });
             assert.deepEqual(
                 classified.rows.map((row) => row.note.id),
                 [notes[0].id],
             );
         }
         if (displayType === 'calendar') {
-            await assert.rejects(readViewSection({ id: section.id }), /require dateRange/);
+            await assert.rejects(readView({ id: view.id }), /require dateRange/);
             await assert.rejects(
-                readViewSection({ id: section.id, dateRange: { start: '2026-01-01', end: '2026-03-01' } }),
+                readView({ id: view.id, dateRange: { start: '2026-01-01', end: '2026-03-01' } }),
                 /32 days/,
             );
         }
     }
-    const found = await listViewSections('MCP fixtures');
+    const found = await listViews('MCP fixtures');
     assert.equal(found.totalCount, 4);
-    assert.equal(new Set(found.sections.map((view) => view.section.id)).size, 4);
-    assert.equal((await models.viewWorkspace.findUnique({ where: { id: 1 } }))?.activeTabId, before?.activeTabId);
-    assert.equal((await listViewSections('no-such-view')).totalCount, 0);
-    await assert.rejects(readViewSection({ id: '99999999' }), /not found/);
+    assert.equal(new Set(found.views.map((view) => view.view.id)).size, 4);
+    assert.equal((await models.viewWorkspace.findUnique({ where: { id: 1 } }))?.activeGroupId, before?.activeGroupId);
+    assert.equal((await listViews('no-such-view')).totalCount, 0);
+    await assert.rejects(readView({ id: '99999999' }), /not found/);
     const query = {
         tagNames: [tag.name],
         propertyFilters: [{ key: state.key, valueType: 'select' as const, operator: 'notExists' as const }],

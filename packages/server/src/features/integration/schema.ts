@@ -15,6 +15,8 @@ const READ_FIELDS = new Set([
     'notePropertyKeys',
     'notesByQuery',
     'notesByProperties',
+    'views',
+    'readView',
     'viewSections',
     'readViewSection',
     'searchNotes',

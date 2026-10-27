@@ -1,6 +1,6 @@
 # Ocean Brain Dev Convention
 
-Updated: 2026-08-30
+Updated: 2026-10-24
 
 ## 1. Base Environment
 - Node.js: `22.13+`
@@ -34,7 +34,7 @@ Full dev mode exposes Fastify APIs, the Vite client, and HMR through the server 
 
 ## 3. Standard Quality Checks
 
-Run `pnpm validate` before opening a PR. It executes the repository's complete validation contract in this order:
+Run `pnpm validate` before opening a PR. It executes the standard validation checks in this order:
 
 - `pnpm check:encoding`
 - `pnpm lint`
@@ -44,10 +44,12 @@ Run `pnpm validate` before opening a PR. It executes the repository's complete v
 
 The individual commands remain available for validating a changed scope while developing. The pull request CI uses `pnpm validate` so local and CI validation cannot drift silently.
 
+`pnpm validate` does not run browser E2E. Complete the [required local E2E validation](TESTING_CONVENTION.md#local-e2e-before-push-required) before pushing changes that affect runtime behavior, dependencies, production build/startup, or E2E tests and configuration.
+
 Run `pnpm check:security` to audit all workspace dependencies, including development tools. Pull request CI runs this separately from `pnpm validate` because the advisory database requires network access. Resolve every reported vulnerability; do not suppress advisories to make the audit pass.
 
 ## 4. Minimum Rules Before PR
-1. Complete local validation for changed scope.
+1. Complete local validation for changed scope, including required local E2E before push, and record the command and result in the PR's Verification Guide.
 2. Push only when CI is expected to pass.
 3. Document script/env/doc changes in PR body.
 4. Validate PR metadata against template before sharing PR link:
@@ -61,7 +63,7 @@ Run `pnpm check:security` to audit all workspace dependencies, including develop
 - Server start script includes `prisma migrate deploy`.
 - Use `node scripts/release/prepublish.mjs` for release artifact preparation.
 - CLI publish validation is covered by `CLI_SMOKE` CI.
-- Browser E2E validation is split into the `E2E` workflow and is required for release PRs or manual verification, not every PR.
+- Browser E2E CI runs in the `E2E` workflow for release PRs or manual verification. Development PRs still require local E2E before push when applicable under `TESTING_CONVENTION.md`.
 
 ## 6. Related Documents
 - Git rules: `docs/process/GIT_CONVENTION.md`

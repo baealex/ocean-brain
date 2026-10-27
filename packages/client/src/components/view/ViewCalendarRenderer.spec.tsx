@@ -1,11 +1,11 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ComponentProps, ReactNode } from 'react';
-import { fetchViewSectionCalendarNotes } from '~/apis/view.api';
-import type { ViewSection } from '~/models/view.model';
-import type { ViewSectionRouteState } from '~/modules/view-route-state';
+import { fetchViewCalendarNotes } from '~/apis/view.api';
+import type { View } from '~/models/view.model';
+import type { ViewNavigationState } from '~/modules/view-route-state';
 import { createQueryClientWrapper } from '~/test/test-utils';
-import ViewSectionCalendarRenderer from './ViewSectionCalendarRenderer';
+import ViewCalendarRenderer from './ViewCalendarRenderer';
 
 vi.mock('@tanstack/react-router', () => ({
     Link: ({ children, params }: { children: ReactNode; params?: { id?: string } }) => (
@@ -14,12 +14,12 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 
 vi.mock('~/apis/view.api', () => ({
-    fetchViewSectionCalendarNotes: vi.fn(),
+    fetchViewCalendarNotes: vi.fn(),
 }));
 
-const createSection = (patch: Partial<ViewSection> = {}): ViewSection => ({
-    id: 'section-1',
-    tabId: 'tab-1',
+const createView = (patch: Partial<View> = {}): View => ({
+    id: 'view-1',
+    groupId: 'group-1',
     title: 'Recently edited',
     displayType: 'calendar',
     displayOptions: {
@@ -41,15 +41,15 @@ const createSection = (patch: Partial<ViewSection> = {}): ViewSection => ({
 
 const renderCalendar = (
     onNavigationStateChange = vi.fn(),
-    section = createSection(),
-    calendarDateProperty?: ComponentProps<typeof ViewSectionCalendarRenderer>['calendarDateProperty'],
-    navigationState: ViewSectionRouteState = { calendar: { year: 2026, month: 8 } },
+    view = createView(),
+    calendarDateProperty?: ComponentProps<typeof ViewCalendarRenderer>['calendarDateProperty'],
+    navigationState: ViewNavigationState = { calendar: { year: 2026, month: 8 } },
 ) => {
     const { Wrapper } = createQueryClientWrapper();
 
     render(
-        <ViewSectionCalendarRenderer
-            section={section}
+        <ViewCalendarRenderer
+            view={view}
             calendarDateProperty={calendarDateProperty}
             navigationState={navigationState}
             onNavigationStateChange={onNavigationStateChange}
@@ -60,12 +60,12 @@ const renderCalendar = (
     return { onNavigationStateChange };
 };
 
-describe('<ViewSectionCalendarRenderer />', () => {
+describe('<ViewCalendarRenderer />', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        vi.mocked(fetchViewSectionCalendarNotes).mockResolvedValue({
+        vi.mocked(fetchViewCalendarNotes).mockResolvedValue({
             type: 'success',
-            viewSectionCalendarNotes: [
+            viewCalendarNotes: [
                 {
                     id: 'note-1',
                     title: 'Edited note',
@@ -80,7 +80,7 @@ describe('<ViewSectionCalendarRenderer />', () => {
         renderCalendar();
 
         await waitFor(() => {
-            expect(fetchViewSectionCalendarNotes).toHaveBeenCalledWith('section-1', {
+            expect(fetchViewCalendarNotes).toHaveBeenCalledWith('view-1', {
                 start: new Date(2026, 7, 1).toISOString(),
                 end: new Date(2026, 8, 1).toISOString(),
             });
@@ -96,9 +96,9 @@ describe('<ViewSectionCalendarRenderer />', () => {
         expect(screen.getByText('1 matching note')).toBeInTheDocument();
     });
 
-    it('stores month navigation in the owning section URL state', async () => {
+    it('stores month navigation in the owning view URL state', async () => {
         const user = userEvent.setup();
-        const { onNavigationStateChange } = renderCalendar(vi.fn(), createSection(), undefined, {});
+        const { onNavigationStateChange } = renderCalendar(vi.fn(), createView(), undefined, {});
         const nextMonth = new Date();
         nextMonth.setDate(1);
         nextMonth.setMonth(nextMonth.getMonth() + 1);
@@ -106,8 +106,8 @@ describe('<ViewSectionCalendarRenderer />', () => {
         await user.click(screen.getByRole('button', { name: 'Next month' }));
 
         const updater = onNavigationStateChange.mock.calls[0]?.[0] as (
-            current: ViewSectionRouteState,
-        ) => ViewSectionRouteState;
+            current: ViewNavigationState,
+        ) => ViewNavigationState;
         expect(updater({})).toEqual({
             calendar: { year: nextMonth.getFullYear(), month: nextMonth.getMonth() + 1 },
         });
@@ -115,19 +115,19 @@ describe('<ViewSectionCalendarRenderer />', () => {
 
     it('places date properties on their saved day without timezone shifting', async () => {
         const user = userEvent.setup();
-        vi.mocked(fetchViewSectionCalendarNotes).mockResolvedValue({
+        vi.mocked(fetchViewCalendarNotes).mockResolvedValue({
             type: 'success',
-            viewSectionCalendarNotes: [{ id: 'note-1', title: 'Due note', calendarDate: '2026-08-12' }],
+            viewCalendarNotes: [{ id: 'note-1', title: 'Due note', calendarDate: '2026-08-12' }],
         } as never);
-        const section = createSection({
+        const view = createView({
             displayOptions: {
-                ...createSection().displayOptions,
+                ...createView().displayOptions,
                 calendarDateField: 'property',
                 calendarDatePropertyKey: 'due-date',
             },
         });
 
-        renderCalendar(vi.fn(), section, {
+        renderCalendar(vi.fn(), view, {
             key: 'due-date',
             name: 'Due date',
             valueType: 'date',
@@ -137,7 +137,7 @@ describe('<ViewSectionCalendarRenderer />', () => {
         });
 
         await waitFor(() => {
-            expect(fetchViewSectionCalendarNotes).toHaveBeenCalledWith('section-1', {
+            expect(fetchViewCalendarNotes).toHaveBeenCalledWith('view-1', {
                 start: '2026-08-01T00:00:00.000Z',
                 end: '2026-09-01T00:00:00.000Z',
             });
@@ -154,7 +154,7 @@ describe('<ViewSectionCalendarRenderer />', () => {
     });
 
     it('renders a retry state when the calendar query fails', async () => {
-        vi.mocked(fetchViewSectionCalendarNotes).mockResolvedValue({
+        vi.mocked(fetchViewCalendarNotes).mockResolvedValue({
             type: 'error',
             errors: [{ message: 'Failed' }],
         } as never);

@@ -52,15 +52,15 @@ describe('server-event-invalidation', () => {
             exact: false,
         });
         expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
-            queryKey: queryKeys.views.sectionNotesAll(),
+            queryKey: queryKeys.views.viewNotesAll(),
             exact: false,
         });
         expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
-            queryKey: queryKeys.views.sectionBoardsAll(),
+            queryKey: queryKeys.views.viewBoardsAll(),
             exact: false,
         });
         expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
-            queryKey: queryKeys.views.sectionCalendarsAll(),
+            queryKey: queryKeys.views.viewCalendarsAll(),
             exact: false,
         });
         expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
@@ -96,11 +96,11 @@ describe('server-event-invalidation', () => {
             exact: false,
         });
         expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
-            queryKey: queryKeys.views.sectionNotesAll(),
+            queryKey: queryKeys.views.viewNotesAll(),
             exact: false,
         });
         expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
-            queryKey: queryKeys.views.sectionCalendarsAll(),
+            queryKey: queryKeys.views.viewCalendarsAll(),
             exact: false,
         });
         expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
@@ -134,15 +134,15 @@ describe('server-event-invalidation', () => {
             exact: false,
         });
         expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
-            queryKey: queryKeys.views.sectionNotesAll(),
+            queryKey: queryKeys.views.viewNotesAll(),
             exact: false,
         });
         expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
-            queryKey: queryKeys.views.sectionBoardsAll(),
+            queryKey: queryKeys.views.viewBoardsAll(),
             exact: false,
         });
         expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
-            queryKey: queryKeys.views.sectionCalendarsAll(),
+            queryKey: queryKeys.views.viewCalendarsAll(),
             exact: false,
         });
         expect(queryClient.invalidateQueries).toHaveBeenCalledWith({

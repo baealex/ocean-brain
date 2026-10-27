@@ -1,21 +1,31 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 
 import { fetchAllNotePropertyKeys } from '~/apis/note.api';
 import { fetchTags } from '~/apis/tag.api';
 import {
-    fetchViewSectionCalendarNotes,
-    fetchViewSectionNotes,
+    fetchViewCalendarNotes,
+    fetchViewNotes,
     fetchViewWorkspace,
-    reorderViewSections,
-    reorderViewTabs,
+    reorderViewGroups,
+    reorderViews,
+    updateView,
 } from '~/apis/view.api';
 import { ConfirmProvider, ToastProvider } from '~/components/ui';
-import type { ViewSection } from '~/models/view.model';
+import type { View } from '~/models/view.model';
 import { createQueryClientWrapper } from '~/test/test-utils';
 
 import Views from './Views';
+
+beforeAll(() => {
+    Object.defineProperties(HTMLElement.prototype, {
+        hasPointerCapture: { configurable: true, value: () => false },
+        setPointerCapture: { configurable: true, value: () => undefined },
+        releasePointerCapture: { configurable: true, value: () => undefined },
+        scrollIntoView: { configurable: true, value: () => undefined },
+    });
+});
 
 const routerMocks = vi.hoisted(() => ({
     search: {} as Record<string, unknown>,
@@ -33,24 +43,24 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('~/apis/note.api', () => ({ fetchAllNotePropertyKeys: vi.fn() }));
 vi.mock('~/apis/tag.api', () => ({ fetchTags: vi.fn() }));
 vi.mock('~/apis/view.api', () => ({
-    createViewSection: vi.fn(),
-    createViewTab: vi.fn(),
-    deleteViewSection: vi.fn(),
-    deleteViewTab: vi.fn(),
-    fetchViewSectionCalendarNotes: vi.fn(),
+    createView: vi.fn(),
+    createViewGroup: vi.fn(),
+    deleteView: vi.fn(),
+    deleteViewGroup: vi.fn(),
+    fetchViewCalendarNotes: vi.fn(),
     fetchViewWorkspace: vi.fn(),
-    fetchViewSectionNotes: vi.fn(),
-    reorderViewSections: vi.fn(),
-    reorderViewTabs: vi.fn(),
-    setActiveViewTab: vi.fn(),
-    updateViewSection: vi.fn(),
-    updateViewTab: vi.fn(),
+    fetchViewNotes: vi.fn(),
+    reorderViews: vi.fn(),
+    reorderViewGroups: vi.fn(),
+    setActiveViewGroup: vi.fn(),
+    updateView: vi.fn(),
+    updateViewGroup: vi.fn(),
 }));
 
-const createSection = (patch: Partial<ViewSection> = {}): ViewSection => ({
-    id: 'section-1',
-    tabId: 'tab-1',
-    title: 'First section',
+const createView = (patch: Partial<View> = {}): View => ({
+    id: 'view-1',
+    groupId: 'group-1',
+    title: 'First view',
     displayType: 'list',
     displayOptions: {
         tableColumns: ['title'],
@@ -69,30 +79,30 @@ const createSection = (patch: Partial<ViewSection> = {}): ViewSection => ({
     ...patch,
 });
 
-const mockActiveWorkspace = (sections: ViewSection[]) => {
+const mockActiveWorkspace = (views: View[]) => {
     vi.mocked(fetchViewWorkspace).mockResolvedValue({
         type: 'success',
         viewWorkspace: {
-            activeTabId: 'tab-1',
-            tabs: [
+            activeGroupId: 'group-1',
+            groups: [
                 {
-                    id: 'tab-1',
+                    id: 'group-1',
                     title: 'Work',
                     order: 0,
-                    sections,
+                    views,
                 },
                 {
-                    id: 'tab-2',
+                    id: 'group-2',
                     title: 'Later',
                     order: 1,
-                    sections: [],
+                    views: [],
                 },
             ],
         },
     } as never);
-    vi.mocked(fetchViewSectionNotes).mockResolvedValue({
+    vi.mocked(fetchViewNotes).mockResolvedValue({
         type: 'success',
-        viewSectionNotes: { totalCount: 0, notes: [] },
+        viewNotes: { totalCount: 0, notes: [] },
     } as never);
 };
 
@@ -131,42 +141,187 @@ describe('<Views />', () => {
         vi.mocked(fetchViewWorkspace).mockResolvedValue({
             type: 'success',
             viewWorkspace: {
-                activeTabId: null,
-                tabs: [],
+                activeGroupId: null,
+                groups: [],
             },
         } as never);
-        vi.mocked(fetchViewSectionCalendarNotes).mockResolvedValue({
+        vi.mocked(fetchViewCalendarNotes).mockResolvedValue({
             type: 'success',
-            viewSectionCalendarNotes: [],
+            viewCalendarNotes: [],
         } as never);
     });
 
-    it('renders the first-tab onboarding when there are no saved views', async () => {
+    it('renders the first-group onboarding when there are no saved views', async () => {
         renderViews();
 
-        expect(await screen.findByText('Create your first view tab')).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Create first tab' })).toBeInTheDocument();
+        expect(await screen.findByText('Create your first view group')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Create first group' })).toBeInTheDocument();
     });
 
-    it('restores and updates a table sort through the per-section URL state', async () => {
+    it('changes a list sort temporarily without saving the view', async () => {
         const user = userEvent.setup();
         routerMocks.search = {
-            tab: 'tab-1',
+            group: 'group-1',
+            state: { version: 2, views: { 'view-1': { page: 2 }, 'view-2': { page: 3 } } },
+        };
+        mockActiveWorkspace([createView()]);
+        renderViews();
+
+        await user.click(await screen.findByRole('button', { name: 'Sort: Recently updated' }));
+        await user.click(await screen.findByRole('menuitemradio', { name: 'Title: A to Z' }));
+
+        expect(routerMocks.navigate.mock.lastCall?.[0].search(routerMocks.search)).toEqual({
+            group: 'group-1',
             state: {
-                version: 1,
-                sections: {
-                    'section-1': { page: 2, sort: { by: 'title', order: 'asc' } },
-                    'section-2': { page: 3 },
+                version: 2,
+                views: { 'view-1': { sort: { by: 'title', order: 'asc' } }, 'view-2': { page: 3 } },
+            },
+        });
+        expect(updateView).not.toHaveBeenCalled();
+    });
+
+    it('opens table columns directly without unrelated view settings', async () => {
+        const user = userEvent.setup();
+        mockActiveWorkspace([createView({ displayType: 'table' })]);
+        renderViews();
+
+        await user.click(await screen.findByRole('button', { name: 'Columns', exact: true }));
+
+        expect(screen.getByRole('heading', { name: 'Table columns' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Reorder Title column' })).toBeInTheDocument();
+        expect(screen.queryByRole('textbox', { name: 'View name' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Add property filter' })).not.toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'Cancel', exact: true }));
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        expect(updateView).not.toHaveBeenCalled();
+    });
+
+    it('keeps the column draft open when saving fails', async () => {
+        const user = userEvent.setup();
+        mockActiveWorkspace([
+            createView({
+                displayType: 'table',
+                tagNames: ['@work'],
+                displayOptions: { ...createView().displayOptions, tableColumns: ['title', 'tags'] },
+            }),
+        ]);
+        vi.mocked(updateView).mockResolvedValue({
+            type: 'error',
+            category: 'network',
+            errors: [{ code: 'NETWORK_ERROR', message: 'Columns could not be saved.' }],
+        });
+        renderViews();
+
+        await user.click(await screen.findByRole('button', { name: 'Columns', exact: true }));
+        await user.click(screen.getByRole('checkbox', { name: 'Show Tags column' }));
+        await user.click(screen.getByRole('button', { name: 'Save columns', exact: true }));
+
+        expect(await screen.findByText('Columns could not be saved.')).toBeInTheDocument();
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
+        expect(screen.getByRole('checkbox', { name: 'Show Tags column' })).not.toBeChecked();
+        expect(updateView).toHaveBeenCalledWith(
+            'view-1',
+            expect.objectContaining({
+                tagNames: ['@work'],
+                displayOptions: expect.objectContaining({ tableColumns: ['title'] }),
+            }),
+        );
+    });
+
+    it('saves the temporary sort without overwriting view filters or other navigation state', async () => {
+        const user = userEvent.setup();
+        routerMocks.search = {
+            group: 'group-1',
+            state: {
+                version: 2,
+                views: { 'view-1': { sort: { by: 'title', order: 'asc' } }, 'view-2': { page: 3 } },
+            },
+        };
+        mockActiveWorkspace([createView({ tagNames: ['@work'] })]);
+        vi.mocked(updateView).mockResolvedValue({ type: 'success', updateView: { id: 'view-1' } });
+        renderViews();
+
+        await user.click(await screen.findByRole('button', { name: 'Save default sort' }));
+
+        await waitFor(() =>
+            expect(updateView).toHaveBeenCalledWith('view-1', {
+                title: 'First view',
+                displayType: 'list',
+                displayOptions: createView().displayOptions,
+                tagNames: ['@work'],
+                mode: 'and',
+                propertyFilters: [],
+                sortBy: 'title',
+                sortOrder: 'asc',
+                limit: 5,
+            }),
+        );
+        expect(routerMocks.navigate.mock.lastCall?.[0].search(routerMocks.search)).toEqual({
+            group: 'group-1',
+            state: { version: 2, views: { 'view-2': { page: 3 } } },
+        });
+    });
+
+    it('keeps the temporary sort available for retry when saving fails', async () => {
+        const user = userEvent.setup();
+        routerMocks.search = {
+            state: { version: 2, views: { 'view-1': { sort: { by: 'title', order: 'asc' } } } },
+        };
+        mockActiveWorkspace([createView()]);
+        vi.mocked(updateView).mockResolvedValue({
+            type: 'error',
+            category: 'network',
+            errors: [{ code: 'NETWORK_ERROR', message: 'Failed to save the default sort.' }],
+        });
+        renderViews();
+
+        await user.click(await screen.findByRole('button', { name: 'Save default sort' }));
+
+        expect(await screen.findByText('Failed to save the default sort.')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Save default sort' })).toBeEnabled();
+        expect(routerMocks.navigate).not.toHaveBeenCalled();
+    });
+
+    it('resets a temporary sort and its page without saving or changing other views', async () => {
+        const user = userEvent.setup();
+        routerMocks.search = {
+            group: 'group-1',
+            state: {
+                version: 2,
+                views: { 'view-1': { page: 2, sort: { by: 'title', order: 'asc' } }, 'view-2': { page: 3 } },
+            },
+        };
+        mockActiveWorkspace([createView()]);
+        renderViews();
+
+        await user.click(await screen.findByRole('button', { name: 'Reset sort' }));
+
+        expect(routerMocks.navigate.mock.lastCall?.[0].search(routerMocks.search)).toEqual({
+            group: 'group-1',
+            state: { version: 2, views: { 'view-2': { page: 3 } } },
+        });
+        expect(updateView).not.toHaveBeenCalled();
+    });
+
+    it('restores and updates a table sort through the per-view URL state', async () => {
+        const user = userEvent.setup();
+        routerMocks.search = {
+            group: 'group-1',
+            state: {
+                version: 2,
+                views: {
+                    'view-1': { page: 2, sort: { by: 'title', order: 'asc' } },
+                    'view-2': { page: 3 },
                 },
             },
         };
         mockActiveWorkspace([
-            createSection({ displayType: 'table' }),
-            createSection({ id: 'section-2', title: 'Second section', order: 1 }),
+            createView({ displayType: 'table' }),
+            createView({ id: 'view-2', title: 'Second view', order: 1 }),
         ]);
-        vi.mocked(fetchViewSectionNotes).mockResolvedValue({
+        vi.mocked(fetchViewNotes).mockResolvedValue({
             type: 'success',
-            viewSectionNotes: {
+            viewNotes: {
                 totalCount: 20,
                 notes: [
                     {
@@ -187,22 +342,22 @@ describe('<Views />', () => {
 
         renderViews();
 
-        await screen.findAllByRole('button', { name: 'Section actions' });
+        await screen.findAllByRole('button', { name: 'View actions' });
 
-        expect(fetchViewSectionNotes).toHaveBeenCalledWith('section-1', {
+        expect(fetchViewNotes).toHaveBeenCalledWith('view-1', {
             limit: 5,
             offset: 5,
             sortBy: 'title',
             sortOrder: 'asc',
         });
-        expect(fetchViewSectionNotes).toHaveBeenCalledWith('section-2', {
+        expect(fetchViewNotes).toHaveBeenCalledWith('view-2', {
             limit: 5,
             offset: 10,
             sortBy: 'updatedAt',
             sortOrder: 'desc',
         });
 
-        await user.click(await screen.findByRole('button', { name: /Title/ }));
+        await user.click(within(await screen.findByRole('table')).getByRole('button', { name: /Title/ }));
 
         const navigation = routerMocks.navigate.mock.calls[0]?.[0] as {
             search: (current: typeof routerMocks.search) => Record<string, unknown>;
@@ -210,58 +365,58 @@ describe('<Views />', () => {
             resetScroll: boolean;
         };
         expect(navigation.search(routerMocks.search)).toEqual({
-            tab: 'tab-1',
+            group: 'group-1',
             state: {
-                version: 1,
-                sections: {
-                    'section-1': { sort: { by: 'title', order: 'desc' } },
-                    'section-2': { page: 3 },
+                version: 2,
+                views: {
+                    'view-1': { sort: { by: 'title', order: 'desc' } },
+                    'view-2': { page: 3 },
                 },
             },
         });
         expect(navigation).toMatchObject({ replace: true, resetScroll: false });
     });
 
-    it('loads calendar sections by visible month without using paginated section notes', async () => {
+    it('loads calendar views by visible month without using paginated view notes', async () => {
         routerMocks.search = {
-            tab: 'tab-1',
+            group: 'group-1',
             state: {
-                version: 1,
-                sections: {
-                    'section-1': { calendar: { year: 2026, month: 8 } },
+                version: 2,
+                views: {
+                    'view-1': { calendar: { year: 2026, month: 8 } },
                 },
             },
         };
-        mockActiveWorkspace([createSection({ displayType: 'calendar' })]);
+        mockActiveWorkspace([createView({ displayType: 'calendar' })]);
 
         renderViews();
 
         expect(await screen.findByText('August 2026')).toBeInTheDocument();
         await waitFor(() => {
-            expect(fetchViewSectionCalendarNotes).toHaveBeenCalledWith('section-1', {
+            expect(fetchViewCalendarNotes).toHaveBeenCalledWith('view-1', {
                 start: new Date(2026, 7, 1).toISOString(),
                 end: new Date(2026, 8, 1).toISOString(),
             });
         });
-        expect(fetchViewSectionNotes).not.toHaveBeenCalled();
+        expect(fetchViewNotes).not.toHaveBeenCalled();
     });
 
     it('retries property metadata failures without reporting a valid calendar property as missing', async () => {
         const user = userEvent.setup();
         routerMocks.search = {
-            tab: 'tab-1',
+            group: 'group-1',
             state: {
-                version: 1,
-                sections: {
-                    'section-1': { calendar: { year: 2026, month: 8 } },
+                version: 2,
+                views: {
+                    'view-1': { calendar: { year: 2026, month: 8 } },
                 },
             },
         };
         mockActiveWorkspace([
-            createSection({
+            createView({
                 displayType: 'calendar',
                 displayOptions: {
-                    ...createSection().displayOptions,
+                    ...createView().displayOptions,
                     calendarDateField: 'property',
                     calendarDatePropertyKey: 'due-date',
                 },
@@ -299,28 +454,28 @@ describe('<Views />', () => {
         expect(fetchAllNotePropertyKeys).toHaveBeenCalledTimes(2);
     });
 
-    it('offers menu fallbacks for moving tabs and sections without dragging', async () => {
+    it('offers menu fallbacks for moving groups and views without dragging', async () => {
         const user = userEvent.setup();
-        routerMocks.search = { tab: 'tab-1' };
-        mockActiveWorkspace([createSection(), createSection({ id: 'section-2', title: 'Second section', order: 1 })]);
-        vi.mocked(reorderViewSections).mockResolvedValue({ type: 'success', reorderViewSections: [] } as never);
-        vi.mocked(reorderViewTabs).mockResolvedValue({ type: 'success', reorderViewTabs: [] } as never);
+        routerMocks.search = { group: 'group-1' };
+        mockActiveWorkspace([createView(), createView({ id: 'view-2', title: 'Second view', order: 1 })]);
+        vi.mocked(reorderViews).mockResolvedValue({ type: 'success', reorderViews: [] } as never);
+        vi.mocked(reorderViewGroups).mockResolvedValue({ type: 'success', reorderViewGroups: [] } as never);
 
         renderViews();
 
-        const actionButtons = await screen.findAllByRole('button', { name: 'Section actions' });
+        const actionButtons = await screen.findAllByRole('button', { name: 'View actions' });
         await user.click(actionButtons[0]);
         await user.click(await screen.findByRole('menuitem', { name: 'Move down' }));
 
         await waitFor(() => {
-            expect(reorderViewSections).toHaveBeenCalledWith('tab-1', ['section-2', 'section-1']);
+            expect(reorderViews).toHaveBeenCalledWith('group-1', ['view-2', 'view-1']);
         });
 
-        await user.click(screen.getByRole('button', { name: 'View tab actions' }));
-        await user.click(await screen.findByRole('menuitem', { name: 'Move tab right' }));
+        await user.click(screen.getByRole('button', { name: 'View group actions' }));
+        await user.click(await screen.findByRole('menuitem', { name: 'Move group right' }));
 
         await waitFor(() => {
-            expect(reorderViewTabs).toHaveBeenCalledWith(['tab-2', 'tab-1']);
+            expect(reorderViewGroups).toHaveBeenCalledWith(['group-2', 'group-1']);
         });
     });
 });

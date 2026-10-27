@@ -1,4 +1,5 @@
 import { gql } from '~/modules/graphql.js';
+import { legacyViewTypeDefs } from './view.compat.js';
 
 export const viewType = gql`
     type NotesQueryConditions {
@@ -15,31 +16,31 @@ export const viewType = gql`
         notes: [Note!]!
     }
 
-    type ViewSectionListing { section: ViewSection!, tabTitle: String! }
-    type ViewSectionListings { totalCount: Int!, sections: [ViewSectionListing!]! }
+    type ViewListing { view: View!, groupTitle: String! }
+    type ViewListings { totalCount: Int!, views: [ViewListing!]! }
     type ViewReadRow { note: Note!, groupValue: String, calendarDate: String }
     type ViewGroupProperty { key: String!, name: String!, options: [NotePropertyOption!]! }
     type ViewReadResult {
-        section: ViewSection!
+        view: View!
         totalCount: Int!
         rows: [ViewReadRow!]!
         groupProperty: ViewGroupProperty
     }
     type ViewWorkspace {
-        activeTabId: ID
-        tabs: [ViewTab!]!
+        activeGroupId: ID
+        groups: [ViewGroup!]!
     }
 
-    type ViewTab {
+    type ViewGroup {
         id: ID!
         title: String!
         order: Int!
-        sections: [ViewSection!]!
+        views: [View!]!
     }
 
-    type ViewSection {
+    type View {
         id: ID!
-        tabId: ID!
+        groupId: ID!
         title: String!
         displayType: ViewDisplayType!
         displayOptions: ViewDisplayOptions!
@@ -143,7 +144,7 @@ export const viewType = gql`
         calendarDatePropertyKey: String
     }
 
-    input ViewSectionInput {
+    input ViewInput {
         title: String
         displayType: ViewDisplayType
         displayOptions: ViewDisplayOptionsInput
@@ -167,33 +168,33 @@ export const viewType = gql`
 export const viewQuery = gql`
     type Query {
         notesByQuery(input: NotesByPropertiesInput!, pagination: PaginationInput): NotesQueryResult!
-        viewSections(query: String, pagination: PaginationInput): ViewSectionListings!
-        readViewSection(id: ID!, pagination: PaginationInput, propertyKeys: [String!], groupValue: String, dateRange: DateRangeInput): ViewReadResult!
+        views(query: String, pagination: PaginationInput): ViewListings!
+        readView(id: ID!, pagination: PaginationInput, propertyKeys: [String!], groupValue: String, dateRange: DateRangeInput): ViewReadResult!
         viewWorkspace: ViewWorkspace!
-        viewSection(id: ID!): ViewSection
-        viewSectionNotes(
+        view(id: ID!): View
+        viewNotes(
             id: ID!
             pagination: PaginationInput
             sortBy: ViewSortBy
             sortOrder: ViewSortOrder
         ): Notes!
-        viewSectionCalendarNotes(id: ID!, dateRange: DateRangeInput!): [ViewCalendarNote!]!
-        viewSectionBoardColumn(id: ID!, optionValue: String, pagination: PaginationInput): ViewBoardColumnNotes!
+        viewCalendarNotes(id: ID!, dateRange: DateRangeInput!): [ViewCalendarNote!]!
+        viewBoardColumn(id: ID!, optionValue: String, pagination: PaginationInput): ViewBoardColumnNotes!
         notesByProperties(input: NotesByPropertiesInput!, pagination: PaginationInput): Notes!
     }
 `;
 
 export const viewMutation = gql`
     type Mutation {
-        createViewTab(title: String!): ViewTab!
-        updateViewTab(id: ID!, title: String!): ViewTab!
-        deleteViewTab(id: ID!): Boolean!
-        setActiveViewTab(id: ID!): ViewWorkspace!
-        reorderViewTabs(tabIds: [ID!]!): [ViewTab!]!
-        createViewSection(tabId: ID!, input: ViewSectionInput!): ViewSection!
-        updateViewSection(id: ID!, input: ViewSectionInput!): ViewSection!
-        deleteViewSection(id: ID!): Boolean!
-        reorderViewSections(tabId: ID!, sectionIds: [ID!]!): [ViewSection!]!
+        createViewGroup(title: String!): ViewGroup!
+        updateViewGroup(id: ID!, title: String!): ViewGroup!
+        deleteViewGroup(id: ID!): Boolean!
+        setActiveViewGroup(id: ID!): ViewWorkspace!
+        reorderViewGroups(groupIds: [ID!]!): [ViewGroup!]!
+        createView(groupId: ID!, input: ViewInput!): View!
+        updateView(id: ID!, input: ViewInput!): View!
+        deleteView(id: ID!): Boolean!
+        reorderViews(groupId: ID!, viewIds: [ID!]!): [View!]!
     }
 `;
 
@@ -201,4 +202,5 @@ export const viewTypeDefs = `
     ${viewType}
     ${viewQuery}
     ${viewMutation}
+    ${legacyViewTypeDefs}
 `;

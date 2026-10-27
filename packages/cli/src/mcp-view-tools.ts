@@ -7,29 +7,12 @@ import {
     optionSchema,
     pageInfoSchema,
     propertyKeysSchema,
-    QUERY_CONDITION_FIELDS,
-    queryConditionsSchema,
 } from './mcp-query-tools.js';
+import { VIEW_FIELDS, viewSchema } from './mcp-view-schema.js';
 import { createMcpJsonToolResult, createPageInfo, pageLimitSchema, pageOffsetSchema } from './mcp-tool-support.js';
 
-const sectionSchema = queryConditionsSchema.extend({
-    id: z.string(),
-    tabId: z.string(),
-    title: z.string(),
-    displayType: z.enum(['list', 'table', 'board', 'calendar']),
-    limit: z.number(),
-    order: z.number(),
-    displayOptions: z.object({
-        tableColumns: z.array(z.string()),
-        tablePropertyKeys: z.array(z.string()),
-        boardGroupByPropertyKey: z.string().nullable(),
-        calendarDateField: z.enum(['createdAt', 'updatedAt', 'property']),
-        calendarDatePropertyKey: z.string().nullable(),
-    }),
-});
-const SECTION_FIELDS = `id tabId title displayType limit order ${QUERY_CONDITION_FIELDS} displayOptions { tableColumns tablePropertyKeys boardGroupByPropertyKey calendarDateField calendarDatePropertyKey }`;
 const viewReadSchema = z.object({
-    section: sectionSchema,
+    view: viewSchema,
     totalCount: z.number(),
     rows: z.array(
         z.object({
@@ -52,7 +35,7 @@ export const registerViewTools = (server: McpServer, request: McpQueryRequest) =
         'ocean_brain_list_views',
         {
             description:
-                'Find saved view sections by section or tab title. Returns IDs, saved conditions and display settings without loading notes or switching the active tab.',
+                'Find saved views by view or view group title. A view stores filters, sorting and a display format; a view group organizes views. Returns IDs and saved settings without loading notes or switching groups. Use viewId to read a view; groupTitle is its group name.',
             inputSchema: {
                 query: z.string().default(''),
                 limit: pageLimitSchema(20, 50),
@@ -62,9 +45,9 @@ export const registerViewTools = (server: McpServer, request: McpQueryRequest) =
                 totalCount: z.number(),
                 views: z.array(
                     z.object({
-                        sectionId: z.string(),
-                        tabTitle: z.string(),
-                        section: sectionSchema,
+                        viewId: z.string().describe('Saved view ID to pass to ocean_brain_read_view.'),
+                        groupTitle: z.string().describe('View group name.'),
+                        view: viewSchema,
                     }),
                 ),
                 page: pageInfoSchema,
@@ -73,20 +56,20 @@ export const registerViewTools = (server: McpServer, request: McpQueryRequest) =
         },
         async ({ query, limit, offset }) => {
             const data = await request(
-                `query ($query: String, $pagination: PaginationInput) { viewSections(query: $query, pagination: $pagination) { totalCount sections { tabTitle section { ${SECTION_FIELDS} } } } }`,
+                `query ($query: String, $pagination: PaginationInput) { views(query: $query, pagination: $pagination) { totalCount views { groupTitle view { ${VIEW_FIELDS} } } } }`,
                 { query, pagination: { limit, offset } },
             );
             const result = z
                 .object({
                     totalCount: z.number(),
-                    sections: z.array(z.object({ tabTitle: z.string(), section: sectionSchema })),
+                    views: z.array(z.object({ groupTitle: z.string(), view: viewSchema })),
                 })
-                .parse(data?.viewSections);
+                .parse(data?.views);
             return createMcpJsonToolResult({
                 totalCount: result.totalCount,
-                views: result.sections.map((view) => ({
+                views: result.views.map((view) => ({
                     ...view,
-                    sectionId: view.section.id,
+                    viewId: view.view.id,
                 })),
                 page: createPageInfo(result.totalCount, limit, offset),
             });
@@ -97,9 +80,9 @@ export const registerViewTools = (server: McpServer, request: McpQueryRequest) =
         'ocean_brain_read_view',
         {
             description:
-                'Read a saved view with its conditions, display settings and paged note rows. Board: omit groupValue for all columns; null means unclassified. Calendar: dateRange is required ([start,end), at most 32 days); saved date field controls order. propertyKeys overrides table columns; omit to use saved table property columns. section.limit is the UI display limit, separate from page.limit.',
+                'Read one saved view by viewId, with its filters, display format and paged note rows. View groups organize views; this reads an individual view. Board: omit groupValue for all columns; null means unclassified. Calendar: dateRange is required ([start,end), at most 32 days); saved date field controls order. propertyKeys overrides table columns; omit to use saved table property columns. view.limit is the saved view display limit, separate from page.limit.',
             inputSchema: {
-                sectionId: z.string().min(1),
+                viewId: z.string().min(1).describe('Saved view ID returned by ocean_brain_list_views.'),
                 limit: pageLimitSchema(20, 50),
                 offset: pageOffsetSchema,
                 propertyKeys: propertyKeysSchema.optional(),
@@ -117,26 +100,26 @@ export const registerViewTools = (server: McpServer, request: McpQueryRequest) =
             },
             annotations: { readOnlyHint: true },
         },
-        async ({ sectionId, limit, offset, propertyKeys, groupValue, dateRange }) => {
+        async ({ viewId, limit, offset, propertyKeys, groupValue, dateRange }) => {
             const data = await request(
                 `query ($id: ID!, $pagination: PaginationInput, $propertyKeys: [String!], $groupValue: String, $dateRange: DateRangeInput) {
-            readViewSection(id: $id, pagination: $pagination, propertyKeys: $propertyKeys, groupValue: $groupValue, dateRange: $dateRange) {
-                section { ${SECTION_FIELDS} } totalCount groupProperty { key name options { id label value color order } }
+            readView(id: $id, pagination: $pagination, propertyKeys: $propertyKeys, groupValue: $groupValue, dateRange: $dateRange) {
+                view { ${VIEW_FIELDS} } totalCount groupProperty { key name options { id label value color order } }
                 rows { groupValue calendarDate note { ${NOTE_SUMMARY_FIELDS} } }
             }
         }`,
                 {
-                    id: sectionId,
+                    id: viewId,
                     pagination: { limit, offset },
                     propertyKeys,
                     groupValue,
                     dateRange,
                 },
             );
-            const result = viewReadSchema.parse(data?.readViewSection);
+            const result = viewReadSchema.parse(data?.readView);
             const keys =
                 propertyKeys ??
-                (result.section.displayType === 'table' ? result.section.displayOptions.tablePropertyKeys : []);
+                (result.view.displayType === 'table' ? result.view.displayOptions.tablePropertyKeys : []);
             const selection = {
                 propertyKeys: keys,
                 ...(groupValue !== undefined

@@ -4,64 +4,64 @@ import test from 'node:test';
 import {
     buildPropertyFilterWhere,
     buildViewBoardColumnWhere,
-    buildViewSectionCalendarWhere,
-    buildViewSectionWhere,
-    clampViewSectionLimit,
+    buildViewCalendarWhere,
+    buildViewWhere,
+    clampViewLimit,
     getNotesByPropertiesWithDb,
     hydratePropertyFilters,
     normalizeViewCalendarDateRange,
     normalizeViewDisplayOptions,
+    normalizeViewGroupTitle,
+    normalizeViewInput,
     normalizeViewNotesPagination,
     normalizeViewNotesQueryInput,
     normalizeViewPropertyFilters,
-    normalizeViewSectionInput,
-    normalizeViewTabTitle,
-    normalizeViewTagNames,
-    pickNextActiveViewTabId,
+    normalizeViewTagFilterNames,
+    pickNextActiveViewGroupId,
     type ViewPropertyFilterRecord,
-    type ViewSectionRecord,
+    type ViewRecord,
 } from './workspace.js';
 
-test('normalizeViewTagNames trims values and canonicalizes plain or @-prefixed tags', () => {
-    assert.deepEqual(normalizeViewTagNames([' project ', '@doing', '@todo', '', '@todo']), [
+test('normalizeViewTagFilterNames trims values and canonicalizes plain or @-prefixed tags', () => {
+    assert.deepEqual(normalizeViewTagFilterNames([' project ', '@doing', '@todo', '', '@todo']), [
         '@project',
         '@doing',
         '@todo',
     ]);
 });
 
-test('normalizeViewTagNames rejects hash-prefixed tags', () => {
-    assert.throws(() => normalizeViewTagNames(['#doing']), /use @, not #/);
+test('normalizeViewTagFilterNames rejects hash-prefixed tags', () => {
+    assert.throws(() => normalizeViewTagFilterNames(['#doing']), /use @, not #/);
 });
 
-test('normalizeViewSectionInput derives a default title and clamps invalid limits', () => {
-    const section = normalizeViewSectionInput({
+test('normalizeViewInput derives a default title and clamps invalid limits', () => {
+    const view = normalizeViewInput({
         title: '   ',
         tagNames: ['project', '@review'],
         mode: 'or',
         limit: 999,
     });
 
-    assert.equal(section.title, '@project + @review');
-    assert.deepEqual(section.tagNames, ['@project', '@review']);
-    assert.equal(section.mode, 'or');
-    assert.equal(section.limit, 20);
+    assert.equal(view.title, '@project + @review');
+    assert.deepEqual(view.tagNames, ['@project', '@review']);
+    assert.equal(view.mode, 'or');
+    assert.equal(view.limit, 20);
 });
 
-test('normalizeViewSectionInput allows all-note views without filters', () => {
-    const section = normalizeViewSectionInput({
+test('normalizeViewInput allows all-note views without filters', () => {
+    const view = normalizeViewInput({
         title: '',
         tagNames: ['   ', ''],
     });
 
-    assert.equal(section.title, 'All notes');
-    assert.deepEqual(section.tagNames, []);
-    assert.deepEqual(section.propertyFilters, []);
+    assert.equal(view.title, 'All notes');
+    assert.deepEqual(view.tagNames, []);
+    assert.deepEqual(view.propertyFilters, []);
 });
 
-test('normalizeViewSectionInput preserves table display sections', () => {
+test('normalizeViewInput preserves table display views', () => {
     assert.equal(
-        normalizeViewSectionInput({
+        normalizeViewInput({
             title: 'Project tasks',
             displayType: 'table',
             displayOptions: {
@@ -76,8 +76,8 @@ test('normalizeViewSectionInput preserves table display sections', () => {
     );
 });
 
-test('normalizeViewSectionInput preserves a select property as the board axis', () => {
-    const section = normalizeViewSectionInput({
+test('normalizeViewInput preserves a select property as the board axis', () => {
+    const view = normalizeViewInput({
         title: 'Project board',
         displayType: 'board',
         displayOptions: {
@@ -85,23 +85,23 @@ test('normalizeViewSectionInput preserves a select property as the board axis', 
         },
     });
 
-    assert.equal(section.displayType, 'board');
-    assert.equal(section.displayOptions.boardGroupByPropertyKey, 'status');
+    assert.equal(view.displayType, 'board');
+    assert.equal(view.displayOptions.boardGroupByPropertyKey, 'status');
 });
 
-test('normalizeViewSectionInput preserves the calendar date field', () => {
-    const section = normalizeViewSectionInput({
+test('normalizeViewInput preserves the calendar date field', () => {
+    const view = normalizeViewInput({
         title: 'Recently edited',
         displayType: 'calendar',
         displayOptions: { calendarDateField: 'updatedAt' },
     });
 
-    assert.equal(section.displayType, 'calendar');
-    assert.equal(section.displayOptions.calendarDateField, 'updatedAt');
+    assert.equal(view.displayType, 'calendar');
+    assert.equal(view.displayOptions.calendarDateField, 'updatedAt');
 });
 
-test('normalizeViewSectionInput preserves a normalized date property as the calendar axis', () => {
-    const section = normalizeViewSectionInput({
+test('normalizeViewInput preserves a normalized date property as the calendar axis', () => {
+    const view = normalizeViewInput({
         title: 'Due dates',
         displayType: 'calendar',
         displayOptions: {
@@ -110,11 +110,11 @@ test('normalizeViewSectionInput preserves a normalized date property as the cale
         },
     });
 
-    assert.equal(section.displayOptions.calendarDateField, 'property');
-    assert.equal(section.displayOptions.calendarDatePropertyKey, 'due-date');
+    assert.equal(view.displayOptions.calendarDateField, 'property');
+    assert.equal(view.displayOptions.calendarDatePropertyKey, 'due-date');
     assert.throws(
         () =>
-            normalizeViewSectionInput({
+            normalizeViewInput({
                 displayType: 'calendar',
                 displayOptions: { calendarDateField: 'property' },
             }),
@@ -122,15 +122,15 @@ test('normalizeViewSectionInput preserves a normalized date property as the cale
     );
 });
 
-test('normalizeViewSectionInput requires the board axis to differ from section filters', () => {
+test('normalizeViewInput requires the board axis to differ from view filters', () => {
     assert.throws(
         () =>
-            normalizeViewSectionInput({
+            normalizeViewInput({
                 displayType: 'board',
                 displayOptions: { boardGroupByPropertyKey: 'status' },
                 propertyFilters: [{ key: 'status', valueType: 'select', operator: 'notEquals', value: 'done' }],
             }),
-        /cannot also be used as a section filter/,
+        /cannot also be used as a view filter/,
     );
 });
 
@@ -230,7 +230,7 @@ test('normalizeViewPropertyFilters validates typed filter values', () => {
     );
 });
 
-test('normalizeViewNotesQueryInput normalizes property query filters without section-only fields', () => {
+test('normalizeViewNotesQueryInput normalizes property query filters without view-only fields', () => {
     assert.deepEqual(
         normalizeViewNotesQueryInput({
             tagNames: ['project', '@doing'],
@@ -685,9 +685,9 @@ test('hydratePropertyFilters validates property definitions and select options',
     );
 });
 
-const createSectionRecord = (patch: Partial<ViewSectionRecord> = {}): ViewSectionRecord => ({
+const createViewRecord = (patch: Partial<ViewRecord> = {}): ViewRecord => ({
     id: '1',
-    tabId: '1',
+    groupId: '1',
     title: 'Doing',
     displayType: 'list',
     displayOptions: {
@@ -707,14 +707,14 @@ const createSectionRecord = (patch: Partial<ViewSectionRecord> = {}): ViewSectio
     ...patch,
 });
 
-test('buildViewSectionWhere returns an open query for all-note views', () => {
-    assert.deepEqual(buildViewSectionWhere(createSectionRecord()), {});
+test('buildViewWhere returns an open query for all-note views', () => {
+    assert.deepEqual(buildViewWhere(createViewRecord()), {});
 });
 
-test('buildViewSectionWhere combines tag and property filters with AND', () => {
+test('buildViewWhere combines tag and property filters with AND', () => {
     assert.deepEqual(
-        buildViewSectionWhere(
-            createSectionRecord({
+        buildViewWhere(
+            createViewRecord({
                 tagNames: ['@ocean', '@ai'],
                 mode: 'or',
                 propertyFilters: [
@@ -760,11 +760,11 @@ test('buildViewSectionWhere combines tag and property filters with AND', () => {
     );
 });
 
-test('buildViewSectionCalendarWhere combines section filters with the configured date field', () => {
-    const section = createSectionRecord({
+test('buildViewCalendarWhere combines view filters with the configured date field', () => {
+    const view = createViewRecord({
         displayType: 'calendar',
         displayOptions: {
-            ...createSectionRecord().displayOptions,
+            ...createViewRecord().displayOptions,
             calendarDateField: 'updatedAt',
         },
         tagNames: ['@ocean'],
@@ -774,9 +774,9 @@ test('buildViewSectionCalendarWhere combines section filters with the configured
         end: new Date('2026-09-01T00:00:00.000Z'),
     };
 
-    assert.deepEqual(buildViewSectionCalendarWhere(section, dateRange), {
+    assert.deepEqual(buildViewCalendarWhere(view, dateRange), {
         AND: [
-            buildViewSectionWhere(section),
+            buildViewWhere(view),
             {
                 updatedAt: {
                     gte: dateRange.start,
@@ -787,11 +787,11 @@ test('buildViewSectionCalendarWhere combines section filters with the configured
     });
 });
 
-test('buildViewSectionCalendarWhere selects an indexed date property inside the section scope', () => {
-    const section = createSectionRecord({
+test('buildViewCalendarWhere selects an indexed date property inside the view scope', () => {
+    const view = createViewRecord({
         displayType: 'calendar',
         displayOptions: {
-            ...createSectionRecord().displayOptions,
+            ...createViewRecord().displayOptions,
             calendarDateField: 'property',
             calendarDatePropertyKey: 'due-date',
         },
@@ -802,9 +802,9 @@ test('buildViewSectionCalendarWhere selects an indexed date property inside the 
         end: new Date('2026-09-01T00:00:00.000Z'),
     };
 
-    assert.deepEqual(buildViewSectionCalendarWhere(section, dateRange, 17), {
+    assert.deepEqual(buildViewCalendarWhere(view, dateRange, 17), {
         AND: [
-            buildViewSectionWhere(section),
+            buildViewWhere(view),
             {
                 properties: {
                     some: {
@@ -820,12 +820,12 @@ test('buildViewSectionCalendarWhere selects an indexed date property inside the 
     });
 });
 
-test('buildViewBoardColumnWhere keeps the section scope while selecting one indexed option', () => {
-    const section = createSectionRecord({ tagNames: ['@ocean'] });
+test('buildViewBoardColumnWhere keeps the view scope while selecting one indexed option', () => {
+    const view = createViewRecord({ tagNames: ['@ocean'] });
 
-    assert.deepEqual(buildViewBoardColumnWhere(section, 7, 11), {
+    assert.deepEqual(buildViewBoardColumnWhere(view, 7, 11), {
         AND: [
-            buildViewSectionWhere(section),
+            buildViewWhere(view),
             {
                 properties: {
                     some: { propertyDefinitionId: 7, optionId: 11 },
@@ -836,27 +836,27 @@ test('buildViewBoardColumnWhere keeps the section scope while selecting one inde
 });
 
 test('buildViewBoardColumnWhere treats missing group values as unassigned', () => {
-    assert.deepEqual(buildViewBoardColumnWhere(createSectionRecord(), 7, null), {
+    assert.deepEqual(buildViewBoardColumnWhere(createViewRecord(), 7, null), {
         properties: {
             none: { propertyDefinitionId: 7 },
         },
     });
 });
 
-test('normalizeViewTabTitle falls back to an untitled label', () => {
-    assert.equal(normalizeViewTabTitle('   '), 'Untitled View');
-    assert.equal(normalizeViewTabTitle(' Agent '), 'Agent');
+test('normalizeViewGroupTitle falls back to an untitled label', () => {
+    assert.equal(normalizeViewGroupTitle('   '), 'Untitled View');
+    assert.equal(normalizeViewGroupTitle(' Agent '), 'Agent');
 });
 
-test('clampViewSectionLimit keeps values inside the allowed range', () => {
-    assert.equal(clampViewSectionLimit(undefined), 5);
-    assert.equal(clampViewSectionLimit(0), 1);
-    assert.equal(clampViewSectionLimit(8), 8);
-    assert.equal(clampViewSectionLimit(99), 20);
+test('clampViewLimit keeps values inside the allowed range', () => {
+    assert.equal(clampViewLimit(undefined), 5);
+    assert.equal(clampViewLimit(0), 1);
+    assert.equal(clampViewLimit(8), 8);
+    assert.equal(clampViewLimit(99), 20);
 });
 
-test('pickNextActiveViewTabId falls back to the first remaining tab after deletion', () => {
-    assert.equal(pickNextActiveViewTabId([3, 7, 9], 7, 7), 3);
-    assert.equal(pickNextActiveViewTabId([3, 7, 9], 7, 3), 3);
-    assert.equal(pickNextActiveViewTabId([7], 7, 7), null);
+test('pickNextActiveViewGroupId falls back to the first remaining group after deletion', () => {
+    assert.equal(pickNextActiveViewGroupId([3, 7, 9], 7, 7), 3);
+    assert.equal(pickNextActiveViewGroupId([3, 7, 9], 7, 3), 3);
+    assert.equal(pickNextActiveViewGroupId([7], 7, 7), null);
 });

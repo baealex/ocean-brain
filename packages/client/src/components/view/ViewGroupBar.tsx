@@ -12,22 +12,22 @@ import classNames from 'classnames';
 
 import * as Icon from '~/components/icon';
 import { Button } from '~/components/shared';
-import type { ViewTab } from '~/models/view.model';
+import type { ViewGroup } from '~/models/view.model';
 
-const tabChromeClassName =
+const groupChromeClassName =
     'group flex h-10 max-w-[72vw] shrink-0 items-center rounded-[12px] border transition-[background-color,border-color,color,box-shadow] sm:max-w-[176px]';
-const tabTriggerClassName =
+const groupTriggerClassName =
     'focus-ring-soft inline-flex h-full min-w-0 flex-1 touch-pan-x items-center gap-1 rounded-[11px] px-3 text-[13px] font-medium outline-none transition-colors';
 
-interface SortableViewTabProps {
-    tab: ViewTab;
+interface SortableViewGroupProps {
+    group: ViewGroup;
     isActive: boolean;
     onSelect: () => void;
 }
 
-function SortableViewTab({ tab, isActive, onSelect }: SortableViewTabProps) {
+function SortableViewGroup({ group, isActive, onSelect }: SortableViewGroupProps) {
     const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
-        id: tab.id,
+        id: group.id,
     });
 
     return (
@@ -39,7 +39,7 @@ function SortableViewTab({ tab, isActive, onSelect }: SortableViewTabProps) {
                 opacity: isDragging ? 0.6 : 1,
             }}
             className={classNames(
-                tabChromeClassName,
+                groupChromeClassName,
                 isActive
                     ? 'border-border-secondary/80 bg-elevated text-fg-default shadow-[0_8px_18px_-18px_rgba(15,18,24,0.28)]'
                     : 'border-transparent bg-transparent text-fg-secondary hover:border-border-subtle/80 hover:bg-hover-subtle hover:text-fg-default',
@@ -52,32 +52,38 @@ function SortableViewTab({ tab, isActive, onSelect }: SortableViewTabProps) {
                 {...listeners}
                 role="tab"
                 aria-selected={isActive}
-                title={`${tab.title}. Drag to reorder.`}
+                title={`${group.title}. Drag to reorder.`}
                 className={classNames(
-                    tabTriggerClassName,
+                    groupTriggerClassName,
                     isActive ? 'text-fg-default' : 'text-fg-secondary group-hover:text-fg-default',
                     isDragging ? 'cursor-grabbing' : 'cursor-pointer',
                 )}
                 onClick={onSelect}
             >
-                <span className="min-w-0 flex-1 truncate">{tab.title}</span>
+                <span className="min-w-0 flex-1 truncate">{group.title}</span>
                 <span className="inline-flex min-w-4 shrink-0 items-center justify-center rounded-full bg-hover-subtle/75 px-1 py-0 text-[10px] leading-4 text-current/70">
-                    {tab.sections.length}
+                    {group.views.length}
                 </span>
             </button>
         </div>
     );
 }
 
-interface ViewTabBarProps {
-    tabs: ViewTab[];
-    activeTabId: string | null;
-    onSelectTab: (tab: ViewTab) => void | Promise<void>;
-    onReorderTabs: (event: DragEndEvent) => void | Promise<void>;
-    onCreateTab: () => void;
+interface ViewGroupBarProps {
+    groups: ViewGroup[];
+    activeGroupId: string | null;
+    onSelectGroup: (group: ViewGroup) => void | Promise<void>;
+    onReorderGroups: (event: DragEndEvent) => void | Promise<void>;
+    onCreateGroup: () => void;
 }
 
-export default function ViewTabBar({ tabs, activeTabId, onSelectTab, onReorderTabs, onCreateTab }: ViewTabBarProps) {
+export default function ViewGroupBar({
+    groups,
+    activeGroupId,
+    onSelectGroup,
+    onReorderGroups,
+    onCreateGroup,
+}: ViewGroupBarProps) {
     const sensors = useSensors(
         useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -90,35 +96,35 @@ export default function ViewTabBar({ tabs, activeTabId, onSelectTab, onReorderTa
                 collisionDetection={closestCenter}
                 modifiers={[restrictToHorizontalAxis]}
                 autoScroll={false}
-                onDragEnd={(event) => void onReorderTabs(event)}
+                onDragEnd={(event) => void onReorderGroups(event)}
             >
                 <div className="flex items-center gap-1">
-                    <SortableContext items={tabs.map((tab) => tab.id)} strategy={horizontalListSortingStrategy}>
+                    <SortableContext items={groups.map((group) => group.id)} strategy={horizontalListSortingStrategy}>
                         <div
                             role="tablist"
-                            aria-label="Views tab list"
+                            aria-label="View groups"
                             className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto overflow-y-hidden"
                         >
-                            {tabs.map((tab) => (
-                                <SortableViewTab
-                                    key={tab.id}
-                                    tab={tab}
-                                    isActive={tab.id === activeTabId}
-                                    onSelect={() => void onSelectTab(tab)}
+                            {groups.map((group) => (
+                                <SortableViewGroup
+                                    key={group.id}
+                                    group={group}
+                                    isActive={group.id === activeGroupId}
+                                    onSelect={() => void onSelectGroup(group)}
                                 />
                             ))}
                         </div>
                     </SortableContext>
                     <Button
                         type="button"
-                        aria-label="New view tab"
+                        aria-label="New view group"
                         variant="ghost"
                         size="sm"
                         className="h-10 w-10 shrink-0 rounded-[12px] border-transparent bg-transparent px-0 text-[13px] text-fg-secondary hover:border-border-subtle/80 hover:bg-hover-subtle hover:text-fg-default sm:w-auto sm:px-2.5"
-                        onClick={onCreateTab}
+                        onClick={onCreateGroup}
                     >
                         <Icon.Plus className="h-5 w-5 shrink-0" />
-                        <span className="hidden sm:inline">New view tab</span>
+                        <span className="hidden sm:inline">New view group</span>
                     </Button>
                 </div>
             </DndContext>

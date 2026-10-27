@@ -1,6 +1,6 @@
 # Ocean Brain Testing Convention
 
-Updated: 2026-08-26
+Updated: 2026-10-24
 
 ## 1. Philosophy
 - Tests are executable feedback, not coverage theater.
@@ -110,10 +110,18 @@ Prefer these replacements:
 - `pnpm test:ci`
 - `pnpm type-check`
 - `pnpm build`
-- Recommended browser validation for cross-boundary user flows:
-- Install or refresh the local browser with `pnpm exec playwright install chromium` when the Playwright version changes.
-- `pnpm test:integration` builds the production app and runs the core note flow.
-- `pnpm test:e2e` builds the production app and runs the full browser suite.
+
+### Local E2E before push (required)
+
+Before pushing development changes to client/server runtime code, dependencies, production build/startup settings, or E2E tests, fixtures, and configuration, run `pnpm test:e2e` locally and require the full suite to pass. Include UI text or layout changes that can affect existing browser tests. Validate the final changes being pushed; rerun after further changes in these areas. Do not defer this validation to the release PR's E2E workflow.
+
+Install or refresh Chromium with `pnpm exec playwright install chromium` on first setup or after a Playwright update. `pnpm test:e2e` builds the production app and runs the full browser suite. `pnpm test:integration` builds the same app but runs only the core note flow; it is useful during development and does not replace the required full suite before push.
+
+Changes confined to documentation, comments, unit tests, or repository metadata may omit local E2E only when they cannot affect runtime behavior, dependencies, browser flows, or the production build. In the PR's Verification Guide, record the command and passing test count, or `Not run: <reason>` for an exempt change. Check the local E2E checklist item only after a passing run or a documented valid exemption. A missing browser, a failed run, or release-only CI scheduling is not an exemption; resolve required E2E failures before pushing.
+
+This local requirement does not expand CI scheduling. The full E2E workflow remains required for release PRs and available for manual verification.
+
+### Persistent test state
 
 Server tests must run through the package `test` or `test:ci` scripts. The runner migrates a temporary SQLite template, gives every Node test worker its own database copy and data directory, and restores the database, search index, images, and other data files before every test. The setup assigns and verifies persistent paths inside the temporary worker directory, and the complete run directory is removed afterward.
 

@@ -55,8 +55,8 @@ const createState = (): LocalDemoState => {
             token: null,
         },
         viewWorkspace: {
-            activeTabId: null,
-            tabs: [],
+            activeGroupId: null,
+            groups: [],
         },
     };
 };
@@ -110,16 +110,16 @@ describe('notesLocalPlugin', () => {
             },
         ];
         state.viewWorkspace = {
-            activeTabId: 'tab-1',
-            tabs: [
+            activeGroupId: 'tab-1',
+            groups: [
                 {
                     id: 'tab-1',
                     title: 'Planning',
                     order: 0,
-                    sections: [
+                    views: [
                         {
                             id: 'section-1',
-                            tabId: 'tab-1',
+                            groupId: 'tab-1',
                             title: 'Due dates',
                             displayType: 'calendar',
                             displayOptions: {

@@ -1,6 +1,6 @@
 # Ocean Brain Git Convention
 
-Updated: 2026-07-03
+Updated: 2026-10-24
 
 ## 1. Scope
 - This document defines commit and PR conventions for the Ocean Brain repository.
@@ -72,7 +72,7 @@ Use these shortcode labels exactly:
 
 ### 3-4. Pre-Merge Checklist
 1. CI checks (`lint`, `type-check`, `build`) pass
-2. Local validation for the changed scope is complete
+2. Local validation for the changed scope is complete, including [required local E2E before push](TESTING_CONVENTION.md#local-e2e-before-push-required)
 3. Any docs/scripts/env changes are documented in PR body
 4. Exactly one release impact label is applied: `release: major`, `release: minor`, `release: patch`, or `release: no-impact`
 5. Release-impacting changes include version/tag plan
@@ -117,7 +117,7 @@ Before sharing a PR URL, confirm all of the following:
 1. Title follows `<emoji> <subject>` and subject starts with an English verb.
 2. Body section headings exactly match the template headings.
 3. PR body heading emojis must use shortcode form (`:dart:`, `:hammer_and_wrench:`, etc.).
-4. `Verification Guide` contains concrete commands and expected results.
+4. `Verification Guide` contains concrete commands and expected results, plus the local E2E command and result or a valid exemption under `TESTING_CONVENTION.md`.
 5. The `Checklist` state is intentionally set (not left ambiguous).
 6. Exactly one release impact label is applied: `release: major`, `release: minor`, `release: patch`, or `release: no-impact`.
 

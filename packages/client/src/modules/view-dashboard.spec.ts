@@ -1,26 +1,26 @@
 // @vitest-environment node
 import {
-    buildViewSectionInput,
+    buildViewInput,
     EMPTY_VIEWS_WORKSPACE,
     formatViewPropertyFilter,
-    getActiveViewTab,
+    getActiveViewGroup,
     getViewDisplayTypeLabel,
     getViewPropertyOperatorLabel,
     getViewTableColumnLabel,
-    getViewTagMatchLabel,
-    getViewTagMatchToken,
-    moveViewSectionInWorkspace,
-    moveViewTabInWorkspace,
+    getViewTagFilterMatchLabel,
+    getViewTagFilterMatchToken,
+    moveViewGroupInWorkspace,
+    moveViewInWorkspace,
     normalizeViewTableColumns,
-    normalizeViewTagNames,
-    reorderViewSectionsInWorkspace,
-    reorderViewTabsInWorkspace,
-    setActiveViewTabInWorkspace,
+    normalizeViewTagFilterNames,
+    reorderViewGroupsInWorkspace,
+    reorderViewsInWorkspace,
+    setActiveViewGroupInWorkspace,
 } from './view-dashboard';
 
-const createSection = (section: {
+const createView = (view: {
     id: string;
-    tabId: string;
+    groupId: string;
     title: string;
     tagNames: string[];
     mode: 'and' | 'or';
@@ -38,107 +38,107 @@ const createSection = (section: {
     propertyFilters: [],
     sortBy: 'updatedAt' as const,
     sortOrder: 'desc' as const,
-    ...section,
+    ...view,
 });
 
 describe('view-dashboard helpers', () => {
     it('normalizes plain or @-prefixed tags and ignores hash-prefixed tags', () => {
-        expect(normalizeViewTagNames([' project ', '#doing', '@todo', ''])).toEqual(['@project', '@todo']);
+        expect(normalizeViewTagFilterNames([' project ', '#doing', '@todo', ''])).toEqual(['@project', '@todo']);
     });
 
-    it('returns the first tab when the active id is missing', () => {
+    it('returns the first group when the active id is missing', () => {
         expect(
-            getActiveViewTab({
-                activeTabId: 'missing',
-                tabs: [
-                    { id: 'tab-1', title: 'Now', order: 0, sections: [] },
-                    { id: 'tab-2', title: 'Agent', order: 1, sections: [] },
+            getActiveViewGroup({
+                activeGroupId: 'missing',
+                groups: [
+                    { id: 'group-1', title: 'Now', order: 0, views: [] },
+                    { id: 'group-2', title: 'Agent', order: 1, views: [] },
                 ],
             }),
-        ).toEqual({ id: 'tab-1', title: 'Now', order: 0, sections: [] });
+        ).toEqual({ id: 'group-1', title: 'Now', order: 0, views: [] });
     });
 
     it('keeps an empty workspace stable', () => {
-        expect(getActiveViewTab(EMPTY_VIEWS_WORKSPACE)).toBeNull();
+        expect(getActiveViewGroup(EMPTY_VIEWS_WORKSPACE)).toBeNull();
     });
 
-    it('sets the active tab only when the id exists', () => {
+    it('sets the active group only when the id exists', () => {
         expect(
-            setActiveViewTabInWorkspace(
+            setActiveViewGroupInWorkspace(
                 {
-                    activeTabId: 'tab-1',
-                    tabs: [
-                        { id: 'tab-1', title: 'Now', order: 0, sections: [] },
-                        { id: 'tab-2', title: 'Agent', order: 1, sections: [] },
+                    activeGroupId: 'group-1',
+                    groups: [
+                        { id: 'group-1', title: 'Now', order: 0, views: [] },
+                        { id: 'group-2', title: 'Agent', order: 1, views: [] },
                     ],
                 },
-                'tab-2',
+                'group-2',
             ),
         ).toEqual({
-            activeTabId: 'tab-2',
-            tabs: [
-                { id: 'tab-1', title: 'Now', order: 0, sections: [] },
-                { id: 'tab-2', title: 'Agent', order: 1, sections: [] },
+            activeGroupId: 'group-2',
+            groups: [
+                { id: 'group-1', title: 'Now', order: 0, views: [] },
+                { id: 'group-2', title: 'Agent', order: 1, views: [] },
             ],
         });
     });
 
-    it('reorders tabs by active and over ids while preserving the active tab id', () => {
+    it('reorders groups by active and over ids while preserving the active group id', () => {
         expect(
-            reorderViewTabsInWorkspace(
+            reorderViewGroupsInWorkspace(
                 {
-                    activeTabId: 'tab-2',
-                    tabs: [
-                        { id: 'tab-1', title: 'Now', order: 0, sections: [] },
-                        { id: 'tab-2', title: 'Agent', order: 1, sections: [] },
-                        { id: 'tab-3', title: 'Writing', order: 2, sections: [] },
+                    activeGroupId: 'group-2',
+                    groups: [
+                        { id: 'group-1', title: 'Now', order: 0, views: [] },
+                        { id: 'group-2', title: 'Agent', order: 1, views: [] },
+                        { id: 'group-3', title: 'Writing', order: 2, views: [] },
                     ],
                 },
-                'tab-3',
-                'tab-1',
+                'group-3',
+                'group-1',
             ),
         ).toEqual({
-            activeTabId: 'tab-2',
-            tabs: [
-                { id: 'tab-3', title: 'Writing', order: 2, sections: [] },
-                { id: 'tab-1', title: 'Now', order: 0, sections: [] },
-                { id: 'tab-2', title: 'Agent', order: 1, sections: [] },
+            activeGroupId: 'group-2',
+            groups: [
+                { id: 'group-3', title: 'Writing', order: 2, views: [] },
+                { id: 'group-1', title: 'Now', order: 0, views: [] },
+                { id: 'group-2', title: 'Agent', order: 1, views: [] },
             ],
         });
     });
 
-    it('reorders sections inside the selected tab', () => {
+    it('reorders views inside the selected group', () => {
         expect(
-            reorderViewSectionsInWorkspace(
+            reorderViewsInWorkspace(
                 {
-                    activeTabId: 'tab-1',
-                    tabs: [
+                    activeGroupId: 'group-1',
+                    groups: [
                         {
-                            id: 'tab-1',
+                            id: 'group-1',
                             title: 'Now',
                             order: 0,
-                            sections: [
-                                createSection({
-                                    id: 'section-1',
-                                    tabId: 'tab-1',
+                            views: [
+                                createView({
+                                    id: 'view-1',
+                                    groupId: 'group-1',
                                     title: 'One',
                                     tagNames: ['@one'],
                                     mode: 'and',
                                     limit: 5,
                                     order: 0,
                                 }),
-                                createSection({
-                                    id: 'section-2',
-                                    tabId: 'tab-1',
+                                createView({
+                                    id: 'view-2',
+                                    groupId: 'group-1',
                                     title: 'Two',
                                     tagNames: ['@two'],
                                     mode: 'and',
                                     limit: 5,
                                     order: 1,
                                 }),
-                                createSection({
-                                    id: 'section-3',
-                                    tabId: 'tab-1',
+                                createView({
+                                    id: 'view-3',
+                                    groupId: 'group-1',
                                     title: 'Three',
                                     tagNames: ['@three'],
                                     mode: 'or',
@@ -149,26 +149,26 @@ describe('view-dashboard helpers', () => {
                         },
                     ],
                 },
-                'tab-1',
-                'section-3',
-                'section-1',
-            ).tabs[0]?.sections.map((section) => section.id),
-        ).toEqual(['section-3', 'section-1', 'section-2']);
+                'group-1',
+                'view-3',
+                'view-1',
+            ).groups[0]?.views.map((view) => view.id),
+        ).toEqual(['view-3', 'view-1', 'view-2']);
     });
 
-    it('moves tabs and sections one position for non-drag reorder controls', () => {
-        const sectionOne = createSection({
-            id: 'section-1',
-            tabId: 'tab-1',
+    it('moves groups and views one position for non-drag reorder controls', () => {
+        const viewOne = createView({
+            id: 'view-1',
+            groupId: 'group-1',
             title: 'One',
             tagNames: [],
             mode: 'and',
             limit: 5,
             order: 0,
         });
-        const sectionTwo = createSection({
-            id: 'section-2',
-            tabId: 'tab-1',
+        const viewTwo = createView({
+            id: 'view-2',
+            groupId: 'group-1',
             title: 'Two',
             tagNames: [],
             mode: 'and',
@@ -176,30 +176,28 @@ describe('view-dashboard helpers', () => {
             order: 1,
         });
         const workspace = {
-            activeTabId: 'tab-1',
-            tabs: [
-                { id: 'tab-1', title: 'Now', order: 0, sections: [sectionOne, sectionTwo] },
-                { id: 'tab-2', title: 'Later', order: 1, sections: [] },
+            activeGroupId: 'group-1',
+            groups: [
+                { id: 'group-1', title: 'Now', order: 0, views: [viewOne, viewTwo] },
+                { id: 'group-2', title: 'Later', order: 1, views: [] },
             ],
         };
 
-        expect(moveViewTabInWorkspace(workspace, 'tab-1', 'next').tabs.map((tab) => tab.id)).toEqual([
-            'tab-2',
-            'tab-1',
+        expect(moveViewGroupInWorkspace(workspace, 'group-1', 'next').groups.map((group) => group.id)).toEqual([
+            'group-2',
+            'group-1',
         ]);
         expect(
-            moveViewSectionInWorkspace(workspace, 'tab-1', 'section-2', 'previous').tabs[0]?.sections.map(
-                (section) => section.id,
-            ),
-        ).toEqual(['section-2', 'section-1']);
-        expect(moveViewTabInWorkspace(workspace, 'tab-1', 'previous')).toBe(workspace);
+            moveViewInWorkspace(workspace, 'group-1', 'view-2', 'previous').groups[0]?.views.map((view) => view.id),
+        ).toEqual(['view-2', 'view-1']);
+        expect(moveViewGroupInWorkspace(workspace, 'group-1', 'previous')).toBe(workspace);
     });
 
     it('returns clear labels and short conjunction tokens for tag matching', () => {
-        expect(getViewTagMatchLabel('and')).toBe('AND — all selected tags');
-        expect(getViewTagMatchLabel('or')).toBe('OR — any selected tag');
-        expect(getViewTagMatchToken('and')).toBe('AND');
-        expect(getViewTagMatchToken('or')).toBe('OR');
+        expect(getViewTagFilterMatchLabel('and')).toBe('AND — all selected tags');
+        expect(getViewTagFilterMatchLabel('or')).toBe('OR — any selected tag');
+        expect(getViewTagFilterMatchToken('and')).toBe('AND');
+        expect(getViewTagFilterMatchToken('or')).toBe('OR');
     });
 
     it('formats property filter labels for display', () => {
@@ -250,12 +248,12 @@ describe('view-dashboard helpers', () => {
         expect(getViewTableColumnLabel('createdAt')).toBe('Created');
     });
 
-    it('builds a mutation input from a saved section while preserving filters', () => {
+    it('builds a mutation input from a saved view while preserving filters', () => {
         expect(
-            buildViewSectionInput(
-                createSection({
-                    id: 'section-1',
-                    tabId: 'tab-1',
+            buildViewInput(
+                createView({
+                    id: 'view-1',
+                    groupId: 'group-1',
                     title: 'Tasks',
                     tagNames: ['@제품'],
                     mode: 'and',

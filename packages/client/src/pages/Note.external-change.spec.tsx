@@ -735,7 +735,7 @@ describe('<NoteContent /> external change handling', () => {
             expectedUpdatedAt: initialNote.updatedAt,
         });
         expect(invalidateQueries).toHaveBeenCalledWith({
-            queryKey: queryKeys.views.sectionNotesAll(),
+            queryKey: queryKeys.views.viewNotesAll(),
             exact: false,
         });
         expect(invalidateQueries).toHaveBeenCalledWith({

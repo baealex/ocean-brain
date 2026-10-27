@@ -1,10 +1,23 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import type { NotePropertyKeySummary } from '~/apis/note.api';
+import { fetchNote, fetchNotes, type NotePropertyKeySummary } from '~/apis/note.api';
 import type { Tag } from '~/models/tag.model';
 import type { View } from '~/models/view.model';
+import { createQueryClientWrapper } from '~/test/test-utils';
 import ViewDialog from './ViewDialog';
+
+vi.mock('~/apis/note.api', () => ({ fetchNote: vi.fn(), fetchNotes: vi.fn() }));
+
+const templateNote = {
+    title: 'Meeting outline',
+    content: '[]',
+    layout: 'wide' as const,
+    pinned: false,
+    properties: [],
+    createdAt: '2026-10-27',
+    updatedAt: '2026-10-27',
+};
 
 beforeAll(() => {
     Object.defineProperties(HTMLElement.prototype, {
@@ -53,6 +66,60 @@ const createView = (patch: Partial<View> = {}): View => ({
 });
 
 describe('<ViewDialog />', () => {
+    it('selects an existing note as the saved view default template', async () => {
+        const user = userEvent.setup();
+        const onSubmit = vi.fn();
+        vi.mocked(fetchNotes).mockResolvedValue({
+            type: 'success',
+            allNotes: { totalCount: 1, notes: [{ ...templateNote, id: '42', tags: [], order: 0 }] },
+        });
+        vi.mocked(fetchNote).mockResolvedValue({ type: 'success', note: templateNote });
+        render(
+            <ViewDialog
+                open
+                mode="edit"
+                initialView={createView()}
+                availableTags={[]}
+                availableProperties={[]}
+                onClose={vi.fn()}
+                onSubmit={onSubmit}
+            />,
+            { wrapper: createQueryClientWrapper().Wrapper },
+        );
+
+        await user.click(screen.getByRole('button', { name: 'Choose template' }));
+        await user.type(await screen.findByLabelText('Search template notes'), 'outline');
+        await user.click(await screen.findByRole('button', { name: 'Meeting outline', exact: true }));
+        await user.click(screen.getByRole('button', { name: 'Save view' }));
+
+        expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ defaultTemplateNoteId: '42' }));
+    });
+
+    it('allows clearing an unavailable template without changing the view filters', async () => {
+        const user = userEvent.setup();
+        const onSubmit = vi.fn();
+        vi.mocked(fetchNote).mockResolvedValue({ type: 'error', errors: [{ message: 'Note not found' }] });
+        render(
+            <ViewDialog
+                open
+                mode="edit"
+                initialView={createView({ defaultTemplateNoteId: '42', tagNames: ['@project-a'] })}
+                availableTags={[]}
+                availableProperties={[]}
+                onClose={vi.fn()}
+                onSubmit={onSubmit}
+            />,
+            { wrapper: createQueryClientWrapper().Wrapper },
+        );
+
+        await user.click(screen.getByRole('button', { name: 'Clear template' }));
+        await user.click(screen.getByRole('button', { name: 'Save view' }));
+
+        expect(onSubmit).toHaveBeenCalledWith(
+            expect.objectContaining({ defaultTemplateNoteId: null, tagNames: ['@project-a'] }),
+        );
+    });
+
     it('saves the chosen table column order while keeping title visible', async () => {
         const user = userEvent.setup();
         const onSubmit = vi.fn();

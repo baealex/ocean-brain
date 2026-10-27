@@ -7,8 +7,8 @@ import ViewNoteCreateButton from './ViewNoteCreateButton';
 
 vi.mock('~/apis/view.api', () => ({ createNoteInView: vi.fn(), fetchViewNoteCreationContext: vi.fn() }));
 vi.mock('@tanstack/react-router', () => ({
-    Link: ({ params, children }: { params: { id: string }; children: React.ReactNode }) => (
-        <a href={`/${params.id}`}>{children}</a>
+    Link: ({ to, params, children }: { to?: string; params?: { id: string }; children: React.ReactNode }) => (
+        <a href={params ? `/${params.id}` : to}>{children}</a>
     ),
 }));
 
@@ -34,6 +34,57 @@ const renderButton = () =>
     render(<ViewNoteCreateButton viewId="42" />, { wrapper: createQueryClientWrapper().Wrapper });
 
 describe('creation from a view', () => {
+    it('keeps an empty text template default when submitted unchanged', async () => {
+        const user = userEvent.setup();
+        vi.mocked(fetchViewNoteCreationContext).mockResolvedValue({
+            type: 'success',
+            viewNoteCreationContext: {
+                ...context,
+                templateNote: { id: '7', title: 'Meeting outline' },
+                properties: [
+                    { ...context.properties[0], key: 'owner', name: 'Owner', defaultValue: '', required: false },
+                ],
+            },
+        });
+        renderButton();
+
+        await user.click(screen.getByRole('button', { name: 'New note' }));
+        await user.type(await screen.findByLabelText('Title'), 'Weekly meeting');
+        await user.click(screen.getByRole('button', { name: 'Create note' }));
+
+        expect(createNoteInView).toHaveBeenCalledWith(
+            '42',
+            { title: 'Weekly meeting', tagNames: ['@project-a'] },
+            undefined,
+        );
+    });
+
+    it('can omit an optional inherited template property before creating the note', async () => {
+        const user = userEvent.setup();
+        vi.mocked(fetchViewNoteCreationContext).mockResolvedValue({
+            type: 'success',
+            viewNoteCreationContext: {
+                ...context,
+                templateNote: { id: '7', title: 'Meeting outline' },
+                properties: [
+                    { ...context.properties[0], key: 'owner', name: 'Owner', defaultValue: 'Alex', required: false },
+                ],
+            },
+        });
+        renderButton();
+
+        await user.click(screen.getByRole('button', { name: 'New note' }));
+        await user.type(await screen.findByLabelText('Title'), 'Weekly meeting');
+        await user.click(screen.getByRole('button', { name: 'Clear Owner' }));
+        await user.click(screen.getByRole('button', { name: 'Create note' }));
+
+        expect(createNoteInView).toHaveBeenCalledWith(
+            '42',
+            { title: 'Weekly meeting', tagNames: ['@project-a'], deletePropertyKeys: ['owner'] },
+            undefined,
+        );
+    });
+
     beforeEach(() => {
         vi.mocked(fetchViewNoteCreationContext).mockResolvedValue({
             type: 'success',

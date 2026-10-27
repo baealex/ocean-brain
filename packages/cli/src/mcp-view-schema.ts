@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { QUERY_CONDITION_FIELDS, queryConditionsSchema } from './mcp-query-tools.js';
 
 export const viewSchema = queryConditionsSchema.extend({
+    defaultTemplateNoteId: z.string().nullable().optional(),
     id: z.string().describe('Saved view ID.'),
     groupId: z.string().describe('ID of the view group containing this view.'),
     title: z.string(),
@@ -17,4 +18,4 @@ export const viewSchema = queryConditionsSchema.extend({
     }),
 });
 
-export const VIEW_FIELDS = `id groupId title displayType limit order ${QUERY_CONDITION_FIELDS} displayOptions { tableColumns tablePropertyKeys boardGroupByPropertyKey calendarDateField calendarDatePropertyKey }`;
+export const VIEW_FIELDS = `id groupId title defaultTemplateNoteId displayType limit order ${QUERY_CONDITION_FIELDS} displayOptions { tableColumns tablePropertyKeys boardGroupByPropertyKey calendarDateField calendarDatePropertyKey }`;

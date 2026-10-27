@@ -320,7 +320,7 @@ export const registerMcpTools = (
                 .optional()
                 .default('')
                 .describe(
-                    'Note body. Write tags as [@tag].',
+                    'Note body; overrides the default template. Write tags as [@tag].',
                 ),
             layout: noteLayoutSchema
                 .optional()
@@ -329,7 +329,8 @@ export const registerMcpTools = (
                 ),
             properties: z
                 .object({
-                    set: z.array(z.object({ key: z.string().min(1), value: z.string() })).max(50),
+                    set: z.array(z.object({ key: z.string().min(1), value: z.string() })).max(50).optional(),
+                    deleteKeys: z.array(z.string().min(1)).max(50).optional().describe('Omit inherited template properties; requires viewContext.'),
                 })
                 .strict()
                 .optional()

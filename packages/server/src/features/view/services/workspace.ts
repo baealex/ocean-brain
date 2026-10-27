@@ -40,6 +40,7 @@ export interface ViewPropertyFilterRecord {
 }
 
 export interface ViewRecord {
+    defaultTemplateNoteId?: string | null;
     id: string;
     groupId: string;
     title: string;
@@ -67,6 +68,7 @@ export interface ViewWorkspaceRecord {
 }
 
 export interface ViewInput {
+    defaultTemplateNoteId?: string | null;
     title?: string;
     displayType?: ViewDisplayType;
     displayOptions?: ViewDisplayOptionsInput | null;
@@ -192,6 +194,7 @@ export const normalizeViewTagFilterNames = (values: string[]) => {
 };
 
 interface StoredViewQuery {
+    defaultTemplateNoteId?: string | null;
     propertyFilters?: ViewPropertyFilterRecord[];
     sortBy?: ViewSortBy;
     sortOrder?: ViewSortOrder;
@@ -199,6 +202,7 @@ interface StoredViewQuery {
 }
 
 interface ParsedStoredViewQuery {
+    defaultTemplateNoteId?: string | null;
     propertyFilters: ViewPropertyFilterRecord[];
     sortBy: ViewSortBy;
     sortOrder: ViewSortOrder;
@@ -399,6 +403,8 @@ const parseStoredViewQuery = (value: string | null): ParsedStoredViewQuery => {
         const parsed = JSON.parse(value) as Partial<StoredViewQuery>;
 
         return {
+            defaultTemplateNoteId:
+                typeof parsed.defaultTemplateNoteId === 'string' ? parsed.defaultTemplateNoteId : null,
             propertyFilters: normalizeViewPropertyFilters(parsed.propertyFilters ?? []),
             sortBy: normalizeViewSortBy(parsed.sortBy),
             sortOrder: normalizeViewSortOrder(parsed.sortOrder),
@@ -414,8 +420,15 @@ const parseStoredViewQuery = (value: string | null): ParsedStoredViewQuery => {
     }
 };
 
-const serializeStoredViewQuery = ({ propertyFilters, sortBy, sortOrder, displayOptions }: ParsedStoredViewQuery) => {
+const serializeStoredViewQuery = ({
+    defaultTemplateNoteId,
+    propertyFilters,
+    sortBy,
+    sortOrder,
+    displayOptions,
+}: ParsedStoredViewQuery) => {
     return JSON.stringify({
+        ...(defaultTemplateNoteId ? { defaultTemplateNoteId } : {}),
         propertyFilters,
         sortBy,
         sortOrder,
@@ -455,6 +468,13 @@ const buildDefaultViewTitle = (tagNames: string[], propertyFilters: ViewProperty
 };
 
 export const normalizeViewInput = (input: ViewInput) => {
+    if (
+        input.defaultTemplateNoteId !== undefined &&
+        input.defaultTemplateNoteId !== null &&
+        (!/^[1-9]\d*$/.test(input.defaultTemplateNoteId) || Number(input.defaultTemplateNoteId) > 2_147_483_647)
+    ) {
+        throw new InvalidNotePropertyInputError('Choose a valid template note.');
+    }
     const tagNames = normalizeViewTagFilterNames(input.tagNames ?? []);
     const propertyFilters = normalizeViewPropertyFilters(input.propertyFilters);
     const trimmedTitle = input.title?.trim() ?? '';
@@ -483,6 +503,7 @@ export const normalizeViewInput = (input: ViewInput) => {
     }
 
     return {
+        defaultTemplateNoteId: input.defaultTemplateNoteId,
         title: trimmedTitle || buildDefaultViewTitle(tagNames, propertyFilters),
         displayType,
         displayOptions,
@@ -493,6 +514,7 @@ export const normalizeViewInput = (input: ViewInput) => {
         sortOrder,
         limit: clampViewLimit(input.limit),
     } satisfies {
+        defaultTemplateNoteId?: string | null;
         title: string;
         displayType: ViewDisplayType;
         displayOptions: ViewDisplayOptionsRecord;
@@ -577,6 +599,7 @@ export const serializeView = (view: DbView): ViewRecord => {
     const query = parseStoredViewQuery(view.query);
 
     return {
+        defaultTemplateNoteId: query.defaultTemplateNoteId ?? null,
         id: String(view.id),
         groupId: String(view.groupId),
         title: view.title,
@@ -735,6 +758,7 @@ const buildStoredViewQuery = async (db: ViewDbClient, view: ReturnType<typeof no
     }
 
     return serializeStoredViewQuery({
+        defaultTemplateNoteId: view.defaultTemplateNoteId,
         propertyFilters,
         sortBy: view.sortBy,
         sortOrder: view.sortOrder,
@@ -1391,6 +1415,11 @@ export const reorderViewGroups = async (groupIds: string[]) => {
     });
 };
 
+const assertTemplateNoteExists = async (db: ViewDbClient, id?: string | null) => {
+    if (id && !(await db.note.findUnique({ where: { id: Number(id) }, select: { id: true } })))
+        throw new InvalidNotePropertyInputError('The selected template note is unavailable.');
+};
+
 export const createView = async (groupId: string, input: ViewInput) => {
     const numericGroupId = parseViewId(groupId);
     const nextView = normalizeViewInput(input);
@@ -1406,6 +1435,7 @@ export const createView = async (groupId: string, input: ViewInput) => {
         }
 
         const nextViewOrder = await getNextViewOrder(tx, numericGroupId);
+        await assertTemplateNoteExists(tx, nextView.defaultTemplateNoteId);
         const query = await buildStoredViewQuery(tx, nextView);
 
         const createdView = await tx.view.create({
@@ -1436,7 +1466,12 @@ export const updateView = async (id: string, input: ViewInput) => {
     const nextView = normalizeViewInput(input);
 
     return models.$transaction(async (tx) => {
-        const query = await buildStoredViewQuery(tx, nextView);
+        const existing = await tx.view.findUniqueOrThrow({ where: { id: viewId }, select: { query: true } });
+        const previousTemplateId = parseStoredViewQuery(existing.query).defaultTemplateNoteId ?? null;
+        const defaultTemplateNoteId =
+            input.defaultTemplateNoteId === undefined ? previousTemplateId : input.defaultTemplateNoteId;
+        if (defaultTemplateNoteId !== previousTemplateId) await assertTemplateNoteExists(tx, defaultTemplateNoteId);
+        const query = await buildStoredViewQuery(tx, { ...nextView, defaultTemplateNoteId });
 
         const updatedView = await tx.view.update({
             where: { id: viewId },

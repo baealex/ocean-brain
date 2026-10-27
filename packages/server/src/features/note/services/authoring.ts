@@ -37,6 +37,7 @@ interface NoteAuthoringDeps {
         tagIds?: string[];
         properties?: NotePropertiesPatchInput;
         viewContext?: NoteViewContextInput;
+        useTemplateBody?: boolean;
     }) => Promise<NoteRecord>;
     findPlaceholders: (templates: string[]) => Promise<PlaceholderRecord[]>;
     parseMarkdownToContentJson: (markdown: string) => Promise<string>;
@@ -45,7 +46,7 @@ interface NoteAuthoringDeps {
 
 export interface CreateNoteAuthoringInput {
     viewContext?: NoteViewContextInput;
-    properties?: Pick<NotePropertiesByKeyPatchInput, 'set'>;
+    properties?: NotePropertiesByKeyPatchInput;
     title: string;
     markdown?: string;
     layout?: NoteLayout;
@@ -130,7 +131,9 @@ export const createNoteAuthoringService = (deps: NoteAuthoringDeps) => {
                 tagIds,
                 ...(properties ? { properties } : {}),
                 ...(input.layout ? { layout: input.layout } : {}),
-                ...(input.viewContext ? { viewContext: input.viewContext } : {}),
+                ...(input.viewContext
+                    ? { viewContext: input.viewContext, useTemplateBody: !input.markdown?.trim() }
+                    : {}),
             });
 
             return serializeNote(note);
@@ -153,7 +156,7 @@ const defaultNoteAuthoringService = createNoteAuthoringService({
                         title: input.title,
                         content: prepared.content,
                     }),
-                    ...(input.layout ? { layout: input.layout } : {}),
+                    layout: input.layout ?? viewInput?.layout,
                     ...(prepared.tagIds
                         ? { tags: { connect: prepared.tagIds.map((id) => ({ id: Number(id) })) } }
                         : {}),

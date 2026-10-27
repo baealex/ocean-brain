@@ -267,6 +267,9 @@ export const buildViewInput = (
     };
 
     return {
+        ...(nextView.defaultTemplateNoteId !== undefined
+            ? { defaultTemplateNoteId: nextView.defaultTemplateNoteId }
+            : {}),
         title: nextView.title,
         displayType: nextView.displayType,
         displayOptions: normalizeViewDisplayOptions(nextView.displayOptions),

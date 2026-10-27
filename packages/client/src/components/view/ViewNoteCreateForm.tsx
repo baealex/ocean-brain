@@ -88,12 +88,31 @@ const ViewNoteCreateForm = ({
                         const properties = context.properties
                             .filter((property) => property.required || values[property.key])
                             .map((property) => ({ key: property.key, value: values[property.key] ?? '' }));
-                        onSubmit({ title, tagNames, ...(properties.length ? { properties } : {}) });
+                        const deletePropertyKeys = context.properties
+                            .filter(
+                                (property) =>
+                                    !property.required &&
+                                    !values[property.key] &&
+                                    property.defaultValue !== null &&
+                                    property.defaultValue !== '',
+                            )
+                            .map((property) => property.key);
+                        onSubmit({
+                            title,
+                            tagNames,
+                            ...(properties.length ? { properties } : {}),
+                            ...(deletePropertyKeys.length ? { deletePropertyKeys } : {}),
+                        });
                     }}
                 >
                     <Text as="p" variant="meta" tone="tertiary">
                         Creating in {context.title}
                     </Text>
+                    {context.templateNote ? (
+                        <Text as="p" variant="meta" tone="tertiary">
+                            Template: {context.templateNote.title}
+                        </Text>
+                    ) : null}
                     <div className="space-y-2">
                         <Label htmlFor={`${formId}-title`} size="md">
                             Title

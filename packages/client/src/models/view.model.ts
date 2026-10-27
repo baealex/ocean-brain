@@ -31,6 +31,7 @@ export interface ViewPropertyFilter {
 }
 
 export interface View {
+    defaultTemplateNoteId?: string | null;
     id: string;
     groupId: string;
     title: string;
@@ -60,6 +61,7 @@ export interface ViewsWorkspace {
 import type { NotePropertyOption, NotePropertyValueType } from './note.model';
 
 export interface ViewNoteCreationContext {
+    templateNote?: { id: string; title: string } | null;
     viewId: string;
     title: string;
     tagNames: string[];

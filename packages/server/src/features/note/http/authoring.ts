@@ -369,7 +369,7 @@ export const createCreateNoteHandler = (
         const { title, markdown, layout, properties, viewContext } = req.body ?? {};
         const resolvedViewContext = resolveViewContext(viewContext);
         const resolvedProperties = resolveMetadataPropertyPatch(properties);
-        if (resolvedProperties?.deleteKeys !== undefined)
+        if (resolvedProperties?.deleteKeys !== undefined && !resolvedViewContext)
             throw createAppError(400, 'INVALID_NOTE_PROPERTIES', 'Create accepts properties.set only.');
         const resolvedLayout = resolveNoteLayout(layout);
 

@@ -182,6 +182,65 @@ test('creating in a board column assigns that column and survives reload', async
     expect(errors).toEqual([]);
 });
 
+test('a saved template creates independent notes with the current view context', async ({ page }) => {
+    const errors = collectRuntimeErrors(page);
+    await signIn(page);
+    const { viewId } = await createMeetingView(page);
+    const setup = await graph(page, `mutation {
+        oldTag: createTag(name: "@old-project") { id }
+        project: createNotePropertyKey(input: { key: "project", name: "Project", valueType: text }) { key }
+        owner: createNotePropertyKey(input: { key: "owner", name: "Owner", valueType: text }) { key }
+    }`);
+    const templateId = await createNote(page, 'Meeting outline', [
+        { type: 'heading', props: { level: 1 }, content: [{ type: 'text', text: 'Agenda', styles: {} }], children: [] },
+        paragraph('Discuss the project.'),
+        { type: 'paragraph', content: [{ type: 'tag', props: { id: setup.oldTag.id, tag: '@old-project' } }], children: [] },
+    ]);
+    const version = await graph(page, 'query($id: ID!) { note(id: $id) { updatedAt } }', { id: templateId });
+    await graph(page, `mutation($id: ID!, $version: String!) {
+        updateNoteProperties(id: $id, expectedUpdatedAt: $version, patch: { set: [
+            { key: "project", valueType: text, value: "Other" }, { key: "owner", valueType: text, value: "Alex" }
+        ] }) { id }
+    }`, { id: templateId, version: version.note.updatedAt });
+    await graph(page, `mutation($id: ID!) { updateView(id: $id, input: {
+        title: "Project meetings", tagNames: ["@project-a", "@meeting"],
+        propertyFilters: [{ key: "project", valueType: text, operator: equals, value: "A" }]
+    }) { id } }`, { id: viewId });
+    await page.goto('/views');
+
+    await page.getByRole('button', { name: 'View actions', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Edit view', exact: true }).click();
+    await page.getByRole('button', { name: 'Choose template', exact: true }).click();
+    await page.getByLabel('Search template notes').fill('Meeting outline');
+    await page.getByRole('button', { name: 'Meeting outline', exact: true }).click();
+    await page.getByRole('button', { name: 'Save view', exact: true }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await page.reload();
+    await page.getByRole('button', { name: 'New note', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'New note in view' });
+    await expect(dialog.getByText('Template: Meeting outline', { exact: true })).toBeVisible();
+    await expect(dialog.getByLabel('Project *')).toHaveValue('A');
+    await expect(dialog.getByLabel('Owner', { exact: true })).toHaveValue('Alex');
+    await dialog.getByRole('button', { name: 'Clear Owner' }).click();
+    await dialog.getByLabel('Title', { exact: true }).fill('Planning session');
+    await dialog.getByRole('button', { name: 'Create note', exact: true }).click();
+    await page.getByRole('link', { name: 'Open note', exact: true }).click();
+
+    await expect(page.getByRole('heading', { name: 'Agenda', exact: true })).toBeVisible();
+    await expect(page.getByText('Discuss the project.', { exact: true })).toBeVisible();
+    const createdId = new URL(page.url()).pathname.slice(1);
+    const result = await graph(page, `query($createdId: ID!, $templateId: ID!) {
+        created: note(id: $createdId) { tags { name } properties { key value } }
+        template: note(id: $templateId) { tags { name } properties { key value } }
+    }`, { createdId, templateId });
+    expect(result.created.tags.map((tag: { name: string }) => tag.name).sort()).toEqual(['@meeting', '@project-a']);
+    expect(result.created.properties).toEqual([{ key: 'project', value: 'A' }]);
+    expect(result.template.tags).toEqual([{ name: '@old-project' }]);
+    expect(result.template.properties).toContainEqual({ key: 'owner', value: 'Alex' });
+    expect(createdId).not.toBe(templateId);
+    expect(errors).toEqual([]);
+});
+
 test('exported Markdown reconnects the same view when pasted into another note', async ({ page }) => {
     // Arrange: the rendered source contains real result rows; the destination has its own prose.
     const errors = collectRuntimeErrors(page);

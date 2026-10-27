@@ -2,6 +2,7 @@ import { gql } from '~/modules/graphql.js';
 import { legacyViewTypeDefs } from './view.compat.js';
 
 export const viewType = gql`
+    type ViewTemplateNote { id: ID!, title: String! }
     type ViewNoteCreationProperty {
         key: String!
         name: String!
@@ -13,6 +14,7 @@ export const viewType = gql`
     }
 
     type ViewNoteCreationContext {
+        templateNote: ViewTemplateNote
         viewId: ID!
         title: String!
         tagNames: [String!]!
@@ -23,6 +25,7 @@ export const viewType = gql`
 
     input ViewNotePropertyValueInput { key: String!, value: String! }
     input ViewNoteInput {
+        deletePropertyKeys: [String!]
         title: String!
         tagNames: [String!]
         properties: [ViewNotePropertyValueInput!]
@@ -65,6 +68,7 @@ export const viewType = gql`
     }
 
     type View {
+        defaultTemplateNoteId: ID
         id: ID!
         groupId: ID!
         title: String!
@@ -171,6 +175,7 @@ export const viewType = gql`
     }
 
     input ViewInput {
+        defaultTemplateNoteId: ID
         title: String
         displayType: ViewDisplayType
         displayOptions: ViewDisplayOptionsInput

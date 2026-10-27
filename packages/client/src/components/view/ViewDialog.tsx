@@ -39,8 +39,10 @@ import {
 } from '~/modules/view-dashboard';
 
 import ViewTableColumnsEditor from './ViewTableColumnsEditor';
+import ViewTemplatePicker from './ViewTemplatePicker';
 
 export interface ViewDialogDraft {
+    defaultTemplateNoteId?: string | null;
     title: string;
     displayType: ViewDisplayType;
     displayOptions: ViewDisplayOptions;
@@ -172,7 +174,7 @@ const getFilterInputPlaceholder = (property: NotePropertyKeySummary, operator: V
     return undefined;
 };
 
-export default function ViewDialog({
+const ViewDialog = ({
     open,
     mode,
     initialView = null,
@@ -182,7 +184,8 @@ export default function ViewDialog({
     isPropertiesLoading = false,
     onClose,
     onSubmit,
-}: ViewDialogProps) {
+}: ViewDialogProps) => {
+    const [defaultTemplateNoteId, setDefaultTemplateNoteId] = useState(initialView?.defaultTemplateNoteId ?? null);
     const [title, setTitle] = useState(getInitialTitleValue(initialView));
     const [displayType, setDisplayType] = useState<ViewDisplayType>(getInitialDisplayTypeValue(initialView));
     const [tableColumns, setTableColumns] = useState<ViewTableColumn[]>(getInitialTableColumnsValue(initialView));
@@ -214,6 +217,7 @@ export default function ViewDialog({
         }
 
         setTitle(getInitialTitleValue(initialView));
+        setDefaultTemplateNoteId(initialView?.defaultTemplateNoteId ?? null);
         setDisplayType(getInitialDisplayTypeValue(initialView));
         setTableColumns(getInitialTableColumnsValue(initialView));
         setTablePropertyKeys(getInitialTablePropertyKeysValue(initialView));
@@ -390,6 +394,7 @@ export default function ViewDialog({
                         }
 
                         onSubmit({
+                            defaultTemplateNoteId,
                             title,
                             displayType,
                             displayOptions: normalizeViewDisplayOptions({
@@ -420,6 +425,8 @@ export default function ViewDialog({
                             autoFocus
                         />
                     </div>
+
+                    <ViewTemplatePicker value={defaultTemplateNoteId} onChange={setDefaultTemplateNoteId} />
 
                     <section className="flex flex-col gap-3 border-b border-border-subtle pb-5">
                         <div className="min-w-0">
@@ -940,4 +947,6 @@ export default function ViewDialog({
             </Modal.Footer>
         </Modal>
     );
-}
+};
+
+export default ViewDialog;

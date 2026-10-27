@@ -5,6 +5,19 @@ import { localError, success } from '../response';
 import type { LocalDemoPlugin, LocalDemoState } from '../types';
 import { applyPropertyFilters, createLocalId, listNotesByTags, now, paginate } from '../utils';
 
+const copyTemplateBody = (value: unknown): unknown => {
+    if (Array.isArray(value))
+        return value
+            .filter((item) => !(item && typeof item === 'object' && 'type' in item && item.type === 'tag'))
+            .map(copyTemplateBody);
+    if (!value || typeof value !== 'object') return value;
+    const copied: Record<string, unknown> = { ...value };
+    for (const key of ['content', 'children', 'rows', 'cells']) {
+        if (key in copied) copied[key] = copyTemplateBody(copied[key]);
+    }
+    return copied;
+};
+
 const creationContext = (
     state: LocalDemoState,
     viewId: string,
@@ -12,6 +25,9 @@ const creationContext = (
 ): ViewNoteCreationContext => {
     const view = state.viewWorkspace.groups.flatMap((group) => group.views).find((item) => item.id === viewId);
     if (!view) throw new Error('View not found');
+    const template = state.notes.find((note) => note.id === view.defaultTemplateNoteId);
+    if (view.defaultTemplateNoteId && !template)
+        throw new Error('The default template is unavailable. Choose another template in the view settings.');
     const groupKey = view.displayType === 'board' ? view.displayOptions.boardGroupByPropertyKey : null;
     const dateKey =
         view.displayType === 'calendar' && view.displayOptions.calendarDateField === 'property'
@@ -20,6 +36,11 @@ const creationContext = (
     const keys = new Set(
         view.propertyFilters.filter((filter) => filter.operator !== 'notExists').map((filter) => filter.key),
     );
+    const omittedKeys = new Set(
+        view.propertyFilters.filter((filter) => filter.operator === 'notExists').map((filter) => filter.key),
+    );
+    if (groupKey && groupValue === null) omittedKeys.add(groupKey);
+    for (const property of template?.properties ?? []) if (!omittedKeys.has(property.key)) keys.add(property.key);
     if (groupKey && groupValue !== null) keys.add(groupKey);
     if (dateKey) keys.add(dateKey);
     const properties = [...keys].map((key) => {
@@ -44,10 +65,11 @@ const creationContext = (
                     ? groupValue
                     : equalValues.length === 1
                       ? (equalValues[0] ?? null)
-                      : null,
+                      : (template?.properties?.find((property) => property.key === key)?.value ?? null),
         };
     });
     return {
+        templateNote: template ? { id: template.id, title: template.title } : null,
         viewId,
         title: view.title,
         tagNames: view.tagNames,
@@ -101,6 +123,8 @@ export const viewsLocalPlugin: LocalDemoPlugin = {
                     .find((item) => item.id === context.viewId);
                 const input = variables.input as ViewNoteInput;
                 if (!view || !input.title.trim()) return localError('A note title is required');
+                const template = state.notes.find((note) => note.id === view.defaultTemplateNoteId);
+                const templateBlocks: unknown = template ? copyTemplateBody(JSON.parse(template.content || '[]')) : [];
                 const timestamp = now();
                 const tagNames = [...new Set([...context.defaultTagNames, ...input.tagNames])];
                 const tags = tagNames.map(
@@ -109,7 +133,7 @@ export const viewsLocalPlugin: LocalDemoPlugin = {
                 const note: Note = {
                     id: createLocalId('note'),
                     title: input.title.trim(),
-                    layout: 'wide',
+                    layout: template?.layout ?? 'wide',
                     pinned: false,
                     order: state.notes.length,
                     createdAt: timestamp,
@@ -121,8 +145,10 @@ export const viewsLocalPlugin: LocalDemoPlugin = {
                             content: tags.map((tag) => ({ type: 'tag', props: { id: tag.id, tag: tag.name } })),
                             children: [],
                         },
+                        ...(Array.isArray(templateBlocks) ? templateBlocks : []),
                     ]),
                     properties: context.properties.flatMap((property) => {
+                        if (input.deletePropertyKeys?.includes(property.key)) return [];
                         const value =
                             input.properties?.find((item) => item.key === property.key)?.value ?? property.defaultValue;
                         if (value === null || (value === '' && !property.required)) return [];
@@ -309,6 +335,7 @@ export const viewsLocalPlugin: LocalDemoPlugin = {
 
             const input = variables.input as Partial<View>;
             const view: View = {
+                defaultTemplateNoteId: input.defaultTemplateNoteId ?? null,
                 id: createLocalId('view-view'),
                 groupId: group.id,
                 title: input.title ?? 'Untitled view',

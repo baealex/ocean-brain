@@ -12,6 +12,7 @@ import type {
 import { graphQuery } from '~/modules/graph-query';
 
 export interface ViewInput {
+    defaultTemplateNoteId?: string | null;
     title?: string;
     displayType?: ViewDisplayType;
     displayOptions?: ViewDisplayOptions;
@@ -24,6 +25,7 @@ export interface ViewInput {
 }
 
 const VIEW_FIELDS = `
+    defaultTemplateNoteId
     id
     groupId
     title
@@ -55,6 +57,7 @@ export const fetchViewNoteCreationContext = (viewId: string, groupValue?: string
         `query ViewNoteCreationContext($viewId: ID!, $groupValue: String) {
             viewNoteCreationContext(viewId: $viewId, groupValue: $groupValue) {
                 viewId title tagNames mode defaultTagNames
+                templateNote { id title }
                 properties {
                     key name valueType defaultValue required
                     options { id label value color order }
@@ -66,6 +69,7 @@ export const fetchViewNoteCreationContext = (viewId: string, groupValue?: string
     );
 
 export interface ViewNoteInput {
+    deletePropertyKeys?: string[];
     title: string;
     tagNames: string[];
     properties?: { key: string; value: string }[];

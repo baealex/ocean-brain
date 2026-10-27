@@ -170,6 +170,7 @@ describe('Ocean Brain MCP stdio contract', () => {
             ]);
             assert.equal(property(OCEAN_BRAIN_MCP_TOOLS.readNote, 'maxLength').default, 1000);
             assert.equal(property(OCEAN_BRAIN_MCP_TOOLS.createNote, 'markdown').default, '');
+            assert.deepEqual(property(OCEAN_BRAIN_MCP_TOOLS.createNote, 'properties').required ?? [], []);
             assert.deepEqual(property(OCEAN_BRAIN_MCP_TOOLS.createNote, 'layout').enum, ['narrow', 'wide', 'full']);
             assert.deepEqual(property(OCEAN_BRAIN_MCP_TOOLS.updateNoteMetadata, 'layout').enum, [
                 'narrow',

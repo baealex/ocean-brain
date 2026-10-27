@@ -2,9 +2,10 @@ import {
     InvalidNotePropertyInputError,
     type NotePropertiesPatchInput,
     type NotePropertySetInput,
+    serializeNoteProperties,
 } from '~/features/note/services/properties.js';
 import models, { type Prisma } from '~/models.js';
-import { parseBlockNoteContent } from '~/modules/blocknote-tree.js';
+import { isBlockNoteTreeNode, parseBlockNoteContent } from '~/modules/blocknote-tree.js';
 import { buildViewBoardColumnWhere, buildViewWhere, getViewById } from './workspace.js';
 
 export interface NoteViewContextInput {
@@ -15,11 +16,33 @@ export interface NoteViewContextInput {
 
 type ViewCreationDb = typeof models | Prisma.TransactionClient;
 
+const copyTemplateBody = (value: unknown): unknown => {
+    if (Array.isArray(value))
+        return value.filter((item) => !isBlockNoteTreeNode(item) || item.type !== 'tag').map(copyTemplateBody);
+    if (!isBlockNoteTreeNode(value)) return value;
+    const copied = { ...value };
+    for (const key of ['content', 'children', 'rows', 'cells']) {
+        if (key in copied) copied[key] = copyTemplateBody(copied[key]);
+    }
+    return copied;
+};
+
 const resolveViewCreation = async ({ viewId, groupValue }: NoteViewContextInput, db: ViewCreationDb) => {
     if (!/^[1-9]\d*$/.test(viewId) || Number(viewId) > 2_147_483_647)
         throw new InvalidNotePropertyInputError('A valid view ID is required.');
     const view = await getViewById(viewId, db);
     if (!view) throw new InvalidNotePropertyInputError('This view no longer exists. Choose another view.');
+    const template = view.defaultTemplateNoteId
+        ? await db.note.findUnique({
+              where: { id: Number(view.defaultTemplateNoteId) },
+              include: { properties: { include: { definition: true, option: true } } },
+          })
+        : null;
+    if (view.defaultTemplateNoteId && !template)
+        throw new InvalidNotePropertyInputError(
+            'The default template is unavailable. Choose another template in the view settings.',
+        );
+    const templateProperties = serializeNoteProperties(template?.properties ?? []);
 
     const keys = new Set(
         view.propertyFilters.filter((filter) => filter.operator !== 'notExists').map((filter) => filter.key),
@@ -29,6 +52,11 @@ const resolveViewCreation = async ({ viewId, groupValue }: NoteViewContextInput,
         view.displayType === 'calendar' && view.displayOptions.calendarDateField === 'property'
             ? view.displayOptions.calendarDatePropertyKey
             : null;
+    const omittedKeys = new Set(
+        view.propertyFilters.filter((filter) => filter.operator === 'notExists').map((filter) => filter.key),
+    );
+    if (groupKey && groupValue === null) omittedKeys.add(groupKey);
+    for (const property of templateProperties) if (!omittedKeys.has(property.key)) keys.add(property.key);
     if (groupKey && groupValue !== null) keys.add(groupKey);
     if (dateKey) keys.add(dateKey);
     const definitions = await db.propertyDefinition.findMany({
@@ -47,7 +75,10 @@ const resolveViewCreation = async ({ viewId, groupValue }: NoteViewContextInput,
         const equalValues = new Set(
             filters.filter((filter) => filter.operator === 'equals').map((filter) => filter.value),
         );
-        const defaultValue = equalValues.size === 1 ? ([...equalValues][0] ?? null) : null;
+        const defaultValue =
+            equalValues.size === 1
+                ? ([...equalValues][0] ?? null)
+                : (templateProperties.find((property) => property.key === key)?.value ?? null);
         return {
             key,
             name: definition.name,
@@ -75,7 +106,9 @@ const resolveViewCreation = async ({ viewId, groupValue }: NoteViewContextInput,
     }
     return {
         where,
+        template,
         context: {
+            templateNote: template ? { id: String(template.id), title: template.title } : null,
             viewId: view.id,
             title: view.title,
             tagNames: view.tagNames,
@@ -94,9 +127,9 @@ export const getViewNoteCreationContext = async (input: NoteViewContextInput) =>
 export const prepareNoteForView = async (
     tx: Prisma.TransactionClient,
     context: NoteViewContextInput,
-    input: { content: string; tagIds?: string[]; properties?: NotePropertiesPatchInput },
+    input: { content: string; tagIds?: string[]; properties?: NotePropertiesPatchInput; useTemplateBody?: boolean },
 ) => {
-    const { context: creation, where } = await resolveViewCreation(context, tx);
+    const { context: creation, where, template } = await resolveViewCreation(context, tx);
     const selectedTags = context.tagNames ?? [];
     if (selectedTags.some((name) => !creation.tagNames.includes(name)))
         throw new InvalidNotePropertyInputError(
@@ -116,8 +149,12 @@ export const prepareNoteForView = async (
     );
     const existingIds = new Set(input.tagIds ?? []);
     const addedTags = tags.filter((tag) => !existingIds.has(String(tag.id)));
-    const blocks = parseBlockNoteContent(input.content);
-    if (!blocks) throw new InvalidNotePropertyInputError('Note content must be valid BlockNote JSON.');
+    const useTemplateBody = input.useTemplateBody && template;
+    const parsed = parseBlockNoteContent(useTemplateBody ? template.content || '[]' : input.content);
+    if (!parsed) throw new InvalidNotePropertyInputError('Note content must be valid BlockNote JSON.');
+    const blocks = useTemplateBody
+        ? parsed.map(copyTemplateBody).filter((item) => !isBlockNoteTreeNode(item) || item.type !== 'tag')
+        : parsed;
     const content = addedTags.length
         ? JSON.stringify([
               {
@@ -127,7 +164,7 @@ export const prepareNoteForView = async (
               },
               ...blocks,
           ])
-        : input.content;
+        : JSON.stringify(blocks);
     const values = new Map<string, NotePropertySetInput>();
     for (const property of creation.properties) {
         if (property.defaultValue !== null)
@@ -138,7 +175,9 @@ export const prepareNoteForView = async (
             });
     }
     for (const property of input.properties?.set ?? []) values.set(property.key, property);
+    for (const key of input.properties?.deleteKeys ?? []) values.delete(key);
     return {
+        layout: template?.layout,
         content,
         tagIds: [...new Set([...existingIds, ...tags.map((tag) => String(tag.id))])],
         properties: values.size ? { set: [...values.values()] } : undefined,

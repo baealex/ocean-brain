@@ -30,7 +30,12 @@ export const viewMutationResolvers = {
         }: {
             viewId: string;
             groupValue?: string | null;
-            input: { title: string; tagNames?: string[]; properties?: NotePropertySetByKeyInput[] };
+            input: {
+                title: string;
+                tagNames?: string[];
+                properties?: NotePropertySetByKeyInput[];
+                deletePropertyKeys?: string[];
+            };
         },
     ) => {
         try {
@@ -42,7 +47,9 @@ export const viewMutationResolvers = {
             const created = await createNoteFromMarkdown({
                 title: input.title,
                 viewContext,
-                ...(input.properties ? { properties: { set: input.properties } } : {}),
+                ...(input.properties?.length || input.deletePropertyKeys?.length
+                    ? { properties: { set: input.properties, deleteKeys: input.deletePropertyKeys } }
+                    : {}),
             });
             const note = await models.note.findUniqueOrThrow({ where: { id: Number(created.id) } });
             emitNoteChange({ type: 'note.created', noteId: note.id });

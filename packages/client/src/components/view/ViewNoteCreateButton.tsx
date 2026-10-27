@@ -6,7 +6,7 @@ import { ModalActionRow } from '~/components/shared';
 import { Button, Modal, Text } from '~/components/ui';
 import { queryKeys } from '~/modules/query-key-factory';
 import { invalidateQueriesForNoteChange } from '~/modules/server-event-invalidation';
-import { NOTE_ROUTE } from '~/modules/url';
+import { NOTE_ROUTE, VIEWS_ROUTE } from '~/modules/url';
 import ViewNoteCreateForm from './ViewNoteCreateForm';
 
 interface ViewNoteCreateButtonProps {
@@ -87,6 +87,9 @@ const ViewNoteCreateDialog = ({ viewId, groupValue, onClose }: ViewNoteCreateBut
                             <Button type="button" variant="ghost" size="sm" onClick={() => void context.refetch()}>
                                 Retry
                             </Button>
+                            <Link to={VIEWS_ROUTE} className="text-sm text-accent-primary underline">
+                                Open view settings
+                            </Link>
                         </div>
                     ) : (
                         <Text as="p" variant="meta">

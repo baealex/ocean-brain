@@ -110,6 +110,8 @@ Each saved view defines filters, sorting, and a display format. A view group org
 
 `create_note` accepts `viewContext: {"viewId":"42"}` to inherit a view's AND tags and equality values. Choose OR tags with `viewContext.tagNames` and supply other required values through `properties.set`. For board creation, `viewContext.groupValue` selects a column; `null` means Unassigned. A note that does not match the current view is rejected without saving it.
 
+A view's `defaultTemplateNoteId` identifies its default template. View-context creation copies its current outline, layout, and property defaults into an independent note; tags come from the view. View conditions and explicit property choices take precedence. A supplied Markdown body replaces the template outline; `properties.deleteKeys` can omit inherited properties. If the template is deleted, choose another or clear it in the view settings.
+
 Existing view data is migrated automatically on server startup; IDs and saved settings are preserved. Existing view bookmarks and external GraphQL integrations retain their compatibility adapters.
 
 Notes can link saved views through the editor's `/view` command. In Markdown, a standalone `[View: Meeting notes](/views/notes?viewId=42)` paragraph represents the same connection; reads, replacements, and exports preserve its view ID. The connection uses the saved view's current filters and results rather than a copy. Removing the block leaves the original view intact.

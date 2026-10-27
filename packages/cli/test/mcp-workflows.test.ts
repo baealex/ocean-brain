@@ -275,7 +275,7 @@ test('MCP workflows use one HTTP request, preserve backlinks and structured resu
             name: 'ocean_brain_create_note',
             arguments: {
                 title: 'Task',
-                properties: { set: [{ key: 'state', value: 'todo' }] },
+                properties: { set: [{ key: 'state', value: 'todo' }], deleteKeys: ['owner'] },
                 viewContext: { viewId: '42', groupValue: null, tagNames: ['@project-a'] },
             },
         });
@@ -284,6 +284,7 @@ test('MCP workflows use one HTTP request, preserve backlinks and structured resu
         assert.equal(requests.at(-1)?.path, '/api/integrations/v1/notes/create');
         assert.deepEqual(requests.at(-1)?.body.properties, {
             set: [{ key: 'state', value: 'todo' }],
+            deleteKeys: ['owner'],
         });
         assert.deepEqual(requests.at(-1)?.body.viewContext, { viewId: '42', groupValue: null, tagNames: ['@project-a'] });
     } finally {

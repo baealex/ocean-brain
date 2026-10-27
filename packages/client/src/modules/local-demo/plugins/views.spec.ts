@@ -65,6 +65,38 @@ const createView = (sortBy: View['sortBy'], sortOrder: View['sortOrder']): View 
 });
 
 describe('viewsLocalPlugin', () => {
+    it('copies a demo template without changing its source or inheriting its old tags', () => {
+        const view = { ...createView('updatedAt', 'desc'), defaultTemplateNoteId: 'note-2', tagNames: ['@project-a'] };
+        const state = createState(view);
+        const template = state.notes[0];
+        if (!template) throw new Error('Missing fixture template');
+        template.content = JSON.stringify([
+            {
+                type: 'paragraph',
+                content: [
+                    { type: 'text', text: 'Agenda', styles: {} },
+                    { type: 'tag', props: { id: 'old', tag: '@old-project' } },
+                ],
+                children: [],
+            },
+        ]);
+        const original = structuredClone(template);
+
+        const response = viewsLocalPlugin.graphHandlers?.CreateNoteInView({
+            state,
+            save: vi.fn(),
+            variables: {
+                viewId: view.id,
+                input: { title: 'Planning', tagNames: ['@project-a'] },
+            },
+        });
+
+        expect(response?.type).toBe('success');
+        expect(state.notes[0]?.content).toContain('Agenda');
+        expect(state.notes[0]?.content).not.toContain('@old-project');
+        expect(state.notes.find((note) => note.id === original.id)).toEqual(original);
+    });
+
     it('creates a demo note inside its view with the inherited tags', () => {
         const view = { ...createView('updatedAt', 'desc'), tagNames: ['@project-a'] };
         const state = createState(view);

@@ -226,7 +226,10 @@ export const validateViewsSearch = (search: SearchRecord): ViewsRouteSearch => {
     };
 };
 
-export const validateViewNotesSearch = (search: SearchRecord): ViewNotesRouteSearch => ({
-    page: parsePositiveInt(search.page, 1),
-    viewId: parseString(search.viewId ?? search.sectionId, ''),
-});
+export const validateViewNotesSearch = (search: SearchRecord): ViewNotesRouteSearch => {
+    const id = getFirstValue(search.viewId ?? search.sectionId);
+    return {
+        page: parsePositiveInt(search.page, 1),
+        viewId: typeof id === 'number' && Number.isSafeInteger(id) && id > 0 ? String(id) : parseString(id),
+    };
+};

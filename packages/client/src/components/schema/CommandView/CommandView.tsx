@@ -49,6 +49,14 @@ const CommandView = ({ editor }: CommandViewProps) => {
                         ),
                         ...getRichCodeSlashMenuItems(editor),
                         {
+                            title: 'Linked View',
+                            subtext: 'Show an existing saved view inside this note',
+                            aliases: ['view', 'linked view', 'database', 'list', 'table', 'board', 'calendar', '뷰'],
+                            group: 'Other',
+                            icon: <Icon.Grid />,
+                            onItemClick: () => insertOrUpdateBlockForSlashMenu(editor, { type: 'linkedView' }),
+                        },
+                        {
                             title: 'Table of Contents',
                             subtext: 'Insert a table of contents based on headings',
                             onItemClick: () => {

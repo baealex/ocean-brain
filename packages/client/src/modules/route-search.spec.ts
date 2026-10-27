@@ -165,6 +165,7 @@ describe('route-search validators', () => {
     });
 
     it('normalizes view-notes search values', () => {
+        expect(validateViewNotesSearch({ viewId: 42 })).toEqual({ page: 1, viewId: '42' });
         expect(
             validateViewNotesSearch({
                 page: '0',

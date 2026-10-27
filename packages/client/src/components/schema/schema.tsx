@@ -3,6 +3,7 @@ import { createReactBlockSpec } from '@blocknote/react';
 import { SUPPORTED_IMAGE_UPLOAD_TYPES } from '~/modules/image-upload-policy';
 import { CodeBlock } from './CodeBlock';
 import type { OceanBrainCustomBlockType, OceanBrainCustomInlineContentType } from './custom-types';
+import LinkedView from './LinkedView';
 import Reference from './Reference';
 import TableOfContents from './TableOfContents';
 import Tag from './Tag';
@@ -20,7 +21,7 @@ const oceanBrainInlineContentSpecs = defineOceanBrainInlineContentSpecs({
     reference: Reference,
 });
 
-const oceanBrainBlockSpecs = defineOceanBrainBlockSpecs({ tableOfContents: TableOfContents });
+const oceanBrainBlockSpecs = defineOceanBrainBlockSpecs({ tableOfContents: TableOfContents, linkedView: LinkedView });
 
 type CodeBlockSpec = typeof defaultBlockSpecs.codeBlock;
 type ImageBlockSpec = typeof defaultBlockSpecs.image;

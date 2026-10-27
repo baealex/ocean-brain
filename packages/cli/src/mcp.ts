@@ -273,7 +273,7 @@ export const registerMcpTools = (
 
     server.tool(
         OCEAN_BRAIN_MCP_TOOLS.readNote,
-        'Read note metadata, markdown and back references. Default 1000 UTF-16 units; maxLength: 0 reads the remaining body or whole selected section. Use offset or exact heading, never both. For continuation pass contentRange.nextOffset and expectedUpdatedAt from this read; sectionEnd bounds a selected section. Ambiguous headings return positions. Prefer structuredContent for code consumers.',
+        'Read note metadata, markdown, back references and linkedViews. linkedViews covers the whole note even when markdown is partial; use each available viewId with read_view to inspect its current rows. Missing views are identified explicitly. Default 1000 UTF-16 units; maxLength: 0 reads the remaining body or whole selected section. Use offset or exact heading, never both. For continuation pass contentRange.nextOffset and expectedUpdatedAt from this read; sectionEnd bounds a selected section. Ambiguous headings return positions. Prefer structuredContent for code consumers.',
         {
             id: z.string().min(1),
             maxLength: z.number().int().nonnegative().default(1000),
@@ -292,6 +292,7 @@ export const registerMcpTools = (
                     noteRead(id: $id, maxLength: $maxLength, offset: $offset, heading: $heading, expectedUpdatedAt: $expectedUpdatedAt) {
                         status reason message markdown
                         candidates { heading level start end }
+                        linkedViews { viewId title groupId groupTitle displayType status }
                         contentRange { start end totalLength sectionEnd hasMore nextOffset }
                         note { id title createdAt updatedAt tags { id name } properties { key name value valueType option { label value } } }
                     }

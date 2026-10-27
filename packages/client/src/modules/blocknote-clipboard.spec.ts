@@ -227,6 +227,31 @@ describe('normalizeBlockNoteCopy', () => {
 });
 
 describe('handleBlockNotePaste', () => {
+    it('parses an exported view link as Markdown instead of leaving the syntax as plain text', () => {
+        const pasteHTML = vi.fn();
+        const defaultPasteHandler = vi.fn(() => true);
+        const event = {
+            clipboardData: {
+                getData: () => '[View: Meetings](/views/notes?viewId=42)',
+                types: ['text/plain'],
+            },
+        } as ClipboardEvent;
+
+        const handled = handleBlockNotePaste({
+            event,
+            editor: {
+                getTextCursorPosition: () => ({ block: { type: 'paragraph' } }),
+                pasteHTML,
+            },
+            defaultPasteHandler,
+        });
+
+        expect(handled).toBe(true);
+        const pastedDocument = cleanHTMLToMarkdown(pasteHTML.mock.calls[0]?.[0] ?? '');
+        expect(pastedDocument.trim()).toBe('[View: Meetings](/views/notes?viewId=42)');
+        expect(defaultPasteHandler).not.toHaveBeenCalled();
+    });
+
     it('parses plain Markdown containing numeric tilde ranges through the protected path', () => {
         const pasteHTML = vi.fn();
         const defaultPasteHandler = vi.fn();

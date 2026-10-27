@@ -9,6 +9,7 @@ import ViewListRenderer from './ViewListRenderer';
 import ViewTableRenderer from './ViewTableRenderer';
 
 interface ViewRendererProps {
+    readOnly?: boolean;
     view: View;
     notes: Note[];
     isPending: boolean;
@@ -43,7 +44,8 @@ const PropertyMetadataError = ({ displayName, onRetry }: { displayName: string; 
     </div>
 );
 
-export default function ViewRenderer({
+const ViewRenderer = ({
+    readOnly = false,
     view,
     notes,
     isPending,
@@ -60,7 +62,7 @@ export default function ViewRenderer({
     onRetryProperties = () => undefined,
     navigationState = {},
     onNavigationStateChange = () => undefined,
-}: ViewRendererProps) {
+}: ViewRendererProps) => {
     if (view.displayType === 'board') {
         const groupProperty = availableProperties.find(
             (property) =>
@@ -101,6 +103,7 @@ export default function ViewRenderer({
 
         return (
             <ViewBoardRenderer
+                readOnly={readOnly}
                 view={view}
                 groupProperty={groupProperty}
                 navigationState={navigationState}
@@ -172,4 +175,6 @@ export default function ViewRenderer({
     }
 
     return <ViewListRenderer notes={notes} isPending={isPending} isError={isError} onRetry={onRetry} />;
-}
+};
+
+export default ViewRenderer;

@@ -36,6 +36,7 @@ export const NOTE_SEARCH_EXTRACTOR_NODE_TYPES = [
     'text',
     'tag',
     'reference',
+    'linkedView',
     'image',
     'video',
     'audio',
@@ -78,6 +79,9 @@ const SEARCH_NODE_EXTRACTORS: Record<SearchExtractorNodeType, SearchNodeExtracto
     },
     reference: (node, context) => {
         pushVisibleProps(context, node.props, ['title']);
+    },
+    linkedView: (node, context) => {
+        pushVisibleProps(context, node.props, ['viewTitle']);
     },
     image: (node, context) => {
         pushVisibleProps(context, node.props, FILE_BLOCK_VISIBLE_PROP_KEYS);

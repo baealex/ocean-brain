@@ -133,7 +133,8 @@ test('menu layout persists mixed order and visibility, shares app pins and reset
 
     await page.setViewportSize({ width: 390, height: 844 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
-    // Target the handle directly so responsive layout focus changes cannot redirect the key.
+    // Saving disables drag handles until cache refresh and editor remount have finished.
+    await expect(inboxHandle).toBeEnabled();
     await inboxHandle.press('Space', { delay: 50 });
     await expect(inboxHandle).toHaveAttribute('aria-pressed', 'true');
     await page.keyboard.press('ArrowDown');

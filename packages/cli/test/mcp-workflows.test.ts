@@ -4,12 +4,32 @@ import test from 'node:test';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { buildSchema, graphql } from 'graphql';
 import { registerMcpTools } from '../src/mcp.js';
+
+const noteReadSchema = buildSchema(`
+    type Query {
+        noteRead(id: ID!, maxLength: Int, offset: Int, heading: String, expectedUpdatedAt: String): NoteRead!
+        backReferences(id: ID!): [BackReference!]!
+    }
+    type NoteRead {
+        status: String!, reason: String, message: String, note: Note!, markdown: String!
+        candidates: [Heading!]!, linkedViews: [LinkedView!]!, contentRange: ContentRange
+    }
+    type Note { id: ID!, title: String!, createdAt: String!, updatedAt: String!, tags: [Tag!]!, properties: [Property!]! }
+    type Tag { id: ID!, name: String! }
+    type Property { key: String!, name: String!, value: String!, valueType: String!, option: PropertyOption }
+    type PropertyOption { label: String!, value: String! }
+    type Heading { heading: String!, level: Int!, start: Int!, end: Int! }
+    type LinkedView { viewId: ID!, title: String!, groupId: ID, groupTitle: String, displayType: String, status: String! }
+    type ContentRange { start: Int!, end: Int!, totalLength: Int!, sectionEnd: Int!, hasMore: Boolean!, nextOffset: Int }
+    type BackReference { id: ID!, title: String! }
+`);
 
 test('MCP workflows use one HTTP request, preserve backlinks and structured results, and reject invalid pages', async () => {
     const requests: Array<{
         path: string;
-        body: { variables: Record<string, unknown>; properties?: unknown };
+        body: { query?: string; variables: Record<string, unknown>; properties?: unknown };
     }> = [];
     const note = {
         id: '17',
@@ -59,7 +79,7 @@ test('MCP workflows use one HTTP request, preserve backlinks and structured resu
                 },
                 tagsByNames: names.filter((name: string) => name !== '@missing').map((name: string) => ({ name })),
             };
-        } else if (body.query?.includes('noteRead(')) {
+        } else if (/\bnoteRead\s*\(/.test(body.query ?? '')) {
             data = {
                 noteRead: {
                     status: 'read',
@@ -68,6 +88,16 @@ test('MCP workflows use one HTTP request, preserve backlinks and structured resu
                     note,
                     markdown: 'Requested tail',
                     candidates: [],
+                    linkedViews: [
+                        {
+                            viewId: '3',
+                            title: 'Tasks',
+                            groupId: '1',
+                            groupTitle: 'Project',
+                            displayType: 'board',
+                            status: 'available',
+                        },
+                    ],
                     contentRange: {
                         start: 9000,
                         end: 9014,
@@ -79,6 +109,16 @@ test('MCP workflows use one HTTP request, preserve backlinks and structured resu
                 },
                 backReferences: [{ id: '2', title: 'Linked context' }],
             };
+            // Real field projection prevents the fixture from returning metadata the client did not request.
+            const response = await graphql({
+                schema: noteReadSchema,
+                source: body.query,
+                variableValues: body.variables,
+                rootValue: data,
+            });
+            res.setHeader('content-type', 'application/json');
+            res.end(JSON.stringify(response));
+            return;
         } else if (body.query?.includes('views(')) {
             data = {
                 views: {
@@ -167,6 +207,17 @@ test('MCP workflows use one HTTP request, preserve backlinks and structured resu
             },
         });
         assert.equal(read.structuredContent?.markdown, 'Requested tail');
+        assert.deepEqual(read.structuredContent?.linkedViews, [
+            {
+                viewId: '3',
+                title: 'Tasks',
+                groupId: '1',
+                groupTitle: 'Project',
+                displayType: 'board',
+                status: 'available',
+            },
+        ]);
+        assert.equal(read.content[0].type === 'text' && read.content[0].text.includes('viewId=3'), true);
         assert.deepEqual(read.structuredContent?.backReferences, [{ id: '2', title: 'Linked context' }]);
         assert.equal(read.content[0].type === 'text' && read.content[0].text.includes('(note:2)'), true);
         assert.equal(
@@ -186,7 +237,7 @@ test('MCP workflows use one HTTP request, preserve backlinks and structured resu
         assert.deepEqual(list.structuredContent?.views, [{ viewId: '3', groupTitle: 'Project', view }]);
         const readView = await client.callTool({
             name: 'ocean_brain_read_view',
-            arguments: { viewId: '3', groupValue: null },
+            arguments: { viewId: read.structuredContent?.linkedViews?.[0]?.viewId, groupValue: null },
         });
         assert.notEqual(readView.isError, true);
         assert.equal(requests.at(-1)?.body.variables.groupValue, null);

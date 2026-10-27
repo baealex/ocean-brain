@@ -38,10 +38,12 @@ const SORT_CHOICES: { by: ViewSortBy; order: ViewSortOrder; label: string }[] = 
 interface ViewCardProps {
     view: View;
     onEdit: () => void;
-    onDuplicate: () => void;
-    onDelete: () => void;
-    onSaveSort: (sortBy: ViewSortBy, sortOrder: ViewSortOrder) => Promise<void>;
-    onSaveColumns: (options: ViewDisplayOptions) => Promise<boolean>;
+    onDuplicate?: () => void;
+    onDelete?: () => void;
+    onSaveSort?: (sortBy: ViewSortBy, sortOrder: ViewSortOrder) => Promise<void>;
+    onSaveColumns?: (options: ViewDisplayOptions) => Promise<boolean>;
+    headerActions?: React.ReactNode;
+    readOnly?: boolean;
     onMoveUp?: () => void;
     onMoveDown?: () => void;
     dragHandle?: React.ReactNode;
@@ -53,13 +55,15 @@ interface ViewCardProps {
     onNavigationStateChange?: (updater: ViewRouteStateUpdater) => void;
 }
 
-export default function ViewCard({
+const ViewCard = ({
     view,
     onEdit,
     onDuplicate,
     onDelete,
     onSaveSort,
     onSaveColumns,
+    headerActions,
+    readOnly = false,
     onMoveUp,
     onMoveDown,
     dragHandle,
@@ -69,7 +73,7 @@ export default function ViewCard({
     onRetryProperties = () => undefined,
     navigationState = {},
     onNavigationStateChange = () => undefined,
-}: ViewCardProps) {
+}: ViewCardProps) => {
     const [isSavingSort, setIsSavingSort] = useState(false);
     const [isColumnsOpen, setIsColumnsOpen] = useState(false);
     const isBoard = view.displayType === 'board';
@@ -143,6 +147,7 @@ export default function ViewCard({
     };
 
     const saveSort = async () => {
+        if (!onSaveSort) return;
         setIsSavingSort(true);
         try {
             await onSaveSort(sortBy, sortOrder);
@@ -212,27 +217,24 @@ export default function ViewCard({
                         )}
                     </div>
                 </div>
-                <Dropdown
-                    button={<MoreButton label="View actions" />}
-                    items={[
-                        ...(onMoveUp ? [{ name: 'Move up', onClick: onMoveUp }] : []),
-                        ...(onMoveDown ? [{ name: 'Move down', onClick: onMoveDown }] : []),
-                        ...(onMoveUp || onMoveDown ? [{ type: 'separator' as const }] : []),
-                        {
-                            name: 'Edit view',
-                            onClick: onEdit,
-                        },
-                        {
-                            name: 'Duplicate view',
-                            onClick: onDuplicate,
-                        },
-                        { type: 'separator' },
-                        {
-                            name: 'Delete view',
-                            onClick: onDelete,
-                        },
-                    ]}
-                />
+                {headerActions ?? (
+                    <Dropdown
+                        button={<MoreButton label="View actions" />}
+                        items={[
+                            ...(onMoveUp ? [{ name: 'Move up', onClick: onMoveUp }] : []),
+                            ...(onMoveDown ? [{ name: 'Move down', onClick: onMoveDown }] : []),
+                            ...(onMoveUp || onMoveDown ? [{ type: 'separator' as const }] : []),
+                            {
+                                name: 'Edit view',
+                                onClick: onEdit,
+                            },
+                            ...(onDuplicate ? [{ name: 'Duplicate view', onClick: onDuplicate }] : []),
+                            ...(onDelete
+                                ? [{ type: 'separator' as const }, { name: 'Delete view', onClick: onDelete }]
+                                : []),
+                        ]}
+                    />
+                )}
             </div>
 
             {!isBoard && !isCalendar ? (
@@ -275,7 +277,7 @@ export default function ViewCard({
                             </DropdownMenuRadioGroup>
                         </DropdownMenuContent>
                     </DropdownMenu>
-                    {view.displayType === 'table' ? (
+                    {view.displayType === 'table' && onSaveColumns ? (
                         <Button
                             type="button"
                             variant="ghost"
@@ -289,15 +291,17 @@ export default function ViewCard({
                     ) : null}
                     {hasCustomSort ? (
                         <>
-                            <Button
-                                type="button"
-                                variant="subtle"
-                                size="sm"
-                                isLoading={isSavingSort}
-                                onClick={() => void saveSort()}
-                            >
-                                Save default sort
-                            </Button>
+                            {onSaveSort ? (
+                                <Button
+                                    type="button"
+                                    variant="subtle"
+                                    size="sm"
+                                    isLoading={isSavingSort}
+                                    onClick={() => void saveSort()}
+                                >
+                                    Save default sort
+                                </Button>
+                            ) : null}
                             <Button
                                 type="button"
                                 variant="ghost"
@@ -314,6 +318,7 @@ export default function ViewCard({
 
             <div className="flex flex-1 flex-col">
                 <ViewRenderer
+                    readOnly={readOnly}
                     view={view}
                     notes={notes}
                     isPending={isPending}
@@ -356,7 +361,7 @@ export default function ViewCard({
                     ) : null}
                 </div>
             ) : null}
-            {isColumnsOpen ? (
+            {isColumnsOpen && onSaveColumns ? (
                 <ViewTableColumnsDialog
                     view={view}
                     availableProperties={availableProperties}
@@ -369,4 +374,6 @@ export default function ViewCard({
             ) : null}
         </SurfaceCard>
     );
-}
+};
+
+export default ViewCard;

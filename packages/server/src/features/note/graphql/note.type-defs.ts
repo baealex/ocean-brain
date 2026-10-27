@@ -273,6 +273,15 @@ export const noteQuery = gql`
 
     type NoteContentRange { start: Int!, end: Int!, totalLength: Int!, sectionEnd: Int!, hasMore: Boolean!, nextOffset: Int }
     type NoteHeadingCandidate { heading: String!, level: Int!, start: Int!, end: Int! }
+    enum NoteLinkedViewStatus { available missing }
+    type NoteLinkedView {
+        viewId: ID!
+        title: String!
+        groupId: ID
+        groupTitle: String
+        displayType: ViewDisplayType
+        status: NoteLinkedViewStatus!
+    }
     type NoteReadResult {
         status: String!
         reason: String
@@ -281,6 +290,8 @@ export const noteQuery = gql`
         markdown: String!
         contentRange: NoteContentRange
         candidates: [NoteHeadingCandidate!]!
+        "All unique linked views from the whole note, independent of the returned Markdown range."
+        linkedViews: [NoteLinkedView!]!
     }
     type Query {
         allNotes(searchFilter: SearchFilterInput, pagination: PaginationInput): Notes!

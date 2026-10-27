@@ -522,12 +522,18 @@ export const handleBlockNotePaste = ({ event, editor, defaultPasteHandler }: Blo
 
     const hasMarkdown = types.includes('text/markdown');
     const markdown = clipboardData.getData(hasMarkdown ? 'text/markdown' : 'text/plain');
+    const hasLinkedViews = /^ {0,3}\[View: (?:\\.|[^\]\\])*\]\(\/views\/notes\?viewId=[^\s)]+\)[ \t]*$/m.test(markdown);
 
-    if (!markdown || !hasNumericTildeRangeMarkers(markdown)) {
+    if (!markdown || (!hasNumericTildeRangeMarkers(markdown) && !hasLinkedViews)) {
         return defaultPasteHandler();
     }
 
-    if (!hasMarkdown && types.includes('text/html') && !matchesBlockNoteMarkdownDetection(markdown)) {
+    if (
+        !hasMarkdown &&
+        types.includes('text/html') &&
+        !matchesBlockNoteMarkdownDetection(markdown) &&
+        !hasLinkedViews
+    ) {
         return defaultPasteHandler();
     }
 

@@ -24,6 +24,7 @@ interface MarkdownTableContent {
 
 export interface MarkdownBlock {
     type: string;
+    props?: Record<string, unknown>;
     content?: MarkdownInlineContent[] | MarkdownTableContent;
     children?: MarkdownBlock[];
     [key: string]: unknown;
@@ -86,11 +87,32 @@ const mapBlocks = (
 ): MarkdownBlock[] => {
     return blocks
         .filter((block) => !UNSUPPORTED_MARKDOWN_BLOCK_TYPES.has(block.type))
-        .map((block) => ({
-            ...block,
-            content: mapContent(block.content),
-            children: block.children?.length ? mapBlocks(block.children, mapContent) : [],
-        }));
+        .map((source) => {
+            const viewId = typeof source.props?.viewId === 'string' ? source.props.viewId : '';
+            const title = typeof source.props?.viewTitle === 'string' ? source.props.viewTitle : '';
+            const block =
+                source.type === 'linkedView'
+                    ? {
+                          ...source,
+                          type: 'paragraph',
+                          props: {},
+                          content: viewId
+                              ? [
+                                    {
+                                        type: 'link',
+                                        href: `/views/notes?viewId=${encodeURIComponent(viewId)}`,
+                                        content: [{ type: 'text', text: `View: ${title || viewId}`, styles: {} }],
+                                    },
+                                ]
+                              : [{ type: 'text', text: 'Linked view (not selected)', styles: {} }],
+                      }
+                    : source;
+            return {
+                ...block,
+                content: mapContent(block.content),
+                children: block.children?.length ? mapBlocks(block.children, mapContent) : [],
+            };
+        });
 };
 
 export function prepareBlocksForMarkdown(blocks: MarkdownBlock[]) {

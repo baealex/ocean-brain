@@ -38,6 +38,7 @@ interface BoardColumnDefinition {
 }
 
 interface ViewBoardRendererProps {
+    readOnly?: boolean;
     view: View;
     groupProperty: NotePropertyKeySummary;
     navigationState?: ViewNavigationState;
@@ -45,6 +46,7 @@ interface ViewBoardRendererProps {
 }
 
 interface BoardCardProps {
+    readOnly: boolean;
     note: ViewBoardNote;
     column: BoardColumnDefinition;
     columns: BoardColumnDefinition[];
@@ -53,6 +55,7 @@ interface BoardCardProps {
 }
 
 interface BoardColumnProps {
+    readOnly: boolean;
     view: View;
     groupProperty: NotePropertyKeySummary;
     column: BoardColumnDefinition;
@@ -85,11 +88,11 @@ const getBoardColumns = (options: NotePropertyOption[]): BoardColumnDefinition[]
     },
 ];
 
-function BoardCard({ note, column, columns, isMoving, onMove }: BoardCardProps) {
+const BoardCard = ({ note, column, columns, isMoving, onMove, readOnly }: BoardCardProps) => {
     const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, isDragging } = useDraggable({
         id: `view-board-note:${note.id}`,
         data: { note, sourceValue: column.value },
-        disabled: isMoving,
+        disabled: isMoving || readOnly,
     });
 
     return (
@@ -103,16 +106,18 @@ function BoardCard({ note, column, columns, isMoving, onMove }: BoardCardProps) 
             )}
         >
             <div className="flex items-start gap-2">
-                <button
-                    type="button"
-                    ref={setActivatorNodeRef}
-                    aria-label={`Drag ${note.title || 'Untitled'} to another column`}
-                    {...attributes}
-                    {...listeners}
-                    className="focus-ring-soft mt-0.5 hidden size-7 shrink-0 touch-none items-center justify-center rounded-[9px] text-fg-tertiary outline-none hover:bg-hover-subtle hover:text-fg-default sm:inline-flex"
-                >
-                    <Icon.DragHandle className="size-3.5" />
-                </button>
+                {!readOnly ? (
+                    <button
+                        type="button"
+                        ref={setActivatorNodeRef}
+                        aria-label={`Drag ${note.title || 'Untitled'} to another column`}
+                        {...attributes}
+                        {...listeners}
+                        className="focus-ring-soft mt-0.5 hidden size-7 shrink-0 touch-none items-center justify-center rounded-[9px] text-fg-tertiary outline-none hover:bg-hover-subtle hover:text-fg-default sm:inline-flex"
+                    >
+                        <Icon.DragHandle className="size-3.5" />
+                    </button>
+                ) : null}
                 <div className="min-w-0 flex-1">
                     <Text as="div" variant="body" weight="semibold" tracking="tight" className="leading-[1.4]">
                         <Link
@@ -127,21 +132,24 @@ function BoardCard({ note, column, columns, isMoving, onMove }: BoardCardProps) 
                         Updated {timeSince(Number(note.updatedAt))}
                     </Text>
                 </div>
-                <Dropdown
-                    button={<MoreButton label={`Move ${note.title || 'Untitled'}`} size="sm" />}
-                    items={columns
-                        .filter((candidate) => candidate.value !== column.value)
-                        .map((candidate) => ({
-                            name: `Move to ${candidate.label}`,
-                            onClick: () => onMove(note, column.value, candidate.value),
-                        }))}
-                />
+                {!readOnly ? (
+                    <Dropdown
+                        button={<MoreButton label={`Move ${note.title || 'Untitled'}`} size="sm" />}
+                        items={columns
+                            .filter((candidate) => candidate.value !== column.value)
+                            .map((candidate) => ({
+                                name: `Move to ${candidate.label}`,
+                                onClick: () => onMove(note, column.value, candidate.value),
+                            }))}
+                    />
+                ) : null}
             </div>
         </article>
     );
-}
+};
 
-function BoardColumn({
+const BoardColumn = ({
+    readOnly,
     view,
     groupProperty,
     column,
@@ -152,10 +160,11 @@ function BoardColumn({
     onMove,
     pageCount,
     onPageCountChange,
-}: BoardColumnProps) {
+}: BoardColumnProps) => {
     const columnElementRef = useRef<HTMLElement | null>(null);
     const [shouldLoad, setShouldLoad] = useState(index < 4);
     const { isOver, setNodeRef } = useDroppable({
+        disabled: readOnly,
         id: column.id,
         data: { optionValue: column.value },
     });
@@ -309,12 +318,13 @@ function BoardColumn({
                 ) : notes.length === 0 ? (
                     <div className="flex min-h-28 items-center justify-center rounded-[14px] border border-dashed border-border-subtle px-3 text-center">
                         <Text as="p" variant="meta" tone="tertiary">
-                            Drop a note here
+                            {readOnly ? 'No matching notes' : 'Drop a note here'}
                         </Text>
                     </div>
                 ) : (
                     notes.map((note) => (
                         <BoardCard
+                            readOnly={readOnly}
                             key={note.id}
                             note={note}
                             column={column}
@@ -349,14 +359,15 @@ function BoardColumn({
             </div>
         </section>
     );
-}
+};
 
-export default function ViewBoardRenderer({
+const ViewBoardRenderer = ({
+    readOnly = false,
     view,
     groupProperty,
     navigationState = {},
     onNavigationStateChange = () => undefined,
-}: ViewBoardRendererProps) {
+}: ViewBoardRendererProps) => {
     const queryClient = useQueryClient();
     const toast = useToast();
     const scrollRootRef = useRef<HTMLDivElement | null>(null);
@@ -369,7 +380,7 @@ export default function ViewBoardRenderer({
 
     const moveNote = useCallback(
         async (note: ViewBoardNote, sourceValue: string | null, destinationValue: string | null) => {
-            if (sourceValue === destinationValue || movingNoteIds.has(note.id)) {
+            if (readOnly || sourceValue === destinationValue || movingNoteIds.has(note.id)) {
                 return;
             }
 
@@ -463,7 +474,7 @@ export default function ViewBoardRenderer({
                 });
             }
         },
-        [groupProperty.key, groupProperty.name, movingNoteIds, queryClient, view.id, view.limit, toast],
+        [groupProperty.key, groupProperty.name, movingNoteIds, queryClient, readOnly, view.id, view.limit, toast],
     );
 
     const handleDragEnd = ({ active, over }: DragEndEvent) => {
@@ -489,6 +500,7 @@ export default function ViewBoardRenderer({
                 <div className="flex min-w-max items-stretch gap-3 pb-1">
                     {columns.map((column, index) => (
                         <BoardColumn
+                            readOnly={readOnly}
                             key={column.id}
                             view={view}
                             groupProperty={groupProperty}
@@ -516,4 +528,6 @@ export default function ViewBoardRenderer({
             </div>
         </DndContext>
     );
-}
+};
+
+export default ViewBoardRenderer;

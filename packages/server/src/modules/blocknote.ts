@@ -14,6 +14,8 @@ interface BlockNote {
 
 interface BlockNoteInline {
     type: string;
+    href?: string;
+    content?: BlockNoteInline[];
     props?: Record<string, unknown>;
     text?: string;
     styles?: Record<string, unknown>;
@@ -116,10 +118,52 @@ const defaultMarkdownImportDeps: MarkdownImportDeps = {
 function stripUnsupportedMarkdownBlocks(blocks: BlockNote[]): BlockNote[] {
     return blocks
         .filter((block) => !UNSUPPORTED_MARKDOWN_BLOCK_TYPES.has(block.type))
-        .map((block) => ({
-            ...block,
-            children: block.children?.length ? stripUnsupportedMarkdownBlocks(block.children) : [],
-        }));
+        .map((block) => {
+            const children = block.children?.length ? stripUnsupportedMarkdownBlocks(block.children) : [];
+            if (block.type !== 'linkedView') return { ...block, children };
+            const viewId = typeof block.props?.viewId === 'string' ? block.props.viewId : '';
+            const title = typeof block.props?.viewTitle === 'string' ? block.props.viewTitle : '';
+            return {
+                id: block.id,
+                type: 'paragraph',
+                props: {},
+                children,
+                content: viewId
+                    ? [
+                          {
+                              type: 'link',
+                              href: `/views/notes?viewId=${encodeURIComponent(viewId)}`,
+                              content: [{ type: 'text', text: `View: ${title || viewId}`, styles: {} }],
+                          },
+                      ]
+                    : [{ type: 'text', text: 'Linked view (not selected)', styles: {} }],
+            };
+        });
+}
+
+function restoreLinkedViewBlocks(blocks: BlockNote[]): BlockNote[] {
+    return blocks.map((block) => {
+        const children = restoreLinkedViewBlocks(block.children ?? []);
+        const link = Array.isArray(block.content) && block.content.length === 1 ? block.content[0] : undefined;
+        const match = link?.href?.match(/^\/views\/notes\?viewId=([^&#]+)$/);
+        if (block.type !== 'paragraph' || link?.type !== 'link' || !match) {
+            return { ...block, children };
+        }
+        let viewId: string;
+        try {
+            viewId = decodeURIComponent(match[1]);
+        } catch {
+            return { ...block, children };
+        }
+        if (!viewId.trim() || viewId.length > 256) return { ...block, children };
+        const title = link.content?.map((inline) => inline.text ?? '').join('') ?? '';
+        return {
+            id: block.id,
+            type: 'linkedView',
+            props: { viewId, viewTitle: title.replace(/^View: /, '') },
+            children,
+        };
+    });
 }
 
 function parseBlockNoteContent(contentJson: string): BlockNote[] {
@@ -1544,7 +1588,7 @@ async function parseMarkdownToContentJson(
         placeholderToProtectedTextToken,
     );
 
-    return JSON.stringify(restoredProtectedTextBlocks);
+    return JSON.stringify(restoreLinkedViewBlocks(restoredProtectedTextBlocks));
 }
 
 export function extractTagIdsFromContentJson(contentJson: string): string[] {

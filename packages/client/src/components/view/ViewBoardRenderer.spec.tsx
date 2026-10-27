@@ -51,6 +51,31 @@ const statusProperty = {
 };
 
 describe('<ViewBoardRenderer />', () => {
+    it('shows cards without move controls when embedded in a read-only note', async () => {
+        vi.mocked(fetchViewBoardColumn).mockImplementation(async (_id, { optionValue }) => ({
+            type: 'success',
+            viewBoardColumn:
+                optionValue === 'todo'
+                    ? {
+                          totalCount: 1,
+                          notes: [{ id: 'note-1', title: 'Read-only task', updatedAt: '1785679200000' }],
+                      }
+                    : { totalCount: 0, notes: [] },
+        }));
+        const { Wrapper: QueryWrapper } = createQueryClientWrapper();
+        const Wrapper = ({ children }: { children: React.ReactNode }) => (
+            <QueryWrapper>
+                <ToastProvider>{children}</ToastProvider>
+            </QueryWrapper>
+        );
+
+        render(<ViewBoardRenderer view={view} groupProperty={statusProperty} readOnly />, { wrapper: Wrapper });
+
+        expect(await screen.findByText('Read-only task')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /Drag Read-only task/ })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Move Read-only task' })).not.toBeInTheDocument();
+    });
+
     it('moves a card to another column by updating the grouping property', async () => {
         const user = userEvent.setup();
         let currentOptionValue = 'todo';

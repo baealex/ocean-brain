@@ -50,12 +50,13 @@ const Editor = forwardRef<EditorRef, EditorProps>(
     ({ content, currentNoteId, editable, onChange, externalUpdate, onClearChangeMarks }, ref) => {
         const { theme } = useTheme((state) => state);
         const toast = useToast();
+        const initialBlocks = (content && JSON.parse(content)) || undefined;
 
         const editor = useCreateBlockNote(
             {
                 schema,
                 extensions: [ExternalChangeExtension()],
-                initialContent: (content && JSON.parse(content)) || undefined,
+                initialContent: Array.isArray(initialBlocks) && initialBlocks.length === 0 ? undefined : initialBlocks,
                 pasteHandler: (context) => handleBlockNotePaste(context),
                 uploadFile: async (file, blockId) => {
                     const removePendingBlock = () => {

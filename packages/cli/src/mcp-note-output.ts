@@ -101,23 +101,78 @@ export const formatMcpReadNoteOutput = ({
 	].join("\n");
 };
 
-const readResultSchema = z.object({
-    status: z.enum(['read', 'failed', 'needs_disambiguation']), reason: z.string().nullable(), message: z.string().nullable(),
-    note: z.object({ id: z.string(), title: z.string(), createdAt: z.string(), updatedAt: z.string(), tags: z.array(z.object({ id: z.string(), name: z.string() })), properties: z.array(z.object({ key: z.string(), name: z.string(), value: z.string(), valueType: z.string(), option: z.object({ label: z.string(), value: z.string() }).nullable() })) }),
-    markdown: z.string(),
-    contentRange: z.object({ start: z.number(), end: z.number(), totalLength: z.number(), sectionEnd: z.number(), hasMore: z.boolean(), nextOffset: z.number().nullable() }).nullable(),
-    candidates: z.array(z.object({ heading: z.string(), level: z.number(), start: z.number(), end: z.number() })),
+const linkedViewSchema = z.object({
+    viewId: z.string(),
+    title: z.string(),
+    groupId: z.string().nullable(),
+    groupTitle: z.string().nullable(),
+    displayType: z.enum(['list', 'table', 'board', 'calendar']).nullable(),
+    status: z.enum(['available', 'missing']),
 });
+
+const readResultSchema = z.object({
+    status: z.enum(['read', 'failed', 'needs_disambiguation']),
+    reason: z.string().nullable(),
+    message: z.string().nullable(),
+    note: z.object({
+        id: z.string(),
+        title: z.string(),
+        createdAt: z.string(),
+        updatedAt: z.string(),
+        tags: z.array(z.object({ id: z.string(), name: z.string() })),
+        properties: z.array(z.object({
+            key: z.string(),
+            name: z.string(),
+            value: z.string(),
+            valueType: z.string(),
+            option: z.object({ label: z.string(), value: z.string() }).nullable(),
+        })),
+    }),
+    markdown: z.string(),
+    contentRange: z.object({
+        start: z.number(),
+        end: z.number(),
+        totalLength: z.number(),
+        sectionEnd: z.number(),
+        hasMore: z.boolean(),
+        nextOffset: z.number().nullable(),
+    }).nullable(),
+    candidates: z.array(z.object({ heading: z.string(), level: z.number(), start: z.number(), end: z.number() })),
+    linkedViews: z.array(linkedViewSchema),
+});
+
+const formatLinkedView = (view: z.infer<typeof linkedViewSchema>) => {
+    const details = [
+        `viewId=${view.viewId}`,
+        view.status,
+        ...(view.groupTitle ? [`group=${view.groupTitle}`] : []),
+        ...(view.displayType ? [`format=${view.displayType}`] : []),
+    ];
+    return `- ${view.title} (${details.join('; ')})`;
+};
 
 export const createMcpReadNoteResult = (raw: unknown, rawBackReferences: unknown) => {
     const result = readResultSchema.parse(raw);
     const backReferences = z.array(z.object({ id: z.string(), title: z.string() })).parse(rawBackReferences);
     const structuredContent = { ...result, backReferences };
     if (result.status !== 'read') return createMcpJsonToolResult(structuredContent);
+
     const range = result.contentRange;
-    const rangeText = range ? `\nContent range: [${range.start}, ${range.end}) of ${range.totalLength} UTF-16 units; sectionEnd: ${range.sectionEnd}; nextOffset: ${range.nextOffset ?? 'none'}` : '';
+    const rangeText = range
+        ? `\nContent range: [${range.start}, ${range.end}) of ${range.totalLength} UTF-16 units; sectionEnd: ${range.sectionEnd}; nextOffset: ${range.nextOffset ?? 'none'}`
+        : '';
+    const linkedViewsText = [
+        '', '', 'Linked views (whole note):',
+        ...(result.linkedViews.length ? result.linkedViews.map(formatLinkedView) : ['- (none)']),
+    ].join('\n');
+    const noteText = formatMcpReadNoteOutput({
+        note: { ...result.note, contentAsMarkdown: result.markdown },
+        backReferences,
+        maxLength: 0,
+    });
+
     return {
-        ...createMcpTextToolResult(formatMcpReadNoteOutput({ note: { ...result.note, contentAsMarkdown: result.markdown }, backReferences, maxLength: 0 }) + rangeText),
+        ...createMcpTextToolResult(noteText + rangeText + linkedViewsText),
         structuredContent,
     };
 };

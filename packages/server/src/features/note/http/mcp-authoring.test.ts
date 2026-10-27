@@ -50,6 +50,28 @@ test('MCP create forwards property values and maps validation errors without emi
     assert.deepEqual(events, []);
 });
 
+test('MCP create preserves an explicit unassigned board context at the authoring boundary', async () => {
+    let received: unknown;
+    const handler = createMcpCreateNoteHandler(
+        async (input) => {
+            received = input;
+            return {
+                id: '3',
+                title: input.title,
+                layout: 'wide',
+                createdAt: '2026-10-27T00:00:00Z',
+                updatedAt: '2026-10-27T00:00:00Z',
+            };
+        },
+        () => undefined,
+    );
+    const body = { title: 'Task', viewContext: { viewId: '42', groupValue: null, tagNames: ['@project-a'] } };
+
+    await handler({ body } as never, createResponse() as never);
+
+    assert.deepEqual(received, body);
+});
+
 test('mcp create note handler rejects missing note title', async () => {
     const handler = createMcpCreateNoteHandler(async () => ({
         id: '1',

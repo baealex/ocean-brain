@@ -27,6 +27,7 @@ import { invalidateQueriesForNoteChange } from '~/modules/server-event-invalidat
 import { timeSince } from '~/modules/time';
 import { NOTE_ROUTE } from '~/modules/url';
 import type { ViewNavigationState, ViewRouteStateUpdater } from '~/modules/view-route-state';
+import ViewNoteCreateButton from './ViewNoteCreateButton';
 
 const UNASSIGNED_COLUMN_ID = 'view-board-column:unassigned';
 
@@ -355,6 +356,13 @@ const BoardColumn = ({
                               ? 'Retry loading cards'
                               : `Load more (${Math.max(0, (totalCount ?? 0) - notes.length)})`}
                     </Button>
+                ) : null}
+                {!readOnly ? (
+                    <ViewNoteCreateButton
+                        viewId={view.id}
+                        groupValue={column.value}
+                        label={`New note in ${column.label}`}
+                    />
                 ) : null}
             </div>
         </section>

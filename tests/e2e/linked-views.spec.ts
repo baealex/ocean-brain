@@ -115,6 +115,73 @@ test('a note follows the saved view when its original query changes', async ({ p
     expect(errors).toEqual([]);
 });
 
+test('a note created from a linked view keeps its project context after editing', async ({ page }) => {
+    const errors = collectRuntimeErrors(page);
+    await signIn(page);
+    const { viewId } = await createMeetingView(page);
+    await graph(page, `mutation($id: ID!) {
+        createNotePropertyKey(input: { key: "kind", name: "Kind", valueType: text }) { key }
+        updateView(id: $id, input: {
+            tagNames: ["@project-a", "@meeting"],
+            propertyFilters: [{ key: "kind", valueType: text, operator: equals, value: "meeting" }]
+        }) { id }
+    }`, { id: viewId });
+    const parentId = await createNote(page, 'Project overview', [
+        paragraph('Project context.'),
+        { type: 'linkedView', props: { viewId, viewTitle: 'Meeting notes' }, children: [] },
+    ]);
+    await page.goto(`/${parentId}`);
+    const linked = page.locator(`[data-linked-view-id="${viewId}"]`);
+
+    await linked.getByRole('button', { name: 'New note', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'New note in view' });
+    await expect(dialog.getByLabel('Kind *')).toHaveValue('meeting');
+    await dialog.getByLabel('Title', { exact: true }).fill('Project planning meeting');
+    await dialog.getByRole('button', { name: 'Create note', exact: true }).click();
+    await page.getByRole('dialog', { name: 'Note created' }).getByRole('button', { name: 'Done' }).click();
+    await linked.getByRole('link', { name: 'Project planning meeting' }).click();
+    const editor = page.locator('.bn-editor[contenteditable="true"]');
+    await editor.click();
+    await page.keyboard.press('ControlOrMeta+End');
+    await page.keyboard.press('Enter');
+    await page.keyboard.type('Decisions from the meeting.');
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(page.getByRole('status')).toContainText('Saved');
+    await page.goto(`/${parentId}`);
+
+    await expect(linked.getByRole('link', { name: 'Project planning meeting' })).toBeVisible();
+    await expect(page.getByText('Project context.', { exact: true })).toBeVisible();
+    expect(errors).toEqual([]);
+});
+
+test('creating in a board column assigns that column and survives reload', async ({ page }) => {
+    const errors = collectRuntimeErrors(page);
+    await signIn(page);
+    const setup = await graph(page, `mutation {
+        group: createViewGroup(title: "Project A") { id }
+        createNotePropertyKey(input: { key: "state", name: "State", valueType: select, options: [
+            { label: "Todo", value: "todo" }, { label: "Doing", value: "doing" }
+        ] }) { key }
+    }`);
+    await graph(page, `mutation($groupId: ID!) { createView(groupId: $groupId, input: {
+        title: "Project tasks", displayType: board, tagNames: ["@project-a"],
+        displayOptions: { boardGroupByPropertyKey: "state" }
+    }) { id } }`, { groupId: setup.group.id });
+    await page.goto('/views');
+
+    await page.getByRole('button', { name: 'New note in Doing', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'New note in view' });
+    await expect(dialog.getByRole('combobox', { name: 'State *' })).toHaveText('Doing');
+    await dialog.getByLabel('Title', { exact: true }).fill('Implement capture');
+    await dialog.getByRole('button', { name: 'Create note', exact: true }).click();
+    await page.getByRole('dialog', { name: 'Note created' }).getByRole('button', { name: 'Done' }).click();
+    await page.reload();
+
+    await expect(page.getByRole('region', { name: 'Doing column' }).getByRole('link', { name: 'Implement capture' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Todo column' }).getByRole('link', { name: 'Implement capture' })).toHaveCount(0);
+    expect(errors).toEqual([]);
+});
+
 test('exported Markdown reconnects the same view when pasted into another note', async ({ page }) => {
     // Arrange: the rendered source contains real result rows; the destination has its own prose.
     const errors = collectRuntimeErrors(page);

@@ -56,7 +56,7 @@ const EXPECTED_SCHEMA_KEYS: Record<string, string[]> = {
     [OCEAN_BRAIN_MCP_TOOLS.readView]: ['dateRange', 'groupValue', 'limit', 'offset', 'propertyKeys', 'viewId'],
     [OCEAN_BRAIN_MCP_TOOLS.searchNotes]: ['limit', 'mode', 'offset', 'query'],
     [OCEAN_BRAIN_MCP_TOOLS.readNote]: ['expectedUpdatedAt', 'heading', 'id', 'maxLength', 'offset'],
-    [OCEAN_BRAIN_MCP_TOOLS.createNote]: ['layout', 'markdown', 'properties', 'title'],
+    [OCEAN_BRAIN_MCP_TOOLS.createNote]: ['layout', 'markdown', 'properties', 'title', 'viewContext'],
     [OCEAN_BRAIN_MCP_TOOLS.patchNoteMarkdown]: [
         'baseMarkdownSha256',
         'expectedUpdatedAt',

@@ -2,6 +2,32 @@ import { gql } from '~/modules/graphql.js';
 import { legacyViewTypeDefs } from './view.compat.js';
 
 export const viewType = gql`
+    type ViewNoteCreationProperty {
+        key: String!
+        name: String!
+        valueType: NotePropertyValueType!
+        defaultValue: String
+        required: Boolean!
+        options: [NotePropertyOption!]!
+        filters: [ViewPropertyFilter!]!
+    }
+
+    type ViewNoteCreationContext {
+        viewId: ID!
+        title: String!
+        tagNames: [String!]!
+        mode: TagMatchMode!
+        defaultTagNames: [String!]!
+        properties: [ViewNoteCreationProperty!]!
+    }
+
+    input ViewNotePropertyValueInput { key: String!, value: String! }
+    input ViewNoteInput {
+        title: String!
+        tagNames: [String!]
+        properties: [ViewNotePropertyValueInput!]
+    }
+
     type NotesQueryConditions {
         tagNames: [String!]!
         mode: TagMatchMode!
@@ -167,6 +193,7 @@ export const viewType = gql`
 
 export const viewQuery = gql`
     type Query {
+        viewNoteCreationContext(viewId: ID!, groupValue: String): ViewNoteCreationContext!
         notesByQuery(input: NotesByPropertiesInput!, pagination: PaginationInput): NotesQueryResult!
         views(query: String, pagination: PaginationInput): ViewListings!
         readView(id: ID!, pagination: PaginationInput, propertyKeys: [String!], groupValue: String, dateRange: DateRangeInput): ViewReadResult!
@@ -186,6 +213,7 @@ export const viewQuery = gql`
 
 export const viewMutation = gql`
     type Mutation {
+        createNoteInView(viewId: ID!, input: ViewNoteInput!, groupValue: String): Note!
         createViewGroup(title: String!): ViewGroup!
         updateViewGroup(id: ID!, title: String!): ViewGroup!
         deleteViewGroup(id: ID!): Boolean!

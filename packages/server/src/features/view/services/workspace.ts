@@ -798,8 +798,8 @@ export const getViewWorkspace = async () => {
     return readViewWorkspace(models);
 };
 
-export const getViewById = async (id: string) => {
-    return readView(models, parseViewId(id));
+export const getViewById = async (id: string, db: ViewDbClient = models) => {
+    return readView(db, parseViewId(id));
 };
 
 const normalizeSelectFilterValue = (value: string) => {

@@ -1,8 +1,61 @@
+import type { ViewNoteInput } from '~/apis/view.api';
 import type { Note } from '~/models/note.model';
-import type { View } from '~/models/view.model';
+import type { View, ViewNoteCreationContext } from '~/models/view.model';
 import { localError, success } from '../response';
-import type { LocalDemoPlugin } from '../types';
-import { applyPropertyFilters, createLocalId, listNotesByTags, paginate } from '../utils';
+import type { LocalDemoPlugin, LocalDemoState } from '../types';
+import { applyPropertyFilters, createLocalId, listNotesByTags, now, paginate } from '../utils';
+
+const creationContext = (
+    state: LocalDemoState,
+    viewId: string,
+    groupValue?: string | null,
+): ViewNoteCreationContext => {
+    const view = state.viewWorkspace.groups.flatMap((group) => group.views).find((item) => item.id === viewId);
+    if (!view) throw new Error('View not found');
+    const groupKey = view.displayType === 'board' ? view.displayOptions.boardGroupByPropertyKey : null;
+    const dateKey =
+        view.displayType === 'calendar' && view.displayOptions.calendarDateField === 'property'
+            ? view.displayOptions.calendarDatePropertyKey
+            : null;
+    const keys = new Set(
+        view.propertyFilters.filter((filter) => filter.operator !== 'notExists').map((filter) => filter.key),
+    );
+    if (groupKey && groupValue !== null) keys.add(groupKey);
+    if (dateKey) keys.add(dateKey);
+    const properties = [...keys].map((key) => {
+        const definition = state.propertyDefinitions.find((item) => item.key === key);
+        if (!definition) throw new Error(`Property ${key} is unavailable`);
+        const filters = view.propertyFilters.filter((filter) => filter.key === key);
+        const equalValues = [
+            ...new Set(filters.filter((filter) => filter.operator === 'equals').map((filter) => filter.value)),
+        ];
+        return {
+            key,
+            name: definition.name,
+            valueType: definition.valueType,
+            options: definition.options,
+            filters,
+            required:
+                filters.some((filter) => filter.operator !== 'notExists') ||
+                key === dateKey ||
+                (key === groupKey && groupValue !== undefined),
+            defaultValue:
+                key === groupKey && groupValue !== undefined
+                    ? groupValue
+                    : equalValues.length === 1
+                      ? (equalValues[0] ?? null)
+                      : null,
+        };
+    });
+    return {
+        viewId,
+        title: view.title,
+        tagNames: view.tagNames,
+        mode: view.mode,
+        defaultTagNames: view.mode === 'and' || view.tagNames.length === 1 ? view.tagNames : [],
+        properties,
+    };
+};
 
 const sortViewNotes = (notes: Note[], view: View, override: Partial<Pick<View, 'sortBy' | 'sortOrder'>> = {}) => {
     const sortBy = override.sortBy ?? view.sortBy;
@@ -23,6 +76,88 @@ const toTimestamp = (value: string) => {
 export const viewsLocalPlugin: LocalDemoPlugin = {
     name: 'views',
     graphHandlers: {
+        ViewNoteCreationContext: ({ state, variables }) => {
+            try {
+                return success({
+                    viewNoteCreationContext: creationContext(
+                        state,
+                        String(variables.viewId),
+                        variables.groupValue as string | null | undefined,
+                    ),
+                });
+            } catch (error) {
+                return localError(error instanceof Error ? error.message : 'Unable to load view conditions');
+            }
+        },
+        CreateNoteInView: ({ state, variables, save }) => {
+            try {
+                const context = creationContext(
+                    state,
+                    String(variables.viewId),
+                    variables.groupValue as string | null | undefined,
+                );
+                const view = state.viewWorkspace.groups
+                    .flatMap((group) => group.views)
+                    .find((item) => item.id === context.viewId);
+                const input = variables.input as ViewNoteInput;
+                if (!view || !input.title.trim()) return localError('A note title is required');
+                const timestamp = now();
+                const tagNames = [...new Set([...context.defaultTagNames, ...input.tagNames])];
+                const tags = tagNames.map(
+                    (name) => state.tags.find((tag) => tag.name === name) ?? { id: createLocalId('tag'), name },
+                );
+                const note: Note = {
+                    id: createLocalId('note'),
+                    title: input.title.trim(),
+                    layout: 'wide',
+                    pinned: false,
+                    order: state.notes.length,
+                    createdAt: timestamp,
+                    updatedAt: timestamp,
+                    tags,
+                    content: JSON.stringify([
+                        {
+                            type: 'paragraph',
+                            content: tags.map((tag) => ({ type: 'tag', props: { id: tag.id, tag: tag.name } })),
+                            children: [],
+                        },
+                    ]),
+                    properties: context.properties.flatMap((property) => {
+                        const value =
+                            input.properties?.find((item) => item.key === property.key)?.value ?? property.defaultValue;
+                        if (value === null || (value === '' && !property.required)) return [];
+                        const option = property.options.find((item) => item.value === value) ?? null;
+                        if (property.valueType === 'select' && !option)
+                            throw new Error(`Choose a valid ${property.name} option`);
+                        return [
+                            {
+                                key: property.key,
+                                name: property.name,
+                                value,
+                                valueType: property.valueType,
+                                option,
+                                createdAt: timestamp,
+                                updatedAt: timestamp,
+                            },
+                        ];
+                    }),
+                };
+                const matches = applyPropertyFilters(
+                    listNotesByTags({ ...state, notes: [note] }, view.tagNames, view.mode),
+                    view.propertyFilters,
+                );
+                const groupKey = view.displayOptions.boardGroupByPropertyKey;
+                const groupValue = note.properties?.find((property) => property.key === groupKey)?.value ?? null;
+                if (!matches.length || (variables.groupValue !== undefined && variables.groupValue !== groupValue))
+                    return localError('The note does not match this view. Check its tags and property values.');
+                state.tags.push(...tags.filter((tag) => !state.tags.some((existing) => existing.id === tag.id)));
+                state.notes.unshift(note);
+                save();
+                return success({ createNoteInView: { id: note.id, title: note.title } });
+            } catch (error) {
+                return localError(error instanceof Error ? error.message : 'Unable to create this note');
+            }
+        },
         FetchViewWorkspace: ({ state }) => success({ viewWorkspace: state.viewWorkspace }),
         FetchView: ({ state, variables }) => {
             const view = state.viewWorkspace.groups

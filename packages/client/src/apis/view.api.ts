@@ -3,6 +3,7 @@ import type {
     View,
     ViewDisplayOptions,
     ViewDisplayType,
+    ViewNoteCreationContext,
     ViewPropertyFilter,
     ViewSortBy,
     ViewSortOrder,
@@ -48,6 +49,35 @@ const VIEW_FIELDS = `
     limit
     order
 `;
+
+export const fetchViewNoteCreationContext = (viewId: string, groupValue?: string | null) =>
+    graphQuery<{ viewNoteCreationContext: ViewNoteCreationContext }>(
+        `query ViewNoteCreationContext($viewId: ID!, $groupValue: String) {
+            viewNoteCreationContext(viewId: $viewId, groupValue: $groupValue) {
+                viewId title tagNames mode defaultTagNames
+                properties {
+                    key name valueType defaultValue required
+                    options { id label value color order }
+                    filters { key name valueType operator value }
+                }
+            }
+        }`,
+        { viewId, ...(groupValue !== undefined ? { groupValue } : {}) },
+    );
+
+export interface ViewNoteInput {
+    title: string;
+    tagNames: string[];
+    properties?: { key: string; value: string }[];
+}
+
+export const createNoteInView = (viewId: string, input: ViewNoteInput, groupValue?: string | null) =>
+    graphQuery<{ createNoteInView: Pick<Note, 'id' | 'title'> }>(
+        `mutation CreateNoteInView($viewId: ID!, $input: ViewNoteInput!, $groupValue: String) {
+        createNoteInView(viewId: $viewId, input: $input, groupValue: $groupValue) { id title }
+    }`,
+        { viewId, input, ...(groupValue !== undefined ? { groupValue } : {}) },
+    );
 
 export function fetchViewWorkspace() {
     return graphQuery<{

@@ -273,13 +273,13 @@ export const registerMcpTools = (
 
     server.tool(
         OCEAN_BRAIN_MCP_TOOLS.readNote,
-        'Read note metadata, markdown, back references and linkedViews. linkedViews covers the whole note even when markdown is partial; use each available viewId with read_view to inspect its current rows. Missing views are identified explicitly. Default 1000 UTF-16 units; maxLength: 0 reads the remaining body or whole selected section. Use offset or exact heading, never both. For continuation pass contentRange.nextOffset and expectedUpdatedAt from this read; sectionEnd bounds a selected section. Ambiguous headings return positions. Prefer structuredContent for code consumers.',
+        'Read note Markdown, metadata, backlinks and linkedViews. linkedViews covers the whole note; follow available viewIds with read_view.',
         {
             id: z.string().min(1),
-            maxLength: z.number().int().nonnegative().default(1000),
-            offset: z.number().int().nonnegative().optional(),
-            heading: z.string().min(1).optional(),
-            expectedUpdatedAt: z.string().optional(),
+            maxLength: z.number().int().nonnegative().default(1000).describe('UTF-16 units; 0 reads the remaining body or selected section.'),
+            offset: z.number().int().nonnegative().optional().describe('Continuation: use contentRange.nextOffset with expectedUpdatedAt. Cannot combine with heading.'),
+            heading: z.string().min(1).optional().describe('Exact heading; ambiguous matches return positions.'),
+            expectedUpdatedAt: z.string().optional().describe('Note version from the preceding read.'),
         },
         async (input) => {
             if (input.heading !== undefined && input.offset !== undefined)
@@ -307,20 +307,25 @@ export const registerMcpTools = (
 
     server.tool(
         OCEAN_BRAIN_MCP_TOOLS.createNote,
-        'Create an Ocean Brain note from markdown. Search/read first to avoid duplicates; prefer patching an existing note when the intent is a local change.',
+        'Create a note from Markdown, optionally within a saved view. Search first to avoid duplicates.',
         {
             title: z.string().describe('Note title'),
+            viewContext: z.object({
+                viewId: z.string().regex(/^[1-9]\d*$/),
+                groupValue: z.string().nullable().optional().describe('Board option value; null means Unassigned.'),
+                tagNames: z.array(z.string()).max(50).optional().describe('Explicit OR tag choices.'),
+            }).strict().optional().describe('Inherits AND tags and equality values. Supply other required values through properties; the note must match the view.'),
             markdown: z
                 .string()
                 .optional()
                 .default('')
                 .describe(
-                    'Markdown body for the new note. In MCP markdown, tags must use [@tag]. Defaults to an empty note body.',
+                    'Note body. Write tags as [@tag].',
                 ),
             layout: noteLayoutSchema
                 .optional()
                 .describe(
-                    'Optional note layout: narrow, wide, or full. Prefer wide for most notes unless the user explicitly wants narrow or full.',
+                    'Note width; prefer wide unless requested otherwise.',
                 ),
             properties: z
                 .object({
@@ -329,10 +334,10 @@ export const registerMcpTools = (
                 .strict()
                 .optional()
                 .describe(
-                    'Set existing properties atomically with creation. Same keys/values as update_note_metadata; definitions and select options must already exist.',
+                    'Existing property keys and values, saved atomically with the note.',
                 ),
         },
-        async ({ title, markdown, layout, properties }) => {
+        async ({ title, markdown, layout, properties, viewContext }) => {
             if (properties) metadataPropertyPatchSchema.parse(properties);
             const writeToken = requireWriteToken(token, OCEAN_BRAIN_MCP_TOOLS.createNote);
             const result = await jsonRequest<{
@@ -349,6 +354,7 @@ export const registerMcpTools = (
                 markdown,
                 ...(layout ? { layout } : {}),
                 ...(properties ? { properties } : {}),
+                ...(viewContext ? { viewContext } : {}),
             });
 
             return createMcpJsonToolResult(result);

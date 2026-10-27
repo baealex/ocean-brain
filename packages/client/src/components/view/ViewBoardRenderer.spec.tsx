@@ -74,6 +74,7 @@ describe('<ViewBoardRenderer />', () => {
         expect(await screen.findByText('Read-only task')).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: /Drag Read-only task/ })).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Move Read-only task' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /New note/ })).not.toBeInTheDocument();
     });
 
     it('moves a card to another column by updating the grouping property', async () => {

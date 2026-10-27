@@ -65,6 +65,47 @@ const createView = (sortBy: View['sortBy'], sortOrder: View['sortOrder']): View 
 });
 
 describe('viewsLocalPlugin', () => {
+    it('creates a demo note inside its view with the inherited tags', () => {
+        const view = { ...createView('updatedAt', 'desc'), tagNames: ['@project-a'] };
+        const state = createState(view);
+        const save = vi.fn();
+
+        const response = viewsLocalPlugin.graphHandlers?.CreateNoteInView({
+            state,
+            save,
+            variables: {
+                viewId: view.id,
+                input: { title: 'Project meeting', tagNames: ['@project-a'] },
+            },
+        });
+
+        expect(response?.type).toBe('success');
+        expect(state.notes[0]?.title).toBe('Project meeting');
+        expect(state.notes[0]?.tags.map((tag) => tag.name)).toEqual(['@project-a']);
+        expect(state.notes[0]?.content).toContain('@project-a');
+        expect(save).toHaveBeenCalledOnce();
+    });
+
+    it('leaves demo state untouched when no OR tag was selected', () => {
+        const view = { ...createView('updatedAt', 'desc'), tagNames: ['@meeting', '@decision'], mode: 'or' as const };
+        const state = createState(view);
+        const before = structuredClone(state);
+        const save = vi.fn();
+
+        const response = viewsLocalPlugin.graphHandlers?.CreateNoteInView({
+            state,
+            save,
+            variables: {
+                viewId: view.id,
+                input: { title: 'Unclassified', tagNames: [] },
+            },
+        });
+
+        expect(response?.type).toBe('error');
+        expect(state).toEqual(before);
+        expect(save).not.toHaveBeenCalled();
+    });
+
     it.each([
         ['title', 'asc', ['note-1', 'note-2', 'note-3']],
         ['createdAt', 'desc', ['note-3', 'note-2', 'note-1']],

@@ -20,6 +20,7 @@ The demo keeps workspace edits in your browser. It does not include server-backe
 - **Connect as you go.** Reference notes by title, follow backlinks, or step out into the graph when a thread gets larger.
 - **Add structure when it helps.** Use tags and typed properties to define saved views. Each view has its own filters, sorting, and display format: list, table, board, or calendar. Organize related views into view groups.
 - **Bring context together.** Use `/view` in a note to link an existing saved view alongside your writing. Its filters and results stay shared with the original view.
+- **Create in context.** Add notes from a view with matching tags and property defaults, or from a board column with its status already selected.
 - **Find the work again.** Search the workspace, pin active notes, set reminders, or find notes by date in the calendar.
 
 Notes can be copied as Markdown or downloaded as Markdown or HTML. Local image assets can be bundled with an export when the document needs to stand on its own.

@@ -84,7 +84,7 @@ The default catalog contains 13 tools. All names start with `ocean_brain_`:
 | `read_note` | Metadata, Markdown ranges/sections, and back references |
 | `list_tags`, `list_properties` | Discover tags in use and existing property definitions/options |
 | `list_views`, `read_view` | Discover saved views by view or group name and read list/table/board/calendar results |
-| `create_note` | Create Markdown and existing property values together |
+| `create_note` | Create Markdown and property values, optionally within a saved view |
 | `append_note_markdown`, `patch_note_markdown`, `replace_note_markdown` | Append, target a local change, or intentionally replace a body |
 | `update_note_metadata` | Change title/layout/property values with an expected version |
 | `delete_note` | Move a note to Trash |
@@ -107,6 +107,8 @@ For example, pass this to `ocean_brain_query_notes` after discovering the proper
 ```
 
 Each saved view defines filters, sorting, and a display format. A view group organizes multiple views. `list_views` searches view and view group names and returns `viewId`, `groupTitle`, and the saved `view` definition. Pass `viewId` to `read_view` for saved settings and paged rows. Tables use their saved property columns unless `propertyKeys` is supplied. Boards return the grouping property, options and each row's group; omit `groupValue` for all columns or pass `null` for unclassified notes. Calendars require `dateRange: {"start":"2026-09-01","end":"2026-10-01"}`: start is inclusive, end exclusive, and the range cannot exceed 32 days. `view.limit` is the saved display count; `page.limit` is the requested result count.
+
+`create_note` accepts `viewContext: {"viewId":"42"}` to inherit a view's AND tags and equality values. Choose OR tags with `viewContext.tagNames` and supply other required values through `properties.set`. For board creation, `viewContext.groupValue` selects a column; `null` means Unassigned. A note that does not match the current view is rejected without saving it.
 
 Existing view data is migrated automatically on server startup; IDs and saved settings are preserved. Existing view bookmarks and external GraphQL integrations retain their compatibility adapters.
 

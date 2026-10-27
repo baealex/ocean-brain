@@ -246,6 +246,8 @@ export const queryKeys = {
         all: () => ['views'] as const,
         workspace: () => ['views', 'workspace'] as const,
         view: (id: string) => ['views', 'view', { id }] as const,
+        noteCreationContext: (viewId: string, groupValue?: string | null) =>
+            ['views', 'note-creation-context', { viewId, groupValue }] as const,
         viewNotesAll: () => ['views', 'view-notes'] as const,
         viewNotes: (
             id: string,

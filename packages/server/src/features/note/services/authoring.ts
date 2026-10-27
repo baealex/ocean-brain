@@ -1,7 +1,9 @@
+import { type NoteViewContextInput, prepareNoteForView } from '~/features/view/services/note-creation.js';
 import models, { type NoteLayout } from '~/models.js';
 import { extractTagIdsFromContentJson, markdownToBlocksJson } from '~/modules/blocknote.js';
 import { replaceNoteReferences } from './note-reference-index.js';
 import {
+    InvalidNotePropertyInputError,
     type NotePropertiesByKeyPatchInput,
     type NotePropertiesPatchInput,
     resolveNotePropertiesPatchValueTypes,
@@ -34,6 +36,7 @@ interface NoteAuthoringDeps {
         layout?: NoteLayout;
         tagIds?: string[];
         properties?: NotePropertiesPatchInput;
+        viewContext?: NoteViewContextInput;
     }) => Promise<NoteRecord>;
     findPlaceholders: (templates: string[]) => Promise<PlaceholderRecord[]>;
     parseMarkdownToContentJson: (markdown: string) => Promise<string>;
@@ -41,6 +44,7 @@ interface NoteAuthoringDeps {
 }
 
 export interface CreateNoteAuthoringInput {
+    viewContext?: NoteViewContextInput;
     properties?: Pick<NotePropertiesByKeyPatchInput, 'set'>;
     title: string;
     markdown?: string;
@@ -126,6 +130,7 @@ export const createNoteAuthoringService = (deps: NoteAuthoringDeps) => {
                 tagIds,
                 ...(properties ? { properties } : {}),
                 ...(input.layout ? { layout: input.layout } : {}),
+                ...(input.viewContext ? { viewContext: input.viewContext } : {}),
             });
 
             return serializeNote(note);
@@ -138,21 +143,36 @@ const defaultNoteAuthoringService = createNoteAuthoringService({
         validateNotePropertiesPatchValues(await resolveNotePropertiesPatchValueTypes(patch)),
     createNote: async (input) => {
         return models.$transaction(async (tx) => {
+            const viewInput = input.viewContext ? await prepareNoteForView(tx, input.viewContext, input) : null;
+            const prepared = viewInput ?? input;
             const note = await tx.note.create({
                 data: {
                     title: input.title,
-                    content: input.content,
+                    content: prepared.content,
                     ...buildNoteSearchProjection({
                         title: input.title,
-                        content: input.content,
+                        content: prepared.content,
                     }),
                     ...(input.layout ? { layout: input.layout } : {}),
-                    ...(input.tagIds ? { tags: { connect: input.tagIds.map((id) => ({ id: Number(id) })) } } : {}),
+                    ...(prepared.tagIds
+                        ? { tags: { connect: prepared.tagIds.map((id) => ({ id: Number(id) })) } }
+                        : {}),
                 },
             });
 
-            if (input.properties) await setNotePropertyValues(tx, note.id, input.properties);
-            await replaceNoteReferences(tx, note.id, input.content);
+            if (prepared.properties) await setNotePropertyValues(tx, note.id, prepared.properties);
+            if (viewInput) {
+                const matchesView = await tx.note.findFirst({
+                    where: { AND: [{ id: note.id }, viewInput.where] },
+                    select: { id: true },
+                });
+                if (!matchesView) {
+                    throw new InvalidNotePropertyInputError(
+                        'The note does not match this view. Check its tags and property values.',
+                    );
+                }
+            }
+            await replaceNoteReferences(tx, note.id, prepared.content);
             const properties = await tx.noteProperty.findMany({
                 where: { noteId: note.id },
                 include: { definition: true, option: true },

@@ -161,10 +161,9 @@ export const createMcpReadNoteResult = (raw: unknown, rawBackReferences: unknown
     const rangeText = range
         ? `\nContent range: [${range.start}, ${range.end}) of ${range.totalLength} UTF-16 units; sectionEnd: ${range.sectionEnd}; nextOffset: ${range.nextOffset ?? 'none'}`
         : '';
-    const linkedViewsText = [
-        '', '', 'Linked views (whole note):',
-        ...(result.linkedViews.length ? result.linkedViews.map(formatLinkedView) : ['- (none)']),
-    ].join('\n');
+    const linkedViewsText = result.linkedViews.length
+        ? ['', '', 'Linked views (whole note):', ...result.linkedViews.map(formatLinkedView)].join('\n')
+        : '';
     const noteText = formatMcpReadNoteOutput({
         note: { ...result.note, contentAsMarkdown: result.markdown },
         backReferences,

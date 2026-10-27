@@ -17,6 +17,7 @@ import {
     type NotePropertiesByKeyPatchInput,
 } from '~/features/note/services/properties.js';
 import { MCP_SNAPSHOT_META } from '~/features/note/services/snapshot.js';
+import type { NoteViewContextInput } from '~/features/view/services/note-creation.js';
 import models, { type NoteLayout } from '~/models.js';
 import { createAppError } from '~/modules/error-handler.js';
 import { emitServerEvent, type ServerEventInput } from '~/modules/server-events.js';
@@ -341,12 +342,32 @@ const emitAuthoringEvent = (
     emit(event);
 };
 
+const resolveViewContext = (value: unknown): NoteViewContextInput | undefined => {
+    if (value === undefined) return undefined;
+    if (!isRecord(value) || typeof value.viewId !== 'string' || !/^[1-9]\d*$/.test(value.viewId))
+        throw createAppError(400, 'INVALID_VIEW_CONTEXT', 'View context requires a valid viewId.');
+    const { viewId, groupValue, tagNames } = value;
+    if (groupValue !== undefined && groupValue !== null && typeof groupValue !== 'string')
+        throw createAppError(400, 'INVALID_VIEW_CONTEXT', 'Board groupValue must be a string or null.');
+    if (
+        tagNames !== undefined &&
+        (!Array.isArray(tagNames) || tagNames.length > 50 || !tagNames.every((name) => typeof name === 'string'))
+    )
+        throw createAppError(400, 'INVALID_VIEW_CONTEXT', 'View tagNames must be an array of at most 50 strings.');
+    return {
+        viewId,
+        ...(groupValue !== undefined ? { groupValue } : {}),
+        ...(Array.isArray(tagNames) ? { tagNames } : {}),
+    };
+};
+
 export const createCreateNoteHandler = (
     createNote = createNoteFromMarkdown,
     emitEvent: EmitServerEvent = emitServerEvent,
 ): Controller => {
     return async (req, reply) => {
-        const { title, markdown, layout, properties } = req.body ?? {};
+        const { title, markdown, layout, properties, viewContext } = req.body ?? {};
+        const resolvedViewContext = resolveViewContext(viewContext);
         const resolvedProperties = resolveMetadataPropertyPatch(properties);
         if (resolvedProperties?.deleteKeys !== undefined)
             throw createAppError(400, 'INVALID_NOTE_PROPERTIES', 'Create accepts properties.set only.');
@@ -370,6 +391,7 @@ export const createCreateNoteHandler = (
                 ...(markdown !== undefined ? { markdown } : {}),
                 ...(resolvedProperties ? { properties: resolvedProperties } : {}),
                 ...(resolvedLayout ? { layout: resolvedLayout } : {}),
+                ...(resolvedViewContext ? { viewContext: resolvedViewContext } : {}),
             });
 
             emitAuthoringEvent(req, emitEvent, {

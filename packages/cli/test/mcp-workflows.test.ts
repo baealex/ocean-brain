@@ -276,6 +276,7 @@ test('MCP workflows use one HTTP request, preserve backlinks and structured resu
             arguments: {
                 title: 'Task',
                 properties: { set: [{ key: 'state', value: 'todo' }] },
+                viewContext: { viewId: '42', groupValue: null, tagNames: ['@project-a'] },
             },
         });
         assert.notEqual(created.isError, true);
@@ -284,6 +285,7 @@ test('MCP workflows use one HTTP request, preserve backlinks and structured resu
         assert.deepEqual(requests.at(-1)?.body.properties, {
             set: [{ key: 'state', value: 'todo' }],
         });
+        assert.deepEqual(requests.at(-1)?.body.viewContext, { viewId: '42', groupValue: null, tagNames: ['@project-a'] });
     } finally {
         await client.close();
         await server.close();

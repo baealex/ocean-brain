@@ -56,3 +56,22 @@ export interface ViewsWorkspace {
     activeGroupId: string | null;
     groups: ViewGroup[];
 }
+
+import type { NotePropertyOption, NotePropertyValueType } from './note.model';
+
+export interface ViewNoteCreationContext {
+    viewId: string;
+    title: string;
+    tagNames: string[];
+    mode: ViewTagFilterMatchMode;
+    defaultTagNames: string[];
+    properties: {
+        key: string;
+        name: string;
+        valueType: NotePropertyValueType;
+        defaultValue: string | null;
+        required: boolean;
+        options: NotePropertyOption[];
+        filters: ViewPropertyFilter[];
+    }[];
+}

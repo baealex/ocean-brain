@@ -23,6 +23,7 @@ import {
 } from '~/modules/view-dashboard';
 import type { ViewNavigationState, ViewRouteStateUpdater } from '~/modules/view-route-state';
 import ViewChip from './ViewChip';
+import ViewNoteCreateButton from './ViewNoteCreateButton';
 import ViewRenderer from './ViewRenderer';
 import ViewTableColumnsDialog from './ViewTableColumnsDialog';
 
@@ -217,24 +218,27 @@ const ViewCard = ({
                         )}
                     </div>
                 </div>
-                {headerActions ?? (
-                    <Dropdown
-                        button={<MoreButton label="View actions" />}
-                        items={[
-                            ...(onMoveUp ? [{ name: 'Move up', onClick: onMoveUp }] : []),
-                            ...(onMoveDown ? [{ name: 'Move down', onClick: onMoveDown }] : []),
-                            ...(onMoveUp || onMoveDown ? [{ type: 'separator' as const }] : []),
-                            {
-                                name: 'Edit view',
-                                onClick: onEdit,
-                            },
-                            ...(onDuplicate ? [{ name: 'Duplicate view', onClick: onDuplicate }] : []),
-                            ...(onDelete
-                                ? [{ type: 'separator' as const }, { name: 'Delete view', onClick: onDelete }]
-                                : []),
-                        ]}
-                    />
-                )}
+                <div className="flex shrink-0 items-center gap-1">
+                    {!readOnly ? <ViewNoteCreateButton viewId={view.id} /> : null}
+                    {headerActions ?? (
+                        <Dropdown
+                            button={<MoreButton label="View actions" />}
+                            items={[
+                                ...(onMoveUp ? [{ name: 'Move up', onClick: onMoveUp }] : []),
+                                ...(onMoveDown ? [{ name: 'Move down', onClick: onMoveDown }] : []),
+                                ...(onMoveUp || onMoveDown ? [{ type: 'separator' as const }] : []),
+                                {
+                                    name: 'Edit view',
+                                    onClick: onEdit,
+                                },
+                                ...(onDuplicate ? [{ name: 'Duplicate view', onClick: onDuplicate }] : []),
+                                ...(onDelete
+                                    ? [{ type: 'separator' as const }, { name: 'Delete view', onClick: onDelete }]
+                                    : []),
+                            ]}
+                        />
+                    )}
+                </div>
             </div>
 
             {!isBoard && !isCalendar ? (

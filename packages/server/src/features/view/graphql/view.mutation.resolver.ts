@@ -1,4 +1,8 @@
 import type { IResolvers } from '@graphql-tools/utils';
+import { GraphQLError } from 'graphql';
+import { createNoteFromMarkdown, InvalidNoteAuthoringInputError } from '~/features/note/services/authoring.js';
+import { emitNoteChange } from '~/features/note/services/change-events.js';
+import { InvalidNotePropertyInputError, type NotePropertySetByKeyInput } from '~/features/note/services/properties.js';
 import {
     createView,
     createViewGroup,
@@ -11,10 +15,44 @@ import {
     updateViewGroup,
     type ViewInput,
 } from '~/features/view/services/workspace.js';
+import models from '~/models.js';
+import type { NoteViewContextInput } from '../services/note-creation.js';
 
 type ViewMutationResolvers = NonNullable<IResolvers['Mutation']>;
 
 export const viewMutationResolvers = {
+    createNoteInView: async (
+        _,
+        {
+            viewId,
+            groupValue,
+            input,
+        }: {
+            viewId: string;
+            groupValue?: string | null;
+            input: { title: string; tagNames?: string[]; properties?: NotePropertySetByKeyInput[] };
+        },
+    ) => {
+        try {
+            const viewContext: NoteViewContextInput = {
+                viewId,
+                ...(groupValue !== undefined ? { groupValue } : {}),
+                ...(input.tagNames ? { tagNames: input.tagNames } : {}),
+            };
+            const created = await createNoteFromMarkdown({
+                title: input.title,
+                viewContext,
+                ...(input.properties ? { properties: { set: input.properties } } : {}),
+            });
+            const note = await models.note.findUniqueOrThrow({ where: { id: Number(created.id) } });
+            emitNoteChange({ type: 'note.created', noteId: note.id });
+            return note;
+        } catch (error) {
+            if (error instanceof InvalidNotePropertyInputError || error instanceof InvalidNoteAuthoringInputError)
+                throw new GraphQLError(error.message, { extensions: { code: 'INVALID_VIEW_NOTE_INPUT' } });
+            throw error;
+        }
+    },
     createViewGroup: async (_, { title }: { title: string }) => {
         return createViewGroup(title);
     },

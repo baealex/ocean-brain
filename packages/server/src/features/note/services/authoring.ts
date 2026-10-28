@@ -1,18 +1,15 @@
-import { type NoteViewContextInput, prepareNoteForView } from '~/features/view/services/note-creation.js';
+import type { NoteViewContextInput } from '~/features/view/services/note-creation.js';
 import models, { type NoteLayout } from '~/models.js';
 import { extractTagIdsFromContentJson, markdownToBlocksJson } from '~/modules/blocknote.js';
-import { replaceNoteReferences } from './note-reference-index.js';
+import { createNoteWithContent, type NoteCreationInput } from './create.js';
+import { createPlaceholderReplacer } from './placeholders.js';
 import {
-    InvalidNotePropertyInputError,
     type NotePropertiesByKeyPatchInput,
     type NotePropertiesPatchInput,
     resolveNotePropertiesPatchValueTypes,
     type SerializedNoteProperty,
-    serializeNoteProperties,
-    setNotePropertyValues,
     validateNotePropertiesPatchValues,
 } from './properties.js';
-import { buildNoteSearchProjection } from './search.js';
 
 interface PlaceholderRecord {
     template: string;
@@ -30,15 +27,7 @@ interface NoteRecord {
 
 interface NoteAuthoringDeps {
     validateProperties: (patch: NotePropertiesByKeyPatchInput) => Promise<NotePropertiesPatchInput>;
-    createNote: (input: {
-        title: string;
-        content: string;
-        layout?: NoteLayout;
-        tagIds?: string[];
-        properties?: NotePropertiesPatchInput;
-        viewContext?: NoteViewContextInput;
-        useTemplateBody?: boolean;
-    }) => Promise<NoteRecord>;
+    createNote: (input: NoteCreationInput) => Promise<NoteRecord>;
     findPlaceholders: (templates: string[]) => Promise<PlaceholderRecord[]>;
     parseMarkdownToContentJson: (markdown: string) => Promise<string>;
     extractTagIds: (contentJson: string) => string[];
@@ -68,9 +57,6 @@ export class InvalidNoteAuthoringInputError extends Error {
     }
 }
 
-const PLACEHOLDER_PREFIX = '{%';
-const PLACEHOLDER_SUFFIX = '%}';
-
 const serializeNote = (note: NoteRecord): AuthoredNoteSummary => ({
     ...(note.properties ? { properties: note.properties } : {}),
     id: String(note.id),
@@ -80,37 +66,8 @@ const serializeNote = (note: NoteRecord): AuthoredNoteSummary => ({
     updatedAt: note.updatedAt.toISOString(),
 });
 
-const extractPlaceholderTemplates = (value: string) => {
-    return Array.from(
-        new Set(
-            Array.from(
-                value.matchAll(new RegExp(`${PLACEHOLDER_PREFIX}([^}]+)${PLACEHOLDER_SUFFIX}`, 'g')),
-                (match) => match[1],
-            ),
-        ),
-    );
-};
-
 export const createNoteAuthoringService = (deps: NoteAuthoringDeps) => {
-    const replacePlaceholders = async (value: string) => {
-        const templates = extractPlaceholderTemplates(value);
-
-        if (templates.length === 0) {
-            return value;
-        }
-
-        const placeholders = await deps.findPlaceholders(templates);
-        let replacedValue = value;
-
-        for (const placeholder of placeholders) {
-            replacedValue = replacedValue.replace(
-                new RegExp(`${PLACEHOLDER_PREFIX}${placeholder.template}${PLACEHOLDER_SUFFIX}`, 'g'),
-                placeholder.replacement,
-            );
-        }
-
-        return replacedValue;
-    };
+    const replacePlaceholders = createPlaceholderReplacer(deps.findPlaceholders);
 
     return {
         createNote: async (input: CreateNoteAuthoringInput): Promise<AuthoredNoteSummary> => {
@@ -144,46 +101,7 @@ export const createNoteAuthoringService = (deps: NoteAuthoringDeps) => {
 const defaultNoteAuthoringService = createNoteAuthoringService({
     validateProperties: async (patch) =>
         validateNotePropertiesPatchValues(await resolveNotePropertiesPatchValueTypes(patch)),
-    createNote: async (input) => {
-        return models.$transaction(async (tx) => {
-            const viewInput = input.viewContext ? await prepareNoteForView(tx, input.viewContext, input) : null;
-            const prepared = viewInput ?? input;
-            const note = await tx.note.create({
-                data: {
-                    title: input.title,
-                    content: prepared.content,
-                    ...buildNoteSearchProjection({
-                        title: input.title,
-                        content: prepared.content,
-                    }),
-                    layout: input.layout ?? viewInput?.layout,
-                    ...(prepared.tagIds
-                        ? { tags: { connect: prepared.tagIds.map((id) => ({ id: Number(id) })) } }
-                        : {}),
-                },
-            });
-
-            if (prepared.properties) await setNotePropertyValues(tx, note.id, prepared.properties);
-            if (viewInput) {
-                const matchesView = await tx.note.findFirst({
-                    where: { AND: [{ id: note.id }, viewInput.where] },
-                    select: { id: true },
-                });
-                if (!matchesView) {
-                    throw new InvalidNotePropertyInputError(
-                        'The note does not match this view. Check its tags and property values.',
-                    );
-                }
-            }
-            await replaceNoteReferences(tx, note.id, prepared.content);
-            const properties = await tx.noteProperty.findMany({
-                where: { noteId: note.id },
-                include: { definition: true, option: true },
-                orderBy: { definition: { key: 'asc' } },
-            });
-            return { ...note, properties: serializeNoteProperties(properties) };
-        });
-    },
+    createNote: createNoteWithContent,
     findPlaceholders: async (templates) => {
         if (templates.length === 0) {
             return [];

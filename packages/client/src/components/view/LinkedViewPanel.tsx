@@ -1,16 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
-import { fetchAllNotePropertyKeys } from '~/apis/note.api';
 import { fetchViewWorkspace } from '~/apis/view.api';
-import { Dropdown, SurfaceCard } from '~/components/shared';
+import * as Icon from '~/components/icon';
+import { Dropdown } from '~/components/shared';
+import NoteContentSection from '~/components/shared/NoteContentSection';
 import { Button, Input, MoreButton, Text } from '~/components/ui';
 import type { View } from '~/models/view.model';
 import { queryKeys } from '~/modules/query-key-factory';
 import { VIEWS_ROUTE } from '~/modules/url';
 import { getViewDisplayTypeLabel } from '~/modules/view-dashboard';
-import type { ViewNavigationState } from '~/modules/view-route-state';
-import ViewCard from './ViewCard';
+import LinkedViewContent from './LinkedViewContent';
 
 interface LinkedViewPanelProps {
     viewId: string;
@@ -40,6 +40,11 @@ const LinkedViewPanel = ({ viewId, viewTitle, editable, onSelect, onRemove }: Li
         setSearch('');
         setChoosing(true);
     };
+    const closeChooser = () => (viewId ? setChoosing(false) : onRemove());
+    const selectView = (selected: View) => {
+        onSelect(selected);
+        setChoosing(false);
+    };
     const actions = (
         <Dropdown
             button={<MoreButton label="Linked view actions" />}
@@ -57,16 +62,16 @@ const LinkedViewPanel = ({ viewId, viewTitle, editable, onSelect, onRemove }: Li
 
     if (isPending || isError)
         return (
-            <SurfaceCard className="p-4">
+            <NoteContentSection className="space-y-3">
                 <Text as="p" variant="body">
                     {isError ? 'Failed to load linked views.' : 'Loading linked view...'}
                 </Text>
                 {isError ? (
-                    <Button type="button" variant="ghost" size="sm" onClick={() => void refetch()}>
+                    <Button type="button" variant="subtle" size="sm" onClick={() => void refetch()}>
                         Retry
                     </Button>
                 ) : null}
-            </SurfaceCard>
+            </NoteContentSection>
         );
 
     if (choosing && editable) {
@@ -77,69 +82,78 @@ const LinkedViewPanel = ({ viewId, viewTitle, editable, onSelect, onRemove }: Li
                 .map((item) => ({ view: item, groupTitle: entry.title })),
         );
         return (
-            <SurfaceCard className="space-y-3 p-4">
-                <Text as="h3" variant="subheading" weight="semibold">
-                    Link an existing view
-                </Text>
-                <Text as="p" variant="meta" tone="tertiary">
-                    Show this view's current results here. Its filters stay shared with the original view.
-                </Text>
-                <Input
-                    aria-label="Search views"
-                    placeholder="Search by view or group name"
-                    autoFocus
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                />
-                <ul aria-label="Available views" className="max-h-64 space-y-1 overflow-y-auto">
-                    {matches.map(({ view: item, groupTitle }) => (
-                        <li key={item.id}>
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                className="h-auto w-full justify-start text-left"
-                                onClick={() => {
-                                    onSelect(item);
-                                    setChoosing(false);
-                                }}
-                            >
-                                <span className="flex min-w-0 flex-col">
-                                    <span className="truncate">{item.title}</span>
-                                    <Text as="span" variant="meta" tone="tertiary">
-                                        {groupTitle} · {getViewDisplayTypeLabel(item.displayType)}
-                                    </Text>
-                                </span>
-                            </Button>
-                        </li>
-                    ))}
-                </ul>
-                {!matches.length ? (
-                    <Text as="p" variant="meta" tone="tertiary">
-                        {groups.some((entry) => entry.views.length)
-                            ? 'No views match your search.'
-                            : 'Create a saved view in Views, then link it here.'}
-                    </Text>
-                ) : null}
-                <div className="flex items-center gap-2">
-                    <Button
-                        type="button"
-                        variant="ghost"
+            <NoteContentSection>
+                <div className="w-full max-w-[520px] space-y-2">
+                    <div className="flex min-h-8 items-center justify-between gap-2">
+                        <Text as="h3" variant="body" weight="semibold">
+                            Choose view
+                        </Text>
+                        <Button
+                            type="button"
+                            variant="subtle"
+                            size="icon-sm"
+                            aria-label="Cancel"
+                            title="Cancel"
+                            onClick={closeChooser}
+                        >
+                            <Icon.Close className="size-3.5" />
+                        </Button>
+                    </div>
+                    <Input
+                        aria-label="Search views"
+                        placeholder="Search views or groups"
                         size="sm"
-                        onClick={() => (viewId ? setChoosing(false) : onRemove())}
-                    >
-                        Cancel
-                    </Button>
-                    <Link to={VIEWS_ROUTE} className="text-sm text-accent-primary underline">
-                        Open Views
-                    </Link>
+                        autoFocus
+                        value={search}
+                        onChange={(event) => setSearch(event.target.value)}
+                        onKeyDown={(event) => {
+                            if (event.nativeEvent.isComposing) return;
+                            if (event.key === 'Escape') {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                closeChooser();
+                            }
+                            if (event.key === 'Enter') {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                if (matches.length === 1 && matches[0]) selectView(matches[0].view);
+                            }
+                        }}
+                    />
+                    <ul aria-label="Available views" className="flex max-h-52 flex-col overflow-y-auto">
+                        {matches.map(({ view: item, groupTitle }) => (
+                            <li key={item.id}>
+                                <button
+                                    type="button"
+                                    className="focus-ring-soft flex min-h-9 w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm outline-none hover:bg-hover-subtle focus-visible:bg-hover-subtle"
+                                    onClick={() => selectView(item)}
+                                >
+                                    <span className="min-w-0 flex-1 truncate text-fg-default">{item.title}</span>
+                                    <span className="max-w-[45%] truncate text-xs text-fg-tertiary">
+                                        {groupTitle} · {getViewDisplayTypeLabel(item.displayType)}
+                                    </span>
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                    {!matches.length ? (
+                        <Text as="p" variant="meta" tone="tertiary">
+                            {groups.some((entry) => entry.views.length) ? 'No matching views.' : 'No saved views yet.'}
+                        </Text>
+                    ) : null}
+                    {!groups.some((entry) => entry.views.length) ? (
+                        <Button asChild variant="subtle" size="sm">
+                            <Link to={VIEWS_ROUTE}>Open Views</Link>
+                        </Button>
+                    ) : null}
                 </div>
-            </SurfaceCard>
+            </NoteContentSection>
         );
     }
 
     if (!view)
         return (
-            <SurfaceCard className="space-y-2 p-4">
+            <NoteContentSection className="space-y-2">
                 <Text as="h3" variant="subheading" weight="semibold">
                     Linked view is unavailable
                 </Text>
@@ -156,55 +170,10 @@ const LinkedViewPanel = ({ viewId, viewTitle, editable, onSelect, onRemove }: Li
                         </Button>
                     </div>
                 ) : null}
-            </SurfaceCard>
+            </NoteContentSection>
         );
 
-    return (
-        <div className="space-y-2">
-            <Text as="p" variant="meta" tone="tertiary">
-                Linked view · {group?.title}
-            </Text>
-            <LinkedViewPreview key={view.id} view={view} readOnly={!editable} onEdit={openView} actions={actions} />
-        </div>
-    );
-};
-
-const LinkedViewPreview = ({
-    view,
-    onEdit,
-    actions,
-    readOnly,
-}: {
-    view: View;
-    onEdit: () => void;
-    actions: React.ReactNode;
-    readOnly: boolean;
-}) => {
-    const [navigationState, setNavigationState] = useState<ViewNavigationState>({});
-    const properties = useQuery({
-        queryKey: queryKeys.notes.propertyKeysCatalog(),
-        async queryFn() {
-            const response = await fetchAllNotePropertyKeys();
-            if (response.type === 'error') throw response;
-            return response.notePropertyKeys;
-        },
-    });
-    return (
-        <ViewCard
-            readOnly={readOnly}
-            view={view}
-            onEdit={onEdit}
-            headerActions={actions}
-            availableProperties={properties.data?.keys ?? []}
-            isPropertiesLoading={properties.isPending}
-            isPropertiesError={properties.isError}
-            onRetryProperties={() => void properties.refetch()}
-            navigationState={navigationState}
-            onNavigationStateChange={(update) =>
-                setNavigationState((current) => (typeof update === 'function' ? update(current) : update))
-            }
-        />
-    );
+    return <LinkedViewContent key={view.id} view={view} readOnly={!editable} onEdit={openView} actions={actions} />;
 };
 
 export default LinkedViewPanel;

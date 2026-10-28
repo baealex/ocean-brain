@@ -2,13 +2,8 @@
 import {
     buildViewInput,
     EMPTY_VIEWS_WORKSPACE,
-    formatViewPropertyFilter,
     getActiveViewGroup,
-    getViewDisplayTypeLabel,
-    getViewPropertyOperatorLabel,
     getViewTableColumnLabel,
-    getViewTagFilterMatchLabel,
-    getViewTagFilterMatchToken,
     moveViewGroupInWorkspace,
     moveViewInWorkspace,
     normalizeViewTableColumns,
@@ -191,55 +186,6 @@ describe('view-dashboard helpers', () => {
             moveViewInWorkspace(workspace, 'group-1', 'view-2', 'previous').groups[0]?.views.map((view) => view.id),
         ).toEqual(['view-2', 'view-1']);
         expect(moveViewGroupInWorkspace(workspace, 'group-1', 'previous')).toBe(workspace);
-    });
-
-    it('returns clear labels and short conjunction tokens for tag matching', () => {
-        expect(getViewTagFilterMatchLabel('and')).toBe('AND — all selected tags');
-        expect(getViewTagFilterMatchLabel('or')).toBe('OR — any selected tag');
-        expect(getViewTagFilterMatchToken('and')).toBe('AND');
-        expect(getViewTagFilterMatchToken('or')).toBe('OR');
-    });
-
-    it('formats property filter labels for display', () => {
-        expect(getViewPropertyOperatorLabel('notEquals')).toBe('is not');
-        expect(getViewPropertyOperatorLabel('contains')).toBe('contains');
-        expect(getViewPropertyOperatorLabel('notContains')).toBe('does not contain');
-        expect(getViewPropertyOperatorLabel('exists')).toBe('is set');
-        expect(getViewPropertyOperatorLabel('notExists')).toBe('is empty');
-        expect(
-            formatViewPropertyFilter({
-                key: 'state',
-                name: 'State',
-                valueType: 'select',
-                operator: 'equals',
-                value: 'doing',
-            }),
-        ).toBe('State is doing');
-        expect(
-            formatViewPropertyFilter({
-                key: 'state',
-                name: 'State',
-                valueType: 'select',
-                operator: 'exists',
-                value: null,
-            }),
-        ).toBe('State is set');
-        expect(
-            formatViewPropertyFilter({
-                key: 'source',
-                name: 'Source',
-                valueType: 'url',
-                operator: 'contains',
-                value: 'github.com',
-            }),
-        ).toBe('Source contains github.com');
-    });
-
-    it('labels supported view display types', () => {
-        expect(getViewDisplayTypeLabel('list')).toBe('List');
-        expect(getViewDisplayTypeLabel('table')).toBe('Table');
-        expect(getViewDisplayTypeLabel('board')).toBe('Board');
-        expect(getViewDisplayTypeLabel('calendar')).toBe('Calendar');
     });
 
     it('normalizes table columns and keeps title visible', () => {

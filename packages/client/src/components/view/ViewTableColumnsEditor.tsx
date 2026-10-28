@@ -27,7 +27,7 @@ interface ColumnListProps {
     onHide: (id: string) => void;
 }
 
-function SortableColumn({
+const SortableColumn = ({
     item,
     index,
     count,
@@ -39,7 +39,7 @@ function SortableColumn({
     count: number;
     onMove: ColumnListProps['onMove'];
     onHide: ColumnListProps['onHide'];
-}) {
+}) => {
     const inputId = useId();
     const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
         id: item.id,
@@ -88,9 +88,9 @@ function SortableColumn({
             {item.children}
         </li>
     );
-}
+};
 
-function ColumnList({ label, items, onMove, onHide }: ColumnListProps) {
+const ColumnList = ({ label, items, onMove, onHide }: ColumnListProps) => {
     return (
         <VerticalSortable
             items={items.map((item) => item.id)}
@@ -118,9 +118,9 @@ function ColumnList({ label, items, onMove, onHide }: ColumnListProps) {
             </ul>
         </VerticalSortable>
     );
-}
+};
 
-function HiddenColumn({ label, disabled, onShow }: { label: string; disabled?: boolean; onShow: () => void }) {
+const HiddenColumn = ({ label, disabled, onShow }: { label: string; disabled?: boolean; onShow: () => void }) => {
     const inputId = useId();
     return (
         <div className="flex min-h-11 items-center gap-2 px-3">
@@ -137,7 +137,7 @@ function HiddenColumn({ label, disabled, onShow }: { label: string; disabled?: b
             </label>
         </div>
     );
-}
+};
 
 export interface ViewTableColumnsEditorProps {
     columns: ViewTableColumn[];
@@ -147,13 +147,13 @@ export interface ViewTableColumnsEditorProps {
     onPropertyKeysChange: (keys: string[]) => void;
 }
 
-export default function ViewTableColumnsEditor({
+const ViewTableColumnsEditor = ({
     columns,
     propertyKeys,
     availableProperties,
     onColumnsChange,
     onPropertyKeysChange,
-}: ViewTableColumnsEditorProps) {
+}: ViewTableColumnsEditorProps) => {
     const propertyByKey = new Map(availableProperties.map((property) => [property.key, property]));
     const previewColumns = columns.flatMap((column) =>
         column === 'properties'
@@ -193,7 +193,11 @@ export default function ViewTableColumnsEditor({
                         label="Selected property columns"
                         items={propertyKeys.map((key) => ({ id: key, label: propertyByKey.get(key)?.name ?? key }))}
                         onMove={(from, to) => onPropertyKeysChange(arrayMove(propertyKeys, from, to))}
-                        onHide={(key) => onPropertyKeysChange(propertyKeys.filter((candidate) => candidate !== key))}
+                        onHide={(key) => {
+                            const remaining = propertyKeys.filter((candidate) => candidate !== key);
+                            onPropertyKeysChange(remaining);
+                            if (!remaining.length) onColumnsChange(columns.filter((column) => column !== 'properties'));
+                        }}
                     />
                     {hiddenProperties.length > 0 ? (
                         <div>
@@ -262,4 +266,6 @@ export default function ViewTableColumnsEditor({
             ) : null}
         </div>
     );
-}
+};
+
+export default ViewTableColumnsEditor;

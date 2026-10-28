@@ -7,7 +7,44 @@ import { createNoteFromMarkdown } from '~/features/note/services/authoring.js';
 import { trashNoteById } from '~/features/note/services/trash.js';
 import models from '~/models.js';
 import { blocksToMarkdown, markdownToBlocksJson } from '~/modules/blocknote.js';
+import schema from '~/schema/index.js';
 import { createView, createViewGroup, getViewById, getViewNotes, updateView } from './workspace.js';
+
+test('view templates resolve placeholders without changing rich content or the original', async () => {
+    const content = await markdownToBlocksJson('Workspace: {%workspace%}\n\n| Agenda |\n| --- |\n| {%workspace%} |');
+    const template = await models.note.create({ data: { title: 'Outline', content } });
+    await models.placeholder.create({
+        data: { name: 'Workspace', template: 'workspace', replacement: 'Ocean "Brain" $&' },
+    });
+    const group = await createViewGroup('Project');
+    const view = await createView(group.id, { defaultTemplateNoteId: String(template.id) });
+
+    const created = await createNoteFromMarkdown({ title: 'Meeting', viewContext: { viewId: view.id } });
+    const stored = await models.note.findUniqueOrThrow({ where: { id: Number(created.id) } });
+
+    assert.match(await blocksToMarkdown(stored.content), /Ocean "Brain" \$&/);
+    assert.doesNotMatch(stored.content, /\{%workspace%\}/);
+    assert.equal(JSON.parse(stored.content)[1].type, 'table');
+    assert.equal((await models.note.findUniqueOrThrow({ where: { id: template.id } })).content, content);
+});
+
+test('web view creation accepts an untitled note while Markdown authoring still requires a title', async () => {
+    const group = await createViewGroup('Project');
+    const view = await createView(group.id, { tagNames: ['@project'] });
+
+    const result = await graphql({
+        schema,
+        source: 'mutation($id: ID!) { createNoteInView(viewId: $id, input: { title: "" }) { id title } }',
+        variableValues: { id: view.id },
+    });
+
+    assert.equal(result.errors, undefined);
+    const notes = await getViewNotes(view.id, { limit: 10, offset: 0 });
+    assert.equal(notes?.totalCount, 1);
+    assert.equal(notes?.notes[0]?.title, '');
+    await assert.rejects(createNoteFromMarkdown({ title: '', viewContext: { viewId: view.id } }), /title is required/);
+    assert.equal(await models.note.count(), 1);
+});
 
 test('a default template survives unrelated view settings updates', async () => {
     const template = await createNoteFromMarkdown({ title: 'Meeting outline', markdown: '# Agenda' });

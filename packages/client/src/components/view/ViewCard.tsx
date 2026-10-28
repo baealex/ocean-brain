@@ -1,40 +1,21 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { NotePropertyKeySummary } from '~/apis/note.api';
-import { fetchViewNotes } from '~/apis/view.api';
 import * as Icon from '~/components/icon';
 import { Dropdown, Pagination, SurfaceCard } from '~/components/shared';
-import {
-    Button,
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuRadioGroup,
-    DropdownMenuRadioItem,
-    DropdownMenuTrigger,
-    MoreButton,
-    Text,
-} from '~/components/ui';
+import { Button, MoreButton, Text } from '~/components/ui';
 import type { View, ViewDisplayOptions, ViewSortBy, ViewSortOrder } from '~/models/view.model';
-import { queryKeys } from '~/modules/query-key-factory';
 import {
     formatViewPropertyFilter,
     getViewDisplayTypeLabel,
     getViewTagFilterMatchToken,
 } from '~/modules/view-dashboard';
 import type { ViewNavigationState, ViewRouteStateUpdater } from '~/modules/view-route-state';
+import useViewNotes from './useViewNotes';
 import ViewChip from './ViewChip';
 import ViewNoteCreateButton from './ViewNoteCreateButton';
 import ViewRenderer from './ViewRenderer';
+import ViewSortMenu from './ViewSortMenu';
 import ViewTableColumnsDialog from './ViewTableColumnsDialog';
-
-const SORT_CHOICES: { by: ViewSortBy; order: ViewSortOrder; label: string }[] = [
-    { by: 'updatedAt', order: 'desc', label: 'Recently updated' },
-    { by: 'updatedAt', order: 'asc', label: 'Least recently updated' },
-    { by: 'createdAt', order: 'desc', label: 'Newest notes first' },
-    { by: 'createdAt', order: 'asc', label: 'Oldest notes first' },
-    { by: 'title', order: 'asc', label: 'Title: A to Z' },
-    { by: 'title', order: 'desc', label: 'Title: Z to A' },
-];
 
 interface ViewCardProps {
     view: View;
@@ -43,8 +24,6 @@ interface ViewCardProps {
     onDelete?: () => void;
     onSaveSort?: (sortBy: ViewSortBy, sortOrder: ViewSortOrder) => Promise<void>;
     onSaveColumns?: (options: ViewDisplayOptions) => Promise<boolean>;
-    headerActions?: React.ReactNode;
-    readOnly?: boolean;
     onMoveUp?: () => void;
     onMoveDown?: () => void;
     dragHandle?: React.ReactNode;
@@ -63,8 +42,6 @@ const ViewCard = ({
     onDelete,
     onSaveSort,
     onSaveColumns,
-    headerActions,
-    readOnly = false,
     onMoveUp,
     onMoveDown,
     dragHandle,
@@ -79,41 +56,22 @@ const ViewCard = ({
     const [isColumnsOpen, setIsColumnsOpen] = useState(false);
     const isBoard = view.displayType === 'board';
     const isCalendar = view.displayType === 'calendar';
-    const page = navigationState.page ?? 1;
-    const offset = (page - 1) * view.limit;
-    const sortBy = navigationState.sort?.by ?? view.sortBy;
-    const sortOrder = navigationState.sort?.order ?? view.sortOrder;
-    const hasCustomSort = sortBy !== view.sortBy || sortOrder !== view.sortOrder;
-    const sortLabel = SORT_CHOICES.find((choice) => choice.by === sortBy && choice.order === sortOrder)?.label;
-
-    const { data, isPending, isError, isPlaceholderData, refetch } = useQuery({
-        queryKey: queryKeys.views.viewNotes(view.id, {
-            limit: view.limit,
-            offset,
-            sortBy,
-            sortOrder,
-        }),
-        enabled: !isBoard && !isCalendar,
-        placeholderData: keepPreviousData,
-        async queryFn() {
-            const response = await fetchViewNotes(view.id, {
-                limit: view.limit,
-                offset,
-                sortBy,
-                sortOrder,
-            });
-
-            if (response.type === 'error') {
-                throw response;
-            }
-
-            return response.viewNotes;
-        },
-    });
-
-    const notes = data?.notes ?? [];
-    const totalCount = data?.totalCount ?? 0;
-    const lastPage = Math.max(1, Math.ceil(totalCount / view.limit));
+    const {
+        page,
+        offset,
+        sortBy,
+        sortOrder,
+        hasCustomSort,
+        notes,
+        totalCount,
+        lastPage,
+        isPending,
+        isError,
+        isPlaceholderData,
+        refetch,
+        setViewSort,
+        updateViewSort,
+    } = useViewNotes(view, navigationState, onNavigationStateChange);
     const tagMatchToken = getViewTagFilterMatchToken(view.mode);
     const hasFilters = view.tagNames.length > 0 || view.propertyFilters.length > 0;
     const boardGroupProperty = isBoard
@@ -129,24 +87,6 @@ const ViewCard = ({
               ? 'Updated date'
               : 'Created date';
 
-    const setViewSort = (nextSortBy: ViewSortBy, nextSortOrder: ViewSortOrder) => {
-        onNavigationStateChange((current) => ({
-            ...current,
-            page: 1,
-            sort:
-                nextSortBy === view.sortBy && nextSortOrder === view.sortOrder
-                    ? undefined
-                    : { by: nextSortBy, order: nextSortOrder },
-        }));
-    };
-
-    const updateViewSort = (nextSortBy: ViewSortBy) => {
-        const nextSortOrder: ViewSortOrder =
-            sortBy === nextSortBy ? (sortOrder === 'asc' ? 'desc' : 'asc') : nextSortBy === 'title' ? 'asc' : 'desc';
-
-        setViewSort(nextSortBy, nextSortOrder);
-    };
-
     const saveSort = async () => {
         if (!onSaveSort) return;
         setIsSavingSort(true);
@@ -157,14 +97,6 @@ const ViewCard = ({
         }
     };
 
-    useEffect(() => {
-        if (isBoard || isCalendar || isPending || isError || isPlaceholderData || !data || page <= lastPage) {
-            return;
-        }
-
-        onNavigationStateChange((current) => ({ ...current, page: lastPage }));
-    }, [data, isBoard, isCalendar, isError, isPending, isPlaceholderData, lastPage, onNavigationStateChange, page]);
-
     return (
         <SurfaceCard flush className="flex h-full flex-col overflow-hidden">
             <div className="flex items-start justify-between gap-3 border-b border-border-subtle/75 px-4 py-3.5">
@@ -172,12 +104,18 @@ const ViewCard = ({
                     <div className="flex items-center gap-1">
                         {dragHandle && <div className="-mr-1 shrink-0 self-center">{dragHandle}</div>}
                         <div className="min-w-0">
-                            <Text as="h2" variant="subheading" weight="semibold" tracking="tight" className="min-w-0">
+                            <Text
+                                as="h2"
+                                variant="subheading"
+                                weight="semibold"
+                                tracking="tight"
+                                className="flex min-w-0 items-center gap-2"
+                            >
                                 <span className="truncate">{view.title}</span>
                             </Text>
                         </div>
                     </div>
-                    <div className="mt-3 flex flex-wrap gap-1.5">
+                    <div className="mt-2 flex flex-wrap gap-1.5">
                         <ViewChip className="max-w-full border-border-subtle/80 bg-elevated text-fg-secondary">
                             {getViewDisplayTypeLabel(view.displayType)}
                         </ViewChip>
@@ -219,25 +157,23 @@ const ViewCard = ({
                     </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
-                    {!readOnly ? <ViewNoteCreateButton viewId={view.id} /> : null}
-                    {headerActions ?? (
-                        <Dropdown
-                            button={<MoreButton label="View actions" />}
-                            items={[
-                                ...(onMoveUp ? [{ name: 'Move up', onClick: onMoveUp }] : []),
-                                ...(onMoveDown ? [{ name: 'Move down', onClick: onMoveDown }] : []),
-                                ...(onMoveUp || onMoveDown ? [{ type: 'separator' as const }] : []),
-                                {
-                                    name: 'Edit view',
-                                    onClick: onEdit,
-                                },
-                                ...(onDuplicate ? [{ name: 'Duplicate view', onClick: onDuplicate }] : []),
-                                ...(onDelete
-                                    ? [{ type: 'separator' as const }, { name: 'Delete view', onClick: onDelete }]
-                                    : []),
-                            ]}
-                        />
-                    )}
+                    <ViewNoteCreateButton viewId={view.id} />
+                    <Dropdown
+                        button={<MoreButton label="View actions" />}
+                        items={[
+                            ...(onMoveUp ? [{ name: 'Move up', onClick: onMoveUp }] : []),
+                            ...(onMoveDown ? [{ name: 'Move down', onClick: onMoveDown }] : []),
+                            ...(onMoveUp || onMoveDown ? [{ type: 'separator' as const }] : []),
+                            {
+                                name: 'Edit view',
+                                onClick: onEdit,
+                            },
+                            ...(onDuplicate ? [{ name: 'Duplicate view', onClick: onDuplicate }] : []),
+                            ...(onDelete
+                                ? [{ type: 'separator' as const }, { name: 'Delete view', onClick: onDelete }]
+                                : []),
+                        ]}
+                    />
                 </div>
             </div>
 
@@ -247,40 +183,12 @@ const ViewCard = ({
                     aria-label={`${view.title} sort`}
                     className="flex flex-wrap items-center gap-2 border-b border-border-subtle/75 px-4 py-2"
                 >
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                aria-label={`Sort: ${sortLabel}`}
-                                disabled={isSavingSort}
-                            >
-                                {sortLabel}
-                                <Icon.ChevronDown className="size-3.5" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start">
-                            <DropdownMenuRadioGroup
-                                value={`${sortBy}:${sortOrder}`}
-                                onValueChange={(value) => {
-                                    const choice = SORT_CHOICES.find(
-                                        (candidate) => `${candidate.by}:${candidate.order}` === value,
-                                    );
-                                    if (choice) setViewSort(choice.by, choice.order);
-                                }}
-                            >
-                                {SORT_CHOICES.map((choice) => (
-                                    <DropdownMenuRadioItem
-                                        key={`${choice.by}:${choice.order}`}
-                                        value={`${choice.by}:${choice.order}`}
-                                    >
-                                        {choice.label}
-                                    </DropdownMenuRadioItem>
-                                ))}
-                            </DropdownMenuRadioGroup>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                    <ViewSortMenu
+                        sortBy={sortBy}
+                        sortOrder={sortOrder}
+                        disabled={isSavingSort}
+                        onChange={setViewSort}
+                    />
                     {view.displayType === 'table' && onSaveColumns ? (
                         <Button
                             type="button"
@@ -322,7 +230,6 @@ const ViewCard = ({
 
             <div className="flex flex-1 flex-col">
                 <ViewRenderer
-                    readOnly={readOnly}
                     view={view}
                     notes={notes}
                     isPending={isPending}

@@ -33,6 +33,7 @@ const routerMocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@tanstack/react-router', () => ({
+    useNavigate: () => routerMocks.navigate,
     Link: ({ children }: { children: ReactNode }) => <a href="#">{children}</a>,
     getRouteApi: () => ({
         useSearch: () => routerMocks.search,

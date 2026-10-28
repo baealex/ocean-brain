@@ -66,15 +66,17 @@ const ViewNoteCreateForm = ({
 }) => {
     const formId = useId();
     const [title, setTitle] = useState('');
-    const [tagNames, setTagNames] = useState(context.defaultTagNames);
-    const [values, setValues] = useState<Record<string, string>>(() =>
-        Object.fromEntries(context.properties.map((property) => [property.key, property.defaultValue ?? ''])),
+    const [selectedTags, setTagNames] = useState<string[] | null>(null);
+    const [overrides, setValues] = useState<Record<string, string>>({});
+    const tagNames = selectedTags?.filter((name) => context.tagNames.includes(name)) ?? context.defaultTagNames;
+    const values = Object.fromEntries(
+        context.properties.map((property) => [property.key, overrides[property.key] ?? property.defaultValue ?? '']),
     );
     const needsTagChoice = context.mode === 'or' && context.tagNames.length > 1;
     const missingValue = context.properties.some(
         (property) => property.required && property.valueType !== 'text' && !values[property.key],
     );
-    const canSubmit = title.trim() && !missingValue && (!needsTagChoice || tagNames.length);
+    const canSubmit = !missingValue && (!needsTagChoice || tagNames.length);
 
     return (
         <>
@@ -121,6 +123,7 @@ const ViewNoteCreateForm = ({
                             id={`${formId}-title`}
                             autoFocus
                             value={title}
+                            placeholder="Untitled"
                             disabled={pending}
                             onChange={(event) => setTitle(event.target.value)}
                         />
@@ -128,10 +131,10 @@ const ViewNoteCreateForm = ({
                     {needsTagChoice ? (
                         <fieldset className="space-y-2" disabled={pending}>
                             <legend className="mb-2 text-sm font-semibold">Choose at least one tag</legend>
-                            {context.tagNames.map((tag) => (
+                            {context.tagNames.map((tag, index) => (
                                 <div key={tag} className="flex items-center gap-2">
                                     <Checkbox
-                                        aria-label={tag}
+                                        id={`${formId}-tag-${index}`}
                                         checked={tagNames.includes(tag)}
                                         onChange={(event) =>
                                             setTagNames(
@@ -141,9 +144,9 @@ const ViewNoteCreateForm = ({
                                             )
                                         }
                                     />
-                                    <Text as="span" variant="body">
+                                    <Label htmlFor={`${formId}-tag-${index}`} size="md">
                                         {tag}
-                                    </Text>
+                                    </Label>
                                 </div>
                             ))}
                         </fieldset>
@@ -172,7 +175,7 @@ const ViewNoteCreateForm = ({
                                     <Button
                                         type="button"
                                         size="sm"
-                                        variant="ghost"
+                                        variant="subtle"
                                         disabled={pending}
                                         onClick={() => setValues((current) => ({ ...current, [property.key]: '' }))}
                                     >

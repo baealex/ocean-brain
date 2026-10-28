@@ -94,7 +94,7 @@ test('a note follows the saved view when its original query changes', async ({ p
     await page.keyboard.type('/view');
     await page.getByText('Linked View', { exact: true }).click();
     await page.getByRole('textbox', { name: 'Search views' }).fill('Project A');
-    await page.getByRole('button', { name: /Meeting notes.*Project A/ }).click();
+    await page.getByRole('textbox', { name: 'Search views' }).press('Enter');
     await linked.getByRole('link', { name: 'Weekly meeting' }).waitFor({ state: 'visible' });
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(page.getByRole('status')).toContainText('Saved');
@@ -113,6 +113,27 @@ test('a note follows the saved view when its original query changes', async ({ p
     await expect(linked.getByRole('link', { name: 'Weekly meeting' })).toHaveCount(0);
     await expect(page.getByText('Project context', { exact: true })).toBeVisible();
     expect(errors).toEqual([]);
+});
+
+test('linked view selection stops highlighting when focus leaves the editor', async ({ page }) => {
+    await signIn(page);
+    const { viewId } = await createMeetingView(page);
+    const parentId = await createNote(page, 'Project overview', [
+        paragraph('Project context.'),
+        { type: 'linkedView', props: { viewId, viewTitle: 'Meeting notes' }, children: [] },
+        paragraph('After the view.'),
+    ]);
+    await page.goto(`/${parentId}`);
+    const linked = page.locator(`[data-linked-view-id="${viewId}"]`);
+    await linked.getByRole('heading', { name: 'Meeting notes' }).click();
+    await expect(page.locator('.bn-editor')).toBeFocused();
+    await expect(linked).toHaveCSS('outline-style', 'solid');
+
+    await page.getByRole('textbox', { name: 'Note title' }).click();
+
+    await expect(linked).toHaveCSS('outline-style', 'none');
+    await expect(linked.getByRole('link', { name: 'Weekly meeting' })).toBeVisible();
+    await expect(page.getByText('After the view.', { exact: true })).toBeVisible();
 });
 
 test('a note created from a linked view keeps its project context after editing', async ({ page }) => {
@@ -134,12 +155,9 @@ test('a note created from a linked view keeps its project context after editing'
     const linked = page.locator(`[data-linked-view-id="${viewId}"]`);
 
     await linked.getByRole('button', { name: 'New note', exact: true }).click();
-    const dialog = page.getByRole('dialog', { name: 'New note in view' });
-    await expect(dialog.getByLabel('Kind *')).toHaveValue('meeting');
-    await dialog.getByLabel('Title', { exact: true }).fill('Project planning meeting');
-    await dialog.getByRole('button', { name: 'Create note', exact: true }).click();
-    await page.getByRole('dialog', { name: 'Note created' }).getByRole('button', { name: 'Done' }).click();
-    await linked.getByRole('link', { name: 'Project planning meeting' }).click();
+    await expect(page).not.toHaveURL((url) => url.pathname === `/${parentId}`);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await page.getByRole('textbox', { name: 'Note title' }).fill('Project planning meeting');
     const editor = page.locator('.bn-editor[contenteditable="true"]');
     await editor.click();
     await page.keyboard.press('ControlOrMeta+End');
@@ -170,11 +188,11 @@ test('creating in a board column assigns that column and survives reload', async
     await page.goto('/views');
 
     await page.getByRole('button', { name: 'New note in Doing', exact: true }).click();
-    const dialog = page.getByRole('dialog', { name: 'New note in view' });
-    await expect(dialog.getByRole('combobox', { name: 'State *' })).toHaveText('Doing');
-    await dialog.getByLabel('Title', { exact: true }).fill('Implement capture');
-    await dialog.getByRole('button', { name: 'Create note', exact: true }).click();
-    await page.getByRole('dialog', { name: 'Note created' }).getByRole('button', { name: 'Done' }).click();
+    await expect(page.getByRole('textbox', { name: 'Note title' })).toHaveValue('');
+    await page.getByRole('textbox', { name: 'Note title' }).fill('Implement capture');
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(page.getByRole('status')).toContainText('Saved');
+    await page.goto('/views');
     await page.reload();
 
     await expect(page.getByRole('region', { name: 'Doing column' }).getByRole('link', { name: 'Implement capture' })).toBeVisible();
@@ -217,14 +235,11 @@ test('a saved template creates independent notes with the current view context',
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await page.reload();
     await page.getByRole('button', { name: 'New note', exact: true }).click();
-    const dialog = page.getByRole('dialog', { name: 'New note in view' });
-    await expect(dialog.getByText('Template: Meeting outline', { exact: true })).toBeVisible();
-    await expect(dialog.getByLabel('Project *')).toHaveValue('A');
-    await expect(dialog.getByLabel('Owner', { exact: true })).toHaveValue('Alex');
-    await dialog.getByRole('button', { name: 'Clear Owner' }).click();
-    await dialog.getByLabel('Title', { exact: true }).fill('Planning session');
-    await dialog.getByRole('button', { name: 'Create note', exact: true }).click();
-    await page.getByRole('link', { name: 'Open note', exact: true }).click();
+    await expect(page.getByRole('textbox', { name: 'Note title' })).toHaveValue('');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await page.getByRole('textbox', { name: 'Note title' }).fill('Planning session');
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(page.getByRole('status')).toContainText('Saved');
 
     await expect(page.getByRole('heading', { name: 'Agenda', exact: true })).toBeVisible();
     await expect(page.getByText('Discuss the project.', { exact: true })).toBeVisible();
@@ -234,7 +249,7 @@ test('a saved template creates independent notes with the current view context',
         template: note(id: $templateId) { tags { name } properties { key value } }
     }`, { createdId, templateId });
     expect(result.created.tags.map((tag: { name: string }) => tag.name).sort()).toEqual(['@meeting', '@project-a']);
-    expect(result.created.properties).toEqual([{ key: 'project', value: 'A' }]);
+    expect(result.created.properties).toEqual([{ key: 'owner', value: 'Alex' }, { key: 'project', value: 'A' }]);
     expect(result.template.tags).toEqual([{ name: '@old-project' }]);
     expect(result.template.properties).toContainEqual({ key: 'owner', value: 'Alex' });
     expect(createdId).not.toBe(templateId);
@@ -290,5 +305,37 @@ test('exported Markdown reconnects the same view when pasted into another note',
     await expect(
         page.locator(`[data-linked-view-id="${viewId}"]`).getByRole('link', { name: 'Weekly meeting' }),
     ).toHaveAttribute('href', `/${meetingId}`);
+    expect(errors).toEqual([]);
+});
+
+
+test('an unresolved creation adopts refreshed conditions without losing the draft', async ({ page }) => {
+    const errors = collectRuntimeErrors(page);
+    await signIn(page);
+    const { viewId } = await createMeetingView(page);
+    await graph(page, `mutation($id: ID!) { updateView(id: $id, input: {
+        tagNames: ["@meeting", "@decision"], mode: or
+    }) { id } }`, { id: viewId });
+    await page.goto('/views');
+    await page.getByRole('button', { name: 'New note', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'New note in view' });
+    await dialog.getByLabel('Title', { exact: true }).fill('Meeting draft');
+    await dialog.getByText('@meeting', { exact: true }).click();
+
+    await graph(page, `mutation($id: ID!) {
+        createNotePropertyKey(input: { key: "owner", name: "Owner", valueType: text }) { key }
+        updateView(id: $id, input: { tagNames: ["@meeting", "@decision"], mode: or,
+            propertyFilters: [{ key: "owner", valueType: text, operator: equals, value: "Alex" }]
+        }) { id }
+    }`, { id: viewId });
+    await page.evaluate(() => { window.dispatchEvent(new Event('offline')); window.dispatchEvent(new Event('online')); });
+    await expect(dialog.getByLabel('Owner *')).toHaveValue('Alex');
+    await dialog.getByRole('button', { name: 'Create note', exact: true }).click();
+
+    await expect(page.getByRole('textbox', { name: 'Note title' })).toHaveValue('Meeting draft');
+    const id = new URL(page.url()).pathname.slice(1);
+    const result = await graph(page, 'query($id: ID!) { note(id: $id) { tags { name } properties { key value } } }', { id });
+    expect(result.note.tags).toEqual([{ name: '@meeting' }]);
+    expect(result.note.properties).toEqual([{ key: 'owner', value: 'Alex' }]);
     expect(errors).toEqual([]);
 });

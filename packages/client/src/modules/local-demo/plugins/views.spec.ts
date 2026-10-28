@@ -65,6 +65,23 @@ const createView = (sortBy: View['sortBy'], sortOrder: View['sortOrder']): View 
 });
 
 describe('viewsLocalPlugin', () => {
+    it('preserves an empty text property inherited from a template', () => {
+        const view = { ...createView('updatedAt', 'desc'), defaultTemplateNoteId: 'note-2' };
+        const state = createState(view);
+        state.propertyDefinitions = [{ key: 'owner', name: 'Owner', valueType: 'text', options: [], updatedAt: '1' }];
+        state.notes[0]!.properties = [
+            { key: 'owner', name: 'Owner', valueType: 'text', value: '', option: null, createdAt: '1', updatedAt: '1' },
+        ];
+
+        const response = viewsLocalPlugin.graphHandlers?.CreateNoteInView({
+            state,
+            save: vi.fn(),
+            variables: { viewId: view.id, input: { title: 'Meeting', tagNames: [] } },
+        });
+
+        expect(response?.type).toBe('success');
+        expect(state.notes[0]?.properties).toEqual([expect.objectContaining({ key: 'owner', value: '' })]);
+    });
     it('copies a demo template without changing its source or inheriting its old tags', () => {
         const view = { ...createView('updatedAt', 'desc'), defaultTemplateNoteId: 'note-2', tagNames: ['@project-a'] };
         const state = createState(view);

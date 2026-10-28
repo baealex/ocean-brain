@@ -14,6 +14,28 @@
     }
 }
 
+// Embedded application links use their own row and keyboard focus states.
+.ProseMirror [data-linked-view-id] a {
+    text-decoration: none;
+}
+
+// Node selection survives editor blur. Show its boundary only while the editor owns focus.
+.bn-editor {
+    .ProseMirror-selectednode > .bn-block-content:is([data-content-type='linkedView'], [data-content-type='tableOfContents']) > *,
+    .bn-block-content.ProseMirror-selectednode:is([data-content-type='linkedView'], [data-content-type='tableOfContents']) > * {
+        outline: none;
+        border-radius: 0;
+    }
+
+    &.ProseMirror-focused {
+        .ProseMirror-selectednode > .bn-block-content:is([data-content-type='linkedView'], [data-content-type='tableOfContents']) > *,
+        .bn-block-content.ProseMirror-selectednode:is([data-content-type='linkedView'], [data-content-type='tableOfContents']) > * {
+            outline: 1px solid var(--border-focus);
+            outline-offset: 3px;
+        }
+    }
+}
+
 @keyframes external-change-gradient-flow {
     from {
         background-position-x: 0%;

@@ -1,6 +1,6 @@
 # Ocean Brain Dev Convention
 
-Updated: 2026-10-24
+Updated: 2026-10-28
 
 ## 1. Base Environment
 - Node.js: `22.13+`
@@ -31,6 +31,11 @@ Both browser test commands build the production app before starting Playwright.
 Install the local browser once with `pnpm exec playwright install chromium` after Playwright is installed or updated.
 
 Full dev mode exposes Fastify APIs, the Vite client, and HMR through the server port (`6683` by default). Client-only mode keeps the standalone Vite server and development proxy for isolated frontend work. Server-only mode runs Fastify with the existing built client fallback and does not start Vite.
+
+### UI Action Hierarchy
+- Standalone actions must have a visible button boundary or background. Use `subtle` for an outlined action and `primary` for the main action.
+- Reserve transparent `ghost` text actions for secondary actions next to a visible button. Menu items and selectable result rows follow their own interaction patterns.
+- Content embedded in a note uses document structure, spacing, and dividers. Reserve surface cards for tools and independent panels.
 
 ## 3. Standard Quality Checks
 

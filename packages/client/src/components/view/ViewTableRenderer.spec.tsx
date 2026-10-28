@@ -1,8 +1,10 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 
 import type { Note } from '~/models/note.model';
 import type { View } from '~/models/view.model';
+import ViewTableColumnsEditor from './ViewTableColumnsEditor';
 import ViewTableRenderer from './ViewTableRenderer';
 
 vi.mock('@tanstack/react-router', () => ({
@@ -71,6 +73,42 @@ const createView = (patch: Partial<View> = {}): View => ({
     limit: 5,
     order: 0,
     ...patch,
+});
+
+it('hides the last selected property column instead of restoring automatic columns', async () => {
+    const user = userEvent.setup();
+    const TableWithColumns = () => {
+        const [options, setOptions] = useState({ ...createView().displayOptions, tablePropertyKeys: ['status'] });
+        return (
+            <>
+                <ViewTableColumnsEditor
+                    columns={options.tableColumns}
+                    propertyKeys={options.tablePropertyKeys}
+                    availableProperties={[]}
+                    onColumnsChange={(tableColumns) => setOptions((current) => ({ ...current, tableColumns }))}
+                    onPropertyKeysChange={(tablePropertyKeys) =>
+                        setOptions((current) => ({ ...current, tablePropertyKeys }))
+                    }
+                />
+                <ViewTableRenderer
+                    view={createView({ displayOptions: options })}
+                    notes={[createNote()]}
+                    isPending={false}
+                    isError={false}
+                    onRetry={vi.fn()}
+                    onSortChange={vi.fn()}
+                    isSortPending={false}
+                />
+            </>
+        );
+    };
+    render(<TableWithColumns />);
+    expect(screen.getByRole('columnheader', { name: /Status/ })).toBeVisible();
+
+    await user.click(screen.getByRole('checkbox', { name: 'Show status column' }));
+
+    expect(screen.queryByRole('columnheader', { name: /Status/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Ocean Brain task' })).toBeVisible();
 });
 
 const renderTable = (props: Partial<React.ComponentProps<typeof ViewTableRenderer>> = {}) =>

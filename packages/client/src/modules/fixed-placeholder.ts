@@ -95,7 +95,7 @@ export const PLACEHOLDER_SUFFIX = '%}';
 
 export const replaceFixedPlaceholder = (content: string) => {
     return content.replace(
-        new RegExp(`${PLACEHOLDER_PREFIX}([^}]+)${PLACEHOLDER_SUFFIX}`, 'g'),
+        new RegExp(`${PLACEHOLDER_PREFIX}([^{}]+)${PLACEHOLDER_SUFFIX}`, 'g'),
         (match, placeholder) => {
             const fixedPlaceholder = getFixedPlaceholders().find((p) => p.template === placeholder);
             return fixedPlaceholder?.replacement || match;

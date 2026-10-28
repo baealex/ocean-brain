@@ -11,6 +11,7 @@ import { createQueryClientWrapper } from '~/test/test-utils';
 import ViewBoardRenderer from './ViewBoardRenderer';
 
 vi.mock('@tanstack/react-router', () => ({
+    useNavigate: () => vi.fn(),
     Link: ({ children, ...props }: { children: React.ReactNode }) => <a {...props}>{children}</a>,
 }));
 

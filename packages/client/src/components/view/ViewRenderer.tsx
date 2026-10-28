@@ -10,6 +10,7 @@ import ViewTableRenderer from './ViewTableRenderer';
 
 interface ViewRendererProps {
     readOnly?: boolean;
+    compact?: boolean;
     view: View;
     notes: Note[];
     isPending: boolean;
@@ -46,6 +47,7 @@ const PropertyMetadataError = ({ displayName, onRetry }: { displayName: string; 
 
 const ViewRenderer = ({
     readOnly = false,
+    compact = false,
     view,
     notes,
     isPending,
@@ -115,6 +117,7 @@ const ViewRenderer = ({
     if (view.displayType === 'table') {
         return (
             <ViewTableRenderer
+                compact={compact}
                 view={view}
                 notes={notes}
                 isPending={isPending}
@@ -174,7 +177,9 @@ const ViewRenderer = ({
         );
     }
 
-    return <ViewListRenderer notes={notes} isPending={isPending} isError={isError} onRetry={onRetry} />;
+    return (
+        <ViewListRenderer compact={compact} notes={notes} isPending={isPending} isError={isError} onRetry={onRetry} />
+    );
 };
 
 export default ViewRenderer;

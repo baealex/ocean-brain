@@ -1,3 +1,4 @@
+import { replaceContentPlaceholders } from '~/features/note/services/placeholders.js';
 import {
     InvalidNotePropertyInputError,
     type NotePropertiesPatchInput,
@@ -150,7 +151,10 @@ export const prepareNoteForView = async (
     const existingIds = new Set(input.tagIds ?? []);
     const addedTags = tags.filter((tag) => !existingIds.has(String(tag.id)));
     const useTemplateBody = input.useTemplateBody && template;
-    const parsed = parseBlockNoteContent(useTemplateBody ? template.content || '[]' : input.content);
+    const templateContent = useTemplateBody
+        ? await replaceContentPlaceholders(template.content || '[]', tx)
+        : input.content;
+    const parsed = parseBlockNoteContent(templateContent);
     if (!parsed) throw new InvalidNotePropertyInputError('Note content must be valid BlockNote JSON.');
     const blocks = useTemplateBody
         ? parsed.map(copyTemplateBody).filter((item) => !isBlockNoteTreeNode(item) || item.type !== 'tag')

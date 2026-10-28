@@ -117,6 +117,7 @@ const ViewRenderer = ({
     if (view.displayType === 'table') {
         return (
             <ViewTableRenderer
+                readOnly={readOnly}
                 compact={compact}
                 view={view}
                 notes={notes}

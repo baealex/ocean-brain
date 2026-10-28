@@ -49,6 +49,7 @@ export interface SelectProps extends VariantProps<typeof selectTriggerVariants> 
     id?: string;
     value?: string;
     defaultValue?: string;
+    defaultOpen?: boolean;
     onValueChange?: (value: string) => void;
     placeholder?: string;
     ariaLabel?: string;
@@ -63,6 +64,7 @@ const Select = ({
     id,
     value,
     defaultValue,
+    defaultOpen,
     onValueChange,
     placeholder,
     ariaLabel,
@@ -78,6 +80,7 @@ const Select = ({
         <SelectPrimitive.Root
             value={value}
             defaultValue={defaultValue}
+            defaultOpen={defaultOpen}
             onValueChange={onValueChange}
             disabled={disabled}
         >

@@ -1,11 +1,12 @@
 import { Link } from '@tanstack/react-router';
 import classNames from 'classnames';
 import dayjs from 'dayjs';
+import type { MouseEvent } from 'react';
 
 import type { NotePropertyKeySummary } from '~/apis/note.api';
 import * as Icon from '~/components/icon';
 import { Button, Text } from '~/components/ui';
-import type { Note, NoteProperty, NotePropertyValueType } from '~/models/note.model';
+import type { Note, NotePropertyValueType } from '~/models/note.model';
 import type { View, ViewSortBy, ViewSortOrder, ViewTableColumn } from '~/models/view.model';
 import { NOTE_ROUTE } from '~/modules/url';
 import {
@@ -14,9 +15,12 @@ import {
     normalizeViewTablePropertyKeys,
 } from '~/modules/view-dashboard';
 import ViewChip from './ViewChip';
+import ViewPropertyValue from './ViewPropertyValue';
+import ViewTablePropertyCell from './ViewTablePropertyCell';
 
 interface ViewTableRendererProps {
     compact?: boolean;
+    readOnly?: boolean;
     view: View;
     notes: Note[];
     isPending: boolean;
@@ -54,6 +58,9 @@ const SORTABLE_TABLE_COLUMNS: Partial<Record<BaseTableColumn, ViewSortBy>> = {
 };
 const summaryListClassName = 'flex h-[24px] min-w-0 max-w-full items-center gap-1.5 overflow-hidden whitespace-nowrap';
 const emptySummaryClassName = 'text-xs leading-5 text-fg-tertiary';
+
+// The editor's table handles must not treat view rows as editable document cells.
+const stopEditorTableEvent = (event: MouseEvent<HTMLDivElement>) => event.stopPropagation();
 
 const formatTimestamp = (value: string) => dayjs(Number(value)).format('MMM D, YYYY');
 
@@ -171,55 +178,6 @@ const renderTagSummary = (note: Note) => {
     );
 };
 
-const renderPropertyValue = (property: NoteProperty | undefined) => {
-    if (!property) {
-        return <span className={emptySummaryClassName}>—</span>;
-    }
-
-    if (property.valueType === 'select') {
-        return (
-            <ViewChip
-                size="compact"
-                className="max-w-full border-border-subtle bg-subtle/65 text-fg-secondary"
-                truncateContent={false}
-            >
-                <span className="inline-flex min-w-0 items-center gap-2">
-                    <span
-                        className="size-2 shrink-0 rounded-full border border-black/5"
-                        style={{ backgroundColor: property.option?.color ?? 'var(--color-fg-tertiary)' }}
-                        aria-hidden="true"
-                    />
-                    <span className="min-w-0 truncate">{property.option?.label ?? property.value}</span>
-                </span>
-            </ViewChip>
-        );
-    }
-
-    if (property.valueType === 'boolean') {
-        const isTrue = property.value === 'true';
-        const BooleanIcon = isTrue ? Icon.CheckCircle : Icon.Circle;
-
-        return (
-            <span className="inline-flex items-center gap-1.5 text-sm text-fg-secondary">
-                <BooleanIcon className="size-3.5 text-fg-tertiary" weight={isTrue ? 'fill' : 'regular'} />
-                {isTrue ? 'True' : 'False'}
-            </span>
-        );
-    }
-
-    return (
-        <span
-            className={classNames(
-                'block truncate text-sm text-fg-secondary',
-                property.valueType === 'number' && 'tabular-nums',
-            )}
-            title={property.value}
-        >
-            {property.value || '—'}
-        </span>
-    );
-};
-
 const ViewTableRenderer = ({
     view,
     notes,
@@ -233,6 +191,7 @@ const ViewTableRenderer = ({
     availableProperties = [],
     surface = 'flush',
     compact = false,
+    readOnly = false,
 }: ViewTableRendererProps) => {
     const columns = resolveTableColumns(view, notes, availableProperties);
     const isTitlePinned = columns[0]?.kind === 'base' && columns[0].key === 'title';
@@ -313,6 +272,7 @@ const ViewTableRenderer = ({
 
     const renderCell = (note: Note, column: ResolvedTableColumn) => {
         if (column.kind === 'property') {
+            const definition = availableProperties.find((property) => property.key === column.key);
             return (
                 <td
                     key={`property:${column.key}`}
@@ -321,7 +281,13 @@ const ViewTableRenderer = ({
                         cellPadding,
                     )}
                 >
-                    {renderPropertyValue(note.properties?.find((property) => property.key === column.key))}
+                    {definition && !readOnly ? (
+                        <ViewTablePropertyCell note={note} definition={definition} />
+                    ) : (
+                        <ViewPropertyValue
+                            property={note.properties?.find((property) => property.key === column.key)}
+                        />
+                    )}
                 </td>
             );
         }
@@ -457,6 +423,9 @@ const ViewTableRenderer = ({
             className={surfaceClassName}
             data-scroll-restoration-id={`view-table-${view.id}`}
             aria-label="Scrollable view table"
+            onMouseDownCapture={stopEditorTableEvent}
+            onMouseMoveCapture={stopEditorTableEvent}
+            onMouseUpCapture={stopEditorTableEvent}
         >
             <table className="w-full table-fixed border-collapse text-left" style={{ minWidth: tableWidth }}>
                 <caption className="sr-only">View query results as a table</caption>

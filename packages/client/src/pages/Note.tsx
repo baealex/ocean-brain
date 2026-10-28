@@ -1,11 +1,10 @@
-import { getRouteApi, Link } from '@tanstack/react-router';
+import { getRouteApi } from '@tanstack/react-router';
 import classNames from 'classnames';
 import { useState } from 'react';
 import { QueryBoundary, QueryErrorView } from '~/components/app';
-import { BackReferences } from '~/components/entities';
-import * as Icon from '~/components/icon';
 import {
     LayoutModal,
+    NoteBackReferences,
     NoteEditorHeader,
     NoteExportModal,
     NoteExternalChangeModal,
@@ -14,9 +13,9 @@ import {
     RestoreSnapshotModal,
 } from '~/components/note';
 import { ReminderPanel } from '~/components/reminder';
-import { AuxiliaryPanel, PageLayout, Skeleton } from '~/components/shared';
+import { PageLayout, Skeleton } from '~/components/shared';
 import Editor from '~/components/shared/Editor';
-import { Text, useToast } from '~/components/ui';
+import { useToast } from '~/components/ui';
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
 import { useNoteEditorSession } from '~/hooks/useNoteEditorSession';
 import type { NoteLayout } from '~/models/note.model';
@@ -66,57 +65,12 @@ function NoteReminders({ noteId }: { noteId: string }) {
     );
 }
 
-function NoteBackReferences({ noteId }: { noteId: string }) {
-    return (
-        <QueryBoundary
-            fallback={<Skeleton height={100} />}
-            errorTitle="Failed to load back references"
-            errorDescription="Retry loading notes that link back here."
-            renderError={({ error, retry }) => (
-                <QueryErrorView
-                    title="Failed to load back references"
-                    description="Retry loading notes that link back here."
-                    error={error}
-                    onRetry={retry}
-                    showBackAction={false}
-                    showHomeAction={false}
-                />
-            )}
-        >
-            <BackReferences
-                noteId={noteId}
-                render={(backReferences) =>
-                    backReferences?.length ? (
-                        <AuxiliaryPanel icon={<Icon.LinkSimple className="h-3.5 w-3.5" />} title="Back References">
-                            <ul className="flex flex-col">
-                                {backReferences.map((backLink) => (
-                                    <li key={backLink.id}>
-                                        <Link
-                                            to={NOTE_ROUTE}
-                                            params={{ id: backLink.id }}
-                                            className="flex items-center gap-2 rounded-[10px] px-2.5 py-1.5 text-fg-secondary transition-colors hover:bg-hover-subtle hover:text-fg-default"
-                                        >
-                                            <Icon.File className="h-3.5 w-3.5 shrink-0 text-fg-tertiary" />
-                                            <Text as="span" variant="body" weight="medium" className="text-current">
-                                                {backLink.title}
-                                            </Text>
-                                        </Link>
-                                    </li>
-                                ))}
-                            </ul>
-                        </AuxiliaryPanel>
-                    ) : null
-                }
-            />
-        </QueryBoundary>
-    );
-}
-
 interface NoteContentProps {
     id: string;
 }
 
 export function NoteContent({ id }: NoteContentProps) {
+    const { block } = Route.useSearch();
     const notify = useToast();
     const navigate = Route.useNavigate();
     const [isLayoutModalOpen, setIsLayoutModalOpen] = useState(false);
@@ -210,13 +164,14 @@ export function NoteContent({ id }: NoteContentProps) {
                         ref={editor.ref}
                         content={editor.content}
                         currentNoteId={id}
+                        focusBlockId={block}
                         onChange={editor.onChange}
                         externalUpdate={editor.externalUpdate}
                         onClearChangeMarks={editor.onClearChangeMarks}
                     />
 
                     <NoteReminders noteId={id} />
-                    <NoteBackReferences noteId={id} />
+                    <NoteBackReferences noteId={id} targetTitle={document.title} />
                 </div>
 
                 <LayoutModal

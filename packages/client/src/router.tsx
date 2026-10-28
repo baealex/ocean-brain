@@ -16,6 +16,7 @@ import {
     validateIntegrationSearch,
     validateIntegrationSettingsSearch,
     validateIntegrationsSearch,
+    validateNoteSearch,
     validatePaginationSearch,
     validateReminderSearch,
     validateSearchPageSearch,
@@ -125,6 +126,7 @@ const tagRoute = createRoute({
 const noteRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: NOTE_ROUTE,
+    validateSearch: validateNoteSearch,
     component: lazyRouteComponent(() => import('~/pages/Note')),
     pendingComponent: () => (
         <RoutePendingView title="Loading note" description="Preparing the editor and note content." />

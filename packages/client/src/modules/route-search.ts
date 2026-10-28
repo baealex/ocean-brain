@@ -233,3 +233,10 @@ export const validateViewNotesSearch = (search: SearchRecord): ViewNotesRouteSea
         viewId: typeof id === 'number' && Number.isSafeInteger(id) && id > 0 ? String(id) : parseString(id),
     };
 };
+
+export const validateNoteSearch = (search: SearchRecord): { block?: string } => ({
+    block:
+        typeof search.block === 'string' && search.block.trim().length > 0 && search.block.length <= 256
+            ? search.block.trim()
+            : undefined,
+});

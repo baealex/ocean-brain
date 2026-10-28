@@ -28,6 +28,7 @@ export interface McpReadNoteBackReference {
 	id: string;
 	title: string;
 	updatedAt?: string;
+    contexts?: { blockId: string | null; segments: { text: string; isTarget: boolean }[] }[];
 }
 
 const formatBackReferenceLink = (backReference: McpReadNoteBackReference) => {
@@ -35,13 +36,8 @@ const formatBackReferenceLink = (backReference: McpReadNoteBackReference) => {
 };
 
 const formatBackReferenceLine = (backReference: McpReadNoteBackReference) => {
-	const referenceLink = formatBackReferenceLink(backReference);
-
-	if (backReference.updatedAt) {
-		return `- ${referenceLink} (updated: ${backReference.updatedAt})`;
-	}
-
-	return `- ${referenceLink}`;
+    const link = `- ${formatBackReferenceLink(backReference)}${backReference.updatedAt ? ` (updated: ${backReference.updatedAt})` : ''}`;
+    return [link, ...(backReference.contexts ?? []).map((context) => `  > ${context.segments.map((segment) => segment.text).join('')}`)].join('\n');
 };
 
 const formatPropertyLine = (property: McpReadNoteProperty) => {
@@ -151,10 +147,24 @@ const formatLinkedView = (view: z.infer<typeof linkedViewSchema>) => {
     return `- ${view.title} (${details.join('; ')})`;
 };
 
-export const createMcpReadNoteResult = (raw: unknown, rawBackReferences: unknown) => {
+const backReferencePageSchema = z.object({
+    references: z.array(z.object({
+        id: z.string(), title: z.string(), hasMoreContexts: z.boolean(),
+        contexts: z.array(z.object({
+            blockId: z.string().nullable(),
+            segments: z.array(z.object({ text: z.string(), isTarget: z.boolean() })),
+        })),
+    })),
+    hasMore: z.boolean(), nextOffset: z.number().nullable(),
+});
+
+export const createMcpReadNoteResult = (raw: unknown, rawBackReferences: unknown, rawBackReferencePage?: unknown) => {
     const result = readResultSchema.parse(raw);
-    const backReferences = z.array(z.object({ id: z.string(), title: z.string() })).parse(rawBackReferences);
-    const structuredContent = { ...result, backReferences };
+    const page = rawBackReferencePage === undefined ? undefined : backReferencePageSchema.parse(rawBackReferencePage);
+    const backReferences = page ? page.references.map((reference) => ({ ...reference, contexts: reference.contexts.map((context) => ({
+        ...context, segments: context.segments.map((segment) => ({ ...segment, text: segment.isTarget ? result.note.title : segment.text })),
+    })) })) : z.array(z.object({ id: z.string(), title: z.string() })).parse(rawBackReferences);
+    const structuredContent = { ...result, backReferences, ...(page ? { backReferencePage: { ...page, references: backReferences } } : {}) };
     if (result.status !== 'read') return createMcpJsonToolResult(structuredContent);
 
     const range = result.contentRange;
@@ -171,7 +181,7 @@ export const createMcpReadNoteResult = (raw: unknown, rawBackReferences: unknown
     });
 
     return {
-        ...createMcpTextToolResult(noteText + rangeText + linkedViewsText),
+        ...createMcpTextToolResult(noteText + rangeText + linkedViewsText + (page?.hasMore ? `\nBack references nextOffset: ${page.nextOffset}` : '')),
         structuredContent,
     };
 };

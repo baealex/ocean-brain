@@ -8,6 +8,7 @@ import {
     validateIntegrationSearch,
     validateIntegrationSettingsSearch,
     validateIntegrationsSearch,
+    validateNoteSearch,
     validatePaginationSearch,
     validateReminderSearch,
     validateSearchPageSearch,
@@ -200,4 +201,10 @@ describe('route-search validators', () => {
             },
         });
     });
+});
+
+it('validates optional source-block navigation without carrying invalid URL values', () => {
+    expect(validateNoteSearch({ block: 'meeting-decision' })).toEqual({ block: 'meeting-decision' });
+    expect(validateNoteSearch({ block: ['unexpected'] })).toEqual({ block: undefined });
+    expect(validateNoteSearch({ block: 'x'.repeat(257) })).toEqual({ block: undefined });
 });

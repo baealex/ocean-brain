@@ -238,6 +238,39 @@ export function fetchBackReferences(id: string) {
     );
 }
 
+export interface BackReferenceDetail {
+    id: string;
+    title: string;
+    contexts: { blockId: string | null; segments: { text: string; isTarget: boolean }[] }[];
+    hasMoreContexts: boolean;
+}
+
+export interface BackReferencePage {
+    references: BackReferenceDetail[];
+    hasMore: boolean;
+    nextOffset: number | null;
+}
+
+export function fetchBackReferenceDetails({
+    id,
+    limit = 20,
+    offset = 0,
+}: {
+    id: string;
+    limit?: number;
+    offset?: number;
+}) {
+    return graphQuery<{ backReferenceDetails: BackReferencePage }, { id: string; limit: number; offset: number }>(
+        `query FetchBackReferenceDetails($id: ID!, $limit: Int, $offset: Int) {
+            backReferenceDetails(id: $id, limit: $limit, offset: $offset) {
+                references { id title hasMoreContexts contexts { blockId segments { text isTarget } } }
+                hasMore nextOffset
+            }
+        }`,
+        { id, limit, offset },
+    );
+}
+
 export function fetchImageNotes(src: string) {
     return graphQuery<
         {

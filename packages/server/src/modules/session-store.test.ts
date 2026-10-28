@@ -78,3 +78,54 @@ test('ttl memory session store evicts anonymous sessions before authenticated se
         store.stopPruning();
     }
 });
+
+const compareAndSetSession = (store: TtlMemorySessionStore, sid: string, generation: string, data: Session) =>
+    new Promise<void>((resolve, reject) => {
+        store.compareAndSet(sid, generation, data, (error) => {
+            if (error) reject(error);
+            else resolve();
+        });
+    });
+
+for (const generation of [undefined, 'current-generation']) {
+    test(`a matching ${generation ? 'explicit' : 'legacy'} generation permits updating a session`, async (t) => {
+        const store = new TtlMemorySessionStore();
+        t.after(() => store.stopPruning());
+        const original = Object.assign(createSessionData(new Date(Date.now() + 60_000)), {
+            ...(generation ? { __fastifySessionMetadata: { generation } } : {}),
+        });
+        await setSession(store, 'session', original);
+        const updated = { ...original, authenticated: true } as Session;
+
+        await compareAndSetSession(store, 'session', generation ?? 'session', updated);
+
+        assert.equal((await getSession(store, 'session'))?.authenticated, true);
+    });
+}
+
+for (const state of ['destroyed', 'expired', 'regenerated'] as const) {
+    test(`a stale request cannot overwrite a ${state} session`, async (t) => {
+        t.mock.timers.enable({ apis: ['Date'], now: Date.UTC(2026, 9, 28) });
+        const store = new TtlMemorySessionStore();
+        t.after(() => store.stopPruning());
+        const original = createSessionData(new Date(Date.now() + 60_000), true);
+        await setSession(store, 'session', original);
+        if (state === 'destroyed') store.destroy('session');
+        if (state === 'expired') t.mock.timers.tick(60_001);
+        if (state === 'regenerated') {
+            await setSession(
+                store,
+                'session',
+                Object.assign(createSessionData(new Date(Date.now() + 60_000)), {
+                    __fastifySessionMetadata: { generation: 'replacement' },
+                }),
+            );
+        }
+
+        await assert.rejects(compareAndSetSession(store, 'session', 'session', original), { code: 'ENOENT' });
+
+        const persisted = await getSession(store, 'session');
+        if (state === 'regenerated') assert.equal(persisted?.authenticated, undefined);
+        else assert.equal(persisted, null);
+    });
+}

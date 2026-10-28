@@ -10,6 +10,25 @@ import { blocksToMarkdown, markdownToBlocksJson } from '~/modules/blocknote.js';
 import schema from '~/schema/index.js';
 import { createView, createViewGroup, getViewById, getViewNotes, updateView } from './workspace.js';
 
+test('view creation inherits and resolves the template title when no title was entered', async (t) => {
+    t.mock.timers.enable({ apis: ['Date'], now: Date.UTC(2026, 9, 28, 12) });
+    const templateTitle = 'Meeting {%year%} / {%workspace%}';
+    const template = await models.note.create({ data: { title: templateTitle, content: '[]' } });
+    await models.placeholder.create({ data: { name: 'Workspace', template: 'workspace', replacement: 'Ocean' } });
+    const group = await createViewGroup('Project');
+    const view = await createView(group.id, { defaultTemplateNoteId: String(template.id) });
+
+    const result = await graphql({
+        schema,
+        source: 'mutation($id: ID!) { createNoteInView(viewId: $id, input: { title: "" }) { title } }',
+        variableValues: { id: view.id },
+    });
+
+    assert.equal(result.errors, undefined);
+    assert.deepEqual(JSON.parse(JSON.stringify(result.data)), { createNoteInView: { title: 'Meeting 2026 / Ocean' } });
+    assert.equal((await models.note.findUniqueOrThrow({ where: { id: template.id } })).title, templateTitle);
+});
+
 test('view templates resolve placeholders without changing rich content or the original', async () => {
     const content = await markdownToBlocksJson('Workspace: {%workspace%}\n\n| Agenda |\n| --- |\n| {%workspace%} |');
     const template = await models.note.create({ data: { title: 'Outline', content } });

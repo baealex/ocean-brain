@@ -1,6 +1,7 @@
 import type { ViewNoteInput } from '~/apis/view.api';
 import type { Note } from '~/models/note.model';
 import type { View, ViewNoteCreationContext } from '~/models/view.model';
+import { replaceFixedPlaceholder } from '~/modules/fixed-placeholder';
 import { localError, success } from '../response';
 import type { LocalDemoPlugin, LocalDemoState } from '../types';
 import { applyPropertyFilters, createLocalId, listNotesByTags, now, paginate } from '../utils';
@@ -132,7 +133,8 @@ export const viewsLocalPlugin: LocalDemoPlugin = {
                 );
                 const note: Note = {
                     id: createLocalId('note'),
-                    title: input.title.trim(),
+                    title:
+                        input.title.trim() || (template ? replaceFixedPlaceholder(template.title || 'untitled') : ''),
                     layout: template?.layout ?? 'wide',
                     pinned: false,
                     order: state.notes.length,

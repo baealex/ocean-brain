@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router';
+import classNames from 'classnames';
 
 import * as Icon from '~/components/icon';
 import { Button, Text } from '~/components/ui';
@@ -8,6 +9,7 @@ import { NOTE_ROUTE } from '~/modules/url';
 import ViewChip from './ViewChip';
 
 interface ViewListRendererProps {
+    compact?: boolean;
     notes: Note[];
     isPending: boolean;
     isError: boolean;
@@ -15,7 +17,7 @@ interface ViewListRendererProps {
 }
 
 const viewPreviewRowClassName =
-    'group flex min-h-[72px] items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-hover-subtle';
+    'focus-ring-soft group flex items-center justify-between gap-3 outline-none transition-colors hover:bg-hover-subtle focus-visible:bg-hover-subtle';
 
 const formatPropertyValue = (property: NoteProperty) => {
     if (property.valueType === 'select') {
@@ -95,7 +97,7 @@ const renderPropertySummary = (note: Note) => {
     );
 };
 
-export default function ViewListRenderer({ notes, isPending, isError, onRetry }: ViewListRendererProps) {
+const ViewListRenderer = ({ notes, isPending, isError, onRetry, compact = false }: ViewListRendererProps) => {
     if (isPending) {
         return (
             <div className="overflow-hidden bg-transparent">
@@ -108,7 +110,7 @@ export default function ViewListRenderer({ notes, isPending, isError, onRetry }:
 
     if (isError) {
         return (
-            <div className="rounded-[16px] border border-border-subtle bg-subtle/30 p-4">
+            <div className={compact ? 'px-2 py-3' : 'rounded-[16px] border border-border-subtle bg-subtle/30 p-4'}>
                 <Text as="p" variant="body" weight="semibold">
                     Failed to load this view
                 </Text>
@@ -116,7 +118,7 @@ export default function ViewListRenderer({ notes, isPending, isError, onRetry }:
                     Retry to refresh this saved query.
                 </Text>
                 <div className="mt-3">
-                    <Button type="button" variant="ghost" size="sm" onClick={onRetry}>
+                    <Button type="button" variant="subtle" size="sm" onClick={onRetry}>
                         Retry
                     </Button>
                 </div>
@@ -126,7 +128,9 @@ export default function ViewListRenderer({ notes, isPending, isError, onRetry }:
 
     if (notes.length === 0) {
         return (
-            <div className="rounded-[16px] border border-dashed border-border-subtle px-4 py-5">
+            <div
+                className={compact ? 'px-2 py-3' : 'rounded-[16px] border border-dashed border-border-subtle px-4 py-5'}
+            >
                 <Text as="p" variant="body" weight="semibold">
                     No notes match yet
                 </Text>
@@ -140,9 +144,18 @@ export default function ViewListRenderer({ notes, isPending, isError, onRetry }:
     return (
         <div className="divide-y divide-border-subtle/70 bg-transparent">
             {notes.map((note) => (
-                <Link key={note.id} to={NOTE_ROUTE} params={{ id: note.id }} className={viewPreviewRowClassName}>
-                    <div className="min-w-0 flex-1">
-                        <div className="flex min-w-0 items-center gap-2">
+                <Link
+                    key={note.id}
+                    to={NOTE_ROUTE}
+                    params={{ id: note.id }}
+                    className={classNames(
+                        viewPreviewRowClassName,
+                        compact ? 'min-h-10 px-2 py-2' : 'min-h-[72px] px-4 py-3',
+                    )}
+                >
+                    <div className={classNames('min-w-0 flex-1', compact && 'flex items-center gap-3')}>
+                        <div className="flex min-w-0 flex-1 items-center gap-2">
+                            <Icon.FileNote className="size-4 shrink-0 text-fg-secondary" aria-hidden="true" />
                             {note.pinned ? (
                                 <Icon.Pin
                                     className="size-3.5 shrink-0 text-fg-tertiary"
@@ -150,11 +163,23 @@ export default function ViewListRenderer({ notes, isPending, isError, onRetry }:
                                     aria-label="Pinned"
                                 />
                             ) : null}
-                            <Text as="div" variant="body" weight="semibold" tracking="tight" className="line-clamp-1">
+                            <Text
+                                as="div"
+                                variant="body"
+                                weight={compact ? 'medium' : 'semibold'}
+                                tracking="tight"
+                                className="line-clamp-1"
+                            >
                                 {note.title || 'Untitled'}
                             </Text>
                         </div>
-                        <div className="mt-2 flex min-w-0 flex-wrap items-center gap-1.5">
+                        <div
+                            className={
+                                compact
+                                    ? 'hidden min-w-0 items-center gap-1.5 sm:flex'
+                                    : 'mt-2 flex min-w-0 flex-wrap items-center gap-1.5'
+                            }
+                        >
                             {renderPropertySummary(note)}
                             {renderTagSummary(note)}
                             <Text as="span" variant="label" weight="medium" tone="tertiary" className="sm:hidden">
@@ -172,4 +197,6 @@ export default function ViewListRenderer({ notes, isPending, isError, onRetry }:
             ))}
         </div>
     );
-}
+};
+
+export default ViewListRenderer;

@@ -1,8 +1,14 @@
 import type { IResolvers } from '@graphql-tools/utils';
 import { GraphQLError } from 'graphql';
-import { createNoteFromMarkdown, InvalidNoteAuthoringInputError } from '~/features/note/services/authoring.js';
 import { emitNoteChange } from '~/features/note/services/change-events.js';
-import { InvalidNotePropertyInputError, type NotePropertySetByKeyInput } from '~/features/note/services/properties.js';
+import { createNoteWithContent } from '~/features/note/services/create.js';
+import { notePlaceholderReplacer } from '~/features/note/services/placeholders.js';
+import {
+    InvalidNotePropertyInputError,
+    type NotePropertySetByKeyInput,
+    resolveNotePropertiesPatchValueTypes,
+    validateNotePropertiesPatchValues,
+} from '~/features/note/services/properties.js';
 import {
     createView,
     createViewGroup,
@@ -15,7 +21,6 @@ import {
     updateViewGroup,
     type ViewInput,
 } from '~/features/view/services/workspace.js';
-import models from '~/models.js';
 import type { NoteViewContextInput } from '../services/note-creation.js';
 
 type ViewMutationResolvers = NonNullable<IResolvers['Mutation']>;
@@ -44,18 +49,26 @@ export const viewMutationResolvers = {
                 ...(groupValue !== undefined ? { groupValue } : {}),
                 ...(input.tagNames ? { tagNames: input.tagNames } : {}),
             };
-            const created = await createNoteFromMarkdown({
-                title: input.title,
+            const properties =
+                input.properties?.length || input.deletePropertyKeys?.length
+                    ? await validateNotePropertiesPatchValues(
+                          await resolveNotePropertiesPatchValueTypes({
+                              set: input.properties,
+                              deleteKeys: input.deletePropertyKeys,
+                          }),
+                      )
+                    : undefined;
+            const note = await createNoteWithContent({
+                title: await notePlaceholderReplacer()(input.title),
+                content: '[]',
+                useTemplateBody: true,
                 viewContext,
-                ...(input.properties?.length || input.deletePropertyKeys?.length
-                    ? { properties: { set: input.properties, deleteKeys: input.deletePropertyKeys } }
-                    : {}),
+                properties,
             });
-            const note = await models.note.findUniqueOrThrow({ where: { id: Number(created.id) } });
             emitNoteChange({ type: 'note.created', noteId: note.id });
             return note;
         } catch (error) {
-            if (error instanceof InvalidNotePropertyInputError || error instanceof InvalidNoteAuthoringInputError)
+            if (error instanceof InvalidNotePropertyInputError)
                 throw new GraphQLError(error.message, { extensions: { code: 'INVALID_VIEW_NOTE_INPUT' } });
             throw error;
         }

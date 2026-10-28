@@ -16,6 +16,7 @@ import {
 import ViewChip from './ViewChip';
 
 interface ViewTableRendererProps {
+    compact?: boolean;
     view: View;
     notes: Note[];
     isPending: boolean;
@@ -68,8 +69,19 @@ const getPropertyColumnWidth = (valueType: NotePropertyValueType) => {
     return 156;
 };
 
-const getColumnWidth = (column: ResolvedTableColumn) =>
-    column.kind === 'property' ? getPropertyColumnWidth(column.valueType) : BASE_COLUMN_WIDTHS[column.key];
+const COMPACT_BASE_COLUMN_WIDTHS: Record<BaseTableColumn, number> = {
+    title: 240,
+    tags: 160,
+    createdAt: 128,
+    updatedAt: 128,
+};
+const getColumnWidth = (column: ResolvedTableColumn, compact = false) => {
+    if (column.kind === 'property') {
+        const width = getPropertyColumnWidth(column.valueType);
+        return compact ? Math.min(width, 168) : width;
+    }
+    return (compact ? COMPACT_BASE_COLUMN_WIDTHS : BASE_COLUMN_WIDTHS)[column.key];
+};
 
 const resolvePropertyColumns = (
     view: View,
@@ -128,8 +140,8 @@ const resolveTableColumns = (
     );
 };
 
-const getTableWidth = (columns: ResolvedTableColumn[]) =>
-    columns.reduce((totalWidth, column) => totalWidth + getColumnWidth(column), 0);
+const getTableWidth = (columns: ResolvedTableColumn[], compact = false) =>
+    columns.reduce((totalWidth, column) => totalWidth + getColumnWidth(column, compact), 0);
 
 const renderTagSummary = (note: Note) => {
     if (note.tags.length === 0) {
@@ -208,7 +220,7 @@ const renderPropertyValue = (property: NoteProperty | undefined) => {
     );
 };
 
-export default function ViewTableRenderer({
+const ViewTableRenderer = ({
     view,
     notes,
     isPending,
@@ -220,10 +232,12 @@ export default function ViewTableRenderer({
     activeSortOrder = view.sortOrder,
     availableProperties = [],
     surface = 'flush',
-}: ViewTableRendererProps) {
+    compact = false,
+}: ViewTableRendererProps) => {
     const columns = resolveTableColumns(view, notes, availableProperties);
     const isTitlePinned = columns[0]?.kind === 'base' && columns[0].key === 'title';
-    const tableWidth = getTableWidth(columns);
+    const tableWidth = getTableWidth(columns, compact);
+    const cellPadding = compact ? 'px-2 py-1.5' : 'px-3 py-2.5';
     const surfaceClassName =
         surface === 'card'
             ? 'overflow-x-auto rounded-[16px] border border-border-subtle bg-elevated'
@@ -233,20 +247,22 @@ export default function ViewTableRenderer({
             ? 'overflow-hidden rounded-[16px] border border-border-subtle bg-elevated'
             : 'overflow-hidden bg-transparent';
     const loadingRowClassName = surface === 'card' ? 'bg-elevated' : 'bg-transparent';
-    const tableHeadClassName = surface === 'card' ? 'bg-subtle/65' : 'bg-subtle/45';
+    const tableHeadClassName = compact ? 'bg-transparent' : surface === 'card' ? 'bg-subtle/65' : 'bg-subtle/45';
     const tableBodyClassName = surface === 'card' ? 'bg-elevated' : 'bg-transparent';
     const stickyCellBackground = surface === 'card' ? 'var(--elevated)' : 'var(--surface)';
 
     const renderHeaderCell = (column: ResolvedTableColumn) => {
         if (column.kind === 'property') {
             return (
-                <th key={`property:${column.key}`} className="px-3 py-2 text-left">
+                <th key={`property:${column.key}`} className={classNames('text-left', cellPadding)}>
                     <Text as="p" variant="label" weight="semibold" className="truncate" title={column.name}>
                         {column.name}
                     </Text>
-                    <Text as="p" variant="micro" tone="tertiary" className="mt-0.5 capitalize">
-                        {column.valueType}
-                    </Text>
+                    {!compact ? (
+                        <Text as="p" variant="micro" tone="tertiary" className="mt-0.5 capitalize">
+                            {column.valueType}
+                        </Text>
+                    ) : null}
                 </th>
             );
         }
@@ -261,13 +277,17 @@ export default function ViewTableRenderer({
                 key={column.key}
                 aria-sort={isActiveSort ? (activeSortOrder === 'asc' ? 'ascending' : 'descending') : undefined}
                 className={classNames(
-                    'px-3 py-2.5 text-xs font-semibold text-fg-tertiary',
+                    'text-xs text-fg-tertiary',
+                    cellPadding,
+                    compact ? 'font-medium' : 'font-semibold',
                     isTitle && 'lg:sticky lg:left-0 lg:z-20',
                 )}
                 style={
                     isTitle
                         ? {
-                              background: `linear-gradient(var(--subtle), var(--subtle)), ${stickyCellBackground}`,
+                              background: compact
+                                  ? stickyCellBackground
+                                  : `linear-gradient(var(--subtle), var(--subtle)), ${stickyCellBackground}`,
                           }
                         : undefined
                 }
@@ -296,7 +316,10 @@ export default function ViewTableRenderer({
             return (
                 <td
                     key={`property:${column.key}`}
-                    className="overflow-hidden px-3 py-2.5 align-middle transition-colors group-hover:bg-hover-subtle"
+                    className={classNames(
+                        'overflow-hidden align-middle transition-colors group-hover:bg-hover-subtle',
+                        cellPadding,
+                    )}
                 >
                     {renderPropertyValue(note.properties?.find((property) => property.key === column.key))}
                 </td>
@@ -308,7 +331,10 @@ export default function ViewTableRenderer({
                 return (
                     <td
                         key={column.key}
-                        className="overflow-hidden px-3 py-2.5 align-middle transition-colors group-hover:bg-hover-subtle"
+                        className={classNames(
+                            'overflow-hidden align-middle transition-colors group-hover:bg-hover-subtle',
+                            cellPadding,
+                        )}
                     >
                         {renderTagSummary(note)}
                     </td>
@@ -319,7 +345,10 @@ export default function ViewTableRenderer({
                 return (
                     <td
                         key={column.key}
-                        className="whitespace-nowrap px-3 py-2.5 align-middle transition-colors group-hover:bg-hover-subtle"
+                        className={classNames(
+                            'whitespace-nowrap align-middle transition-colors group-hover:bg-hover-subtle',
+                            cellPadding,
+                        )}
                     >
                         <Text
                             as="span"
@@ -338,7 +367,8 @@ export default function ViewTableRenderer({
                     <td
                         key={column.key}
                         className={classNames(
-                            'relative px-3 py-2.5 align-middle',
+                            'relative align-middle',
+                            cellPadding,
                             isTitlePinned && 'lg:sticky lg:left-0 lg:z-10',
                         )}
                         style={{ background: stickyCellBackground }}
@@ -348,6 +378,9 @@ export default function ViewTableRenderer({
                             className="pointer-events-none absolute inset-0 bg-hover-subtle opacity-0 transition-opacity group-hover:opacity-100"
                         />
                         <div className="relative z-10 flex min-w-0 items-center gap-2">
+                            {compact ? (
+                                <Icon.FileNote className="size-3.5 shrink-0 text-fg-tertiary" aria-hidden="true" />
+                            ) : null}
                             {note.pinned ? (
                                 <Icon.Pin
                                     className="size-3.5 shrink-0 text-fg-tertiary"
@@ -355,7 +388,12 @@ export default function ViewTableRenderer({
                                     aria-label="Pinned"
                                 />
                             ) : null}
-                            <Text as="div" variant="body" weight="semibold" className="min-w-0 line-clamp-1">
+                            <Text
+                                as="div"
+                                variant="body"
+                                weight={compact ? 'medium' : 'semibold'}
+                                className="min-w-0 line-clamp-1"
+                            >
                                 <Link
                                     to={NOTE_ROUTE}
                                     params={{ id: note.id }}
@@ -383,7 +421,7 @@ export default function ViewTableRenderer({
 
     if (isError) {
         return (
-            <div className="rounded-[16px] border border-border-subtle bg-subtle/30 p-4">
+            <div className={compact ? 'px-2 py-3' : 'rounded-[16px] border border-border-subtle bg-subtle/30 p-4'}>
                 <Text as="p" variant="body" weight="semibold">
                     Failed to load this table
                 </Text>
@@ -391,7 +429,7 @@ export default function ViewTableRenderer({
                     Retry to refresh this saved query.
                 </Text>
                 <div className="mt-3">
-                    <Button type="button" variant="ghost" size="sm" onClick={onRetry}>
+                    <Button type="button" variant="subtle" size="sm" onClick={onRetry}>
                         Retry
                     </Button>
                 </div>
@@ -401,7 +439,9 @@ export default function ViewTableRenderer({
 
     if (notes.length === 0) {
         return (
-            <div className="rounded-[16px] border border-dashed border-border-subtle px-4 py-5">
+            <div
+                className={compact ? 'px-2 py-3' : 'rounded-[16px] border border-dashed border-border-subtle px-4 py-5'}
+            >
                 <Text as="p" variant="body" weight="semibold">
                     No rows yet
                 </Text>
@@ -425,7 +465,7 @@ export default function ViewTableRenderer({
                         <col
                             key={column.kind === 'property' ? `property:${column.key}` : column.key}
                             style={{
-                                width: `${(getColumnWidth(column) / tableWidth) * 100}%`,
+                                width: `${(getColumnWidth(column, compact) / tableWidth) * 100}%`,
                             }}
                         />
                     ))}
@@ -435,7 +475,13 @@ export default function ViewTableRenderer({
                 </thead>
                 <tbody className={tableBodyClassName}>
                     {notes.map((note) => (
-                        <tr key={note.id} className="group h-12 border-b border-border-subtle/70 last:border-b-0">
+                        <tr
+                            key={note.id}
+                            className={classNames(
+                                'group border-b border-border-subtle/70 last:border-b-0',
+                                compact ? 'h-9' : 'h-12',
+                            )}
+                        >
                             {columns.map((column) => renderCell(note, column))}
                         </tr>
                     ))}
@@ -443,4 +489,6 @@ export default function ViewTableRenderer({
             </table>
         </div>
     );
-}
+};
+
+export default ViewTableRenderer;

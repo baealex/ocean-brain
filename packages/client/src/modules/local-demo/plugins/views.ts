@@ -122,7 +122,7 @@ export const viewsLocalPlugin: LocalDemoPlugin = {
                     .flatMap((group) => group.views)
                     .find((item) => item.id === context.viewId);
                 const input = variables.input as ViewNoteInput;
-                if (!view || !input.title.trim()) return localError('A note title is required');
+                if (!view) return localError('View not found');
                 const template = state.notes.find((note) => note.id === view.defaultTemplateNoteId);
                 const templateBlocks: unknown = template ? copyTemplateBody(JSON.parse(template.content || '[]')) : [];
                 const timestamp = now();
@@ -151,7 +151,7 @@ export const viewsLocalPlugin: LocalDemoPlugin = {
                         if (input.deletePropertyKeys?.includes(property.key)) return [];
                         const value =
                             input.properties?.find((item) => item.key === property.key)?.value ?? property.defaultValue;
-                        if (value === null || (value === '' && !property.required)) return [];
+                        if (value === null) return [];
                         const option = property.options.find((item) => item.value === value) ?? null;
                         if (property.valueType === 'select' && !option)
                             throw new Error(`Choose a valid ${property.name} option`);

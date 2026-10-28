@@ -48,7 +48,7 @@ const TemplateSearch = ({ onSelect, onCancel }: { onSelect: (id: string) => void
                     <Text as="p" variant="meta">
                         Failed to load notes.
                     </Text>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => void refetch()}>
+                    <Button type="button" variant="subtle" size="sm" onClick={() => void refetch()}>
                         Retry
                     </Button>
                 </div>
@@ -75,7 +75,7 @@ const TemplateSearch = ({ onSelect, onCancel }: { onSelect: (id: string) => void
                     ) : null}
                 </ul>
             )}
-            <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+            <Button type="button" variant="subtle" size="sm" onClick={onCancel}>
                 Cancel selection
             </Button>
         </div>
@@ -95,7 +95,7 @@ const ViewTemplatePicker = ({ value, onChange }: { value: string | null; onChang
                         No template
                     </Text>
                 )}
-                <Button type="button" variant="ghost" size="sm" onClick={() => setChoosing(true)}>
+                <Button type="button" variant="subtle" size="sm" onClick={() => setChoosing(true)}>
                     {value ? 'Change template' : 'Choose template'}
                 </Button>
                 {value ? (
@@ -114,7 +114,7 @@ const ViewTemplatePicker = ({ value, onChange }: { value: string | null; onChang
                 />
             ) : null}
             <Text as="p" variant="meta" tone="tertiary">
-                Use this note's outline and properties for new notes in this view.
+                New notes inherit this note's outline and properties.
             </Text>
         </div>
     );

@@ -2,8 +2,7 @@ import type { Block } from '@blocknote/core';
 import { createReactBlockSpec, useBlockNoteEditor } from '@blocknote/react';
 import classNames from 'classnames';
 import { useEffect, useState } from 'react';
-import * as Icon from '~/components/icon';
-import { AuxiliaryPanelHeader } from '~/components/shared';
+import NoteContentSection from '~/components/shared/NoteContentSection';
 import { Text } from '~/components/ui';
 
 interface HeadingItem {
@@ -94,28 +93,26 @@ const TableOfContentsComponent = () => {
     };
 
     const header = (
-        <AuxiliaryPanelHeader
-            icon={<Icon.List className="h-3.5 w-3.5" />}
-            title="Table of Contents"
-            className="text-fg-tertiary"
-        />
+        <Text as="h3" variant="body" weight="semibold">
+            Table of Contents
+        </Text>
     );
 
     if (headings.length === 0) {
         return (
-            <div className="surface-base w-full p-4">
+            <NoteContentSection label="Table of Contents">
                 {header}
                 <Text as="p" variant="meta" tone="secondary" className="mt-2">
                     Add headings to your document to generate a table of contents
                 </Text>
-            </div>
+            </NoteContentSection>
         );
     }
 
     return (
-        <div className="surface-base w-full p-4">
+        <NoteContentSection label="Table of Contents">
             <div className="mb-2">{header}</div>
-            <nav className="space-y-0.5">
+            <nav aria-label="Note headings" className="space-y-0.5">
                 {headings.map((heading) => {
                     const isTopLevel = heading.level === 1;
 
@@ -140,9 +137,6 @@ const TableOfContentsComponent = () => {
                                 isTopLevel ? 'text-fg-default' : 'text-fg-secondary',
                             )}
                         >
-                            <Text as="span" variant="label" weight="medium" tone="tertiary" className="min-w-[1.5rem]">
-                                H{heading.level}
-                            </Text>
                             <Text
                                 as="span"
                                 variant="body"
@@ -155,7 +149,7 @@ const TableOfContentsComponent = () => {
                     );
                 })}
             </nav>
-        </div>
+        </NoteContentSection>
     );
 };
 

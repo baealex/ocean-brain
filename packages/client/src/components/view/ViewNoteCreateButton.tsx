@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { createNoteInView, fetchViewNoteCreationContext, type ViewNoteInput } from '~/apis/view.api';
-import { ModalActionRow } from '~/components/shared';
+import * as Icon from '~/components/icon';
 import { Button, Modal, Text } from '~/components/ui';
 import { queryKeys } from '~/modules/query-key-factory';
 import { invalidateQueriesForNoteChange } from '~/modules/server-event-invalidation';
@@ -15,9 +15,11 @@ interface ViewNoteCreateButtonProps {
     label?: string;
 }
 
-const ViewNoteCreateDialog = ({ viewId, groupValue, onClose }: ViewNoteCreateButtonProps & { onClose: () => void }) => {
+const ViewNoteCreateButton = ({ viewId, groupValue, label }: ViewNoteCreateButtonProps) => {
     const queryClient = useQueryClient();
-    const context = useQuery({
+    const navigate = useNavigate();
+    const [open, setOpen] = useState(false);
+    const contextOptions = {
         queryKey: queryKeys.views.noteCreationContext(viewId, groupValue),
         gcTime: 0,
         async queryFn() {
@@ -26,91 +28,99 @@ const ViewNoteCreateDialog = ({ viewId, groupValue, onClose }: ViewNoteCreateBut
                 throw new Error(result.errors[0]?.message ?? 'Failed to load view conditions.');
             return result.viewNoteCreationContext;
         },
-    });
+    };
     const creation = useMutation({
         async mutationFn(input: ViewNoteInput) {
             const result = await createNoteInView(viewId, input, groupValue);
             if (result.type === 'error') throw new Error(result.errors[0]?.message ?? 'Failed to create this note.');
             return result.createNoteInView;
         },
-        onSuccess: () => {
+        onSuccess(note) {
+            setOpen(false);
             void invalidateQueriesForNoteChange(queryClient);
+            void navigate({ to: NOTE_ROUTE, params: { id: note.id } });
         },
+        onError: () => setOpen(true),
     });
+    const preparation = useMutation({
+        mutationFn: () => queryClient.fetchQuery({ ...contextOptions, staleTime: 0 }),
+        onSuccess(data) {
+            const needsChoice =
+                (data.mode === 'or' && data.tagNames.length > 1) ||
+                data.properties.some((property) => property.required && property.defaultValue === null);
+            if (needsChoice) setOpen(true);
+            else creation.mutate({ title: '', tagNames: data.defaultTagNames });
+        },
+        onError: () => setOpen(true),
+    });
+    const context = useQuery({
+        ...contextOptions,
+        enabled: open && preparation.isSuccess,
+        staleTime: Infinity,
+        refetchOnReconnect: 'always',
+    });
+    const pending = preparation.isPending || creation.isPending;
     const close = () => {
-        if (!creation.isPending) onClose();
+        if (pending) return;
+        setOpen(false);
+        creation.reset();
+        preparation.reset();
     };
+    const contextError = context.error ?? preparation.error;
 
-    return (
-        <Modal isOpen onClose={close} variant="form" className="sm:max-w-[520px]">
-            <Modal.Header
-                title={creation.isSuccess ? 'Note created' : 'New note in view'}
-                onClose={creation.isPending ? undefined : close}
-            />
-            {creation.isSuccess ? (
-                <>
-                    <Modal.Body>
-                        <Text as="p" variant="body">
-                            {creation.data.title} was added to {context.data?.title}.
-                        </Text>
-                        <Link
-                            to={NOTE_ROUTE}
-                            params={{ id: creation.data.id }}
-                            className="text-sm text-accent-primary underline"
-                        >
-                            Open note
-                        </Link>
-                    </Modal.Body>
-                    <Modal.Footer>
-                        <ModalActionRow>
-                            <Button type="button" size="sm" onClick={close}>
-                                Done
-                            </Button>
-                        </ModalActionRow>
-                    </Modal.Footer>
-                </>
-            ) : context.data ? (
-                <ViewNoteCreateForm
-                    context={context.data}
-                    pending={creation.isPending}
-                    error={creation.error?.message}
-                    onSubmit={creation.mutate}
-                    onClose={close}
-                />
-            ) : (
-                <Modal.Body>
-                    {context.isError ? (
-                        <div role="alert" className="space-y-2">
-                            <Text as="p" variant="meta">
-                                {context.error.message}
-                            </Text>
-                            <Button type="button" variant="ghost" size="sm" onClick={() => void context.refetch()}>
-                                Retry
-                            </Button>
-                            <Link to={VIEWS_ROUTE} className="text-sm text-accent-primary underline">
-                                Open view settings
-                            </Link>
-                        </div>
-                    ) : (
-                        <Text as="p" variant="meta">
-                            Loading view conditions...
-                        </Text>
-                    )}
-                </Modal.Body>
-            )}
-        </Modal>
-    );
-};
-
-const ViewNoteCreateButton = ({ viewId, groupValue, label }: ViewNoteCreateButtonProps) => {
-    const [open, setOpen] = useState(false);
     return (
         <>
-            <Button type="button" size="sm" variant="ghost" aria-label={label} onClick={() => setOpen(true)}>
+            <Button
+                type="button"
+                size="sm"
+                variant="subtle"
+                aria-label={label}
+                isLoading={pending}
+                onClick={() => preparation.mutate()}
+            >
+                <Icon.Plus className="size-3.5" />
                 New note
             </Button>
             {open ? (
-                <ViewNoteCreateDialog viewId={viewId} groupValue={groupValue} onClose={() => setOpen(false)} />
+                <Modal isOpen onClose={close} variant="form" className="sm:max-w-[520px]">
+                    <Modal.Header title="New note in view" onClose={pending ? undefined : close} />
+                    {context.data && preparation.isSuccess ? (
+                        <ViewNoteCreateForm
+                            context={context.data}
+                            pending={pending}
+                            error={creation.error?.message ?? contextError?.message}
+                            onSubmit={creation.mutate}
+                            onClose={close}
+                        />
+                    ) : (
+                        <Modal.Body>
+                            {contextError ? (
+                                <div role="alert" className="space-y-3">
+                                    <Text as="p" variant="meta">
+                                        {contextError.message}
+                                    </Text>
+                                    <div className="flex items-center gap-3">
+                                        <Button
+                                            type="button"
+                                            variant="subtle"
+                                            size="sm"
+                                            onClick={() => preparation.mutate()}
+                                        >
+                                            Retry
+                                        </Button>
+                                        <Link to={VIEWS_ROUTE} className="text-sm text-accent-primary underline">
+                                            Open view settings
+                                        </Link>
+                                    </div>
+                                </div>
+                            ) : (
+                                <Text as="p" variant="meta">
+                                    Loading view conditions...
+                                </Text>
+                            )}
+                        </Modal.Body>
+                    )}
+                </Modal>
             ) : null}
         </>
     );

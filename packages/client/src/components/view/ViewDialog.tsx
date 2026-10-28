@@ -16,7 +16,6 @@ import {
 import type { Tag } from '~/models/tag.model';
 import type {
     View,
-    ViewCalendarDateField,
     ViewDisplayOptions,
     ViewDisplayType,
     ViewPropertyFilter,
@@ -104,6 +103,23 @@ const toFilterDrafts = (view?: View | null): PropertyFilterDraft[] => {
     }));
 };
 
+const createViewDraft = (view?: View | null) => ({
+    defaultTemplateNoteId: view?.defaultTemplateNoteId ?? null,
+    title: getInitialTitleValue(view),
+    displayType: getInitialDisplayTypeValue(view),
+    tableColumns: getInitialTableColumnsValue(view),
+    tablePropertyKeys: getInitialTablePropertyKeysValue(view),
+    boardGroupByPropertyKey: getInitialBoardGroupValue(view),
+    calendarDateField: getInitialCalendarDateFieldValue(view),
+    calendarDatePropertyKey: getInitialCalendarDatePropertyKeyValue(view),
+    tagInput: getInitialTagsValue(view),
+    matchMode: getInitialModeValue(view),
+    sortBy: getInitialSortByValue(view),
+    sortOrder: getInitialSortOrderValue(view),
+    limit: getInitialLimitValue(view),
+    filters: toFilterDrafts(view),
+});
+
 const getOperatorsForProperty = (property?: NotePropertyKeySummary): ViewPropertyFilterOperator[] => {
     if (!property) {
         return ['exists', 'notExists'];
@@ -185,24 +201,24 @@ const ViewDialog = ({
     onClose,
     onSubmit,
 }: ViewDialogProps) => {
-    const [defaultTemplateNoteId, setDefaultTemplateNoteId] = useState(initialView?.defaultTemplateNoteId ?? null);
-    const [title, setTitle] = useState(getInitialTitleValue(initialView));
-    const [displayType, setDisplayType] = useState<ViewDisplayType>(getInitialDisplayTypeValue(initialView));
-    const [tableColumns, setTableColumns] = useState<ViewTableColumn[]>(getInitialTableColumnsValue(initialView));
-    const [tablePropertyKeys, setTablePropertyKeys] = useState<string[]>(getInitialTablePropertyKeysValue(initialView));
-    const [boardGroupByPropertyKey, setBoardGroupByPropertyKey] = useState(getInitialBoardGroupValue(initialView));
-    const [calendarDateField, setCalendarDateField] = useState<ViewCalendarDateField>(
-        getInitialCalendarDateFieldValue(initialView),
-    );
-    const [calendarDatePropertyKey, setCalendarDatePropertyKey] = useState(
-        getInitialCalendarDatePropertyKeyValue(initialView),
-    );
-    const [tagInput, setTagInput] = useState(getInitialTagsValue(initialView));
-    const [matchMode, setMatchMode] = useState<ViewTagFilterMatchMode>(getInitialModeValue(initialView));
-    const [sortBy, setSortBy] = useState<ViewSortBy>(getInitialSortByValue(initialView));
-    const [sortOrder, setSortOrder] = useState<ViewSortOrder>(getInitialSortOrderValue(initialView));
-    const [limit, setLimit] = useState(getInitialLimitValue(initialView));
-    const [filters, setFilters] = useState<PropertyFilterDraft[]>(toFilterDrafts(initialView));
+    const [draft, setDraft] = useState(() => createViewDraft(initialView));
+    const {
+        defaultTemplateNoteId,
+        title,
+        displayType,
+        tableColumns,
+        tablePropertyKeys,
+        boardGroupByPropertyKey,
+        calendarDateField,
+        calendarDatePropertyKey,
+        tagInput,
+        matchMode,
+        sortBy,
+        sortOrder,
+        limit,
+        filters,
+    } = draft;
+    const updateDraft = (patch: Partial<typeof draft>) => setDraft((current) => ({ ...current, ...patch }));
     const [isTagFilterOpen, setIsTagFilterOpen] = useState((initialView?.tagNames.length ?? 0) > 0);
     const [formError, setFormError] = useState('');
 
@@ -216,20 +232,7 @@ const ViewDialog = ({
             return;
         }
 
-        setTitle(getInitialTitleValue(initialView));
-        setDefaultTemplateNoteId(initialView?.defaultTemplateNoteId ?? null);
-        setDisplayType(getInitialDisplayTypeValue(initialView));
-        setTableColumns(getInitialTableColumnsValue(initialView));
-        setTablePropertyKeys(getInitialTablePropertyKeysValue(initialView));
-        setBoardGroupByPropertyKey(getInitialBoardGroupValue(initialView));
-        setCalendarDateField(getInitialCalendarDateFieldValue(initialView));
-        setCalendarDatePropertyKey(getInitialCalendarDatePropertyKeyValue(initialView));
-        setTagInput(getInitialTagsValue(initialView));
-        setMatchMode(getInitialModeValue(initialView));
-        setSortBy(getInitialSortByValue(initialView));
-        setSortOrder(getInitialSortOrderValue(initialView));
-        setLimit(getInitialLimitValue(initialView));
-        setFilters(toFilterDrafts(initialView));
+        setDraft(createViewDraft(initialView));
         setIsTagFilterOpen((initialView?.tagNames.length ?? 0) > 0);
         setFormError('');
     }, [initialView, open]);
@@ -251,7 +254,7 @@ const ViewDialog = ({
             ? selectedTagNames.filter((value) => value !== tagName)
             : [...selectedTagNames, tagName];
 
-        setTagInput(nextTagNames.join(', '));
+        updateDraft({ tagInput: nextTagNames.join(', ') });
         setFormError('');
     };
 
@@ -261,8 +264,7 @@ const ViewDialog = ({
     };
 
     const removeTagFilter = () => {
-        setTagInput('');
-        setMatchMode('and');
+        updateDraft({ tagInput: '', matchMode: 'and' });
         setIsTagFilterOpen(false);
         setFormError('');
     };
@@ -273,21 +275,24 @@ const ViewDialog = ({
             return;
         }
 
-        setFilters((current) => [
-            ...current,
-            {
-                id: createFilterId(current.length),
-                key: '',
-                operator: 'exists',
-                value: '',
-            },
-        ]);
+        updateDraft({
+            filters: [
+                ...filters,
+                {
+                    id: createFilterId(filters.length),
+                    key: '',
+                    operator: 'exists',
+                    value: '',
+                },
+            ],
+        });
         setFormError('');
     };
 
     const updateFilter = (id: string, patch: Partial<PropertyFilterDraft>) => {
-        setFilters((current) =>
-            current.map((filter) => {
+        setDraft((current) => ({
+            ...current,
+            filters: current.filters.map((filter) => {
                 if (filter.id !== id) {
                     return filter;
                 }
@@ -307,12 +312,12 @@ const ViewDialog = ({
 
                 return nextFilter;
             }),
-        );
+        }));
         setFormError('');
     };
 
     const removeFilter = (id: string) => {
-        setFilters((current) => current.filter((filter) => filter.id !== id));
+        updateDraft({ filters: filters.filter((filter) => filter.id !== id) });
         setFormError('');
     };
 
@@ -420,13 +425,11 @@ const ViewDialog = ({
                         <Input
                             id="view-title"
                             value={title}
-                            onChange={(event) => setTitle(event.target.value)}
+                            onChange={(event) => updateDraft({ title: event.target.value })}
                             placeholder="Doing notes"
                             autoFocus
                         />
                     </div>
-
-                    <ViewTemplatePicker value={defaultTemplateNoteId} onChange={setDefaultTemplateNoteId} />
 
                     <section className="flex flex-col gap-3 border-b border-border-subtle pb-5">
                         <div className="min-w-0">
@@ -445,7 +448,7 @@ const ViewDialog = ({
                                     value === 'board' ||
                                     value === 'calendar'
                                 ) {
-                                    setDisplayType(value);
+                                    updateDraft({ displayType: value });
 
                                     if (
                                         value === 'board' &&
@@ -453,7 +456,7 @@ const ViewDialog = ({
                                             (property) => property.key === boardGroupByPropertyKey,
                                         )
                                     ) {
-                                        setBoardGroupByPropertyKey(boardGroupProperties[0]?.key ?? '');
+                                        updateDraft({ boardGroupByPropertyKey: boardGroupProperties[0]?.key ?? '' });
                                     }
 
                                     setFormError('');
@@ -486,8 +489,8 @@ const ViewDialog = ({
                                         columns={tableColumns}
                                         propertyKeys={tablePropertyKeys}
                                         availableProperties={availableProperties}
-                                        onColumnsChange={setTableColumns}
-                                        onPropertyKeysChange={setTablePropertyKeys}
+                                        onColumnsChange={(tableColumns) => updateDraft({ tableColumns })}
+                                        onPropertyKeysChange={(tablePropertyKeys) => updateDraft({ tablePropertyKeys })}
                                     />
                                 </div>
                             </details>
@@ -505,7 +508,7 @@ const ViewDialog = ({
                                         className="w-full"
                                         onValueChange={(value) => {
                                             if (value !== BOARD_GROUP_PLACEHOLDER_VALUE) {
-                                                setBoardGroupByPropertyKey(value);
+                                                updateDraft({ boardGroupByPropertyKey: value });
                                                 setFormError('');
                                             }
                                         }}
@@ -547,8 +550,7 @@ const ViewDialog = ({
                                         className="w-full"
                                         onValueChange={(value) => {
                                             if (value === 'createdAt' || value === 'updatedAt') {
-                                                setCalendarDateField(value);
-                                                setCalendarDatePropertyKey('');
+                                                updateDraft({ calendarDateField: value, calendarDatePropertyKey: '' });
                                                 setFormError('');
                                                 return;
                                             }
@@ -558,8 +560,10 @@ const ViewDialog = ({
                                                 const property = propertyByKey.get(propertyKey);
 
                                                 if (property?.valueType === 'date') {
-                                                    setCalendarDateField('property');
-                                                    setCalendarDatePropertyKey(property.key);
+                                                    updateDraft({
+                                                        calendarDateField: 'property',
+                                                        calendarDatePropertyKey: property.key,
+                                                    });
                                                     setFormError('');
                                                 }
                                             }
@@ -715,7 +719,7 @@ const ViewDialog = ({
 
                                             <Button
                                                 type="button"
-                                                variant="ghost"
+                                                variant="subtle"
                                                 size="sm"
                                                 onClick={() => removeFilter(filter.id)}
                                             >
@@ -738,7 +742,7 @@ const ViewDialog = ({
                                             Match notes by selected tags.
                                         </Text>
                                     </div>
-                                    <Button type="button" variant="ghost" size="sm" onClick={removeTagFilter}>
+                                    <Button type="button" variant="subtle" size="sm" onClick={removeTagFilter}>
                                         Remove
                                     </Button>
                                 </div>
@@ -751,7 +755,7 @@ const ViewDialog = ({
                                         id="view-tags"
                                         value={tagInput}
                                         onChange={(event) => {
-                                            setTagInput(event.target.value);
+                                            updateDraft({ tagInput: event.target.value });
                                             setFormError('');
                                         }}
                                         placeholder="@OceanBrain, @todo"
@@ -770,7 +774,7 @@ const ViewDialog = ({
                                             value={matchMode}
                                             onValueChange={(value) => {
                                                 if (value === 'and' || value === 'or') {
-                                                    setMatchMode(value);
+                                                    updateDraft({ matchMode: value });
                                                 }
                                             }}
                                             variant="quiet"
@@ -882,7 +886,7 @@ const ViewDialog = ({
                                         id="view-sort-by"
                                         value={sortBy}
                                         aria-labelledby="view-sort-by-label"
-                                        onValueChange={(value) => setSortBy(value as ViewSortBy)}
+                                        onValueChange={(value) => updateDraft({ sortBy: value as ViewSortBy })}
                                     >
                                         <SelectItem value="updatedAt">Updated time</SelectItem>
                                         <SelectItem value="createdAt">Created time</SelectItem>
@@ -897,7 +901,7 @@ const ViewDialog = ({
                                         id="view-sort-order"
                                         value={sortOrder}
                                         aria-labelledby="view-sort-order-label"
-                                        onValueChange={(value) => setSortOrder(value as ViewSortOrder)}
+                                        onValueChange={(value) => updateDraft({ sortOrder: value as ViewSortOrder })}
                                     >
                                         <SelectItem value="desc">Descending</SelectItem>
                                         <SelectItem value="asc">Ascending</SelectItem>
@@ -911,7 +915,7 @@ const ViewDialog = ({
                                         id="view-limit"
                                         value={limit}
                                         aria-labelledby="view-limit-label"
-                                        onValueChange={setLimit}
+                                        onValueChange={(limit) => updateDraft({ limit })}
                                     >
                                         <SelectItem value="3">
                                             3 {displayType === 'board' ? 'cards' : 'rows'}
@@ -933,6 +937,10 @@ const ViewDialog = ({
                             </div>
                         </details>
                     )}
+                    <ViewTemplatePicker
+                        value={defaultTemplateNoteId}
+                        onChange={(defaultTemplateNoteId) => updateDraft({ defaultTemplateNoteId })}
+                    />
                 </form>
             </Modal.Body>
             <Modal.Footer>

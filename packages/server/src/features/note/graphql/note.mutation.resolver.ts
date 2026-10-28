@@ -3,7 +3,8 @@ import type { FastifyRequest } from 'fastify';
 import { GraphQLError } from 'graphql';
 import { emitNoteChange } from '~/features/note/services/change-events.js';
 import { extractBlocksByType, parseNoteContent } from '~/features/note/services/content-blocks.js';
-import { replaceNoteReferences } from '~/features/note/services/note-reference-index.js';
+import { createNoteWithContent } from '~/features/note/services/create.js';
+import { notePlaceholderReplacer, replaceContentPlaceholders } from '~/features/note/services/placeholders.js';
 import {
     createNotePropertyDefinition,
     deleteNotePropertyDefinition,
@@ -15,7 +16,6 @@ import {
     updateNotePropertiesWithVersionGuard,
     updateNotePropertyDefinition,
 } from '~/features/note/services/properties.js';
-import { buildNoteSearchProjection } from '~/features/note/services/search.js';
 import { createSnapshotMetaFromUserAgent, restoreNoteSnapshot } from '~/features/note/services/snapshot.js';
 import { purgeTrashedNoteById, restoreTrashedNoteById, trashNoteById } from '~/features/note/services/trash.js';
 import { updateNoteWithVersionGuard } from '~/features/note/services/write.js';
@@ -26,31 +26,6 @@ import {
 } from '~/features/note/services/write-conflict.js';
 import models from '~/models.js';
 import type { NoteInput } from '~/types/index.js';
-
-const PLACEHOLDER_PREFIX = '{%';
-const PLACEHOLDER_SUFFIX = '%}';
-
-const replacePlaceholders = async (content: string) => {
-    const placeholders = content.matchAll(new RegExp(`${PLACEHOLDER_PREFIX}([^}]+)${PLACEHOLDER_SUFFIX}`, 'g'));
-    const resolvedPlaceholders = await models.placeholder.findMany({
-        select: {
-            template: true,
-            replacement: true,
-        },
-        where: { template: { in: Array.from(new Set(Array.from(placeholders, (match) => match[1]))) } },
-    });
-
-    let replacedContent = content;
-
-    for (const placeholder of resolvedPlaceholders) {
-        replacedContent = replacedContent.replace(
-            new RegExp(`${PLACEHOLDER_PREFIX}${placeholder.template}${PLACEHOLDER_SUFFIX}`, 'g'),
-            placeholder.replacement,
-        );
-    }
-
-    return replacedContent;
-};
 
 const getRequestUserAgent = (req?: FastifyRequest) => {
     const userAgentHeader = req?.headers['user-agent'];
@@ -85,33 +60,17 @@ type CreateNoteInput = Required<Pick<NoteInput, 'title' | 'content'>> & Pick<Not
 
 export const noteMutationResolvers: NoteMutationResolvers = {
     createNote: async (_, { note }: { note: CreateNoteInput }) => {
-        const replacedTitle = await replacePlaceholders(note.title);
-        const replacedContent = await replacePlaceholders(note.content);
-        const parsedContent = replacedContent ? parseRequiredNoteContent(replacedContent) : null;
-        const blocks = parsedContent ? extractBlocksByType<{ id: string }>('tag', parsedContent) : [];
-        const noteResult = await models.$transaction(async (tx) => {
-            const createdNote = await tx.note.create({
-                data: {
-                    title: replacedTitle,
-                    content: replacedContent,
-                    ...buildNoteSearchProjection({
-                        title: replacedTitle,
-                        content: replacedContent,
-                    }),
-                    ...(note.layout && { layout: note.layout }),
-                },
-            });
-
-            const noteResult = replacedContent
-                ? await tx.note.update({
-                      where: { id: createdNote.id },
-                      data: { tags: { set: toTagConnections(blocks) } },
-                  })
-                : createdNote;
-
-            await replaceNoteReferences(tx, createdNote.id, replacedContent);
-
-            return noteResult;
+        if (note.content) parseRequiredNoteContent(note.content);
+        const replace = notePlaceholderReplacer();
+        const title = await replace(note.title);
+        const content = await replaceContentPlaceholders(note.content);
+        const parsed = content ? parseRequiredNoteContent(content) : null;
+        const blocks = parsed ? extractBlocksByType<{ id: string }>('tag', parsed) : [];
+        const noteResult = await createNoteWithContent({
+            title,
+            content,
+            layout: note.layout,
+            tagIds: toTagConnections(blocks).map(({ id }) => String(id)),
         });
         emitNoteChange({ type: 'note.created', noteId: noteResult.id });
         return noteResult;

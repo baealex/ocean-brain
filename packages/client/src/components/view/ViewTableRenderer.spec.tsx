@@ -1,11 +1,15 @@
-import { render, screen, within } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
+import { fetchNote, type NotePropertyKeySummary, updateNoteProperties } from '~/apis/note.api';
 
 import type { Note } from '~/models/note.model';
 import type { View } from '~/models/view.model';
 import ViewTableColumnsEditor from './ViewTableColumnsEditor';
 import ViewTableRenderer from './ViewTableRenderer';
+
+vi.mock('~/apis/note.api', () => ({ fetchNote: vi.fn(), updateNoteProperties: vi.fn() }));
 
 vi.mock('@tanstack/react-router', () => ({
     Link: ({
@@ -113,17 +117,219 @@ it('hides the last selected property column instead of restoring automatic colum
 
 const renderTable = (props: Partial<React.ComponentProps<typeof ViewTableRenderer>> = {}) =>
     render(
-        <ViewTableRenderer
-            view={createView()}
-            notes={[createNote()]}
-            isPending={false}
-            isError={false}
-            onRetry={vi.fn()}
-            onSortChange={vi.fn()}
-            isSortPending={false}
-            {...props}
-        />,
+        <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } })}>
+            <ViewTableRenderer
+                view={createView()}
+                notes={[createNote()]}
+                isPending={false}
+                isError={false}
+                onRetry={vi.fn()}
+                onSortChange={vi.fn()}
+                isSortPending={false}
+                {...props}
+            />
+        </QueryClientProvider>,
     );
+
+const priorityDefinition: NotePropertyKeySummary = {
+    key: 'priority',
+    name: 'Priority',
+    valueType: 'number',
+    noteCount: 1,
+    options: [],
+    updatedAt: '1780000000000',
+};
+const priorityNote = () =>
+    createNote({
+        id: '7',
+        properties: [
+            {
+                key: 'priority',
+                name: 'Priority',
+                value: '2',
+                valueType: 'number',
+                createdAt: '1780000000000',
+                updatedAt: '1780000000000',
+            },
+        ],
+    });
+const savedPriority = (value: string, version = '1780000001000') => ({
+    id: '7',
+    updatedAt: version,
+    properties: [
+        {
+            key: 'priority',
+            name: 'Priority',
+            value,
+            valueType: 'number' as const,
+            createdAt: '1780000000000',
+            updatedAt: version,
+        },
+    ],
+});
+
+describe('editing table properties', () => {
+    beforeEach(() => vi.resetAllMocks());
+
+    it('saves numeric zero without navigating away from the table', async () => {
+        const user = userEvent.setup();
+        vi.mocked(updateNoteProperties).mockResolvedValue({
+            type: 'success',
+            updateNoteProperties: savedPriority('0'),
+        });
+        renderTable({ notes: [priorityNote()], availableProperties: [priorityDefinition] });
+
+        await user.click(screen.getByRole('button', { name: 'Edit Priority for Ocean Brain task' }));
+        await user.clear(screen.getByRole('spinbutton', { name: 'Priority value' }));
+        await user.type(screen.getByRole('spinbutton', { name: 'Priority value' }), '0');
+        await user.keyboard('{Enter}');
+
+        await waitFor(() =>
+            expect(updateNoteProperties).toHaveBeenCalledWith({
+                id: '7',
+                expectedUpdatedAt: '1780000000000',
+                set: [{ key: 'priority', valueType: 'number', value: '0' }],
+            }),
+        );
+        expect(await screen.findByRole('button', { name: 'Edit Priority for Ocean Brain task' })).toHaveTextContent(
+            '0',
+        );
+        expect(screen.getByRole('link', { name: 'Ocean Brain task' })).toHaveAttribute('href', '/7');
+    });
+
+    it('stores false as a boolean value rather than removing the property', async () => {
+        const user = userEvent.setup();
+        const definition = { ...priorityDefinition, key: 'done', name: 'Done', valueType: 'boolean' as const };
+        const property = {
+            ...savedPriority('true').properties[0],
+            key: 'done',
+            name: 'Done',
+            valueType: 'boolean' as const,
+        };
+        const note = createNote({ id: '7', properties: [property] });
+        vi.mocked(updateNoteProperties).mockResolvedValue({
+            type: 'success',
+            updateNoteProperties: {
+                ...note,
+                updatedAt: '1780000001000',
+                properties: [{ ...property, value: 'false' }],
+            },
+        });
+        renderTable({ notes: [note], availableProperties: [definition] });
+
+        await user.click(screen.getByRole('button', { name: 'Edit Done for Ocean Brain task' }));
+        await user.click(screen.getByRole('checkbox', { name: 'Done value' }));
+        await user.click(screen.getByRole('button', { name: 'Save Done' }));
+
+        await waitFor(() =>
+            expect(updateNoteProperties).toHaveBeenCalledWith({
+                id: '7',
+                expectedUpdatedAt: note.updatedAt,
+                set: [{ key: 'done', valueType: 'boolean', value: 'false' }],
+            }),
+        );
+        expect(await screen.findByRole('button', { name: 'Edit Done for Ocean Brain task' })).toHaveTextContent(
+            'False',
+        );
+    });
+
+    it('clears only the selected property', async () => {
+        const user = userEvent.setup();
+        vi.mocked(updateNoteProperties).mockResolvedValue({
+            type: 'success',
+            updateNoteProperties: { id: '7', updatedAt: '1780000001000', properties: [] },
+        });
+        renderTable({ notes: [priorityNote()], availableProperties: [priorityDefinition] });
+
+        await user.click(screen.getByRole('button', { name: 'Edit Priority for Ocean Brain task' }));
+        await user.click(screen.getByRole('button', { name: 'Clear Priority' }));
+
+        await waitFor(() =>
+            expect(updateNoteProperties).toHaveBeenCalledWith({
+                id: '7',
+                expectedUpdatedAt: '1780000000000',
+                deleteKeys: ['priority'],
+            }),
+        );
+        expect(await screen.findByRole('button', { name: 'Edit Priority for Ocean Brain task' })).toHaveTextContent(
+            '—',
+        );
+    });
+
+    it('discards the draft on Escape and returns focus to the cell', async () => {
+        const user = userEvent.setup();
+        renderTable({ notes: [priorityNote()], availableProperties: [priorityDefinition] });
+        await user.click(screen.getByRole('button', { name: 'Edit Priority for Ocean Brain task' }));
+        await user.clear(screen.getByRole('spinbutton', { name: 'Priority value' }));
+        await user.type(screen.getByRole('spinbutton', { name: 'Priority value' }), '3');
+
+        await user.keyboard('{Escape}');
+
+        const cell = screen.getByRole('button', { name: 'Edit Priority for Ocean Brain task' });
+        expect(cell).toHaveTextContent('2');
+        await waitFor(() => expect(cell).toHaveFocus());
+        expect(updateNoteProperties).not.toHaveBeenCalled();
+    });
+
+    it('keeps a failed draft available for retry', async () => {
+        const user = userEvent.setup();
+        vi.mocked(updateNoteProperties)
+            .mockResolvedValueOnce({
+                type: 'error',
+                category: 'network',
+                errors: [{ code: 'NETWORK_ERROR', message: 'Connection interrupted.' }],
+            })
+            .mockResolvedValueOnce({ type: 'success', updateNoteProperties: savedPriority('3') });
+        renderTable({ notes: [priorityNote()], availableProperties: [priorityDefinition] });
+        await user.click(screen.getByRole('button', { name: 'Edit Priority for Ocean Brain task' }));
+        await user.clear(screen.getByRole('spinbutton', { name: 'Priority value' }));
+        await user.type(screen.getByRole('spinbutton', { name: 'Priority value' }), '3');
+
+        await user.keyboard('{Enter}');
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('Connection interrupted.');
+        expect(screen.getByRole('spinbutton', { name: 'Priority value' })).toHaveValue(3);
+
+        await user.click(screen.getByRole('button', { name: 'Save Priority' }));
+
+        expect(await screen.findByRole('button', { name: 'Edit Priority for Ocean Brain task' })).toHaveTextContent(
+            '3',
+        );
+        expect(updateNoteProperties).toHaveBeenCalledTimes(2);
+    });
+
+    it('renders property values without edit controls in a read-only table', () => {
+        renderTable({ readOnly: true, notes: [priorityNote()], availableProperties: [priorityDefinition] });
+
+        expect(screen.getByRole('cell', { name: '2' })).toBeVisible();
+        expect(screen.queryByRole('button', { name: /Edit Priority/ })).not.toBeInTheDocument();
+    });
+
+    it('preserves a conflicting draft until the user reloads the saved value', async () => {
+        const user = userEvent.setup();
+        vi.mocked(updateNoteProperties).mockResolvedValueOnce({
+            type: 'error',
+            category: 'graphql',
+            errors: [{ code: 'NOTE_UPDATE_CONFLICT', message: 'Note changed elsewhere.' }],
+        });
+        vi.mocked(fetchNote).mockResolvedValue({ type: 'success', note: { ...priorityNote(), ...savedPriority('4') } });
+        renderTable({ notes: [priorityNote()], availableProperties: [priorityDefinition] });
+        await user.click(screen.getByRole('button', { name: 'Edit Priority for Ocean Brain task' }));
+        await user.clear(screen.getByRole('spinbutton', { name: 'Priority value' }));
+        await user.type(screen.getByRole('spinbutton', { name: 'Priority value' }), '3');
+
+        await user.keyboard('{Enter}');
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('Note changed elsewhere.');
+        expect(screen.getByRole('spinbutton', { name: 'Priority value' })).toHaveValue(3);
+        expect(screen.getByRole('button', { name: 'Save Priority' })).toBeDisabled();
+
+        await user.click(screen.getByRole('button', { name: 'Reload latest value' }));
+
+        await waitFor(() => expect(screen.getByRole('spinbutton', { name: 'Priority value' })).toHaveValue(4));
+        expect(screen.getByRole('button', { name: 'Save Priority' })).toBeEnabled();
+    });
+});
 
 describe('<ViewTableRenderer />', () => {
     beforeEach(() => {

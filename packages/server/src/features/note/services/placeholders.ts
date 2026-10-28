@@ -34,14 +34,14 @@ type FindPlaceholders = (templates: string[]) => Promise<PlaceholderRecord[]>;
 
 const loadReplacements = async (values: string[], find: FindPlaceholders) => {
     const templates = [
-        ...new Set(values.flatMap((value) => Array.from(value.matchAll(/\{%([^}]+)%\}/g), (match) => match[1]))),
+        ...new Set(values.flatMap((value) => Array.from(value.matchAll(/\{%([^{}]+)%\}/g), (match) => match[1]))),
     ];
     const records = templates.length ? await find(templates) : [];
     const replacements = new Map([
         ...records.map((item): [string, string] => [item.template, item.replacement]),
         ...Object.entries(fixedValues(new Date())),
     ]);
-    return (value: string) => value.replace(/\{%([^}]+)%\}/g, (match, key) => replacements.get(key) ?? match);
+    return (value: string) => value.replace(/\{%([^{}]+)%\}/g, (match, key) => replacements.get(key) ?? match);
 };
 
 export const createPlaceholderReplacer = (find: FindPlaceholders) => async (value: string) =>

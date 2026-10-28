@@ -65,6 +65,20 @@ const createView = (sortBy: View['sortBy'], sortOrder: View['sortOrder']): View 
 });
 
 describe('viewsLocalPlugin', () => {
+    it('inherits the template title when a new view note has no explicit title', () => {
+        const view = { ...createView('updatedAt', 'desc'), defaultTemplateNoteId: 'note-2' };
+        const state = createState(view);
+
+        const response = viewsLocalPlugin.graphHandlers?.CreateNoteInView({
+            state,
+            save: vi.fn(),
+            variables: { viewId: view.id, input: { title: '', tagNames: [] } },
+        });
+
+        expect(response?.type).toBe('success');
+        expect(state.notes[0]?.title).toBe('Beta');
+    });
+
     it('preserves an empty text property inherited from a template', () => {
         const view = { ...createView('updatedAt', 'desc'), defaultTemplateNoteId: 'note-2' };
         const state = createState(view);

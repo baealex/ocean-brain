@@ -1,4 +1,4 @@
-import { replaceContentPlaceholders } from '~/features/note/services/placeholders.js';
+import { notePlaceholderReplacer, replaceContentPlaceholders } from '~/features/note/services/placeholders.js';
 import {
     InvalidNotePropertyInputError,
     type NotePropertiesPatchInput,
@@ -128,7 +128,13 @@ export const getViewNoteCreationContext = async (input: NoteViewContextInput) =>
 export const prepareNoteForView = async (
     tx: Prisma.TransactionClient,
     context: NoteViewContextInput,
-    input: { content: string; tagIds?: string[]; properties?: NotePropertiesPatchInput; useTemplateBody?: boolean },
+    input: {
+        title: string;
+        content: string;
+        tagIds?: string[];
+        properties?: NotePropertiesPatchInput;
+        useTemplateBody?: boolean;
+    },
 ) => {
     const { context: creation, where, template } = await resolveViewCreation(context, tx);
     const selectedTags = context.tagNames ?? [];
@@ -181,6 +187,10 @@ export const prepareNoteForView = async (
     for (const property of input.properties?.set ?? []) values.set(property.key, property);
     for (const key of input.properties?.deleteKeys ?? []) values.delete(key);
     return {
+        title:
+            template && !input.title.trim()
+                ? await notePlaceholderReplacer(tx)(template.title || 'untitled')
+                : input.title,
         layout: template?.layout,
         content,
         tagIds: [...new Set([...existingIds, ...tags.map((tag) => String(tag.id))])],

@@ -25,10 +25,10 @@ export const createNoteWithContent = async (input: NoteCreationInput) => {
         const prepared = viewInput ?? input;
         const note = await tx.note.create({
             data: {
-                title: input.title,
+                title: prepared.title,
                 content: prepared.content,
                 ...buildNoteSearchProjection({
-                    title: input.title,
+                    title: prepared.title,
                     content: prepared.content,
                 }),
                 layout: input.layout ?? viewInput?.layout,

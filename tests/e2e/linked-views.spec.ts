@@ -235,7 +235,7 @@ test('a saved template creates independent notes with the current view context',
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await page.reload();
     await page.getByRole('button', { name: 'New note', exact: true }).click();
-    await expect(page.getByRole('textbox', { name: 'Note title' })).toHaveValue('');
+    await expect(page.getByRole('textbox', { name: 'Note title' })).toHaveValue('Meeting outline');
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await page.getByRole('textbox', { name: 'Note title' }).fill('Planning session');
     await page.getByRole('button', { name: 'Save', exact: true }).click();

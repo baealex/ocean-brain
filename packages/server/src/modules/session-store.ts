@@ -94,6 +94,24 @@ export class TtlMemorySessionStore implements SessionStore {
         }
     }
 
+    compareAndSet(sid: string, expectedGeneration: string, data: Session, callback: (error?: unknown) => void) {
+        // Both operations are synchronous, so a destroy cannot interleave with this check and write.
+        this.get(sid, (error, session) => {
+            if (error) {
+                callback(error);
+                return;
+            }
+
+            const current = session as (Session & { __fastifySessionMetadata?: { generation?: string } }) | null;
+            if (!current || (current.__fastifySessionMetadata?.generation ?? sid) !== expectedGeneration) {
+                callback(Object.assign(new Error('The session does not exist or has changed'), { code: 'ENOENT' }));
+                return;
+            }
+
+            this.set(sid, data, callback);
+        });
+    }
+
     destroy(sid: string, callback: (error?: unknown) => void = () => undefined) {
         this.sessions.delete(sid);
         callback();

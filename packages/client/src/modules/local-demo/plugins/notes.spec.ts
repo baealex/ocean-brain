@@ -246,3 +246,48 @@ describe('notesLocalPlugin', () => {
         });
     });
 });
+
+it('local demo backlinks preserve the source block and distinguish equally named references', async () => {
+    const state = createState();
+    const source = createNote({ id: 'source', title: 'Meeting', tags: [] });
+    source.content = JSON.stringify([
+        {
+            id: 'decision',
+            type: 'paragraph',
+            content: [
+                { type: 'reference', props: { id: 'other', title: 'Same title' } },
+                { type: 'text', text: ' differs from ' },
+                { type: 'reference', props: { id: 'target', title: 'Same title' } },
+            ],
+        },
+    ]);
+    state.notes = [source];
+
+    const result = await notesLocalPlugin.graphHandlers.FetchBackReferenceDetails({
+        state,
+        variables: { id: 'target', limit: 20, offset: 0 },
+        save: () => undefined,
+    });
+
+    expect(result).toMatchObject({
+        backReferenceDetails: {
+            hasMore: false,
+            nextOffset: null,
+            references: [
+                {
+                    id: 'source',
+                    contexts: [
+                        {
+                            blockId: 'decision',
+                            segments: [
+                                { text: 'Same title', isTarget: false },
+                                { text: ' differs from ', isTarget: false },
+                                { text: 'Same title', isTarget: true },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        },
+    });
+});

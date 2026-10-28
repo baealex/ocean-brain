@@ -110,6 +110,20 @@ export const noteType = gql`
         properties(keys: [String!]): [NoteProperty!]!
     }
 
+    type ReferenceContextSegment { text: String!, isTarget: Boolean! }
+    type BackReferenceContext { blockId: String, segments: [ReferenceContextSegment!]! }
+    type BackReferenceDetail {
+        id: ID!
+        title: String!
+        contexts: [BackReferenceContext!]!
+        hasMoreContexts: Boolean!
+    }
+    type BackReferencePage {
+        references: [BackReferenceDetail!]!
+        hasMore: Boolean!
+        nextOffset: Int
+    }
+
     type NoteProperty {
         key: String!
         name: String!
@@ -301,6 +315,7 @@ export const noteQuery = gql`
         pinnedNotes: [Note!]!
         imageNotes(src: String!): [Note!]!
         backReferences(id: ID!): [Note]!
+        backReferenceDetails(id: ID!, limit: Int, offset: Int): BackReferencePage!
         note(id: ID!): Note!
         noteRead(id: ID!, offset: Int, maxLength: Int, heading: String, expectedUpdatedAt: String): NoteReadResult!
         noteCleanupCandidates(query: String, pagination: PaginationInput): [NoteCleanupCandidate!]!

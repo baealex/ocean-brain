@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { formatMcpReadNoteOutput } from '../src/mcp-note-output.js';
+import { createMcpReadNoteResult, formatMcpReadNoteOutput } from '../src/mcp-note-output.js';
 
 test('formatMcpReadNoteOutput includes a back reference summary before the markdown body', () => {
     const output = formatMcpReadNoteOutput({
@@ -81,4 +81,18 @@ test('formatMcpReadNoteOutput includes property names, display labels, and raw v
     });
 
     assert.match(output, /Properties:\n- state \(State\): Doing \[select, value=doing\]\n- project \(Project\): ocean-brain \[text, value=ocean-brain\]/);
+});
+
+test('opt-in backlink excerpts retain source locations and page continuation in the MCP result', () => {
+    const note = { id: '7', title: 'Login redesign', createdAt: '1', updatedAt: '2', tags: [], properties: [] };
+    const page = { references: [{ id: '8', title: 'Meeting', hasMoreContexts: false, contexts: [{ blockId: 'decision', segments: [
+        { text: 'Old title', isTarget: true }, { text: ' is postponed.', isTarget: false },
+    ] }] }], hasMore: true, nextOffset: 20 };
+
+    const result = createMcpReadNoteResult({ status: 'read', reason: null, message: null, note, markdown: 'Body', contentRange: null, candidates: [], linkedViews: [] }, undefined, page);
+
+    assert.ok(result.structuredContent.backReferencePage);
+    assert.equal(result.structuredContent.backReferencePage.nextOffset, 20);
+    assert.equal(result.structuredContent.backReferencePage.references[0].contexts[0].blockId, 'decision');
+    assert.ok(JSON.stringify(result.content).includes('Login redesign is postponed.'));
 });

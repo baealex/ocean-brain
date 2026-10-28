@@ -108,6 +108,7 @@ export const queryKeys = {
         pinned: () => ['notes', 'pinned'] as const,
         backReferencesAll: () => ['notes', 'back-references'] as const,
         backReferences: (noteId: string) => ['notes', 'back-references', { noteId }] as const,
+        backReferenceDetails: (noteId: string) => ['notes', 'back-references', { noteId }, 'details'] as const,
         graph: () => ['notes', 'graph'] as const,
         propertyKeysAll: () => ['notes', 'property-keys'] as const,
         propertyKeysCatalog: () => ['notes', 'property-keys', 'catalog'] as const,

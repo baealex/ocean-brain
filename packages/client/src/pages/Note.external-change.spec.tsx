@@ -32,6 +32,7 @@ vi.mock('@tanstack/react-router', () => ({
     getRouteApi: () => ({
         useNavigate: () => mockNavigate,
         useParams: () => ({ id: '1' }),
+        useSearch: () => ({}),
     }),
     Link: ({ children, ...props }: { children: React.ReactNode; [key: string]: unknown }) => (
         <a href="/" {...props}>
@@ -54,7 +55,9 @@ vi.mock('~/apis/note.api', () => ({
 }));
 
 vi.mock('~/components/entities', () => ({
-    BackReferences: ({ render }: { render: (backReferences: unknown[]) => React.ReactNode }) => <>{render([])}</>,
+    BackReferences: ({ render }: { render: (backReferences: unknown[], pagination: unknown) => React.ReactNode }) => (
+        <>{render([], { hasMore: false, isPending: false, isError: false, loadMore: () => undefined })}</>
+    ),
 }));
 
 vi.mock('~/components/reminder', () => ({

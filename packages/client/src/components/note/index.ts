@@ -1,4 +1,5 @@
 export { default as LayoutModal } from './LayoutModal';
+export { default as NoteBackReferences } from './NoteBackReferences';
 export { default as NoteEditorHeader } from './NoteEditorHeader';
 export { default as NoteExportModal } from './NoteExportModal';
 export { default as NoteExternalChangeModal } from './NoteExternalChangeModal';

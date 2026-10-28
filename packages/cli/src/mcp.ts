@@ -280,15 +280,21 @@ export const registerMcpTools = (
             offset: z.number().int().nonnegative().optional().describe('Continuation: use contentRange.nextOffset with expectedUpdatedAt. Cannot combine with heading.'),
             heading: z.string().min(1).optional().describe('Exact heading; ambiguous matches return positions.'),
             expectedUpdatedAt: z.string().optional().describe('Note version from the preceding read.'),
+            backlinkContext: z.object({ limit: pageLimitSchema(20, 50), offset: pageOffsetSchema }).optional().describe('Include backlink excerpts.'),
         },
         async (input) => {
             if (input.heading !== undefined && input.offset !== undefined)
                 throw new Error('Use either heading or offset, not both.');
+            const { backlinkContext, ...readInput } = input;
+            const contextVariables = backlinkContext ? ', $backlinkLimit: Int, $backlinkOffset: Int' : '';
+            const referenceQuery = backlinkContext
+                ? 'backReferenceDetails(id: $id, limit: $backlinkLimit, offset: $backlinkOffset) { references { id title hasMoreContexts contexts { blockId segments { text isTarget } } } hasMore nextOffset }'
+                : 'backReferences(id: $id) { id title }';
             const data = await graphqlRequest(
                 serverUrl,
                 token,
                 `
-                query ($id: ID!, $maxLength: Int, $offset: Int, $heading: String, $expectedUpdatedAt: String) {
+                query ($id: ID!, $maxLength: Int, $offset: Int, $heading: String, $expectedUpdatedAt: String${contextVariables}) {
                     noteRead(id: $id, maxLength: $maxLength, offset: $offset, heading: $heading, expectedUpdatedAt: $expectedUpdatedAt) {
                         status reason message markdown
                         candidates { heading level start end }
@@ -296,12 +302,12 @@ export const registerMcpTools = (
                         contentRange { start end totalLength sectionEnd hasMore nextOffset }
                         note { id title createdAt updatedAt tags { id name } properties { key name value valueType option { label value } } }
                     }
-                    backReferences(id: $id) { id title }
+                    ${referenceQuery}
                 }
             `,
-                input,
+                { ...readInput, ...(backlinkContext ? { backlinkLimit: backlinkContext.limit, backlinkOffset: backlinkContext.offset } : {}) },
             );
-            return createMcpReadNoteResult(data?.noteRead, data?.backReferences);
+            return createMcpReadNoteResult(data?.noteRead, data?.backReferences, data?.backReferenceDetails);
         },
     );
 

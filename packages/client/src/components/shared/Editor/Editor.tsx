@@ -1,7 +1,13 @@
 import { BlockNoteView } from '@blocknote/mantine';
 import { useCreateBlockNote } from '@blocknote/react';
 import '@blocknote/mantine/style.css';
-import { forwardRef, type ClipboardEvent as ReactClipboardEvent, useImperativeHandle, useLayoutEffect } from 'react';
+import {
+    forwardRef,
+    type ClipboardEvent as ReactClipboardEvent,
+    useEffect,
+    useImperativeHandle,
+    useLayoutEffect,
+} from 'react';
 import { uploadImage } from '~/apis/image.api';
 import schema, { CommandView, ReferenceView, TagView } from '~/components/schema';
 import { useToast } from '~/components/ui';
@@ -24,6 +30,9 @@ import {
 import { useTheme } from '~/store/theme';
 import { ExternalChangeExtension } from './external-change-extension';
 import { captureEditorViewport, type EditorViewport, restoreEditorViewport } from './external-changes';
+import { ReferenceTargetExtension } from './reference-target-extension';
+
+const REFERENCE_HIGHLIGHT_DURATION_MS = 3000;
 
 export interface ExternalEditorUpdate {
     previousContent: string;
@@ -33,6 +42,7 @@ export interface ExternalEditorUpdate {
 interface EditorProps {
     content?: string;
     currentNoteId?: string;
+    focusBlockId?: string;
     editable?: boolean;
     onChange?: () => void;
     externalUpdate?: ExternalEditorUpdate | null;
@@ -47,7 +57,7 @@ export interface EditorRef {
 }
 
 const Editor = forwardRef<EditorRef, EditorProps>(
-    ({ content, currentNoteId, editable, onChange, externalUpdate, onClearChangeMarks }, ref) => {
+    ({ content, currentNoteId, focusBlockId, editable, onChange, externalUpdate, onClearChangeMarks }, ref) => {
         const { theme } = useTheme((state) => state);
         const toast = useToast();
         const initialBlocks = (content && JSON.parse(content)) || undefined;
@@ -55,7 +65,7 @@ const Editor = forwardRef<EditorRef, EditorProps>(
         const editor = useCreateBlockNote(
             {
                 schema,
-                extensions: [ExternalChangeExtension()],
+                extensions: [ExternalChangeExtension(), ReferenceTargetExtension()],
                 initialContent: Array.isArray(initialBlocks) && initialBlocks.length === 0 ? undefined : initialBlocks,
                 pasteHandler: (context) => handleBlockNotePaste(context),
                 uploadFile: async (file, blockId) => {
@@ -94,6 +104,22 @@ const Editor = forwardRef<EditorRef, EditorProps>(
             extension?.showChanges(externalUpdate.previousContent, onClearChangeMarks);
             restoreEditorViewport(externalUpdate.viewport);
         }, [editor, externalUpdate, onClearChangeMarks]);
+
+        useEffect(() => {
+            if (!focusBlockId) return;
+            const element = editor.domElement?.querySelector<HTMLElement>(`[data-id="${CSS.escape(focusBlockId)}"]`);
+            if (!element) return;
+            element.scrollIntoView({ block: 'center', behavior: 'instant' });
+            const extension = editor.getExtension(ReferenceTargetExtension);
+            extension?.highlight(focusBlockId);
+            const timer = window.setTimeout(() => {
+                extension?.clear();
+            }, REFERENCE_HIGHLIGHT_DURATION_MS);
+            return () => {
+                window.clearTimeout(timer);
+                extension?.clear();
+            };
+        }, [editor, focusBlockId]);
 
         useImperativeHandle(ref, () => {
             return {

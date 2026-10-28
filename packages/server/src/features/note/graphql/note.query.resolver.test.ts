@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
     buildNotesInDateRangeWhere,
     createAllNotesQueryResolver,
+    createBackReferenceDetailsQueryResolver,
     createBackReferencesQueryResolver,
     createNoteGraphQueryResolver,
     createNoteQueryResolver,
@@ -452,4 +453,55 @@ test('noteGraph resolver preserves the graph response contract with indexed refe
         ],
         links: [{ source: '1', target: '2' }],
     });
+});
+
+test('backlink details reuse two batched reads and fetch only the requested page of source bodies', async () => {
+    const calls: string[] = [];
+    const resolver = createBackReferenceDetailsQueryResolver({
+        findSourceIds: async (id) => {
+            calls.push('index');
+            assert.equal(id, 7);
+            return [8, 9, 10];
+        },
+        findNotes: async (ids, pagination) => {
+            calls.push('bodies');
+            assert.deepEqual(ids, [8, 9, 10]);
+            assert.deepEqual(pagination, { take: 3, skip: 20 });
+            return [8, 9, 10].map((id) => ({
+                id,
+                title: `Source ${id}`,
+                content: JSON.stringify([
+                    {
+                        id: `block-${id}`,
+                        type: 'paragraph',
+                        content: [{ type: 'reference', props: { id: '7', title: 'Target' } }],
+                    },
+                ]),
+            }));
+        },
+    });
+
+    const result = await resolver(null, { id: '7', limit: 2, offset: 20 });
+
+    assert.deepEqual(calls, ['index', 'bodies']);
+    assert.deepEqual(
+        result.references.map((reference) => reference.id),
+        [8, 9],
+    );
+    assert.equal(result.references[0].contexts[0].blockId, 'block-8');
+    assert.equal(result.hasMore, true);
+    assert.equal(result.nextOffset, 22);
+});
+
+test('backlink details do not read bodies when the reference index is empty', async () => {
+    const resolver = createBackReferenceDetailsQueryResolver({
+        findSourceIds: async () => [],
+        findNotes: async () => {
+            assert.fail('No source bodies should be read');
+        },
+    });
+
+    const result = await resolver(null, { id: '7' });
+
+    assert.deepEqual(result, { references: [], hasMore: false, nextOffset: null });
 });

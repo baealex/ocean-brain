@@ -1,4 +1,5 @@
 import type { IResolvers } from '@graphql-tools/utils';
+import { extractBackReferenceContexts } from '~/features/note/services/back-reference-context.js';
 import { emitNoteChange } from '~/features/note/services/change-events.js';
 import { getNoteCleanupPreview, listNoteCleanupCandidates } from '~/features/note/services/cleanup.js';
 import {
@@ -306,6 +307,58 @@ export const createBackReferencesQueryResolver = (
     };
 };
 
+interface BackReferenceDetailsDeps {
+    findSourceIds: (noteId: number) => Promise<number[]>;
+    findNotes: (
+        ids: number[],
+        pagination: { take: number; skip: number },
+    ) => Promise<Pick<Note, 'id' | 'title' | 'content'>[]>;
+}
+
+export const createBackReferenceDetailsQueryResolver =
+    (
+        deps: BackReferenceDetailsDeps = {
+            findSourceIds: async (noteId) =>
+                (
+                    await models.noteReference.findMany({
+                        where: { targetNoteId: noteId, NOT: { sourceNoteId: noteId } },
+                        select: { sourceNoteId: true },
+                    })
+                ).map((reference) => reference.sourceNoteId),
+            findNotes: (ids, pagination) =>
+                models.note.findMany({
+                    where: { id: { in: ids } },
+                    select: { id: true, title: true, content: true },
+                    orderBy: [{ pinned: 'desc' }, { updatedAt: 'desc' }, { id: 'desc' }],
+                    ...pagination,
+                }),
+        },
+    ) =>
+    async (_: unknown, { id, limit = 20, offset = 0 }: { id: string; limit?: number; offset?: number }) => {
+        const empty = { references: [], hasMore: false, nextOffset: null };
+        if (!isValidNoteIdString(id)) return empty;
+        const take = Number.isInteger(limit) ? Math.min(50, Math.max(1, limit)) : 20;
+        const skip = Number.isInteger(offset) ? Math.max(0, offset) : 0;
+        const ids = await deps.findSourceIds(Number(id));
+        if (ids.length === 0) return empty;
+        const notes = await deps.findNotes(ids, { take: take + 1, skip });
+        const hasMore = notes.length > take;
+        const references = notes.slice(0, take).flatMap((note) => {
+            const result = extractBackReferenceContexts(note.content, id);
+            return result.contexts.length
+                ? [
+                      {
+                          id: note.id,
+                          title: note.title,
+                          contexts: result.contexts,
+                          hasMoreContexts: result.hasMore,
+                      },
+                  ]
+                : [];
+        });
+        return { references, hasMore, nextOffset: hasMore ? skip + take : null };
+    };
+
 interface NoteGraphQueryResolverDeps {
     findNotes: (args: {
         orderBy: Array<{ id: 'asc' }>;
@@ -551,6 +604,7 @@ export const noteQueryResolvers: NoteQueryResolvers = {
             where: { content: { contains: src } },
         }),
     backReferences: createBackReferencesQueryResolver(),
+    backReferenceDetails: createBackReferenceDetailsQueryResolver(),
     note: createNoteQueryResolver(),
     noteRead: async (_: unknown, { id, ...input }: MarkdownReadInput & { id: string }) => {
         const note = await createNoteQueryResolver()(_, { id });

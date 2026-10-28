@@ -1,5 +1,6 @@
 import type { Note, NoteLayout, NoteProperty, NotePropertyOption, NotePropertyValueType } from '~/models/note.model';
 import type { View } from '~/models/view.model';
+import { localBackReferenceContexts } from '../back-reference-context';
 import { localError, success } from '../response';
 import type { LocalDemoPlugin, LocalTrashNote } from '../types';
 import {
@@ -212,6 +213,26 @@ export const notesLocalPlugin: LocalDemoPlugin = {
                 .filter((note) => extractNoteReferences(note).some((reference) => reference.id === targetId))
                 .map(({ id, title }) => ({ id, title }));
             return success({ backReferences });
+        },
+        FetchBackReferenceDetails: ({ state, variables }) => {
+            const targetId = String(variables.id);
+            const offset = Math.max(0, Number(variables.offset) || 0);
+            const limit = Math.min(50, Math.max(1, Number(variables.limit) || 20));
+            const notes = state.notes.filter(
+                (note) =>
+                    note.id !== targetId && extractNoteReferences(note).some((reference) => reference.id === targetId),
+            );
+            const references = sortNotes(notes, { sortBy: 'updatedAt', sortOrder: 'desc', pinnedFirst: true })
+                .slice(offset, offset + limit)
+                .map((note) => ({
+                    id: note.id,
+                    title: note.title,
+                    ...localBackReferenceContexts(note.content, targetId),
+                }));
+            const hasMore = offset + limit < notes.length;
+            return success({
+                backReferenceDetails: { references, hasMore, nextOffset: hasMore ? offset + limit : null },
+            });
         },
         FetchImageNotes: () => success({ imageNotes: [] }),
         FetchNoteSnapshots: () => success({ noteSnapshots: [] }),

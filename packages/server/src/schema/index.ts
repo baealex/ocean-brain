@@ -7,6 +7,7 @@ import { reminderResolvers, reminderTypeDefs } from '../features/reminder/graphq
 import { searchResolvers, searchTypeDefs } from '../features/search/graphql/index.js';
 import { tagResolvers, tagTypeDefs } from '../features/tag/graphql/index.js';
 import { viewResolvers, viewTypeDefs } from '../features/view/graphql/index.js';
+import { workspaceResolvers, workspaceTypeDefs } from '../features/workspace/graphql.js';
 
 const schema = makeExecutableSchema({
     typeDefs: [
@@ -18,6 +19,7 @@ const schema = makeExecutableSchema({
         reminderTypeDefs,
         searchTypeDefs,
         viewTypeDefs,
+        workspaceTypeDefs,
     ],
     resolvers: [
         cacheResolvers,
@@ -28,6 +30,7 @@ const schema = makeExecutableSchema({
         reminderResolvers,
         searchResolvers,
         viewResolvers,
+        workspaceResolvers,
     ],
 });
 

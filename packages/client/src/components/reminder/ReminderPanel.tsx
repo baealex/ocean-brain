@@ -10,10 +10,11 @@ import type { Reminder } from '~/models/reminder.model';
 import ReminderModal from './ReminderModal';
 
 interface ReminderPanelProps {
+    readOnly?: boolean;
     noteId: string;
 }
 
-export default function ReminderPanel({ noteId }: ReminderPanelProps) {
+export default function ReminderPanel({ noteId, readOnly = false }: ReminderPanelProps) {
     const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
     const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
@@ -104,7 +105,7 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                 icon={<Icon.Bell className="h-3.5 w-3.5" />}
                 action={
                     <>
-                        {!isCollapsed && (
+                        {!isCollapsed && !readOnly && (
                             <Button size="sm" variant="ghost" onClick={handleOpenCreateModal}>
                                 <Icon.Plus className="w-3 h-3" />
                                 <Text as="span" variant="label" className="hidden sm:inline">
@@ -158,6 +159,7 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                                                         className={classNames('flex items-center gap-2.5 px-2 py-1.5')}
                                                     >
                                                         <Checkbox
+                                                            disabled={readOnly}
                                                             checked={reminder.completed}
                                                             onChange={() => handleToggleComplete(reminder)}
                                                             size="sm"
@@ -209,7 +211,12 @@ export default function ReminderPanel({ noteId }: ReminderPanelProps) {
                                                             )}
                                                         </div>
                                                         <Dropdown
-                                                            button={<MoreButton label="Reminder actions" />}
+                                                            button={
+                                                                <MoreButton
+                                                                    label="Reminder actions"
+                                                                    disabled={readOnly}
+                                                                />
+                                                            }
                                                             items={[
                                                                 {
                                                                     name: 'Edit',

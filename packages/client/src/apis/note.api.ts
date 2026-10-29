@@ -1,4 +1,5 @@
 import type { Note, NotePropertyOption, NotePropertyValueType } from '~/models/note.model';
+import type { PropertyWorkspaceMapping, WorkspaceScope } from '~/models/workspace.model';
 import { type GraphQueryResponse, graphQuery } from '~/modules/graph-query';
 
 type NoteAdditionalField = 'content' | 'order' | 'layout' | 'properties';
@@ -8,14 +9,16 @@ const NOTE_ADDITIONAL_FIELDS = new Set<NoteAdditionalField>(['content', 'order',
 const FETCH_NOTES_QUERY = `query FetchNotes(
             $searchFilter: SearchFilterInput,
             $pagination: PaginationInput
+            $scope: WorkspaceScopeInput
         ) {
             allNotes(
                 searchFilter: $searchFilter,
-                pagination: $pagination
+                pagination: $pagination, scope: $scope
             ) {
                 totalCount
                 notes {
-__NOTE_ADDITIONAL_FIELDS__                    id
+__NOTE_ADDITIONAL_FIELDS__                    workspaceId
+                    id
                     title
                     pinned
                     createdAt
@@ -57,6 +60,7 @@ const buildAdditionalNoteSelection = (fields?: (keyof Note)[]) => {
 };
 
 export interface FetchNotesParams {
+    scope?: WorkspaceScope;
     limit?: number;
     offset?: number;
     query?: string;
@@ -74,6 +78,7 @@ export function fetchNotes({
     sortOrder,
     pinnedFirst,
     fields,
+    scope,
 }: FetchNotesParams = {}) {
     const additionalFieldsSelection = buildAdditionalNoteSelection(fields);
     const graphqlQuery = FETCH_NOTES_QUERY.replace('__NOTE_ADDITIONAL_FIELDS__', additionalFieldsSelection);
@@ -84,6 +89,7 @@ export function fetchNotes({
             notes: Note[];
         };
     }>(graphqlQuery, {
+        ...(scope ? { scope } : {}),
         searchFilter: {
             query,
             sortBy,
@@ -98,12 +104,13 @@ export function fetchNotes({
 }
 
 export interface FetchTagNotesParams {
+    scope?: WorkspaceScope;
     query?: string;
     limit?: number;
     offset?: number;
 }
 
-export function fetchTagNotes({ query = '', limit = 25, offset = 0 }: FetchTagNotesParams = {}) {
+export function fetchTagNotes({ query = '', limit = 25, offset = 0, scope }: FetchTagNotesParams = {}) {
     return graphQuery<{
         tagNotes: {
             totalCount: number;
@@ -113,13 +120,15 @@ export function fetchTagNotes({ query = '', limit = 25, offset = 0 }: FetchTagNo
         `query FetchTagNotes(
             $searchFilter: SearchFilterInput,
             $pagination: PaginationInput
+            $scope: WorkspaceScopeInput
         ) {
             tagNotes(
                 searchFilter: $searchFilter,
-                pagination: $pagination
+                pagination: $pagination, scope: $scope
             ) {
                 totalCount
                 notes {
+                    workspaceId
                     id
                     title
                     pinned
@@ -133,6 +142,7 @@ export function fetchTagNotes({ query = '', limit = 25, offset = 0 }: FetchTagNo
             }
         }`,
         {
+            ...(scope ? { scope } : {}),
             searchFilter: { query },
             pagination: {
                 limit,
@@ -143,13 +153,20 @@ export function fetchTagNotes({ query = '', limit = 25, offset = 0 }: FetchTagNo
 }
 
 export interface FetchNotesByTagNamesParams {
+    scope?: WorkspaceScope;
     tagNames: string[];
     mode?: 'and' | 'or';
     limit?: number;
     offset?: number;
 }
 
-export function fetchNotesByTagNames({ tagNames, mode = 'and', limit = 25, offset = 0 }: FetchNotesByTagNamesParams) {
+export function fetchNotesByTagNames({
+    tagNames,
+    mode = 'and',
+    limit = 25,
+    offset = 0,
+    scope,
+}: FetchNotesByTagNamesParams) {
     return graphQuery<{
         notesByTagNames: {
             totalCount: number;
@@ -160,14 +177,16 @@ export function fetchNotesByTagNames({ tagNames, mode = 'and', limit = 25, offse
             $tagNames: [String!]!,
             $mode: TagMatchMode!,
             $pagination: PaginationInput
+            $scope: WorkspaceScopeInput
         ) {
             notesByTagNames(
                 tagNames: $tagNames,
                 mode: $mode,
-                pagination: $pagination
+                pagination: $pagination, scope: $scope
             ) {
                 totalCount
                 notes {
+                    workspaceId
                     id
                     title
                     pinned
@@ -181,6 +200,7 @@ export function fetchNotesByTagNames({ tagNames, mode = 'and', limit = 25, offse
             }
         }`,
         {
+            ...(scope ? { scope } : {}),
             tagNames,
             mode,
             pagination: {
@@ -194,12 +214,16 @@ export function fetchNotesByTagNames({ tagNames, mode = 'and', limit = 25, offse
 export function fetchNote(id: string) {
     return graphQuery<
         {
-            note: Pick<Note, 'title' | 'content' | 'pinned' | 'layout' | 'createdAt' | 'updatedAt' | 'properties'>;
+            note: Pick<
+                Note,
+                'workspaceId' | 'title' | 'content' | 'pinned' | 'layout' | 'createdAt' | 'updatedAt' | 'properties'
+            >;
         },
         { id: string }
     >(
         `query FetchNote($id: ID!) {
             note(id: $id) {
+                workspaceId
                 title
                 pinned
                 layout
@@ -291,6 +315,7 @@ export function fetchImageNotes(src: string) {
 }
 
 export interface NotePropertyKeySummary {
+    workspaceId?: string;
     key: string;
     name: string;
     valueType: NotePropertyValueType;
@@ -300,6 +325,7 @@ export interface NotePropertyKeySummary {
 }
 
 export interface FetchNotePropertyKeysParams {
+    scope?: WorkspaceScope;
     query?: string;
     limit?: number;
     offset?: number;
@@ -312,23 +338,25 @@ export interface NotePropertyKeysResult {
 
 const NOTE_PROPERTY_KEYS_PAGE_SIZE = 100;
 
-export function fetchNotePropertyKeys({ query = '', limit = 50, offset = 0 }: FetchNotePropertyKeysParams = {}) {
+export function fetchNotePropertyKeys({ query = '', limit = 50, offset = 0, scope }: FetchNotePropertyKeysParams = {}) {
     return graphQuery<
         {
             notePropertyKeys: NotePropertyKeysResult;
         },
         {
             query?: string;
+            scope?: WorkspaceScope;
             pagination: {
                 limit: number;
                 offset: number;
             };
         }
     >(
-        `query FetchNotePropertyKeys($query: String, $pagination: PaginationInput) {
-            notePropertyKeys(query: $query, pagination: $pagination) {
+        `query FetchNotePropertyKeys($query: String, $pagination: PaginationInput, $scope: WorkspaceScopeInput) {
+            notePropertyKeys(query: $query, pagination: $pagination, scope: $scope) {
                 totalCount
                 keys {
+                    workspaceId
                     key
                     name
                     valueType
@@ -339,6 +367,7 @@ export function fetchNotePropertyKeys({ query = '', limit = 50, offset = 0 }: Fe
             }
         }`,
         {
+            ...(scope ? { scope } : {}),
             ...(query ? { query } : {}),
             pagination: {
                 limit,
@@ -348,15 +377,19 @@ export function fetchNotePropertyKeys({ query = '', limit = 50, offset = 0 }: Fe
     );
 }
 
-export async function fetchAllNotePropertyKeys(): Promise<
-    GraphQueryResponse<{ notePropertyKeys: NotePropertyKeysResult }>
-> {
+export async function fetchAllNotePropertyKeys(
+    scope?: WorkspaceScope,
+): Promise<GraphQueryResponse<{ notePropertyKeys: NotePropertyKeysResult }>> {
     const propertyByKey = new Map<string, NotePropertyKeySummary>();
     let offset = 0;
     let totalCount = 0;
 
     while (true) {
-        const response = await fetchNotePropertyKeys({ limit: NOTE_PROPERTY_KEYS_PAGE_SIZE, offset });
+        const response = await fetchNotePropertyKeys({
+            limit: NOTE_PROPERTY_KEYS_PAGE_SIZE,
+            offset,
+            ...(scope ? { scope } : {}),
+        });
 
         if (response.type === 'error') {
             return response;
@@ -386,7 +419,8 @@ export async function fetchAllNotePropertyKeys(): Promise<
 }
 
 export interface CreateNotePropertyKeyRequestData {
-    key: string;
+    workspaceId?: string;
+    key?: string;
     name?: string;
     valueType: NotePropertyValueType;
     options?: Array<
@@ -484,6 +518,7 @@ export function deleteNotePropertyKey({ key, confirmImpact }: DeleteNoteProperty
 }
 
 export interface CreateNoteRequestData {
+    workspaceId?: string;
     title: string;
     content: string;
     layout?: string;
@@ -492,12 +527,13 @@ export interface CreateNoteRequestData {
 export function createNote(note: CreateNoteRequestData) {
     return graphQuery<
         {
-            createNote: Pick<Note, 'id'>;
+            createNote: Pick<Note, 'id' | 'workspaceId'>;
         },
         { note: CreateNoteRequestData }
     >(
         `mutation CreateNote($note: NoteInput!) {
             createNote(note: $note) {
+                workspaceId
                 id
             }
         }`,
@@ -780,15 +816,15 @@ export function fetchNoteSnapshotDiff(id: string, target: 'next' | 'previous' | 
     );
 }
 
-export function restoreNoteSnapshot(id: string, expectedUpdatedAt: string) {
+export function restoreNoteSnapshot(id: string, expectedUpdatedAt: string, mappings?: PropertyWorkspaceMapping[]) {
     return graphQuery<
         {
             restoreNoteSnapshot: Pick<Note, 'id' | 'title' | 'updatedAt' | 'layout' | 'pinned' | 'content'>;
         },
-        { id: string; expectedUpdatedAt: string }
+        { id: string; expectedUpdatedAt: string; mappings?: PropertyWorkspaceMapping[] }
     >(
-        `mutation RestoreNoteSnapshot($id: ID!, $expectedUpdatedAt: String!) {
-            restoreNoteSnapshot(id: $id, expectedUpdatedAt: $expectedUpdatedAt) {
+        `mutation RestoreNoteSnapshot($id: ID!, $expectedUpdatedAt: String!, $mappings: [PropertyWorkspaceMappingInput!]) {
+            restoreNoteSnapshot(id: $id, expectedUpdatedAt: $expectedUpdatedAt, mappings: $mappings) {
                 id
                 title
                 pinned
@@ -797,11 +833,15 @@ export function restoreNoteSnapshot(id: string, expectedUpdatedAt: string) {
                 updatedAt
             }
         }`,
-        { id, expectedUpdatedAt },
+        { id, expectedUpdatedAt, ...(mappings ? { mappings } : {}) },
     );
 }
 
-export function fetchTrashedNotes({ limit = 25, offset = 0 }: Pick<FetchNotesParams, 'limit' | 'offset'> = {}) {
+export function fetchTrashedNotes({
+    limit = 25,
+    offset = 0,
+    scope,
+}: Pick<FetchNotesParams, 'limit' | 'offset' | 'scope'> = {}) {
     return graphQuery<
         {
             trashedNotes: {
@@ -810,16 +850,18 @@ export function fetchTrashedNotes({ limit = 25, offset = 0 }: Pick<FetchNotesPar
             };
         },
         {
+            scope?: WorkspaceScope;
             pagination: {
                 limit: number;
                 offset: number;
             };
         }
     >(
-        `query FetchTrashedNotes($pagination: PaginationInput) {
-            trashedNotes(pagination: $pagination) {
+        `query FetchTrashedNotes($pagination: PaginationInput, $scope: WorkspaceScopeInput) {
+            trashedNotes(pagination: $pagination, scope: $scope) {
                 totalCount
                 notes {
+                    workspaceId
                     id
                     title
                     createdAt
@@ -834,6 +876,7 @@ export function fetchTrashedNotes({ limit = 25, offset = 0 }: Pick<FetchNotesPar
             }
         }`,
         {
+            ...(scope ? { scope } : {}),
             pagination: {
                 limit,
                 offset,
@@ -983,12 +1026,12 @@ export interface NoteGraph {
     links: GraphLink[];
 }
 
-export function fetchNoteGraph() {
+export function fetchNoteGraph(scope?: WorkspaceScope) {
     return graphQuery<{
         noteGraph: NoteGraph;
     }>(
-        `query FetchNoteGraph {
-            noteGraph {
+        `query FetchNoteGraph($scope: WorkspaceScopeInput) {
+            noteGraph(scope: $scope) {
                 nodes {
                     id
                     title
@@ -1005,5 +1048,24 @@ export function fetchNoteGraph() {
                 }
             }
         }`,
+        scope ? { scope } : undefined,
     );
 }
+
+export const fetchPinnedNotes = (scope?: WorkspaceScope) =>
+    graphQuery<{ pinnedNotes: Pick<Note, 'id' | 'title' | 'order'>[] }>(
+        `
+    query FetchPinnedNotes($scope: WorkspaceScopeInput) { pinnedNotes(scope: $scope) { id title order } }
+`,
+        scope ? { scope } : undefined,
+    );
+
+export const fetchNotesInDateRange = (dateRange: { start: string; end: string }, scope?: WorkspaceScope) =>
+    graphQuery<{ notesInDateRange: Note[] }>(
+        `
+    query NotesInDateRange($dateRange: DateRangeInput!, $scope: WorkspaceScopeInput) {
+        notesInDateRange(dateRange: $dateRange, scope: $scope) { id workspaceId title createdAt updatedAt tags { id name } }
+    }
+`,
+        { dateRange, ...(scope ? { scope } : {}) },
+    );

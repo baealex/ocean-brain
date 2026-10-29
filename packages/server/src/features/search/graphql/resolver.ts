@@ -1,11 +1,13 @@
 import type { IResolvers } from '@graphql-tools/utils';
 import { buildNoteSearchExcerpt } from '~/features/note/services/search.js';
+import type { WorkspaceScopeInput } from '~/features/workspace/scope.js';
 import { type HybridNoteSearchResult, type SearchMode, searchNotesHybrid } from '../hybrid-search.js';
 import { searchRelatedNotes } from '../related-notes.js';
 
 type GraphqlSearchMode = 'HYBRID' | 'LEXICAL' | 'SEMANTIC';
 
 interface SearchNotesResolverInput {
+    scope?: WorkspaceScopeInput;
     query: string;
     mode?: GraphqlSearchMode;
     pagination: {
@@ -15,6 +17,7 @@ interface SearchNotesResolverInput {
 }
 
 interface SearchRelatedNotesResolverInput {
+    scope?: WorkspaceScopeInput;
     noteId: string;
     limit?: number;
 }
@@ -24,14 +27,20 @@ type SearchNotes = (input: {
     limit: number;
     offset: number;
     mode: SearchMode;
+    scope?: WorkspaceScopeInput;
 }) => Promise<HybridNoteSearchResult>;
 
-type SearchRelatedNotes = (noteId: number, limit: number) => Promise<Awaited<ReturnType<typeof searchRelatedNotes>>>;
+type SearchRelatedNotes = (
+    noteId: number,
+    limit: number,
+    scope?: WorkspaceScopeInput,
+) => Promise<Awaited<ReturnType<typeof searchRelatedNotes>>>;
 
 export const createSearchNotesResolver = (search: SearchNotes = searchNotesHybrid) => {
-    return async (_: unknown, { query, pagination, mode = 'HYBRID' }: SearchNotesResolverInput) => {
+    return async (_: unknown, { query, pagination, mode = 'HYBRID', scope }: SearchNotesResolverInput) => {
         const result = await search({
             query,
+            ...(scope ? { scope } : {}),
             limit: Math.min(50, Math.max(0, pagination.limit)),
             offset: Math.max(0, pagination.offset),
             mode: mode.toLowerCase() as SearchMode,
@@ -48,14 +57,16 @@ export const createSearchNotesResolver = (search: SearchNotes = searchNotesHybri
 };
 
 export const createSearchRelatedNotesResolver = (findRelatedNotes: SearchRelatedNotes = searchRelatedNotes) => {
-    return async (_: unknown, { noteId, limit = 5 }: SearchRelatedNotesResolverInput) => {
+    return async (_: unknown, { noteId, limit = 5, scope }: SearchRelatedNotesResolverInput) => {
         const numericNoteId = Number(noteId);
 
         if (!Number.isSafeInteger(numericNoteId) || numericNoteId <= 0) {
             return [];
         }
 
-        return findRelatedNotes(numericNoteId, Math.min(5, Math.max(0, Number(limit))));
+        return scope
+            ? findRelatedNotes(numericNoteId, Math.min(5, Math.max(0, Number(limit))), scope)
+            : findRelatedNotes(numericNoteId, Math.min(5, Math.max(0, Number(limit))));
     };
 };
 

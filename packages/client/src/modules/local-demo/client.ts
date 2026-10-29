@@ -8,12 +8,14 @@ import { placeholdersLocalPlugin } from './plugins/placeholders';
 import { remindersLocalPlugin } from './plugins/reminders';
 import { tagsLocalPlugin } from './plugins/tags';
 import { viewsLocalPlugin } from './plugins/views';
+import { workspacesLocalPlugin } from './plugins/workspaces';
 import { localError } from './response';
 import { localDemoStore } from './store';
 import type { LocalGraphHandler } from './types';
 import { createLocalId, now } from './utils';
 
 const localDemoPlugins = [
+    workspacesLocalPlugin,
     notesLocalPlugin,
     tagsLocalPlugin,
     remindersLocalPlugin,
@@ -61,11 +63,17 @@ export const executeLocalDemoGraphQuery = async <TData extends object>(
     }
 
     const state = localDemoStore.read();
-    return handler({
-        state,
-        variables: (request.variables ?? {}) as Record<string, unknown>,
-        save: () => localDemoStore.save(),
-    }) as GraphQueryResponse<TData>;
+    try {
+        return handler({
+            state,
+            variables: (request.variables ?? {}) as Record<string, unknown>,
+            save: () => localDemoStore.save(),
+        }) as GraphQueryResponse<TData>;
+    } catch (error) {
+        return localError(
+            error instanceof Error ? error.message : 'The local operation failed.',
+        ) as GraphQueryResponse<TData>;
+    }
 };
 
 export const uploadLocalDemoImage = async ({ base64 }: { base64?: string }) => {

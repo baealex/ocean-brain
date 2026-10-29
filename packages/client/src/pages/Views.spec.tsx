@@ -476,7 +476,7 @@ describe('<Views />', () => {
         await user.click(await screen.findByRole('menuitem', { name: 'Move group right' }));
 
         await waitFor(() => {
-            expect(reorderViewGroups).toHaveBeenCalledWith(['group-2', 'group-1']);
+            expect(reorderViewGroups).toHaveBeenCalledWith(['group-2', 'group-1'], '1');
         });
     });
 });

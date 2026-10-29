@@ -109,6 +109,7 @@ const resolveViewCreation = async ({ viewId, groupValue }: NoteViewContextInput,
         where,
         template,
         context: {
+            workspaceId: view.workspaceId,
             templateNote: template ? { id: String(template.id), title: template.title } : null,
             viewId: view.id,
             title: view.title,
@@ -187,6 +188,7 @@ export const prepareNoteForView = async (
     for (const property of input.properties?.set ?? []) values.set(property.key, property);
     for (const key of input.properties?.deleteKeys ?? []) values.delete(key);
     return {
+        workspaceId: Number(creation.workspaceId),
         title:
             template && !input.title.trim()
                 ? await notePlaceholderReplacer(tx)(template.title || 'untitled')

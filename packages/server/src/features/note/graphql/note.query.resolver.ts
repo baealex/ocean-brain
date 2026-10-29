@@ -23,6 +23,7 @@ import {
     normalizeNoteTagNames,
 } from '~/features/note/services/tag-filter.js';
 import { getTrashedNoteById, listTrashedNotes } from '~/features/note/services/trash.js';
+import { resolveWorkspaceWhere, type WorkspaceScopeInput } from '~/features/workspace/scope.js';
 import type { Note, Prisma } from '~/models.js';
 import models from '~/models.js';
 import { runDataMaintenanceInBackground } from '~/modules/data-maintenance.js';
@@ -184,24 +185,29 @@ export const createAllNotesQueryResolver = (
         {
             searchFilter,
             pagination,
+            scope,
         }: {
             searchFilter: SearchFilter;
             pagination: Pagination;
+            scope?: WorkspaceScopeInput;
         },
     ) => {
         const orderBy = buildAllNotesOrderBy(searchFilter);
         const limit = Number(pagination.limit);
         const offset = Number(pagination.offset);
-        const where = buildAllNotesSearchWhere(searchFilter);
+        const workspaceWhere = await resolveWorkspaceWhere(scope);
+        const searchWhere = buildAllNotesSearchWhere(searchFilter);
+        const where = scope ? { ...workspaceWhere, ...searchWhere } : searchWhere;
 
-        if (!where) {
+        if (!searchWhere) {
             const [notes, totalCount] = await Promise.all([
                 deps.findNotes({
                     orderBy,
+                    ...(scope ? { where } : {}),
                     take: limit,
                     skip: offset,
                 }),
-                deps.countNotes({}),
+                deps.countNotes(scope ? { where } : {}),
             ]);
 
             return {
@@ -212,7 +218,7 @@ export const createAllNotesQueryResolver = (
 
         const staleCandidateNotes = await deps.findNotes({
             orderBy,
-            where: buildAllNotesStaleCandidateWhere(searchFilter),
+            where: { ...workspaceWhere, ...buildAllNotesStaleCandidateWhere(searchFilter) },
         });
 
         if (staleCandidateNotes.length === 0) {
@@ -361,6 +367,7 @@ export const createBackReferenceDetailsQueryResolver =
 
 interface NoteGraphQueryResolverDeps {
     findNotes: (args: {
+        where?: Prisma.NoteWhereInput;
         orderBy: Array<{ id: 'asc' }>;
         select: {
             id: true;
@@ -390,9 +397,11 @@ export const createNoteGraphQueryResolver = (
         findReferences: (args) => models.noteReference.findMany(args),
     },
 ) => {
-    return async () => {
+    return async (_?: unknown, { scope }: { scope?: WorkspaceScopeInput } = {}) => {
+        const where = await resolveWorkspaceWhere(scope);
         const [notes, references] = await Promise.all([
             deps.findNotes({
+                ...(scope ? { where } : {}),
                 orderBy: [{ id: 'asc' }],
                 select: {
                     id: true,
@@ -521,15 +530,17 @@ export const noteQueryResolvers: NoteQueryResolvers = {
     notesInDateRange: async (
         _,
         {
+            scope,
             dateRange,
         }: {
+            scope?: WorkspaceScopeInput;
             dateRange: {
                 start: string;
                 end: string;
             };
         },
     ) => {
-        const where = buildNotesInDateRangeWhere(dateRange);
+        const where = { ...(await resolveWorkspaceWhere(scope)), ...buildNotesInDateRangeWhere(dateRange) };
 
         return models.note.findMany({
             orderBy: { createdAt: 'asc' },
@@ -539,14 +550,19 @@ export const noteQueryResolvers: NoteQueryResolvers = {
     tagNotes: async (
         _,
         {
+            scope,
             searchFilter,
             pagination,
         }: {
+            scope?: WorkspaceScopeInput;
             searchFilter: SearchFilter;
             pagination: Pagination;
         },
     ) => {
-        const where: Prisma.NoteWhereInput = { tags: { some: { id: Number(searchFilter.query) } } };
+        const where: Prisma.NoteWhereInput = {
+            ...(await resolveWorkspaceWhere(scope)),
+            tags: { some: { id: Number(searchFilter.query) } },
+        };
         const notes = models.note.findMany({
             orderBy: { updatedAt: 'desc' },
             where,
@@ -562,10 +578,12 @@ export const noteQueryResolvers: NoteQueryResolvers = {
     notesByTagNames: async (
         _,
         {
+            scope,
             tagNames,
             mode,
             pagination,
         }: {
+            scope?: WorkspaceScopeInput;
             tagNames: string[];
             mode: NoteTagMatchMode;
             pagination: Pagination;
@@ -580,7 +598,7 @@ export const noteQueryResolvers: NoteQueryResolvers = {
             };
         }
 
-        const where = buildNoteTagNamesWhere(normalizedTagNames, mode);
+        const where = { ...(await resolveWorkspaceWhere(scope)), ...buildNoteTagNamesWhere(normalizedTagNames, mode) };
         const notes = models.note.findMany({
             orderBy: { updatedAt: 'desc' },
             where,
@@ -593,10 +611,10 @@ export const noteQueryResolvers: NoteQueryResolvers = {
             notes,
         };
     },
-    pinnedNotes: async () =>
+    pinnedNotes: async (_, { scope }: { scope?: WorkspaceScopeInput } = {}) =>
         models.note.findMany({
             orderBy: [{ order: 'asc' }, { updatedAt: 'desc' }],
-            where: { pinned: true },
+            where: { ...(await resolveWorkspaceWhere(scope)), pinned: true },
         }),
     imageNotes: async (_, { src }: { src: string }) =>
         models.note.findMany({
@@ -684,17 +702,20 @@ export const noteQueryResolvers: NoteQueryResolvers = {
     notePropertyKeys: async (
         _,
         {
+            scope,
             query,
             pagination = {
                 limit: 50,
                 offset: 0,
             },
         }: {
+            scope?: WorkspaceScopeInput;
             query?: string;
             pagination: Pagination;
         },
     ) => {
         return listNotePropertyKeys({
+            scope,
             query,
             limit: Number(pagination.limit),
             offset: Number(pagination.offset),
@@ -706,15 +727,19 @@ export const noteQueryResolvers: NoteQueryResolvers = {
     trashedNotes: async (
         _,
         {
+            scope,
             pagination = {
                 limit: 25,
                 offset: 0,
             },
         }: {
             pagination: Pagination;
+            scope?: WorkspaceScopeInput;
         },
     ) => {
+        const where = await resolveWorkspaceWhere(scope);
         return listTrashedNotes({
+            workspaceId: where.workspaceId,
             limit: Number(pagination.limit),
             offset: Number(pagination.offset),
         });

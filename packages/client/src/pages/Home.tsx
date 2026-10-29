@@ -1,17 +1,17 @@
 import { getRouteApi } from '@tanstack/react-router';
-
 import { QueryBoundary } from '~/components/app';
 import Notes from '~/components/entities/Notes';
 import NoteListCard from '~/components/note/NoteListCard';
 import { Empty, FallbackRender, NoteFilters, PageLayout, Pagination, Skeleton } from '~/components/shared';
-
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
+import { useWorkspaceScope } from '~/hooks/useWorkspaceScope';
 import type { HomeRouteSearch } from '~/modules/route-search';
 import { HOME_ROUTE } from '~/modules/url';
 
 const Route = getRouteApi(HOME_ROUTE);
 
 export default function Home() {
+    const scope = useWorkspaceScope(true);
     const navigate = Route.useNavigate();
     const { limit, page, sortBy, sortOrder, pinnedFirst } = Route.useSearch();
 
@@ -69,10 +69,19 @@ export default function Home() {
                     }
                     errorTitle="Failed to load notes"
                     errorDescription="Retry loading the current note list."
-                    resetKeys={[page, limit, sortBy, sortOrder, pinnedFirst]}
+                    resetKeys={[
+                        scope.kind,
+                        scope.kind === 'workspace' ? scope.workspaceId : null,
+                        page,
+                        limit,
+                        sortBy,
+                        sortOrder,
+                        pinnedFirst,
+                    ]}
                 >
                     <Notes
                         searchParams={{
+                            scope,
                             offset: (page - 1) * limit,
                             limit,
                             sortBy,

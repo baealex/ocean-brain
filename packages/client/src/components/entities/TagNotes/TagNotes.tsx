@@ -13,6 +13,7 @@ const TagNotes = (props: TagNotesProps) => {
         queryKey: queryKeys.notes.tagList(props.searchParams),
         async queryFn() {
             const response = await fetchTagNotes({
+                scope: props.searchParams.scope,
                 query: props.searchParams.query,
                 offset: props.searchParams.offset,
                 limit: props.searchParams.limit,

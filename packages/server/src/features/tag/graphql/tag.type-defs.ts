@@ -21,6 +21,7 @@ export const tagType = gql`
     }
 
     type Tags {
+        resolvedScope: WorkspaceReadScope!
         totalCount: Int!
         tags: [Tag!]!
     }
@@ -28,7 +29,7 @@ export const tagType = gql`
 
 export const tagQuery = gql`
     type Query {
-        allTags(searchFilter: SearchFilterInput, pagination: PaginationInput): Tags!
+        allTags(searchFilter: SearchFilterInput, pagination: PaginationInput, scope: WorkspaceScopeInput): Tags!
         tagsByNames(names: [String!]!): [Tag!]!
     }
 `;

@@ -1,4 +1,5 @@
 import type { IResolvers } from '@graphql-tools/utils';
+import { requireWritableNote } from '~/features/workspace/scope.js';
 import type { Reminder } from '~/models.js';
 import models from '~/models.js';
 
@@ -33,7 +34,11 @@ interface ReminderMutationDeps {
 
 export const createCreateReminderMutationResolver = (
     deps: Pick<ReminderMutationDeps, 'createReminder'> = {
-        createReminder: async (data) => models.reminder.create({ data }),
+        createReminder: async (data) =>
+            models.$transaction(async (tx) => {
+                await requireWritableNote(data.noteId, tx);
+                return tx.reminder.create({ data });
+            }),
     },
 ) => {
     return async (_: unknown, input: ReminderCreateInput) => {
@@ -50,9 +55,10 @@ export const createCreateReminderMutationResolver = (
 export const createUpdateReminderMutationResolver = (
     deps: Pick<ReminderMutationDeps, 'updateReminder'> = {
         updateReminder: async (id, data) =>
-            models.reminder.update({
-                where: { id },
-                data,
+            models.$transaction(async (tx) => {
+                const reminder = await tx.reminder.findUniqueOrThrow({ where: { id } });
+                await requireWritableNote(reminder.noteId, tx);
+                return tx.reminder.update({ where: { id }, data });
             }),
     },
 ) => {
@@ -82,7 +88,11 @@ export const createUpdateReminderMutationResolver = (
 export const createDeleteReminderMutationResolver = (
     deps: Pick<ReminderMutationDeps, 'deleteReminder'> = {
         deleteReminder: async (id) => {
-            await models.reminder.delete({ where: { id } });
+            await models.$transaction(async (tx) => {
+                const reminder = await tx.reminder.findUniqueOrThrow({ where: { id } });
+                await requireWritableNote(reminder.noteId, tx);
+                await tx.reminder.delete({ where: { id } });
+            });
         },
     },
 ) => {

@@ -52,9 +52,9 @@ export const reminderType = gql`
 export const reminderQuery = gql`
     extend type Query {
         noteReminders(noteId: ID!, pagination: PaginationInput): Reminders!
-        reminders(filter: ReminderFilterInput!, pagination: PaginationInput): Reminders!
-        upcomingReminders(pagination: PaginationInput): Reminders!
-        remindersInDateRange(dateRange: DateRangeInput): [Reminder!]!
+        reminders(filter: ReminderFilterInput!, pagination: PaginationInput, scope: WorkspaceScopeInput): Reminders!
+        upcomingReminders(pagination: PaginationInput, scope: WorkspaceScopeInput): Reminders!
+        remindersInDateRange(dateRange: DateRangeInput, scope: WorkspaceScopeInput): [Reminder!]!
     }
 `;
 

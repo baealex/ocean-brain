@@ -1,3 +1,4 @@
+import { RESOLVED_SCOPE_FIELDS, resolvedScopeSchema, workspaceIdSchema, workspaceScopeSchema } from './mcp-workspace-tools.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import {
@@ -37,11 +38,13 @@ export const registerViewTools = (server: McpServer, request: McpQueryRequest) =
             description:
                 'Find saved views by view or view group title. A view stores filters, sorting and a display format; a view group organizes views. Returns IDs and saved settings without loading notes or switching groups. Use viewId to read a view; groupTitle is its group name.',
             inputSchema: {
+                scope: workspaceScopeSchema.optional(),
                 query: z.string().default(''),
                 limit: pageLimitSchema(20, 50),
                 offset: pageOffsetSchema,
             },
             outputSchema: {
+                resolvedScope: resolvedScopeSchema.optional(),
                 totalCount: z.number(),
                 views: z.array(
                     z.object({
@@ -54,18 +57,20 @@ export const registerViewTools = (server: McpServer, request: McpQueryRequest) =
             },
             annotations: { readOnlyHint: true },
         },
-        async ({ query, limit, offset }) => {
+        async ({ query, limit, offset, scope }) => {
             const data = await request(
-                `query ($query: String, $pagination: PaginationInput) { views(query: $query, pagination: $pagination) { totalCount views { groupTitle view { ${VIEW_FIELDS} } } } }`,
-                { query, pagination: { limit, offset } },
+                `query ($query: String, $pagination: PaginationInput, $scope: WorkspaceScopeInput) { views(query: $query, pagination: $pagination, scope: $scope) { ${RESOLVED_SCOPE_FIELDS} totalCount views { groupTitle view { ${VIEW_FIELDS} } } } }`,
+                { query, pagination: { limit, offset }, ...(scope ? { scope } : {}) },
             );
             const result = z
                 .object({
+                    resolvedScope: resolvedScopeSchema.optional(),
                     totalCount: z.number(),
                     views: z.array(z.object({ groupTitle: z.string(), view: viewSchema })),
                 })
                 .parse(data?.views);
             return createMcpJsonToolResult({
+                ...(result.resolvedScope ? { resolvedScope: result.resolvedScope } : {}),
                 totalCount: result.totalCount,
                 views: result.views.map((view) => ({
                     ...view,
@@ -82,6 +87,7 @@ export const registerViewTools = (server: McpServer, request: McpQueryRequest) =
             description:
                 'Read one saved view by viewId, with its filters, display format and paged note rows. View groups organize views; this reads an individual view. Board: omit groupValue for all columns; null means unclassified. Calendar: dateRange is required ([start,end), at most 32 days); saved date field controls order. propertyKeys overrides table columns; omit to use saved table property columns. view.limit is the saved view display limit, separate from page.limit.',
             inputSchema: {
+                workspaceId: workspaceIdSchema.optional().describe('Optional expected owner; conflicting IDs are rejected.'),
                 viewId: z.string().min(1).describe('Saved view ID returned by ocean_brain_list_views.'),
                 limit: pageLimitSchema(20, 50),
                 offset: pageOffsetSchema,
@@ -100,16 +106,17 @@ export const registerViewTools = (server: McpServer, request: McpQueryRequest) =
             },
             annotations: { readOnlyHint: true },
         },
-        async ({ viewId, limit, offset, propertyKeys, groupValue, dateRange }) => {
+        async ({ viewId, limit, offset, propertyKeys, groupValue, dateRange, workspaceId }) => {
             const data = await request(
-                `query ($id: ID!, $pagination: PaginationInput, $propertyKeys: [String!], $groupValue: String, $dateRange: DateRangeInput) {
-            readView(id: $id, pagination: $pagination, propertyKeys: $propertyKeys, groupValue: $groupValue, dateRange: $dateRange) {
+                `query ($id: ID!, $workspaceId: ID, $pagination: PaginationInput, $propertyKeys: [String!], $groupValue: String, $dateRange: DateRangeInput) {
+            readView(id: $id, workspaceId: $workspaceId, pagination: $pagination, propertyKeys: $propertyKeys, groupValue: $groupValue, dateRange: $dateRange) {
                 view { ${VIEW_FIELDS} } totalCount groupProperty { key name options { id label value color order } }
                 rows { groupValue calendarDate note { ${NOTE_SUMMARY_FIELDS} } }
             }
         }`,
                 {
-                    id: viewId,
+                    ...(workspaceId ? { workspaceId } : {}),
+                id: viewId,
                     pagination: { limit, offset },
                     propertyKeys,
                     groupValue,

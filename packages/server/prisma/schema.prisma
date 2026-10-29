@@ -51,7 +51,22 @@ model IntegrationCredential {
   statusReport String?
 }
 
+model Workspace {
+  id           Int                  @id @default(autoincrement())
+  name         String
+  archivedAt   DateTime?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  notes        Note[]
+  deletedNotes DeletedNote[]
+  properties   PropertyDefinition[]
+  viewGroups   ViewGroup[]
+  dashboard    ViewDashboardState?
+}
+
 model Note {
+  workspaceId           Int             @default(1)
+  workspace             Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
   id                    Int             @id @default(autoincrement())
   title                 String
   content               String
@@ -68,6 +83,9 @@ model Note {
   properties            NoteProperty[]
   outgoingReferences    NoteReference[] @relation("NoteReferenceSource")
 
+  @@index([workspaceId, updatedAt, id])
+  @@index([workspaceId, createdAt, id])
+  @@index([workspaceId, pinned, updatedAt, id])
   @@index([updatedAt, id])
   @@index([createdAt, id])
   @@index([pinned, updatedAt, id])
@@ -89,14 +107,18 @@ model NoteReferenceIndexState {
 }
 
 model PropertyDefinition {
-  id         Int               @id @default(autoincrement())
-  key        String            @unique
-  name       String
-  valueType  PropertyValueType
-  createdAt  DateTime          @default(now())
-  updatedAt  DateTime          @updatedAt
-  options    PropertyOption[]
-  properties NoteProperty[]
+  workspaceId Int               @default(1)
+  workspace   Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  id          Int               @id @default(autoincrement())
+  key         String            @unique
+  name        String
+  valueType   PropertyValueType
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  options     PropertyOption[]
+  properties  NoteProperty[]
+
+  @@index([workspaceId, key])
 }
 
 model PropertyOption {
@@ -155,19 +177,22 @@ model NoteSnapshot {
 }
 
 model DeletedNote {
-  id         Int                   @id
-  title      String
-  content    String
-  createdAt  DateTime
-  updatedAt  DateTime
-  deletedAt  DateTime              @default(now())
-  pinned     Boolean               @default(false)
-  order      Int                   @default(0)
-  layout     NoteLayout            @default(wide)
-  tags       DeletedNoteTag[]
-  reminders  DeletedReminder[]
-  properties DeletedNoteProperty[]
+  workspaceId Int                   @default(1)
+  workspace   Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  id          Int                   @id
+  title       String
+  content     String
+  createdAt   DateTime
+  updatedAt   DateTime
+  deletedAt   DateTime              @default(now())
+  pinned      Boolean               @default(false)
+  order       Int                   @default(0)
+  layout      NoteLayout            @default(wide)
+  tags        DeletedNoteTag[]
+  reminders   DeletedReminder[]
+  properties  DeletedNoteProperty[]
 
+  @@index([workspaceId, deletedAt, updatedAt])
   @@index([deletedAt, updatedAt])
 }
 
@@ -275,8 +300,9 @@ model Placeholder {
   updatedAt   DateTime @updatedAt
 }
 
-model ViewWorkspace {
-  id            Int        @id
+model ViewDashboardState {
+  workspaceId   Int        @id
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
   activeGroupId Int?
   activeGroup   ViewGroup? @relation("ActiveViewGroup", fields: [activeGroupId], references: [id], onDelete: SetNull)
   createdAt     DateTime   @default(now())
@@ -284,14 +310,17 @@ model ViewWorkspace {
 }
 
 model ViewGroup {
-  id               Int             @id @default(autoincrement())
+  workspaceId      Int                  @default(1)
+  workspace        Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  id               Int                  @id @default(autoincrement())
   title            String
-  order            Int             @default(0)
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  order            Int                  @default(0)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
   views            View[]
-  activeWorkspaces ViewWorkspace[] @relation("ActiveViewGroup")
+  activeWorkspaces ViewDashboardState[] @relation("ActiveViewGroup")
 
+  @@index([workspaceId, order, createdAt])
   @@index([order, createdAt])
 }
 

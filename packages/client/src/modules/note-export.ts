@@ -2,6 +2,8 @@ import JSZip from 'jszip';
 import { getSupportedImageFileExtension } from './image-upload-policy';
 
 export interface NoteExportMetadata {
+    workspaceId?: string;
+    workspaceName?: string;
     id: string;
     title: string;
     createdAt?: string;
@@ -586,7 +588,14 @@ export const getNoteExportFilename = (title: string, extension: 'md' | 'html' | 
     return `${normalizeTitleForFilename(title)}.${extension}`;
 };
 
-export const createMarkdownFrontmatter = ({ id, title, createdAt, updatedAt }: NoteExportMetadata) => {
+export const createMarkdownFrontmatter = ({
+    id,
+    title,
+    createdAt,
+    updatedAt,
+    workspaceId,
+    workspaceName,
+}: NoteExportMetadata) => {
     const lines = ['---', `title: ${formatYamlString(title)}`, `note_id: ${formatYamlString(id)}`];
     const formattedCreatedAt = formatTimestamp(createdAt);
     const formattedUpdatedAt = formatTimestamp(updatedAt);
@@ -599,6 +608,8 @@ export const createMarkdownFrontmatter = ({ id, title, createdAt, updatedAt }: N
         lines.push(`updated_at: ${formatYamlString(formattedUpdatedAt)}`);
     }
 
+    if (workspaceId) lines.push(`workspace_id: ${formatYamlString(workspaceId)}`);
+    if (workspaceName) lines.push(`workspace_name: ${formatYamlString(workspaceName)}`);
     lines.push('source: ocean-brain', '---');
 
     return lines.join('\n');
@@ -640,6 +651,8 @@ export const createHtmlExport = (
               'source: ocean-brain',
               `note_id: ${formatHtmlCommentValue(metadata.id)}`,
               `title: ${formatHtmlCommentValue(metadata.title)}`,
+              ...(metadata.workspaceId ? [`workspace_id: ${formatHtmlCommentValue(metadata.workspaceId)}`] : []),
+              ...(metadata.workspaceName ? [`workspace_name: ${formatHtmlCommentValue(metadata.workspaceName)}`] : []),
               `created_at: ${formatHtmlCommentValue(formatTimestamp(metadata.createdAt) ?? '')}`,
               `updated_at: ${formatHtmlCommentValue(formatTimestamp(metadata.updatedAt) ?? '')}`,
               '-->',

@@ -14,6 +14,7 @@ export const viewType = gql`
     }
 
     type ViewNoteCreationContext {
+        workspaceId: ID!
         templateNote: ViewTemplateNote
         viewId: ID!
         title: String!
@@ -40,13 +41,14 @@ export const viewType = gql`
     }
 
     type NotesQueryResult {
+        resolvedScope: WorkspaceReadScope!
         query: NotesQueryConditions!
         totalCount: Int!
         notes: [Note!]!
     }
 
     type ViewListing { view: View!, groupTitle: String! }
-    type ViewListings { totalCount: Int!, views: [ViewListing!]! }
+    type ViewListings { resolvedScope: WorkspaceReadScope!, totalCount: Int!, views: [ViewListing!]! }
     type ViewReadRow { note: Note!, groupValue: String, calendarDate: String }
     type ViewGroupProperty { key: String!, name: String!, options: [NotePropertyOption!]! }
     type ViewReadResult {
@@ -61,6 +63,7 @@ export const viewType = gql`
     }
 
     type ViewGroup {
+        workspaceId: ID!
         id: ID!
         title: String!
         order: Int!
@@ -68,6 +71,7 @@ export const viewType = gql`
     }
 
     type View {
+        workspaceId: ID!
         defaultTemplateNoteId: ID
         id: ID!
         groupId: ID!
@@ -188,6 +192,7 @@ export const viewType = gql`
     }
 
     input NotesByPropertiesInput {
+        scope: WorkspaceScopeInput
         tagNames: [String!]
         mode: TagMatchMode
         propertyFilters: [ViewPropertyFilterInput!]!
@@ -200,9 +205,9 @@ export const viewQuery = gql`
     type Query {
         viewNoteCreationContext(viewId: ID!, groupValue: String): ViewNoteCreationContext!
         notesByQuery(input: NotesByPropertiesInput!, pagination: PaginationInput): NotesQueryResult!
-        views(query: String, pagination: PaginationInput): ViewListings!
-        readView(id: ID!, pagination: PaginationInput, propertyKeys: [String!], groupValue: String, dateRange: DateRangeInput): ViewReadResult!
-        viewWorkspace: ViewWorkspace!
+        views(query: String, pagination: PaginationInput, scope: WorkspaceScopeInput): ViewListings!
+        readView(id: ID!, workspaceId: ID, pagination: PaginationInput, propertyKeys: [String!], groupValue: String, dateRange: DateRangeInput): ViewReadResult!
+        viewWorkspace(workspaceId: ID): ViewWorkspace!
         view(id: ID!): View
         viewNotes(
             id: ID!
@@ -219,11 +224,11 @@ export const viewQuery = gql`
 export const viewMutation = gql`
     type Mutation {
         createNoteInView(viewId: ID!, input: ViewNoteInput!, groupValue: String): Note!
-        createViewGroup(title: String!): ViewGroup!
+        createViewGroup(title: String!, workspaceId: ID): ViewGroup!
         updateViewGroup(id: ID!, title: String!): ViewGroup!
         deleteViewGroup(id: ID!): Boolean!
         setActiveViewGroup(id: ID!): ViewWorkspace!
-        reorderViewGroups(groupIds: [ID!]!): [ViewGroup!]!
+        reorderViewGroups(groupIds: [ID!]!, workspaceId: ID): [ViewGroup!]!
         createView(groupId: ID!, input: ViewInput!): View!
         updateView(id: ID!, input: ViewInput!): View!
         deleteView(id: ID!): Boolean!

@@ -1,19 +1,22 @@
 import { getRouteApi, Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
-
 import { QueryBoundary } from '~/components/app';
 import { Tags } from '~/components/entities';
 import * as Icon from '~/components/icon';
 import { Empty, FallbackRender, PageLayout, Pagination, Skeleton } from '~/components/shared';
 import { Select, SelectItem, Text } from '~/components/ui';
 import useDebounce from '~/hooks/useDebounce';
+import { useWorkspaceScope } from '~/hooks/useWorkspaceScope';
 import type { TagRouteSearch } from '~/modules/route-search';
 import { isTagLimit, TAG_DEFAULT_LIMIT, TAG_LIMIT_OPTIONS } from '~/modules/tag-pagination';
 import { TAG_NOTES_ROUTE, TAG_ROUTE } from '~/modules/url';
+import { useWorkspace } from '~/store/workspace';
 
 const Route = getRouteApi(TAG_ROUTE);
 
 export default function Tag() {
+    const scope = useWorkspaceScope();
+    const { workspaceId, scopeWorkspace, multiple } = useWorkspace();
     const navigate = Route.useNavigate();
     const { page, query, limit, sortBy, sortOrder } = Route.useSearch();
     const [draftQuery, setDraftQuery] = useState(query);
@@ -168,10 +171,19 @@ export default function Tag() {
                 }
                 errorTitle="Failed to load tags"
                 errorDescription="Retry loading the tag catalog"
-                resetKeys={[page, limit, normalizedQuery, sortBy, sortOrder]}
+                resetKeys={[
+                    scope.kind,
+                    scope.kind === 'workspace' ? scope.workspaceId : null,
+                    page,
+                    limit,
+                    normalizedQuery,
+                    sortBy,
+                    sortOrder,
+                ]}
             >
                 <Tags
                     searchParams={{
+                        scope,
                         query: normalizedQuery,
                         offset: (page - 1) * limit,
                         limit,
@@ -199,7 +211,10 @@ export default function Tag() {
                                                 key={tag.id}
                                                 to={TAG_NOTES_ROUTE}
                                                 params={{ id: tag.id }}
-                                                search={{ page: 1 }}
+                                                search={{
+                                                    page: 1,
+                                                    ...(multiple ? { workspace: workspaceId, scopeWorkspace } : {}),
+                                                }}
                                                 className="inline-flex items-center gap-1.5 rounded-full border border-border-subtle bg-hover-subtle px-3 py-1.5 text-fg-secondary transition-colors hover:border-border-secondary hover:bg-hover hover:text-fg-default"
                                             >
                                                 <Text as="span" variant="meta" weight="medium" className="text-current">

@@ -26,6 +26,7 @@ interface JsonSchema {
 }
 
 const EXPECTED_TOOL_ORDER = [
+    OCEAN_BRAIN_MCP_TOOLS.listWorkspaces,
     OCEAN_BRAIN_MCP_TOOLS.queryNotes,
     OCEAN_BRAIN_MCP_TOOLS.listViews,
     OCEAN_BRAIN_MCP_TOOLS.readView,
@@ -42,21 +43,23 @@ const EXPECTED_TOOL_ORDER = [
 ];
 
 const EXPECTED_SCHEMA_KEYS: Record<string, string[]> = {
+    [OCEAN_BRAIN_MCP_TOOLS.listWorkspaces]: [],
     [OCEAN_BRAIN_MCP_TOOLS.queryNotes]: [
         'limit',
         'mode',
         'offset',
         'propertyFilters',
         'propertyKeys',
+        'scope',
         'sortBy',
         'sortOrder',
         'tagNames',
     ],
-    [OCEAN_BRAIN_MCP_TOOLS.listViews]: ['limit', 'offset', 'query'],
-    [OCEAN_BRAIN_MCP_TOOLS.readView]: ['dateRange', 'groupValue', 'limit', 'offset', 'propertyKeys', 'viewId'],
-    [OCEAN_BRAIN_MCP_TOOLS.searchNotes]: ['limit', 'mode', 'offset', 'query'],
+    [OCEAN_BRAIN_MCP_TOOLS.listViews]: ['limit', 'offset', 'query', 'scope'],
+    [OCEAN_BRAIN_MCP_TOOLS.readView]: ['dateRange', 'groupValue', 'limit', 'offset', 'propertyKeys', 'viewId', 'workspaceId'],
+    [OCEAN_BRAIN_MCP_TOOLS.searchNotes]: ['limit', 'mode', 'offset', 'query', 'scope'],
     [OCEAN_BRAIN_MCP_TOOLS.readNote]: ['backlinkContext', 'expectedUpdatedAt', 'heading', 'id', 'maxLength', 'offset'],
-    [OCEAN_BRAIN_MCP_TOOLS.createNote]: ['layout', 'markdown', 'properties', 'title', 'viewContext'],
+    [OCEAN_BRAIN_MCP_TOOLS.createNote]: ['layout', 'markdown', 'properties', 'title', 'viewContext', 'workspaceId'],
     [OCEAN_BRAIN_MCP_TOOLS.patchNoteMarkdown]: [
         'baseMarkdownSha256',
         'expectedUpdatedAt',
@@ -85,12 +88,13 @@ const EXPECTED_SCHEMA_KEYS: Record<string, string[]> = {
         'policy',
         'replacement',
     ],
-    [OCEAN_BRAIN_MCP_TOOLS.listTags]: ['limit', 'offset', 'query'],
-    [OCEAN_BRAIN_MCP_TOOLS.listProperties]: ['limit', 'offset', 'query'],
+    [OCEAN_BRAIN_MCP_TOOLS.listTags]: ['limit', 'offset', 'query', 'scope'],
+    [OCEAN_BRAIN_MCP_TOOLS.listProperties]: ['limit', 'offset', 'query', 'scope'],
     [OCEAN_BRAIN_MCP_TOOLS.deleteNote]: ['id'],
 };
 
 const EXPECTED_REQUIRED_FIELDS: Record<string, string[]> = {
+    [OCEAN_BRAIN_MCP_TOOLS.listWorkspaces]: [],
     [OCEAN_BRAIN_MCP_TOOLS.queryNotes]: [],
     [OCEAN_BRAIN_MCP_TOOLS.listViews]: [],
     [OCEAN_BRAIN_MCP_TOOLS.readView]: ['viewId'],
@@ -109,7 +113,7 @@ const EXPECTED_REQUIRED_FIELDS: Record<string, string[]> = {
 const cliRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 describe('Ocean Brain MCP stdio contract', () => {
-    test('exposes the 13 core tools and serialized input schemas', {
+    test('exposes the 14 core tools and serialized input schemas', {
         timeout: 30_000,
     }, async () => {
         // Arrange

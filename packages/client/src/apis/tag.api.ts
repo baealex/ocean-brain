@@ -1,7 +1,9 @@
 import type { Tag } from '~/models/tag.model';
+import type { WorkspaceScope } from '~/models/workspace.model';
 import { graphQuery } from '~/modules/graph-query';
 
 export interface FetchTagsParams {
+    scope?: WorkspaceScope;
     query?: string;
     limit?: number;
     offset?: number;
@@ -10,6 +12,7 @@ export interface FetchTagsParams {
 }
 
 export function fetchTags({
+    scope,
     query = '',
     limit = 50,
     offset = 0,
@@ -25,10 +28,11 @@ export function fetchTags({
         `query FetchTags(
             $searchFilter: SearchFilterInput,
             $pagination: PaginationInput
+            $scope: WorkspaceScopeInput
         ) {
             allTags(
                 searchFilter: $searchFilter,
-                pagination: $pagination
+                pagination: $pagination, scope: $scope
             ) {
                 totalCount
                 tags {
@@ -39,6 +43,7 @@ export function fetchTags({
             }
         }`,
         {
+            ...(scope ? { scope } : {}),
             searchFilter: { query, sortBy, sortOrder },
             pagination: {
                 limit,

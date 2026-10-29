@@ -14,6 +14,37 @@ import {
     registerMcpTools,
 } from '../src/mcp.js';
 
+test('MCP workspace discovery and scoped search retain explicit request ownership', async () => {
+    const requests: Array<{ query: string; variables?: Record<string, unknown> }> = [];
+    const scope = { kind: 'workspace', workspaceId: '2' };
+    const workspace = { id: '2', name: 'Diet', archivedAt: null, createdAt: '2026-10-29T00:00:00Z', updatedAt: '2026-10-29T00:00:00Z' };
+    const server = new McpServer({ name: 'workspace-test', version: '1' });
+    const client = new Client({ name: 'workspace-test', version: '1' });
+    registerMcpTools(server, 'http://localhost:6683', 'token', {
+        graphqlRequest: async (_url, _token, query, variables) => {
+            requests.push({ query, variables });
+            return query.includes('searchNotes(')
+                ? { searchNotes: { resolvedScope: scope, totalCount: 0, notes: [], matches: [], semanticAvailable: false, semanticUsed: false, semanticError: null } }
+                : { workspaces: [workspace] };
+        },
+    });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    try {
+        await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+        const discovery = await client.callTool({ name: OCEAN_BRAIN_MCP_TOOLS.listWorkspaces, arguments: {} });
+        assert.deepEqual(discovery.structuredContent, { workspaces: [workspace] });
+        const result = await client.callTool({ name: OCEAN_BRAIN_MCP_TOOLS.searchNotes, arguments: { query: 'record', scope } });
+        assert.deepEqual(result.structuredContent?.resolvedScope, scope);
+        assert.deepEqual(requests[1].variables?.scope, scope);
+        const invalid = await client.callTool({ name: OCEAN_BRAIN_MCP_TOOLS.searchNotes, arguments: { query: 'record', scope: { kind: 'workspace' } } });
+        assert.equal(invalid.isError, true);
+        assert.equal(requests.length, 2);
+    } finally {
+        await client.close();
+        await server.close();
+    }
+});
+
 test('createMcpRequestHeaders includes MCP compatibility and client version headers', () => {
     const headers = createMcpRequestHeaders('token-a');
 
@@ -117,7 +148,7 @@ test('MCP note search gives every explicit mode one result contract with paginat
             })),
         );
         for (const request of requests) {
-            assert.match(request.query, /searchNotes\(query: \$query, mode: \$mode, pagination: \$pagination\)/);
+            assert.match(request.query, /searchNotes\(query: \$query, mode: \$mode, pagination: \$pagination, scope: \$scope\)/);
             assert.match(request.query, /contentPreview/);
             assert.doesNotMatch(request.query, /contentAsMarkdown/);
         }
@@ -179,7 +210,7 @@ test('MCP note search defaults to hybrid mode when mode is omitted', async () =>
         });
 
         assert.equal(requests.length, 1);
-        assert.match(requests[0].query, /searchNotes\(query: \$query, mode: \$mode, pagination: \$pagination\)/);
+        assert.match(requests[0].query, /searchNotes\(query: \$query, mode: \$mode, pagination: \$pagination, scope: \$scope\)/);
         assert.match(requests[0].query, /contentPreview/);
         assert.doesNotMatch(requests[0].query, /contentAsMarkdown/);
         assert.deepEqual(requests[0].variables, {

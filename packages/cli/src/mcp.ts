@@ -1,3 +1,4 @@
+import { registerWorkspaceTools, resolvedScopeSchema, workspaceIdSchema, workspaceScopeSchema } from './mcp-workspace-tools.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import fs from 'fs';
@@ -52,6 +53,7 @@ export const OCEAN_BRAIN_MCP_TOOLS = {
     replaceNoteMarkdown: 'ocean_brain_replace_note_markdown',
     listTags: 'ocean_brain_list_tags',
     listProperties: 'ocean_brain_list_properties',
+    listWorkspaces: 'ocean_brain_list_workspaces',
     deleteNote: 'ocean_brain_delete_note',
 } as const;
 
@@ -163,6 +165,7 @@ const requireWriteToken = (token: string | undefined, toolName: string) => {
 };
 
 interface McpSearchNote {
+    workspaceId?: string;
     id: string;
     title: string;
     updatedAt: string;
@@ -172,6 +175,7 @@ interface McpSearchNote {
 
 const formatMcpSearchNotes = (notes: McpSearchNote[]) =>
     notes.map((note) => ({
+        ...(note.workspaceId ? { workspaceId: note.workspaceId } : {}),
         id: note.id,
         title: note.title,
         updatedAt: note.updatedAt,
@@ -192,6 +196,7 @@ export const registerMcpTools = (
     const graphqlRequest = options.graphqlRequest ?? graphql;
     const queryRequest = (query: string, variables: Record<string, unknown>) =>
         graphqlRequest(serverUrl, token, query, variables);
+    registerWorkspaceTools(server, queryRequest);
     registerQueryTools(server, queryRequest);
     registerViewTools(server, queryRequest);
 
@@ -199,6 +204,7 @@ export const registerMcpTools = (
         OCEAN_BRAIN_MCP_TOOLS.searchNotes,
         'Search Ocean Brain notes by keyword or meaning. Lexical uses words only, hybrid combines words and meaning, and semantic uses meaning only. Results use one ranked result shape with match and semantic-search status. Use ocean_brain_read_note to get full content for a specific note.',
         {
+            scope: workspaceScopeSchema.optional(),
             query: z.string().describe('Search words or a natural-language description'),
             limit: pageLimitSchema(10, 50).describe(
                 'Results per page. Search returns at most 50 per page. (default: 10)',
@@ -212,13 +218,14 @@ export const registerMcpTools = (
                 .describe('Results to skip for pagination (default: 0)'),
             mode: searchModeSchema.default('hybrid').describe('Search mode. Defaults to hybrid.'),
         },
-        async ({ query, limit, offset, mode }) => {
+        async ({ query, limit, offset, mode, scope }) => {
             const data = await graphqlRequest(
                 serverUrl,
                 token,
                 `
-                query ($query: String!, $mode: SearchMode!, $pagination: PaginationInput!) {
-                    searchNotes(query: $query, mode: $mode, pagination: $pagination) {
+                query ($query: String!, $mode: SearchMode!, $pagination: PaginationInput!, $scope: WorkspaceScopeInput) {
+                    searchNotes(query: $query, mode: $mode, pagination: $pagination, scope: $scope) {
+                        resolvedScope { kind workspaceId }
                         totalCount
                         semanticAvailable
                         semanticUsed
@@ -230,6 +237,7 @@ export const registerMcpTools = (
                             excerpt { text source start end }
                         }
                         notes {
+                            workspaceId
                             id
                             title
                             updatedAt
@@ -240,6 +248,7 @@ export const registerMcpTools = (
                 }
             `,
                 {
+                    ...(scope ? { scope } : {}),
                     query,
                     mode: graphqlSearchModes[mode],
                     pagination: { limit, offset },
@@ -247,6 +256,7 @@ export const registerMcpTools = (
             );
 
             const result = data?.searchNotes as {
+                resolvedScope?: z.infer<typeof resolvedScopeSchema>;
                 totalCount: number;
                 semanticAvailable: boolean;
                 semanticUsed: boolean;
@@ -260,6 +270,7 @@ export const registerMcpTools = (
             };
 
             return createMcpJsonToolResult({
+                ...(result.resolvedScope ? { resolvedScope: resolvedScopeSchema.parse(result.resolvedScope) } : {}),
                 totalCount: result.totalCount,
                 semanticAvailable: result.semanticAvailable,
                 semanticUsed: result.semanticUsed,
@@ -298,9 +309,9 @@ export const registerMcpTools = (
                     noteRead(id: $id, maxLength: $maxLength, offset: $offset, heading: $heading, expectedUpdatedAt: $expectedUpdatedAt) {
                         status reason message markdown
                         candidates { heading level start end }
-                        linkedViews { viewId title groupId groupTitle displayType status }
+                        linkedViews { workspaceId viewId title groupId groupTitle displayType status }
                         contentRange { start end totalLength sectionEnd hasMore nextOffset }
-                        note { id title createdAt updatedAt tags { id name } properties { key name value valueType option { label value } } }
+                        note { workspaceId workspace { id name archivedAt } id title createdAt updatedAt tags { id name } properties { key name value valueType option { label value } } }
                     }
                     ${referenceQuery}
                 }
@@ -315,6 +326,7 @@ export const registerMcpTools = (
         OCEAN_BRAIN_MCP_TOOLS.createNote,
         'Create a note from Markdown, optionally within a saved view. Search first to avoid duplicates.',
         {
+            workspaceId: workspaceIdSchema.optional().describe('Target space; omitted uses the default space unless a view selects its own.'),
             title: z.string().describe('Note title'),
             viewContext: z.object({
                 viewId: z.string().regex(/^[1-9]\d*$/),
@@ -344,12 +356,13 @@ export const registerMcpTools = (
                     'Existing property keys and values, saved atomically with the note.',
                 ),
         },
-        async ({ title, markdown, layout, properties, viewContext }) => {
+        async ({ title, markdown, layout, properties, viewContext, workspaceId }) => {
             if (properties) metadataPropertyPatchSchema.parse(properties);
             const writeToken = requireWriteToken(token, OCEAN_BRAIN_MCP_TOOLS.createNote);
             const result = await jsonRequest<{
                 created: boolean;
                 note: {
+                    workspaceId?: string;
                     id: string;
                     title: string;
                     layout: 'narrow' | 'wide' | 'full';
@@ -357,6 +370,7 @@ export const registerMcpTools = (
                     updatedAt: string;
                 };
             }>(serverUrl, writeToken, '/api/integrations/v1/notes/create', {
+                ...(workspaceId ? { workspaceId } : {}),
                 title,
                 markdown,
                 ...(layout ? { layout } : {}),
@@ -380,17 +394,19 @@ export const registerMcpTools = (
         OCEAN_BRAIN_MCP_TOOLS.listTags,
         'Search and page through Ocean Brain tags that are used by notes, with note counts.',
         {
+            scope: workspaceScopeSchema.optional(),
             query: z.string().default('').describe('Tag name search'),
             limit: pageLimitSchema(100),
             offset: pageOffsetSchema,
         },
-        async ({ query, limit, offset }) => {
+        async ({ query, limit, offset, scope }) => {
             const data = await graphqlRequest(
                 serverUrl,
                 token,
                 `
-                query ($searchFilter: SearchFilterInput, $pagination: PaginationInput) {
-                    allTags(searchFilter: $searchFilter, pagination: $pagination) {
+                query ($searchFilter: SearchFilterInput, $pagination: PaginationInput, $scope: WorkspaceScopeInput) {
+                    allTags(searchFilter: $searchFilter, pagination: $pagination, scope: $scope) {
+                        resolvedScope { kind workspaceId }
                         totalCount
                         tags {
                             id
@@ -401,12 +417,14 @@ export const registerMcpTools = (
                 }
             `,
                 {
+                    ...(scope ? { scope } : {}),
                     searchFilter: { query },
                     pagination: { limit, offset },
                 },
             );
 
             const result = data?.allTags as {
+                resolvedScope?: z.infer<typeof resolvedScopeSchema>;
                 totalCount: number;
                 tags: Array<{ id: string; name: string; referenceCount: number }>;
             };
@@ -422,19 +440,22 @@ export const registerMcpTools = (
         OCEAN_BRAIN_MCP_TOOLS.listProperties,
         'List shared Ocean Brain property definitions. Use this before property queries so keys, value types, and select option values are valid.',
         {
+            scope: workspaceScopeSchema.optional(),
             query: z.string().optional().default('').describe('Optional property key/name search query'),
             limit: pageLimitSchema(50, 100).describe('Max results (default: 50, server max: 100)'),
             offset: pageOffsetSchema.describe('Pagination offset (default: 0)'),
         },
-        async ({ query, limit, offset }) => {
+        async ({ query, limit, offset, scope }) => {
             const data = await graphqlRequest(
                 serverUrl,
                 token,
                 `
-                query ($query: String, $pagination: PaginationInput) {
-                    notePropertyKeys(query: $query, pagination: $pagination) {
+                query ($query: String, $pagination: PaginationInput, $scope: WorkspaceScopeInput) {
+                    notePropertyKeys(query: $query, pagination: $pagination, scope: $scope) {
+                        resolvedScope { kind workspaceId }
                         totalCount
                         keys {
+                            workspaceId
                             key
                             name
                             valueType
@@ -446,14 +467,17 @@ export const registerMcpTools = (
                 }
             `,
                 {
+                    ...(scope ? { scope } : {}),
                     query,
                     pagination: { limit, offset },
                 },
             );
 
             const result = data?.notePropertyKeys as {
+                resolvedScope?: z.infer<typeof resolvedScopeSchema>;
                 totalCount: number;
                 keys: Array<{
+                    workspaceId?: string;
                     key: string;
                     name: string;
                     valueType: 'text' | 'url' | 'number' | 'date' | 'boolean' | 'select';
@@ -470,6 +494,7 @@ export const registerMcpTools = (
             };
 
             return createMcpJsonToolResult({
+                ...(result.resolvedScope ? { resolvedScope: resolvedScopeSchema.parse(result.resolvedScope) } : {}),
                 totalCount: result.totalCount,
                 propertyKeys: result.keys,
                 page: createPageInfo(result.totalCount, limit, offset),

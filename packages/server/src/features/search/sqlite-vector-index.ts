@@ -680,8 +680,8 @@ export class SqliteSemanticVectorIndex {
         });
     }
 
-    async search(queryEmbedding: number[], limit: number): Promise<SemanticVectorMatch[]> {
-        if (!Number.isInteger(limit) || limit <= 0) {
+    async search(queryEmbedding: number[], limit: number, eligibleNoteIds?: number[]): Promise<SemanticVectorMatch[]> {
+        if (!Number.isInteger(limit) || limit <= 0 || eligibleNoteIds?.length === 0) {
             return [];
         }
 
@@ -710,11 +710,16 @@ export class SqliteSemanticVectorIndex {
                         note_id AS noteId,
                         MIN(vec_distance_cosine(embedding, ?)) AS distance
                     FROM search_chunks
+                    ${eligibleNoteIds === undefined ? '' : 'WHERE note_id IN (SELECT value FROM json_each(?))'}
                     GROUP BY note_id
                     ORDER BY distance ASC, note_id ASC
                     LIMIT ?
                 `,
-                [serializeEmbedding(queryEmbedding), limit],
+                [
+                    serializeEmbedding(queryEmbedding),
+                    ...(eligibleNoteIds === undefined ? [] : [JSON.stringify(eligibleNoteIds)]),
+                    limit,
+                ],
             );
 
             return rows.map((row) => ({ noteId: row.noteId, distance: row.distance }));

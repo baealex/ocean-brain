@@ -12,6 +12,8 @@ import {
     getViewTagFilterMatchToken,
 } from '~/modules/view-dashboard';
 import type { ViewNavigationState } from '~/modules/view-route-state';
+import { workspaceScope } from '~/modules/workspace-scope';
+import { useWorkspace } from '~/store/workspace';
 import useViewNotes from './useViewNotes';
 import ViewNoteCreateButton from './ViewNoteCreateButton';
 import ViewRenderer from './ViewRenderer';
@@ -28,12 +30,14 @@ const LinkedViewContent = ({
     actions: ReactNode;
     readOnly: boolean;
 }) => {
+    const { workspaceId: currentWorkspaceId } = useWorkspace();
+    const scope = workspaceScope(view.workspaceId ?? currentWorkspaceId);
     const [navigation, setNavigation] = useState<ViewNavigationState>({});
     const results = useViewNotes(view, navigation, setNavigation);
     const properties = useQuery({
-        queryKey: queryKeys.notes.propertyKeysCatalog(),
+        queryKey: queryKeys.notes.propertyKeysCatalog(scope),
         async queryFn() {
-            const response = await fetchAllNotePropertyKeys();
+            const response = await fetchAllNotePropertyKeys(scope);
             if (response.type === 'error') throw response;
             return response.notePropertyKeys;
         },

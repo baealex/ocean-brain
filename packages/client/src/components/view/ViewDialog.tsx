@@ -938,6 +938,7 @@ const ViewDialog = ({
                         </details>
                     )}
                     <ViewTemplatePicker
+                        workspaceId={initialView?.workspaceId}
                         value={defaultTemplateNoteId}
                         onChange={(defaultTemplateNoteId) => updateDraft({ defaultTemplateNoteId })}
                     />

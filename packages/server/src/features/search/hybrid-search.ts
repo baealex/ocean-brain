@@ -3,6 +3,12 @@ import {
     NOTE_SEARCH_TEXT_SCHEMA_VERSION,
     parseNoteSearchQuery,
 } from '~/features/note/services/search.js';
+import {
+    resolvedWorkspaceScope,
+    resolveWorkspaceWhere,
+    WorkspaceError,
+    type WorkspaceScopeInput,
+} from '~/features/workspace/scope.js';
 import type { Note, Prisma } from '~/models.js';
 import models from '~/models.js';
 import { runDataMaintenanceInBackground } from '~/modules/data-maintenance.js';
@@ -21,12 +27,14 @@ interface StaleLexicalCandidate extends LexicalCandidate {
 }
 
 interface HybridNoteSearchDependencies {
-    listLexicalNoteIds: (query: string, limit: number) => Promise<number[]>;
-    trySemanticSearch: (query: string, limit: number) => Promise<SemanticSearchAttempt>;
-    findNotesByIds: (ids: number[]) => Promise<Note[]>;
+    listLexicalNoteIds: (query: string, limit: number, workspaceId?: number) => Promise<number[]>;
+    trySemanticSearch: (query: string, limit: number, eligibleNoteIds?: number[]) => Promise<SemanticSearchAttempt>;
+    listEligibleNoteIds?: (workspaceId: number) => Promise<number[]>;
+    findNotesByIds: (ids: number[], workspaceId?: number) => Promise<Note[]>;
 }
 
 interface HybridNoteSearchInput {
+    scope?: WorkspaceScopeInput;
     query: string;
     limit: number;
     offset: number;
@@ -42,6 +50,7 @@ export interface SearchNoteMatch {
 }
 
 export interface HybridNoteSearchResult {
+    resolvedScope?: ReturnType<typeof resolvedWorkspaceScope>;
     totalCount: number;
     notes: Note[];
     matches: SearchNoteMatch[];
@@ -140,7 +149,7 @@ export const rankLexicalCandidates = (candidates: LexicalCandidate[], query: str
     });
 };
 
-const listDefaultLexicalNoteIds = async (query: string, limit: number) => {
+const listDefaultLexicalNoteIds = async (query: string, limit: number, workspaceId?: number) => {
     const where = buildLexicalWhere(query);
     if (!where) {
         return [];
@@ -148,7 +157,7 @@ const listDefaultLexicalNoteIds = async (query: string, limit: number) => {
 
     const [freshCandidates, staleCandidates] = await Promise.all([
         models.note.findMany({
-            where,
+            where: { ...where, ...(workspaceId === undefined ? {} : { workspaceId }) },
             select: {
                 id: true,
                 title: true,
@@ -157,7 +166,10 @@ const listDefaultLexicalNoteIds = async (query: string, limit: number) => {
             },
         }),
         models.note.findMany({
-            where: { searchableTextVersion: { not: NOTE_SEARCH_TEXT_SCHEMA_VERSION } },
+            where: {
+                searchableTextVersion: { not: NOTE_SEARCH_TEXT_SCHEMA_VERSION },
+                ...(workspaceId === undefined ? {} : { workspaceId }),
+            },
             select: {
                 id: true,
                 title: true,
@@ -186,8 +198,12 @@ const listDefaultLexicalNoteIds = async (query: string, limit: number) => {
 
 const defaultDependencies: HybridNoteSearchDependencies = {
     listLexicalNoteIds: listDefaultLexicalNoteIds,
-    trySemanticSearch: (query, limit) => getDefaultSemanticSearchManager().trySearch(query, limit),
-    findNotesByIds: (ids) => models.note.findMany({ where: { id: { in: ids } } }),
+    trySemanticSearch: (query, limit, eligibleNoteIds) =>
+        getDefaultSemanticSearchManager().trySearch(query, limit, eligibleNoteIds),
+    listEligibleNoteIds: async (workspaceId) =>
+        (await models.note.findMany({ where: { workspaceId }, select: { id: true } })).map((note) => note.id),
+    findNotesByIds: (ids, workspaceId) =>
+        models.note.findMany({ where: { id: { in: ids }, ...(workspaceId === undefined ? {} : { workspaceId }) } }),
 };
 
 export const createHybridNoteSearch = (dependencies: HybridNoteSearchDependencies = defaultDependencies) => {
@@ -196,10 +212,21 @@ export const createHybridNoteSearch = (dependencies: HybridNoteSearchDependencie
         limit,
         offset,
         mode = 'hybrid',
+        scope,
     }: HybridNoteSearchInput): Promise<HybridNoteSearchResult> => {
+        const workspaceWhere = await resolveWorkspaceWhere(scope);
+        const workspaceId = workspaceWhere.workspaceId;
+        if (workspaceId !== undefined && !dependencies.listEligibleNoteIds)
+            throw new WorkspaceError(
+                'UNSUPPORTED_WORKSPACE_SCOPE',
+                'This search provider does not support workspace scopes.',
+            );
+        const eligibleNoteIds =
+            workspaceId === undefined ? undefined : await dependencies.listEligibleNoteIds?.(workspaceId);
         const normalizedQuery = query.trim();
         if (!normalizedQuery || limit <= 0 || offset < 0) {
             return {
+                resolvedScope: resolvedWorkspaceScope(workspaceWhere),
                 totalCount: 0,
                 notes: [],
                 matches: [],
@@ -214,7 +241,9 @@ export const createHybridNoteSearch = (dependencies: HybridNoteSearchDependencie
         const [lexicalNoteIds, semanticAttempt] = await Promise.all([
             mode === 'semantic'
                 ? Promise.resolve([])
-                : dependencies.listLexicalNoteIds(normalizedQuery, candidateLimit),
+                : workspaceId === undefined
+                  ? dependencies.listLexicalNoteIds(normalizedQuery, candidateLimit)
+                  : dependencies.listLexicalNoteIds(normalizedQuery, candidateLimit, workspaceId),
             mode === 'lexical'
                 ? Promise.resolve({
                       available: false,
@@ -223,7 +252,7 @@ export const createHybridNoteSearch = (dependencies: HybridNoteSearchDependencie
                       error: null,
                   } satisfies SemanticSearchAttempt)
                 : dependencies
-                      .trySemanticSearch(normalizedQuery, semanticCandidateLimit)
+                      .trySemanticSearch(normalizedQuery, semanticCandidateLimit, eligibleNoteIds)
                       .catch((error) => unavailableSemanticAttempt(error)),
         ]);
         const rankedCandidates = fuseHybridSearchRanks({
@@ -231,11 +260,16 @@ export const createHybridNoteSearch = (dependencies: HybridNoteSearchDependencie
             semanticNoteIds: semanticAttempt.matches.slice(0, semanticCandidateLimit).map((match) => match.noteId),
         });
         const pageCandidates = rankedCandidates.slice(offset, offset + limit);
-        const notes = await dependencies.findNotesByIds(pageCandidates.map((candidate) => candidate.noteId));
+        const ids = pageCandidates.map((candidate) => candidate.noteId);
+        const notes =
+            workspaceId === undefined
+                ? await dependencies.findNotesByIds(ids)
+                : await dependencies.findNotesByIds(ids, workspaceId);
         const notesById = new Map(notes.map((note) => [note.id, note]));
         const existingCandidates = pageCandidates.filter((candidate) => notesById.has(candidate.noteId));
 
         return {
+            resolvedScope: resolvedWorkspaceScope(workspaceWhere),
             totalCount: rankedCandidates.length,
             notes: existingCandidates.map((candidate) => notesById.get(candidate.noteId) as Note),
             matches: existingCandidates.map((candidate) => ({

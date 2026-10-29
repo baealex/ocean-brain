@@ -39,8 +39,8 @@ export const createViewQueryResolvers = (
     ({
         ...mcpViewQueryResolvers,
         viewNoteCreationContext: (_, input: NoteViewContextInput) => getViewNoteCreationContext(input),
-        viewWorkspace: async () => {
-            return deps.getViewWorkspace();
+        viewWorkspace: async (_, { workspaceId }: { workspaceId?: string } = {}) => {
+            return deps.getViewWorkspace(workspaceId);
         },
         view: async (_, { id }: { id: string }) => {
             return deps.getViewById(id);

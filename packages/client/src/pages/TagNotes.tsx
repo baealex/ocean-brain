@@ -3,13 +3,14 @@ import { QueryBoundary } from '~/components/app';
 import { TagNotes as TagNotesEntity } from '~/components/entities';
 import { NoteListCard } from '~/components/note';
 import { Empty, FallbackRender, PageLayout, Pagination, Skeleton } from '~/components/shared';
-
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
+import { useWorkspaceScope } from '~/hooks/useWorkspaceScope';
 import { TAG_NOTES_ROUTE } from '~/modules/url';
 
 const Route = getRouteApi(TAG_NOTES_ROUTE);
 
 export default function TagNotes() {
+    const scope = useWorkspaceScope();
     const navigate = Route.useNavigate();
     const { id } = Route.useParams();
     const { page } = Route.useSearch();
@@ -36,10 +37,11 @@ export default function TagNotes() {
             }
             errorTitle="Failed to load tagged notes"
             errorDescription="Retry loading notes for this tag"
-            resetKeys={[id, page, limit]}
+            resetKeys={[scope.kind, scope.kind === 'workspace' ? scope.workspaceId : null, id, page, limit]}
         >
             <TagNotesEntity
                 searchParams={{
+                    scope,
                     query: id,
                     offset: (page - 1) * limit,
                     limit,

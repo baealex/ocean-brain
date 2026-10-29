@@ -1,10 +1,12 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { fetchTags } from '~/apis/tag.api';
 import type { Tag } from '~/models/tag.model';
+import type { WorkspaceScope } from '~/models/workspace.model';
 import { queryKeys } from '~/modules/query-key-factory';
 
 interface TagsProps {
     searchParams: {
+        scope?: WorkspaceScope;
         query?: string;
         offset: number;
         limit: number;
@@ -19,6 +21,7 @@ const Tags = (props: TagsProps) => {
         queryKey: queryKeys.tags.list(props.searchParams),
         async queryFn() {
             const response = await fetchTags({
+                scope: props.searchParams.scope,
                 query: props.searchParams.query,
                 offset: props.searchParams.offset,
                 limit: props.searchParams.limit,

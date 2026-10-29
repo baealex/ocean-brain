@@ -1,23 +1,33 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { useEffect, useRef, useState } from 'react';
-
 import {
     fetchNoteSnapshot,
     fetchNoteSnapshotDiff,
     fetchNoteSnapshots,
     type restoreNoteSnapshot,
 } from '~/apis/note.api';
+import { fetchNoteSnapshotRestoreContext } from '~/apis/workspace.api';
 import { Button, Modal, ModalActionRow, SurfaceCard } from '~/components/shared';
 import { Text, useToast } from '~/components/ui';
+import {
+    hasCompleteWorkspaceMappings,
+    PropertyWorkspaceMappings,
+    workspaceMappings,
+} from '~/components/workspace/PropertyWorkspaceMappings';
 import type { Note } from '~/models/note.model';
+import type { PropertyWorkspaceMapping } from '~/models/workspace.model';
 import { queryKeys } from '~/modules/query-key-factory';
+import { useWorkspace } from '~/store/workspace';
 
 interface RestoreSnapshotModalProps {
     isOpen: boolean;
     noteId: string;
     onClose: () => void;
-    restoreSnapshot: (id: string) => Promise<Awaited<ReturnType<typeof restoreNoteSnapshot>> | undefined>;
+    restoreSnapshot: (
+        id: string,
+        mappings?: PropertyWorkspaceMapping[],
+    ) => Promise<Awaited<ReturnType<typeof restoreNoteSnapshot>> | undefined>;
     onRestored?: (note: Pick<Note, 'id' | 'updatedAt'>) => void;
 }
 
@@ -45,6 +55,8 @@ export default function RestoreSnapshotModal({
     onRestored,
 }: RestoreSnapshotModalProps) {
     const toast = useToast();
+    const { multiple } = useWorkspace();
+    const [mappingValues, setMappingValues] = useState<Record<string, string>>({});
     const queryClient = useQueryClient();
     const [selectedSnapshotId, setSelectedSnapshotId] = useState<string | null>(null);
     const [selectedSnapshotView, setSelectedSnapshotView] = useState<'diff' | 'content'>('diff');
@@ -62,8 +74,27 @@ export default function RestoreSnapshotModal({
         enabled: isOpen,
     });
 
+    const restoreContext = useQuery({
+        queryKey: queryKeys.workspaces.snapshotRestoreContext(selectedSnapshotId ?? 'pending'),
+        queryFn: async () => {
+            if (!selectedSnapshotId) throw new Error('Choose a version.');
+            const response = await fetchNoteSnapshotRestoreContext(selectedSnapshotId);
+            if (response.type === 'error') throw new Error(response.errors[0].message);
+            return response.noteSnapshotRestoreContext;
+        },
+        enabled: isOpen && multiple && Boolean(selectedSnapshotId),
+    });
+    const crossesWorkspace =
+        restoreContext.data && restoreContext.data.sourceWorkspace.id !== restoreContext.data.targetWorkspace.id;
+    const canRestore =
+        !multiple ||
+        Boolean(
+            restoreContext.data &&
+                (!crossesWorkspace || hasCompleteWorkspaceMappings(restoreContext.data, mappingValues)),
+        );
     const restoreMutation = useMutation({
-        mutationFn: restoreSnapshot,
+        mutationFn: (input: { id: string; mappings?: PropertyWorkspaceMapping[] }) =>
+            input.mappings ? restoreSnapshot(input.id, input.mappings) : restoreSnapshot(input.id),
         onSuccess: async (response) => {
             if (!response) {
                 return;
@@ -93,7 +124,7 @@ export default function RestoreSnapshotModal({
                 }),
                 queryClient.invalidateQueries({
                     queryKey: queryKeys.notes.pinned(),
-                    exact: true,
+                    exact: false,
                 }),
                 queryClient.invalidateQueries({
                     queryKey: queryKeys.notes.backReferencesAll(),
@@ -101,7 +132,7 @@ export default function RestoreSnapshotModal({
                 }),
                 queryClient.invalidateQueries({
                     queryKey: queryKeys.notes.graph(),
-                    exact: true,
+                    exact: false,
                 }),
                 queryClient.invalidateQueries({
                     queryKey: queryKeys.notes.snapshots(noteId),
@@ -178,6 +209,7 @@ export default function RestoreSnapshotModal({
     }, [selectedSnapshotId]);
 
     const openSnapshot = (id: string, view: 'diff' | 'content') => {
+        setMappingValues({});
         setSelectedSnapshotView(view);
         setSelectedSnapshotId(id);
     };
@@ -210,6 +242,25 @@ export default function RestoreSnapshotModal({
             <Modal.Body>
                 {selectedSnapshot ? (
                     <div className="flex flex-col gap-3">
+                        {multiple && restoreContext.isPending && (
+                            <Text variant="meta">Checking the version's workspace...</Text>
+                        )}
+                        {restoreContext.error && (
+                            <div role="alert">
+                                <Text>{restoreContext.error.message}</Text>
+                                <Button variant="subtle" onClick={() => void restoreContext.refetch()}>
+                                    Retry
+                                </Button>
+                            </div>
+                        )}
+                        {crossesWorkspace && restoreContext.data && (
+                            <PropertyWorkspaceMappings
+                                preview={restoreContext.data}
+                                values={mappingValues}
+                                onChange={setMappingValues}
+                            />
+                        )}
+
                         <div className="min-w-0">
                             <Text as="p" variant="body" weight="semibold" truncate>
                                 {selectedSnapshot.title}
@@ -371,7 +422,11 @@ export default function RestoreSnapshotModal({
                                                     <Button
                                                         size="sm"
                                                         isLoading={restoreMutation.isPending}
-                                                        onClick={() => restoreMutation.mutate(snapshot.id)}
+                                                        onClick={() =>
+                                                            multiple
+                                                                ? openSnapshot(snapshot.id, 'diff')
+                                                                : restoreMutation.mutate({ id: snapshot.id })
+                                                        }
                                                     >
                                                         Restore
                                                     </Button>
@@ -412,7 +467,15 @@ export default function RestoreSnapshotModal({
                         </Button>
                         <Button
                             isLoading={restoreMutation.isPending}
-                            onClick={() => restoreMutation.mutate(selectedSnapshot.id)}
+                            disabled={!canRestore || restoreContext.isFetching}
+                            onClick={() =>
+                                restoreMutation.mutate({
+                                    id: selectedSnapshot.id,
+                                    ...(crossesWorkspace && restoreContext.data
+                                        ? { mappings: workspaceMappings(restoreContext.data, mappingValues) }
+                                        : {}),
+                                })
+                            }
                         >
                             Restore this version
                         </Button>

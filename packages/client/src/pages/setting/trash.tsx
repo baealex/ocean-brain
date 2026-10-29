@@ -15,6 +15,7 @@ import * as Icon from '~/components/icon';
 import { NoteReferenceWarningModal } from '~/components/note';
 import { Button, Empty, Modal, PageLayout, Pagination, Skeleton, SurfaceCard } from '~/components/shared';
 import { Text, useConfirm, useToast } from '~/components/ui';
+import { useWorkspaceScope } from '~/hooks/useWorkspaceScope';
 import type { Note } from '~/models/note.model';
 import { queryKeys } from '~/modules/query-key-factory';
 import { invalidateQueriesForNoteDelete } from '~/modules/server-event-invalidation';
@@ -143,6 +144,7 @@ const TrashSkeleton = () => (
 );
 
 const TrashContent = () => {
+    const scope = useWorkspaceScope(true);
     const { page } = Route.useSearch();
     const navigate = Route.useNavigate();
     const queryClient = useQueryClient();
@@ -153,11 +155,13 @@ const TrashContent = () => {
 
     const { data } = useSuspenseQuery({
         queryKey: queryKeys.notes.trash({
+            scope,
             limit: PAGE_SIZE,
             offset: (page - 1) * PAGE_SIZE,
         }),
         queryFn: async () => {
             const response = await fetchTrashedNotes({
+                scope,
                 limit: PAGE_SIZE,
                 offset: (page - 1) * PAGE_SIZE,
             });

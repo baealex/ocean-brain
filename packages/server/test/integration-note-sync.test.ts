@@ -3,6 +3,7 @@ import test from 'node:test';
 import { createApp } from '../src/app.js';
 import { createIntegrationService } from '../src/features/integration/service.js';
 import { updateNotePropertyDefinition } from '../src/features/note/services/properties.js';
+import { createWorkspace } from '../src/features/workspace/service.js';
 import models from '../src/models.js';
 import { AUTH_SESSION_COOKIE_NAME } from '../src/modules/auth-mode.js';
 
@@ -25,6 +26,42 @@ const createReadConnection = async () => {
 
     return { service, connectionId: connection.id, headers: { authorization: `Bearer ${credential.token}` } };
 };
+
+test('the same integration token can reconcile independent spaces and rejects invalid scopes', async (t) => {
+    const app = createApp(openAuth, { logger: false });
+    const { service, connectionId, headers } = await createReadConnection();
+    t.after(async () => {
+        await service.disconnect(connectionId);
+        await app.close();
+    });
+    const workspace = await createWorkspace('Diet');
+    await models.note.create({ data: { title: 'Idea', content: '[]' } });
+    const diet = await models.note.create({ data: { workspaceId: workspace.id, title: 'Diet record', content: '[]' } });
+    const catalog = (scope?: unknown) =>
+        app.inject({
+            method: 'POST',
+            url: '/api/integrations/v1/notes/catalog',
+            headers,
+            payload: { limit: 1, scope },
+        });
+    const scoped = await catalog({ kind: 'workspace', workspaceId: String(workspace.id) });
+    assert.equal(scoped.statusCode, 200);
+    assert.deepEqual(scoped.json().notes, [
+        { id: String(diet.id), workspaceId: String(workspace.id), updatedAt: diet.updatedAt.toISOString() },
+    ]);
+    assert.equal(scoped.json().hasMore, false);
+    assert.equal((await catalog()).json().hasMore, true);
+    assert.equal((await catalog({ kind: 'workspace', workspaceId: '999999' })).statusCode, 400);
+    assert.equal((await catalog({ kind: 'all', workspaceId: '1' })).statusCode, 400);
+    const discovery = await app.inject({
+        method: 'POST',
+        url: '/api/integrations/v1/graphql',
+        headers,
+        payload: { query: '{ workspaces { id name } }' },
+    });
+    assert.equal(discovery.statusCode, 200);
+    assert.equal(discovery.json().data.workspaces.length, 2);
+});
 
 const readWithTimeout = async (reader: ReadableStreamDefaultReader<Uint8Array>, expected: string) => {
     let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -75,11 +112,13 @@ test('note catalog supports lightweight keyset reconciliation', async (t) => {
     });
 
     assert.equal(firstPage.statusCode, 200);
-    assert.deepEqual(firstBody.notes, [{ id: String(first.id), updatedAt: first.updatedAt.toISOString() }]);
+    assert.deepEqual(firstBody.notes, [
+        { id: String(first.id), workspaceId: '1', updatedAt: first.updatedAt.toISOString() },
+    ]);
     assert.match(firstBody.propertySchemaHash, /^[a-f0-9]{64}$/);
     assert.equal(firstBody.hasMore, true);
     assert.deepEqual(secondPage.json(), {
-        notes: [{ id: String(second.id), updatedAt: second.updatedAt.toISOString() }],
+        notes: [{ id: String(second.id), workspaceId: '1', updatedAt: second.updatedAt.toISOString() }],
         hasMore: false,
         nextAfterId: null,
     });

@@ -46,7 +46,7 @@ test('MCP query and saved views preserve app note sets, pagination and active gr
         );
     }
     const group = await createViewGroup('MCP fixtures');
-    const before = await models.viewWorkspace.findUnique({ where: { id: 1 } });
+    const before = await models.viewDashboardState.findUnique({ where: { workspaceId: 1 } });
     for (const displayType of ['list', 'table', 'board', 'calendar'] as const) {
         const view = await createView(group.id, {
             title: 'Same title',
@@ -100,7 +100,10 @@ test('MCP query and saved views preserve app note sets, pagination and active gr
     const found = await listViews('MCP fixtures');
     assert.equal(found.totalCount, 4);
     assert.equal(new Set(found.views.map((view) => view.view.id)).size, 4);
-    assert.equal((await models.viewWorkspace.findUnique({ where: { id: 1 } }))?.activeGroupId, before?.activeGroupId);
+    assert.equal(
+        (await models.viewDashboardState.findUnique({ where: { workspaceId: 1 } }))?.activeGroupId,
+        before?.activeGroupId,
+    );
     assert.equal((await listViews('no-such-view')).totalCount, 0);
     await assert.rejects(readView({ id: '99999999' }), /not found/);
     const query = {

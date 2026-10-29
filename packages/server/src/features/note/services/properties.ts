@@ -1,3 +1,13 @@
+import { randomUUID } from 'node:crypto';
+import {
+    assertSameWorkspace,
+    DEFAULT_WORKSPACE_ID,
+    parseWorkspaceId,
+    requireWorkspace,
+    resolvedWorkspaceScope,
+    resolveWorkspaceWhere,
+    type WorkspaceScopeInput,
+} from '~/features/workspace/scope.js';
 import models, { type Note, type NoteLayout, Prisma, type PropertyValueType, type ViewDisplayType } from '~/models.js';
 import { buildNoteSearchProjection } from './search.js';
 import { captureNoteBaseline } from './snapshot.js';
@@ -22,6 +32,7 @@ export interface SerializedNoteProperty {
 }
 
 export interface SerializedNotePropertyKey {
+    workspaceId: string;
     key: string;
     name: string;
     valueType: PropertyValueType;
@@ -31,6 +42,7 @@ export interface SerializedNotePropertyKey {
 }
 
 export interface SerializedNotePropertyKeysResult {
+    resolvedScope?: ReturnType<typeof resolvedWorkspaceScope>;
     totalCount: number;
     keys: SerializedNotePropertyKey[];
 }
@@ -77,7 +89,8 @@ export interface NotePropertyOptionUpdateInput extends NotePropertyOptionInput {
 }
 
 export interface NotePropertyDefinitionInput {
-    key: string;
+    workspaceId?: string | number;
+    key?: string;
     name?: string | null;
     valueType: PropertyValueType;
     options?: NotePropertyOptionInput[] | null;
@@ -389,7 +402,8 @@ export const serializeNoteProperties = (properties: NotePropertyWithDefinition[]
     return properties.map(serializeNoteProperty).sort((left, right) => left.key.localeCompare(right.key));
 };
 
-const serializePropertyDefinition = (definition: PropertyDefinitionWithOptions): SerializedNotePropertyKey => ({
+export const serializePropertyDefinition = (definition: PropertyDefinitionWithOptions): SerializedNotePropertyKey => ({
+    workspaceId: String(definition.workspaceId),
     key: definition.key,
     name: definition.name,
     valueType: definition.valueType,
@@ -794,6 +808,15 @@ export const setNotePropertyValues = async (
     patch: NotePropertiesPatchInput,
 ) => {
     const normalizedPatch = normalizePatch(patch);
+    const note = await tx.note.findUniqueOrThrow({ where: { id }, select: { workspaceId: true } });
+    await requireWorkspace(note.workspaceId, tx, true);
+    if (normalizedPatch.deleteKeys.length) {
+        const definitions = await tx.propertyDefinition.findMany({
+            where: { key: { in: normalizedPatch.deleteKeys } },
+            select: { workspaceId: true },
+        });
+        for (const definition of definitions) assertSameWorkspace(definition.workspaceId, note.workspaceId);
+    }
     for (const item of normalizedPatch.set) {
         const definition = await tx.propertyDefinition.findUnique({ where: { key: item.key } });
 
@@ -809,6 +832,7 @@ export const setNotePropertyValues = async (
             );
         }
 
+        assertSameWorkspace(definition.workspaceId, note.workspaceId);
         const valueData = await buildTypedValueData(item, definition.id, tx);
 
         await tx.noteProperty.upsert({
@@ -839,13 +863,21 @@ export const listNoteProperties = async (noteId: number, keys?: string[] | null)
     return serializeNoteProperties(properties);
 };
 
-export const listNotePropertyKeys = async (input?: { query?: string; limit?: number; offset?: number }) => {
+export const listNotePropertyKeys = async (input?: {
+    query?: string;
+    limit?: number;
+    offset?: number;
+    scope?: WorkspaceScopeInput;
+}) => {
     const normalizedQuery = input?.query?.trim();
-    const where = normalizedQuery
-        ? {
-              OR: [{ key: { contains: normalizedQuery } }, { name: { contains: normalizedQuery } }],
-          }
-        : undefined;
+    const where = {
+        ...(await resolveWorkspaceWhere(input?.scope)),
+        ...(normalizedQuery
+            ? {
+                  OR: [{ key: { contains: normalizedQuery } }, { name: { contains: normalizedQuery } }],
+              }
+            : {}),
+    };
     const take = Math.max(1, Math.min(100, Number(input?.limit ?? 50)));
     const skip = Math.max(0, Number(input?.offset ?? 0));
     const [definitions, totalCount] = await Promise.all([
@@ -862,11 +894,13 @@ export const listNotePropertyKeys = async (input?: { query?: string; limit?: num
     return {
         totalCount,
         keys: definitions.map(serializePropertyDefinition),
+        resolvedScope: resolvedWorkspaceScope(where),
     } satisfies SerializedNotePropertyKeysResult;
 };
 
 export const createNotePropertyDefinition = async (input: NotePropertyDefinitionInput) => {
-    const key = normalizePropertyKey(input.key);
+    const workspaceId = parseWorkspaceId(input.workspaceId ?? DEFAULT_WORKSPACE_ID);
+    const key = normalizePropertyKey(input.key ?? `field-${randomUUID()}`);
     const name = normalizePropertyName(input.name, key);
     const options = normalizePropertyOptions(input.options);
 
@@ -879,23 +913,27 @@ export const createNotePropertyDefinition = async (input: NotePropertyDefinition
     }
 
     try {
-        const definition = await models.propertyDefinition.create({
-            data: {
-                key,
-                name,
-                valueType: input.valueType,
-                ...(input.valueType === 'select'
-                    ? {
-                          options: {
-                              create: options,
-                          },
-                      }
-                    : {}),
-            },
-            include: { options: { orderBy: { order: 'asc' } }, _count: { select: { properties: true } } },
-        });
+        return await models.$transaction(async (tx) => {
+            await requireWorkspace(workspaceId, tx, true);
+            const definition = await tx.propertyDefinition.create({
+                data: {
+                    workspaceId,
+                    key,
+                    name,
+                    valueType: input.valueType,
+                    ...(input.valueType === 'select'
+                        ? {
+                              options: {
+                                  create: options,
+                              },
+                          }
+                        : {}),
+                },
+                include: { options: { orderBy: { order: 'asc' } }, _count: { select: { properties: true } } },
+            });
 
-        return serializePropertyDefinition(definition);
+            return serializePropertyDefinition(definition);
+        });
     } catch (error) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
             throw new InvalidNotePropertyInputError(`Property ${key} already exists.`);
@@ -930,6 +968,7 @@ export const updateNotePropertyDefinition = async ({
             return null;
         }
 
+        await requireWorkspace(definition.workspaceId, tx, true);
         const nextName = input.name !== undefined ? normalizePropertyName(input.name, definition.key) : definition.name;
         const shouldUpdateOptions = input.options !== undefined;
         let nextOptions: ReturnType<typeof normalizePropertyOptionUpdates> | null = null;
@@ -1092,6 +1131,7 @@ export const deleteNotePropertyDefinition = async ({
             );
         }
 
+        await requireWorkspace(definition.workspaceId, tx, true);
         const affectedNoteCount = definition._count.properties;
 
         if (affectedNoteCount > 0 && !confirmImpact) {

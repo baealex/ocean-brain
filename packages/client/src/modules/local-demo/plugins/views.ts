@@ -5,6 +5,7 @@ import { replaceFixedPlaceholder } from '~/modules/fixed-placeholder';
 import { localError, success } from '../response';
 import type { LocalDemoPlugin, LocalDemoState } from '../types';
 import { applyPropertyFilters, createLocalId, listNotesByTags, now, paginate } from '../utils';
+import { localViewNotes, localViewWorkspace, localWorkspace } from '../workspace';
 
 const copyTemplateBody = (value: unknown): unknown => {
     if (Array.isArray(value))
@@ -26,6 +27,7 @@ const creationContext = (
 ): ViewNoteCreationContext => {
     const view = state.viewWorkspace.groups.flatMap((group) => group.views).find((item) => item.id === viewId);
     if (!view) throw new Error('View not found');
+    assertViewWorkspace(state, view);
     const template = state.notes.find((note) => note.id === view.defaultTemplateNoteId);
     if (view.defaultTemplateNoteId && !template)
         throw new Error('The default template is unavailable. Choose another template in the view settings.');
@@ -70,6 +72,7 @@ const creationContext = (
         };
     });
     return {
+        workspaceId: view.workspaceId ?? '1',
         templateNote: template ? { id: template.id, title: template.title } : null,
         viewId,
         title: view.title,
@@ -94,6 +97,30 @@ const sortViewNotes = (notes: Note[], view: View, override: Partial<Pick<View, '
 const toTimestamp = (value: string) => {
     const numericValue = Number(value);
     return Number.isFinite(numericValue) ? numericValue : Date.parse(value);
+};
+
+const assertViewWorkspace = (state: LocalDemoState, view: View) => {
+    const workspaceId = localWorkspace(state, view.workspaceId ?? '1', true);
+    const keys = [
+        ...new Set(
+            [
+                ...view.propertyFilters.map((filter) => filter.key),
+                ...view.displayOptions.tablePropertyKeys,
+                view.displayOptions.boardGroupByPropertyKey,
+                view.displayOptions.calendarDatePropertyKey,
+            ].filter(Boolean),
+        ),
+    ];
+    for (const key of keys) {
+        const definition = state.propertyDefinitions.find((definition) => definition.key === key);
+        if (!definition || (definition.workspaceId ?? '1') !== workspaceId)
+            throw new Error('Choose fields from this view’s workspace.');
+    }
+    if (view.defaultTemplateNoteId) {
+        const note = state.notes.find((note) => note.id === view.defaultTemplateNoteId);
+        if (!note || (note.workspaceId ?? '1') !== workspaceId)
+            throw new Error('Choose a template from this view’s workspace.');
+    }
 };
 
 export const viewsLocalPlugin: LocalDemoPlugin = {
@@ -122,8 +149,10 @@ export const viewsLocalPlugin: LocalDemoPlugin = {
                 const view = state.viewWorkspace.groups
                     .flatMap((group) => group.views)
                     .find((item) => item.id === context.viewId);
+                localWorkspace(state, context.workspaceId, true);
                 const input = variables.input as ViewNoteInput;
                 if (!view) return localError('View not found');
+                assertViewWorkspace(state, view);
                 const template = state.notes.find((note) => note.id === view.defaultTemplateNoteId);
                 const templateBlocks: unknown = template ? copyTemplateBody(JSON.parse(template.content || '[]')) : [];
                 const timestamp = now();
@@ -132,6 +161,7 @@ export const viewsLocalPlugin: LocalDemoPlugin = {
                     (name) => state.tags.find((tag) => tag.name === name) ?? { id: createLocalId('tag'), name },
                 );
                 const note: Note = {
+                    workspaceId: context.workspaceId,
                     id: createLocalId('note'),
                     title:
                         input.title.trim() || (template ? replaceFixedPlaceholder(template.title || 'untitled') : ''),
@@ -186,7 +216,8 @@ export const viewsLocalPlugin: LocalDemoPlugin = {
                 return localError(error instanceof Error ? error.message : 'Unable to create this note');
             }
         },
-        FetchViewWorkspace: ({ state }) => success({ viewWorkspace: state.viewWorkspace }),
+        FetchViewWorkspace: ({ state, variables }) =>
+            success({ viewWorkspace: localViewWorkspace(state, variables.workspaceId ?? '1') }),
         FetchView: ({ state, variables }) => {
             const view = state.viewWorkspace.groups
                 .flatMap((group) => group.views)
@@ -199,7 +230,10 @@ export const viewsLocalPlugin: LocalDemoPlugin = {
                 .find((item) => item.id === String(variables.id));
             const notes = view
                 ? sortViewNotes(
-                      applyPropertyFilters(listNotesByTags(state, view.tagNames, view.mode), view.propertyFilters),
+                      applyPropertyFilters(
+                          listNotesByTags(localViewNotes(state, view.workspaceId), view.tagNames, view.mode),
+                          view.propertyFilters,
+                      ),
                       view,
                       {
                           sortBy: variables.sortBy as View['sortBy'] | undefined,
@@ -240,7 +274,7 @@ export const viewsLocalPlugin: LocalDemoPlugin = {
             }
 
             const calendarNotes = applyPropertyFilters(
-                listNotesByTags(state, view.tagNames, view.mode),
+                listNotesByTags(localViewNotes(state, view.workspaceId), view.tagNames, view.mode),
                 view.propertyFilters,
             )
                 .flatMap((note) => {
@@ -282,7 +316,10 @@ export const viewsLocalPlugin: LocalDemoPlugin = {
 
             const optionValue = typeof variables.optionValue === 'string' ? variables.optionValue : null;
             const notes = sortViewNotes(
-                applyPropertyFilters(listNotesByTags(state, view.tagNames, view.mode), view.propertyFilters),
+                applyPropertyFilters(
+                    listNotesByTags(localViewNotes(state, view.workspaceId), view.tagNames, view.mode),
+                    view.propertyFilters,
+                ),
                 view,
             ).filter((note) => {
                 const property = note.properties?.find((candidate) => candidate.key === groupPropertyKey);
@@ -294,49 +331,83 @@ export const viewsLocalPlugin: LocalDemoPlugin = {
             });
         },
         CreateViewGroup: ({ state, variables, save }) => {
+            const workspaceId = localWorkspace(state, variables.workspaceId ?? '1', true);
             const group = {
+                workspaceId,
                 id: createLocalId('view-group'),
                 title: String(variables.title),
-                order: state.viewWorkspace.groups.length,
+                order: localViewWorkspace(state, workspaceId).groups.length,
                 views: [],
             };
             state.viewWorkspace.groups.push(group);
-            state.viewWorkspace.activeGroupId = group.id;
+            state.viewActiveGroupIds ??= {};
+            state.viewActiveGroupIds[workspaceId] = group.id;
+            if (workspaceId === '1') state.viewWorkspace.activeGroupId = group.id;
             save();
             return success({ createViewGroup: { id: group.id } });
         },
         UpdateViewGroup: ({ state, variables, save }) => {
             const group = state.viewWorkspace.groups.find((item) => item.id === String(variables.id));
-            if (group) group.title = String(variables.title);
+            if (group) {
+                localWorkspace(state, group.workspaceId ?? '1', true);
+                group.title = String(variables.title);
+            }
             save();
             return success({ updateViewGroup: { id: String(variables.id) } });
         },
         DeleteViewGroup: ({ state, variables, save }) => {
+            const original = state.viewWorkspace.groups.find((group) => group.id === String(variables.id));
+            if (original) localWorkspace(state, original.workspaceId ?? '1', true);
             state.viewWorkspace.groups = state.viewWorkspace.groups.filter(
                 (group) => group.id !== String(variables.id),
             );
-            state.viewWorkspace.activeGroupId = state.viewWorkspace.groups[0]?.id ?? null;
+            if (original) {
+                const workspaceId = original.workspaceId ?? '1';
+                const next = localViewWorkspace(state, workspaceId).activeGroupId;
+                state.viewActiveGroupIds ??= {};
+                state.viewActiveGroupIds[workspaceId] = next;
+                if (workspaceId === '1') state.viewWorkspace.activeGroupId = next;
+            }
             save();
             return success({ deleteViewGroup: true });
         },
         SetActiveViewGroup: ({ state, variables, save }) => {
-            state.viewWorkspace.activeGroupId = String(variables.id);
+            const group = state.viewWorkspace.groups.find((group) => group.id === String(variables.id));
+            if (!group) return localError('View group not found');
+            const workspaceId = localWorkspace(state, group.workspaceId ?? '1');
+            state.viewActiveGroupIds ??= {};
+            state.viewActiveGroupIds[workspaceId] = group.id;
+            if (workspaceId === '1') state.viewWorkspace.activeGroupId = group.id;
             save();
-            return success({ setActiveViewGroup: state.viewWorkspace });
+            return success({ setActiveViewGroup: localViewWorkspace(state, workspaceId) });
         },
         ReorderViewGroups: ({ state, variables, save }) => {
+            const workspaceId = localWorkspace(state, variables.workspaceId ?? '1', true);
+            const groups = localViewWorkspace(state, workspaceId).groups;
             const groupIds = variables.groupIds as string[];
-            state.viewWorkspace.groups.sort((a, b) => groupIds.indexOf(a.id) - groupIds.indexOf(b.id));
-            state.viewWorkspace.groups.forEach((group, index) => (group.order = index));
+            if (
+                groupIds.length !== groups.length ||
+                new Set(groupIds).size !== groups.length ||
+                groups.some((group) => !groupIds.includes(group.id))
+            )
+                return localError('Reorder every group in this workspace exactly once.');
+            for (const group of groups) group.order = groupIds.indexOf(group.id);
+            state.viewWorkspace.groups.sort(
+                (a, b) => Number(a.workspaceId ?? '1') - Number(b.workspaceId ?? '1') || a.order - b.order,
+            );
             save();
-            return success({ reorderViewGroups: state.viewWorkspace.groups.map((group) => ({ id: group.id })) });
+            return success({
+                reorderViewGroups: localViewWorkspace(state, workspaceId).groups.map((group) => ({ id: group.id })),
+            });
         },
         CreateView: ({ state, variables, save }) => {
             const group = state.viewWorkspace.groups.find((item) => item.id === String(variables.groupId));
             if (!group) return localError('View group not found');
+            localWorkspace(state, group.workspaceId ?? '1', true);
 
             const input = variables.input as Partial<View>;
             const view: View = {
+                workspaceId: group.workspaceId ?? '1',
                 defaultTemplateNoteId: input.defaultTemplateNoteId ?? null,
                 id: createLocalId('view-view'),
                 groupId: group.id,
@@ -357,6 +428,7 @@ export const viewsLocalPlugin: LocalDemoPlugin = {
                 limit: input.limit ?? 25,
                 order: group.views.length,
             };
+            assertViewWorkspace(state, view);
             group.views.push(view);
             save();
             return success({ createView: { id: view.id } });
@@ -365,11 +437,26 @@ export const viewsLocalPlugin: LocalDemoPlugin = {
             const view = state.viewWorkspace.groups
                 .flatMap((group) => group.views)
                 .find((item) => item.id === String(variables.id));
-            if (view) Object.assign(view, variables.input);
+            if (!view) return localError('View not found');
+            localWorkspace(state, view.workspaceId ?? '1', true);
+            const input = variables.input as Partial<View>;
+            const updated = {
+                ...view,
+                ...input,
+                id: view.id,
+                groupId: view.groupId,
+                workspaceId: view.workspaceId ?? '1',
+            };
+            assertViewWorkspace(state, updated);
+            Object.assign(view, updated);
             save();
             return success({ updateView: { id: String(variables.id) } });
         },
         DeleteView: ({ state, variables, save }) => {
+            const original = state.viewWorkspace.groups.find((group) =>
+                group.views.some((view) => view.id === String(variables.id)),
+            );
+            if (original) localWorkspace(state, original.workspaceId ?? '1', true);
             for (const group of state.viewWorkspace.groups) {
                 group.views = group.views.filter((view) => view.id !== String(variables.id));
             }
@@ -380,6 +467,13 @@ export const viewsLocalPlugin: LocalDemoPlugin = {
             const group = state.viewWorkspace.groups.find((item) => item.id === String(variables.groupId));
             const viewIds = variables.viewIds as string[];
             if (group) {
+                localWorkspace(state, group.workspaceId ?? '1', true);
+                if (
+                    viewIds.length !== group.views.length ||
+                    new Set(viewIds).size !== group.views.length ||
+                    group.views.some((view) => !viewIds.includes(view.id))
+                )
+                    return localError('Reorder every view in this group exactly once.');
                 group.views.sort((a, b) => viewIds.indexOf(a.id) - viewIds.indexOf(b.id));
                 group.views.forEach((view, index) => (view.order = index));
             }

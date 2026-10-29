@@ -17,6 +17,7 @@ interface PlaceholderRecord {
 }
 
 interface NoteRecord {
+    workspaceId?: number;
     properties?: SerializedNoteProperty[];
     id: number;
     title: string;
@@ -34,6 +35,7 @@ interface NoteAuthoringDeps {
 }
 
 export interface CreateNoteAuthoringInput {
+    workspaceId?: string | number;
     viewContext?: NoteViewContextInput;
     properties?: NotePropertiesByKeyPatchInput;
     title: string;
@@ -42,6 +44,7 @@ export interface CreateNoteAuthoringInput {
 }
 
 export interface AuthoredNoteSummary {
+    workspaceId?: string;
     properties?: SerializedNoteProperty[];
     id: string;
     title: string;
@@ -59,6 +62,7 @@ export class InvalidNoteAuthoringInputError extends Error {
 
 const serializeNote = (note: NoteRecord): AuthoredNoteSummary => ({
     ...(note.properties ? { properties: note.properties } : {}),
+    ...(note.workspaceId !== undefined ? { workspaceId: String(note.workspaceId) } : {}),
     id: String(note.id),
     title: note.title,
     layout: note.layout,
@@ -83,6 +87,7 @@ export const createNoteAuthoringService = (deps: NoteAuthoringDeps) => {
             const content = await deps.parseMarkdownToContentJson(replacedMarkdown);
             const tagIds = deps.extractTagIds(content);
             const note = await deps.createNote({
+                ...(input.workspaceId !== undefined ? { workspaceId: input.workspaceId } : {}),
                 title: replacedTitle,
                 content,
                 tagIds,

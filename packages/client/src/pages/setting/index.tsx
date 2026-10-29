@@ -14,12 +14,16 @@ import {
     SETTINGS_PROPERTIES_ROUTE,
     SETTINGS_SEARCH_ROUTE,
     SETTINGS_TRASH_ROUTE,
+    SETTINGS_WORKSPACES_ROUTE,
 } from '~/modules/url';
 import { useTheme } from '~/store/theme';
+import { useWorkspace } from '~/store/workspace';
 
 const mcpAdminStatusQueryKey = queryKeys.mcp.status();
 
 const Setting = () => {
+    const { workspaceId, multiple } = useWorkspace();
+    const workspaceSearch = multiple ? { workspace: workspaceId } : {};
     const { theme, toggleTheme } = useTheme((state) => state);
     const { data: status, isLoading: isStatusLoading } = useQuery({
         queryKey: mcpAdminStatusQueryKey,
@@ -97,7 +101,22 @@ const Setting = () => {
                         Workspace
                     </Text>
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                        <Link to={SETTINGS_PROPERTIES_ROUTE} search={{ page: 1 }} className={itemClassName}>
+                        <Link to={SETTINGS_WORKSPACES_ROUTE} search={workspaceSearch} className={itemClassName}>
+                            <div className={contentClassName}>
+                                <Text as="div" variant="body" weight="medium">
+                                    Workspaces
+                                </Text>
+                                <Text as="div" variant="meta" tone="secondary">
+                                    Separate fields and views when you need different ways to work.
+                                </Text>
+                            </div>
+                            <Icon.ChevronRight className="h-4 w-4 shrink-0 text-fg-tertiary" />
+                        </Link>
+                        <Link
+                            to={SETTINGS_PROPERTIES_ROUTE}
+                            search={{ page: 1, ...workspaceSearch }}
+                            className={itemClassName}
+                        >
                             <div className="flex min-w-0 items-start gap-3">
                                 <span className={leadingClassName}>
                                     <Icon.Tag className={iconClassName} />
@@ -113,7 +132,11 @@ const Setting = () => {
                             </div>
                             <Icon.ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-fg-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-fg-secondary" />
                         </Link>
-                        <Link to={SETTINGS_PLACEHOLDER_ROUTE} search={{ page: 1 }} className={itemClassName}>
+                        <Link
+                            to={SETTINGS_PLACEHOLDER_ROUTE}
+                            search={{ page: 1, ...workspaceSearch }}
+                            className={itemClassName}
+                        >
                             <div className="flex min-w-0 items-start gap-3">
                                 <span className={leadingClassName}>
                                     <Icon.Pencil className={iconClassName} />
@@ -129,7 +152,11 @@ const Setting = () => {
                             </div>
                             <Icon.ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-fg-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-fg-secondary" />
                         </Link>
-                        <Link to={SETTINGS_MANAGE_IMAGE_ROUTE} search={{ page: 1 }} className={itemClassName}>
+                        <Link
+                            to={SETTINGS_MANAGE_IMAGE_ROUTE}
+                            search={{ page: 1, ...workspaceSearch }}
+                            className={itemClassName}
+                        >
                             <div className="flex min-w-0 items-start gap-3">
                                 <span className={leadingClassName}>
                                     <Icon.Image className={iconClassName} />
@@ -145,7 +172,11 @@ const Setting = () => {
                             </div>
                             <Icon.ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-fg-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-fg-secondary" />
                         </Link>
-                        <Link to={SETTINGS_TRASH_ROUTE} search={{ page: 1 }} className={itemClassName}>
+                        <Link
+                            to={SETTINGS_TRASH_ROUTE}
+                            search={{ page: 1, ...workspaceSearch }}
+                            className={itemClassName}
+                        >
                             <div className="flex min-w-0 items-start gap-3">
                                 <span className={leadingClassName}>
                                     <Icon.TrashCan className={iconClassName} />

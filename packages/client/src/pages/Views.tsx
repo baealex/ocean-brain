@@ -12,7 +12,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
 import classNames from 'classnames';
 import { useCallback, useState } from 'react';
-
 import { fetchAllNotePropertyKeys, type NotePropertyKeySummary } from '~/apis/note.api';
 import { fetchTags } from '~/apis/tag.api';
 import {
@@ -58,6 +57,8 @@ import {
     type ViewNavigationState,
     type ViewRouteStateUpdater,
 } from '~/modules/view-route-state';
+import { workspaceScope } from '~/modules/workspace-scope';
+import { useWorkspace } from '~/store/workspace';
 
 const Route = getRouteApi(VIEWS_ROUTE);
 
@@ -70,6 +71,7 @@ const dragHandleClassName =
     'focus-ring-soft hidden h-8 w-8 items-center justify-center rounded-[10px] text-fg-default/70 outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default sm:inline-flex touch-none';
 
 interface SortableViewProps {
+    readOnly?: boolean;
     view: View;
     availableProperties: NotePropertyKeySummary[];
     isPropertiesLoading: boolean;
@@ -87,6 +89,7 @@ interface SortableViewProps {
 }
 
 const SortableView = ({
+    readOnly = false,
     view,
     availableProperties,
     isPropertiesLoading,
@@ -104,6 +107,7 @@ const SortableView = ({
 }: SortableViewProps) => {
     const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
         id: view.id,
+        disabled: readOnly,
     });
     const handleNavigationStateChange = useCallback(
         (updater: ViewRouteStateUpdater) => onNavigationStateChange(view.id, updater),
@@ -120,6 +124,7 @@ const SortableView = ({
             }}
         >
             <ViewCard
+                readOnly={readOnly}
                 view={view}
                 availableProperties={availableProperties}
                 isPropertiesLoading={isPropertiesLoading}
@@ -138,6 +143,7 @@ const SortableView = ({
                     <button
                         type="button"
                         ref={setActivatorNodeRef}
+                        disabled={readOnly}
                         aria-label={`Reorder view ${view.title}`}
                         {...attributes}
                         {...listeners}
@@ -152,6 +158,9 @@ const SortableView = ({
 };
 
 export default function Views() {
+    const { workspaceId, activeWorkspace } = useWorkspace();
+    const readOnly = Boolean(activeWorkspace?.archivedAt);
+    const scope = workspaceScope(workspaceId);
     const confirm = useConfirm();
     const toast = useToast();
     const queryClient = useQueryClient();
@@ -166,9 +175,9 @@ export default function Views() {
         isError: isWorkspaceError,
         refetch: refetchWorkspace,
     } = useQuery({
-        queryKey: queryKeys.views.workspace(),
+        queryKey: queryKeys.views.workspace(workspaceId),
         async queryFn() {
-            const response = await fetchViewWorkspace();
+            const response = await fetchViewWorkspace(workspaceId);
 
             if (response.type === 'error') {
                 throw response;
@@ -183,9 +192,9 @@ export default function Views() {
     const activeGroupIndex = activeGroup ? workspace.groups.findIndex((group) => group.id === activeGroup.id) : -1;
 
     const { data: tagData, isPending: isTagsLoading } = useQuery({
-        queryKey: queryKeys.tags.list({ limit: 200 }),
+        queryKey: queryKeys.tags.list({ limit: 200, scope }),
         async queryFn() {
-            const response = await fetchTags({ limit: 200 });
+            const response = await fetchTags({ limit: 200, scope });
 
             if (response.type === 'error') {
                 throw response;
@@ -208,9 +217,9 @@ export default function Views() {
         isError: isPropertiesError,
         refetch: refetchProperties,
     } = useQuery({
-        queryKey: queryKeys.notes.propertyKeysCatalog(),
+        queryKey: queryKeys.notes.propertyKeysCatalog(scope),
         async queryFn() {
-            const response = await fetchAllNotePropertyKeys();
+            const response = await fetchAllNotePropertyKeys(scope);
 
             if (response.type === 'error') {
                 throw response;
@@ -223,7 +232,7 @@ export default function Views() {
     const availableProperties = propertyKeyData?.keys ?? [];
 
     const syncWorkspace = (nextWorkspace: ViewsWorkspace) => {
-        queryClient.setQueryData(queryKeys.views.workspace(), nextWorkspace);
+        queryClient.setQueryData(queryKeys.views.workspace(workspaceId), nextWorkspace);
     };
 
     const handleViewNavigationStateChange = useCallback(
@@ -250,7 +259,10 @@ export default function Views() {
     const persistGroupOrder = async (previousWorkspace: ViewsWorkspace, nextWorkspace: ViewsWorkspace) => {
         syncWorkspace(nextWorkspace);
 
-        const response = await reorderViewGroups(nextWorkspace.groups.map((group) => group.id));
+        const response = await reorderViewGroups(
+            nextWorkspace.groups.map((group) => group.id),
+            workspaceId,
+        );
 
         if (response.type === 'error') {
             syncWorkspace(previousWorkspace);
@@ -266,7 +278,8 @@ export default function Views() {
             return;
         }
 
-        const previousWorkspace = queryClient.getQueryData<ViewsWorkspace>(queryKeys.views.workspace()) ?? workspace;
+        const previousWorkspace =
+            queryClient.getQueryData<ViewsWorkspace>(queryKeys.views.workspace(workspaceId)) ?? workspace;
         const nextWorkspace = reorderViewGroupsInWorkspace(previousWorkspace, String(active.id), String(over.id));
         await persistGroupOrder(previousWorkspace, nextWorkspace);
     };
@@ -276,7 +289,8 @@ export default function Views() {
             return;
         }
 
-        const previousWorkspace = queryClient.getQueryData<ViewsWorkspace>(queryKeys.views.workspace()) ?? workspace;
+        const previousWorkspace =
+            queryClient.getQueryData<ViewsWorkspace>(queryKeys.views.workspace(workspaceId)) ?? workspace;
         const nextWorkspace = moveViewGroupInWorkspace(previousWorkspace, activeGroup.id, direction);
 
         if (nextWorkspace !== previousWorkspace) {
@@ -285,13 +299,14 @@ export default function Views() {
     };
 
     const handleSelectGroup = async (group: ViewGroup) => {
-        const previousWorkspace = queryClient.getQueryData<ViewsWorkspace>(queryKeys.views.workspace()) ?? workspace;
+        const previousWorkspace =
+            queryClient.getQueryData<ViewsWorkspace>(queryKeys.views.workspace(workspaceId)) ?? workspace;
         const previousSearch = search;
         const nextWorkspace = setActiveViewGroupInWorkspace(previousWorkspace, group.id);
 
         syncWorkspace(nextWorkspace);
         await navigate({
-            search: { group: group.id, state: undefined },
+            search: (current) => ({ ...current, group: group.id, state: undefined }),
             resetScroll: false,
         });
 
@@ -333,7 +348,8 @@ export default function Views() {
             return;
         }
 
-        const previousWorkspace = queryClient.getQueryData<ViewsWorkspace>(queryKeys.views.workspace()) ?? workspace;
+        const previousWorkspace =
+            queryClient.getQueryData<ViewsWorkspace>(queryKeys.views.workspace(workspaceId)) ?? workspace;
         const nextWorkspace = reorderViewsInWorkspace(
             previousWorkspace,
             activeGroup.id,
@@ -348,7 +364,8 @@ export default function Views() {
             return;
         }
 
-        const previousWorkspace = queryClient.getQueryData<ViewsWorkspace>(queryKeys.views.workspace()) ?? workspace;
+        const previousWorkspace =
+            queryClient.getQueryData<ViewsWorkspace>(queryKeys.views.workspace(workspaceId)) ?? workspace;
         const nextWorkspace = moveViewInWorkspace(previousWorkspace, activeGroup.id, viewId, direction);
 
         if (nextWorkspace !== previousWorkspace) {
@@ -357,7 +374,7 @@ export default function Views() {
     };
 
     const handleCreateGroup = async (title: string) => {
-        const response = await createViewGroup(title);
+        const response = await createViewGroup(title, workspaceId);
 
         if (response.type === 'error') {
             toast(response.errors[0].message);
@@ -373,7 +390,7 @@ export default function Views() {
 
         await invalidateViews();
         await navigate({
-            search: { group: response.createViewGroup.id, state: undefined },
+            search: { workspace: workspaceId, group: response.createViewGroup.id, state: undefined },
             resetScroll: false,
         });
         setGroupDialogState(null);
@@ -412,7 +429,11 @@ export default function Views() {
         }
 
         await invalidateViews();
-        await navigate({ search: { group: undefined, state: undefined }, replace: true, resetScroll: false });
+        await navigate({
+            search: (current) => ({ ...current, group: undefined, state: undefined }),
+            replace: true,
+            resetScroll: false,
+        });
     };
 
     const handleCreateView = async (draft: ViewDialogDraft) => {
@@ -457,7 +478,7 @@ export default function Views() {
                 return;
             }
 
-            queryClient.setQueryData<ViewsWorkspace>(queryKeys.views.workspace(), (current) =>
+            queryClient.setQueryData<ViewsWorkspace>(queryKeys.views.workspace(workspaceId), (current) =>
                 current
                     ? {
                           ...current,
@@ -564,7 +585,11 @@ export default function Views() {
                             className="h-[320px]"
                         />
                         <div className="flex justify-center">
-                            <Button type="button" onClick={() => setGroupDialogState({ mode: 'create' })}>
+                            <Button
+                                type="button"
+                                disabled={readOnly}
+                                onClick={() => setGroupDialogState({ mode: 'create' })}
+                            >
                                 <Icon.Plus className="h-4 w-4" />
                                 Create first group
                             </Button>
@@ -573,6 +598,7 @@ export default function Views() {
                 ) : (
                     <div className="flex flex-col gap-5">
                         <ViewGroupBar
+                            readOnly={readOnly}
                             groups={workspace.groups}
                             activeGroupId={activeGroup?.id ?? null}
                             onSelectGroup={handleSelectGroup}
@@ -597,13 +623,14 @@ export default function Views() {
                                         <Button
                                             type="button"
                                             size="sm"
+                                            disabled={readOnly}
                                             onClick={() => setViewDialogState({ mode: 'create' })}
                                         >
                                             <Icon.Plus className="h-4 w-4" />
                                             Add view
                                         </Button>
                                         <Dropdown
-                                            button={<MoreButton label="View group actions" />}
+                                            button={<MoreButton label="View group actions" disabled={readOnly} />}
                                             items={[
                                                 ...(activeGroupIndex > 0
                                                     ? [
@@ -661,6 +688,7 @@ export default function Views() {
                                                 <div className="flex flex-col gap-4">
                                                     {activeGroup.views.map((view, index) => (
                                                         <SortableView
+                                                            readOnly={readOnly}
                                                             key={view.id}
                                                             view={view}
                                                             availableProperties={availableProperties}

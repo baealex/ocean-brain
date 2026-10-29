@@ -3,6 +3,7 @@ import classNames from 'classnames';
 import * as Icon from '~/components/icon';
 import { Dropdown } from '~/components/shared';
 import { MoreButton, Text } from '~/components/ui';
+import { WorkspaceBadge } from '~/components/workspace/WorkspaceBadge';
 
 import type { Note } from '~/models/note.model';
 
@@ -14,7 +15,7 @@ interface Props extends Note {
     onDelete?: () => void;
 }
 
-export default function NoteListCard({ id, title, tags, pinned, updatedAt, onPinned, onDelete }: Props) {
+export default function NoteListCard({ id, workspaceId, title, tags, pinned, updatedAt, onPinned, onDelete }: Props) {
     const updatedTimeSince = timeSince(Number(updatedAt));
 
     return (
@@ -36,6 +37,7 @@ export default function NoteListCard({ id, title, tags, pinned, updatedAt, onPin
                         <Text as="span" variant="label" weight="medium" tone="secondary">
                             Updated {updatedTimeSince}
                         </Text>
+                        <WorkspaceBadge workspaceId={workspaceId} />
                     </div>
                     <Dropdown
                         button={<MoreButton label="Note actions" size="sm" />}

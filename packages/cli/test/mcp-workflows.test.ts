@@ -16,12 +16,13 @@ const noteReadSchema = buildSchema(`
         status: String!, reason: String, message: String, note: Note!, markdown: String!
         candidates: [Heading!]!, linkedViews: [LinkedView!]!, contentRange: ContentRange
     }
-    type Note { id: ID!, title: String!, createdAt: String!, updatedAt: String!, tags: [Tag!]!, properties: [Property!]! }
+    type Workspace { id: ID!, name: String!, archivedAt: String }
+    type Note { workspaceId: ID!, workspace: Workspace!, id: ID!, title: String!, createdAt: String!, updatedAt: String!, tags: [Tag!]!, properties: [Property!]! }
     type Tag { id: ID!, name: String! }
     type Property { key: String!, name: String!, value: String!, valueType: String!, option: PropertyOption }
     type PropertyOption { label: String!, value: String! }
     type Heading { heading: String!, level: Int!, start: Int!, end: Int! }
-    type LinkedView { viewId: ID!, title: String!, groupId: ID, groupTitle: String, displayType: String, status: String! }
+    type LinkedView { workspaceId: ID, viewId: ID!, title: String!, groupId: ID, groupTitle: String, displayType: String, status: String! }
     type ContentRange { start: Int!, end: Int!, totalLength: Int!, sectionEnd: Int!, hasMore: Boolean!, nextOffset: Int }
     type BackReference { id: ID!, title: String! }
 `);
@@ -33,6 +34,8 @@ test('MCP workflows use one HTTP request, preserve backlinks and structured resu
     }> = [];
     const note = {
         id: '17',
+        workspaceId: '1',
+        workspace: { id: '1', name: 'Notes', archivedAt: null },
         title: 'Task',
         createdAt: '2026-09-17T00:00:00Z',
         updatedAt: '2026-09-17T01:00:00Z',
@@ -90,7 +93,8 @@ test('MCP workflows use one HTTP request, preserve backlinks and structured resu
                     candidates: [],
                     linkedViews: [
                         {
-                            viewId: '3',
+                            workspaceId: '1',
+                viewId: '3',
                             title: 'Tasks',
                             groupId: '1',
                             groupTitle: 'Project',
@@ -209,6 +213,7 @@ test('MCP workflows use one HTTP request, preserve backlinks and structured resu
         assert.equal(read.structuredContent?.markdown, 'Requested tail');
         assert.deepEqual(read.structuredContent?.linkedViews, [
             {
+                workspaceId: '1',
                 viewId: '3',
                 title: 'Tasks',
                 groupId: '1',

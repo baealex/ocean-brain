@@ -5,6 +5,7 @@ import { OCEAN_BRAIN_MCP_TOOLS } from '../src/mcp.js';
 
 test('Ocean Brain MCP tool names use explicit product-prefixed names', () => {
     assert.deepEqual(OCEAN_BRAIN_MCP_TOOLS, {
+        listWorkspaces: 'ocean_brain_list_workspaces',
         queryNotes: 'ocean_brain_query_notes',
         listViews: 'ocean_brain_list_views',
         readView: 'ocean_brain_read_view',

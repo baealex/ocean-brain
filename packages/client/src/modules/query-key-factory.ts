@@ -14,6 +14,7 @@ import type {
 import type { FetchSearchNotesParams } from '~/apis/search.api';
 import type { FetchTagsParams } from '~/apis/tag.api';
 import type { ViewCalendarDateField } from '~/models/view.model';
+import type { WorkspaceScope } from '~/models/workspace.model';
 
 const normalizeFields = (fields?: FetchNotesParams['fields']) => {
     if (!fields || fields.length === 0) {
@@ -40,6 +41,13 @@ const normalizePlaceholderFields = (fields?: FetchPlaceholdersParams['fields']) 
 };
 
 export const queryKeys = {
+    workspaces: {
+        all: () => ['workspaces'] as const,
+        list: () => ['workspaces', 'list'] as const,
+        movePreview: (noteId: string, targetWorkspaceId: string) =>
+            ['workspaces', 'move-preview', { noteId, targetWorkspaceId }] as const,
+        snapshotRestoreContext: (id: string) => ['workspaces', 'snapshot-restore', { id }] as const,
+    },
     navigation: { settings: () => ['navigation', 'settings'] as const },
     integrations: { all: () => ['integrations'] as const, list: () => ['integrations', 'list'] as const },
     mcp: { status: () => ['mcp-admin', 'status'] as const },
@@ -51,6 +59,7 @@ export const queryKeys = {
                 'notes',
                 'list',
                 {
+                    ...(params.scope ? { scope: params.scope } : {}),
                     limit: params.limit ?? 25,
                     offset: params.offset ?? 0,
                     query: params.query ?? '',
@@ -66,6 +75,7 @@ export const queryKeys = {
                 'notes',
                 'tag-list',
                 {
+                    ...(params.scope ? { scope: params.scope } : {}),
                     limit: params.limit ?? 25,
                     offset: params.offset ?? 0,
                     query: params.query ?? '',
@@ -77,6 +87,7 @@ export const queryKeys = {
                 'notes',
                 'tag-name-list',
                 {
+                    ...(params.scope ? { scope: params.scope } : {}),
                     limit: params.limit ?? 25,
                     offset: params.offset ?? 0,
                     mode: params.mode ?? 'and',
@@ -95,29 +106,36 @@ export const queryKeys = {
             ] as const,
         snapshotDetail: (id: string) => ['notes', 'snapshot-detail', { id }] as const,
         trashAll: () => ['notes', 'trash'] as const,
-        trash: (params: Pick<FetchNotesParams, 'limit' | 'offset'> = {}) =>
+        trash: (params: Pick<FetchNotesParams, 'limit' | 'offset' | 'scope'> = {}) =>
             [
                 'notes',
                 'trash',
                 {
+                    ...(params.scope ? { scope: params.scope } : {}),
                     limit: params.limit ?? 25,
                     offset: params.offset ?? 0,
                 },
             ] as const,
         trashDetail: (id: string) => ['notes', 'trash', 'detail', { id }] as const,
-        pinned: () => ['notes', 'pinned'] as const,
+        pinned: (scope?: WorkspaceScope) =>
+            scope ? (['notes', 'pinned', { scope }] as const) : (['notes', 'pinned'] as const),
         backReferencesAll: () => ['notes', 'back-references'] as const,
         backReferences: (noteId: string) => ['notes', 'back-references', { noteId }] as const,
         backReferenceDetails: (noteId: string) => ['notes', 'back-references', { noteId }, 'details'] as const,
-        graph: () => ['notes', 'graph'] as const,
+        graph: (scope?: WorkspaceScope) =>
+            scope ? (['notes', 'graph', { scope }] as const) : (['notes', 'graph'] as const),
         propertyKeysAll: () => ['notes', 'property-keys'] as const,
-        propertyKeysCatalog: () => ['notes', 'property-keys', 'catalog'] as const,
+        propertyKeysCatalog: (scope?: WorkspaceScope) =>
+            scope
+                ? (['notes', 'property-keys', 'catalog', { scope }] as const)
+                : (['notes', 'property-keys', 'catalog'] as const),
         propertyKeys: (params: FetchNotePropertyKeysParams = {}) =>
             [
                 'notes',
                 'property-keys',
                 {
                     query: params.query ?? '',
+                    ...(params.scope ? { scope: params.scope } : {}),
                     limit: params.limit ?? 50,
                     offset: params.offset ?? 0,
                 },
@@ -130,6 +148,7 @@ export const queryKeys = {
                 'tags',
                 'list',
                 {
+                    ...(params.scope ? { scope: params.scope } : {}),
                     limit: params.limit ?? 50,
                     offset: params.offset ?? 0,
                     query: params.query ?? '',
@@ -156,11 +175,12 @@ export const queryKeys = {
     reminders: {
         all: () => ['reminders'] as const,
         listAll: () => ['reminders', 'list'] as const,
-        list: ({ filter, limit = 25, offset = 0 }: FetchRemindersParams) =>
+        list: ({ filter, limit = 25, offset = 0, scope }: FetchRemindersParams) =>
             [
                 'reminders',
                 'list',
                 {
+                    ...(scope ? { scope } : {}),
                     filter: {
                         status: filter.status,
                         priority: filter.priority ?? null,
@@ -173,11 +193,12 @@ export const queryKeys = {
                     offset,
                 },
             ] as const,
-        overview: ({ now, tomorrow, priority, limit = 5 }: FetchOpenReminderOverviewParams) =>
+        overview: ({ now, tomorrow, priority, limit = 5, scope }: FetchOpenReminderOverviewParams) =>
             [
                 'reminders',
                 'overview',
                 {
+                    ...(scope ? { scope } : {}),
                     now,
                     tomorrow,
                     priority: priority ?? null,
@@ -206,13 +227,14 @@ export const queryKeys = {
             ] as const,
         upcomingAllPages: () => ['reminders', 'upcoming'] as const,
         inDateRangeAll: () => ['reminders', 'in-date-range'] as const,
-        inDateRange: (year: number, month: number) =>
+        inDateRange: (year: number, month: number, scope?: WorkspaceScope) =>
             [
                 'reminders',
                 'in-date-range',
                 {
                     year,
                     month,
+                    ...(scope ? { scope } : {}),
                 },
             ] as const,
     },
@@ -233,19 +255,21 @@ export const queryKeys = {
     },
     calendar: {
         all: () => ['calendar'] as const,
-        notesInDateRange: (year: number, month: number) =>
+        notesInDateRange: (year: number, month: number, scope?: WorkspaceScope) =>
             [
                 'calendar',
                 'notes-in-date-range',
                 {
                     year,
                     month,
+                    ...(scope ? { scope } : {}),
                 },
             ] as const,
     },
     views: {
         all: () => ['views'] as const,
-        workspace: () => ['views', 'workspace'] as const,
+        workspace: (workspaceId?: string) =>
+            workspaceId ? (['views', 'workspace', { workspaceId }] as const) : (['views', 'workspace'] as const),
         view: (id: string) => ['views', 'view', { id }] as const,
         noteCreationContext: (viewId: string, groupValue?: string | null) =>
             ['views', 'note-creation-context', { viewId, groupValue }] as const,
@@ -313,6 +337,7 @@ export const queryKeys = {
                 'search',
                 'results',
                 {
+                    ...(params.scope ? { scope: params.scope } : {}),
                     query: params.query.trim(),
                     limit: params.limit ?? 25,
                     offset: params.offset ?? 0,
@@ -320,7 +345,8 @@ export const queryKeys = {
                 },
             ] as const,
         relatedAll: () => ['search', 'related'] as const,
-        related: (noteId: string, limit = 5) => ['search', 'related', { noteId, limit }] as const,
+        related: (noteId: string, limit = 5, scope?: WorkspaceScope) =>
+            ['search', 'related', { noteId, limit, ...(scope ? { scope } : {}) }] as const,
         adminStatus: () => ['search', 'admin-status'] as const,
     },
     ui: { heroBanner: () => ['ui', 'hero-banner'] as const },

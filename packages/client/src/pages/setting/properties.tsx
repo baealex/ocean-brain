@@ -13,6 +13,8 @@ import { Input, Select, SelectItem, Text, useToast } from '~/components/ui';
 import type { NotePropertyValueType } from '~/models/note.model';
 import { queryKeys } from '~/modules/query-key-factory';
 import { SETTINGS_PROPERTIES_ROUTE } from '~/modules/url';
+import { workspaceScope } from '~/modules/workspace-scope';
+import { useWorkspace } from '~/store/workspace';
 
 const Route = getRouteApi(SETTINGS_PROPERTIES_ROUTE);
 
@@ -62,6 +64,9 @@ export default function PropertiesSettings() {
     const page = Number(search.page ?? 1);
     const limit = 50;
     const offset = Math.max(0, page - 1) * limit;
+    const { workspaceId, activeWorkspace } = useWorkspace();
+    const readOnly = Boolean(activeWorkspace?.archivedAt);
+    const scope = workspaceScope(workspaceId);
     const [key, setKey] = useState('');
     const [name, setName] = useState('');
     const [valueType, setValueType] = useState<NotePropertyValueType>('text');
@@ -102,9 +107,9 @@ export default function PropertiesSettings() {
     };
 
     const propertyKeysQuery = useQuery({
-        queryKey: queryKeys.notes.propertyKeys({ limit, offset }),
+        queryKey: queryKeys.notes.propertyKeys({ limit, offset, scope }),
         queryFn: async () => {
-            const response = await fetchNotePropertyKeys({ limit, offset });
+            const response = await fetchNotePropertyKeys({ limit, offset, scope });
 
             if (response.type === 'error') {
                 throw response;
@@ -117,7 +122,8 @@ export default function PropertiesSettings() {
     const createMutation = useMutation({
         mutationFn: async () =>
             createNotePropertyKey({
-                key,
+                workspaceId,
+                ...(key.trim() ? { key: key.trim() } : {}),
                 name: name || key,
                 valueType,
                 ...(valueType === 'select'
@@ -275,6 +281,7 @@ export default function PropertiesSettings() {
                     size="md"
                     variant="primary"
                     className="w-full sm:w-auto"
+                    disabled={readOnly}
                     onClick={() => setIsCreateModalOpen(true)}
                 >
                     New property
@@ -323,9 +330,12 @@ export default function PropertiesSettings() {
                                     <Text as="h3" variant="body" weight="semibold" className="truncate">
                                         {propertyKey.name}
                                     </Text>
-                                    <Text as="p" variant="micro" tone="tertiary" className="font-mono">
-                                        {propertyKey.key}
-                                    </Text>
+                                    <details className="mt-1 text-xs text-fg-tertiary">
+                                        <summary className="cursor-pointer">Field key</summary>
+                                        <Text as="p" variant="micro" tone="tertiary" className="break-all font-mono">
+                                            {propertyKey.key}
+                                        </Text>
+                                    </details>
                                     {propertyKey.options.length > 0 && (
                                         <div className="mt-2 flex flex-wrap gap-1.5">
                                             {propertyKey.options.slice(0, 6).map((option) => (
@@ -365,7 +375,7 @@ export default function PropertiesSettings() {
                                         type="button"
                                         size="sm"
                                         variant="subtle"
-                                        disabled={updateMutation.isPending || deleteMutation.isPending}
+                                        disabled={readOnly || updateMutation.isPending || deleteMutation.isPending}
                                         onClick={() => openEditModal(propertyKey)}
                                     >
                                         Edit
@@ -374,7 +384,7 @@ export default function PropertiesSettings() {
                                         type="button"
                                         size="sm"
                                         variant="soft-danger"
-                                        disabled={deleteMutation.isPending || updateMutation.isPending}
+                                        disabled={readOnly || deleteMutation.isPending || updateMutation.isPending}
                                         onClick={() => setPropertyToDelete(propertyKey)}
                                     >
                                         Delete
@@ -406,19 +416,25 @@ export default function PropertiesSettings() {
                 <Modal.Body>
                     <div className="flex flex-col gap-3">
                         <Text as="p" variant="label" tone="tertiary">
-                            Create a shared field that notes can use for values and future views.
+                            Create a field for notes and views in this workspace.
                         </Text>
-                        <label className="flex flex-col gap-1.5">
-                            <Text as="span" variant="label" weight="medium">
-                                Key
+                        <details>
+                            <summary className="cursor-pointer text-sm text-fg-secondary">Advanced: field key</summary>
+                            <label className="flex flex-col gap-1.5">
+                                <Text as="span" variant="label" weight="medium">
+                                    Key
+                                </Text>
+                                <Input
+                                    size="md"
+                                    placeholder="status"
+                                    value={key}
+                                    onChange={(event) => setKey(event.target.value)}
+                                />
+                            </label>
+                            <Text variant="meta" tone="tertiary">
+                                Optional. A permanent unique key is generated automatically.
                             </Text>
-                            <Input
-                                size="md"
-                                placeholder="status"
-                                value={key}
-                                onChange={(event) => setKey(event.target.value)}
-                            />
-                        </label>
+                        </details>
                         <label className="flex flex-col gap-1.5">
                             <Text as="span" variant="label" weight="medium">
                                 Name
@@ -532,7 +548,9 @@ export default function PropertiesSettings() {
                             type="button"
                             variant="primary"
                             size="sm"
-                            disabled={!key.trim() || !hasValidSelectOption || createMutation.isPending}
+                            disabled={
+                                (!name.trim() && !key.trim()) || !hasValidSelectOption || createMutation.isPending
+                            }
                             isLoading={createMutation.isPending}
                             onClick={() => createMutation.mutate()}
                         >

@@ -99,6 +99,7 @@ describe('useNoteMutate', () => {
         expect(createNote).toHaveBeenCalledWith({
             title: 'Title',
             content: 'Content',
+            workspaceId: '1',
         });
         expect(mockNavigate).toHaveBeenCalledWith({
             to: NOTE_ROUTE,
@@ -139,7 +140,7 @@ describe('useNoteMutate', () => {
             });
             expect(invalidateSpy).toHaveBeenCalledWith({
                 queryKey: queryKeys.notes.pinned(),
-                exact: true,
+                exact: false,
             });
         });
 

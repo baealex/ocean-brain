@@ -1,7 +1,7 @@
 import { useNavigate } from '@tanstack/react-router';
 import { useEffect } from 'react';
-
 import { SEARCH_ROUTE } from '~/modules/url';
+import { useWorkspace } from '~/store/workspace';
 
 const isShortcutBlockedTarget = (target: EventTarget | null) => {
     if (!(target instanceof Element)) {
@@ -22,6 +22,7 @@ const isShortcutBlockedTarget = (target: EventTarget | null) => {
 
 const GlobalSearchShortcut = () => {
     const navigate = useNavigate();
+    const { workspaceId, multiple } = useWorkspace();
 
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
@@ -38,6 +39,7 @@ const GlobalSearchShortcut = () => {
             navigate({
                 to: SEARCH_ROUTE,
                 search: {
+                    ...(multiple ? { workspace: workspaceId } : {}),
                     query: '',
                     page: 1,
                     mode: 'hybrid',
@@ -47,7 +49,7 @@ const GlobalSearchShortcut = () => {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [navigate]);
+    }, [navigate, workspaceId, multiple]);
 
     return null;
 };

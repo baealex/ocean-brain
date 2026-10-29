@@ -23,6 +23,7 @@ export const searchTypeDefs = gql`
     }
 
     type SearchNotesResult {
+        resolvedScope: WorkspaceReadScope!
         totalCount: Int!
         notes: [Note!]!
         matches: [SearchNoteMatch!]!
@@ -32,7 +33,7 @@ export const searchTypeDefs = gql`
     }
 
     extend type Query {
-        searchNotes(query: String!, pagination: PaginationInput!, mode: SearchMode = HYBRID): SearchNotesResult!
-        searchRelatedNotes(noteId: ID!, limit: Int = 5): [SearchRelatedNote!]!
+        searchNotes(query: String!, pagination: PaginationInput!, mode: SearchMode = HYBRID, scope: WorkspaceScopeInput): SearchNotesResult!
+        searchRelatedNotes(noteId: ID!, limit: Int = 5, scope: WorkspaceScopeInput): [SearchRelatedNote!]!
     }
 `;

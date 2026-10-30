@@ -50,21 +50,46 @@ const buildSearchExcerpt = (text: string, query: string) => {
     return snippet;
 };
 
-const getInlineText = (content: unknown) => {
+const getTagLabel = (tag: string) => (tag.startsWith('@') ? tag : `@${tag}`);
+
+// Custom inline nodes keep their visible label in props, and links nest their text in content.
+const getInlineItemText = (item: unknown): string => {
+    if (!item || typeof item !== 'object') {
+        return '';
+    }
+
+    const { type, text, props, content } = item as {
+        type?: unknown;
+        text?: unknown;
+        props?: { title?: unknown; tag?: unknown };
+        content?: unknown;
+    };
+
+    if (typeof text === 'string') {
+        return text;
+    }
+
+    if (type === 'reference') {
+        return typeof props?.title === 'string' ? props.title : '';
+    }
+
+    if (type === 'tag') {
+        return typeof props?.tag === 'string' && props.tag ? getTagLabel(props.tag) : '';
+    }
+
+    if (type === 'link') {
+        return typeof content === 'string' ? content : getInlineText(content);
+    }
+
+    return '';
+};
+
+const getInlineText = (content: unknown): string => {
     if (!Array.isArray(content)) {
         return '';
     }
 
-    return content
-        .map((item) => {
-            if (!item || typeof item !== 'object') {
-                return '';
-            }
-
-            const text = (item as { text?: unknown }).text;
-            return typeof text === 'string' ? text : '';
-        })
-        .join('');
+    return content.map(getInlineItemText).join('');
 };
 
 export type SearchPreviewKind = 'heading' | 'list' | 'checklist' | 'quote' | 'code' | 'content';
@@ -112,23 +137,37 @@ const collectPreviewBlocks = (nodes: unknown, blocks: SearchPreviewBlock[]) => {
     });
 };
 
-export const getSearchPreviewBlocks = (content: string, query: string) => {
+interface SearchPreviewOptions {
+    title?: string;
+}
+
+export const getSearchPreviewBlocks = (content: string, query: string, { title = '' }: SearchPreviewOptions = {}) => {
     try {
         const parsed = JSON.parse(content) as unknown;
         const blocks: SearchPreviewBlock[] = [];
 
         collectPreviewBlocks(parsed, blocks);
 
-        if (blocks.length === 0) {
+        // The result card already shows the title, so a heading that repeats it adds no context.
+        const normalizedTitle = normalizeSearchText(title).toLowerCase();
+        const contentBlocks = normalizedTitle
+            ? blocks.filter((block) => block.text.toLowerCase() !== normalizedTitle)
+            : blocks;
+
+        if (contentBlocks.length === 0) {
             return [];
         }
 
         const normalizedTerms = getNormalizedSearchTerms(query);
         const matchingBlocks =
             normalizedTerms.length > 0
-                ? blocks.filter((block) => normalizedTerms.some((term) => block.text.toLowerCase().includes(term)))
-                : blocks;
-        const selectedBlocks = (matchingBlocks.length > 0 ? matchingBlocks : blocks).slice(0, 2);
+                ? contentBlocks.filter((block) =>
+                      normalizedTerms.some((term) => block.text.toLowerCase().includes(term)),
+                  )
+                : contentBlocks;
+        const bodyBlocks = contentBlocks.filter((block) => block.kind !== 'heading');
+        const fallbackBlocks = bodyBlocks.length > 0 ? bodyBlocks : contentBlocks;
+        const selectedBlocks = (matchingBlocks.length > 0 ? matchingBlocks : fallbackBlocks).slice(0, 2);
 
         return selectedBlocks.map((block) => ({
             ...block,

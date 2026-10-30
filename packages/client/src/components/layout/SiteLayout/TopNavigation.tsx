@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useLocation } from '@tanstack/react-router';
-import { Fragment } from 'react';
+import { Fragment, useEffect, useRef } from 'react';
 import { fetchIntegrations } from '~/apis/integration.api';
 import { fetchNavigationSettings } from '~/apis/navigation-settings.api';
 import * as Icon from '~/components/icon';
@@ -42,19 +42,37 @@ const TopNavigation = () => {
         ],
         settings?.preferences?.order,
     );
+    const getItemPath = (item: (typeof items)[number]) =>
+        'integration' in item ? `/integrations/${encodeURIComponent(item.integration.id)}` : item.path;
+    const isItemActive = (path: string) =>
+        pathname === path || (path !== HOME_ROUTE && pathname.startsWith(`${path}/`));
+    const activeItemId = items.find((item) => isItemActive(getItemPath(item)))?.id;
+    const activeLinkRef = useRef<HTMLAnchorElement>(null);
+
+    // On narrow screens the tabs overflow horizontally; keep the current destination visible.
+    useEffect(() => {
+        if (!activeItemId) {
+            return;
+        }
+
+        const activeLink = activeLinkRef.current;
+        if (typeof activeLink?.scrollIntoView === 'function') {
+            activeLink.scrollIntoView({ inline: 'center', block: 'nearest' });
+        }
+    }, [activeItemId, pathname]);
 
     return (
         <nav aria-label="Primary navigation" className="flex items-center gap-1 px-4 py-2.5">
             {items.map((item, index) => {
                 const connectionId = 'integration' in item ? item.integration.id : undefined;
-                const path = connectionId ? `/integrations/${encodeURIComponent(connectionId)}` : item.path;
-                const isActive = pathname === path || (path !== HOME_ROUTE && pathname.startsWith(`${path}/`));
+                const isActive = item.id === activeItemId;
                 const shortcut = item.path === SEARCH_ROUTE ? searchShortcutLabel : undefined;
 
                 return (
                     <Fragment key={item.id}>
                         {index > 0 && <span className="h-3.5 w-px shrink-0 bg-border-subtle" />}
                         <Link
+                            ref={isActive ? activeLinkRef : undefined}
                             to={item.path}
                             search={multiple ? { workspace: workspaceId } : undefined}
                             params={connectionId ? { connectionId } : undefined}
@@ -75,7 +93,7 @@ const TopNavigation = () => {
                                 }`}
                             >
                                 <item.icon className="size-5" weight={isActive ? 'fill' : 'regular'} />
-                                <Text as="span" variant="meta" weight="medium" className="text-current">
+                                <Text as="span" variant="meta" weight="medium" tone="current">
                                     {item.name}
                                 </Text>
                             </div>

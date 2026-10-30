@@ -138,6 +138,47 @@ describe('<Search />', () => {
         });
     });
 
+    it('shows the note title once when the note body opens with the same heading', async () => {
+        routeState.search = { page: 1, query: 'kickoff', mode: 'hybrid' };
+        vi.mocked(searchApi.fetchSearchNotes).mockResolvedValue({
+            type: 'success',
+            searchNotes: {
+                totalCount: 1,
+                semanticAvailable: true,
+                semanticUsed: false,
+                semanticError: null,
+                matches: [{ noteId: '21', lexical: true, semantic: false }],
+                notes: [
+                    {
+                        id: '21',
+                        title: 'Project kickoff',
+                        content: JSON.stringify([
+                            {
+                                type: 'heading',
+                                props: { level: 1 },
+                                content: [{ type: 'text', text: 'Project kickoff' }],
+                            },
+                            {
+                                type: 'paragraph',
+                                content: [{ type: 'text', text: 'Agree on the scope before the first sprint.' }],
+                            },
+                        ]),
+                        pinned: false,
+                        tags: [],
+                        createdAt: '2026-01-01T00:00:00.000Z',
+                        updatedAt: '2026-01-01T00:00:00.000Z',
+                    },
+                ],
+            },
+        });
+
+        renderPage();
+
+        const result = await screen.findByRole('article');
+        expect(result.textContent?.split('Project kickoff')).toHaveLength(2);
+        expect(screen.getByText(/Agree on the scope/)).toBeInTheDocument();
+    });
+
     it('loads related notes only when a result asks to explore them', async () => {
         const user = userEvent.setup();
         vi.mocked(searchApi.fetchSearchNotes).mockResolvedValue({

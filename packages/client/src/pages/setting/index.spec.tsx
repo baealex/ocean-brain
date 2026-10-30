@@ -49,6 +49,21 @@ const renderPage = () => {
 };
 
 describe('<Setting />', () => {
+    it('keeps the familiar settings and direct note tools when there is one workspace', () => {
+        vi.mocked(mcpAdminApi.fetchMcpAdminStatus).mockResolvedValue(createMcpStatus());
+
+        renderPage();
+
+        for (const name of ['Appearance', 'Workspace', 'Advanced']) {
+            expect(screen.getByText(name, { exact: true })).toBeInTheDocument();
+        }
+        for (const name of [/^Properties/, /^Trash/, /^Workspaces/, /^Placeholders/, /^Images/, /^Integrations/]) {
+            expect(screen.getByRole('link', { name })).toBeInTheDocument();
+        }
+        expect(screen.queryByRole('link', { name: /^Workspace settings/ })).not.toBeInTheDocument();
+        expect(screen.queryByText('Global settings', { exact: true })).not.toBeInTheDocument();
+    });
+
     it('shows the current server version as secondary footer metadata', async () => {
         vi.mocked(mcpAdminApi.fetchMcpAdminStatus).mockResolvedValue(createMcpStatus());
 

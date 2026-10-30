@@ -45,6 +45,7 @@ import {
     SETTINGS_ROUTE,
     SETTINGS_SEARCH_ROUTE,
     SETTINGS_TRASH_ROUTE,
+    SETTINGS_WORKSPACE_ROUTE,
     SETTINGS_WORKSPACES_ROUTE,
     TAG_NOTES_ROUTE,
     TAG_ROUTE,
@@ -290,8 +291,15 @@ const workspacesRoute = createRoute({
     component: lazyRouteComponent(() => import('~/pages/setting/workspaces')),
 });
 
+const workspaceSettingsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: SETTINGS_WORKSPACE_ROUTE,
+    component: lazyRouteComponent(() => import('~/pages/setting/workspace')),
+});
+
 const routeTree = rootRoute.addChildren([
     workspacesRoute,
+    workspaceSettingsRoute,
     homeRoute,
     viewsRoute,
     calendarRoute,
@@ -324,9 +332,6 @@ export const router = createRouter({
             ...search,
             ...(typeof search.workspace === 'string' && /^[1-9]\d*$/.test(search.workspace)
                 ? { workspace: Number(search.workspace) }
-                : {}),
-            ...(typeof search.scopeWorkspace === 'string' && /^[1-9]\d*$/.test(search.scopeWorkspace)
-                ? { scopeWorkspace: Number(search.scopeWorkspace) }
                 : {}),
         }),
     defaultPreload: 'intent',

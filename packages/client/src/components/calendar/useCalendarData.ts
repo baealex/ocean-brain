@@ -35,7 +35,7 @@ interface UseCalendarDataParams {
 }
 
 export const useCalendarData = ({ year, month }: UseCalendarDataParams) => {
-    const scope = useWorkspaceScope(true);
+    const scope = useWorkspaceScope();
     const dateRange = getCalendarMonthRange(year, month);
 
     const notesQuery = useQuery({

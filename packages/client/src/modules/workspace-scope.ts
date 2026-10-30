@@ -18,14 +18,6 @@ export const workspaceScope = (id: string): WorkspaceScope => ({
     workspaceId: validateWorkspaceId(id),
 });
 
-export const validateWorkspaceSearch = (
-    search: Record<string, unknown>,
-): { workspace?: string; scopeWorkspace?: string } => ({
+export const validateWorkspaceSearch = (search: Record<string, unknown>): { workspace?: string } => ({
     ...(search.workspace !== undefined ? { workspace: validateWorkspaceId(search.workspace) } : {}),
-    ...(search.scopeWorkspace !== undefined
-        ? { scopeWorkspace: search.scopeWorkspace === 'all' ? 'all' : validateWorkspaceId(search.scopeWorkspace) }
-        : {}),
 });
-
-export const scopeFromSearch = (value?: string, fallback: WorkspaceScope = { kind: 'all' }): WorkspaceScope =>
-    value === undefined ? fallback : value === 'all' ? { kind: 'all' } : workspaceScope(value);

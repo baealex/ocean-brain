@@ -3,19 +3,19 @@ import classNames from 'classnames';
 import * as Icon from '~/components/icon';
 import { Dropdown } from '~/components/shared';
 import { MoreButton, Text } from '~/components/ui';
-import { WorkspaceBadge } from '~/components/workspace/WorkspaceBadge';
-
 import type { Note } from '~/models/note.model';
-
 import { timeSince } from '~/modules/time';
 import { NOTE_ROUTE, TAG_NOTES_ROUTE } from '~/modules/url';
+import { useWorkspace } from '~/store/workspace';
 
 interface Props extends Note {
     onPinned?: () => void;
     onDelete?: () => void;
 }
 
-export default function NoteListCard({ id, workspaceId, title, tags, pinned, updatedAt, onPinned, onDelete }: Props) {
+export default function NoteListCard({ id, title, tags, pinned, updatedAt, onPinned, onDelete }: Props) {
+    const context = useWorkspace();
+    const tagSearch = { page: 1, ...(context.multiple ? { workspace: context.workspaceId } : {}) };
     const updatedTimeSince = timeSince(Number(updatedAt));
 
     return (
@@ -37,7 +37,6 @@ export default function NoteListCard({ id, workspaceId, title, tags, pinned, upd
                         <Text as="span" variant="label" weight="medium" tone="secondary">
                             Updated {updatedTimeSince}
                         </Text>
-                        <WorkspaceBadge workspaceId={workspaceId} />
                     </div>
                     <Dropdown
                         button={<MoreButton label="Note actions" size="sm" />}
@@ -66,7 +65,7 @@ export default function NoteListCard({ id, workspaceId, title, tags, pinned, upd
                     {tags.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 pt-0.5">
                             {tags.map((tag) => (
-                                <Link key={tag.id} to={TAG_NOTES_ROUTE} params={{ id: tag.id }} search={{ page: 1 }}>
+                                <Link key={tag.id} to={TAG_NOTES_ROUTE} params={{ id: tag.id }} search={tagSearch}>
                                     <Text
                                         as="span"
                                         variant="label"

@@ -11,7 +11,7 @@ import { HOME_ROUTE } from '~/modules/url';
 const Route = getRouteApi(HOME_ROUTE);
 
 export default function Home() {
-    const scope = useWorkspaceScope(true);
+    const scope = useWorkspaceScope();
     const navigate = Route.useNavigate();
     const { limit, page, sortBy, sortOrder, pinnedFirst } = Route.useSearch();
 

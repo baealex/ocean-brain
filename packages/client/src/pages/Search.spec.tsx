@@ -130,7 +130,7 @@ describe('<Search />', () => {
         expect(screen.getByText(/death within six years/)).toBeInTheDocument();
         expect(screen.queryByText(/wandered around the arcade/)).not.toBeInTheDocument();
         expect(searchApi.fetchSearchNotes).toHaveBeenCalledWith({
-            scope: { kind: 'all' },
+            scope: { kind: 'workspace', workspaceId: '1' },
             query: 'fortune teller death',
             limit: 10,
             offset: 0,
@@ -180,7 +180,10 @@ describe('<Search />', () => {
         expect(await screen.findByRole('link', { name: /Older project decision/ })).toHaveAttribute('href', '/42');
         expect(screen.getByText(/Backlink to this note/)).toBeInTheDocument();
         expect(screen.getByText(/Shares @project/)).toBeInTheDocument();
-        expect(searchApi.fetchSearchRelatedNotes).toHaveBeenCalledWith('17', 5, { kind: 'all' });
+        expect(searchApi.fetchSearchRelatedNotes).toHaveBeenCalledWith('17', 5, {
+            kind: 'workspace',
+            workspaceId: '1',
+        });
     });
 
     it('makes a semantic API failure visible while keeping keyword results', async () => {
@@ -246,7 +249,7 @@ describe('<Search />', () => {
 
         await waitFor(() => {
             expect(searchApi.fetchSearchNotes).toHaveBeenCalledWith({
-                scope: { kind: 'all' },
+                scope: { kind: 'workspace', workspaceId: '1' },
                 query: 'fortune teller death',
                 limit: 10,
                 offset: 0,
@@ -278,7 +281,7 @@ describe('<Search />', () => {
 
         await waitFor(() => {
             expect(searchApi.fetchSearchNotes).toHaveBeenCalledWith({
-                scope: { kind: 'all' },
+                scope: { kind: 'workspace', workspaceId: '1' },
                 query: 'fortune teller death',
                 limit: 10,
                 offset: 0,

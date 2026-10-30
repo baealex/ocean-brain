@@ -15,7 +15,6 @@ import { SearchInput, SearchMatchBadge } from '~/components/search';
 import { AuxiliaryPanelHeader, Empty, Highlight, PageLayout, Pagination, Skeleton } from '~/components/shared';
 import { Text } from '~/components/ui';
 import { ViewChip } from '~/components/view';
-import { WorkspaceBadge } from '~/components/workspace/WorkspaceBadge';
 import useSemanticSearchCapability from '~/hooks/useSemanticSearchCapability';
 import { useWorkspaceScope } from '~/hooks/useWorkspaceScope';
 import { queryKeys } from '~/modules/query-key-factory';
@@ -77,12 +76,13 @@ const SearchResultsSkeleton = () => (
 );
 
 const SearchNoteMeta = ({ note }: { note: SearchNote }) => {
+    const { workspaceId, multiple } = useWorkspace();
+    const tagSearch = { page: 1, ...(multiple ? { workspace: workspaceId } : {}) };
     const visibleTags = note.tags.slice(0, 2);
     const hiddenTagCount = note.tags.length - visibleTags.length;
 
     return (
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 sm:col-start-1 sm:row-start-2">
-            <WorkspaceBadge workspaceId={note.workspaceId} />
             {note.pinned && (
                 <span className="inline-flex items-center text-fg-tertiary" title="Pinned note">
                     <Icon.Pin className="h-3.5 w-3.5" weight="fill" aria-hidden="true" />
@@ -93,7 +93,7 @@ const SearchNoteMeta = ({ note }: { note: SearchNote }) => {
                 {formatUpdatedAt(note.updatedAt)}
             </Text>
             {visibleTags.map((tag) => (
-                <Link key={tag.id} to={TAG_NOTES_ROUTE} params={{ id: tag.id }} search={{ page: 1 }}>
+                <Link key={tag.id} to={TAG_NOTES_ROUTE} params={{ id: tag.id }} search={tagSearch}>
                     <ViewChip
                         size="compact"
                         className="border-border-subtle bg-transparent text-fg-secondary transition-colors hover:bg-hover-subtle hover:text-fg-default"
@@ -305,7 +305,7 @@ const SearchDiscoveryHint = ({ isVisible }: { isVisible: boolean }) => {
 };
 
 export default function Search() {
-    const { workspaceId, scopeWorkspace, multiple } = useWorkspace();
+    const { workspaceId, multiple } = useWorkspace();
     const scope = useWorkspaceScope();
     const navigate = Route.useNavigate();
     const { page, query, mode } = Route.useSearch();
@@ -339,7 +339,6 @@ export default function Search() {
         (nextQuery: string, nextMode: SearchMode = activeMode, replace = false) => {
             const search = {
                 ...(multiple ? { workspace: workspaceId } : {}),
-                ...(scopeWorkspace !== undefined ? { scopeWorkspace } : {}),
                 query: nextQuery.trim(),
                 page: 1,
                 mode: nextMode,
@@ -352,7 +351,7 @@ export default function Search() {
 
             navigate({ search });
         },
-        [activeMode, navigate, workspaceId, scopeWorkspace, multiple],
+        [activeMode, navigate, workspaceId, multiple],
     );
 
     useEffect(() => {

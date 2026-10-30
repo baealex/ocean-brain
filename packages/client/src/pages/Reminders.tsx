@@ -183,7 +183,7 @@ function OpenReminderOverview({
     actions: ReminderActions;
     onViewAll: (scope: ReminderScope) => void;
 }) {
-    const workspaceScope = useWorkspaceScope(true);
+    const workspaceScope = useWorkspaceScope();
     const queryParams = {
         scope: workspaceScope,
         now: boundaries.now,
@@ -266,7 +266,7 @@ function PaginatedReminderList({
                   sortOrder: 'desc',
               }
             : buildOpenFilter(scope as ReminderScope, priority, boundaries);
-    const workspaceScope = useWorkspaceScope(true);
+    const workspaceScope = useWorkspaceScope();
     const queryParams = {
         scope: workspaceScope,
         filter,
@@ -354,7 +354,7 @@ function PaginatedReminderList({
 }
 
 export default function Reminders() {
-    const workspaceScope = useWorkspaceScope(true);
+    const workspaceScope = useWorkspaceScope();
     const navigate = Route.useNavigate();
     const { status, scope, priority, page } = Route.useSearch();
     const { onUpdate, onDelete } = useReminderMutate();

@@ -129,7 +129,7 @@ export default function Workspaces() {
                     <div className="flex flex-col gap-2 sm:flex-row">
                         <Input
                             id="workspace-name"
-                            placeholder="e.g. Diet"
+                            placeholder="Workspace name"
                             value={name}
                             onChange={(event) => setName(event.target.value)}
                             maxLength={80}

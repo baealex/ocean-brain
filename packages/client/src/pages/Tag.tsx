@@ -16,7 +16,7 @@ const Route = getRouteApi(TAG_ROUTE);
 
 export default function Tag() {
     const scope = useWorkspaceScope();
-    const { workspaceId, scopeWorkspace, multiple } = useWorkspace();
+    const { workspaceId, multiple } = useWorkspace();
     const navigate = Route.useNavigate();
     const { page, query, limit, sortBy, sortOrder } = Route.useSearch();
     const [draftQuery, setDraftQuery] = useState(query);
@@ -213,7 +213,7 @@ export default function Tag() {
                                                 params={{ id: tag.id }}
                                                 search={{
                                                     page: 1,
-                                                    ...(multiple ? { workspace: workspaceId, scopeWorkspace } : {}),
+                                                    ...(multiple ? { workspace: workspaceId } : {}),
                                                 }}
                                                 className="inline-flex items-center gap-1.5 rounded-full border border-border-subtle bg-hover-subtle px-3 py-1.5 text-fg-secondary transition-colors hover:border-border-secondary hover:bg-hover hover:text-fg-default"
                                             >

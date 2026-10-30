@@ -147,9 +147,11 @@ function GraphContent() {
 }
 
 export default function Graph() {
+    const scope = useWorkspaceScope();
     return (
         <QueryBoundary
             fallback={graphPageFallback}
+            resetKeys={[scope.kind, scope.kind === 'workspace' ? scope.workspaceId : null]}
             errorTitle="Failed to load graph"
             errorDescription="Retry loading your linked note constellation"
             renderError={({ error, retry }) => (

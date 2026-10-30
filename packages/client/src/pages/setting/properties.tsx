@@ -10,6 +10,7 @@ import {
 } from '~/apis/note.api';
 import { Button, Modal, ModalActionRow, PageLayout } from '~/components/shared';
 import { Input, Select, SelectItem, Text, useToast } from '~/components/ui';
+import { WorkspaceSettingsBackLink } from '~/components/workspace/WorkspaceSettingsBackLink';
 import type { NotePropertyValueType } from '~/models/note.model';
 import { queryKeys } from '~/modules/query-key-factory';
 import { SETTINGS_PROPERTIES_ROUTE } from '~/modules/url';
@@ -64,7 +65,7 @@ export default function PropertiesSettings() {
     const page = Number(search.page ?? 1);
     const limit = 50;
     const offset = Math.max(0, page - 1) * limit;
-    const { workspaceId, activeWorkspace } = useWorkspace();
+    const { workspaceId, activeWorkspace, multiple } = useWorkspace();
     const readOnly = Boolean(activeWorkspace?.archivedAt);
     const scope = workspaceScope(workspaceId);
     const [key, setKey] = useState('');
@@ -274,6 +275,7 @@ export default function PropertiesSettings() {
     return (
         <PageLayout
             title="Properties"
+            backLink={multiple && <WorkspaceSettingsBackLink />}
             description="Define shared note fields before using them in notes and future views."
             headerRight={
                 <Button

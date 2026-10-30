@@ -4,12 +4,11 @@ import { createContext, type ReactNode, useCallback, useContext, useEffect, useS
 import { fetchWorkspaces } from '~/apis/workspace.api';
 import type { Workspace } from '~/models/workspace.model';
 import { queryKeys } from '~/modules/query-key-factory';
-import { NOTE_ROUTE } from '~/modules/url';
+import { NOTE_ROUTE, SETTINGS_ROUTE } from '~/modules/url';
 import { DEFAULT_WORKSPACE_ID, validateWorkspaceId } from '~/modules/workspace-scope';
 
 const STORAGE_KEY = 'ocean-brain:active-workspace';
 interface WorkspaceContextValue {
-    scopeWorkspace?: string;
     workspaceId: string;
     workspaces: Workspace[];
     activeWorkspace?: Workspace;
@@ -36,19 +35,21 @@ const readLastWorkspace = () => {
 
 export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
     const search = useLocation({ select: (location) => location.search });
+    const isSettings = useMatches({
+        select: (matches) =>
+            matches.some(
+                (match) => match.pathname === SETTINGS_ROUTE || match.pathname.startsWith(`${SETTINGS_ROUTE}/`),
+            ),
+    });
     const [rememberedId, setRememberedId] = useState(readLastWorkspace);
     const [noteWorkspaceId, setNoteWorkspaceId] = useState<string>();
     const isNote = useMatches({ select: (matches) => matches.some((match) => match.routeId === NOTE_ROUTE) });
     const explicitId =
         'workspace' in search && search.workspace !== undefined ? validateWorkspaceId(search.workspace) : undefined;
-    const scopeWorkspace =
-        'scopeWorkspace' in search && search.scopeWorkspace !== undefined
-            ? search.scopeWorkspace === 'all'
-                ? 'all'
-                : validateWorkspaceId(search.scopeWorkspace)
-            : undefined;
     const workspaceId =
-        (isNote ? noteWorkspaceId : undefined) ?? explicitId ?? (isNote ? rememberedId : DEFAULT_WORKSPACE_ID);
+        (isNote ? noteWorkspaceId : undefined) ??
+        explicitId ??
+        (isNote || isSettings ? rememberedId : DEFAULT_WORKSPACE_ID);
     const query = useQuery({
         queryKey: queryKeys.workspaces.list(),
         queryFn: async () => {
@@ -74,7 +75,6 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
         <WorkspaceContext.Provider
             value={{
                 workspaceId,
-                scopeWorkspace,
                 workspaces,
                 activeWorkspace: workspaces.find((workspace) => workspace.id === workspaceId),
                 multiple: workspaces.length > 1,

@@ -56,7 +56,7 @@ test('an external app preserves navigation and applies permission changes', asyn
     try {
         app.listen(0, '127.0.0.1');
         await once(app, 'listening');
-        const inboxUrl = `http://127.0.0.1:${(app.address() as AddressInfo).port}`;
+        const inboxUrl = `http://127.0.0.1:${(app.address() as AddressInfo).port}/`;
         const createNote = () =>
             page.request.post(`${e2eServer.url}/api/integrations/v1/notes/create`, {
                 headers: { authorization: `Bearer ${token}` },
@@ -70,8 +70,16 @@ test('an external app preserves navigation and applies permission changes', asyn
         await expect(card.getByLabel('Save this token now. It is shown only once.')).toHaveCount(0);
         await card.getByRole('link', { name: 'Advanced', exact: true }).click();
         await card.getByLabel('App URL', { exact: true }).fill(inboxUrl);
+        const manifestSaved = page.waitForResponse(
+            (response) =>
+                response.request().method() === 'PATCH' &&
+                new URL(response.url()).pathname.startsWith('/api/integration-admin/connections/'),
+        );
         await card.getByRole('button', { name: 'Update manifest', exact: true }).click();
-        await expect(card.getByRole('button', { name: 'Update manifest', exact: true })).toBeEnabled();
+        expect((await manifestSaved).ok()).toBeTruthy();
+        await page.reload();
+        await expect(card.getByLabel('App URL', { exact: true })).toHaveValue(inboxUrl);
+        await expect(card.getByRole('button', { name: 'Update manifest', exact: true })).toBeDisabled();
         await card.getByRole('link', { name: 'Overview', exact: true }).click();
         await expect(card.getByRole('switch', { name: 'Enable Note Inbox' })).toBeChecked();
         await expect(card.getByText('Waiting for app', { exact: true })).toBeVisible();

@@ -52,10 +52,10 @@ export default function ViewTableColumnsDialog({
                 ) : null}
                 {isPropertiesError ? (
                     <div className="mb-3 flex items-center justify-between gap-2">
-                        <Text as="p" variant="meta" tone="tertiary">
+                        <Text as="p" variant="meta" tone="error">
                             Property names could not be loaded.
                         </Text>
-                        <Button type="button" variant="ghost" size="sm" onClick={onRetryProperties}>
+                        <Button type="button" variant="subtle" size="sm" onClick={onRetryProperties}>
                             Retry
                         </Button>
                     </div>

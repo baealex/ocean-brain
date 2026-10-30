@@ -71,7 +71,7 @@ export const CalendarHeader = ({ month, year, type, onPrevMonth, onNextMonth, on
                             value={type}
                             aria-labelledby="calendar-note-date-label"
                             onValueChange={(value) => onTypeChange(value as CalendarDisplayType)}
-                            variant="ghost"
+                            variant="soft"
                             size="sm"
                         >
                             <SelectItem value="create">Created</SelectItem>

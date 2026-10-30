@@ -41,8 +41,8 @@ export const CalendarMonth = ({ days, type, isLoading, selectedDayKey, onSelecte
 
     return (
         <>
-            <div className="min-w-0 xl:grid xl:grid-cols-[minmax(0,1fr)_20rem] 2xl:grid-cols-[minmax(0,1fr)_22rem]">
-                <CalendarGrid isLoading={isLoading} className="xl:pr-5">
+            <div className="min-w-0 xl:grid xl:grid-cols-[minmax(0,1fr)_16rem] 2xl:grid-cols-[minmax(0,1fr)_22rem]">
+                <CalendarGrid isLoading={isLoading} className="xl:pr-4 2xl:pr-5">
                     {days.map((day) => (
                         <CalendarDay
                             key={day.key}
@@ -65,7 +65,7 @@ export const CalendarMonth = ({ days, type, isLoading, selectedDayKey, onSelecte
                     className="relative hidden min-h-0 border-l border-border-subtle xl:block"
                     aria-label="Selected day"
                 >
-                    <div className="absolute inset-y-0 right-0 left-5">
+                    <div className="absolute inset-y-0 right-0 left-4 2xl:left-5">
                         <CalendarDayDetail day={selectedDay} type={type} isLoading={isLoading} />
                     </div>
                 </aside>

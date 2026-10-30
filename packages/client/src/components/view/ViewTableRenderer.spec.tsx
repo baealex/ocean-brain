@@ -435,6 +435,16 @@ describe('<ViewTableRenderer />', () => {
         expect(within(table).queryByRole('columnheader', { name: 'Properties' })).not.toBeInTheDocument();
     });
 
+    it('names property column headers by the property name alone', () => {
+        renderTable({
+            view: createView({
+                displayOptions: { ...createView().displayOptions, tableColumns: ['title', 'properties'] },
+            }),
+        });
+
+        expect(screen.getByRole('columnheader', { name: 'Status' })).toBeInTheDocument();
+    });
+
     it('requests sorting from sortable column headers', async () => {
         const user = userEvent.setup();
         const handleSortChange = vi.fn();

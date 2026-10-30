@@ -4,9 +4,14 @@ import ForceGraph2D, { type ForceGraphMethods, type LinkObject, type NodeObject 
 import * as Icon from '~/components/icon';
 import { useTheme } from '~/store/theme';
 import { type GraphData, type GraphVisualNode, getNodeSize } from './graph-data';
+import { getGraphAreaShape, getGraphViewportFit } from './graph-fit';
 import {
+    clampGraphLabelCenter,
     doGraphLabelBoundsOverlap,
+    GRAPH_DIMMED_LABEL_OPACITY,
     type GraphLabelBounds,
+    getGraphAreaLabelText,
+    getGraphNodeFocusState,
     getGraphNodeLabelText,
     shouldShowGraphNodeLabel,
 } from './graph-labels';
@@ -21,6 +26,13 @@ import {
 
 type CanvasNode = NodeObject<GraphVisualNode>;
 type CanvasLink = LinkObject<GraphVisualNode, object>;
+
+const MIN_ZOOM = 0.3;
+const MAX_ZOOM = 5;
+const AREA_LABEL_FONT_SIZE = 11;
+const AREA_LABEL_EDGE_MARGIN = 8;
+// Clears the floating zoom controls (12px inset + 40px buttons) when fitting the map.
+const ZOOM_CONTROLS_CLEARANCE = 60;
 
 type ClusterForce = ((alpha: number) => void) & {
     initialize: (nodes: CanvasNode[]) => void;
@@ -173,10 +185,41 @@ export function GraphCanvas({
     }, [graphData]);
 
     const fitGraph = useCallback(() => {
+        const graph = graphRef.current;
+        if (!graph) {
+            return;
+        }
+
         const prefersReducedMotion =
             typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        graphRef.current?.zoomToFit(prefersReducedMotion ? 0 : 360, dimensions.width < 768 ? 34 : 72);
-    }, [dimensions.width]);
+        const duration = prefersReducedMotion ? 0 : 360;
+        const edgePadding = dimensions.width < 768 ? 24 : 64;
+        const areas = graphData.clusters.flatMap((cluster) => {
+            const nodes = nodesByCluster.get(cluster.id) ?? [];
+            return nodes.length > 0 ? [getGraphAreaShape(nodes, cluster)] : [];
+        });
+        const fit = getGraphViewportFit({
+            areas,
+            width: dimensions.width,
+            height: dimensions.height,
+            padding: {
+                top: Math.max(edgePadding, ZOOM_CONTROLS_CLEARANCE),
+                right: edgePadding,
+                bottom: edgePadding,
+                left: edgePadding,
+            },
+            minZoom: MIN_ZOOM,
+            maxZoom: MAX_ZOOM,
+        });
+
+        if (!fit) {
+            graph.zoomToFit(duration, edgePadding);
+            return;
+        }
+
+        graph.centerAt(fit.centerX, fit.centerY, duration);
+        graph.zoom(fit.zoom, duration);
+    }, [dimensions.height, dimensions.width, graphData.clusters, nodesByCluster]);
 
     const zoomGraph = useCallback((factor: number) => {
         const graph = graphRef.current;
@@ -184,13 +227,13 @@ export function GraphCanvas({
             return;
         }
 
-        graph.zoom(Math.min(5, Math.max(0.3, graph.zoom() * factor)), 180);
+        graph.zoom(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, graph.zoom() * factor)), 180);
     }, []);
 
     useEffect(() => {
         const timeoutId = window.setTimeout(fitGraph, 520);
         return () => window.clearTimeout(timeoutId);
-    }, [fitGraph, graphData]);
+    }, [fitGraph]);
 
     const handleNodeClick = useCallback(
         (node: CanvasNode) => {
@@ -222,22 +265,7 @@ export function GraphCanvas({
                     continue;
                 }
 
-                let minX = Number.POSITIVE_INFINITY;
-                let maxX = Number.NEGATIVE_INFINITY;
-                let minY = Number.POSITIVE_INFINITY;
-                let maxY = Number.NEGATIVE_INFINITY;
-                for (const node of nodes) {
-                    const x = node.x ?? cluster.x;
-                    const y = node.y ?? cluster.y;
-                    minX = Math.min(minX, x);
-                    maxX = Math.max(maxX, x);
-                    minY = Math.min(minY, y);
-                    maxY = Math.max(maxY, y);
-                }
-                const centerX = (minX + maxX) / 2;
-                const centerY = (minY + maxY) / 2;
-                const radiusX = Math.max(30, (maxX - minX) / 2 + 18);
-                const radiusY = Math.max(28, (maxY - minY) / 2 + 18);
+                const { centerX, centerY, radiusX, radiusY } = getGraphAreaShape(nodes, cluster);
                 const isFocused = focusedId === cluster.id || selectedClusterId === cluster.id;
                 const isDimmed = Boolean(
                     (focusedId && focusedId !== cluster.id) || (selectedClusterId && selectedClusterId !== cluster.id),
@@ -250,12 +278,26 @@ export function GraphCanvas({
                 ctx.fill();
 
                 if (!isDimmed) {
-                    const fontSize = Math.max(11 / globalScale, 3);
+                    const fontSize = Math.max(AREA_LABEL_FONT_SIZE / globalScale, 3);
+                    const labelText = getGraphAreaLabelText(cluster);
                     ctx.font = getGraphLabelFont(theme, { fontSize, emphasize: isFocused });
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'bottom';
                     ctx.fillStyle = getGraphClusterLabelColor(theme, cluster.colorIndex);
-                    ctx.fillText(cluster.label, centerX, centerY - radiusY + 12 / globalScale);
+                    // Area labels can be wider than their area, so keep them inside the canvas instead of clipping.
+                    const transform = ctx.getTransform();
+                    const edgeMargin = AREA_LABEL_EDGE_MARGIN * (transform.a / globalScale);
+                    const labelCenterX = clampGraphLabelCenter(
+                        transform.a * centerX + transform.e,
+                        ctx.measureText(labelText).width * transform.a,
+                        edgeMargin,
+                        ctx.canvas.width - edgeMargin,
+                    );
+                    ctx.fillText(
+                        labelText,
+                        (labelCenterX - transform.e) / transform.a,
+                        centerY - radiusY + 12 / globalScale,
+                    );
                 }
                 ctx.restore();
             }
@@ -266,19 +308,19 @@ export function GraphCanvas({
     const nodeCanvasObject = useCallback(
         (node: CanvasNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
             const palette = graphThemeRef.current;
-            const selectedId = selectedNodeIdRef.current;
-            const focusedId = focusedClusterIdRef.current;
-            const adjacency = adjacencyMapRef.current;
-            const nodeId = String(node.id);
             const nodeSize = getNodeSize(node.connections);
             const nx = node.x ?? 0;
             const ny = node.y ?? 0;
 
-            const isSelected = selectedId === nodeId;
-            const isHovered = hoveredNodeId === nodeId;
-            const isConnected = selectedId ? (adjacency.get(selectedId)?.has(nodeId) ?? false) : false;
-            const isOutsideFocusedCluster = focusedId !== null && focusedId !== node.clusterId;
-            const isDimmed = isOutsideFocusedCluster || (selectedId !== null && !isSelected && !isConnected);
+            const { isSelected, isHovered, isConnected, isDimmed } = getGraphNodeFocusState(
+                { id: String(node.id), clusterId: node.clusterId },
+                {
+                    adjacency: adjacencyMapRef.current,
+                    focusedClusterId: focusedClusterIdRef.current,
+                    hoveredNodeId,
+                    selectedNodeId: selectedNodeIdRef.current,
+                },
+            );
 
             ctx.beginPath();
             ctx.arc(nx, ny, nodeSize, 0, Math.PI * 2);
@@ -315,7 +357,15 @@ export function GraphCanvas({
         (ctx: CanvasRenderingContext2D, globalScale: number) => {
             const palette = graphThemeRef.current;
             const selectedId = selectedNodeIdRef.current;
-            const adjacency = adjacencyMapRef.current;
+            const focusOptions = {
+                adjacency: adjacencyMapRef.current,
+                focusedClusterId: focusedClusterIdRef.current,
+                hoveredNodeId,
+                selectedNodeId: selectedId,
+            };
+            const focusStates = new Map(
+                labelPriorityNodes.map((node) => [node.id, getGraphNodeFocusState(node, focusOptions)]),
+            );
             const orderedNodes: GraphVisualNode[] = [];
             const addedNodeIds = new Set<string>();
             const addNode = (node: GraphVisualNode | undefined) => {
@@ -325,14 +375,17 @@ export function GraphCanvas({
                 }
             };
 
+            // Active notes claim label space first so faded labels never hide them.
             addNode(selectedId ? nodeById.get(selectedId) : undefined);
             addNode(hoveredNodeId ? nodeById.get(hoveredNodeId) : undefined);
-            if (selectedId) {
-                const connectedNodeIds = adjacency.get(selectedId);
-                for (const node of labelPriorityNodes) {
-                    if (connectedNodeIds?.has(node.id)) {
-                        addNode(node);
-                    }
+            for (const node of labelPriorityNodes) {
+                if (focusStates.get(node.id)?.isConnected) {
+                    addNode(node);
+                }
+            }
+            for (const node of labelPriorityNodes) {
+                if (!focusStates.get(node.id)?.isDimmed) {
+                    addNode(node);
                 }
             }
             for (const node of labelPriorityNodes) {
@@ -341,9 +394,12 @@ export function GraphCanvas({
 
             const occupiedBounds: GraphLabelBounds[] = [];
             for (const node of orderedNodes) {
-                const isSelected = selectedId === node.id;
-                const isHovered = hoveredNodeId === node.id;
-                const isConnected = selectedId ? (adjacency.get(selectedId)?.has(node.id) ?? false) : false;
+                const focusState = focusStates.get(node.id);
+                if (!focusState) {
+                    continue;
+                }
+
+                const { isSelected, isHovered, isConnected, isDimmed } = focusState;
                 if (!shouldShowGraphNodeLabel(node, { globalScale, isConnected, isHovered, isSelected })) {
                     continue;
                 }
@@ -375,10 +431,13 @@ export function GraphCanvas({
                 }
 
                 occupiedBounds.push(bounds);
+                ctx.save();
+                ctx.globalAlpha = isDimmed && !isHovered ? GRAPH_DIMMED_LABEL_OPACITY : 1;
                 ctx.fillStyle = palette.labelBackground;
                 ctx.fillRect(bounds.left, bounds.top, bounds.right - bounds.left, bounds.bottom - bounds.top);
                 ctx.fillStyle = palette.labelText;
                 ctx.fillText(label, x, y + verticalPadding);
+                ctx.restore();
             }
         },
         [hoveredNodeId, labelPriorityNodes, nodeById, theme],
@@ -481,8 +540,8 @@ export function GraphCanvas({
                     d3VelocityDecay={0.32}
                     enableZoomInteraction={(event) => event.ctrlKey || event.metaKey}
                     enablePanInteraction={true}
-                    minZoom={0.3}
-                    maxZoom={5}
+                    minZoom={MIN_ZOOM}
+                    maxZoom={MAX_ZOOM}
                 />
             </div>
         </div>

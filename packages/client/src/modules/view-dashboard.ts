@@ -6,6 +6,8 @@ import type {
     ViewGroup,
     ViewPropertyFilter,
     ViewPropertyFilterOperator,
+    ViewSortBy,
+    ViewSortOrder,
     ViewsWorkspace,
     ViewTableColumn,
     ViewTagFilterMatchMode,
@@ -151,6 +153,21 @@ export const moveViewInWorkspace = (
     const views = workspace.groups.find((group) => group.id === groupId)?.views ?? [];
     const adjacentViewId = getAdjacentItemId(views, viewId, direction);
     return adjacentViewId ? reorderViewsInWorkspace(workspace, groupId, viewId, adjacentViewId) : workspace;
+};
+
+// Saved filters may hold plain names; note rows always show tags with their @ prefix.
+export const formatViewTagFilterName = (tagName: string) => {
+    const trimmedTagName = tagName.trim();
+    return trimmedTagName.startsWith('@') ? trimmedTagName : `@${trimmedTagName}`;
+};
+
+export const getViewSortSummary = (sortBy: ViewSortBy, sortOrder: ViewSortOrder) => {
+    if (sortBy === 'title') {
+        return sortOrder === 'asc' ? 'Title, A to Z' : 'Title, Z to A';
+    }
+
+    const fieldLabel = sortBy === 'createdAt' ? 'Created' : 'Updated';
+    return `${fieldLabel}, ${sortOrder === 'desc' ? 'newest first' : 'oldest first'}`;
 };
 
 export const getViewTagFilterMatchLabel = (mode: ViewTagFilterMatchMode) => {

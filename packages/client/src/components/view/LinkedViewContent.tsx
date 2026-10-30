@@ -8,6 +8,7 @@ import type { View } from '~/models/view.model';
 import { queryKeys } from '~/modules/query-key-factory';
 import {
     formatViewPropertyFilter,
+    formatViewTagFilterName,
     getViewDisplayTypeLabel,
     getViewTagFilterMatchToken,
 } from '~/modules/view-dashboard';
@@ -43,7 +44,7 @@ const LinkedViewContent = ({
         },
     });
     const filters = [
-        view.tagNames.join(` ${getViewTagFilterMatchToken(view.mode)} `),
+        view.tagNames.map(formatViewTagFilterName).join(` ${getViewTagFilterMatchToken(view.mode)} `),
         ...view.propertyFilters.map(formatViewPropertyFilter),
     ]
         .filter(Boolean)

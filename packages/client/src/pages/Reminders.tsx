@@ -152,7 +152,7 @@ function ReminderOverviewSection({
                     </Text>
                 </div>
                 {collection.totalCount > OVERVIEW_LIMIT ? (
-                    <Button type="button" variant="ghost" size="sm" onClick={() => onViewAll(scope)}>
+                    <Button type="button" variant="subtle" size="sm" onClick={() => onViewAll(scope)}>
                         View all
                         <Icon.ArrowRight className="size-3.5" aria-hidden="true" />
                     </Button>
@@ -295,13 +295,7 @@ function PaginatedReminderList({
             <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
                 <div>
                     {status === 'open' ? (
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="-ml-3 mb-1"
-                            onClick={onBackToOverview}
-                        >
+                        <Button type="button" variant="subtle" size="sm" className="mb-3" onClick={onBackToOverview}>
                             <Icon.ArrowLeft className="size-3.5" aria-hidden="true" />
                             All open reminders
                         </Button>

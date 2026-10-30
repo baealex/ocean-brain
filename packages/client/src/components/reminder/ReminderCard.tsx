@@ -6,6 +6,7 @@ import { Checkbox, MoreButton, Text } from '~/components/ui';
 import type { Reminder } from '~/models/reminder.model';
 import { priorityColors } from '~/modules/color';
 import { NOTE_ROUTE } from '~/modules/url';
+import { formatReminderTimeRemaining, isReminderOverdue } from './reminder-time';
 
 interface ReminderCardProps {
     reminder: Reminder;
@@ -28,24 +29,14 @@ export default function ReminderCard({ reminder, onUpdate, onDelete, onEdit }: R
         }
     };
 
-    const getTimeRemaining = (dateString: string) => {
-        const date = dayjs(Number(dateString));
-        const now = dayjs();
-        const diffHours = date.diff(now, 'hour');
-        const diffMinutes = date.diff(now, 'minute') % 60;
-
-        if (diffHours < 0 || diffMinutes < 0) return 'Overdue';
-        if (diffHours === 0) return `${diffMinutes}m remaining`;
-        return `${diffHours}h ${diffMinutes}m remaining`;
-    };
-
-    const timeRemaining = reminder.completed ? 'Completed' : getTimeRemaining(reminder.reminderDate);
-    const isOverdue = timeRemaining === 'Overdue';
+    const reminderTime = Number(reminder.reminderDate);
+    const isOverdue = !reminder.completed && isReminderOverdue(reminderTime);
+    const timeRemaining = reminder.completed ? 'Completed' : formatReminderTimeRemaining(reminderTime);
     const priority = reminder.priority || 'low';
     const priorityLabel = priority === 'high' ? 'High' : priority === 'medium' ? 'Medium' : 'Low';
     const priorityToneClassName = priorityColors[priority];
     const noteId = reminder.noteId.toString();
-    const detailToneClassName = isOverdue ? 'text-fg-error' : 'text-fg-tertiary';
+    const detailTone = reminder.completed ? 'success' : isOverdue ? 'error' : 'tertiary';
     const reminderContent = reminder.content?.trim();
     const primaryText = reminderContent || reminder.note?.title || 'Untitled reminder';
     const noteTitle = reminder.note?.title || 'Untitled note';
@@ -91,7 +82,8 @@ export default function ReminderCard({ reminder, onUpdate, onDelete, onEdit }: R
                     as="p"
                     variant="body"
                     weight="semibold"
-                    className={reminder.completed ? 'truncate text-fg-tertiary line-through' : 'truncate'}
+                    tone={reminder.completed ? 'tertiary' : 'default'}
+                    className={reminder.completed ? 'truncate line-through' : 'truncate'}
                 >
                     {!reminderContent && reminder.note ? (
                         <Link
@@ -109,8 +101,8 @@ export default function ReminderCard({ reminder, onUpdate, onDelete, onEdit }: R
                     <Text
                         as="div"
                         variant="meta"
-                        tone="secondary"
-                        className={reminder.completed ? 'mt-0.5 truncate text-fg-tertiary' : 'mt-0.5 truncate'}
+                        tone={reminder.completed ? 'tertiary' : 'secondary'}
+                        className="mt-0.5 truncate"
                     >
                         <Link
                             to={NOTE_ROUTE}
@@ -123,30 +115,24 @@ export default function ReminderCard({ reminder, onUpdate, onDelete, onEdit }: R
                 )}
             </div>
 
-            <div className="col-start-2 row-start-2 flex flex-wrap items-center gap-x-2 gap-y-1 sm:col-start-auto sm:row-start-auto sm:shrink-0">
-                <span
-                    className={`h-3 w-3 shrink-0 rounded-full border border-border-subtle ${priorityToneClassName}`}
-                    aria-label={`${priorityLabel} priority`}
-                    title={`${priorityLabel} priority`}
-                />
-                <Text
-                    as="span"
-                    variant="meta"
-                    weight="medium"
-                    tone="secondary"
-                    className={reminder.completed ? 'text-fg-tertiary' : undefined}
-                >
-                    {reminderDateText}
-                </Text>
-                <span className="h-1 w-1 rounded-full bg-border-secondary" />
-                <Text
-                    as="span"
-                    variant="label"
-                    weight="medium"
-                    className={reminder.completed ? 'text-accent-success' : detailToneClassName}
-                >
-                    {timeRemaining}
-                </Text>
+            <div className="col-start-2 row-start-2 flex flex-wrap items-center gap-x-3 gap-y-1 sm:col-start-auto sm:row-start-auto sm:shrink-0">
+                <span className="inline-flex items-center gap-1.5">
+                    <span aria-hidden="true" className={`h-2.5 w-2.5 shrink-0 rounded-full ${priorityToneClassName}`} />
+                    <Text as="span" variant="meta" weight="medium" tone={reminder.completed ? 'tertiary' : 'secondary'}>
+                        {priorityLabel}
+                    </Text>
+                    <span className="sr-only">{' priority'}</span>
+                </span>
+                {/* Date and countdown wrap together so a narrow row never ends on a dangling separator. */}
+                <span className="inline-flex items-center gap-x-2 whitespace-nowrap">
+                    <Text as="span" variant="meta" weight="medium" tone={reminder.completed ? 'tertiary' : 'secondary'}>
+                        {reminderDateText}
+                    </Text>
+                    <span aria-hidden="true" className="h-1 w-1 rounded-full bg-border-secondary" />
+                    <Text as="span" variant="label" weight="medium" tone={detailTone}>
+                        {timeRemaining}
+                    </Text>
+                </span>
             </div>
 
             <div className="col-start-3 row-start-1 flex items-center justify-end gap-1.5 sm:col-start-auto sm:row-start-auto sm:shrink-0">

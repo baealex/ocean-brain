@@ -2,7 +2,9 @@
 import {
     buildViewInput,
     EMPTY_VIEWS_WORKSPACE,
+    formatViewTagFilterName,
     getActiveViewGroup,
+    getViewSortSummary,
     getViewTableColumnLabel,
     moveViewGroupInWorkspace,
     moveViewInWorkspace,
@@ -39,6 +41,25 @@ const createView = (view: {
 describe('view-dashboard helpers', () => {
     it('normalizes plain or @-prefixed tags and ignores hash-prefixed tags', () => {
         expect(normalizeViewTagFilterNames([' project ', '#doing', '@todo', ''])).toEqual(['@project', '@todo']);
+    });
+
+    it.each([
+        ['project', '@project'],
+        ['@project', '@project'],
+        [' 제품 ', '@제품'],
+    ])('shows the tag filter %j as the tag name %j used on note rows', (tagName, expected) => {
+        expect(formatViewTagFilterName(tagName)).toBe(expected);
+    });
+
+    it.each([
+        ['updatedAt', 'desc', 'Updated, newest first'],
+        ['updatedAt', 'asc', 'Updated, oldest first'],
+        ['createdAt', 'desc', 'Created, newest first'],
+        ['createdAt', 'asc', 'Created, oldest first'],
+        ['title', 'asc', 'Title, A to Z'],
+        ['title', 'desc', 'Title, Z to A'],
+    ] as const)('summarizes %s %s sorting as %j', (sortBy, sortOrder, expected) => {
+        expect(getViewSortSummary(sortBy, sortOrder)).toBe(expected);
     });
 
     it('returns the first group when the active id is missing', () => {

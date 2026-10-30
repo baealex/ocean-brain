@@ -9,7 +9,7 @@ interface CalendarMonthNavigationProps {
 
 export const CalendarMonthNavigation = ({ onPrevMonth, onNextMonth, onToday }: CalendarMonthNavigationProps) => (
     <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-start">
-        <Button type="button" variant="ghost" size="sm" className="min-h-11 px-4 sm:min-h-8 sm:px-3" onClick={onToday}>
+        <Button type="button" variant="subtle" size="sm" className="min-h-11 px-4 sm:min-h-8 sm:px-3" onClick={onToday}>
             Today
         </Button>
         <div className="flex items-center gap-1.5" role="group" aria-label="Month navigation">

@@ -6,6 +6,7 @@ import { Button, MoreButton, Text } from '~/components/ui';
 import type { View, ViewDisplayOptions, ViewSortBy, ViewSortOrder } from '~/models/view.model';
 import {
     formatViewPropertyFilter,
+    formatViewTagFilterName,
     getViewDisplayTypeLabel,
     getViewTagFilterMatchToken,
 } from '~/modules/view-dashboard';
@@ -88,6 +89,13 @@ const ViewCard = ({
             : view.displayOptions.calendarDateField === 'updatedAt'
               ? 'Updated date'
               : 'Created date';
+    const displayTypeLabel = getViewDisplayTypeLabel(view.displayType);
+    const boardGroupLabel = boardGroupProperty?.name ?? view.displayOptions.boardGroupByPropertyKey;
+    const layoutSummary = isCalendar
+        ? `${displayTypeLabel} · by ${calendarDateLabel}`
+        : isBoard && boardGroupLabel
+          ? `${displayTypeLabel} · grouped by ${boardGroupLabel}`
+          : displayTypeLabel;
 
     const saveSort = async () => {
         if (!onSaveSort) return;
@@ -117,45 +125,57 @@ const ViewCard = ({
                             </Text>
                         </div>
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                        <ViewChip className="max-w-full border-border-subtle/80 bg-elevated text-fg-secondary">
-                            {getViewDisplayTypeLabel(view.displayType)}
-                        </ViewChip>
-                        {isBoard && view.displayOptions.boardGroupByPropertyKey ? (
-                            <ViewChip className="max-w-full border-border-subtle/80 bg-subtle text-fg-secondary">
-                                Grouped by {boardGroupProperty?.name ?? view.displayOptions.boardGroupByPropertyKey}
-                            </ViewChip>
-                        ) : null}
-                        {isCalendar ? (
-                            <ViewChip className="max-w-full border-border-subtle/80 bg-subtle text-fg-secondary">
-                                {calendarDateLabel}
-                            </ViewChip>
-                        ) : null}
-                        {view.tagNames.map((tagName, index) => (
-                            <div key={tagName} className="flex min-w-0 items-center gap-1.5">
-                                {index > 0 && (
-                                    <span className="px-0.5 text-[10px] font-semibold tracking-[0.08em] text-fg-tertiary/85">
-                                        {tagMatchToken}
-                                    </span>
-                                )}
-                                <ViewChip className="max-w-full border-border-subtle/80 bg-transparent text-fg-secondary">
-                                    {tagName}
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                        <Text as="p" variant="meta" tone="secondary" className="min-w-0">
+                            {layoutSummary}
+                        </Text>
+                        <span aria-hidden="true" className="h-4 w-px bg-border-subtle" />
+                        <div
+                            role="group"
+                            aria-label="View filters"
+                            className="flex min-w-0 flex-wrap items-center gap-1.5"
+                        >
+                            {hasFilters ? (
+                                <Text as="span" variant="label" weight="medium" tone="tertiary">
+                                    Filters
+                                </Text>
+                            ) : (
+                                <Text as="span" variant="meta" tone="secondary">
+                                    All notes
+                                </Text>
+                            )}
+                            {view.tagNames.map((tagName, index) => (
+                                <div key={tagName} className="flex min-w-0 items-center gap-1.5">
+                                    {index > 0 && (
+                                        <Text
+                                            as="span"
+                                            variant="micro"
+                                            weight="semibold"
+                                            tone="tertiary"
+                                            tracking="wide"
+                                            className="px-0.5"
+                                        >
+                                            {tagMatchToken}
+                                        </Text>
+                                    )}
+                                    <ViewChip
+                                        size="compact"
+                                        className="max-w-full border-border-subtle bg-transparent text-fg-secondary"
+                                    >
+                                        {formatViewTagFilterName(tagName)}
+                                    </ViewChip>
+                                </div>
+                            ))}
+                            {view.propertyFilters.map((filter) => (
+                                <ViewChip
+                                    key={`${filter.key}-${filter.operator}-${filter.value ?? ''}`}
+                                    size="compact"
+                                    className="max-w-full border-border-subtle bg-subtle/55 text-fg-secondary"
+                                >
+                                    {formatViewPropertyFilter(filter)}
                                 </ViewChip>
-                            </div>
-                        ))}
-                        {view.propertyFilters.map((filter) => (
-                            <ViewChip
-                                key={`${filter.key}-${filter.operator}-${filter.value ?? ''}`}
-                                className="max-w-full border-border-subtle/80 bg-subtle text-fg-secondary"
-                            >
-                                {formatViewPropertyFilter(filter)}
-                            </ViewChip>
-                        ))}
-                        {!hasFilters && (
-                            <ViewChip className="max-w-full border-border-subtle/80 bg-transparent text-fg-tertiary">
-                                All notes
-                            </ViewChip>
-                        )}
+                            ))}
+                        </div>
                     </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">

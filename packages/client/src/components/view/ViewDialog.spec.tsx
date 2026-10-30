@@ -219,6 +219,83 @@ describe('<ViewDialog />', () => {
         );
     });
 
+    it('creates a board with an is-set filter on its grouping property', async () => {
+        const user = userEvent.setup();
+        const onSubmit = vi.fn();
+        render(
+            <ViewDialog
+                open
+                mode="create"
+                availableTags={[]}
+                availableProperties={[
+                    createProperty({
+                        key: 'status',
+                        name: 'Status',
+                        valueType: 'select',
+                        options: [{ id: 'todo', label: 'Todo', value: 'todo', order: 0 }],
+                    }),
+                ]}
+                onClose={vi.fn()}
+                onSubmit={onSubmit}
+            />,
+        );
+
+        await user.click(screen.getByRole('radio', { name: 'Show as board' }));
+        await user.click(screen.getByRole('button', { name: 'Add property filter' }));
+        await user.click(screen.getByRole('combobox', { name: 'Property filter property' }));
+        await user.click(screen.getByRole('option', { name: 'Status' }));
+        await user.click(screen.getByRole('combobox', { name: 'Property filter operator' }));
+        await user.click(screen.getByRole('option', { name: 'is set', exact: true }));
+        await user.click(screen.getByRole('button', { name: 'Create view' }));
+
+        expect(onSubmit).toHaveBeenCalledWith(
+            expect.objectContaining({
+                displayType: 'board',
+                displayOptions: expect.objectContaining({ boardGroupByPropertyKey: 'status' }),
+                propertyFilters: [{ key: 'status', valueType: 'select', operator: 'exists', value: null }],
+            }),
+        );
+    });
+
+    it('saves a board with a value filter on its grouping property', async () => {
+        const user = userEvent.setup();
+        const onSubmit = vi.fn();
+        render(
+            <ViewDialog
+                open
+                mode="edit"
+                initialView={createView({
+                    displayType: 'board',
+                    displayOptions: { ...createView().displayOptions, boardGroupByPropertyKey: 'status' },
+                    propertyFilters: [
+                        { key: 'status', name: 'Status', valueType: 'select', operator: 'notEquals', value: 'done' },
+                    ],
+                })}
+                availableTags={[]}
+                availableProperties={[
+                    createProperty({
+                        key: 'status',
+                        name: 'Status',
+                        valueType: 'select',
+                        options: [{ id: 'done', label: 'Done', value: 'done', order: 0 }],
+                    }),
+                ]}
+                onClose={vi.fn()}
+                onSubmit={onSubmit}
+            />,
+        );
+
+        await user.click(screen.getByRole('button', { name: 'Save view' }));
+
+        expect(onSubmit).toHaveBeenCalledWith(
+            expect.objectContaining({
+                displayType: 'board',
+                displayOptions: expect.objectContaining({ boardGroupByPropertyKey: 'status' }),
+                propertyFilters: [{ key: 'status', valueType: 'select', operator: 'notEquals', value: 'done' }],
+            }),
+        );
+    });
+
     it('submits selected table columns with title kept visible', async () => {
         const user = userEvent.setup();
         const handleSubmit = vi.fn();

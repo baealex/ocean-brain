@@ -499,13 +499,6 @@ export const normalizeViewInput = (input: ViewInput) => {
     }
 
     if (
-        displayType === 'board' &&
-        propertyFilters.some((filter) => filter.key === displayOptions.boardGroupByPropertyKey)
-    ) {
-        throw new InvalidNotePropertyInputError('A board grouping property cannot also be used as a view filter.');
-    }
-
-    if (
         displayType === 'calendar' &&
         displayOptions.calendarDateField === 'property' &&
         !displayOptions.calendarDatePropertyKey

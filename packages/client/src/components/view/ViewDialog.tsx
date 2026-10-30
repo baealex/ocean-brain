@@ -359,14 +359,6 @@ const ViewDialog = ({
                             return;
                         }
 
-                        if (
-                            displayType === 'board' &&
-                            filters.some((filter) => filter.key === boardGroupByPropertyKey)
-                        ) {
-                            setFormError('Use different properties for the board columns and the view filter.');
-                            return;
-                        }
-
                         const calendarDateProperty = propertyByKey.get(calendarDatePropertyKey);
 
                         if (

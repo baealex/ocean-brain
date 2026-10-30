@@ -274,7 +274,6 @@ export function GraphCanvas({
                     bottom: transform.d * (centerY + radiusY) + transform.f,
                 };
 
-                // Offscreen areas must not leave their clamped labels behind at the canvas edge.
                 if (
                     !doGraphLabelBoundsOverlap(areaBounds, {
                         left: 0,
@@ -304,7 +303,6 @@ export function GraphCanvas({
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'bottom';
                     ctx.fillStyle = getGraphClusterLabelColor(theme, cluster.colorIndex);
-                    // Area labels can be wider than their area, so keep them inside the canvas instead of clipping.
                     const edgeMargin = AREA_LABEL_EDGE_MARGIN * (transform.a / globalScale);
                     const labelCenterX = clampGraphLabelCenter(
                         transform.a * centerX + transform.e,
@@ -394,7 +392,7 @@ export function GraphCanvas({
                 }
             };
 
-            // Active notes claim label space first so faded labels never hide them.
+            // Reserve collision space for active notes before dimmed notes.
             addNode(selectedId ? nodeById.get(selectedId) : undefined);
             addNode(hoveredNodeId ? nodeById.get(hoveredNodeId) : undefined);
             for (const node of labelPriorityNodes) {

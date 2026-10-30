@@ -54,10 +54,7 @@ export function getGraphAreaShape(points: Array<{ x?: number; y?: number }>, fal
     } satisfies GraphAreaShape;
 }
 
-/**
- * Frames every connection area, including the label drawn inside its top edge, within the padded viewport.
- * Uneven padding keeps the frame clear of overlays such as the zoom controls.
- */
+// Asymmetric padding keeps fitted areas clear of floating controls.
 export function getGraphViewportFit({
     areas,
     width,

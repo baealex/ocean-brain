@@ -1,7 +1,6 @@
 import type { GraphCluster, GraphVisualNode } from './graph-data';
 
 const MAX_AREA_LABEL_TITLE_LENGTH = 28;
-// Labels of faded notes stay readable for orientation without competing with the active selection or area.
 export const GRAPH_DIMMED_LABEL_OPACITY = 0.45;
 
 interface GraphNodeLabelVisibilityOptions {
@@ -34,7 +33,6 @@ export function shouldShowGraphNodeLabel(
     node: GraphVisualNode,
     { globalScale, isConnected = false, isHovered = false, isSelected = false }: GraphNodeLabelVisibilityOptions,
 ) {
-    // Direct connections are what a selection is about; label collisions decide how many fit.
     if (isSelected || isHovered || isConnected) {
         return true;
     }
@@ -72,7 +70,6 @@ function truncateLabel(text: string, maxLength: number) {
     return characters.length <= maxLength ? text : `${characters.slice(0, maxLength - 1).join('')}…`;
 }
 
-// Areas are named after their hub note, so the suffix keeps an area from reading as that note.
 export function getGraphAreaName(cluster: Pick<GraphCluster, 'label' | 'isIsolated'>) {
     return cluster.isIsolated ? cluster.label : `${cluster.label} area`;
 }
@@ -86,7 +83,6 @@ export function getGraphAreaLabelText(cluster: Pick<GraphCluster, 'label' | 'isI
     return `${name} · ${noteCount} ${noteCount === 1 ? 'note' : 'notes'}`;
 }
 
-// Keeps a label inside the visible span so it never clips at the canvas edge; centers it when it cannot fit.
 export function clampGraphLabelCenter(center: number, labelWidth: number, start: number, end: number) {
     if (end - start <= labelWidth) {
         return (start + end) / 2;

@@ -155,7 +155,7 @@ export const moveViewInWorkspace = (
     return adjacentViewId ? reorderViewsInWorkspace(workspace, groupId, viewId, adjacentViewId) : workspace;
 };
 
-// Saved filters may hold plain names; note rows always show tags with their @ prefix.
+// Saved filters may omit the @ prefix present on note tags.
 export const formatViewTagFilterName = (tagName: string) => {
     const trimmedTagName = tagName.trim();
     return trimmedTagName.startsWith('@') ? trimmedTagName : `@${trimmedTagName}`;

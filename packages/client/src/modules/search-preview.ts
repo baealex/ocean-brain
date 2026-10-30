@@ -52,7 +52,6 @@ const buildSearchExcerpt = (text: string, query: string) => {
 
 const getTagLabel = (tag: string) => (tag.startsWith('@') ? tag : `@${tag}`);
 
-// Custom inline nodes keep their visible label in props, and links nest their text in content.
 const getInlineItemText = (item: unknown): string => {
     if (!item || typeof item !== 'object') {
         return '';
@@ -148,7 +147,6 @@ export const getSearchPreviewBlocks = (content: string, query: string, { title =
 
         collectPreviewBlocks(parsed, blocks);
 
-        // The result card already shows the title, so a heading that repeats it adds no context.
         const normalizedTitle = normalizeSearchText(title).toLowerCase();
         const contentBlocks = normalizedTitle
             ? blocks.filter((block) => block.text.toLowerCase() !== normalizedTitle)

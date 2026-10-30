@@ -92,8 +92,7 @@ export function NoteContent({ id }: NoteContentProps) {
     });
     const { onCreate, onDelete, deleteWarningDialog } = useNoteMutate();
     const { document, editor, save, recovery, externalChange, properties, exportDocument, snapshots } = session;
-    // Note writes are serialized against the latest accepted version, so property edits can continue
-    // while the body autosaves. Only an unresolved conflict or failed save locks them.
+    // Serialized note writes allow property edits during autosave.
     const isPropertyEditingLocked = isReadOnly || save.status === 'conflict' || save.status === 'error';
 
     const openTrash = () =>

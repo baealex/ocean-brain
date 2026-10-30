@@ -358,7 +358,7 @@ html.dark {
     line-height: 1.4;
 }
 
-/* Surfaces live in the components layer so utilities on the same element (hover states, dashed borders) can override them. */
+/* Keep surfaces below utilities so hover and border overrides apply. */
 @layer components {
     .surface-base {
         background: var(--surface);

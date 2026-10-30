@@ -51,7 +51,6 @@ const BASE_COLUMN_WIDTHS: Record<BaseTableColumn, number> = {
     createdAt: 148,
     updatedAt: 148,
 };
-// The title column stays pinned while scrolling, so it narrows on phones to leave room for the other columns.
 const TITLE_COLUMN_WIDTH_VARIABLE = '--view-table-title-width';
 const titleColumnWidthClassName = '[--view-table-title-width:168px] sm:[--view-table-title-width:300px]';
 const compactTitleColumnWidthClassName = '[--view-table-title-width:152px] sm:[--view-table-title-width:240px]';
@@ -264,7 +263,6 @@ const ViewTableRenderer = ({
     const tableHeadClassName = compact ? 'bg-transparent' : surface === 'card' ? 'bg-subtle/65' : 'bg-subtle/45';
     const tableBodyClassName = surface === 'card' ? 'bg-elevated' : 'bg-transparent';
     const stickyCellBackground = surface === 'card' ? 'var(--elevated)' : 'var(--surface)';
-    // Separates the pinned title column from cells scrolled underneath it.
     const pinnedEdgeClassName =
         scrollEdges.start && 'shadow-[inset_-1px_0_0_var(--border-subtle),8px_0_10px_-8px_rgb(0_0_0/0.22)]';
     const headerCellClassName = classNames(
@@ -484,7 +482,6 @@ const ViewTableRenderer = ({
         );
     }
 
-    // Fades the clipped edge so columns beyond the visible width read as scrollable content.
     const renderScrollFade = (side: 'left' | 'right', isVisible: boolean) => (
         <div
             aria-hidden="true"

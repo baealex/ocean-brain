@@ -231,7 +231,6 @@ const Placeholder = () => {
                             />
                         </Button>
                     </div>
-                    {/* A flat reference list keeps the read-only built-ins from reading as clickable cards. */}
                     {isFixedListOpen && (
                         <ul id="system-placeholder-list" className="surface-base divide-y divide-border-subtle px-4">
                             {fixedPlaceholders.map((placeholder) => (

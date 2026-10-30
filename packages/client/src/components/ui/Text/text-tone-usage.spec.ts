@@ -3,8 +3,7 @@ import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const CLIENT_SRC_DIR = join(process.cwd(), 'src');
-// A color utility without a variant prefix competes with the tone class on the same element,
-// and the generated stylesheet order decides which one renders.
+// Unprefixed color utilities compete with Text's tone in generated CSS order.
 const TEXT_COLOR_CLASS_PATTERN = /(?<![\w:/-])text-(?:fg-[a-z-]+|accent-[a-z-]+|current|inherit)(?:\/\d+)?(?![\w-])/g;
 
 const collectSourceFiles = (directory: string): string[] => {

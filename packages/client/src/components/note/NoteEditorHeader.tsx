@@ -49,9 +49,7 @@ export default function NoteEditorHeader({
     onSave,
 }: NoteEditorHeaderProps) {
     return (
-        // From sm up the header sticks directly below the top navigation (its height is the top offset).
-        // The opaque page-colored strip, pulled over the content's top padding, keeps scrolled text from
-        // showing between the navigation and the card. Phones keep the header in the flow to save space.
+        // The opaque strip prevents scrolled content from showing between the navigation and sticky card.
         <div className="z-[1000] mb-7 sm:sticky sm:top-[calc(3.5625rem+2px)] sm:-mt-4 sm:bg-[var(--page-bg)] sm:pt-4">
             <div className="surface-floating flex flex-col gap-3.5 px-4 pt-4 pb-3.5 sm:px-5">
                 <div className="flex items-center justify-between gap-3 sm:gap-5">

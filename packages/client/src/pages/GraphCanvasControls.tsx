@@ -43,7 +43,6 @@ export function GraphCanvasControls({
     const selectedAreaName = selectedNode
         ? getGraphAreaName({ label: selectedNode.clusterLabel, isIsolated: selectedNode.isIsolated })
         : null;
-    // An area is named after its hub note, so repeating it next to that note's title adds nothing.
     const isSelectedAreaHub = Boolean(selectedNode?.isClusterHub && !selectedNode.isIsolated);
     const focusedCluster = clusters.find((cluster) => cluster.id === focusedClusterId) ?? null;
 

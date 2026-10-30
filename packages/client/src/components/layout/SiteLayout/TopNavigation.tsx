@@ -49,7 +49,6 @@ const TopNavigation = () => {
     const activeItemId = items.find((item) => isItemActive(getItemPath(item)))?.id;
     const activeLinkRef = useRef<HTMLAnchorElement>(null);
 
-    // On narrow screens the tabs overflow horizontally; keep the current destination visible.
     useEffect(() => {
         if (!activeItemId) {
             return;

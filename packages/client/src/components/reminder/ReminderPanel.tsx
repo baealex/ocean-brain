@@ -56,7 +56,6 @@ function ReminderRow({ reminder, readOnly, onToggleComplete, onEdit, onDelete }:
                     aria-label={`Reminder: ${reminder.content || reminderDateText}`}
                 />
             </span>
-            {/* Phones stack the details under the content so the content keeps the full row width. */}
             <div className="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-3">
                 <Text
                     as="div"

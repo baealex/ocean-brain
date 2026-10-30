@@ -8,8 +8,7 @@ import { timeSince } from '~/modules/time';
 import { NOTE_ROUTE, TAG_NOTES_ROUTE } from '~/modules/url';
 import { useWorkspace } from '~/store/workspace';
 
-// The title link stretches over the card, so its overlay draws the card's hover and focus states.
-// It stretches over the whole card; controls that stay independent sit above it with `relative z-[1]`.
+// Raise independent controls above the title link's full-card overlay.
 const titleLinkClassName = classNames(
     'line-clamp-2 outline-none decoration-fg-tertiary underline-offset-[3px] hover:underline',
     'after:absolute after:-inset-px after:rounded-[16px] after:border after:border-transparent after:transition-colors',

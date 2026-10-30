@@ -16,7 +16,6 @@ interface Props {
     onPinnedFirstChange: (enabled: boolean) => void;
 }
 
-// Separators only make sense while the toolbar stays on one line.
 const toolbarDividerClassName = 'hidden h-5 w-px bg-divider sm:block';
 
 export default function NoteFilters({

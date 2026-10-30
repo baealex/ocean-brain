@@ -123,15 +123,22 @@ export default function ReminderCard({ reminder, onUpdate, onDelete, onEdit }: R
                     </Text>
                     <span className="sr-only">{' priority'}</span>
                 </span>
-                {/* Date and countdown wrap together so a narrow row never ends on a dangling separator. */}
-                <span className="inline-flex items-center gap-x-2 whitespace-nowrap">
-                    <Text as="span" variant="meta" weight="medium" tone={reminder.completed ? 'tertiary' : 'secondary'}>
+                <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <Text
+                        as="span"
+                        variant="meta"
+                        weight="medium"
+                        tone={reminder.completed ? 'tertiary' : 'secondary'}
+                        className="whitespace-nowrap"
+                    >
                         {reminderDateText}
                     </Text>
-                    <span aria-hidden="true" className="h-1 w-1 rounded-full bg-border-secondary" />
-                    <Text as="span" variant="label" weight="medium" tone={detailTone}>
-                        {timeRemaining}
-                    </Text>
+                    <span className="inline-flex items-center gap-x-2 whitespace-nowrap">
+                        <span aria-hidden="true" className="h-1 w-1 rounded-full bg-border-secondary" />
+                        <Text as="span" variant="label" weight="medium" tone={detailTone}>
+                            {timeRemaining}
+                        </Text>
+                    </span>
                 </span>
             </div>
 

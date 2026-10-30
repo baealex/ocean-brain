@@ -266,6 +266,26 @@ export function GraphCanvas({
                 }
 
                 const { centerX, centerY, radiusX, radiusY } = getGraphAreaShape(nodes, cluster);
+                const transform = ctx.getTransform();
+                const areaBounds = {
+                    left: transform.a * (centerX - radiusX) + transform.e,
+                    right: transform.a * (centerX + radiusX) + transform.e,
+                    top: transform.d * (centerY - radiusY) + transform.f,
+                    bottom: transform.d * (centerY + radiusY) + transform.f,
+                };
+
+                // Offscreen areas must not leave their clamped labels behind at the canvas edge.
+                if (
+                    !doGraphLabelBoundsOverlap(areaBounds, {
+                        left: 0,
+                        top: 0,
+                        right: ctx.canvas.width,
+                        bottom: ctx.canvas.height,
+                    })
+                ) {
+                    continue;
+                }
+
                 const isFocused = focusedId === cluster.id || selectedClusterId === cluster.id;
                 const isDimmed = Boolean(
                     (focusedId && focusedId !== cluster.id) || (selectedClusterId && selectedClusterId !== cluster.id),
@@ -285,7 +305,6 @@ export function GraphCanvas({
                     ctx.textBaseline = 'bottom';
                     ctx.fillStyle = getGraphClusterLabelColor(theme, cluster.colorIndex);
                     // Area labels can be wider than their area, so keep them inside the canvas instead of clipping.
-                    const transform = ctx.getTransform();
                     const edgeMargin = AREA_LABEL_EDGE_MARGIN * (transform.a / globalScale);
                     const labelCenterX = clampGraphLabelCenter(
                         transform.a * centerX + transform.e,

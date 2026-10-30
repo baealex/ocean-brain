@@ -86,24 +86,26 @@ function ReminderRow({ reminder, readOnly, onToggleComplete, onEdit, onDelete }:
                         <span className="sr-only">priority</span>
                     </span>
                     {(showsDateInMeta || showsTimeRemaining) && (
-                        <span className="inline-flex items-center gap-2 whitespace-nowrap">
+                        <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-0.5">
                             {showsDateInMeta && (
-                                <Text as="span" variant="meta" tone="secondary">
+                                <Text as="span" variant="meta" tone="secondary" className="whitespace-nowrap">
                                     {reminderDateText}
                                 </Text>
                             )}
-                            {showsDateInMeta && showsTimeRemaining && (
-                                <span aria-hidden="true" className="h-1 w-1 rounded-full bg-border-secondary" />
-                            )}
                             {showsTimeRemaining && (
-                                <Text
-                                    as="span"
-                                    variant="label"
-                                    weight="medium"
-                                    tone={isReminderOverdue(reminderTime) ? 'error' : 'tertiary'}
-                                >
-                                    {formatReminderTimeRemaining(reminderTime)}
-                                </Text>
+                                <span className="inline-flex items-center gap-2 whitespace-nowrap">
+                                    {showsDateInMeta && (
+                                        <span aria-hidden="true" className="h-1 w-1 rounded-full bg-border-secondary" />
+                                    )}
+                                    <Text
+                                        as="span"
+                                        variant="label"
+                                        weight="medium"
+                                        tone={isReminderOverdue(reminderTime) ? 'error' : 'tertiary'}
+                                    >
+                                        {formatReminderTimeRemaining(reminderTime)}
+                                    </Text>
+                                </span>
                             )}
                         </span>
                     )}

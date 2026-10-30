@@ -40,15 +40,14 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
                     className={classNames(
                         sizeClasses[size],
                         'flex items-center justify-center',
-                        'border border-border-secondary',
+                        'border border-border-control',
                         'rounded-[6px]',
                         'bg-surface',
                         'transition-all duration-200',
                         'peer-checked:bg-cta',
                         'peer-checked:border-cta',
-                        'focus-ring-soft',
                         'peer-focus-visible:border-border-focus',
-                        'peer-focus-visible:shadow-[0_0_0_4px_color-mix(in_srgb,var(--accent-soft-primary)_90%,transparent)]',
+                        'peer-focus-visible:shadow-[0_0_0_2px_var(--border-focus),0_0_0_5px_color-mix(in_srgb,var(--accent-soft-primary)_90%,transparent)]',
                     )}
                 >
                     {checked && (

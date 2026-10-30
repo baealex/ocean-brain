@@ -49,26 +49,16 @@ export default function NoteEditorHeader({
     onSave,
 }: NoteEditorHeaderProps) {
     return (
-        <div className="surface-floating sticky top-20 z-[1001] mb-7 px-5 pt-4 pb-3.5">
-            <div className="flex flex-col gap-3.5">
-                <div className="flex items-start justify-between gap-5">
-                    <div className="min-w-0 flex-1 pt-0.5">
-                        <Text
-                            as="div"
-                            variant="micro"
-                            weight="semibold"
-                            tracking="widest"
-                            transform="uppercase"
-                            tone="tertiary"
-                            className="mb-1.5"
-                        >
-                            Thought in progress
-                        </Text>
+        // The opaque strip prevents scrolled content from showing between the navigation and sticky card.
+        <div className="z-[1000] mb-7 sm:sticky sm:top-[calc(3.5625rem+2px)] sm:-mt-4 sm:bg-[var(--page-bg)] sm:pt-4">
+            <div className="surface-floating flex flex-col gap-3.5 px-4 pt-4 pb-3.5 sm:px-5">
+                <div className="flex items-center justify-between gap-3 sm:gap-5">
+                    <div className="min-w-0 flex-1">
                         <input
                             ref={titleRef}
                             aria-label="Note title"
                             placeholder="Title"
-                            className="text-heading sm:text-display w-full bg-transparent font-semibold leading-[1.25] tracking-[-0.02em] outline-none"
+                            className="w-full text-ellipsis bg-transparent text-[1.125rem] font-semibold leading-[1.25] tracking-[-0.02em] outline-none sm:text-[1.375rem]"
                             type="text"
                             readOnly={readOnly}
                             value={title}
@@ -129,8 +119,14 @@ export default function NoteEditorHeader({
                         savedVersion={savedVersion}
                         confirmationRevision={saveConfirmationRevision}
                     />
-                    <span className="h-1 w-1 rounded-full bg-border-secondary" />
-                    <Text as="span" variant="micro" weight="medium" tone="tertiary">
+                    <span className="hidden h-1 w-1 rounded-full bg-border-secondary sm:block" />
+                    <Text
+                        as="span"
+                        variant="label"
+                        weight="medium"
+                        tone="tertiary"
+                        className="basis-full sm:basis-auto"
+                    >
                         Created {createdAt}
                     </Text>
                 </div>

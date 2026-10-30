@@ -209,7 +209,7 @@ export default function ViewCalendarRenderer({
                         Retry to refresh notes for {monthLabel}.
                     </Text>
                     <div className="mt-3">
-                        <Button type="button" variant="ghost" size="sm" onClick={() => void refetch()}>
+                        <Button type="button" variant="subtle" size="sm" onClick={() => void refetch()}>
                             Retry
                         </Button>
                     </div>

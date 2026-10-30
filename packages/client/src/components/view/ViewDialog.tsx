@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { NotePropertyKeySummary } from '~/apis/note.api';
+import * as Icon from '~/components/icon';
 import { ModalActionRow } from '~/components/shared';
 import {
     Button,
@@ -29,6 +30,7 @@ import {
     DEFAULT_VIEW_CALENDAR_DATE_FIELD,
     DEFAULT_VIEW_TABLE_COLUMNS,
     getViewPropertyOperatorLabel,
+    getViewSortSummary,
     getViewTagFilterMatchLabel,
     normalizeViewCalendarDateField,
     normalizeViewDisplayOptions,
@@ -518,7 +520,7 @@ const ViewDialog = ({
                                         Moving a card changes this property. Notes without a value stay in Unassigned.
                                     </Text>
                                     {boardGroupProperties.length === 0 && !isPropertiesLoading ? (
-                                        <Text as="p" variant="meta" className="text-fg-error">
+                                        <Text as="p" variant="meta" tone="error">
                                             Create a shared select property with options before using a board.
                                         </Text>
                                     ) : null}
@@ -824,12 +826,7 @@ const ViewDialog = ({
                             </div>
                         ) : null}
 
-                        <Text
-                            as="p"
-                            variant="meta"
-                            tone={formError ? 'default' : 'tertiary'}
-                            className={formError ? 'text-fg-error' : undefined}
-                        >
+                        <Text as="p" variant="meta" tone={formError ? 'error' : 'tertiary'}>
                             {formError ||
                                 (isPropertiesLoading || isTagsLoading
                                     ? 'Loading filter options...'
@@ -848,27 +845,29 @@ const ViewDialog = ({
                         </div>
                     ) : (
                         <details className="group pb-1">
-                            <summary className="cursor-pointer list-none">
-                                <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1">
-                                    <Text as="span" variant="label" tone="default">
+                            <summary className="focus-ring-soft -mx-2 flex cursor-pointer list-none items-center justify-between gap-3 rounded-[12px] px-2 py-1.5 outline-none transition-colors hover:bg-hover-subtle [&::-webkit-details-marker]:hidden">
+                                <span className="min-w-0">
+                                    <Text as="span" variant="meta" weight="bold" tone="muted" className="block">
                                         Sort and page size
                                     </Text>
-                                    <Text as="p" variant="meta" tone="tertiary" className="col-start-1 row-start-2">
+                                    <Text as="span" variant="meta" tone="tertiary" className="mt-1 block">
+                                        {getViewSortSummary(sortBy, sortOrder)} ·{' '}
                                         {displayType === 'board'
-                                            ? 'Controls how many cards each board column loads at a time.'
-                                            : 'Controls how many matching notes appear on each view page.'}
+                                            ? `${limit} ${Number(limit) === 1 ? 'card' : 'cards'} per column`
+                                            : `${limit} ${Number(limit) === 1 ? 'row' : 'rows'}`}
                                     </Text>
-                                    <Text
-                                        as="span"
-                                        variant="meta"
-                                        tone="tertiary"
-                                        className="col-start-2 row-span-2 row-start-1 whitespace-nowrap"
-                                    >
-                                        {displayType === 'board' ? `${limit} per column` : `${limit} notes`}
-                                    </Text>
-                                </div>
+                                </span>
+                                <Icon.ChevronDown
+                                    aria-hidden="true"
+                                    className="size-4 shrink-0 text-fg-tertiary transition-transform duration-200 group-open:rotate-180"
+                                />
                             </summary>
 
+                            <Text as="p" variant="meta" tone="tertiary" className="mt-3">
+                                {displayType === 'board'
+                                    ? 'Controls how many cards each board column loads at a time.'
+                                    : 'Controls how many matching notes appear on each view page.'}
+                            </Text>
                             <div className="mt-4 grid gap-4 md:grid-cols-3">
                                 <div className="flex flex-col gap-2">
                                     <Label id="view-sort-by-label" htmlFor="view-sort-by" size="sm">

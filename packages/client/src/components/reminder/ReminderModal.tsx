@@ -94,7 +94,7 @@ export default function ReminderModal({ isOpen, onClose, onSave, reminder, mode 
                                 value="low"
                                 className={`flex-1 rounded-[10px] border ${getPriorityClassName('low')}`}
                             >
-                                <Text as="span" weight="medium" className="text-current">
+                                <Text as="span" weight="medium" tone="current">
                                     Low
                                 </Text>
                             </ToggleGroupItem>
@@ -102,7 +102,7 @@ export default function ReminderModal({ isOpen, onClose, onSave, reminder, mode 
                                 value="medium"
                                 className={`flex-1 rounded-[10px] border ${getPriorityClassName('medium')}`}
                             >
-                                <Text as="span" weight="medium" className="text-current">
+                                <Text as="span" weight="medium" tone="current">
                                     Medium
                                 </Text>
                             </ToggleGroupItem>
@@ -110,7 +110,7 @@ export default function ReminderModal({ isOpen, onClose, onSave, reminder, mode 
                                 value="high"
                                 className={`flex-1 rounded-[10px] border ${getPriorityClassName('high')}`}
                             >
-                                <Text as="span" weight="medium" className="text-current">
+                                <Text as="span" weight="medium" tone="current">
                                     High
                                 </Text>
                             </ToggleGroupItem>

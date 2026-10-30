@@ -13,7 +13,7 @@ import {
     testSemanticSearchConnection,
 } from '~/apis/search-admin.api';
 import * as Icon from '~/components/icon';
-import { Button, PageLayout, Progress } from '~/components/shared';
+import { Button, Callout, PageLayout, Progress } from '~/components/shared';
 import { Input, Label, Select, SelectItem, Switch, Text, Textarea, useToast } from '~/components/ui';
 import { queryKeys } from '~/modules/query-key-factory';
 
@@ -31,6 +31,15 @@ const phaseLabels: Record<SemanticSearchPhase, string> = {
     indexing: 'Building index',
     ready: 'Meaning search ready',
     error: 'Index error',
+};
+
+const phaseDotClassNames: Record<SemanticSearchPhase, string> = {
+    disabled: 'bg-fg-tertiary',
+    'needs-connection': 'bg-fg-tertiary',
+    'needs-index': 'bg-fg-tertiary',
+    indexing: 'animate-pulse bg-accent-primary',
+    ready: 'bg-accent-success',
+    error: 'bg-accent-danger',
 };
 
 const configsMatch = (left: SemanticSearchConfig, right: SemanticSearchConfig) =>
@@ -250,6 +259,7 @@ const SearchSetting = () => {
     const showRemoteHttpWarning = isRemotePlainHttpUrl(normalizedFormBaseUrl);
     const progress = status?.progress;
     const phaseLabel = status ? phaseLabels[status.phase] : isLoading ? 'Loading' : 'Unavailable';
+    const phaseDotClassName = status ? phaseDotClassNames[status.phase] : 'bg-fg-tertiary';
     const queryInstructionLabel = form.queryInstruction.trim() ? 'Customized' : 'Optional';
     const meaningSearchHint = getMeaningSearchHint({
         hasConnectionFields,
@@ -333,15 +343,17 @@ const SearchSetting = () => {
             variant="default"
             description="Keyword search is always available. Add an embedding API only when you want meaning-based recall."
             headerRight={
-                <Text
-                    as="span"
-                    variant="meta"
-                    weight="medium"
-                    tone={status?.phase === 'error' ? 'error' : 'secondary'}
-                    className="rounded-full border border-border-subtle bg-muted px-3 py-1.5"
-                >
-                    {phaseLabel}
-                </Text>
+                <span className="inline-flex items-center gap-2 self-start sm:pt-0.5">
+                    <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${phaseDotClassName}`} />
+                    <Text
+                        as="span"
+                        variant="meta"
+                        weight="medium"
+                        tone={status?.phase === 'error' ? 'error' : 'secondary'}
+                    >
+                        {phaseLabel}
+                    </Text>
+                </span>
             }
         >
             <div className="flex flex-col gap-5">
@@ -351,7 +363,7 @@ const SearchSetting = () => {
                             1
                         </div>
                         <div className="min-w-0 space-y-1">
-                            <Text id="embedding-api-heading" as="h2" variant="label" weight="medium">
+                            <Text id="embedding-api-heading" as="h2" variant="subheading" weight="semibold">
                                 Connect an embedding API
                             </Text>
                             <Text as="p" variant="meta" tone="secondary" className="leading-relaxed">
@@ -368,7 +380,6 @@ const SearchSetting = () => {
                             <Input
                                 id="semantic-search-base-url"
                                 inputMode="url"
-                                placeholder="http://127.0.0.1:1234/v1"
                                 value={form.baseUrl}
                                 disabled={!hasInitialized || isIndexing || isCheckingProvider}
                                 onChange={(event) => handleBaseUrlChange(event.target.value)}
@@ -388,12 +399,10 @@ const SearchSetting = () => {
                         </div>
 
                         {showRemoteHttpWarning && (
-                            <div className="rounded-[12px] border border-border-secondary/70 bg-muted px-3 py-2.5">
-                                <Text as="p" variant="meta" tone="secondary" className="leading-relaxed">
-                                    This provider uses unencrypted HTTP. API credentials and note text can be read on
-                                    the network.
-                                </Text>
-                            </div>
+                            <Callout tone="danger">
+                                This provider uses unencrypted HTTP. API credentials and note text can be read on the
+                                network.
+                            </Callout>
                         )}
 
                         <div className="space-y-2 pt-1">
@@ -442,7 +451,7 @@ const SearchSetting = () => {
                                 role="status"
                             >
                                 <Icon.CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-accent-success" />
-                                <Text as="p" variant="meta" className="leading-relaxed text-accent-success">
+                                <Text as="p" variant="meta" tone="success" className="leading-relaxed">
                                     API connected. Found {availableModels.length}{' '}
                                     {availableModels.length === 1 ? 'model' : 'models'}.
                                 </Text>
@@ -468,7 +477,7 @@ const SearchSetting = () => {
                             2
                         </div>
                         <div className="min-w-0 space-y-1">
-                            <Text id="embedding-model-heading" as="h2" variant="label" weight="medium">
+                            <Text id="embedding-model-heading" as="h2" variant="subheading" weight="semibold">
                                 Choose and test a model
                             </Text>
                             <Text as="p" variant="meta" tone="secondary" className="leading-relaxed">
@@ -532,7 +541,7 @@ const SearchSetting = () => {
                                 role="status"
                             >
                                 <Icon.CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-accent-success" />
-                                <Text as="p" variant="meta" className="leading-relaxed text-accent-success">
+                                <Text as="p" variant="meta" tone="success" className="leading-relaxed">
                                     This model works · {connectionMutation.data.dimensions} dimensions
                                 </Text>
                             </div>
@@ -565,7 +574,6 @@ const SearchSetting = () => {
                                 </Label>
                                 <Input
                                     id="semantic-search-manual-model"
-                                    placeholder="text-embedding-qwen3-embedding-0.6b"
                                     value={form.model}
                                     disabled={!hasInitialized || isIndexing || isCheckingProvider}
                                     onChange={(event) => handleModelChange(event.target.value)}
@@ -641,7 +649,7 @@ const SearchSetting = () => {
                             3
                         </div>
                         <div className="min-w-0 flex-1 space-y-1">
-                            <Text id="meaning-search-heading" as="h2" variant="label" weight="medium">
+                            <Text id="meaning-search-heading" as="h2" variant="subheading" weight="semibold">
                                 Turn on meaning search
                             </Text>
                             <Text as="p" variant="meta" tone="secondary" className="max-w-[44rem] leading-relaxed">
@@ -657,7 +665,7 @@ const SearchSetting = () => {
                                 <Text as="p" variant="meta" weight="medium">
                                     Meaning search
                                 </Text>
-                                <Text as="p" variant="meta" tone="tertiary">
+                                <Text as="p" variant="meta" tone="secondary">
                                     {meaningSearchHint}
                                 </Text>
                             </div>
@@ -680,7 +688,15 @@ const SearchSetting = () => {
                         </div>
                     </div>
 
-                    <div className="flex flex-wrap justify-end gap-2 border-t border-border-subtle pt-4">
+                    <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border-subtle pt-4">
+                        {isDirty && (
+                            <span className="inline-flex items-center gap-2">
+                                <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-accent-primary" />
+                                <Text as="span" variant="meta" weight="medium" tone="secondary">
+                                    Unsaved changes
+                                </Text>
+                            </span>
+                        )}
                         <Button
                             type="button"
                             variant="primary"
@@ -696,7 +712,7 @@ const SearchSetting = () => {
                 <section className="surface-base flex flex-col gap-4 p-4" aria-labelledby="search-index-heading">
                     <div className="flex flex-wrap items-start justify-between gap-4">
                         <div className="min-w-0 flex-1 basis-[28rem] space-y-1">
-                            <Text id="search-index-heading" as="h2" variant="label" weight="medium">
+                            <Text id="search-index-heading" as="h2" variant="subheading" weight="semibold">
                                 Local search index
                             </Text>
                             <Text as="p" variant="meta" tone="secondary">
@@ -728,7 +744,7 @@ const SearchSetting = () => {
                     </div>
 
                     {isDirty && (
-                        <Text as="p" variant="meta" tone="tertiary">
+                        <Text as="p" variant="meta" tone="secondary">
                             Save these settings before building the index.
                         </Text>
                     )}
@@ -753,7 +769,7 @@ const SearchSetting = () => {
                     )}
 
                     {status?.needsReindex && !isIndexing && status.phase !== 'error' && (
-                        <Text as="p" variant="meta" tone="tertiary">
+                        <Text as="p" variant="meta" tone="secondary">
                             Build the index once to activate meaning search for this model.
                         </Text>
                     )}
@@ -774,9 +790,7 @@ const SearchSetting = () => {
                         </div>
                     )}
 
-                    <Text as="p" variant="meta" tone="tertiary" className="leading-relaxed">
-                        Note and query text is sent to the embedding API you configure.
-                    </Text>
+                    <Callout>Note and query text is sent to the embedding API you configure.</Callout>
 
                     {statusQueryError && (
                         <Text as="p" variant="meta" tone="error">

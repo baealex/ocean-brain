@@ -85,7 +85,7 @@ const SearchInput = ({
                         size="icon-sm"
                         aria-label="Search"
                         disabled={!value.trim()}
-                        className="my-1 shrink-0 max-sm:disabled:opacity-100 sm:h-11 sm:w-auto sm:rounded-[16px] sm:px-5 sm:text-body"
+                        className="my-1 shrink-0 max-sm:disabled:opacity-100 sm:h-11 sm:w-auto sm:rounded-[16px] sm:px-5 sm:text-[1rem] sm:leading-[1.6]"
                     >
                         <Icon.ArrowRight className="h-4 w-4 sm:hidden" weight="bold" aria-hidden="true" />
                         <span className="hidden sm:inline">Search</span>

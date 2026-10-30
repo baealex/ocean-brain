@@ -8,6 +8,16 @@ import { timeSince } from '~/modules/time';
 import { NOTE_ROUTE, TAG_NOTES_ROUTE } from '~/modules/url';
 import { useWorkspace } from '~/store/workspace';
 
+// Raise independent controls above the title link's full-card overlay.
+const titleLinkClassName = classNames(
+    'line-clamp-2 outline-none decoration-fg-tertiary underline-offset-[3px] hover:underline',
+    'after:absolute after:-inset-px after:rounded-[16px] after:border after:border-transparent after:transition-colors',
+    'hover:after:border-border-secondary hover:after:bg-hover-subtle',
+    'focus-visible:after:border-border-focus',
+    'focus-visible:after:shadow-[0_0_0_1px_var(--border-focus),0_0_0_4px_color-mix(in_srgb,var(--accent-soft-primary)_90%,transparent)]',
+);
+const raisedClassName = 'relative z-[1]';
+
 interface Props extends Note {
     onPinned?: () => void;
     onDelete?: () => void;
@@ -19,10 +29,7 @@ export default function NoteListCard({ id, title, tags, pinned, updatedAt, onPin
     const updatedTimeSince = timeSince(Number(updatedAt));
 
     return (
-        <div
-            key={id}
-            className={classNames('surface-base group relative flex h-full flex-col px-4 py-3.5 transition-colors')}
-        >
+        <div key={id} className="surface-base relative flex h-full flex-col px-4 py-3.5">
             {pinned && (
                 <div className="absolute left-1/2 top-0 z-[1] -translate-x-1/2 -translate-y-[38%]">
                     <div className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border-secondary/70 bg-elevated text-fg-tertiary shadow-[0_8px_18px_-14px_rgba(23,29,38,0.32)]">
@@ -38,34 +45,38 @@ export default function NoteListCard({ id, title, tags, pinned, updatedAt, onPin
                             Updated {updatedTimeSince}
                         </Text>
                     </div>
-                    <Dropdown
-                        button={<MoreButton label="Note actions" size="sm" />}
-                        items={[
-                            {
-                                name: pinned ? 'Unpin' : 'Pin',
-                                onClick: () => onPinned?.(),
-                            },
-                            {
-                                name: 'Delete',
-                                onClick: () => onDelete?.(),
-                            },
-                        ]}
-                    />
+                    <div className={raisedClassName}>
+                        <Dropdown
+                            button={<MoreButton label="Note actions" size="sm" />}
+                            items={[
+                                {
+                                    name: pinned ? 'Unpin' : 'Pin',
+                                    onClick: () => onPinned?.(),
+                                },
+                                {
+                                    name: 'Delete',
+                                    onClick: () => onDelete?.(),
+                                },
+                            ]}
+                        />
+                    </div>
                 </div>
                 <div className="flex flex-1 flex-col justify-between gap-2.5">
                     <Text as="div" variant="body" weight="semibold" tracking="tight" className="leading-[1.45]">
-                        <Link
-                            className="line-clamp-2 transition-colors hover:text-fg-default/85"
-                            to={NOTE_ROUTE}
-                            params={{ id }}
-                        >
+                        <Link className={titleLinkClassName} to={NOTE_ROUTE} params={{ id }}>
                             {title || 'Untitled'}
                         </Link>
                     </Text>
                     {tags.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 pt-0.5">
                             {tags.map((tag) => (
-                                <Link key={tag.id} to={TAG_NOTES_ROUTE} params={{ id: tag.id }} search={tagSearch}>
+                                <Link
+                                    key={tag.id}
+                                    className={raisedClassName}
+                                    to={TAG_NOTES_ROUTE}
+                                    params={{ id: tag.id }}
+                                    search={tagSearch}
+                                >
                                     <Text
                                         as="span"
                                         variant="label"

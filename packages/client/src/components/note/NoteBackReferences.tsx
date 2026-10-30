@@ -28,8 +28,8 @@ const NoteBackReferences = ({ noteId, targetTitle }: { noteId: string; targetTit
             render={(references, pagination) =>
                 references.length || pagination.hasMore ? (
                     <NoteContentSection label="Back References">
-                        <Text as="h2" variant="label" tone="tertiary" className="mb-3 flex items-center gap-2">
-                            <Icon.LinkSimple className="size-3.5" aria-hidden="true" />
+                        <Text as="h2" variant="subheading" weight="semibold" className="mb-3 flex items-center gap-2">
+                            <Icon.LinkSimple className="size-4 text-fg-tertiary" aria-hidden="true" />
                             Back References
                         </Text>
                         <ul className="flex flex-col gap-4">

@@ -4,8 +4,6 @@ export const inputVariants = cva(
     [
         'w-full',
         'border',
-        'border-border-subtle',
-        'bg-elevated',
         'text-fg-default',
         'placeholder:text-fg-placeholder',
         'transition-colors',
@@ -17,9 +15,10 @@ export const inputVariants = cva(
     {
         variants: {
             variant: {
-                default: [],
+                default: ['border-border-control', 'bg-elevated'],
+                soft: ['border-border-secondary', 'bg-elevated', 'hover:bg-hover-subtle'],
                 ghost: ['border-transparent', 'bg-subtle', 'hover:bg-hover-subtle'],
-                error: ['border-border-error', 'bg-accent-soft-danger/40', 'text-fg-default'],
+                error: ['border-border-error', 'bg-accent-soft-danger/40'],
             },
             size: {
                 sm: 'h-8 px-3 text-sm rounded-[12px]',

@@ -44,7 +44,7 @@ interface PinnedNotesListProps {
 }
 
 const dragHandleBaseClassName =
-    'focus-ring-soft flex h-8 w-8 items-center justify-center rounded-[10px] text-fg-tertiary opacity-70 outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default hover:opacity-100 focus-visible:opacity-100 active:cursor-grabbing touch-none';
+    'focus-ring-soft flex h-8 w-8 items-center justify-center rounded-[10px] text-fg-tertiary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default active:cursor-grabbing touch-none';
 const pinnedLinkBaseClassName =
     'focus-ring-soft block truncate rounded-[10px] px-1.5 py-1 outline-none transition-colors';
 

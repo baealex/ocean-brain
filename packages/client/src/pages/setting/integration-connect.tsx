@@ -11,7 +11,7 @@ import * as Icon from '~/components/icon';
 import IntegrationPermissions from '~/components/integration/IntegrationPermissions';
 import { PageLayout } from '~/components/shared';
 import PageBackLink from '~/components/shared/PageBackLink';
-import { Button, Input, Label, Text, Textarea } from '~/components/ui';
+import { Button, buttonVariants, Input, Label, Text, Textarea } from '~/components/ui';
 import { queryKeys } from '~/modules/query-key-factory';
 import { SETTINGS_INTEGRATION_DETAIL_ROUTE, SETTINGS_INTEGRATIONS_ROUTE, SETTINGS_MCP_ROUTE } from '~/modules/url';
 
@@ -82,6 +82,11 @@ export default function IntegrationConnect() {
     };
     const choiceClassName =
         'focus-ring-soft surface-base flex items-start gap-3 px-4 py-3.5 text-left transition-colors hover:bg-hover-subtle';
+    const fileButtonClassName = buttonVariants({
+        variant: 'subtle',
+        className:
+            'peer-hover:border-border-secondary peer-hover:bg-hover-subtle peer-focus-visible:border-border-focus peer-focus-visible:ring-2 peer-focus-visible:ring-border-focus',
+    });
 
     return (
         <PageLayout
@@ -135,37 +140,52 @@ export default function IntegrationConnect() {
                                             resetManifest(event.target.value);
                                         }}
                                     />
+                                    <Button variant="subtle" size="sm" onClick={() => setPaste(false)}>
+                                        Choose a file instead
+                                    </Button>
                                 </div>
                             ) : (
-                                <Input
-                                    aria-label="App manifest file"
-                                    type="file"
-                                    accept="application/json,.json"
-                                    className="h-auto py-3"
-                                    onChange={async (event) => {
-                                        const file = event.target.files?.[0];
-                                        if (!file) return;
-                                        resetManifest('');
-                                        setFileName(file.name);
-                                        if (file.size > 65536) {
-                                            setFileError('Choose a file smaller than 64 KB.');
-                                            return;
-                                        }
-                                        try {
-                                            resetManifest(await file.text());
-                                        } catch {
-                                            setFileError('Could not read this file. Choose it again.');
-                                        }
-                                    }}
-                                />
-                            )}
-                            <Button variant="ghost" size="sm" onClick={() => setPaste(!paste)}>
-                                {paste ? 'Choose a file instead' : 'Paste manifest JSON'}
-                            </Button>
-                            {fileName && (
-                                <Text as="p" variant="meta" tone="secondary">
-                                    {fileName}
-                                </Text>
+                                <div className="space-y-2">
+                                    <Label htmlFor="integration-manifest-file">App manifest file</Label>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        {/* The transparent native input covers the styled button and keeps clicks, focus, and drops. */}
+                                        <div className="relative">
+                                            <input
+                                                id="integration-manifest-file"
+                                                type="file"
+                                                accept="application/json,.json"
+                                                className="peer absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                                                onChange={async (event) => {
+                                                    const file = event.target.files?.[0];
+                                                    if (!file) return;
+                                                    resetManifest('');
+                                                    setFileName(file.name);
+                                                    if (file.size > 65536) {
+                                                        setFileError('Choose a file smaller than 64 KB.');
+                                                        return;
+                                                    }
+                                                    try {
+                                                        resetManifest(await file.text());
+                                                    } catch {
+                                                        setFileError('Could not read this file. Choose it again.');
+                                                    }
+                                                }}
+                                            />
+                                            <span aria-hidden="true" className={fileButtonClassName}>
+                                                <Icon.Upload className="h-4 w-4" />
+                                                Choose file
+                                            </span>
+                                        </div>
+                                        <Button variant="ghost" onClick={() => setPaste(true)}>
+                                            Paste manifest JSON
+                                        </Button>
+                                    </div>
+                                    {fileName && (
+                                        <Text as="p" variant="meta" tone="secondary">
+                                            {fileName}
+                                        </Text>
+                                    )}
+                                </div>
                             )}
                             {preview && (
                                 <Text as="p" weight="medium">
@@ -213,7 +233,6 @@ export default function IntegrationConnect() {
                                             id="new-integration-address"
                                             aria-label="Private app URL"
                                             type="url"
-                                            placeholder="http://127.0.0.1:7778"
                                             value={proxyUrl}
                                             disabled={connect.isPending}
                                             onChange={(event) => setProxyUrl(event.target.value)}

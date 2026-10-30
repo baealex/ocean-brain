@@ -181,6 +181,23 @@ describe('<Views />', () => {
         expect(updateView).not.toHaveBeenCalled();
     });
 
+    it('labels tag filters separately from the view layout', async () => {
+        mockActiveWorkspace([
+            createView({
+                displayType: 'calendar',
+                tagNames: ['project'],
+                displayOptions: { ...createView().displayOptions, calendarDateField: 'updatedAt' },
+            }),
+        ]);
+        renderViews();
+
+        const filters = await screen.findByRole('group', { name: 'View filters' });
+
+        expect(within(filters).getByText('@project')).toBeInTheDocument();
+        expect(within(filters).queryByText(/Calendar/)).not.toBeInTheDocument();
+        expect(screen.getByText('Calendar · by Updated date')).toBeInTheDocument();
+    });
+
     it('opens table columns directly without unrelated view settings', async () => {
         const user = userEvent.setup();
         mockActiveWorkspace([createView({ displayType: 'table' })]);

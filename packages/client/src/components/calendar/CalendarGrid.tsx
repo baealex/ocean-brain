@@ -28,7 +28,8 @@ export const CalendarGrid = ({
                             weight="semibold"
                             tracking="wider"
                             transform="uppercase"
-                            className={`py-1.5 text-center ${index === 0 ? 'text-fg-weekend' : 'text-fg-secondary'}`}
+                            tone={index === 0 ? 'weekend' : 'secondary'}
+                            className="py-1.5 text-center"
                         >
                             <span aria-hidden="true" className="sm:hidden">
                                 {day.slice(0, 1)}

@@ -502,6 +502,23 @@ describe('<ViewDialog />', () => {
         expect(screen.getByRole('combobox', { name: 'Rows per page' })).toBeInTheDocument();
     });
 
+    it('summarizes the saved sort and page size while the sort settings are collapsed', () => {
+        render(
+            <ViewDialog
+                open
+                mode="edit"
+                initialView={createView({ sortBy: 'title', sortOrder: 'asc', limit: 8 })}
+                availableTags={[]}
+                availableProperties={[]}
+                onClose={vi.fn()}
+                onSubmit={vi.fn()}
+            />,
+        );
+
+        expect(screen.getByText('Title, A to Z · 8 rows')).toBeVisible();
+        expect(screen.getByRole('combobox', { name: 'Sort by' })).not.toBeVisible();
+    });
+
     it('submits partial URL text for contains filters', async () => {
         const user = userEvent.setup();
         const handleSubmit = vi.fn();

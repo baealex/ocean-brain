@@ -141,7 +141,8 @@ const TableOfContentsComponent = () => {
                                 as="span"
                                 variant="body"
                                 weight={isTopLevel ? 'semibold' : 'medium'}
-                                className="line-clamp-2 text-current"
+                                tone="current"
+                                className="line-clamp-2"
                             >
                                 {heading.text}
                             </Text>

@@ -1,4 +1,7 @@
-import type { GraphVisualNode } from './graph-data';
+import type { GraphCluster, GraphVisualNode } from './graph-data';
+
+const MAX_AREA_LABEL_TITLE_LENGTH = 28;
+export const GRAPH_DIMMED_LABEL_OPACITY = 0.45;
 
 interface GraphNodeLabelVisibilityOptions {
     globalScale: number;
@@ -12,6 +15,13 @@ interface GraphNodeLabelTextOptions {
     isEmphasized: boolean;
 }
 
+interface GraphNodeFocusOptions {
+    adjacency: Map<string, Set<string>>;
+    focusedClusterId: string | null;
+    hoveredNodeId: string | null;
+    selectedNodeId: string | null;
+}
+
 export interface GraphLabelBounds {
     left: number;
     top: number;
@@ -23,12 +33,8 @@ export function shouldShowGraphNodeLabel(
     node: GraphVisualNode,
     { globalScale, isConnected = false, isHovered = false, isSelected = false }: GraphNodeLabelVisibilityOptions,
 ) {
-    if (isSelected || isHovered) {
+    if (isSelected || isHovered || isConnected) {
         return true;
-    }
-
-    if (isConnected) {
-        return globalScale >= 1.8;
     }
 
     if (node.isClusterHub) {
@@ -46,9 +52,47 @@ export function shouldShowGraphNodeLabel(
     return globalScale >= 2.4 && node.connections >= 8;
 }
 
+export function getGraphNodeFocusState(
+    node: Pick<GraphVisualNode, 'id' | 'clusterId'>,
+    { adjacency, focusedClusterId, hoveredNodeId, selectedNodeId }: GraphNodeFocusOptions,
+) {
+    const isSelected = selectedNodeId === node.id;
+    const isHovered = hoveredNodeId === node.id;
+    const isConnected = selectedNodeId ? (adjacency.get(selectedNodeId)?.has(node.id) ?? false) : false;
+    const isOutsideFocusedArea = focusedClusterId !== null && focusedClusterId !== node.clusterId;
+    const isDimmed = isOutsideFocusedArea || (selectedNodeId !== null && !isSelected && !isConnected);
+
+    return { isSelected, isHovered, isConnected, isDimmed };
+}
+
+function truncateLabel(text: string, maxLength: number) {
+    const characters = Array.from(text);
+    return characters.length <= maxLength ? text : `${characters.slice(0, maxLength - 1).join('')}…`;
+}
+
+export function getGraphAreaName(cluster: Pick<GraphCluster, 'label' | 'isIsolated'>) {
+    return cluster.isIsolated ? cluster.label : `${cluster.label} area`;
+}
+
+export function getGraphAreaLabelText(cluster: Pick<GraphCluster, 'label' | 'isIsolated' | 'nodeIds'>) {
+    const name = getGraphAreaName({
+        ...cluster,
+        label: truncateLabel(cluster.label.trim() || 'Untitled', MAX_AREA_LABEL_TITLE_LENGTH),
+    });
+    const noteCount = cluster.nodeIds.length;
+    return `${name} · ${noteCount} ${noteCount === 1 ? 'note' : 'notes'}`;
+}
+
+export function clampGraphLabelCenter(center: number, labelWidth: number, start: number, end: number) {
+    if (end - start <= labelWidth) {
+        return (start + end) / 2;
+    }
+
+    return Math.min(end - labelWidth / 2, Math.max(start + labelWidth / 2, center));
+}
+
 export function getGraphNodeLabelText(title: string, { globalScale, isEmphasized }: GraphNodeLabelTextOptions) {
     const normalizedTitle = title.trim() || 'Untitled';
-    const characters = Array.from(normalizedTitle);
     const maxLength = isEmphasized
         ? globalScale < 3.2
             ? 32
@@ -59,11 +103,7 @@ export function getGraphNodeLabelText(title: string, { globalScale, isEmphasized
             ? 36
             : 48;
 
-    if (characters.length <= maxLength) {
-        return normalizedTitle;
-    }
-
-    return `${characters.slice(0, maxLength - 1).join('')}…`;
+    return truncateLabel(normalizedTitle, maxLength);
 }
 
 export function doGraphLabelBoundsOverlap(first: GraphLabelBounds, second: GraphLabelBounds, gap = 0) {

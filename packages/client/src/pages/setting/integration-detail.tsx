@@ -124,7 +124,7 @@ export default function IntegrationDetail() {
                                     search={tab.value ? { section: tab.value } : {}}
                                     activeOptions={{ exact: true }}
                                     aria-current={section === tab.value ? 'page' : undefined}
-                                    className={`focus-ring-soft border-b-2 px-1 py-2 text-sm ${section === tab.value ? 'border-border-secondary text-fg-default' : 'border-transparent text-fg-secondary hover:text-fg-default'}`}
+                                    className={`focus-ring-soft border-b-2 px-1 py-2 text-sm ${section === tab.value ? 'border-fg-default text-fg-default' : 'border-transparent text-fg-secondary hover:text-fg-default'}`}
                                 >
                                     {tab.label}
                                 </Link>

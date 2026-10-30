@@ -34,8 +34,8 @@ vi.mock('~/components/shared', async () => {
 
     return {
         ...actual,
-        Button: ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => (
-            <button type="button" onClick={onClick}>
+        Button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+            <button type="button" {...props}>
                 {children}
             </button>
         ),
@@ -102,5 +102,46 @@ describe('<ReminderPanel />', () => {
         expect(screen.getByText('Follow up')).toBeInTheDocument();
         expect(screen.getByRole('checkbox', { name: 'Reminder: Follow up' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Reminder actions' })).toBeInTheDocument();
+    });
+
+    it('shows the reminder priority as a text label', () => {
+        mockReminderData = {
+            reminders: [
+                {
+                    id: 'reminder-1',
+                    noteId: 'note-1',
+                    reminderDate: String(Date.now() + 2 * 24 * 60 * 60 * 1000),
+                    completed: false,
+                    priority: 'high',
+                    content: 'Follow up',
+                },
+            ],
+            totalCount: 1,
+        };
+
+        render(<ReminderPanel noteId="note-1" />);
+
+        expect(screen.getByText('High')).toBeInTheDocument();
+    });
+
+    it('shows multi-day time remaining in days', () => {
+        const twoDaysThreeHoursAhead = Date.now() + (2 * 24 + 3) * 60 * 60 * 1000 + 30_000;
+        mockReminderData = {
+            reminders: [
+                {
+                    id: 'reminder-1',
+                    noteId: 'note-1',
+                    reminderDate: String(twoDaysThreeHoursAhead),
+                    completed: false,
+                    priority: 'low',
+                    content: 'Follow up',
+                },
+            ],
+            totalCount: 1,
+        };
+
+        render(<ReminderPanel noteId="note-1" />);
+
+        expect(screen.getByText('2d 3h remaining')).toBeInTheDocument();
     });
 });

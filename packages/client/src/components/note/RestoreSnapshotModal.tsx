@@ -73,6 +73,7 @@ export default function RestoreSnapshotModal({
         },
         enabled: isOpen,
     });
+    const hasNoSnapshots = !snapshotQuery.isLoading && snapshotQuery.data?.length === 0;
 
     const restoreContext = useQuery({
         queryKey: queryKeys.workspaces.snapshotRestoreContext(selectedSnapshotId ?? 'pending'),
@@ -370,24 +371,26 @@ export default function RestoreSnapshotModal({
                     </div>
                 ) : (
                     <div className="flex flex-col gap-3">
-                        <Text as="p" variant="meta" tone="secondary">
-                            Choose a previous snapshot to restore this note back to that state.
-                        </Text>
+                        {!hasNoSnapshots && (
+                            <Text as="p" variant="meta" tone="secondary">
+                                Choose a previous snapshot to restore this note back to that state.
+                            </Text>
+                        )}
                         {snapshotQuery.isLoading && (
                             <Text as="div" variant="meta" tone="secondary">
                                 Loading previous versions...
                             </Text>
                         )}
-                        {!snapshotQuery.isLoading && snapshotQuery.data?.length === 0 && (
-                            <Text
-                                as="div"
-                                variant="meta"
-                                tone="secondary"
-                                className="rounded-[14px] border border-border-subtle bg-hover-subtle/50 px-4 py-3"
-                            >
-                                A recovery snapshot appears before the first edit in a session. Up to 10 recent
-                                snapshots are kept for 7 days, and identical versions are skipped.
-                            </Text>
+                        {hasNoSnapshots && (
+                            <div className="flex flex-col gap-1 rounded-[14px] border border-border-subtle bg-hover-subtle/50 px-4 py-3">
+                                <Text as="p" variant="meta" weight="semibold">
+                                    No previous versions yet
+                                </Text>
+                                <Text as="p" variant="meta" tone="secondary">
+                                    A recovery snapshot appears before the first edit in a session. Up to 10 recent
+                                    snapshots are kept for 7 days, and identical versions are skipped.
+                                </Text>
+                            </div>
                         )}
                         {!snapshotQuery.isLoading && snapshotQuery.data && snapshotQuery.data.length > 0 && (
                             <div className="flex flex-col gap-2">

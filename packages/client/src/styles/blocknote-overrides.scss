@@ -616,3 +616,8 @@ html.dark .bn-mantine .bn-menu-dropdown {
     outline: 1px solid var(--border-focus);
     outline-offset: 3px;
 }
+
+.bn-default-styles [data-content-type='quote'] blockquote {
+    color: var(--fg-muted);
+    border-left-color: var(--border);
+}

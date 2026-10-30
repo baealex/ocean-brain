@@ -196,6 +196,7 @@ const RelatedNotes = ({ noteId }: { noteId: string }) => {
                     <AuxiliaryPanelHeader
                         icon={<Icon.LinkSimple className="h-3.5 w-3.5" />}
                         title="Related notes"
+                        titleTone="current"
                         className="text-fg-tertiary"
                     />
                     {data && (
@@ -243,7 +244,8 @@ const RelatedNotes = ({ noteId }: { noteId: string }) => {
                                             as="span"
                                             variant="body"
                                             weight="medium"
-                                            className="text-current line-clamp-1"
+                                            tone="current"
+                                            className="line-clamp-1"
                                         >
                                             {relatedNote.title || 'Untitled'}
                                         </Text>
@@ -453,6 +455,7 @@ export default function Search() {
                                                 const previewBlocks = getSearchPreviewBlocks(
                                                     note.content,
                                                     normalizedQuery,
+                                                    { title: note.title },
                                                 );
                                                 const match = result.matches.find((item) => item.noteId === note.id);
 
@@ -472,7 +475,7 @@ export default function Search() {
                                                                 <Link
                                                                     to={NOTE_ROUTE}
                                                                     params={{ id: note.id }}
-                                                                    className="line-clamp-2 transition-colors hover:text-fg-default/85"
+                                                                    className="line-clamp-2 decoration-fg-tertiary underline-offset-[3px] hover:underline"
                                                                 >
                                                                     <Highlight match={normalizedQuery}>
                                                                         {note.title || 'Untitled'}

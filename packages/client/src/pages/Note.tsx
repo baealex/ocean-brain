@@ -92,6 +92,8 @@ export function NoteContent({ id }: NoteContentProps) {
     });
     const { onCreate, onDelete, deleteWarningDialog } = useNoteMutate();
     const { document, editor, save, recovery, externalChange, properties, exportDocument, snapshots } = session;
+    // Serialized note writes allow property edits during autosave.
+    const isPropertyEditingLocked = isReadOnly || save.status === 'conflict' || save.status === 'error';
 
     const openTrash = () =>
         navigate({
@@ -173,7 +175,7 @@ export function NoteContent({ id }: NoteContentProps) {
                         properties={document.properties}
                         expectedUpdatedAt={properties.expectedUpdatedAt}
                         editSessionId={properties.editSessionId}
-                        disabled={isReadOnly || save.status !== 'saved'}
+                        disabled={isPropertyEditingLocked}
                         saveProperties={properties.saveProperties}
                         onPendingChange={properties.onPendingChange}
                         onSaved={properties.onSaved}

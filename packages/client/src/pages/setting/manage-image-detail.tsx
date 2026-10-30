@@ -56,7 +56,7 @@ const ManageImageDetailSkeleton = () => (
                     <Skeleton width={96} height={14} className="rounded-full" />
                     <div className="flex gap-2">
                         <Skeleton height={32} className="flex-1 rounded-[12px]" />
-                        <Skeleton height={32} className="flex-1 rounded-[12px]" />
+                        <Skeleton width={84} height={32} className="rounded-[12px]" />
                     </div>
                 </div>
             </SurfaceCard>
@@ -198,25 +198,23 @@ const ManageImageDetailContent = ({ id }: ManageImageDetailContentProps) => {
                                     {referenceText}
                                 </Text>
                             </div>
-                            <Text as="p" variant="meta" tone="tertiary">
-                                {referenceCount > 0
-                                    ? 'Deleting this image will break it in the referenced notes'
-                                    : 'No notes currently reference this image'}
-                            </Text>
+                            {referenceCount > 0 ? (
+                                <div className="flex items-start gap-2">
+                                    <Icon.WarningCircle
+                                        aria-hidden="true"
+                                        className="mt-0.5 h-4 w-4 shrink-0 text-fg-error"
+                                    />
+                                    <Text as="p" variant="meta" tone="secondary">
+                                        Deleting this image will break it in the referenced notes
+                                    </Text>
+                                </div>
+                            ) : (
+                                <Text as="p" variant="meta" tone="secondary">
+                                    No notes currently reference this image
+                                </Text>
+                            )}
                         </div>
                         <div className="flex gap-2">
-                            <Tooltip content="Delete this image" side="bottom">
-                                <Button
-                                    variant="soft-danger"
-                                    size="sm"
-                                    className="flex-1"
-                                    isLoading={deleteImageMutation.isPending}
-                                    onClick={handleDelete}
-                                >
-                                    <Icon.TrashCan size={16} />
-                                    Delete
-                                </Button>
-                            </Tooltip>
                             <Button
                                 variant="primary"
                                 size="sm"
@@ -227,6 +225,17 @@ const ManageImageDetailContent = ({ id }: ManageImageDetailContentProps) => {
                                 <Icon.Heart size={16} />
                                 Set hero banner
                             </Button>
+                            <Tooltip content="Delete this image" side="bottom">
+                                <Button
+                                    variant="ghost-danger"
+                                    size="sm"
+                                    isLoading={deleteImageMutation.isPending}
+                                    onClick={handleDelete}
+                                >
+                                    <Icon.TrashCan size={16} />
+                                    Delete
+                                </Button>
+                            </Tooltip>
                         </div>
                     </div>
                 </SurfaceCard>
@@ -285,7 +294,7 @@ const ManageImageDetail = () => {
             variant="none"
             backLink={
                 <PageBackLink to={SETTINGS_MANAGE_IMAGE_ROUTE} search={{ page }}>
-                    Back to Images
+                    Images
                 </PageBackLink>
             }
         >

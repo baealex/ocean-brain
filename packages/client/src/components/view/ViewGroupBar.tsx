@@ -63,7 +63,7 @@ function SortableViewGroup({ group, isActive, onSelect, readOnly = false }: Sort
                 onClick={onSelect}
             >
                 <span className="min-w-0 flex-1 truncate">{group.title}</span>
-                <span className="inline-flex min-w-4 shrink-0 items-center justify-center rounded-full bg-hover-subtle/75 px-1 py-0 text-[10px] leading-4 text-current/70">
+                <span className="inline-flex min-w-4 shrink-0 items-center justify-center rounded-full bg-hover-subtle/75 px-1 py-0 text-[10px] leading-4 text-current">
                     {group.views.length}
                 </span>
             </button>

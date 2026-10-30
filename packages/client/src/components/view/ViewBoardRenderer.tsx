@@ -309,10 +309,16 @@ const BoardColumn = ({
                     </>
                 ) : isError ? (
                     <div className="rounded-[14px] border border-dashed border-border-subtle bg-elevated/60 p-3">
-                        <Text as="p" variant="meta" tone="tertiary">
+                        <Text as="p" variant="meta" tone="error">
                             Failed to load this column.
                         </Text>
-                        <Button type="button" variant="ghost" size="sm" className="mt-2" onClick={() => void refetch()}>
+                        <Button
+                            type="button"
+                            variant="subtle"
+                            size="sm"
+                            className="mt-2"
+                            onClick={() => void refetch()}
+                        >
                             Retry
                         </Button>
                     </div>

@@ -3,14 +3,18 @@ import { QueryBoundary } from '~/components/app';
 import { TagNotes as TagNotesEntity } from '~/components/entities';
 import { NoteListCard } from '~/components/note';
 import { Empty, FallbackRender, PageLayout, Pagination, Skeleton } from '~/components/shared';
+import PageBackLink from '~/components/shared/PageBackLink';
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
 import { useWorkspaceScope } from '~/hooks/useWorkspaceScope';
-import { TAG_NOTES_ROUTE } from '~/modules/url';
+import { validateTagSearch } from '~/modules/route-search';
+import { TAG_NOTES_ROUTE, TAG_ROUTE } from '~/modules/url';
+import { useWorkspace } from '~/store/workspace';
 
 const Route = getRouteApi(TAG_NOTES_ROUTE);
 
 export default function TagNotes() {
     const scope = useWorkspaceScope();
+    const { workspaceId, multiple } = useWorkspace();
     const navigate = Route.useNavigate();
     const { id } = Route.useParams();
     const { page } = Route.useSearch();
@@ -18,12 +22,21 @@ export default function TagNotes() {
     const limit = 25;
 
     const { onDelete, onPinned, deleteWarningDialog } = useNoteMutate();
+    const backLink = (
+        <PageBackLink
+            to={TAG_ROUTE}
+            search={{ ...validateTagSearch({}), ...(multiple ? { workspace: workspaceId } : {}) }}
+        >
+            Tags
+        </PageBackLink>
+    );
 
     return (
         <QueryBoundary
             fallback={
                 <PageLayout
                     title="Tagged Notes"
+                    backLink={backLink}
                     heading={<Skeleton width={148} height={24} className="rounded-full" />}
                     description={<Skeleton width={196} height={16} className="rounded-full" />}
                     variant="default"
@@ -52,6 +65,7 @@ export default function TagNotes() {
                     return (
                         <PageLayout
                             title={tagName ?? 'Tagged Notes'}
+                            backLink={backLink}
                             heading={
                                 tagName ? (totalCount > 0 ? `${tagName} (${totalCount})` : tagName) : 'Tagged Notes'
                             }

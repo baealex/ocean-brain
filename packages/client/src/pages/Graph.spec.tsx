@@ -22,6 +22,8 @@ const forceGraphState = vi.hoisted(() => ({
     },
     d3Force: vi.fn(),
     d3ReheatSimulation: vi.fn(),
+    centerAt: vi.fn(),
+    zoom: vi.fn(),
     zoomToFit: vi.fn(),
 }));
 
@@ -67,6 +69,8 @@ vi.mock('react-force-graph-2d', async () => {
                 React.useImperativeHandle(ref, () => ({
                     d3Force: forceGraphState.d3Force,
                     d3ReheatSimulation: forceGraphState.d3ReheatSimulation,
+                    centerAt: forceGraphState.centerAt,
+                    zoom: forceGraphState.zoom,
                     zoomToFit: forceGraphState.zoomToFit,
                 }));
 
@@ -160,6 +164,8 @@ describe('<Graph />', () => {
         forceGraphState.props = null;
         forceGraphState.d3Force.mockReset();
         forceGraphState.d3ReheatSimulation.mockReset();
+        forceGraphState.centerAt.mockReset();
+        forceGraphState.zoom.mockReset();
         forceGraphState.zoomToFit.mockReset();
         apiMocks.fetchNoteGraph.mockResolvedValue({
             type: 'success',
@@ -251,7 +257,7 @@ describe('<Graph />', () => {
         await user.click(readingCluster);
 
         expect(readingCluster).toHaveAttribute('aria-pressed', 'true');
-        expect(screen.getByRole('status')).toHaveTextContent('Reading queue highlighted');
+        expect(screen.getByRole('status')).toHaveTextContent('Reading queue area highlighted');
 
         await user.click(readingCluster);
         expect(readingCluster).toHaveAttribute('aria-pressed', 'false');
@@ -267,7 +273,25 @@ describe('<Graph />', () => {
         expect(within(selectedNote).getByRole('button', { name: 'Product direction' })).toBeInTheDocument();
         expect(within(selectedNote).getByRole('button', { name: 'Search notes' })).toBeInTheDocument();
         expect(within(selectedNote).getByRole('link', { name: 'Open note' })).toHaveAttribute('href', '/2');
-        expect(screen.getByRole('status')).toHaveTextContent('Graph ideas selected near Graph ideas');
+        expect(screen.getByRole('status')).toHaveTextContent('Graph ideas selected as the center of its area');
+    });
+
+    it('does not repeat the title of a note that anchors its area', async () => {
+        routeState.search = { selected: '2' };
+        renderGraph();
+
+        const selectedNote = await screen.findByRole('region', { name: 'Graph ideas' });
+
+        expect(within(selectedNote).getAllByText(/Graph ideas/)).toHaveLength(1);
+    });
+
+    it('names the area of a selected note that does not anchor it', async () => {
+        routeState.search = { selected: '1' };
+        renderGraph();
+
+        const selectedNote = await screen.findByRole('region', { name: 'Product direction' });
+
+        expect(within(selectedNote).getByText('Graph ideas area')).toBeInTheDocument();
     });
 
     it('restores an isolated note with a direct open-note action', async () => {
@@ -278,7 +302,7 @@ describe('<Graph />', () => {
 
         expect(within(selectedNote).getByText('Unlinked notes')).toBeInTheDocument();
         expect(within(selectedNote).getByRole('link', { name: 'Open note' })).toHaveAttribute('href', '/6');
-        expect(screen.getByRole('status')).toHaveTextContent('Unlinked scratch selected near Unlinked notes');
+        expect(screen.getByRole('status')).toHaveTextContent('Unlinked scratch selected in Unlinked notes');
     });
 
     it('selects a connected graph node through the canvas interaction contract', async () => {

@@ -8,7 +8,7 @@ import { Select, SelectItem, Text } from '~/components/ui';
 import useDebounce from '~/hooks/useDebounce';
 import { useWorkspaceScope } from '~/hooks/useWorkspaceScope';
 import type { TagRouteSearch } from '~/modules/route-search';
-import { isTagLimit, TAG_DEFAULT_LIMIT, TAG_LIMIT_OPTIONS } from '~/modules/tag-pagination';
+import { isTagLimit, TAG_LIMIT_OPTIONS } from '~/modules/tag-pagination';
 import { TAG_NOTES_ROUTE, TAG_ROUTE } from '~/modules/url';
 import { useWorkspace } from '~/store/workspace';
 
@@ -93,11 +93,12 @@ export default function Tag() {
                 <div className="surface-base inline-flex flex-wrap items-center gap-3 rounded-[16px] px-3.5 py-2.5">
                     <div className="flex items-center gap-2">
                         <Icon.Grid className="h-4 w-4 shrink-0 text-fg-tertiary" />
-                        <Text as="span" variant="label" weight="medium" tone="tertiary">
-                            Items
+                        <Text id="tag-filters-limit-label" as="span" variant="label" weight="medium" tone="tertiary">
+                            Per page
                         </Text>
                         <Select
                             value={String(limit)}
+                            aria-labelledby="tag-filters-limit-label"
                             onValueChange={(value) => {
                                 const nextLimit = Number(value);
 
@@ -108,18 +109,18 @@ export default function Tag() {
                                     });
                                 }
                             }}
-                            variant="ghost"
+                            variant="soft"
                             size="sm"
                         >
                             {TAG_LIMIT_OPTIONS.map((option) => (
                                 <SelectItem key={option} value={String(option)}>
-                                    {option === TAG_DEFAULT_LIMIT ? `Default (${option})` : option}
+                                    {option}
                                 </SelectItem>
                             ))}
                         </Select>
                     </div>
 
-                    <div className="h-5 w-px bg-divider" />
+                    <div className="hidden h-5 w-px bg-divider sm:block" aria-hidden="true" />
 
                     <div className="flex items-center gap-2">
                         <Icon.SortAscending className="h-4 w-4 shrink-0 text-fg-tertiary" />
@@ -128,13 +129,14 @@ export default function Tag() {
                         </Text>
                         <Select
                             value={sortBy}
+                            ariaLabel="Sort field"
                             onValueChange={(value) =>
                                 updateSearchParams({
                                     sortBy: value as TagRouteSearch['sortBy'],
                                     page: 1,
                                 })
                             }
-                            variant="ghost"
+                            variant="soft"
                             size="sm"
                         >
                             <SelectItem value="referenceCount">Usage</SelectItem>
@@ -142,13 +144,14 @@ export default function Tag() {
                         </Select>
                         <Select
                             value={sortOrder}
+                            ariaLabel="Sort order"
                             onValueChange={(value) =>
                                 updateSearchParams({
                                     sortOrder: value as TagRouteSearch['sortOrder'],
                                     page: 1,
                                 })
                             }
-                            variant="ghost"
+                            variant="soft"
                             size="sm"
                         >
                             <SelectItem value="desc">{sortBy === 'name' ? 'Z to A' : 'Most used'}</SelectItem>
@@ -217,16 +220,10 @@ export default function Tag() {
                                                 }}
                                                 className="inline-flex items-center gap-1.5 rounded-full border border-border-subtle bg-hover-subtle px-3 py-1.5 text-fg-secondary transition-colors hover:border-border-secondary hover:bg-hover hover:text-fg-default"
                                             >
-                                                <Text as="span" variant="meta" weight="medium" className="text-current">
+                                                <Text as="span" variant="meta" weight="medium" tone="current">
                                                     {tag.name}
                                                 </Text>
-                                                <Text
-                                                    as="span"
-                                                    variant="label"
-                                                    weight="medium"
-                                                    tone="tertiary"
-                                                    className="text-current/70"
-                                                >
+                                                <Text as="span" variant="label" weight="medium" tone="tertiary">
                                                     {tag.referenceCount}
                                                 </Text>
                                             </Link>

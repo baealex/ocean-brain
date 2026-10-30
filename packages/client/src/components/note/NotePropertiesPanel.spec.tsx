@@ -39,7 +39,11 @@ const createDeferred = <T,>() => {
 const renderPanel = (
     properties: NoteProperty[],
     onSaved = vi.fn(),
-    options: { onPendingChange?: (pending: boolean) => void; ref?: Ref<NotePropertiesPanelRef> } = {},
+    options: {
+        disabled?: boolean;
+        onPendingChange?: (pending: boolean) => void;
+        ref?: Ref<NotePropertiesPanelRef>;
+    } = {},
 ) => {
     const queryClient = createTestQueryClient();
 
@@ -67,6 +71,7 @@ const renderPanel = (
                     properties={properties}
                     expectedUpdatedAt="1779700000000"
                     editSessionId="edit-session-1"
+                    disabled={options.disabled}
                     onPendingChange={options.onPendingChange}
                     onSaved={onSaved}
                 />
@@ -200,5 +205,12 @@ describe('<NotePropertiesPanel />', () => {
         await flushPromise;
 
         expect(onSaved).not.toHaveBeenCalled();
+    });
+
+    it('does not offer property removal while editing is locked', async () => {
+        renderPanel([createProperty()], vi.fn(), { disabled: true });
+
+        expect(await screen.findByRole('textbox', { name: 'Property value' })).toBeDisabled();
+        expect(screen.queryByRole('button', { name: 'Remove Summary' })).not.toBeInTheDocument();
     });
 });

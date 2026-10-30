@@ -27,6 +27,26 @@ describe('<ReminderCard />', () => {
         expect(screen.getByRole('checkbox', { name: 'Complete reminder: Follow up' })).toBeInTheDocument();
     });
 
+    it('names the reminder priority in visible text', () => {
+        render(<ReminderCard reminder={createReminder({ priority: 'high' })} onUpdate={vi.fn()} onDelete={vi.fn()} />);
+
+        expect(screen.getByText('High')).toBeVisible();
+    });
+
+    it('counts remaining time beyond a day in days and hours', () => {
+        const almostTwoDaysAway = String(Date.now() + 48 * 60 * 60_000 - 30_000);
+
+        render(
+            <ReminderCard
+                reminder={createReminder({ reminderDate: almostTwoDaysAway })}
+                onUpdate={vi.fn()}
+                onDelete={vi.fn()}
+            />,
+        );
+
+        expect(screen.getByText('1d 23h remaining')).toBeInTheDocument();
+    });
+
     it('presents completed reminders as reopenable history', async () => {
         const user = userEvent.setup();
         const onUpdate = vi.fn();

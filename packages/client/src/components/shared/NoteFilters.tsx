@@ -1,6 +1,6 @@
 import * as Icon from '~/components/icon';
 import { Checkbox, Label, Select, SelectItem, Text } from '~/components/ui';
-import { HOME_DEFAULT_LIMIT, HOME_LIMIT_OPTIONS, type HomeLimit, isHomeLimit } from '~/modules/home-pagination';
+import { HOME_LIMIT_OPTIONS, type HomeLimit, isHomeLimit } from '~/modules/home-pagination';
 
 export type SortBy = 'updatedAt' | 'createdAt';
 export type SortOrder = 'asc' | 'desc';
@@ -15,6 +15,8 @@ interface Props {
     pinnedFirst: boolean;
     onPinnedFirstChange: (enabled: boolean) => void;
 }
+
+const toolbarDividerClassName = 'hidden h-5 w-px bg-divider sm:block';
 
 export default function NoteFilters({
     itemsPerPage,
@@ -31,12 +33,12 @@ export default function NoteFilters({
             <div className="surface-base inline-flex flex-wrap items-center gap-3 rounded-[16px] px-3.5 py-2.5">
                 <div className="flex items-center gap-2">
                     <Icon.Grid className="h-4 w-4 shrink-0 text-fg-tertiary" />
-                    <Text id="note-filters-items-label" as="span" variant="label" weight="medium" tone="tertiary">
-                        Items
+                    <Text id="note-filters-limit-label" as="span" variant="label" weight="medium" tone="tertiary">
+                        Per page
                     </Text>
                     <Select
                         value={String(itemsPerPage)}
-                        aria-labelledby="note-filters-items-label"
+                        aria-labelledby="note-filters-limit-label"
                         onValueChange={(value) => {
                             const nextItemsPerPage = Number(value);
 
@@ -44,18 +46,18 @@ export default function NoteFilters({
                                 onItemsPerPageChange(nextItemsPerPage);
                             }
                         }}
-                        variant="ghost"
+                        variant="soft"
                         size="sm"
                     >
                         {HOME_LIMIT_OPTIONS.map((option) => (
                             <SelectItem key={option} value={String(option)}>
-                                {option === HOME_DEFAULT_LIMIT ? `Default (${option})` : option}
+                                {option}
                             </SelectItem>
                         ))}
                     </Select>
                 </div>
 
-                <div className="h-5 w-px bg-divider" />
+                <div className={toolbarDividerClassName} aria-hidden="true" />
 
                 <div className="flex items-center gap-2">
                     <Icon.SortAscending className="h-4 w-4 shrink-0 text-fg-tertiary" />
@@ -66,7 +68,7 @@ export default function NoteFilters({
                         value={sortBy}
                         ariaLabel="Sort field"
                         onValueChange={(value) => onSortByChange(value as SortBy)}
-                        variant="ghost"
+                        variant="soft"
                         size="sm"
                     >
                         <SelectItem value="updatedAt">Updated</SelectItem>
@@ -76,7 +78,7 @@ export default function NoteFilters({
                         value={sortOrder}
                         ariaLabel="Sort order"
                         onValueChange={(value) => onSortOrderChange(value as SortOrder)}
-                        variant="ghost"
+                        variant="soft"
                         size="sm"
                     >
                         <SelectItem value="desc">Newest</SelectItem>
@@ -84,7 +86,7 @@ export default function NoteFilters({
                     </Select>
                 </div>
 
-                <div className="h-5 w-px bg-divider" />
+                <div className={toolbarDividerClassName} aria-hidden="true" />
 
                 <Label htmlFor="pinnedFirst" size="sm" className="flex cursor-pointer items-center gap-1.5">
                     <Checkbox

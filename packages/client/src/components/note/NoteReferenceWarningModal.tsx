@@ -46,7 +46,7 @@ export default function NoteReferenceWarningModal({
                                 transform="uppercase"
                                 tone="tertiary"
                             >
-                                Referenced notes
+                                Back References
                             </Text>
                             <Text as="p" variant="label" tone="tertiary">
                                 {references.length} {references.length === 1 ? 'note' : 'notes'}

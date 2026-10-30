@@ -38,7 +38,7 @@ const PropertyMetadataError = ({ displayName, onRetry }: { displayName: string; 
             Retry to check the configured property without changing this view.
         </Text>
         <div className="mt-3">
-            <Button type="button" variant="ghost" size="sm" onClick={onRetry}>
+            <Button type="button" variant="subtle" size="sm" onClick={onRetry}>
                 Retry
             </Button>
         </div>
@@ -95,7 +95,7 @@ const ViewRenderer = ({
                         Choose an existing select property with options to restore this board.
                     </Text>
                     <div className="mt-3">
-                        <Button type="button" variant="ghost" size="sm" onClick={onEdit}>
+                        <Button type="button" variant="subtle" size="sm" onClick={onEdit}>
                             Edit board
                         </Button>
                     </div>
@@ -160,7 +160,7 @@ const ViewRenderer = ({
                         Choose an existing date property to restore this calendar.
                     </Text>
                     <div className="mt-3">
-                        <Button type="button" variant="ghost" size="sm" onClick={onEdit}>
+                        <Button type="button" variant="subtle" size="sm" onClick={onEdit}>
                             Edit calendar
                         </Button>
                     </div>

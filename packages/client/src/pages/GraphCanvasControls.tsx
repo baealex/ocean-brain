@@ -3,11 +3,12 @@ import classNames from 'classnames';
 import { useState } from 'react';
 
 import * as Icon from '~/components/icon';
-import { Text } from '~/components/ui';
+import { Button, Text } from '~/components/ui';
 import { NOTE_ROUTE } from '~/modules/url';
 import { useTheme } from '~/store/theme';
 import { GraphConnectedNodeList } from './GraphConnectedNodeList';
 import type { GraphCluster, GraphVisualNode } from './graph-data';
+import { getGraphAreaName } from './graph-labels';
 import { getGraphClusterColor } from './graph-theme';
 
 interface GraphCanvasControlsProps {
@@ -39,9 +40,11 @@ export function GraphCanvasControls({
 }: GraphCanvasControlsProps) {
     const { theme } = useTheme((state) => state);
     const [isAreaPickerOpen, setIsAreaPickerOpen] = useState(false);
-    const selectedCluster = selectedNode
-        ? (clusters.find((cluster) => cluster.id === selectedNode.clusterId) ?? null)
+    const selectedAreaName = selectedNode
+        ? getGraphAreaName({ label: selectedNode.clusterLabel, isIsolated: selectedNode.isIsolated })
         : null;
+    const isSelectedAreaHub = Boolean(selectedNode?.isClusterHub && !selectedNode.isIsolated);
+    const focusedCluster = clusters.find((cluster) => cluster.id === focusedClusterId) ?? null;
 
     return (
         <div className="space-y-3">
@@ -86,7 +89,8 @@ export function GraphCanvasControls({
                 {isAreaPickerOpen && (
                     <div id="graph-connection-areas" className="border-t border-border-subtle/80 px-4 py-3 sm:px-5">
                         <Text as="p" variant="label" tone="tertiary">
-                            Every area is selectable. Selecting one highlights its notes on the map.
+                            Areas group closely linked notes and are named after their most connected note. Select one
+                            to highlight it on the map.
                         </Text>
                         <ul
                             className="mt-2 max-h-52 overflow-y-auto overscroll-contain rounded-[10px] border border-border-subtle/70 divide-y divide-border-subtle/70"
@@ -120,7 +124,7 @@ export function GraphCanvasControls({
                                                 weight={isFocused ? 'semibold' : 'medium'}
                                                 truncate
                                             >
-                                                {cluster.label}
+                                                {getGraphAreaName(cluster)}
                                             </Text>
                                             <Text
                                                 as="span"
@@ -157,22 +161,22 @@ export function GraphCanvasControls({
                                 <Text id="graph-selected-note-heading" as="h2" variant="body" weight="bold" truncate>
                                     {selectedNode.title || 'Untitled'}
                                 </Text>
-                                <Text as="span" variant="label" tone="tertiary" truncate>
-                                    {selectedCluster?.label ?? selectedNode.clusterLabel}
-                                </Text>
+                                {isSelectedAreaHub ? null : (
+                                    <Text as="span" variant="label" tone="tertiary" truncate>
+                                        {selectedAreaName}
+                                    </Text>
+                                )}
                                 <Text as="span" variant="label" tone="tertiary" className="tabular-nums">
                                     {formatConnectionCount(selectedConnectedNodes.length)}
                                 </Text>
                             </div>
                         </div>
                         <div className="flex shrink-0 items-center gap-1">
-                            <Link
-                                to={NOTE_ROUTE}
-                                params={{ id: selectedNode.id }}
-                                className="focus-ring-soft inline-flex h-8 items-center rounded-[9px] px-2 text-xs font-semibold text-fg-secondary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default"
-                            >
-                                Open note
-                            </Link>
+                            <Button asChild variant="subtle" size="sm">
+                                <Link to={NOTE_ROUTE} params={{ id: selectedNode.id }}>
+                                    Open note
+                                </Link>
+                            </Button>
                             <button
                                 type="button"
                                 onClick={onClearSelection}
@@ -250,9 +254,9 @@ export function GraphCanvasControls({
 
             <Text as="p" role="status" aria-live="polite" className="sr-only">
                 {selectedNode
-                    ? `${selectedNode.title || 'Untitled'} selected near ${selectedCluster?.label ?? selectedNode.clusterLabel ?? 'the graph'}, with ${selectedConnectedNodes.length} direct connections.`
-                    : focusedClusterId
-                      ? `${clusters.find((cluster) => cluster.id === focusedClusterId)?.label ?? 'Connection area'} highlighted.`
+                    ? `${selectedNode.title || 'Untitled'} selected ${isSelectedAreaHub ? 'as the center of its area' : `in ${selectedAreaName}`}, with ${selectedConnectedNodes.length} direct connections.`
+                    : focusedCluster
+                      ? `${getGraphAreaName(focusedCluster)} highlighted.`
                       : `${clusters.length} connection areas available.`}
             </Text>
         </div>

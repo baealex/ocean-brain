@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import classNames from 'classnames';
 import dayjs from 'dayjs';
-import type { MouseEvent } from 'react';
+import { type MouseEvent, useCallback, useState } from 'react';
 
 import type { NotePropertyKeySummary } from '~/apis/note.api';
 import * as Icon from '~/components/icon';
@@ -51,6 +51,9 @@ const BASE_COLUMN_WIDTHS: Record<BaseTableColumn, number> = {
     createdAt: 148,
     updatedAt: 148,
 };
+const TITLE_COLUMN_WIDTH_VARIABLE = '--view-table-title-width';
+const titleColumnWidthClassName = '[--view-table-title-width:168px] sm:[--view-table-title-width:300px]';
+const compactTitleColumnWidthClassName = '[--view-table-title-width:152px] sm:[--view-table-title-width:240px]';
 const SORTABLE_TABLE_COLUMNS: Partial<Record<BaseTableColumn, ViewSortBy>> = {
     title: 'title',
     createdAt: 'createdAt',
@@ -89,6 +92,14 @@ const getColumnWidth = (column: ResolvedTableColumn, compact = false) => {
     }
     return (compact ? COMPACT_BASE_COLUMN_WIDTHS : BASE_COLUMN_WIDTHS)[column.key];
 };
+
+const isTitleColumn = (column: ResolvedTableColumn) => column.kind === 'base' && column.key === 'title';
+
+const getColumnWidthStyle = (column: ResolvedTableColumn, compact = false) =>
+    isTitleColumn(column) ? `var(${TITLE_COLUMN_WIDTH_VARIABLE})` : `${getColumnWidth(column, compact)}px`;
+
+const formatPropertyValueType = (valueType: NotePropertyValueType) =>
+    valueType === 'url' ? 'URL' : `${valueType.charAt(0).toUpperCase()}${valueType.slice(1)}`;
 
 const resolvePropertyColumns = (
     view: View,
@@ -147,8 +158,51 @@ const resolveTableColumns = (
     );
 };
 
-const getTableWidth = (columns: ResolvedTableColumn[], compact = false) =>
-    columns.reduce((totalWidth, column) => totalWidth + getColumnWidth(column, compact), 0);
+const getTableWidthStyle = (columns: ResolvedTableColumn[], compact = false) => {
+    const fixedWidth = columns
+        .filter((column) => !isTitleColumn(column))
+        .reduce((totalWidth, column) => totalWidth + getColumnWidth(column, compact), 0);
+    return columns.some(isTitleColumn)
+        ? `calc(${fixedWidth}px + var(${TITLE_COLUMN_WIDTH_VARIABLE}))`
+        : `${fixedWidth}px`;
+};
+
+interface ScrollEdges {
+    start: boolean;
+    end: boolean;
+}
+
+const useHorizontalScrollEdges = () => {
+    const [edges, setEdges] = useState<ScrollEdges>({ start: false, end: false });
+    const observeScrollEdges = useCallback((element: HTMLDivElement | null) => {
+        if (!element) {
+            return;
+        }
+
+        const updateEdges = () => {
+            const maxScrollLeft = element.scrollWidth - element.clientWidth;
+            const nextEdges = { start: element.scrollLeft > 1, end: element.scrollLeft < maxScrollLeft - 1 };
+            setEdges((current) =>
+                current.start === nextEdges.start && current.end === nextEdges.end ? current : nextEdges,
+            );
+        };
+
+        updateEdges();
+        element.addEventListener('scroll', updateEdges, { passive: true });
+        const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(updateEdges) : null;
+        resizeObserver?.observe(element);
+        if (element.firstElementChild) {
+            resizeObserver?.observe(element.firstElementChild);
+        }
+
+        return () => {
+            element.removeEventListener('scroll', updateEdges);
+            resizeObserver?.disconnect();
+        };
+    }, []);
+
+    return { edges, observeScrollEdges };
+};
 
 const renderTagSummary = (note: Note) => {
     if (note.tags.length === 0) {
@@ -193,14 +247,14 @@ const ViewTableRenderer = ({
     compact = false,
     readOnly = false,
 }: ViewTableRendererProps) => {
+    const { edges: scrollEdges, observeScrollEdges } = useHorizontalScrollEdges();
     const columns = resolveTableColumns(view, notes, availableProperties);
-    const isTitlePinned = columns[0]?.kind === 'base' && columns[0].key === 'title';
-    const tableWidth = getTableWidth(columns, compact);
+    const isTitlePinned = columns[0] ? isTitleColumn(columns[0]) : false;
     const cellPadding = compact ? 'px-2 py-1.5' : 'px-3 py-2.5';
     const surfaceClassName =
         surface === 'card'
-            ? 'overflow-x-auto rounded-[16px] border border-border-subtle bg-elevated'
-            : 'overflow-x-auto bg-transparent';
+            ? 'relative overflow-hidden rounded-[16px] border border-border-subtle bg-elevated'
+            : 'relative bg-transparent';
     const loadingSurfaceClassName =
         surface === 'card'
             ? 'overflow-hidden rounded-[16px] border border-border-subtle bg-elevated'
@@ -209,19 +263,24 @@ const ViewTableRenderer = ({
     const tableHeadClassName = compact ? 'bg-transparent' : surface === 'card' ? 'bg-subtle/65' : 'bg-subtle/45';
     const tableBodyClassName = surface === 'card' ? 'bg-elevated' : 'bg-transparent';
     const stickyCellBackground = surface === 'card' ? 'var(--elevated)' : 'var(--surface)';
+    const pinnedEdgeClassName =
+        scrollEdges.start && 'shadow-[inset_-1px_0_0_var(--border-subtle),8px_0_10px_-8px_rgb(0_0_0/0.22)]';
+    const headerCellClassName = classNames(
+        'text-left text-xs text-fg-secondary',
+        cellPadding,
+        compact ? 'font-medium' : 'font-semibold',
+    );
 
     const renderHeaderCell = (column: ResolvedTableColumn) => {
         if (column.kind === 'property') {
             return (
-                <th key={`property:${column.key}`} className={classNames('text-left', cellPadding)}>
-                    <Text as="p" variant="label" weight="semibold" className="truncate" title={column.name}>
+                <th key={`property:${column.key}`} className={headerCellClassName}>
+                    <span
+                        className="block truncate"
+                        title={`${column.name} · ${formatPropertyValueType(column.valueType)} property`}
+                    >
                         {column.name}
-                    </Text>
-                    {!compact ? (
-                        <Text as="p" variant="micro" tone="tertiary" className="mt-0.5 capitalize">
-                            {column.valueType}
-                        </Text>
-                    ) : null}
+                    </span>
                 </th>
             );
         }
@@ -236,10 +295,9 @@ const ViewTableRenderer = ({
                 key={column.key}
                 aria-sort={isActiveSort ? (activeSortOrder === 'asc' ? 'ascending' : 'descending') : undefined}
                 className={classNames(
-                    'text-xs text-fg-tertiary',
-                    cellPadding,
-                    compact ? 'font-medium' : 'font-semibold',
-                    isTitle && 'lg:sticky lg:left-0 lg:z-20',
+                    headerCellClassName,
+                    isActiveSort && '!text-fg-default',
+                    isTitle && ['sticky left-0 z-20', pinnedEdgeClassName],
                 )}
                 style={
                     isTitle
@@ -254,12 +312,15 @@ const ViewTableRenderer = ({
                 {sortBy ? (
                     <button
                         type="button"
-                        className="focus-ring-soft -ml-1 inline-flex items-center gap-1 rounded-[8px] px-1 py-0.5 outline-none transition-colors hover:bg-hover-subtle hover:text-fg-secondary disabled:cursor-wait disabled:opacity-60"
+                        className="focus-ring-soft -ml-1 inline-flex items-center gap-1 rounded-[8px] px-1 py-0.5 outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default disabled:cursor-wait disabled:opacity-60"
                         disabled={isSortPending}
                         onClick={() => onSortChange(sortBy)}
                     >
                         <span>{label}</span>
-                        <span aria-hidden="true" className="text-[10px] text-fg-tertiary">
+                        <span
+                            aria-hidden="true"
+                            className={classNames('text-[10px]', !isActiveSort && 'text-fg-tertiary')}
+                        >
                             {isActiveSort ? (activeSortOrder === 'asc' ? '↑' : '↓') : '↕'}
                         </span>
                     </button>
@@ -335,7 +396,7 @@ const ViewTableRenderer = ({
                         className={classNames(
                             'relative align-middle',
                             cellPadding,
-                            isTitlePinned && 'lg:sticky lg:left-0 lg:z-10',
+                            isTitlePinned && ['sticky left-0 z-10', pinnedEdgeClassName],
                         )}
                         style={{ background: stickyCellBackground }}
                     >
@@ -358,7 +419,10 @@ const ViewTableRenderer = ({
                                 as="div"
                                 variant="body"
                                 weight={compact ? 'medium' : 'semibold'}
-                                className="min-w-0 line-clamp-1"
+                                className={classNames(
+                                    'min-w-0',
+                                    compact ? 'line-clamp-1' : 'line-clamp-2 sm:line-clamp-1',
+                                )}
                             >
                                 <Link
                                     to={NOTE_ROUTE}
@@ -418,44 +482,69 @@ const ViewTableRenderer = ({
         );
     }
 
+    const renderScrollFade = (side: 'left' | 'right', isVisible: boolean) => (
+        <div
+            aria-hidden="true"
+            className={classNames(
+                'pointer-events-none absolute inset-y-0 z-30 w-16 transition-opacity duration-200',
+                side === 'left'
+                    ? 'left-0 shadow-[inset_10px_0_10px_-10px_rgb(0_0_0/0.22)]'
+                    : 'right-0 shadow-[inset_-10px_0_10px_-10px_rgb(0_0_0/0.22)]',
+                isVisible ? 'opacity-100' : 'opacity-0',
+            )}
+            style={{ background: `linear-gradient(to ${side}, transparent, ${stickyCellBackground} 80%)` }}
+        />
+    );
+
     return (
         <div
-            className={surfaceClassName}
-            data-scroll-restoration-id={`view-table-${view.id}`}
-            aria-label="Scrollable view table"
-            onMouseDownCapture={stopEditorTableEvent}
-            onMouseMoveCapture={stopEditorTableEvent}
-            onMouseUpCapture={stopEditorTableEvent}
+            className={classNames(
+                surfaceClassName,
+                compact ? compactTitleColumnWidthClassName : titleColumnWidthClassName,
+            )}
         >
-            <table className="w-full table-fixed border-collapse text-left" style={{ minWidth: tableWidth }}>
-                <caption className="sr-only">View query results as a table</caption>
-                <colgroup>
-                    {columns.map((column) => (
-                        <col
-                            key={column.kind === 'property' ? `property:${column.key}` : column.key}
-                            style={{
-                                width: `${(getColumnWidth(column, compact) / tableWidth) * 100}%`,
-                            }}
-                        />
-                    ))}
-                </colgroup>
-                <thead className={tableHeadClassName}>
-                    <tr className="border-b border-border-subtle">{columns.map(renderHeaderCell)}</tr>
-                </thead>
-                <tbody className={tableBodyClassName}>
-                    {notes.map((note) => (
-                        <tr
-                            key={note.id}
-                            className={classNames(
-                                'group border-b border-border-subtle/70 last:border-b-0',
-                                compact ? 'h-9' : 'h-12',
-                            )}
-                        >
-                            {columns.map((column) => renderCell(note, column))}
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+            <div
+                ref={observeScrollEdges}
+                className="overflow-x-auto"
+                data-scroll-restoration-id={`view-table-${view.id}`}
+                aria-label="Scrollable view table"
+                onMouseDownCapture={stopEditorTableEvent}
+                onMouseMoveCapture={stopEditorTableEvent}
+                onMouseUpCapture={stopEditorTableEvent}
+            >
+                <table
+                    className="min-w-full table-fixed border-collapse text-left"
+                    style={{ width: getTableWidthStyle(columns, compact) }}
+                >
+                    <caption className="sr-only">View query results as a table</caption>
+                    <colgroup>
+                        {columns.map((column) => (
+                            <col
+                                key={column.kind === 'property' ? `property:${column.key}` : column.key}
+                                style={{ width: getColumnWidthStyle(column, compact) }}
+                            />
+                        ))}
+                    </colgroup>
+                    <thead className={tableHeadClassName}>
+                        <tr className="border-b border-border-subtle">{columns.map(renderHeaderCell)}</tr>
+                    </thead>
+                    <tbody className={tableBodyClassName}>
+                        {notes.map((note) => (
+                            <tr
+                                key={note.id}
+                                className={classNames(
+                                    'group border-b border-border-subtle/70 last:border-b-0',
+                                    compact ? 'h-9' : 'h-12',
+                                )}
+                            >
+                                {columns.map((column) => renderCell(note, column))}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            {isTitlePinned ? null : renderScrollFade('left', scrollEdges.start)}
+            {renderScrollFade('right', scrollEdges.end)}
         </div>
     );
 };

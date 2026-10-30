@@ -35,7 +35,6 @@ export default function IntegrationSetup({
                             type="url"
                             autoFocus
                             value={address}
-                            placeholder="http://127.0.0.1:7778"
                             onChange={(event) => setAddress(event.target.value)}
                         />
                     </div>

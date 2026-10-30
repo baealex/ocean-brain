@@ -7,6 +7,7 @@ import type { Note } from '~/models/note.model';
 
 import { timeSince } from '~/modules/time';
 import { NOTE_ROUTE, TAG_NOTES_ROUTE } from '~/modules/url';
+import { useWorkspace } from '~/store/workspace';
 
 interface Props {
     id: string;
@@ -18,6 +19,8 @@ interface Props {
 }
 
 export default function NoteListItem({ id, title, tags, createdAt, updatedAt }: Props) {
+    const { workspaceId, multiple } = useWorkspace();
+    const tagSearch = { page: 1, ...(multiple ? { workspace: workspaceId } : {}) };
     const createdAtText = new Date(Number(createdAt));
     const updatedTimeSince = timeSince(Number(updatedAt));
 
@@ -28,7 +31,7 @@ export default function NoteListItem({ id, title, tags, createdAt, updatedAt }: 
                     <Text variant="label" weight="medium" tone="tertiary">
                         {updatedTimeSince}
                     </Text>
-                    <Text variant="label" tone="placeholder">
+                    <Text variant="label" tone="tertiary">
                         ({createdAtText.toDateString()})
                     </Text>
                 </div>
@@ -40,7 +43,7 @@ export default function NoteListItem({ id, title, tags, createdAt, updatedAt }: 
                 {tags && tags.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
                         {tags.map((tag) => (
-                            <Link key={tag.id} to={TAG_NOTES_ROUTE} params={{ id: tag.id }} search={{ page: 1 }}>
+                            <Link key={tag.id} to={TAG_NOTES_ROUTE} params={{ id: tag.id }} search={tagSearch}>
                                 <Badge name={tag.name} />
                             </Link>
                         ))}

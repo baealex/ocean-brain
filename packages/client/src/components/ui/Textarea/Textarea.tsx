@@ -6,8 +6,6 @@ const textareaVariants = cva(
     [
         'w-full',
         'border',
-        'border-border-subtle',
-        'bg-elevated',
         'text-fg-default',
         'placeholder:text-fg-placeholder',
         'transition-colors',
@@ -20,9 +18,9 @@ const textareaVariants = cva(
     {
         variants: {
             variant: {
-                default: [],
+                default: ['border-border-control', 'bg-elevated'],
                 ghost: ['border-transparent', 'bg-subtle', 'hover:bg-hover-subtle'],
-                error: ['border-border-error', 'bg-accent-soft-danger/40', 'text-fg-default'],
+                error: ['border-border-error', 'bg-accent-soft-danger/40'],
             },
             size: {
                 sm: 'min-h-[60px] p-3 text-sm rounded-[12px]',

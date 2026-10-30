@@ -48,8 +48,8 @@ export const CalendarDayView = ({
         : `${dateLabel}, ${itemLabel(noteCount, 'note')}`;
     const densityClassName =
         density === 'compact'
-            ? 'min-h-16 p-1 sm:min-h-20 sm:p-2 lg:min-h-[142px] lg:p-2.5'
-            : 'min-h-20 p-1 sm:min-h-24 sm:p-2 lg:min-h-[142px] lg:p-2.5';
+            ? 'min-h-16 p-1 sm:min-h-20 sm:p-2 lg:min-h-[142px] lg:p-1.5 2xl:p-2.5'
+            : 'min-h-20 p-1 sm:min-h-24 sm:p-2 lg:min-h-[142px] lg:p-1.5 2xl:p-2.5';
 
     return (
         <button
@@ -114,25 +114,32 @@ export const CalendarDayView = ({
                             <span
                                 key={item.key}
                                 className={classNames(
-                                    'flex min-h-7 min-w-0 items-center gap-1 rounded-[7px] px-1.5 py-1',
+                                    'flex min-h-7 min-w-0 items-center rounded-[7px] px-1 py-1 2xl:px-1.5',
                                     item.type === 'reminder' ? REMINDER_PREVIEW_TONE : NOTE_PREVIEW_TONE,
                                 )}
                             >
-                                {item.type === 'reminder' ? (
-                                    <Icon.Bell className="shrink-0 text-fg-tertiary" size={11} />
-                                ) : (
-                                    <Icon.FileNote className="shrink-0 text-fg-tertiary" size={11} />
-                                )}
                                 <Text
                                     as="span"
                                     variant="micro"
                                     weight="medium"
                                     tone="secondary"
                                     className={classNames(
-                                        'truncate !text-[11px] !leading-4',
+                                        'line-clamp-2 min-w-0 !text-[11px] !leading-4 wrap-anywhere',
                                         item.isCompleted && 'line-through',
                                     )}
                                 >
+                                    {/* Inline so a wrapped second line can use the width under the icon. */}
+                                    {item.type === 'reminder' ? (
+                                        <Icon.Bell
+                                            className="mr-1 inline-block align-[-1px] text-fg-tertiary"
+                                            size={11}
+                                        />
+                                    ) : (
+                                        <Icon.FileNote
+                                            className="mr-1 inline-block align-[-1px] text-fg-tertiary"
+                                            size={11}
+                                        />
+                                    )}
                                     {item.title}
                                 </Text>
                             </span>

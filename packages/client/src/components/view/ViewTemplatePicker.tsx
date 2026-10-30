@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { fetchNote, fetchNotes } from '~/apis/note.api';
 import { Button, Input, Label, Text } from '~/components/ui';
 import { queryKeys } from '~/modules/query-key-factory';
+import { workspaceScope } from '~/modules/workspace-scope';
+import { useWorkspace } from '~/store/workspace';
 
 const TemplateTitle = ({ id }: { id: string }) => {
     const { data, isPending, isError } = useQuery({
@@ -20,9 +22,17 @@ const TemplateTitle = ({ id }: { id: string }) => {
     );
 };
 
-const TemplateSearch = ({ onSelect, onCancel }: { onSelect: (id: string) => void; onCancel: () => void }) => {
+const TemplateSearch = ({
+    workspaceId,
+    onSelect,
+    onCancel,
+}: {
+    workspaceId: string;
+    onSelect: (id: string) => void;
+    onCancel: () => void;
+}) => {
     const [search, setSearch] = useState('');
-    const params = { query: search, limit: 10 };
+    const params = { query: search, limit: 10, scope: workspaceScope(workspaceId) };
     const { data, isPending, isError, refetch } = useQuery({
         queryKey: queryKeys.notes.list(params),
         async queryFn() {
@@ -82,8 +92,17 @@ const TemplateSearch = ({ onSelect, onCancel }: { onSelect: (id: string) => void
     );
 };
 
-const ViewTemplatePicker = ({ value, onChange }: { value: string | null; onChange: (id: string | null) => void }) => {
+const ViewTemplatePicker = ({
+    workspaceId,
+    value,
+    onChange,
+}: {
+    workspaceId?: string;
+    value: string | null;
+    onChange: (id: string | null) => void;
+}) => {
     const [choosing, setChoosing] = useState(false);
+    const context = useWorkspace();
     return (
         <div className="space-y-2">
             <Label size="md">Default template</Label>
@@ -106,6 +125,7 @@ const ViewTemplatePicker = ({ value, onChange }: { value: string | null; onChang
             </div>
             {choosing ? (
                 <TemplateSearch
+                    workspaceId={workspaceId ?? context.workspaceId}
                     onSelect={(id) => {
                         onChange(id);
                         setChoosing(false);

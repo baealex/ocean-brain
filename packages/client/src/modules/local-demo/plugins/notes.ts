@@ -16,6 +16,7 @@ import {
     paginate,
     sortNotes,
 } from '../utils';
+import { localScopedNotes, localScopeId, localWorkspace } from '../workspace';
 
 const toTrashedNotePayload = (note: LocalTrashNote) => ({
     ...note,
@@ -45,7 +46,7 @@ export const notesLocalPlugin: LocalDemoPlugin = {
     graphHandlers: {
         FetchNotes: ({ state, variables }) => {
             const filtered = sortNotes(
-                state.notes.filter((note) => noteMatchesQuery(note, getQueryText(variables))),
+                localScopedNotes(state, variables).filter((note) => noteMatchesQuery(note, getQueryText(variables))),
                 variables,
             );
             return success({ allNotes: { totalCount: filtered.length, notes: paginate(filtered, variables) } });
@@ -66,7 +67,7 @@ export const notesLocalPlugin: LocalDemoPlugin = {
             }
 
             const filtered = sortNotes(
-                state.notes.filter((note) => noteMatchesQuery(note, getQueryText(variables))),
+                localScopedNotes(state, variables).filter((note) => noteMatchesQuery(note, getQueryText(variables))),
                 { ...variables, searchFilter: { sortBy: 'updatedAt', sortOrder: 'desc' } },
             );
             const notes = paginate(filtered, variables);
@@ -90,7 +91,7 @@ export const notesLocalPlugin: LocalDemoPlugin = {
             }
 
             const sourceReferences = new Set(extractNoteReferences(source).map((reference) => reference.id));
-            const relatedNotes = state.notes
+            const relatedNotes = localScopedNotes(state, variables)
                 .filter((note) => note.id !== source.id)
                 .map((note) => {
                     const reasons: string[] = [];
@@ -130,14 +131,16 @@ export const notesLocalPlugin: LocalDemoPlugin = {
         FetchTagNotes: ({ state, variables }) => {
             const tagId = getQueryText(variables);
             const filtered = sortNotes(
-                state.notes.filter((note) => note.tags.some((tag) => tag.id.toLowerCase() === tagId)),
+                localScopedNotes(state, variables).filter((note) =>
+                    note.tags.some((tag) => tag.id.toLowerCase() === tagId),
+                ),
                 { ...variables, searchFilter: { sortBy: 'updatedAt', sortOrder: 'desc' } },
             );
             return success({ tagNotes: { totalCount: filtered.length, notes: paginate(filtered, variables) } });
         },
         FetchNotesByTagNames: ({ state, variables }) => {
             const filtered = listNotesByTags(
-                state,
+                { ...state, notes: localScopedNotes(state, variables) },
                 (variables.tagNames as string[] | undefined) ?? [],
                 (variables.mode as 'and' | 'or' | undefined) ?? 'and',
             );
@@ -145,19 +148,28 @@ export const notesLocalPlugin: LocalDemoPlugin = {
         },
         FetchNote: ({ state, variables }) => {
             const note = findNote(state, variables.id);
-            return note ? success({ note }) : localError('Note not found');
+            return note
+                ? success({ note: { ...note, workspaceId: note.workspaceId ?? '1' } })
+                : localError('Note not found');
         },
-        FetchPinnedNotes: ({ state }) => {
-            const pinnedNotes = state.notes
+        FetchPinnedNotes: ({ state, variables }) => {
+            const pinnedNotes = localScopedNotes(state, variables)
                 .filter((note) => note.pinned)
                 .sort((a, b) => a.order - b.order)
                 .map(({ id, title, order }) => ({ id, title, order }));
             return success({ pinnedNotes });
         },
         CreateNote: ({ state, variables, save }) => {
-            const input = variables.note as { title?: string; content?: string; layout?: NoteLayout };
+            const input = variables.note as {
+                workspaceId?: string;
+                title?: string;
+                content?: string;
+                layout?: NoteLayout;
+            };
+            const workspaceId = localWorkspace(state, input.workspaceId ?? '1', true);
             const timestamp = now();
             const note: Note = {
+                workspaceId,
                 id: createLocalId('note'),
                 title: input.title ?? '',
                 content: input.content ?? '',
@@ -171,11 +183,12 @@ export const notesLocalPlugin: LocalDemoPlugin = {
             };
             state.notes.unshift(note);
             save();
-            return success({ createNote: { id: note.id } });
+            return success({ createNote: { id: note.id, workspaceId } });
         },
         UpdateNote: ({ state, variables, save }) => {
             const note = findNote(state, variables.id);
             if (!note) return localError('Note not found');
+            localWorkspace(state, note.workspaceId ?? '1', true);
 
             const input = variables.note as Partial<Pick<Note, 'title' | 'content' | 'layout'>>;
             Object.assign(note, input, { updatedAt: now() });
@@ -185,6 +198,7 @@ export const notesLocalPlugin: LocalDemoPlugin = {
         PinNote: ({ state, variables, save }) => {
             const note = findNote(state, variables.id);
             if (!note) return localError('Note not found');
+            localWorkspace(state, note.workspaceId ?? '1', true);
 
             note.pinned = Boolean(variables.pinned);
             note.updatedAt = now();
@@ -193,12 +207,17 @@ export const notesLocalPlugin: LocalDemoPlugin = {
         },
         DeleteNote: ({ state, variables, save }) => {
             const index = state.notes.findIndex((note) => note.id === String(variables.id));
+            if (index >= 0) localWorkspace(state, state.notes[index].workspaceId ?? '1', true);
             if (index >= 0) state.trashedNotes.unshift({ ...state.notes.splice(index, 1)[0], deletedAt: now() });
             save();
             return success({ deleteNote: true });
         },
         ReorderNotes: ({ state, variables, save }) => {
             const orders = variables.notes as Array<{ id: string; order: number }>;
+            for (const order of orders) {
+                const note = findNote(state, order.id);
+                if (note) localWorkspace(state, note.workspaceId ?? '1', true);
+            }
             for (const order of orders) {
                 const note = findNote(state, order.id);
                 if (note) note.order = order.order;
@@ -240,7 +259,10 @@ export const notesLocalPlugin: LocalDemoPlugin = {
         FetchNoteSnapshotDiff: () => success({ noteSnapshotDiff: null }),
         RestoreNoteSnapshot: () => localError('Snapshots are not available in local-only demo mode'),
         FetchTrashedNotes: ({ state, variables }) => {
-            const notes = state.trashedNotes.map(toTrashedNotePayload);
+            const workspaceId = localScopeId(state, variables);
+            const notes = state.trashedNotes
+                .filter((note) => workspaceId === null || (note.workspaceId ?? '1') === workspaceId)
+                .map(toTrashedNotePayload);
             return success({ trashedNotes: { totalCount: notes.length, notes: paginate(notes, variables) } });
         },
         FetchTrashedNote: ({ state, variables }) => {
@@ -251,6 +273,7 @@ export const notesLocalPlugin: LocalDemoPlugin = {
             const index = state.trashedNotes.findIndex((note) => note.id === String(variables.id));
             if (index < 0) return localError('Trashed note not found');
 
+            localWorkspace(state, state.trashedNotes[index].workspaceId ?? '1', true);
             const { deletedAt: _deletedAt, ...note } = state.trashedNotes.splice(index, 1)[0];
             note.updatedAt = now();
             state.notes.unshift(note);
@@ -258,14 +281,16 @@ export const notesLocalPlugin: LocalDemoPlugin = {
             return success({ restoreTrashedNote: note });
         },
         PurgeTrashedNote: ({ state, variables, save }) => {
+            const original = state.trashedNotes.find((note) => note.id === String(variables.id));
+            if (original) localWorkspace(state, original.workspaceId ?? '1', true);
             state.trashedNotes = state.trashedNotes.filter((note) => note.id !== String(variables.id));
             save();
             return success({ purgeTrashedNote: true });
         },
-        FetchNoteGraph: ({ state }) => {
-            const noteIds = new Set(state.notes.map((note) => note.id));
+        FetchNoteGraph: ({ state, variables }) => {
+            const noteIds = new Set(localScopedNotes(state, variables).map((note) => note.id));
             const seenLinks = new Set<string>();
-            const links = state.notes.flatMap((note) =>
+            const links = localScopedNotes(state, variables).flatMap((note) =>
                 extractNoteReferences(note)
                     .filter((reference) => noteIds.has(reference.id) && reference.id !== note.id)
                     .flatMap((reference) => {
@@ -281,7 +306,7 @@ export const notesLocalPlugin: LocalDemoPlugin = {
                 connectionCounts.set(link.source, (connectionCounts.get(link.source) ?? 0) + 1);
                 connectionCounts.set(link.target, (connectionCounts.get(link.target) ?? 0) + 1);
             });
-            const nodes = state.notes.map((note) => ({
+            const nodes = localScopedNotes(state, variables).map((note) => ({
                 id: note.id,
                 title: note.title,
                 connections: connectionCounts.get(note.id) ?? 0,
@@ -291,12 +316,15 @@ export const notesLocalPlugin: LocalDemoPlugin = {
             return success({ noteGraph: { nodes, links } });
         },
         FetchNotePropertyKeys: ({ state, variables }) => {
-            const keys = state.propertyDefinitions.map((definition) => ({
-                ...definition,
-                noteCount: state.notes.filter((note) =>
-                    note.properties?.some((property) => property.key === definition.key),
-                ).length,
-            }));
+            const workspaceId = localScopeId(state, variables);
+            const keys = state.propertyDefinitions
+                .filter((definition) => workspaceId === null || (definition.workspaceId ?? '1') === workspaceId)
+                .map((definition) => ({
+                    ...definition,
+                    noteCount: state.notes.filter((note) =>
+                        note.properties?.some((property) => property.key === definition.key),
+                    ).length,
+                }));
             return success({
                 notePropertyKeys: {
                     totalCount: keys.length,
@@ -306,14 +334,20 @@ export const notesLocalPlugin: LocalDemoPlugin = {
         },
         CreateNotePropertyKey: ({ state, variables, save }) => {
             const input = variables.input as {
-                key: string;
+                key?: string;
+                workspaceId?: string;
                 name?: string;
                 valueType: NotePropertyValueType;
                 options?: NotePropertyOption[];
             };
+            const workspaceId = localWorkspace(state, input.workspaceId ?? '1', true);
+            const key = input.key ?? createLocalId('field');
+            if (state.propertyDefinitions.some((definition) => definition.key === key))
+                return localError('This field key already exists.');
             const definition = {
-                key: input.key,
-                name: input.name ?? input.key,
+                workspaceId,
+                key,
+                name: input.name ?? key,
                 valueType: input.valueType,
                 options: input.options ?? [],
                 updatedAt: now(),
@@ -325,6 +359,7 @@ export const notesLocalPlugin: LocalDemoPlugin = {
         UpdateNotePropertyKey: ({ state, variables, save }) => {
             const definition = state.propertyDefinitions.find((item) => item.key === String(variables.key));
             if (!definition) return localError('Property key not found');
+            localWorkspace(state, definition.workspaceId ?? '1', true);
 
             const input = variables.input as { name?: string; options?: NotePropertyOption[] };
             if (input.name) definition.name = input.name;
@@ -335,6 +370,8 @@ export const notesLocalPlugin: LocalDemoPlugin = {
         },
         DeleteNotePropertyKey: ({ state, variables, save }) => {
             const key = String(variables.key);
+            const definition = state.propertyDefinitions.find((item) => item.key === key);
+            if (definition) localWorkspace(state, definition.workspaceId ?? '1', true);
             const referencingView = state.viewWorkspace.groups
                 .flatMap((group) => group.views)
                 .find((view) => viewReferencesProperty(view, key));
@@ -354,11 +391,17 @@ export const notesLocalPlugin: LocalDemoPlugin = {
         UpdateNoteProperties: ({ state, variables, save }) => {
             const note = findNote(state, variables.id);
             if (!note) return localError('Note not found');
+            localWorkspace(state, note.workspaceId ?? '1', true);
 
             const patch = variables.patch as {
                 set?: Array<Omit<NoteProperty, 'createdAt' | 'updatedAt'>>;
                 deleteKeys?: string[];
             };
+            for (const item of patch.set ?? []) {
+                const definition = state.propertyDefinitions.find((definition) => definition.key === item.key);
+                if (!definition || (definition.workspaceId ?? '1') !== (note.workspaceId ?? '1'))
+                    return localError('Choose a field from this note’s workspace.');
+            }
             const timestamp = now();
             const deleteKeys = new Set(patch.deleteKeys ?? []);
             const current = (note.properties ?? []).filter((property) => !deleteKeys.has(property.key));
@@ -387,7 +430,7 @@ export const notesLocalPlugin: LocalDemoPlugin = {
         },
         NotesInDateRange: ({ state, variables }) => {
             const dateRange = variables.dateRange as { start?: string; end?: string } | undefined;
-            const notes = state.notes.filter(
+            const notes = localScopedNotes(state, variables).filter(
                 (note) => isInDateRange(note.createdAt, dateRange) || isInDateRange(note.updatedAt, dateRange),
             );
             return success({ notesInDateRange: notes });

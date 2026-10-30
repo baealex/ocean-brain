@@ -19,6 +19,7 @@ export const getNoteLinkedViews = async (content: string) => {
         const view = byId.get(viewId);
         return {
             viewId,
+            workspaceId: view ? String(view.group.workspaceId) : null,
             title: view?.title ?? title,
             groupId: view ? String(view.groupId) : null,
             groupTitle: view?.group.title ?? null,

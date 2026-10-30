@@ -13,7 +13,6 @@ import { Link, useLocation } from '@tanstack/react-router';
 import classNames from 'classnames';
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import { useEffect, useState } from 'react';
-
 import { reorderNotes } from '~/apis/note.api';
 import { QueryBoundary, QueryErrorView } from '~/components/app';
 import PinnedNotes from '~/components/entities/PinnedNotes';
@@ -23,6 +22,7 @@ import { Text } from '~/components/ui';
 import type { Note } from '~/models/note.model';
 import { queryKeys } from '~/modules/query-key-factory';
 import { NOTE_ROUTE } from '~/modules/url';
+import { useWorkspace } from '~/store/workspace';
 
 type PinnedNote = Pick<Note, 'id' | 'title' | 'order'>;
 type PinnedNoteOrder = Pick<PinnedNote, 'id' | 'order'>;
@@ -83,8 +83,11 @@ export const buildPinnedNoteReorderPayload = (
 };
 
 function SortablePinnedNote({ id, title, isActive = false, children }: SortablePinnedNoteProps) {
+    const { activeWorkspace } = useWorkspace();
+    const readOnly = Boolean(activeWorkspace?.archivedAt);
     const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
         id,
+        disabled: readOnly,
     });
 
     const style = {
@@ -105,6 +108,7 @@ function SortablePinnedNote({ id, title, isActive = false, children }: SortableP
             <button
                 type="button"
                 ref={setActivatorNodeRef}
+                disabled={readOnly}
                 aria-label={`Reorder note ${title ?? 'Untitled'}`}
                 title="Drag to reorder"
                 {...attributes}
@@ -174,6 +178,7 @@ function PinnedNotesList({
 }
 
 const PinnedNotesPanel = () => {
+    const { workspaceId } = useWorkspace();
     const pathname = useLocation({ select: (location) => location.pathname });
     const queryClient = useQueryClient();
     const [pinnedItems, setPinnedItems] = useState<PinnedNote[]>([]);
@@ -183,7 +188,7 @@ const PinnedNotesPanel = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({
                 queryKey: queryKeys.notes.pinned(),
-                exact: true,
+                exact: false,
             });
         },
     });
@@ -214,6 +219,7 @@ const PinnedNotesPanel = () => {
     return (
         <div className="border-l border-border-subtle/70 pl-1.5">
             <QueryBoundary
+                key={workspaceId}
                 fallback={
                     <div className="space-y-1">
                         <Skeleton height="40px" opacity={0.4} />

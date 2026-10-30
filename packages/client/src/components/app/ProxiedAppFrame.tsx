@@ -2,6 +2,7 @@ import classNames from 'classnames';
 import { type ComponentPropsWithoutRef, useCallback, useEffect, useRef, useState } from 'react';
 import { issueProxiedAppAccess } from '~/apis/app-gateway.api';
 import { Button, Text } from '~/components/ui';
+import type { Workspace } from '~/models/workspace.model';
 import { DEFAULT_INTEGRATION_APP_LOCATION, normalizeIntegrationAppLocation } from '~/modules/integration-app-bridge';
 import { IntegrationAppFrame } from './IntegrationAppFrame';
 
@@ -16,6 +17,7 @@ interface ConnectionFrameState {
 
 export interface ProxiedAppFrameProps
     extends Omit<ComponentPropsWithoutRef<'iframe'>, 'referrerPolicy' | 'sandbox' | 'src' | 'srcDoc' | 'title'> {
+    workspace?: Pick<Workspace, 'id' | 'name' | 'archivedAt'>;
     appLocation?: string;
     connectionId: string;
     onLocationChange?: (location: string) => void;
@@ -25,6 +27,7 @@ export interface ProxiedAppFrameProps
 
 export function ProxiedAppFrame({
     appLocation = DEFAULT_INTEGRATION_APP_LOCATION,
+    workspace,
     connectionId,
     onLocationChange,
     onOpenNote,
@@ -137,6 +140,7 @@ export function ProxiedAppFrame({
     return (
         <IntegrationAppFrame
             {...iframeProps}
+            workspace={workspace}
             title={title}
             src={`/apps/${encodeURIComponent(connectionId)}${location}`}
             appLocation={location}

@@ -5,6 +5,7 @@ import schema from '~/schema/index.js';
 
 // Deliberately explicit: new browser/admin queries never become public by accident.
 const READ_FIELDS = new Set([
+    'workspaces',
     'allNotes',
     'note',
     'noteRead',

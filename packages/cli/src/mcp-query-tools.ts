@@ -1,3 +1,4 @@
+import { RESOLVED_SCOPE_FIELDS, resolvedScopeSchema, workspaceScopeSchema } from './mcp-workspace-tools.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { createMcpJsonToolResult, createPageInfo, pageLimitSchema, pageOffsetSchema } from './mcp-tool-support.js';
@@ -34,6 +35,7 @@ export const optionSchema = z.object({
     order: z.number(),
 });
 export const noteSummarySchema = z.object({
+    workspaceId: z.string().optional(),
     id: z.string(),
     title: z.string(),
     createdAt: z.string(),
@@ -62,7 +64,7 @@ export const propertyKeysSchema = z
     .max(50)
     .transform((keys) => [...new Set(keys.map((key) => key.toLowerCase().replace(/\s+/g, '-')))]);
 export const NOTE_SUMMARY_FIELDS =
-    'id title createdAt updatedAt tags { id name } properties(keys: $propertyKeys) { key name value valueType option { id label value color order } }';
+    'workspaceId id title createdAt updatedAt tags { id name } properties(keys: $propertyKeys) { key name value valueType option { id label value color order } }';
 export const QUERY_CONDITION_FIELDS =
     'tagNames mode propertyFilters { key name valueType operator value } sortBy sortOrder';
 
@@ -73,6 +75,7 @@ export const registerQueryTools = (server: McpServer, request: McpQueryRequest) 
             description:
                 'Query notes using tags and property conditions; no filters returns recent notes. mode combines tags only; property filters always use AND. Use list_properties for valid keys/types/options. Only requested propertyKeys are returned. No note bodies.',
             inputSchema: {
+                scope: workspaceScopeSchema.optional(),
                 tagNames: z.array(z.string().trim().min(1)).max(100).default([]),
                 mode: z.enum(['and', 'or']).default('and'),
                 propertyFilters: z.array(propertyFilterSchema).max(10).default([]),
@@ -83,6 +86,7 @@ export const registerQueryTools = (server: McpServer, request: McpQueryRequest) 
                 offset: pageOffsetSchema,
             },
             outputSchema: {
+                resolvedScope: resolvedScopeSchema.optional(),
                 query: queryConditionsSchema,
                 totalCount: z.number(),
                 notes: z.array(noteSummarySchema),
@@ -94,7 +98,7 @@ export const registerQueryTools = (server: McpServer, request: McpQueryRequest) 
         async ({ limit, offset, propertyKeys, ...input }) => {
             const data = await request(
                 `query ($input: NotesByPropertiesInput!, $names: [String!]!, $pagination: PaginationInput!, $propertyKeys: [String!]) {
-            notesByQuery(input: $input, pagination: $pagination) { query { ${QUERY_CONDITION_FIELDS} } totalCount notes { ${NOTE_SUMMARY_FIELDS} } }
+            notesByQuery(input: $input, pagination: $pagination) { ${RESOLVED_SCOPE_FIELDS} query { ${QUERY_CONDITION_FIELDS} } totalCount notes { ${NOTE_SUMMARY_FIELDS} } }
             tagsByNames(names: $names) { name }
         }`,
                 {
@@ -106,6 +110,7 @@ export const registerQueryTools = (server: McpServer, request: McpQueryRequest) 
             );
             const result = z
                 .object({
+                    resolvedScope: resolvedScopeSchema.optional(),
                     query: queryConditionsSchema,
                     totalCount: z.number(),
                     notes: z.array(noteSummarySchema),

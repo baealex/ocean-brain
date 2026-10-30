@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { type NoteChangeEvent, subscribeNoteChanges } from '~/features/note/services/change-events.js';
+import { parseWorkspaceScope, resolveWorkspaceWhere } from '~/features/workspace/scope.js';
 import models from '~/models.js';
 import { createAppError } from '~/modules/error-handler.js';
 import type { Controller } from '~/types/index.js';
@@ -39,17 +40,19 @@ const resolveAfterId = (value: unknown) => {
 
 export const createIntegrationNoteCatalogHandler = (): Controller => {
     return async (request, reply) => {
+        const scopeWhere = await resolveWorkspaceWhere(parseWorkspaceScope(request.body?.scope));
         const limit = resolvePageSize(request.body?.limit);
         const afterId = resolveAfterId(request.body?.afterId);
         const [rows, propertySchema] = await Promise.all([
             models.note.findMany({
-                where: { id: { gt: afterId } },
+                where: { ...scopeWhere, id: { gt: afterId } },
                 orderBy: { id: 'asc' },
                 take: limit + 1,
-                select: { id: true, updatedAt: true },
+                select: { id: true, workspaceId: true, updatedAt: true },
             }),
             afterId === 0
                 ? models.propertyDefinition.findMany({
+                      where: scopeWhere,
                       orderBy: { key: 'asc' },
                       select: {
                           key: true,
@@ -75,7 +78,11 @@ export const createIntegrationNoteCatalogHandler = (): Controller => {
         const page = hasMore ? rows.slice(0, limit) : rows;
 
         return reply.status(200).send({
-            notes: page.map((note) => ({ id: String(note.id), updatedAt: note.updatedAt.toISOString() })),
+            notes: page.map((note) => ({
+                id: String(note.id),
+                workspaceId: String(note.workspaceId),
+                updatedAt: note.updatedAt.toISOString(),
+            })),
             ...(propertySchema
                 ? { propertySchemaHash: createHash('sha256').update(JSON.stringify(propertySchema)).digest('hex') }
                 : {}),
@@ -88,6 +95,8 @@ export const createIntegrationNoteCatalogHandler = (): Controller => {
 export const serializeIntegrationNoteEvent = (event: NoteChangeEvent) => {
     const data = {
         type: event.type,
+        ...(event.workspaceId !== undefined ? { workspaceId: String(event.workspaceId) } : {}),
+        ...(event.previousWorkspaceId !== undefined ? { previousWorkspaceId: String(event.previousWorkspaceId) } : {}),
         noteId: String(event.noteId),
         occurredAt: event.occurredAt,
     };

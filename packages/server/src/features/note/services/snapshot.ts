@@ -1,5 +1,7 @@
 import { FILE_HEADERS_ONLY, formatPatch, structuredPatch } from 'diff';
 import { ensureTagByName } from '~/features/tag/services/organization.js';
+import { mapWorkspacePropertyKeys, type PropertyWorkspaceMapping } from '~/features/workspace/property-mapping.js';
+import { DEFAULT_WORKSPACE_ID, requireWorkspace, WorkspaceError } from '~/features/workspace/scope.js';
 import models, { type NoteLayout, Prisma, type PropertyValueType } from '~/models.js';
 import { blocksToMarkdown, extractTagIdsFromContentJson } from '~/modules/blocknote.js';
 import { type BlockNoteTreeNode, parseBlockNoteContent, walkBlockNoteTree } from '~/modules/blocknote-tree.js';
@@ -11,6 +13,7 @@ import {
 } from '~/modules/recovery-retention.js';
 import { calculateMarkdownSha256 } from './markdown-patch.js';
 import { replaceNoteReferences } from './note-reference-index.js';
+import { serializePropertyDefinition } from './properties.js';
 import { resolveRestoredPropertyTarget } from './property-restore.js';
 import { buildNoteSearchProjection, extractVisibleSearchTextFromContent } from './search.js';
 import { createNoteVersionConflictError, MissingNoteVersionError, parseNoteVersion } from './write-conflict.js';
@@ -18,6 +21,7 @@ import { createNoteVersionConflictError, MissingNoteVersionError, parseNoteVersi
 const SNAPSHOT_CONTENT_PREVIEW_MAX_LENGTH = 240;
 
 interface NoteRecord {
+    workspaceId?: number;
     id: number;
     title: string;
     content: string;
@@ -52,7 +56,18 @@ interface NoteSnapshotRecord {
     createdAt: Date;
 }
 
+interface SnapshotRestoreOptions {
+    expectedUpdatedAt: string;
+    meta?: string;
+    mappings?: PropertyWorkspaceMapping[];
+}
+
 interface NoteSnapshotDeps {
+    mapSnapshotProperties?: (
+        properties: SnapshotNoteProperty[],
+        workspaceId: number,
+        mappings: PropertyWorkspaceMapping[],
+    ) => Promise<SnapshotNoteProperty[]>;
     findNoteById: (id: number) => Promise<NoteRecord | null>;
     findSnapshotByEditSessionId: (noteId: number, editSessionId: string) => Promise<NoteSnapshotRecord | null>;
     findLatestSnapshot: (noteId: number) => Promise<NoteSnapshotRecord | null>;
@@ -81,6 +96,8 @@ interface NoteSnapshotDeps {
             tagIds?: number[];
             properties?: SnapshotNoteProperty[];
             expectedUpdatedAt: string;
+            workspaceId?: number;
+            mappedAcrossWorkspaces?: boolean;
         },
     ) => Promise<NoteRecord>;
 }
@@ -91,6 +108,7 @@ export interface NoteSnapshotMeta {
 }
 
 interface NoteSnapshotPayload {
+    workspaceId?: number;
     title: string;
     content: string;
     pinned: boolean;
@@ -200,8 +218,9 @@ const serializeSnapshot = (snapshot: NoteSnapshotRecord): NoteSnapshotSummary =>
     payload: snapshot.payload,
 });
 
-const serializePayload = (note: NoteRecord): string => {
+export const serializeSnapshotPayload = (note: NoteRecord): string => {
     const payload: NoteSnapshotPayload = {
+        ...(note.workspaceId !== undefined ? { workspaceId: note.workspaceId } : {}),
         title: note.title,
         content: note.content,
         pinned: note.pinned,
@@ -521,7 +540,7 @@ export const createNoteSnapshotService = (deps: NoteSnapshotDeps) => ({
             return null;
         }
 
-        const payload = serializePayload(note);
+        const payload = serializeSnapshotPayload(note);
         const latestSnapshot = await deps.findLatestSnapshot(note.id);
 
         if (latestSnapshot && hasSameSnapshotPayload(latestSnapshot, payload)) {
@@ -639,7 +658,7 @@ export const createNoteSnapshotService = (deps: NoteSnapshotDeps) => ({
         });
     },
 
-    restoreSnapshot: async (snapshotId: number, options: { expectedUpdatedAt: string; meta?: string }) => {
+    restoreSnapshot: async (snapshotId: number, options: SnapshotRestoreOptions) => {
         await deps.purgeExpiredSnapshots(createRetentionCutoff(SNAPSHOT_RETENTION_DAYS), RECOVERY_CLEANUP_BATCH_LIMIT);
 
         const snapshot = await deps.findSnapshotById(snapshotId);
@@ -672,6 +691,20 @@ export const createNoteSnapshotService = (deps: NoteSnapshotDeps) => ({
         }
 
         const payload = parsePayload(snapshot.payload);
+        const mappedAcrossWorkspaces =
+            (payload.workspaceId ?? DEFAULT_WORKSPACE_ID) !== (note.workspaceId ?? DEFAULT_WORKSPACE_ID);
+        if (mappedAcrossWorkspaces) {
+            if (!options.mappings || !deps.mapSnapshotProperties)
+                throw new WorkspaceError(
+                    'SNAPSHOT_WORKSPACE_MISMATCH',
+                    'This version was saved in another workspace. Review its property mappings before restoring it.',
+                );
+            payload.properties = await deps.mapSnapshotProperties(
+                payload.properties ?? [],
+                note.workspaceId ?? DEFAULT_WORKSPACE_ID,
+                options.mappings,
+            );
+        }
         const resolvedTags = deps.resolveRestoredTags
             ? await deps.resolveRestoredTags(payload.content)
             : extractRestoredTagIds(payload.content);
@@ -684,7 +717,7 @@ export const createNoteSnapshotService = (deps: NoteSnapshotDeps) => ({
                 : payload;
         const restoredTagIds = Array.isArray(resolvedTags) ? resolvedTags : resolvedTags?.tagIds;
 
-        const currentPayload = serializePayload(note);
+        const currentPayload = serializeSnapshotPayload(note);
         const latestSnapshot = await deps.findLatestSnapshot(note.id);
 
         if (!hasSameSnapshotPayload(latestSnapshot, currentPayload)) {
@@ -698,6 +731,7 @@ export const createNoteSnapshotService = (deps: NoteSnapshotDeps) => ({
 
         const restoredNote = await deps.updateNote(snapshot.noteId, {
             ...restoredPayload,
+            ...(mappedAcrossWorkspaces ? { mappedAcrossWorkspaces: true } : {}),
             ...(restoredTagIds !== undefined ? { tagIds: restoredTagIds } : {}),
             expectedUpdatedAt: options.expectedUpdatedAt,
         });
@@ -709,6 +743,10 @@ export const createNoteSnapshotService = (deps: NoteSnapshotDeps) => ({
 });
 
 export const defaultNoteSnapshotService = createNoteSnapshotService({
+    mapSnapshotProperties: async (properties, workspaceId, mappings) => {
+        const definitions = await models.propertyDefinition.findMany({ where: { workspaceId } });
+        return mapWorkspacePropertyKeys(properties, definitions, mappings);
+    },
     findNoteById: async (id) => {
         const note = await models.note.findUnique({
             where: { id },
@@ -828,7 +866,14 @@ export const defaultNoteSnapshotService = createNoteSnapshotService({
         });
     },
     updateNote: async (id, input) => {
-        const { tagIds, properties, expectedUpdatedAt, ...noteInput } = input;
+        const {
+            tagIds,
+            properties,
+            expectedUpdatedAt,
+            workspaceId: snapshotWorkspaceId,
+            mappedAcrossWorkspaces,
+            ...noteInput
+        } = input;
         const expectedTimestamp = parseNoteVersion(expectedUpdatedAt);
 
         if (expectedTimestamp === null) {
@@ -837,6 +882,14 @@ export const defaultNoteSnapshotService = createNoteSnapshotService({
 
         try {
             return await models.$transaction(async (tx) => {
+                const original = await tx.note.findUniqueOrThrow({ where: { id } });
+                await requireWorkspace(original.workspaceId, tx, true);
+                if ((snapshotWorkspaceId ?? DEFAULT_WORKSPACE_ID) !== original.workspaceId && !mappedAcrossWorkspaces) {
+                    throw new WorkspaceError(
+                        'SNAPSHOT_WORKSPACE_MISMATCH',
+                        'This version was saved in another workspace. Review its property mappings before restoring it.',
+                    );
+                }
                 const note = await tx.note.update({
                     where: { id, updatedAt: new Date(expectedTimestamp) },
                     data: {
@@ -858,7 +911,8 @@ export const defaultNoteSnapshotService = createNoteSnapshotService({
 
                     for (const property of properties) {
                         const target = await resolveRestoredPropertyTarget(property, {
-                            findDefinitionByKey: (key) => tx.propertyDefinition.findUnique({ where: { key } }),
+                            findDefinitionByKey: (key) =>
+                                tx.propertyDefinition.findFirst({ where: { key, workspaceId: original.workspaceId } }),
                             findOptionByValue: (propertyDefinitionId, value) =>
                                 tx.propertyOption.findUnique({
                                     where: {
@@ -871,6 +925,11 @@ export const defaultNoteSnapshotService = createNoteSnapshotService({
                         });
 
                         if (!target) {
+                            if (mappedAcrossWorkspaces)
+                                throw new WorkspaceError(
+                                    'SNAPSHOT_PROPERTY_MAPPING_INVALID',
+                                    `Property ${property.name} is unavailable in this workspace. Update its mapping or restore the missing option first.`,
+                                );
                             continue;
                         }
 
@@ -940,13 +999,49 @@ export const diffNoteSnapshot = async (
     return defaultNoteSnapshotService.diffSnapshot(snapshotId, options);
 };
 
-export const restoreNoteSnapshot = async (
-    snapshotId: number,
-    options: { expectedUpdatedAt: string; meta?: string },
-) => {
+export const restoreNoteSnapshot = async (snapshotId: number, options: SnapshotRestoreOptions) => {
     return defaultNoteSnapshotService.restoreSnapshot(snapshotId, options);
 };
 
 export const purgeExpiredNoteSnapshots = async () => {
     return defaultPurgeExpiredSnapshots(createRetentionCutoff(SNAPSHOT_RETENTION_DAYS), RECOVERY_CLEANUP_BATCH_LIMIT);
+};
+
+export const getNoteSnapshotRestoreContext = async (snapshotId: number) => {
+    const snapshot = await models.noteSnapshot.findUniqueOrThrow({ where: { id: snapshotId } });
+    const note = await models.note.findUniqueOrThrow({ where: { id: snapshot.noteId } });
+    const payload = parsePayload(snapshot.payload);
+    const sourceWorkspace = await requireWorkspace(payload.workspaceId ?? DEFAULT_WORKSPACE_ID);
+    const targetWorkspace = await requireWorkspace(note.workspaceId, models, true);
+    const definitions = await models.propertyDefinition.findMany({
+        where: { workspaceId: note.workspaceId },
+        include: { options: true, _count: { select: { properties: true } } },
+    });
+    return {
+        noteId: String(note.id),
+        expectedUpdatedAt: note.updatedAt.toISOString(),
+        sourceWorkspace,
+        targetWorkspace,
+        sourceProperties: (payload.properties ?? []).map((property) => ({
+            key: property.key,
+            name: property.name,
+            valueType: property.valueType,
+            value:
+                property.valueType === 'select'
+                    ? (property.optionValue ?? '')
+                    : property.valueType === 'number'
+                      ? String(property.numberValue ?? '')
+                      : property.valueType === 'boolean'
+                        ? String(property.boolValue ?? false)
+                        : property.valueType === 'date'
+                          ? property.dateValue
+                              ? new Date(property.dateValue).toISOString().slice(0, 10)
+                              : ''
+                          : (property.textValue ?? ''),
+            createdAt: snapshot.createdAt.toISOString(),
+            updatedAt: snapshot.createdAt.toISOString(),
+        })),
+        targetProperties: definitions.map(serializePropertyDefinition),
+        templateViews: [],
+    };
 };

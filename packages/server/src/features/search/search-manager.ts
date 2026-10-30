@@ -481,7 +481,7 @@ export class SemanticSearchManager {
         await this.dependencies.vectorIndex.close?.();
     }
 
-    async trySearch(query: string, limit: number): Promise<SemanticSearchAttempt> {
+    async trySearch(query: string, limit: number, eligibleNoteIds?: number[]): Promise<SemanticSearchAttempt> {
         const status = await this.getStatus();
         if (!status.available) {
             return {
@@ -498,6 +498,7 @@ export class SemanticSearchManager {
                 limit,
                 this.createClient(status.config),
                 this.dependencies.vectorIndex,
+                eligibleNoteIds,
             );
             return {
                 available: true,

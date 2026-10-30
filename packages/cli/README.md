@@ -122,6 +122,12 @@ Notes can link saved views through the editor's `/view` command. In Markdown, a 
 
 `create_note` accepts `properties: {"set":[{"key":"state","value":"todo"}]}` using the same value format as metadata edits. Definitions and select options must already exist. Validation failures leave no partial note; note and property persistence share a transaction. Markdown `[@tag]` tokens create tags as needed. Body edits retain version/hash checks and pre-edit snapshots.
 
+### Workspaces
+
+Use `ocean_brain_list_workspaces` to discover IDs and archived status. Query, search, tag/property catalogs, and view catalogs accept optional `scope: {"kind":"workspace","workspaceId":"2"}` or `{"kind":"all"}`. Omission preserves all-space reads; collection results include `resolvedScope` and owned records include `workspaceId`. Saved views always query their own space; `read_view` optionally accepts `workspaceId` to assert ownership.
+
+`create_note` accepts `workspaceId`; omission uses space `1` unless a view supplies its owner. Explicit workspace and view context must agree. ID-based reads and writes infer ownership, independent of browser tabs. Property definitions must belong to the note's space, while existing globally unique keys remain stable. Archived spaces are readable and reject writes until unarchived. Tokens and grants remain valid across spaces. Workspace discovery and optional scope fields are additive within compatibility `0.17.0`; reconnect clients to refresh the tool catalog.
+
 ### Migration to MCP compatibility 0.17
 
 The next minor release targets MCP compatibility `0.17.0`, replacing `0.14.0`. Update the server and MCP adapter together, then reconnect the host so it refreshes the tool catalog. Mismatched compatibility versions are rejected with HTTP 426 and an upgrade message.

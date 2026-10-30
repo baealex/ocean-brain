@@ -13,6 +13,7 @@ export interface SearchFilter {
 }
 
 export interface NoteInput {
+    workspaceId?: string;
     title?: string;
     content?: string;
     layout?: NoteLayout;

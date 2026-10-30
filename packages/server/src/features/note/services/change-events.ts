@@ -3,6 +3,8 @@ import { EventEmitter } from 'node:events';
 export type NoteChangeEventType = 'note.created' | 'note.updated' | 'note.deleted';
 
 export interface NoteChangeEvent {
+    workspaceId?: number;
+    previousWorkspaceId?: number;
     type: NoteChangeEventType;
     noteId: number;
     occurredAt: string;
@@ -10,6 +12,8 @@ export interface NoteChangeEvent {
 }
 
 export interface NoteChangeEventInput {
+    workspaceId?: number;
+    previousWorkspaceId?: number;
     type: NoteChangeEventType;
     noteId: number;
     affectsSearchIndex?: boolean;

@@ -16,10 +16,12 @@ import { ReminderPanel } from '~/components/reminder';
 import { PageLayout, Skeleton } from '~/components/shared';
 import Editor from '~/components/shared/Editor';
 import { useToast } from '~/components/ui';
+import { MoveNoteWorkspaceModal } from '~/components/workspace/MoveNoteWorkspaceModal';
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
 import { useNoteEditorSession } from '~/hooks/useNoteEditorSession';
 import type { NoteLayout } from '~/models/note.model';
 import { NOTE_ROUTE, SETTINGS_TRASH_ROUTE } from '~/modules/url';
+import { useWorkspace } from '~/store/workspace';
 
 const Route = getRouteApi(NOTE_ROUTE);
 
@@ -43,7 +45,7 @@ const notePageFallback = (
     </PageLayout>
 );
 
-function NoteReminders({ noteId }: { noteId: string }) {
+function NoteReminders({ noteId, readOnly }: { noteId: string; readOnly?: boolean }) {
     return (
         <QueryBoundary
             fallback={<Skeleton height={107} />}
@@ -60,7 +62,7 @@ function NoteReminders({ noteId }: { noteId: string }) {
                 />
             )}
         >
-            <ReminderPanel noteId={noteId} />
+            <ReminderPanel noteId={noteId} readOnly={readOnly} />
         </QueryBoundary>
     );
 }
@@ -71,6 +73,9 @@ interface NoteContentProps {
 
 export function NoteContent({ id }: NoteContentProps) {
     const { block } = Route.useSearch();
+    const { multiple, activeWorkspace, workspaceId } = useWorkspace();
+    const isReadOnly = Boolean(activeWorkspace?.archivedAt);
+    const [isMoveOpen, setIsMoveOpen] = useState(false);
     const notify = useToast();
     const navigate = Route.useNavigate();
     const [isLayoutModalOpen, setIsLayoutModalOpen] = useState(false);
@@ -111,7 +116,12 @@ export function NoteContent({ id }: NoteContentProps) {
             return;
         }
 
-        await onCreate(document.titleRef.current?.value || 'untitled', editor.getContent(), document.getLayout());
+        await onCreate(
+            document.titleRef.current?.value || 'untitled',
+            editor.getContent(),
+            document.getLayout(),
+            document.workspaceId,
+        );
     };
 
     return (
@@ -119,6 +129,15 @@ export function NoteContent({ id }: NoteContentProps) {
             <main className={classNames('mx-auto', NOTE_LAYOUT_WIDTH[document.layout])}>
                 <NoteEditorHeader
                     title={document.title}
+                    readOnly={isReadOnly}
+                    onMoveWorkspace={
+                        multiple
+                            ? () =>
+                                  void save.flushPendingChanges().then((result) => {
+                                      if (result !== 'error' && result !== 'conflict') setIsMoveOpen(true);
+                                  })
+                            : undefined
+                    }
                     titleRef={document.titleRef}
                     isPinned={document.isPinned}
                     createdAt={document.createdAt}
@@ -150,10 +169,11 @@ export function NoteContent({ id }: NoteContentProps) {
                     <NotePropertiesPanel
                         ref={properties.ref}
                         noteId={id}
+                        workspaceId={document.workspaceId}
                         properties={document.properties}
                         expectedUpdatedAt={properties.expectedUpdatedAt}
                         editSessionId={properties.editSessionId}
-                        disabled={save.status !== 'saved'}
+                        disabled={isReadOnly || save.status !== 'saved'}
                         saveProperties={properties.saveProperties}
                         onPendingChange={properties.onPendingChange}
                         onSaved={properties.onSaved}
@@ -163,6 +183,7 @@ export function NoteContent({ id }: NoteContentProps) {
                         key={editor.key}
                         ref={editor.ref}
                         content={editor.content}
+                        editable={!isReadOnly}
                         currentNoteId={id}
                         focusBlockId={block}
                         onChange={editor.onChange}
@@ -170,10 +191,17 @@ export function NoteContent({ id }: NoteContentProps) {
                         onClearChangeMarks={editor.onClearChangeMarks}
                     />
 
-                    <NoteReminders noteId={id} />
+                    <NoteReminders noteId={id} readOnly={isReadOnly} />
                     <NoteBackReferences noteId={id} targetTitle={document.title} />
                 </div>
 
+                {isMoveOpen && (
+                    <MoveNoteWorkspaceModal
+                        noteId={id}
+                        sourceWorkspaceId={document.workspaceId ?? workspaceId}
+                        onClose={() => setIsMoveOpen(false)}
+                    />
+                )}
                 <LayoutModal
                     isOpen={isLayoutModalOpen}
                     onClose={() => setIsLayoutModalOpen(false)}

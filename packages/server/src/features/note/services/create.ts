@@ -1,4 +1,10 @@
 import { type NoteViewContextInput, prepareNoteForView } from '~/features/view/services/note-creation.js';
+import {
+    assertSameWorkspace,
+    DEFAULT_WORKSPACE_ID,
+    parseWorkspaceId,
+    requireWorkspace,
+} from '~/features/workspace/scope.js';
 import models, { type NoteLayout } from '~/models.js';
 import { replaceNoteReferences } from './note-reference-index.js';
 import {
@@ -10,6 +16,7 @@ import {
 import { buildNoteSearchProjection } from './search.js';
 
 export interface NoteCreationInput {
+    workspaceId?: string | number;
     title: string;
     content: string;
     layout?: NoteLayout;
@@ -22,9 +29,13 @@ export interface NoteCreationInput {
 export const createNoteWithContent = async (input: NoteCreationInput) => {
     return models.$transaction(async (tx) => {
         const viewInput = input.viewContext ? await prepareNoteForView(tx, input.viewContext, input) : null;
+        const workspaceId = viewInput?.workspaceId ?? parseWorkspaceId(input.workspaceId ?? DEFAULT_WORKSPACE_ID);
+        if (input.workspaceId !== undefined) assertSameWorkspace(workspaceId, parseWorkspaceId(input.workspaceId));
+        await requireWorkspace(workspaceId, tx, true);
         const prepared = viewInput ?? input;
         const note = await tx.note.create({
             data: {
+                workspaceId,
                 title: prepared.title,
                 content: prepared.content,
                 ...buildNoteSearchProjection({

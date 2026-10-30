@@ -1,5 +1,6 @@
 import classNames from 'classnames';
 import { type ComponentPropsWithoutRef, useEffect, useLayoutEffect, useRef } from 'react';
+import type { Workspace } from '~/models/workspace.model';
 import { getIntegrationAppAppearance } from '~/modules/integration-app-appearance';
 import {
     DEFAULT_INTEGRATION_APP_LOCATION,
@@ -9,6 +10,7 @@ import {
 
 export interface IntegrationAppFrameProps
     extends Omit<ComponentPropsWithoutRef<'iframe'>, 'referrerPolicy' | 'sandbox' | 'srcDoc' | 'title'> {
+    workspace?: Pick<Workspace, 'id' | 'name' | 'archivedAt'>;
     appLocation?: string;
     onAppReady?: (contentWindow: Window) => void;
     onLocationChange?: (location: string) => void;
@@ -24,12 +26,17 @@ const isBridgeMessage = (event: MessageEvent, contentWindow: Window | null) =>
     event.data !== null &&
     event.data.version === INTEGRATION_APP_BRIDGE_VERSION;
 
-const sendHostContext = (contentWindow: Window, location: string) => {
+const sendHostContext = (
+    contentWindow: Window,
+    location: string,
+    workspace?: Pick<Workspace, 'id' | 'name' | 'archivedAt'>,
+) => {
     contentWindow.postMessage(
         {
             type: 'ocean-brain:host-context',
             version: INTEGRATION_APP_BRIDGE_VERSION,
-            capabilities: ['location', 'open-note', 'appearance'],
+            capabilities: ['location', 'open-note', 'appearance', ...(workspace ? ['workspace'] : [])],
+            ...(workspace ? { workspace } : {}),
             location,
             appearance: getIntegrationAppAppearance(),
         },
@@ -39,6 +46,7 @@ const sendHostContext = (contentWindow: Window, location: string) => {
 
 export function IntegrationAppFrame({
     appLocation = DEFAULT_INTEGRATION_APP_LOCATION,
+    workspace,
     className,
     onAppReady,
     onLocationChange,
@@ -49,6 +57,9 @@ export function IntegrationAppFrame({
 }: IntegrationAppFrameProps) {
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const appReadyRef = useRef(false);
+    const wantsWorkspaceRef = useRef(false);
+    const workspaceRef = useRef(workspace);
+    workspaceRef.current = workspace;
     const initialSourceRef = useRef(iframeProps.src);
     const location = normalizeIntegrationAppLocation(appLocation) ?? DEFAULT_INTEGRATION_APP_LOCATION;
     const latestLocationRef = useRef(location);
@@ -61,7 +72,15 @@ export function IntegrationAppFrame({
 
             if (event.data.type === 'ocean-brain:app-ready') {
                 appReadyRef.current = true;
-                sendHostContext(contentWindow, latestLocationRef.current);
+                wantsWorkspaceRef.current =
+                    Array.isArray(event.data.capabilities) &&
+                    event.data.capabilities.length <= 16 &&
+                    event.data.capabilities.includes('workspace');
+                sendHostContext(
+                    contentWindow,
+                    latestLocationRef.current,
+                    wantsWorkspaceRef.current ? workspaceRef.current : undefined,
+                );
                 onAppReady?.(contentWindow);
                 return;
             }
@@ -108,6 +127,12 @@ export function IntegrationAppFrame({
             '*',
         );
     }, [location]);
+
+    useEffect(() => {
+        if (!appReadyRef.current || !wantsWorkspaceRef.current || !workspace) return;
+        const contentWindow = iframeRef.current?.contentWindow;
+        if (contentWindow) sendHostContext(contentWindow, latestLocationRef.current, workspace);
+    }, [workspace]);
 
     return (
         <iframe

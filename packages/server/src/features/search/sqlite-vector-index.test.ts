@@ -72,6 +72,11 @@ test('stores vectors in a disposable SQLite file and returns one nearest match p
         [1, 2],
     );
     assert.equal(matches[0].distance, 0);
+
+    // The nearest global result must not consume the scoped candidate limit.
+    assert.deepEqual(await index.search([1, 0], 1, [2]), [{ noteId: 2, distance: 1 }]);
+    assert.deepEqual(await index.search([1, 0], 10, []), []);
+    assert.deepEqual(await index.search([1, 0], 1, [999]), []);
 });
 
 test('replaces the complete index and rejects a query from another embedding space', async (t) => {

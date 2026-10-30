@@ -4,17 +4,20 @@ import * as Icon from '~/components/icon';
 import { Text } from '~/components/ui';
 import { getSearchShortcutLabel } from '~/modules/keyboard-shortcuts';
 import { SEARCH_ROUTE } from '~/modules/url';
+import { useWorkspace } from '~/store/workspace';
 
 const launcherClassName =
     'focus-ring-soft surface-base group flex min-h-14 w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-fg-default outline-none transition-colors hover:bg-hover-subtle';
 
 const SidebarSearchLauncher = () => {
     const navigate = useNavigate();
+    const { workspaceId, multiple } = useWorkspace();
     const searchShortcutLabel = getSearchShortcutLabel();
     const handleOpen = () => {
         navigate({
             to: SEARCH_ROUTE,
             search: {
+                ...(multiple ? { workspace: workspaceId } : {}),
                 query: '',
                 page: 1,
                 mode: 'hybrid',

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
-import { fetchViewWorkspace } from '~/apis/view.api';
+import { fetchView, fetchViewWorkspace } from '~/apis/view.api';
 import * as Icon from '~/components/icon';
 import { Dropdown } from '~/components/shared';
 import NoteContentSection from '~/components/shared/NoteContentSection';
@@ -10,6 +10,7 @@ import type { View } from '~/models/view.model';
 import { queryKeys } from '~/modules/query-key-factory';
 import { VIEWS_ROUTE } from '~/modules/url';
 import { getViewDisplayTypeLabel } from '~/modules/view-dashboard';
+import { useWorkspace } from '~/store/workspace';
 import LinkedViewContent from './LinkedViewContent';
 
 interface LinkedViewPanelProps {
@@ -22,20 +23,35 @@ interface LinkedViewPanelProps {
 
 const LinkedViewPanel = ({ viewId, viewTitle, editable, onSelect, onRemove }: LinkedViewPanelProps) => {
     const navigate = useNavigate();
+    const { workspaceId, multiple } = useWorkspace();
     const [choosing, setChoosing] = useState(!viewId);
     const [search, setSearch] = useState('');
     const { data, isPending, isError, refetch } = useQuery({
-        queryKey: queryKeys.views.workspace(),
+        queryKey: queryKeys.views.workspace(workspaceId),
         async queryFn() {
-            const response = await fetchViewWorkspace();
+            const response = await fetchViewWorkspace(workspaceId);
             if (response.type === 'error') throw response;
             return response.viewWorkspace;
         },
     });
     const groups = data?.groups ?? [];
     const group = groups.find((candidate) => candidate.views.some((view) => view.id === viewId));
-    const view = group?.views.find((candidate) => candidate.id === viewId);
-    const openView = () => void navigate({ to: VIEWS_ROUTE, search: { group: view?.groupId } });
+    const localView = group?.views.find((candidate) => candidate.id === viewId);
+    const linked = useQuery({
+        queryKey: queryKeys.views.view(viewId),
+        enabled: Boolean(viewId && data && !localView),
+        queryFn: async () => {
+            const response = await fetchView(viewId);
+            if (response.type === 'error') throw response;
+            return response.view;
+        },
+    });
+    const view = localView ?? linked.data;
+    const openView = () =>
+        void navigate({
+            to: VIEWS_ROUTE,
+            search: { group: view?.groupId, ...(multiple ? { workspace: view?.workspaceId ?? workspaceId } : {}) },
+        });
     const changeView = () => {
         setSearch('');
         setChoosing(true);
@@ -143,13 +159,24 @@ const LinkedViewPanel = ({ viewId, viewTitle, editable, onSelect, onRemove }: Li
                     ) : null}
                     {!groups.some((entry) => entry.views.length) ? (
                         <Button asChild variant="subtle" size="sm">
-                            <Link to={VIEWS_ROUTE}>Open Views</Link>
+                            <Link to={VIEWS_ROUTE} search={multiple ? { workspace: workspaceId } : {}}>
+                                Open Views
+                            </Link>
                         </Button>
                     ) : null}
                 </div>
             </NoteContentSection>
         );
     }
+
+    if (!view && linked.isFetching)
+        return (
+            <NoteContentSection>
+                <Text as="p" variant="meta">
+                    Loading linked view...
+                </Text>
+            </NoteContentSection>
+        );
 
     if (!view)
         return (

@@ -2,6 +2,7 @@ import type { Reminder, ReminderPriority } from '~/models/reminder.model';
 import { localError, success } from '../response';
 import type { LocalDemoPlugin, LocalDemoState, LocalGraphVariables } from '../types';
 import { createLocalId, findNote, isInDateRange, now, paginate, toTimestampString } from '../utils';
+import { localScopedNotes, localWorkspace } from '../workspace';
 
 type LocalReminderFilter = {
     status?: 'open' | 'completed';
@@ -27,13 +28,15 @@ const compareReminderDates = (left: Reminder, right: Reminder) => {
     return difference || left.id.localeCompare(right.id);
 };
 
-const listReminders = (state: LocalDemoState, filter: LocalReminderFilter) => {
+const listReminders = (state: LocalDemoState, filter: LocalReminderFilter, variables: LocalGraphVariables = {}) => {
+    const noteIds = new Set(localScopedNotes(state, variables).map((note) => note.id));
     const start = toTime(filter.start);
     const end = toTime(filter.end);
     const sortBy = filter.sortBy === 'updatedAt' ? 'updatedAt' : 'reminderDate';
     const direction = filter.sortOrder === 'desc' ? -1 : 1;
 
     return state.reminders
+        .filter((reminder) => noteIds.has(String(reminder.noteId)))
         .filter((reminder) => reminder.completed === (filter.status === 'completed'))
         .filter((reminder) => !filter.priority || reminder.priority === filter.priority)
         .filter((reminder) => {
@@ -53,7 +56,7 @@ const listReminders = (state: LocalDemoState, filter: LocalReminderFilter) => {
 };
 
 const reminderCollection = (state: LocalDemoState, variables: LocalGraphVariables, filter: LocalReminderFilter) => {
-    const reminders = listReminders(state, filter);
+    const reminders = listReminders(state, filter, variables);
     return {
         totalCount: reminders.length,
         reminders: paginate(reminders, variables, { limit: 25, offset: 0 }),
@@ -74,7 +77,9 @@ export const remindersLocalPlugin: LocalDemoPlugin = {
                 upcoming: reminderCollection(state, variables, variables.upcomingFilter as LocalReminderFilter),
             }),
         FetchUpcomingReminders: ({ state, variables }) => {
+            const noteIds = new Set(localScopedNotes(state, variables).map((note) => note.id));
             const reminders = state.reminders
+                .filter((reminder) => noteIds.has(String(reminder.noteId)))
                 .filter((reminder) => !reminder.completed)
                 .sort(compareReminderDates)
                 .map((reminder) => ({ ...reminder, note: findNote(state, reminder.noteId) }));
@@ -97,6 +102,9 @@ export const remindersLocalPlugin: LocalDemoPlugin = {
             });
         },
         CreateReminder: ({ state, variables, save }) => {
+            const note = findNote(state, variables.noteId);
+            if (!note) return localError('Note not found');
+            localWorkspace(state, note.workspaceId ?? '1', true);
             const timestamp = now();
             const reminder: Reminder = {
                 id: createLocalId('reminder'),
@@ -115,6 +123,7 @@ export const remindersLocalPlugin: LocalDemoPlugin = {
         UpdateReminder: ({ state, variables, save }) => {
             const reminder = state.reminders.find((item) => item.id === String(variables.id));
             if (!reminder) return localError('Reminder not found');
+            localWorkspace(state, findNote(state, reminder.noteId)?.workspaceId ?? '1', true);
 
             if (variables.reminderDate) reminder.reminderDate = toTimestampString(variables.reminderDate);
             if (typeof variables.completed === 'boolean') reminder.completed = variables.completed;
@@ -125,13 +134,17 @@ export const remindersLocalPlugin: LocalDemoPlugin = {
             return success({ updateReminder: reminder });
         },
         DeleteReminder: ({ state, variables, save }) => {
+            const original = state.reminders.find((reminder) => reminder.id === String(variables.id));
+            if (original) localWorkspace(state, findNote(state, original.noteId)?.workspaceId ?? '1', true);
             state.reminders = state.reminders.filter((reminder) => reminder.id !== String(variables.id));
             save();
             return success({ deleteReminder: true });
         },
         RemindersInDateRange: ({ state, variables }) => {
             const dateRange = variables.dateRange as { start?: string; end?: string } | undefined;
+            const noteIds = new Set(localScopedNotes(state, variables).map((note) => note.id));
             const reminders = state.reminders
+                .filter((reminder) => noteIds.has(String(reminder.noteId)))
                 .filter((reminder) => isInDateRange(reminder.reminderDate, dateRange))
                 .map((reminder) => ({ ...reminder, note: findNote(state, reminder.noteId) }));
             return success({ remindersInDateRange: reminders });

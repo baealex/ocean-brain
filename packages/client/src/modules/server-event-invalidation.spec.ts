@@ -37,7 +37,7 @@ describe('server-event-invalidation', () => {
         });
         expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
             queryKey: queryKeys.notes.pinned(),
-            exact: true,
+            exact: false,
         });
         expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
             queryKey: queryKeys.notes.backReferencesAll(),
@@ -45,7 +45,7 @@ describe('server-event-invalidation', () => {
         });
         expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
             queryKey: queryKeys.notes.graph(),
-            exact: true,
+            exact: false,
         });
         expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
             queryKey: queryKeys.notes.propertyKeysAll(),

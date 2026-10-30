@@ -24,6 +24,8 @@ import {
     isMissingNoteVersionError,
     isNoteVersionConflictError,
 } from '~/features/note/services/write-conflict.js';
+import type { PropertyWorkspaceMapping } from '~/features/workspace/property-mapping.js';
+import { assertSameWorkspace, parseWorkspaceId, requireWritableNote } from '~/features/workspace/scope.js';
 import models from '~/models.js';
 import type { NoteInput } from '~/types/index.js';
 
@@ -56,7 +58,7 @@ const parseRequiredNoteContent = (content: string) => {
 };
 
 type NoteMutationResolvers = NonNullable<IResolvers['Mutation']>;
-type CreateNoteInput = Required<Pick<NoteInput, 'title' | 'content'>> & Pick<NoteInput, 'layout'>;
+type CreateNoteInput = Required<Pick<NoteInput, 'title' | 'content'>> & Pick<NoteInput, 'layout' | 'workspaceId'>;
 
 export const noteMutationResolvers: NoteMutationResolvers = {
     createNote: async (_, { note }: { note: CreateNoteInput }) => {
@@ -67,6 +69,7 @@ export const noteMutationResolvers: NoteMutationResolvers = {
         const parsed = content ? parseRequiredNoteContent(content) : null;
         const blocks = parsed ? extractBlocksByType<{ id: string }>('tag', parsed) : [];
         const noteResult = await createNoteWithContent({
+            workspaceId: note.workspaceId,
             title,
             content,
             layout: note.layout,
@@ -94,6 +97,10 @@ export const noteMutationResolvers: NoteMutationResolvers = {
             req?: FastifyRequest;
         },
     ) => {
+        if (note.workspaceId !== undefined) {
+            const original = await requireWritableNote(Number(id));
+            assertSameWorkspace(original.workspaceId, parseWorkspaceId(note.workspaceId));
+        }
         const parsedContent = note.content ? parseRequiredNoteContent(note.content) : null;
         const blocks = parsedContent ? extractBlocksByType<{ id: string }>('tag', parsedContent) : [];
         try {
@@ -159,7 +166,11 @@ export const noteMutationResolvers: NoteMutationResolvers = {
     },
     restoreNoteSnapshot: async (
         _,
-        { id, expectedUpdatedAt }: { id: string; expectedUpdatedAt: string },
+        {
+            id,
+            expectedUpdatedAt,
+            mappings,
+        }: { id: string; expectedUpdatedAt: string; mappings?: PropertyWorkspaceMapping[] },
         context: {
             req?: FastifyRequest;
         },
@@ -167,6 +178,7 @@ export const noteMutationResolvers: NoteMutationResolvers = {
         try {
             const note = await restoreNoteSnapshot(Number(id), {
                 expectedUpdatedAt,
+                mappings,
                 meta: createSnapshotMetaFromUserAgent(getRequestUserAgent(context.req)),
             });
 
@@ -353,22 +365,23 @@ export const noteMutationResolvers: NoteMutationResolvers = {
         }
     },
     pinNote: async (_, { id, pinned }: { id: string; pinned: boolean }) => {
-        const note = await models.note.update({
-            where: { id: Number(id) },
-            data: { pinned: Boolean(pinned) },
+        const note = await models.$transaction(async (tx) => {
+            await requireWritableNote(Number(id), tx);
+            return tx.note.update({
+                where: { id: Number(id) },
+                data: { pinned: Boolean(pinned) },
+            });
         });
         emitNoteChange({ type: 'note.updated', noteId: note.id, affectsSearchIndex: false });
         return note;
     },
     reorderNotes: async (_, { notes }: { notes: Array<{ id: string; order: number }> }) => {
-        const updatePromises = notes.map(({ id, order }) =>
-            models.note.update({
-                where: { id: Number(id) },
-                data: { order },
-            }),
-        );
-
-        const updatedNotes = await Promise.all(updatePromises);
+        const updatedNotes = await models.$transaction(async (tx) => {
+            for (const note of notes) await requireWritableNote(Number(note.id), tx);
+            return Promise.all(
+                notes.map(({ id, order }) => tx.note.update({ where: { id: Number(id) }, data: { order } })),
+            );
+        });
         for (const note of updatedNotes) {
             emitNoteChange({ type: 'note.updated', noteId: note.id, affectsSearchIndex: false });
         }

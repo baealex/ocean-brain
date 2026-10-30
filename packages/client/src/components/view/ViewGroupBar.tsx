@@ -20,14 +20,16 @@ const groupTriggerClassName =
     'focus-ring-soft inline-flex h-full min-w-0 flex-1 touch-pan-x items-center gap-1 rounded-[11px] px-3 text-[13px] font-medium outline-none transition-colors';
 
 interface SortableViewGroupProps {
+    readOnly?: boolean;
     group: ViewGroup;
     isActive: boolean;
     onSelect: () => void;
 }
 
-function SortableViewGroup({ group, isActive, onSelect }: SortableViewGroupProps) {
+function SortableViewGroup({ group, isActive, onSelect, readOnly = false }: SortableViewGroupProps) {
     const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
         id: group.id,
+        disabled: readOnly,
     });
 
     return (
@@ -70,6 +72,7 @@ function SortableViewGroup({ group, isActive, onSelect }: SortableViewGroupProps
 }
 
 interface ViewGroupBarProps {
+    readOnly?: boolean;
     groups: ViewGroup[];
     activeGroupId: string | null;
     onSelectGroup: (group: ViewGroup) => void | Promise<void>;
@@ -78,6 +81,7 @@ interface ViewGroupBarProps {
 }
 
 export default function ViewGroupBar({
+    readOnly = false,
     groups,
     activeGroupId,
     onSelectGroup,
@@ -107,6 +111,7 @@ export default function ViewGroupBar({
                         >
                             {groups.map((group) => (
                                 <SortableViewGroup
+                                    readOnly={readOnly}
                                     key={group.id}
                                     group={group}
                                     isActive={group.id === activeGroupId}
@@ -117,6 +122,7 @@ export default function ViewGroupBar({
                     </SortableContext>
                     <Button
                         type="button"
+                        disabled={readOnly}
                         aria-label="New view group"
                         variant="ghost"
                         size="sm"

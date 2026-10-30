@@ -14,6 +14,7 @@ import {
 import type { NotePropertiesPanelRef } from '~/components/note/NotePropertiesPanel';
 import type { EditorRef, ExternalEditorUpdate } from '~/components/shared/Editor';
 import type { Note, NoteLayout } from '~/models/note.model';
+import type { PropertyWorkspaceMapping } from '~/models/workspace.model';
 import { replaceFixedPlaceholder } from '~/modules/fixed-placeholder';
 import { createMarkdownDocumentExport } from '~/modules/note-export';
 import {
@@ -25,6 +26,7 @@ import { compareNoteVersions, toNoteVersionTime } from '~/modules/note-version';
 import { queryKeys } from '~/modules/query-key-factory';
 import { invalidateQueriesForNoteChange } from '~/modules/server-event-invalidation';
 import { publishClientNoteUpdatedEvent, subscribeServerEvent } from '~/modules/server-events';
+import { useWorkspace } from '~/store/workspace';
 import { useNoteNavigationGuard } from './useNoteNavigationGuard';
 import { useNoteSaveController } from './useNoteSaveController';
 import { useNoteWriteCoordinator } from './useNoteWriteCoordinator';
@@ -53,6 +55,7 @@ const getConflictUpdatedAt = (details: unknown) => {
 
 export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNoteEditorSessionParams) {
     const queryClient = useQueryClient();
+    const { followNoteWorkspace, workspaces } = useWorkspace();
     const editorRef = useRef<EditorRef>(null);
     const titleRef = useRef<HTMLInputElement>(null);
     const [initialEditSessionId] = useState(nanoid);
@@ -76,6 +79,9 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
         gcTime: 0,
     });
     const note = noteQuery.data;
+    useEffect(() => {
+        if (note.workspaceId) followNoteWorkspace(note.workspaceId);
+    }, [followNoteWorkspace, note.workspaceId]);
     const refetchNote = noteQuery.refetch;
     const serverVersionRef = useRef(note.updatedAt);
     const appliedNoteVersionRef = useRef(note.updatedAt);
@@ -502,11 +508,13 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
     const getExportMetadata = useCallback(
         () => ({
             id: noteId,
+            workspaceId: note.workspaceId,
+            workspaceName: workspaces.find((workspace) => workspace.id === note.workspaceId)?.name,
             title,
             createdAt: note.createdAt,
             updatedAt: serverUpdatedAtRef.current || note.updatedAt,
         }),
-        [note.createdAt, note.updatedAt, noteId, serverUpdatedAtRef, title],
+        [note.createdAt, note.updatedAt, note.workspaceId, noteId, serverUpdatedAtRef, title, workspaces],
     );
 
     const handleCopyMarkdown = useCallback(async () => {
@@ -651,13 +659,15 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
     const handlePropertiesSaved = useCallback(() => undefined, []);
 
     const handleRestoreSnapshot = useCallback(
-        async (snapshotId: string) => {
+        async (snapshotId: string, mappings?: PropertyWorkspaceMapping[]) => {
             propertyPanelRef.current?.invalidateInFlightSave();
             invalidatePendingWrites();
             await drainWrites();
             sessionGenerationRef.current += 1;
             return executeWrite(async () => {
-                const response = await restoreNoteSnapshot(snapshotId, serverUpdatedAtRef.current);
+                const response = mappings
+                    ? await restoreNoteSnapshot(snapshotId, serverUpdatedAtRef.current, mappings)
+                    : await restoreNoteSnapshot(snapshotId, serverUpdatedAtRef.current);
 
                 if (response.type === 'error') {
                     return response;
@@ -700,6 +710,7 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
 
     return {
         document: {
+            workspaceId: note.workspaceId,
             title,
             titleRef,
             isPinned,

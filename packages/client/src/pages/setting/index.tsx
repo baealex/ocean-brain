@@ -4,6 +4,7 @@ import { fetchMcpAdminStatus } from '~/apis/mcp-admin.api';
 import * as Icon from '~/components/icon';
 import { PageLayout } from '~/components/shared';
 import { Text } from '~/components/ui';
+import { WorkspaceSettingsLink } from '~/components/workspace/WorkspaceSettingsLink';
 import { formatVersionLabel, OCEAN_BRAIN_RELEASES_URL } from '~/modules/app-version';
 import { queryKeys } from '~/modules/query-key-factory';
 import {
@@ -11,15 +12,17 @@ import {
     SETTINGS_MANAGE_IMAGE_ROUTE,
     SETTINGS_NAVIGATION_ROUTE,
     SETTINGS_PLACEHOLDER_ROUTE,
-    SETTINGS_PROPERTIES_ROUTE,
     SETTINGS_SEARCH_ROUTE,
-    SETTINGS_TRASH_ROUTE,
+    SETTINGS_WORKSPACES_ROUTE,
 } from '~/modules/url';
 import { useTheme } from '~/store/theme';
+import { useWorkspace } from '~/store/workspace';
 
 const mcpAdminStatusQueryKey = queryKeys.mcp.status();
 
 const Setting = () => {
+    const { workspaceId, multiple } = useWorkspace();
+    const workspaceSearch = multiple ? { workspace: workspaceId } : {};
     const { theme, toggleTheme } = useTheme((state) => state);
     const { data: status, isLoading: isStatusLoading } = useQuery({
         queryKey: mcpAdminStatusQueryKey,
@@ -73,7 +76,7 @@ const Setting = () => {
                                 )}
                             </div>
                         </button>
-                        <Link to={SETTINGS_NAVIGATION_ROUTE} className={itemClassName}>
+                        <Link to={SETTINGS_NAVIGATION_ROUTE} search={workspaceSearch} className={itemClassName}>
                             <div className="flex min-w-0 items-start gap-3">
                                 <span className={leadingClassName}>
                                     <Icon.Menu className={iconClassName} />
@@ -97,23 +100,32 @@ const Setting = () => {
                         Workspace
                     </Text>
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                        <Link to={SETTINGS_PROPERTIES_ROUTE} search={{ page: 1 }} className={itemClassName}>
+                        <Link to={SETTINGS_WORKSPACES_ROUTE} search={workspaceSearch} className={itemClassName}>
                             <div className="flex min-w-0 items-start gap-3">
                                 <span className={leadingClassName}>
-                                    <Icon.Tag className={iconClassName} />
+                                    <Icon.Grid className={iconClassName} aria-hidden="true" />
                                 </span>
                                 <div className={contentClassName}>
                                     <Text as="div" variant="body" weight="medium">
-                                        Properties
+                                        Workspaces
                                     </Text>
                                     <Text as="div" variant="meta" tone="secondary">
-                                        Manage fields used across notes.
+                                        Create, rename and archive workspaces.
                                     </Text>
                                 </div>
                             </div>
-                            <Icon.ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-fg-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-fg-secondary" />
+                            <Icon.ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-fg-tertiary" />
                         </Link>
-                        <Link to={SETTINGS_PLACEHOLDER_ROUTE} search={{ page: 1 }} className={itemClassName}>
+                        {multiple ? (
+                            <WorkspaceSettingsLink kind="settings" />
+                        ) : (
+                            <WorkspaceSettingsLink kind="properties" />
+                        )}
+                        <Link
+                            to={SETTINGS_PLACEHOLDER_ROUTE}
+                            search={{ page: 1, ...workspaceSearch }}
+                            className={itemClassName}
+                        >
                             <div className="flex min-w-0 items-start gap-3">
                                 <span className={leadingClassName}>
                                     <Icon.Pencil className={iconClassName} />
@@ -129,7 +141,11 @@ const Setting = () => {
                             </div>
                             <Icon.ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-fg-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-fg-secondary" />
                         </Link>
-                        <Link to={SETTINGS_MANAGE_IMAGE_ROUTE} search={{ page: 1 }} className={itemClassName}>
+                        <Link
+                            to={SETTINGS_MANAGE_IMAGE_ROUTE}
+                            search={{ page: 1, ...workspaceSearch }}
+                            className={itemClassName}
+                        >
                             <div className="flex min-w-0 items-start gap-3">
                                 <span className={leadingClassName}>
                                     <Icon.Image className={iconClassName} />
@@ -145,22 +161,7 @@ const Setting = () => {
                             </div>
                             <Icon.ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-fg-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-fg-secondary" />
                         </Link>
-                        <Link to={SETTINGS_TRASH_ROUTE} search={{ page: 1 }} className={itemClassName}>
-                            <div className="flex min-w-0 items-start gap-3">
-                                <span className={leadingClassName}>
-                                    <Icon.TrashCan className={iconClassName} />
-                                </span>
-                                <div className={contentClassName}>
-                                    <Text as="div" variant="body" weight="medium">
-                                        Trash
-                                    </Text>
-                                    <Text as="div" variant="meta" tone="secondary">
-                                        Restore or permanently delete notes.
-                                    </Text>
-                                </div>
-                            </div>
-                            <Icon.ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-fg-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-fg-secondary" />
-                        </Link>
+                        {!multiple && <WorkspaceSettingsLink kind="trash" />}
                     </div>
                 </section>
 
@@ -169,7 +170,7 @@ const Setting = () => {
                         Advanced
                     </Text>
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                        <Link to={SETTINGS_SEARCH_ROUTE} className={itemClassName}>
+                        <Link to={SETTINGS_SEARCH_ROUTE} search={workspaceSearch} className={itemClassName}>
                             <div className="flex min-w-0 items-start gap-3">
                                 <span className={leadingClassName}>
                                     <Icon.Search className={iconClassName} />
@@ -185,7 +186,7 @@ const Setting = () => {
                             </div>
                             <Icon.ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-fg-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-fg-secondary" />
                         </Link>
-                        <Link to={SETTINGS_INTEGRATIONS_ROUTE} className={itemClassName}>
+                        <Link to={SETTINGS_INTEGRATIONS_ROUTE} search={workspaceSearch} className={itemClassName}>
                             <div className="flex min-w-0 items-start gap-3">
                                 <span className={leadingClassName}>
                                     <Icon.LinkIcon className={iconClassName} />

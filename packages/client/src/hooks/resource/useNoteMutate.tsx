@@ -1,7 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
-
 import { createNote, deleteNote, fetchBackReferences, pinNote } from '~/apis/note.api';
 import NoteReferenceWarningModal from '~/components/note/NoteReferenceWarningModal';
 import { useConfirm, useToast } from '~/components/ui';
@@ -10,6 +9,7 @@ import { replaceFixedPlaceholder } from '~/modules/fixed-placeholder';
 import { queryKeys } from '~/modules/query-key-factory';
 import { invalidateQueriesForNoteChange, invalidateQueriesForNoteDelete } from '~/modules/server-event-invalidation';
 import { NOTE_ROUTE } from '~/modules/url';
+import { useWorkspace } from '~/store/workspace';
 
 const MOVE_TO_TRASH_REFERENCE_WARNING = {
     title: 'Move note to Trash?',
@@ -26,16 +26,18 @@ interface DeleteWarningState {
 }
 
 const useNoteMutate = () => {
+    const { workspaceId: activeWorkspaceId } = useWorkspace();
     const confirm = useConfirm();
     const toast = useToast();
     const queryClient = useQueryClient();
     const navigate = useNavigate();
     const [deleteWarningState, setDeleteWarningState] = useState<DeleteWarningState | null>(null);
 
-    const onCreate = async (title = '', content = '', layout?: NoteLayout) => {
+    const onCreate = async (title = '', content = '', layout?: NoteLayout, workspaceId = activeWorkspaceId) => {
         const replacedTitle = replaceFixedPlaceholder(title);
         const replacedContent = replaceFixedPlaceholder(content);
         const response = await createNote({
+            workspaceId,
             title: replacedTitle,
             content: replacedContent,
             ...(layout && { layout }),

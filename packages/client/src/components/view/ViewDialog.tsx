@@ -426,7 +426,7 @@ const ViewDialog = ({
                             id="view-title"
                             value={title}
                             onChange={(event) => updateDraft({ title: event.target.value })}
-                            placeholder="Doing notes"
+                            placeholder="View name"
                             autoFocus
                         />
                     </div>
@@ -758,7 +758,7 @@ const ViewDialog = ({
                                             updateDraft({ tagInput: event.target.value });
                                             setFormError('');
                                         }}
-                                        placeholder="@OceanBrain, @todo"
+                                        placeholder="Enter tag names"
                                         size="sm"
                                     />
                                     <Text as="p" variant="meta" tone="tertiary">
@@ -938,6 +938,7 @@ const ViewDialog = ({
                         </details>
                     )}
                     <ViewTemplatePicker
+                        workspaceId={initialView?.workspaceId}
                         value={defaultTemplateNoteId}
                         onChange={(defaultTemplateNoteId) => updateDraft({ defaultTemplateNoteId })}
                     />

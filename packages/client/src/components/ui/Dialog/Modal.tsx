@@ -7,12 +7,13 @@ interface ModalProps {
     children?: React.ReactNode;
     className?: string;
     variant?: DialogVariant;
+    avoidKeyboard?: boolean;
 }
 
-const Modal = ({ isOpen, onClose, children, className, variant = 'default' }: ModalProps) => {
+const Modal = ({ isOpen, onClose, children, className, variant = 'default', avoidKeyboard = false }: ModalProps) => {
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent variant={variant} className={className}>
+            <DialogContent variant={variant} className={className} avoidKeyboard={avoidKeyboard}>
                 {children}
             </DialogContent>
         </Dialog>

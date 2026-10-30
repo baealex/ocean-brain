@@ -19,7 +19,7 @@ const noteChangeInvalidations: QueryInvalidation[] = [
     },
     {
         queryKey: queryKeys.notes.pinned(),
-        exact: true,
+        exact: false,
     },
     {
         queryKey: queryKeys.notes.backReferencesAll(),
@@ -27,7 +27,7 @@ const noteChangeInvalidations: QueryInvalidation[] = [
     },
     {
         queryKey: queryKeys.notes.graph(),
-        exact: true,
+        exact: false,
     },
     {
         queryKey: queryKeys.views.viewNotesAll(),

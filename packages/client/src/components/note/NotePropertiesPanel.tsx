@@ -25,6 +25,8 @@ import {
 import type { Note, NoteProperty, NotePropertyValueType } from '~/models/note.model';
 import { queryKeys } from '~/modules/query-key-factory';
 import { SETTINGS_PROPERTIES_ROUTE } from '~/modules/url';
+import { workspaceScope } from '~/modules/workspace-scope';
+import { useWorkspace } from '~/store/workspace';
 
 const getSafeExternalUrl = (value: string) => {
     const trimmedValue = value.trim();
@@ -138,6 +140,7 @@ export interface NotePropertiesPanelRef {
 }
 
 interface NotePropertiesPanelProps {
+    workspaceId?: string;
     noteId: string;
     properties?: NoteProperty[];
     expectedUpdatedAt: string;
@@ -153,6 +156,7 @@ interface NotePropertiesPanelProps {
 const NotePropertiesPanel = forwardRef<NotePropertiesPanelRef, NotePropertiesPanelProps>(function NotePropertiesPanel(
     {
         noteId,
+        workspaceId: ownerWorkspaceId,
         properties = [],
         expectedUpdatedAt,
         editSessionId,
@@ -163,6 +167,9 @@ const NotePropertiesPanel = forwardRef<NotePropertiesPanelRef, NotePropertiesPan
     },
     ref,
 ) {
+    const context = useWorkspace();
+    const workspaceId = ownerWorkspaceId ?? context.workspaceId;
+    const scope = workspaceScope(workspaceId);
     const toast = useToast();
     const queryClient = useQueryClient();
     const [rows, setRows] = useState<EditableNotePropertyRow[]>(() => getNormalizedRows(properties));
@@ -179,9 +186,9 @@ const NotePropertiesPanel = forwardRef<NotePropertiesPanelRef, NotePropertiesPan
     const saveGenerationRef = useRef(0);
 
     const propertyKeysQuery = useQuery({
-        queryKey: queryKeys.notes.propertyKeys({ limit: 50 }),
+        queryKey: queryKeys.notes.propertyKeys({ limit: 50, scope }),
         queryFn: async () => {
-            const response = await fetchNotePropertyKeys({ limit: 50 });
+            const response = await fetchNotePropertyKeys({ limit: 50, scope });
 
             if (response.type === 'error') {
                 throw response;
@@ -429,7 +436,7 @@ const NotePropertiesPanel = forwardRef<NotePropertiesPanelRef, NotePropertiesPan
                     )}
                     {hasPropertyDefinitions && (
                         <Button asChild size="sm" variant="ghost">
-                            <Link to={SETTINGS_PROPERTIES_ROUTE} search={{ page: 1 }}>
+                            <Link to={SETTINGS_PROPERTIES_ROUTE} search={{ page: 1, workspace: workspaceId }}>
                                 <Icon.Gear className="h-3 w-3" />
                                 Manage
                             </Link>
@@ -453,7 +460,7 @@ const NotePropertiesPanel = forwardRef<NotePropertiesPanelRef, NotePropertiesPan
                                 key={row.id}
                                 className="group grid grid-cols-[minmax(0,5.5rem)_minmax(0,1fr)_auto] items-center gap-1 py-1.5 sm:grid-cols-[minmax(0,180px)_minmax(0,1fr)_auto] sm:gap-2 sm:py-2"
                             >
-                                <div className="flex min-w-0 items-center gap-2 px-1">
+                                <div className="flex min-w-0 items-center gap-2 px-1" title={row.name}>
                                     <Text
                                         id={propertyLabelId}
                                         as="span"
@@ -462,14 +469,6 @@ const NotePropertiesPanel = forwardRef<NotePropertiesPanelRef, NotePropertiesPan
                                         className="truncate"
                                     >
                                         {row.name}
-                                    </Text>
-                                    <Text
-                                        as="span"
-                                        variant="micro"
-                                        tone="tertiary"
-                                        className="hidden truncate font-mono sm:inline"
-                                    >
-                                        {row.key}
                                     </Text>
                                 </div>
                                 {row.valueType === 'boolean' ? (
@@ -611,9 +610,6 @@ const NotePropertiesPanel = forwardRef<NotePropertiesPanelRef, NotePropertiesPan
                                             {propertyKey.valueType}
                                         </Text>
                                     </span>
-                                    <Text as="span" variant="micro" tone="tertiary" className="font-mono">
-                                        {propertyKey.key}
-                                    </Text>
                                 </DropdownMenuItem>
                             ))}
                         </DropdownMenuContent>
@@ -625,7 +621,7 @@ const NotePropertiesPanel = forwardRef<NotePropertiesPanelRef, NotePropertiesPan
                 ) : (
                     <Link
                         to={SETTINGS_PROPERTIES_ROUTE}
-                        search={{ page: 1 }}
+                        search={{ page: 1, workspace: workspaceId }}
                         className="focus-ring-soft inline-flex items-center gap-2 rounded-[12px] px-2.5 py-1.5 text-sm font-medium text-fg-secondary outline-none hover:bg-hover-subtle hover:text-fg-default"
                     >
                         <Icon.Plus className="h-4 w-4" />

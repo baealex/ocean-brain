@@ -40,9 +40,11 @@ describe('useCalendarData', () => {
         expect(graphQuery).toHaveBeenCalledTimes(2);
         expect(graphQuery).toHaveBeenCalledWith(expect.stringContaining('query NotesInDateRange'), {
             dateRange: expectedDateRange,
+            scope: { kind: 'workspace', workspaceId: '1' },
         });
         expect(graphQuery).toHaveBeenCalledWith(expect.stringContaining('query RemindersInDateRange'), {
             dateRange: expectedDateRange,
+            scope: { kind: 'workspace', workspaceId: '1' },
         });
         expect(result.current.notes).toEqual([{ id: 'note-1', title: 'Year-end note' }]);
         expect(result.current.reminders).toEqual([{ id: 'reminder-1', content: 'Year-end reminder' }]);

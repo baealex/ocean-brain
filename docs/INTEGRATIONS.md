@@ -106,7 +106,13 @@ Send `Authorization: Bearer <connection-token>` from the integration app’s bac
 
 Missing credentials return 401; denied, disabled, or revoked access returns 403. MCP additionally uses its existing compatibility headers and 426 response. External apps do not send MCP compatibility headers.
 
-The GraphQL schema exposes an explicit set of queries: `allNotes`, `note`, `noteRead`, `backReferences`, `notesByTagNames`, `allTags`, `tagsByNames`, `notePropertyKeys`, `notesByQuery`, `notesByProperties`, `views`, `readView`, and `searchNotes` (with `viewSections` and `readViewSection` retained as deprecated compatibility queries). Introspection describes their input/output types. Browser/admin queries, cache values, and mutations are not in this schema. Pagination accepts `limit` 1–100 and nonnegative `offset`; omitted pagination uses 25 and 0. Note reads do not persist reference-title changes.
+The GraphQL schema exposes an explicit set of queries: `workspaces`, `allNotes`, `note`, `noteRead`, `backReferences`, `notesByTagNames`, `allTags`, `tagsByNames`, `notePropertyKeys`, `notesByQuery`, `notesByProperties`, `views`, `readView`, and `searchNotes` (with `viewSections` and `readViewSection` retained as deprecated compatibility queries). Introspection describes their input/output types. Browser/admin queries, cache values, and mutations are not in this schema. Pagination accepts `limit` 1–100 and nonnegative `offset`; omitted pagination uses 25 and 0. Note reads do not persist reference-title changes.
+
+### Workspace scope
+
+Discover stable workspace IDs with `workspaces { id name archivedAt }`. Collection reads accept `scope: { kind: workspace, workspaceId: "2" }` or `{ kind: all }`. Omitted scope continues to read all spaces. Apply scope to the note catalog body in the same form; pagination and property schema hashes use that scope. Notes, property definitions, and views expose `workspaceId`. IDs and note references remain global. A saved view always reads its own space; `readView` optionally accepts `workspaceId` as an ownership assertion. Archived spaces remain readable.
+
+`POST /notes` accepts optional `workspaceId`. Omission creates in workspace `1`, or in the selected view's space when `viewContext` is supplied. If both are supplied, they must agree. ID-based edits infer the note's owner and do not follow browser navigation. Property keys remain globally unique and unchanged; definitions and select options must belong to the target note's space. Archived spaces reject writes until unarchived. Existing grants and tokens continue to cover all spaces. Events remain a global transient stream; a move emits `note.updated` with `workspaceId` and `previousWorkspaceId` so scoped consumers can reconcile membership. Browser workspace changes never retarget an app's scheduled work.
 
 Example read request:
 
@@ -272,6 +278,8 @@ Ocean Brain's reference apps follow the existing page, search, and form patterns
 The optional `appearance` capability provides `{ theme: "light" | "dark", fontFamily, variables }`. `variables` maps public CSS color names to their current values: page and surface colors, foregrounds, borders, button colors, and highlights. The allowlist is defined in [`integration-app-appearance.ts`](../packages/client/src/modules/integration-app-appearance.ts). Apps can apply recognized variables to their own document, set its `color-scheme`, and use the supplied font family with fonts they bundle. Only visual values cross this bridge; apps do not receive stylesheets, host DOM access, or credentials through it.
 
 Apply the initial appearance from `host-context` and subsequent `ocean-brain:appearance` messages. Retain standalone defaults when the capability is absent. Theme changes must preserve the app's current input, results, and history. This is an additive v1 capability; older apps can ignore it.
+
+Apps with `notes:read` may opt into workspace context by including `capabilities: ["workspace"]` in `ocean-brain:app-ready`. The host then adds `workspace: { id, name, archivedAt }` and the `workspace` capability to `host-context`, and sends updated context when the browser switches spaces without reloading the iframe. Apps without this opt-in receive the existing v1 payload. Treat this as display context; choose an explicit API scope for every job that needs one.
 
 ## Storage, compatibility, and migration
 

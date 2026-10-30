@@ -1,3 +1,4 @@
+import { requireWorkspace } from '~/features/workspace/scope.js';
 import models, { type NoteLayout, Prisma } from '~/models.js';
 import { replaceNoteReferences } from './note-reference-index.js';
 import { buildNoteSearchProjection } from './search.js';
@@ -5,6 +6,7 @@ import { captureNoteBaseline } from './snapshot.js';
 import { createNoteVersionConflictError, MissingNoteVersionError, parseNoteVersion } from './write-conflict.js';
 
 export interface NoteWriteRecord {
+    workspaceId?: number;
     id: number;
     title: string;
     content: string;
@@ -39,7 +41,10 @@ export interface GuardedNoteWriteResult {
 interface NoteWriteDeps {
     findNoteForWrite: (
         id: number,
-    ) => Promise<Pick<NoteWriteRecord, 'title' | 'content' | 'updatedAt' | 'pinned' | 'order' | 'layout'> | null>;
+    ) => Promise<Pick<
+        NoteWriteRecord,
+        'workspaceId' | 'title' | 'content' | 'updatedAt' | 'pinned' | 'order' | 'layout'
+    > | null>;
     findNoteVersion: (id: number) => Promise<Pick<NoteWriteRecord, 'updatedAt'> | null>;
     captureBaseline: (input: {
         noteId: number;
@@ -168,6 +173,7 @@ const defaultNoteWriteService = createNoteWriteService({
         models.note.findUnique({
             where: { id },
             select: {
+                workspaceId: true,
                 title: true,
                 content: true,
                 updatedAt: true,
@@ -186,6 +192,8 @@ const defaultNoteWriteService = createNoteWriteService({
     captureBaseline: captureNoteBaseline,
     updateNote: ({ where, data }) =>
         models.$transaction(async (tx) => {
+            const original = await tx.note.findUniqueOrThrow({ where: { id: where.id } });
+            await requireWorkspace(original.workspaceId, tx, true);
             const note = await tx.note.update({
                 where,
                 data,

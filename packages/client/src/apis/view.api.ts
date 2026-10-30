@@ -25,6 +25,7 @@ export interface ViewInput {
 }
 
 const VIEW_FIELDS = `
+    workspaceId
     defaultTemplateNoteId
     id
     groupId
@@ -56,7 +57,7 @@ export const fetchViewNoteCreationContext = (viewId: string, groupValue?: string
     graphQuery<{ viewNoteCreationContext: ViewNoteCreationContext }>(
         `query ViewNoteCreationContext($viewId: ID!, $groupValue: String) {
             viewNoteCreationContext(viewId: $viewId, groupValue: $groupValue) {
-                viewId title tagNames mode defaultTagNames
+                workspaceId viewId title tagNames mode defaultTagNames
                 templateNote { id title }
                 properties {
                     key name valueType defaultValue required
@@ -83,13 +84,15 @@ export const createNoteInView = (viewId: string, input: ViewNoteInput, groupValu
         { viewId, input, ...(groupValue !== undefined ? { groupValue } : {}) },
     );
 
-export function fetchViewWorkspace() {
+export function fetchViewWorkspace(workspaceId?: string) {
     return graphQuery<{
         viewWorkspace: ViewsWorkspace;
-    }>(`query FetchViewWorkspace {
-        viewWorkspace {
+    }>(
+        `query FetchViewWorkspace($workspaceId: ID) {
+        viewWorkspace(workspaceId: $workspaceId) {
             activeGroupId
             groups {
+                workspaceId
                 id
                 title
                 order
@@ -98,7 +101,9 @@ export function fetchViewWorkspace() {
                 }
             }
         }
-    }`);
+    }`,
+        workspaceId ? { workspaceId } : undefined,
+    );
 }
 
 export function fetchView(id: string) {
@@ -259,21 +264,21 @@ export function fetchViewBoardColumn(id: string, { optionValue, limit = 5, offse
     );
 }
 
-export function createViewGroup(title: string) {
+export function createViewGroup(title: string, workspaceId?: string) {
     return graphQuery<
         {
             createViewGroup: {
                 id: string;
             };
         },
-        { title: string }
+        { title: string; workspaceId?: string }
     >(
-        `mutation CreateViewGroup($title: String!) {
-            createViewGroup(title: $title) {
+        `mutation CreateViewGroup($title: String!, $workspaceId: ID) {
+            createViewGroup(title: $title, workspaceId: $workspaceId) {
                 id
             }
         }`,
-        { title },
+        { title, ...(workspaceId ? { workspaceId } : {}) },
     );
 }
 
@@ -320,6 +325,7 @@ export function setActiveViewGroup(id: string) {
             setActiveViewGroup(id: $id) {
                 activeGroupId
                 groups {
+                    workspaceId
                     id
                     title
                     order
@@ -333,21 +339,21 @@ export function setActiveViewGroup(id: string) {
     );
 }
 
-export function reorderViewGroups(groupIds: string[]) {
+export function reorderViewGroups(groupIds: string[], workspaceId?: string) {
     return graphQuery<
         {
             reorderViewGroups: Array<{
                 id: string;
             }>;
         },
-        { groupIds: string[] }
+        { groupIds: string[]; workspaceId?: string }
     >(
-        `mutation ReorderViewGroups($groupIds: [ID!]!) {
-            reorderViewGroups(groupIds: $groupIds) {
+        `mutation ReorderViewGroups($groupIds: [ID!]!, $workspaceId: ID) {
+            reorderViewGroups(groupIds: $groupIds, workspaceId: $workspaceId) {
                 id
             }
         }`,
-        { groupIds },
+        { groupIds, ...(workspaceId ? { workspaceId } : {}) },
     );
 }
 

@@ -1,7 +1,6 @@
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi, Link } from '@tanstack/react-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-
 import {
     type FetchSearchNotesParams,
     fetchSearchNotes,
@@ -17,10 +16,12 @@ import { AuxiliaryPanelHeader, Empty, Highlight, PageLayout, Pagination, Skeleto
 import { Text } from '~/components/ui';
 import { ViewChip } from '~/components/view';
 import useSemanticSearchCapability from '~/hooks/useSemanticSearchCapability';
+import { useWorkspaceScope } from '~/hooks/useWorkspaceScope';
 import { queryKeys } from '~/modules/query-key-factory';
 import { getSearchPreviewBlocks, type SearchPreviewKind } from '~/modules/search-preview';
 import { timeSince } from '~/modules/time';
 import { NOTE_ROUTE, SEARCH_ROUTE, SETTINGS_SEARCH_ROUTE, TAG_NOTES_ROUTE } from '~/modules/url';
+import { useWorkspace } from '~/store/workspace';
 
 const Route = getRouteApi(SEARCH_ROUTE);
 const SEARCH_PAGE_LIMIT = 10;
@@ -75,6 +76,8 @@ const SearchResultsSkeleton = () => (
 );
 
 const SearchNoteMeta = ({ note }: { note: SearchNote }) => {
+    const { workspaceId, multiple } = useWorkspace();
+    const tagSearch = { page: 1, ...(multiple ? { workspace: workspaceId } : {}) };
     const visibleTags = note.tags.slice(0, 2);
     const hiddenTagCount = note.tags.length - visibleTags.length;
 
@@ -90,7 +93,7 @@ const SearchNoteMeta = ({ note }: { note: SearchNote }) => {
                 {formatUpdatedAt(note.updatedAt)}
             </Text>
             {visibleTags.map((tag) => (
-                <Link key={tag.id} to={TAG_NOTES_ROUTE} params={{ id: tag.id }} search={{ page: 1 }}>
+                <Link key={tag.id} to={TAG_NOTES_ROUTE} params={{ id: tag.id }} search={tagSearch}>
                     <ViewChip
                         size="compact"
                         className="border-border-subtle bg-transparent text-fg-secondary transition-colors hover:bg-hover-subtle hover:text-fg-default"
@@ -167,11 +170,12 @@ const SearchPreview = ({
 };
 
 const RelatedNotes = ({ noteId }: { noteId: string }) => {
+    const scope = useWorkspaceScope();
     const [isOpen, setIsOpen] = useState(false);
     const { data, isError, isLoading } = useQuery({
-        queryKey: queryKeys.search.related(noteId),
+        queryKey: queryKeys.search.related(noteId, 5, scope),
         queryFn: async () => {
-            const response = await fetchSearchRelatedNotes(noteId);
+            const response = await fetchSearchRelatedNotes(noteId, 5, scope);
             if (response.type === 'error') {
                 throw response;
             }
@@ -301,6 +305,8 @@ const SearchDiscoveryHint = ({ isVisible }: { isVisible: boolean }) => {
 };
 
 export default function Search() {
+    const { workspaceId, multiple } = useWorkspace();
+    const scope = useWorkspaceScope();
     const navigate = Route.useNavigate();
     const { page, query, mode } = Route.useSearch();
     const [draftQuery, setDraftQuery] = useState(query);
@@ -332,6 +338,7 @@ export default function Search() {
     const updateSearch = useCallback(
         (nextQuery: string, nextMode: SearchMode = activeMode, replace = false) => {
             const search = {
+                ...(multiple ? { workspace: workspaceId } : {}),
                 query: nextQuery.trim(),
                 page: 1,
                 mode: nextMode,
@@ -344,7 +351,7 @@ export default function Search() {
 
             navigate({ search });
         },
-        [activeMode, navigate],
+        [activeMode, navigate, workspaceId, multiple],
     );
 
     useEffect(() => {
@@ -414,10 +421,17 @@ export default function Search() {
                         fallback={<SearchResultsSkeleton />}
                         errorTitle="Failed to load search results"
                         errorDescription={`Retry loading results for "${normalizedQuery}".`}
-                        resetKeys={[normalizedQuery, page, activeMode]}
+                        resetKeys={[
+                            scope.kind,
+                            scope.kind === 'workspace' ? scope.workspaceId : null,
+                            normalizedQuery,
+                            page,
+                            activeMode,
+                        ]}
                     >
                         <SearchNotes
                             searchParams={{
+                                scope,
                                 query: normalizedQuery,
                                 limit: SEARCH_PAGE_LIMIT,
                                 offset: (page - 1) * SEARCH_PAGE_LIMIT,

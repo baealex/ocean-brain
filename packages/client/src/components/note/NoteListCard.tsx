@@ -3,11 +3,10 @@ import classNames from 'classnames';
 import * as Icon from '~/components/icon';
 import { Dropdown } from '~/components/shared';
 import { MoreButton, Text } from '~/components/ui';
-
 import type { Note } from '~/models/note.model';
-
 import { timeSince } from '~/modules/time';
 import { NOTE_ROUTE, TAG_NOTES_ROUTE } from '~/modules/url';
+import { useWorkspace } from '~/store/workspace';
 
 interface Props extends Note {
     onPinned?: () => void;
@@ -15,6 +14,8 @@ interface Props extends Note {
 }
 
 export default function NoteListCard({ id, title, tags, pinned, updatedAt, onPinned, onDelete }: Props) {
+    const context = useWorkspace();
+    const tagSearch = { page: 1, ...(context.multiple ? { workspace: context.workspaceId } : {}) };
     const updatedTimeSince = timeSince(Number(updatedAt));
 
     return (
@@ -64,7 +65,7 @@ export default function NoteListCard({ id, title, tags, pinned, updatedAt, onPin
                     {tags.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 pt-0.5">
                             {tags.map((tag) => (
-                                <Link key={tag.id} to={TAG_NOTES_ROUTE} params={{ id: tag.id }} search={{ page: 1 }}>
+                                <Link key={tag.id} to={TAG_NOTES_ROUTE} params={{ id: tag.id }} search={tagSearch}>
                                     <Text
                                         as="span"
                                         variant="label"

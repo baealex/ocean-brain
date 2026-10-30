@@ -1,8 +1,10 @@
 import type { Reminder, Reminders as ReminderCollection, ReminderPriority } from '~/models/reminder.model';
+import type { WorkspaceScope } from '~/models/workspace.model';
 import { graphQuery } from '~/modules/graph-query';
 import type { Pagination } from '~/types';
 
 export interface ReminderPaginationParams {
+    scope?: WorkspaceScope;
     limit?: number;
     offset?: number;
 }
@@ -25,6 +27,7 @@ export interface FetchRemindersParams extends ReminderPaginationParams {
 }
 
 export interface FetchOpenReminderOverviewParams {
+    scope?: WorkspaceScope;
     now: string;
     tomorrow: string;
     priority?: ReminderPriority;
@@ -89,10 +92,10 @@ export const fetchNoteReminders = async (noteId: string, pagination?: ReminderPa
 };
 
 export const fetchUpcomingReminders = async (pagination?: ReminderPaginationParams) => {
-    return graphQuery<{ upcomingReminders: ReminderCollection }, { pagination: Pagination }>(
+    return graphQuery<{ upcomingReminders: ReminderCollection }, { pagination: Pagination; scope?: WorkspaceScope }>(
         `
-        query FetchUpcomingReminders($pagination: PaginationInput) {
-            upcomingReminders(pagination: $pagination) {
+        query FetchUpcomingReminders($pagination: PaginationInput, $scope: WorkspaceScopeInput) {
+            upcomingReminders(pagination: $pagination, scope: $scope) {
                 totalCount
                 reminders {
                     id
@@ -111,20 +114,24 @@ export const fetchUpcomingReminders = async (pagination?: ReminderPaginationPara
             }
         }
     `,
-        { pagination: toPaginationInput(pagination) },
+        { pagination: toPaginationInput(pagination), ...(pagination?.scope ? { scope: pagination.scope } : {}) },
     );
 };
 
-export const fetchReminders = async ({ filter, limit = 25, offset = 0 }: FetchRemindersParams) => {
-    return graphQuery<{ reminders: ReminderCollection }, { filter: ReminderListFilter; pagination: Pagination }>(
+export const fetchReminders = async ({ filter, limit = 25, offset = 0, scope }: FetchRemindersParams) => {
+    return graphQuery<
+        { reminders: ReminderCollection },
+        { filter: ReminderListFilter; pagination: Pagination; scope?: WorkspaceScope }
+    >(
         `
-        query FetchReminders($filter: ReminderFilterInput!, $pagination: PaginationInput) {
-            reminders(filter: $filter, pagination: $pagination) {
+        query FetchReminders($filter: ReminderFilterInput!, $pagination: PaginationInput, $scope: WorkspaceScopeInput) {
+            reminders(filter: $filter, pagination: $pagination, scope: $scope) {
                 ${reminderCollectionSelection}
             }
         }
     `,
         {
+            ...(scope ? { scope } : {}),
             filter,
             pagination: { limit, offset },
         },
@@ -132,6 +139,7 @@ export const fetchReminders = async ({ filter, limit = 25, offset = 0 }: FetchRe
 };
 
 export const fetchOpenReminderOverview = async ({
+    scope,
     now,
     tomorrow,
     priority,
@@ -164,6 +172,7 @@ export const fetchOpenReminderOverview = async ({
     return graphQuery<
         OpenReminderOverview,
         {
+            scope?: WorkspaceScope;
             overdueFilter: ReminderListFilter;
             todayFilter: ReminderListFilter;
             upcomingFilter: ReminderListFilter;
@@ -176,19 +185,21 @@ export const fetchOpenReminderOverview = async ({
             $todayFilter: ReminderFilterInput!
             $upcomingFilter: ReminderFilterInput!
             $pagination: PaginationInput
+            $scope: WorkspaceScopeInput
         ) {
-            overdue: reminders(filter: $overdueFilter, pagination: $pagination) {
+            overdue: reminders(filter: $overdueFilter, pagination: $pagination, scope: $scope) {
                 ${reminderCollectionSelection}
             }
-            today: reminders(filter: $todayFilter, pagination: $pagination) {
+            today: reminders(filter: $todayFilter, pagination: $pagination, scope: $scope) {
                 ${reminderCollectionSelection}
             }
-            upcoming: reminders(filter: $upcomingFilter, pagination: $pagination) {
+            upcoming: reminders(filter: $upcomingFilter, pagination: $pagination, scope: $scope) {
                 ${reminderCollectionSelection}
             }
         }
     `,
         {
+            ...(scope ? { scope } : {}),
             overdueFilter,
             todayFilter,
             upcomingFilter,
@@ -306,3 +317,13 @@ export const deleteReminder = async (id: string) => {
         { id },
     );
 };
+
+export const fetchRemindersInDateRange = (dateRange: { start: string; end: string }, scope?: WorkspaceScope) =>
+    graphQuery<{ remindersInDateRange: Reminder[] }>(
+        `
+    query RemindersInDateRange($dateRange: DateRangeInput!, $scope: WorkspaceScopeInput) {
+        remindersInDateRange(dateRange: $dateRange, scope: $scope) { id noteId reminderDate completed priority content note { id title } }
+    }
+`,
+        { dateRange, ...(scope ? { scope } : {}) },
+    );

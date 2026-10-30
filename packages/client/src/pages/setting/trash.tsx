@@ -15,10 +15,13 @@ import * as Icon from '~/components/icon';
 import { NoteReferenceWarningModal } from '~/components/note';
 import { Button, Empty, Modal, PageLayout, Pagination, Skeleton, SurfaceCard } from '~/components/shared';
 import { Text, useConfirm, useToast } from '~/components/ui';
+import { WorkspaceSettingsBackLink } from '~/components/workspace/WorkspaceSettingsBackLink';
+import { useWorkspaceScope } from '~/hooks/useWorkspaceScope';
 import type { Note } from '~/models/note.model';
 import { queryKeys } from '~/modules/query-key-factory';
 import { invalidateQueriesForNoteDelete } from '~/modules/server-event-invalidation';
 import { NOTE_ROUTE, SETTINGS_TRASH_ROUTE } from '~/modules/url';
+import { useWorkspace } from '~/store/workspace';
 
 const PAGE_SIZE = 25;
 const Route = getRouteApi(SETTINGS_TRASH_ROUTE);
@@ -112,37 +115,43 @@ const TrashedNoteContentModal = ({ note, onClose }: TrashedNoteContentModalProps
     );
 };
 
-const TrashSkeleton = () => (
-    <PageLayout
-        title="Trash"
-        variant="default"
-        heading={<Skeleton width={118} height={24} className="rounded-full" />}
-        description={<Skeleton width={352} height={16} className="rounded-full" />}
-    >
-        <div className="grid gap-3">
-            {Array.from({ length: 3 }, (_, index) => (
-                <SurfaceCard key={index} padding="compact">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="min-w-0 flex-1 space-y-2">
-                            <Skeleton width="40%" height={18} className="rounded-full" />
-                            <div className="flex flex-wrap gap-2">
-                                <Skeleton width={168} height={14} className="rounded-full" />
-                                <Skeleton width={176} height={14} className="rounded-full" />
+const TrashSkeleton = () => {
+    const { multiple } = useWorkspace();
+    return (
+        <PageLayout
+            title="Trash"
+            backLink={multiple && <WorkspaceSettingsBackLink />}
+            variant="default"
+            heading={<Skeleton width={118} height={24} className="rounded-full" />}
+            description={<Skeleton width={352} height={16} className="rounded-full" />}
+        >
+            <div className="grid gap-3">
+                {Array.from({ length: 3 }, (_, index) => (
+                    <SurfaceCard key={index} padding="compact">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0 flex-1 space-y-2">
+                                <Skeleton width="40%" height={18} className="rounded-full" />
+                                <div className="flex flex-wrap gap-2">
+                                    <Skeleton width={168} height={14} className="rounded-full" />
+                                    <Skeleton width={176} height={14} className="rounded-full" />
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    <Skeleton width={56} height={24} className="rounded-full" />
+                                    <Skeleton width={72} height={24} className="rounded-full" />
+                                </div>
                             </div>
-                            <div className="flex flex-wrap gap-2">
-                                <Skeleton width={56} height={24} className="rounded-full" />
-                                <Skeleton width={72} height={24} className="rounded-full" />
-                            </div>
+                            <Skeleton width={92} height={32} className="rounded-[12px]" />
                         </div>
-                        <Skeleton width={92} height={32} className="rounded-[12px]" />
-                    </div>
-                </SurfaceCard>
-            ))}
-        </div>
-    </PageLayout>
-);
+                    </SurfaceCard>
+                ))}
+            </div>
+        </PageLayout>
+    );
+};
 
 const TrashContent = () => {
+    const { multiple } = useWorkspace();
+    const scope = useWorkspaceScope();
     const { page } = Route.useSearch();
     const navigate = Route.useNavigate();
     const queryClient = useQueryClient();
@@ -153,11 +162,13 @@ const TrashContent = () => {
 
     const { data } = useSuspenseQuery({
         queryKey: queryKeys.notes.trash({
+            scope,
             limit: PAGE_SIZE,
             offset: (page - 1) * PAGE_SIZE,
         }),
         queryFn: async () => {
             const response = await fetchTrashedNotes({
+                scope,
                 limit: PAGE_SIZE,
                 offset: (page - 1) * PAGE_SIZE,
             });
@@ -247,7 +258,13 @@ const TrashContent = () => {
 
     if (data.notes.length === 0) {
         return (
-            <PageLayout title="Trash" variant="default" heading={heading} description={PAGE_DESCRIPTION}>
+            <PageLayout
+                title="Trash"
+                variant="default"
+                backLink={multiple && <WorkspaceSettingsBackLink />}
+                heading={heading}
+                description={PAGE_DESCRIPTION}
+            >
                 <Empty
                     title="Trash is empty"
                     description={`Delete a note and you can restore it here for ${TRASH_RETENTION_DAYS} days before permanent removal`}
@@ -257,7 +274,13 @@ const TrashContent = () => {
     }
 
     return (
-        <PageLayout title="Trash" variant="default" heading={heading} description={PAGE_DESCRIPTION}>
+        <PageLayout
+            title="Trash"
+            variant="default"
+            backLink={multiple && <WorkspaceSettingsBackLink />}
+            heading={heading}
+            description={PAGE_DESCRIPTION}
+        >
             <div className="flex flex-col gap-4">
                 <div className="grid gap-3">
                     {data.notes.map((note) => (

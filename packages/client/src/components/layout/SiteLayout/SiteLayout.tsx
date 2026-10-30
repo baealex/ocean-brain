@@ -1,7 +1,7 @@
 import { useMatches } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-
 import DemoSidebarPromoSlot from '~/components/demo/DemoSidebarPromoSlot';
+import { WorkspaceSwitcher } from '~/components/workspace/WorkspaceSwitcher';
 import { INTEGRATION_ROUTE } from '~/modules/url';
 
 import LayoutShell from './LayoutShell';
@@ -26,6 +26,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
             sidebar={
                 <>
                     <SidebarHeroBanner />
+                    <WorkspaceSwitcher />
                     <SidebarPrimaryActions />
                     <SidebarSearch />
                     <SidebarPinnedNotes />

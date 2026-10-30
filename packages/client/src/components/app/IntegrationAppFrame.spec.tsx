@@ -2,6 +2,39 @@ import { act, render, screen } from '@testing-library/react';
 import { IntegrationAppFrame } from './IntegrationAppFrame';
 
 describe('<IntegrationAppFrame />', () => {
+    it('shares workspace context only after opt-in and updates it without reloading', () => {
+        const workspace = { id: '1', name: 'Notes', archivedAt: null };
+        const { rerender } = render(
+            <IntegrationAppFrame title="Workspace app" src="https://app.example/" workspace={workspace} />,
+        );
+        const frame = screen.getByTitle('Workspace app');
+        if (!(frame instanceof HTMLIFrameElement) || !frame.contentWindow) throw new Error('Missing app frame');
+        const postMessage = vi.spyOn(frame.contentWindow, 'postMessage');
+        const ready = (capabilities?: string[]) =>
+            act(() => {
+                window.dispatchEvent(
+                    new MessageEvent('message', {
+                        origin: 'null',
+                        source: frame.contentWindow,
+                        data: { type: 'ocean-brain:app-ready', version: 1, capabilities },
+                    }),
+                );
+            });
+        ready();
+        expect(postMessage).toHaveBeenLastCalledWith(
+            expect.not.objectContaining({ workspace: expect.anything() }),
+            '*',
+        );
+        ready(['workspace']);
+        expect(postMessage).toHaveBeenLastCalledWith(
+            expect.objectContaining({ workspace, capabilities: expect.arrayContaining(['workspace']) }),
+            '*',
+        );
+        const diet = { id: '2', name: 'Diet', archivedAt: null };
+        rerender(<IntegrationAppFrame title="Workspace app" src="https://app.example/" workspace={diet} />);
+        expect(screen.getByTitle('Workspace app')).toBe(frame);
+        expect(postMessage).toHaveBeenLastCalledWith(expect.objectContaining({ workspace: diet }), '*');
+    });
     it('negotiates host capabilities and forwards valid app requests', () => {
         const onLocationChange = vi.fn();
         const onOpenNote = vi.fn();

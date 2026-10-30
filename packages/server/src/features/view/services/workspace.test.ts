@@ -686,6 +686,7 @@ test('hydratePropertyFilters validates property definitions and select options',
 });
 
 const createViewRecord = (patch: Partial<ViewRecord> = {}): ViewRecord => ({
+    workspaceId: '1',
     id: '1',
     groupId: '1',
     title: 'Doing',
@@ -707,8 +708,8 @@ const createViewRecord = (patch: Partial<ViewRecord> = {}): ViewRecord => ({
     ...patch,
 });
 
-test('buildViewWhere returns an open query for all-note views', () => {
-    assert.deepEqual(buildViewWhere(createViewRecord()), {});
+test('buildViewWhere restricts all-note views to their workspace', () => {
+    assert.deepEqual(buildViewWhere(createViewRecord()), { workspaceId: 1 });
 });
 
 test('buildViewWhere combines tag and property filters with AND', () => {
@@ -729,6 +730,7 @@ test('buildViewWhere combines tag and property filters with AND', () => {
             }),
         ),
         {
+            workspaceId: 1,
             AND: [
                 {
                     tags: {
@@ -837,9 +839,7 @@ test('buildViewBoardColumnWhere keeps the view scope while selecting one indexed
 
 test('buildViewBoardColumnWhere treats missing group values as unassigned', () => {
     assert.deepEqual(buildViewBoardColumnWhere(createViewRecord(), 7, null), {
-        properties: {
-            none: { propertyDefinitionId: 7 },
-        },
+        AND: [{ workspaceId: 1 }, { properties: { none: { propertyDefinitionId: 7 } } }],
     });
 });
 

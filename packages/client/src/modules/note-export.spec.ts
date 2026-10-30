@@ -11,6 +11,16 @@ import {
 } from './note-export';
 
 describe('note-export', () => {
+    it('includes workspace provenance only when export metadata is requested', () => {
+        const metadata = { id: '17', title: 'Record', workspaceId: '2', workspaceName: 'Diet\n---\nsource: other' };
+        expect(createMarkdownExport('Body', metadata, true)).toContain('workspace_id: "2"');
+        expect(createMarkdownExport('Body', metadata, true)).toContain('workspace_name: "Diet\\n---\\nsource: other"');
+        expect(createMarkdownExport('Body', metadata, false)).toBe('Body');
+        expect(createHtmlDocumentExport('<p>Body</p>', metadata, { includeMetadata: true })).toContain(
+            'workspace_id: 2',
+        );
+        expect(createHtmlDocumentExport('<p>Body</p>', metadata)).not.toContain('workspace_id');
+    });
     afterEach(() => {
         vi.restoreAllMocks();
     });

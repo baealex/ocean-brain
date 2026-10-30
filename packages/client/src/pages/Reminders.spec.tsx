@@ -101,6 +101,7 @@ describe('<Reminders />', () => {
 
         await waitFor(() => {
             expect(fetchReminders).toHaveBeenCalledWith({
+                scope: { kind: 'workspace', workspaceId: '1' },
                 filter: {
                     status: 'open',
                     end: overviewParams?.now,
@@ -128,6 +129,7 @@ describe('<Reminders />', () => {
 
         await waitFor(() => {
             expect(fetchReminders).toHaveBeenCalledWith({
+                scope: { kind: 'workspace', workspaceId: '1' },
                 filter: {
                     status: 'completed',
                     priority: 'high',

@@ -12,7 +12,11 @@ vi.mock('@tanstack/react-router', () => ({
     ),
     useNavigate: () => vi.fn(),
 }));
-vi.mock('~/apis/view.api', () => ({ fetchViewWorkspace: vi.fn(), fetchViewNotes: vi.fn() }));
+vi.mock('~/apis/view.api', () => ({
+    fetchViewWorkspace: vi.fn(),
+    fetchViewNotes: vi.fn(),
+    fetchView: vi.fn().mockResolvedValue({ type: 'success', view: null }),
+}));
 vi.mock('~/apis/note.api', () => ({ fetchAllNotePropertyKeys: vi.fn() }));
 
 const view: View = {

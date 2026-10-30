@@ -15,6 +15,8 @@ export interface McpReadNoteProperty {
 }
 
 export interface McpReadNote {
+    workspaceId?: string;
+    workspace?: { id: string; name: string; archivedAt: string | null };
 	id: string;
 	title: string;
 	contentAsMarkdown: string;
@@ -98,6 +100,7 @@ export const formatMcpReadNoteOutput = ({
 };
 
 const linkedViewSchema = z.object({
+    workspaceId: z.string().nullable().optional(),
     viewId: z.string(),
     title: z.string(),
     groupId: z.string().nullable(),
@@ -111,6 +114,8 @@ const readResultSchema = z.object({
     reason: z.string().nullable(),
     message: z.string().nullable(),
     note: z.object({
+        workspaceId: z.string().optional(),
+        workspace: z.object({ id: z.string(), name: z.string(), archivedAt: z.string().nullable() }).optional(),
         id: z.string(),
         title: z.string(),
         createdAt: z.string(),

@@ -1,16 +1,21 @@
 import type { Note } from '~/models/note.model';
+import type { WorkspaceScope } from '~/models/workspace.model';
 import { graphQuery } from '~/modules/graph-query';
 
 export type SearchMode = 'hybrid' | 'lexical' | 'semantic';
 
 export interface FetchSearchNotesParams {
+    scope?: WorkspaceScope;
     query: string;
     limit?: number;
     offset?: number;
     mode?: SearchMode;
 }
 
-export type SearchNote = Pick<Note, 'id' | 'title' | 'content' | 'pinned' | 'tags' | 'createdAt' | 'updatedAt'>;
+export type SearchNote = Pick<
+    Note,
+    'workspaceId' | 'id' | 'title' | 'content' | 'pinned' | 'tags' | 'createdAt' | 'updatedAt'
+>;
 
 export interface SearchNoteMatch {
     noteId: string;
@@ -39,10 +44,11 @@ const graphqlSearchModes = {
     semantic: 'SEMANTIC',
 } as const;
 
-export function fetchSearchNotes({ query, limit = 25, offset = 0, mode = 'hybrid' }: FetchSearchNotesParams) {
+export function fetchSearchNotes({ query, limit = 25, offset = 0, mode = 'hybrid', scope }: FetchSearchNotesParams) {
     return graphQuery<
         { searchNotes: SearchNotesResult },
         {
+            scope?: WorkspaceScope;
             query: string;
             mode: (typeof graphqlSearchModes)[SearchMode];
             pagination: {
@@ -51,8 +57,8 @@ export function fetchSearchNotes({ query, limit = 25, offset = 0, mode = 'hybrid
             };
         }
     >(
-        `query FetchSearchNotes($query: String!, $pagination: PaginationInput!, $mode: SearchMode!) {
-            searchNotes(query: $query, pagination: $pagination, mode: $mode) {
+        `query FetchSearchNotes($query: String!, $pagination: PaginationInput!, $mode: SearchMode!, $scope: WorkspaceScopeInput) {
+            searchNotes(query: $query, pagination: $pagination, mode: $mode, scope: $scope) {
                 totalCount
                 semanticAvailable
                 semanticUsed
@@ -63,6 +69,7 @@ export function fetchSearchNotes({ query, limit = 25, offset = 0, mode = 'hybrid
                     semantic
                 }
                 notes {
+                    workspaceId
                     id
                     title
                     content
@@ -77,6 +84,7 @@ export function fetchSearchNotes({ query, limit = 25, offset = 0, mode = 'hybrid
             }
         }`,
         {
+            ...(scope ? { scope } : {}),
             query,
             mode: graphqlSearchModes[mode],
             pagination: {
@@ -87,21 +95,22 @@ export function fetchSearchNotes({ query, limit = 25, offset = 0, mode = 'hybrid
     );
 }
 
-export function fetchSearchRelatedNotes(noteId: string, limit = 5) {
+export function fetchSearchRelatedNotes(noteId: string, limit = 5, scope?: WorkspaceScope) {
     return graphQuery<
         { searchRelatedNotes: SearchRelatedNote[] },
         {
             noteId: string;
             limit: number;
+            scope?: WorkspaceScope;
         }
     >(
-        `query FetchSearchRelatedNotes($noteId: ID!, $limit: Int!) {
-            searchRelatedNotes(noteId: $noteId, limit: $limit) {
+        `query FetchSearchRelatedNotes($noteId: ID!, $limit: Int!, $scope: WorkspaceScopeInput) {
+            searchRelatedNotes(noteId: $noteId, limit: $limit, scope: $scope) {
                 id
                 title
                 reasons
             }
         }`,
-        { noteId, limit },
+        { noteId, limit, ...(scope ? { scope } : {}) },
     );
 }

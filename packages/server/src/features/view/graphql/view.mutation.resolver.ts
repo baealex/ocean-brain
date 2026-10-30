@@ -73,8 +73,8 @@ export const viewMutationResolvers = {
             throw error;
         }
     },
-    createViewGroup: async (_, { title }: { title: string }) => {
-        return createViewGroup(title);
+    createViewGroup: async (_, { title, workspaceId }: { title: string; workspaceId?: string }) => {
+        return createViewGroup(title, workspaceId);
     },
     updateViewGroup: async (_, { id, title }: { id: string; title: string }) => {
         return updateViewGroup(id, title);
@@ -85,8 +85,8 @@ export const viewMutationResolvers = {
     setActiveViewGroup: async (_, { id }: { id: string }) => {
         return setActiveViewGroup(id);
     },
-    reorderViewGroups: async (_, { groupIds }: { groupIds: string[] }) => {
-        return reorderViewGroups(groupIds);
+    reorderViewGroups: async (_, { groupIds, workspaceId }: { groupIds: string[]; workspaceId?: string }) => {
+        return reorderViewGroups(groupIds, workspaceId);
     },
     createView: async (
         _,

@@ -21,6 +21,17 @@ const createReminder = (
 describe('remindersLocalPlugin', () => {
     it('filters open reminders with an exclusive end boundary and stable sorting', () => {
         const state = createLocalDemoState();
+        state.notes = ['1', '7', '8'].map((id) => ({
+            id,
+            workspaceId: '1',
+            title: `Note ${id}`,
+            content: '[]',
+            createdAt: '0',
+            updatedAt: '0',
+            pinned: false,
+            order: 0,
+            tags: [],
+        }));
         state.reminders = [
             createReminder('later', '2026-08-08T18:00:00.000Z', { priority: 'high' }),
             createReminder('earlier', '2026-08-08T09:00:00.000Z', { priority: 'high' }),
@@ -53,6 +64,17 @@ describe('remindersLocalPlugin', () => {
 
     it('sorts upcoming reminders by date like the server resolver', () => {
         const state = createLocalDemoState();
+        state.notes = ['1', '7', '8'].map((id) => ({
+            id,
+            workspaceId: '1',
+            title: `Note ${id}`,
+            content: '[]',
+            createdAt: '0',
+            updatedAt: '0',
+            pinned: false,
+            order: 0,
+            tags: [],
+        }));
         state.reminders = [
             createReminder('later', '2026-08-10T09:00:00.000Z'),
             createReminder('earlier', '2026-08-09T09:00:00.000Z'),
@@ -71,6 +93,17 @@ describe('remindersLocalPlugin', () => {
 
     it('sorts note reminders by date like the server resolver', () => {
         const state = createLocalDemoState();
+        state.notes = ['1', '7', '8'].map((id) => ({
+            id,
+            workspaceId: '1',
+            title: `Note ${id}`,
+            content: '[]',
+            createdAt: '0',
+            updatedAt: '0',
+            pinned: false,
+            order: 0,
+            tags: [],
+        }));
         state.reminders = [
             { ...createReminder('later', '2026-08-10T09:00:00.000Z'), noteId: 7 },
             { ...createReminder('other-note', '2026-08-08T09:00:00.000Z'), noteId: 8 },
@@ -90,6 +123,17 @@ describe('remindersLocalPlugin', () => {
 
     it('persists reminder creation and returns the created reminder', () => {
         const state = createLocalDemoState();
+        state.notes = ['1', '7', '8'].map((id) => ({
+            id,
+            workspaceId: '1',
+            title: `Note ${id}`,
+            content: '[]',
+            createdAt: '0',
+            updatedAt: '0',
+            pinned: false,
+            order: 0,
+            tags: [],
+        }));
         const save = vi.fn();
         const handler = remindersLocalPlugin.graphHandlers?.CreateReminder;
 
@@ -118,6 +162,17 @@ describe('remindersLocalPlugin', () => {
 
     it('returns a GraphQL-shaped error without saving when an update target is missing', () => {
         const state = createLocalDemoState();
+        state.notes = ['1', '7', '8'].map((id) => ({
+            id,
+            workspaceId: '1',
+            title: `Note ${id}`,
+            content: '[]',
+            createdAt: '0',
+            updatedAt: '0',
+            pinned: false,
+            order: 0,
+            tags: [],
+        }));
         const save = vi.fn();
         const handler = remindersLocalPlugin.graphHandlers?.UpdateReminder;
 

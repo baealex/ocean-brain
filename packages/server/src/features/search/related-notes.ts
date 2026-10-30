@@ -1,3 +1,4 @@
+import { resolveWorkspaceWhere, type WorkspaceScopeInput } from '~/features/workspace/scope.js';
 import models, { Prisma } from '~/models.js';
 
 const MAX_RELATED_NOTES = 5;
@@ -19,6 +20,7 @@ export interface SearchRelatedNoteCandidate {
 interface RelatedNotesDependencies {
     findSourceNote: (noteId: number) => Promise<SearchRelatedNoteSource | null>;
     findCandidates: (input: {
+        workspaceId?: number;
         noteId: number;
         tagIds: number[];
         limit: number;
@@ -69,6 +71,7 @@ const compareCandidates = (left: SearchRelatedNoteCandidate, right: SearchRelate
 };
 
 const findCandidatesFromIndex = async ({
+    workspaceId,
     noteId,
     tagIds,
     limit,
@@ -96,6 +99,7 @@ const findCandidatesFromIndex = async ({
                           0 AS "sharedTagCount"
                       FROM "Note" AS note
                       WHERE note."id" <> ${noteId}
+                        ${workspaceId === undefined ? Prisma.empty : Prisma.sql`AND note."workspaceId" = ${workspaceId}`}
                         AND (
                             EXISTS (
                                 SELECT 1
@@ -140,6 +144,7 @@ const findCandidatesFromIndex = async ({
                         ON noteTags."A" = note."id"
                        AND noteTags."B" IN (${Prisma.join(tagIds)})
                       WHERE note."id" <> ${noteId}
+                        ${workspaceId === undefined ? Prisma.empty : Prisma.sql`AND note."workspaceId" = ${workspaceId}`}
                         AND (
                             EXISTS (
                                 SELECT 1
@@ -214,7 +219,8 @@ const defaultDependencies: RelatedNotesDependencies = {
 };
 
 export const createSearchRelatedNotes = (dependencies: RelatedNotesDependencies = defaultDependencies) => {
-    return async (noteId: number, limit = MAX_RELATED_NOTES) => {
+    return async (noteId: number, limit = MAX_RELATED_NOTES, scope?: WorkspaceScopeInput) => {
+        const where = await resolveWorkspaceWhere(scope);
         const normalizedLimit = normalizeLimit(limit);
 
         if (!Number.isSafeInteger(noteId) || noteId <= 0 || normalizedLimit === 0) {
@@ -228,6 +234,7 @@ export const createSearchRelatedNotes = (dependencies: RelatedNotesDependencies 
         }
 
         const candidates = await dependencies.findCandidates({
+            ...(where.workspaceId === undefined ? {} : { workspaceId: where.workspaceId }),
             noteId,
             tagIds: source.tags.map((tag) => tag.id),
             limit: normalizedLimit,

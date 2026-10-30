@@ -18,6 +18,7 @@ import {
 } from '~/features/note/services/properties.js';
 import { MCP_SNAPSHOT_META } from '~/features/note/services/snapshot.js';
 import type { NoteViewContextInput } from '~/features/view/services/note-creation.js';
+import { parseWorkspaceId, WorkspaceError } from '~/features/workspace/scope.js';
 import models, { type NoteLayout } from '~/models.js';
 import { createAppError } from '~/modules/error-handler.js';
 import { emitServerEvent, type ServerEventInput } from '~/modules/server-events.js';
@@ -366,7 +367,7 @@ export const createCreateNoteHandler = (
     emitEvent: EmitServerEvent = emitServerEvent,
 ): Controller => {
     return async (req, reply) => {
-        const { title, markdown, layout, properties, viewContext } = req.body ?? {};
+        const { title, markdown, layout, properties, viewContext, workspaceId } = req.body ?? {};
         const resolvedViewContext = resolveViewContext(viewContext);
         const resolvedProperties = resolveMetadataPropertyPatch(properties);
         if (resolvedProperties?.deleteKeys !== undefined && !resolvedViewContext)
@@ -389,6 +390,7 @@ export const createCreateNoteHandler = (
             const note = await createNote({
                 title,
                 ...(markdown !== undefined ? { markdown } : {}),
+                ...(workspaceId !== undefined ? { workspaceId: parseWorkspaceId(workspaceId) } : {}),
                 ...(resolvedProperties ? { properties: resolvedProperties } : {}),
                 ...(resolvedLayout ? { layout: resolvedLayout } : {}),
                 ...(resolvedViewContext ? { viewContext: resolvedViewContext } : {}),
@@ -406,6 +408,8 @@ export const createCreateNoteHandler = (
                 note,
             });
         } catch (error) {
+            if (error instanceof WorkspaceError)
+                throw createAppError(400, String(error.extensions.code), error.message);
             if (error instanceof InvalidNotePropertyInputError)
                 throw createAppError(400, 'INVALID_NOTE_PROPERTIES', error.message);
             if (error instanceof InvalidNoteAuthoringInputError) {

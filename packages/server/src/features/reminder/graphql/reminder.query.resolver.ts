@@ -1,4 +1,5 @@
 import type { IResolvers } from '@graphql-tools/utils';
+import { resolveWorkspaceWhere, type WorkspaceScopeInput } from '~/features/workspace/scope.js';
 import type { Prisma } from '~/models.js';
 import models from '~/models.js';
 import type { Pagination } from '~/types/index.js';
@@ -120,15 +121,17 @@ export const createUpcomingRemindersQueryResolver = (
     return async (
         _: unknown,
         {
+            scope,
             pagination = {
                 limit: 10,
                 offset: 0,
             },
         }: {
+            scope?: WorkspaceScopeInput;
             pagination: Pagination;
         },
     ) => {
-        const where = { completed: false };
+        const where = { completed: false, ...(scope ? { note: await resolveWorkspaceWhere(scope) } : {}) };
         const [totalCount, reminders] = await Promise.all([
             deps.countReminders(where),
             deps.findReminders({
@@ -156,14 +159,16 @@ export const createRemindersQueryResolver = (
     return async (
         _: unknown,
         {
+            scope,
             filter,
             pagination,
         }: {
+            scope?: WorkspaceScopeInput;
             filter: ReminderFilter;
             pagination?: Pagination | null;
         },
     ) => {
-        const where = buildReminderWhere(filter);
+        const where = { ...buildReminderWhere(filter), ...(scope ? { note: await resolveWorkspaceWhere(scope) } : {}) };
         const normalizedPagination = normalizeReminderPagination(pagination);
         const [totalCount, reminders] = await Promise.all([
             deps.countReminders(where),
@@ -192,8 +197,10 @@ export const reminderQueryResolvers: ReminderQueryResolvers = {
     remindersInDateRange: async (
         _,
         {
+            scope,
             dateRange,
         }: {
+            scope?: WorkspaceScopeInput;
             dateRange: {
                 start: string;
                 end: string;
@@ -202,6 +209,7 @@ export const reminderQueryResolvers: ReminderQueryResolvers = {
     ) => {
         return models.reminder.findMany({
             where: {
+                ...(scope ? { note: await resolveWorkspaceWhere(scope) } : {}),
                 reminderDate: {
                     gte: new Date(dateRange.start),
                     lt: new Date(dateRange.end),

@@ -6,6 +6,8 @@ import type { NoteSaveStatus } from '~/hooks/useNoteSaveController';
 import NoteSaveStatusIndicator from './NoteSaveStatusIndicator';
 
 interface NoteEditorHeaderProps {
+    onMoveWorkspace?: () => void;
+    readOnly?: boolean;
     title: string;
     titleRef: RefObject<HTMLInputElement | null>;
     isPinned: boolean;
@@ -27,6 +29,8 @@ interface NoteEditorHeaderProps {
 
 export default function NoteEditorHeader({
     title,
+    onMoveWorkspace,
+    readOnly = false,
     titleRef,
     isPinned,
     createdAt,
@@ -66,6 +70,7 @@ export default function NoteEditorHeader({
                             placeholder="Title"
                             className="text-heading sm:text-display w-full bg-transparent font-semibold leading-[1.25] tracking-[-0.02em] outline-none"
                             type="text"
+                            readOnly={readOnly}
                             value={title}
                             onChange={(event) => onTitleChange(event.target.value)}
                         />
@@ -77,20 +82,27 @@ export default function NoteEditorHeader({
                                 { name: 'Copy Markdown', onClick: onCopyMarkdown },
                                 { name: 'Download document', onClick: onDownloadDocument },
                                 { type: 'separator', key: 'export-separator' },
-                                { name: isPinned ? 'Unpin' : 'Pin', onClick: onTogglePinned },
-                                { name: 'Change layout', onClick: onChangeLayout },
+                                ...(!readOnly
+                                    ? [
+                                          { name: isPinned ? 'Unpin' : 'Pin', onClick: onTogglePinned },
+                                          { name: 'Change layout', onClick: onChangeLayout },
+                                      ]
+                                    : []),
                                 { type: 'separator' },
-                                { name: 'Clone this note', onClick: onCloneNote },
-                                { name: 'Restore previous version', onClick: onRestoreVersion },
+                                ...(!readOnly ? [{ name: 'Clone this note', onClick: onCloneNote }] : []),
+                                ...(onMoveWorkspace && !readOnly
+                                    ? [{ name: 'Move to workspace', onClick: onMoveWorkspace }]
+                                    : []),
+                                ...(!readOnly ? [{ name: 'Restore previous version', onClick: onRestoreVersion }] : []),
                                 { type: 'separator' },
-                                { name: 'Delete', onClick: onDelete },
+                                ...(!readOnly ? [{ name: 'Delete', onClick: onDelete }] : []),
                             ]}
                         />
                         <Button
                             size="sm"
                             variant="subtle"
                             isLoading={saveStatus === 'saving'}
-                            disabled={saveStatus === 'conflict'}
+                            disabled={readOnly || saveStatus === 'conflict'}
                             onClick={onSave}
                         >
                             Save

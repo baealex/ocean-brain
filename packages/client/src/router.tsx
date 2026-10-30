@@ -2,6 +2,7 @@ import {
     createRootRoute,
     createRoute,
     createRouter,
+    defaultStringifySearch,
     lazyRouteComponent,
     Outlet,
     redirect,
@@ -44,19 +45,26 @@ import {
     SETTINGS_ROUTE,
     SETTINGS_SEARCH_ROUTE,
     SETTINGS_TRASH_ROUTE,
+    SETTINGS_WORKSPACE_ROUTE,
+    SETTINGS_WORKSPACES_ROUTE,
     TAG_NOTES_ROUTE,
     TAG_ROUTE,
     VIEW_NOTES_ROUTE,
     VIEWS_ROUTE,
 } from '~/modules/url';
 import { buildLegacyViewNotesRouteState } from '~/modules/view-route-state';
+import { validateWorkspaceSearch } from '~/modules/workspace-scope';
 import Home from '~/pages/Home';
+import { WorkspaceProvider } from '~/store/workspace';
 
 const rootRoute = createRootRoute({
+    validateSearch: validateWorkspaceSearch,
     component: () => (
-        <SiteLayout>
-            <Outlet />
-        </SiteLayout>
+        <WorkspaceProvider>
+            <SiteLayout>
+                <Outlet />
+            </SiteLayout>
+        </WorkspaceProvider>
     ),
     errorComponent: RouteErrorView,
     notFoundComponent: RouteNotFoundView,
@@ -154,6 +162,7 @@ const viewNotesRoute = createRoute({
         throw redirect({
             to: VIEWS_ROUTE,
             search: {
+                workspace: view?.workspaceId,
                 group: view?.groupId,
                 state: view ? buildLegacyViewNotesRouteState(view.id, search.page, view.limit) : undefined,
             },
@@ -276,7 +285,21 @@ const placeholderRoute = createRoute({
     validateSearch: validatePaginationSearch,
 });
 
+const workspacesRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: SETTINGS_WORKSPACES_ROUTE,
+    component: lazyRouteComponent(() => import('~/pages/setting/workspaces')),
+});
+
+const workspaceSettingsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: SETTINGS_WORKSPACE_ROUTE,
+    component: lazyRouteComponent(() => import('~/pages/setting/workspace')),
+});
+
 const routeTree = rootRoute.addChildren([
+    workspacesRoute,
+    workspaceSettingsRoute,
     homeRoute,
     viewsRoute,
     calendarRoute,
@@ -304,6 +327,13 @@ const routeTree = rootRoute.addChildren([
 
 export const router = createRouter({
     routeTree,
+    stringifySearch: (search) =>
+        defaultStringifySearch({
+            ...search,
+            ...(typeof search.workspace === 'string' && /^[1-9]\d*$/.test(search.workspace)
+                ? { workspace: Number(search.workspace) }
+                : {}),
+        }),
     defaultPreload: 'intent',
     scrollRestoration: true,
     defaultPendingComponent: () => <RoutePendingView title="Loading page" description="Preparing the next route." />,

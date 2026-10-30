@@ -42,7 +42,7 @@ export default function ViewGroupDialog({ open, mode, initialTitle = '', onClose
                             id="view-group-title"
                             value={title}
                             onChange={(event) => setTitle(event.target.value)}
-                            placeholder="Now"
+                            placeholder="Group name"
                             autoFocus
                         />
                     </div>

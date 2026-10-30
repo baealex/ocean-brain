@@ -9,8 +9,10 @@ import { Button, Text } from '~/components/ui';
 import { DEFAULT_INTEGRATION_APP_LOCATION, resolveIntegrationAppSource } from '~/modules/integration-app-bridge';
 import { queryKeys } from '~/modules/query-key-factory';
 import { INTEGRATION_ROUTE, NOTE_ROUTE, SETTINGS_INTEGRATION_DETAIL_ROUTE } from '~/modules/url';
+import { useWorkspace } from '~/store/workspace';
 
 export default function IntegrationPage() {
+    const { activeWorkspace, workspaceId, multiple } = useWorkspace();
     const { connectionId } = useParams({ from: INTEGRATION_ROUTE });
     const { app } = useSearch({ from: INTEGRATION_ROUTE });
     const navigate = useNavigate();
@@ -22,10 +24,13 @@ export default function IntegrationPage() {
             void navigate({
                 to: INTEGRATION_ROUTE,
                 params: { connectionId },
-                search: location === DEFAULT_INTEGRATION_APP_LOCATION ? {} : { app: location },
+                search: {
+                    ...(multiple ? { workspace: workspaceId } : {}),
+                    ...(location === DEFAULT_INTEGRATION_APP_LOCATION ? {} : { app: location }),
+                },
             });
         },
-        [connectionId, navigate],
+        [connectionId, navigate, workspaceId, multiple],
     );
     const handleOpenNote = useCallback(
         (noteId: string) => {
@@ -112,6 +117,7 @@ export default function IntegrationPage() {
                     </div>
                 ) : proxied ? (
                     <ProxiedAppFrame
+                        workspace={integration.grantedPermissions.includes('notes:read') ? activeWorkspace : undefined}
                         key={integration.id}
                         connectionId={integration.id}
                         appLocation={appLocation}
@@ -122,6 +128,7 @@ export default function IntegrationPage() {
                     />
                 ) : canEmbed ? (
                     <IntegrationAppFrame
+                        workspace={integration.grantedPermissions.includes('notes:read') ? activeWorkspace : undefined}
                         key={`${integration.id}:${url.href}`}
                         title={integration.manifest.name}
                         src={resolveIntegrationAppSource(url.href, appLocation)}

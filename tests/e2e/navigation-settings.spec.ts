@@ -12,7 +12,7 @@ test('menu layout persists mixed order and visibility, shares app pins and reset
     await page.getByRole('button', { name: 'Sign in' }).click();
     await expect(page).toHaveURL((url) => url.pathname === '/');
     await page.goto('/setting');
-    await page.getByRole('link', { name: 'Navigation Reorder or hide top bar menus.' }).click();
+    await page.getByRole('link', { name: /^Navigation/ }).click();
     await expect(page).toHaveURL((url) => url.pathname === '/setting/navigation');
 
     await page.goto('/setting/integrations');

@@ -20,6 +20,7 @@ export interface NoteProperty {
 }
 
 export interface Note {
+    workspaceId?: string;
     id: string;
     title: string;
     content: string;

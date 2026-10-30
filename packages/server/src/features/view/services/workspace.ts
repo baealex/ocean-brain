@@ -5,6 +5,15 @@ import {
     normalizeUrlValue,
 } from '~/features/note/services/properties.js';
 import { buildNoteTagNamesWhere, type NoteTagMatchMode } from '~/features/note/services/tag-filter.js';
+import {
+    assertSameWorkspace,
+    DEFAULT_WORKSPACE_ID,
+    parseWorkspaceId,
+    requireWorkspace,
+    resolvedWorkspaceScope,
+    resolveWorkspaceWhere,
+    type WorkspaceScopeInput,
+} from '~/features/workspace/scope.js';
 import models from '~/models.js';
 
 export type ViewTagFilterMatchMode = NoteTagMatchMode;
@@ -40,6 +49,7 @@ export interface ViewPropertyFilterRecord {
 }
 
 export interface ViewRecord {
+    workspaceId: string;
     defaultTemplateNoteId?: string | null;
     id: string;
     groupId: string;
@@ -56,6 +66,7 @@ export interface ViewRecord {
 }
 
 export interface ViewGroupRecord {
+    workspaceId: string;
     id: string;
     title: string;
     order: number;
@@ -81,6 +92,7 @@ export interface ViewInput {
 }
 
 export interface ViewNotesQueryInput {
+    scope?: WorkspaceScopeInput;
     tagNames?: string[] | null;
     mode?: ViewTagFilterMatchMode;
     propertyFilters?: ViewPropertyFilterInput[] | null;
@@ -130,8 +142,6 @@ export interface ViewCalendarDateRangeInput {
     end: string;
 }
 
-const VIEW_WORKSPACE_ID = 1;
-
 export const DEFAULT_VIEW_LIMIT = 5;
 export const MIN_VIEW_LIMIT = 1;
 export const MAX_VIEW_LIMIT = 20;
@@ -149,6 +159,7 @@ const DEFAULT_VIEW_CALENDAR_DATE_FIELD: ViewCalendarDateField = 'createdAt';
 type ViewDbClient = typeof models | Prisma.TransactionClient;
 
 const orderedViewTagFiltersInclude = {
+    group: { select: { workspaceId: true } },
     tagFilters: {
         orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
     },
@@ -599,6 +610,7 @@ export const serializeView = (view: DbView): ViewRecord => {
     const query = parseStoredViewQuery(view.query);
 
     return {
+        workspaceId: String(view.group.workspaceId),
         defaultTemplateNoteId: query.defaultTemplateNoteId ?? null,
         id: String(view.id),
         groupId: String(view.groupId),
@@ -616,29 +628,37 @@ export const serializeView = (view: DbView): ViewRecord => {
 };
 
 const serializeViewGroup = (group: DbViewGroup): ViewGroupRecord => ({
+    workspaceId: String(group.workspaceId),
     id: String(group.id),
     title: group.title,
     order: group.order,
     views: group.views.map(serializeView),
 });
 
-const getOrderedViewGroups = async (db: ViewDbClient) => {
+const getOrderedViewGroups = async (db: ViewDbClient, workspaceId = DEFAULT_WORKSPACE_ID) => {
     return db.viewGroup.findMany({
+        where: { workspaceId },
         orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
         include: orderedViewGroupViewsInclude,
     });
 };
 
-const ensureViewWorkspace = async (db: ViewDbClient) => {
-    return db.viewWorkspace.upsert({
-        where: { id: VIEW_WORKSPACE_ID },
+const ensureViewWorkspace = async (db: ViewDbClient, workspaceId = DEFAULT_WORKSPACE_ID) => {
+    return db.viewDashboardState.upsert({
+        where: { workspaceId },
         update: {},
-        create: { id: VIEW_WORKSPACE_ID },
+        create: { workspaceId },
     });
 };
 
-const readViewWorkspace = async (db: ViewDbClient): Promise<ViewWorkspaceRecord> => {
-    const [workspace, groups] = await Promise.all([ensureViewWorkspace(db), getOrderedViewGroups(db)]);
+const readViewWorkspace = async (
+    db: ViewDbClient,
+    workspaceId = DEFAULT_WORKSPACE_ID,
+): Promise<ViewWorkspaceRecord> => {
+    const [workspace, groups] = await Promise.all([
+        ensureViewWorkspace(db, workspaceId),
+        getOrderedViewGroups(db, workspaceId),
+    ]);
 
     const activeGroupId =
         workspace.activeGroupId !== null && groups.some((group) => group.id === workspace.activeGroupId)
@@ -717,7 +737,27 @@ export const hydratePropertyFilters = async (
     });
 };
 
-const buildStoredViewQuery = async (db: ViewDbClient, view: ReturnType<typeof normalizeViewInput>) => {
+const buildStoredViewQuery = async (
+    db: ViewDbClient,
+    view: ReturnType<typeof normalizeViewInput>,
+    workspaceId: number,
+) => {
+    const keys = [
+        ...new Set(
+            [
+                ...view.propertyFilters.map((filter) => filter.key),
+                ...view.displayOptions.tablePropertyKeys,
+                view.displayOptions.boardGroupByPropertyKey,
+                view.displayOptions.calendarDatePropertyKey,
+            ].filter((key): key is string => Boolean(key)),
+        ),
+    ];
+    for (const key of keys) {
+        const definition = await db.propertyDefinition.findUnique({ where: { key } });
+        if (!definition) throw new InvalidNotePropertyInputError(`Property ${key} is not defined.`);
+        assertSameWorkspace(definition.workspaceId, workspaceId);
+    }
+
     const propertyFilters = await hydratePropertyFilters(db, view.propertyFilters, { validateSelectOptions: true });
 
     if (view.displayType === 'board') {
@@ -766,8 +806,9 @@ const buildStoredViewQuery = async (db: ViewDbClient, view: ReturnType<typeof no
     });
 };
 
-const getNextGroupOrder = async (db: ViewDbClient) => {
+const getNextGroupOrder = async (db: ViewDbClient, workspaceId: number) => {
     const lastGroup = await db.viewGroup.findFirst({
+        where: { workspaceId },
         orderBy: [{ order: 'desc' }, { createdAt: 'desc' }],
         select: { order: true },
     });
@@ -785,8 +826,9 @@ const getNextViewOrder = async (db: ViewDbClient, groupId: number) => {
     return lastView ? lastView.order + 1 : 0;
 };
 
-const resequenceViewGroups = async (db: ViewDbClient) => {
+const resequenceViewGroups = async (db: ViewDbClient, workspaceId: number) => {
     const groups = await db.viewGroup.findMany({
+        where: { workspaceId },
         orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
         select: { id: true },
     });
@@ -818,8 +860,10 @@ const resequenceViews = async (db: ViewDbClient, groupId: number) => {
     );
 };
 
-export const getViewWorkspace = async () => {
-    return readViewWorkspace(models);
+export const getViewWorkspace = async (id: string | number = DEFAULT_WORKSPACE_ID) => {
+    const workspaceId = parseWorkspaceId(id);
+    await requireWorkspace(workspaceId);
+    return readViewWorkspace(models, workspaceId);
 };
 
 export const getViewById = async (id: string, db: ViewDbClient = models) => {
@@ -957,7 +1001,7 @@ export const buildViewNotesWhere = (
 };
 
 export const buildViewWhere = (view: ViewRecord): Prisma.NoteWhereInput => {
-    return buildViewNotesWhere(view);
+    return { workspaceId: Number(view.workspaceId), ...buildViewNotesWhere(view) };
 };
 
 export const normalizeViewCalendarDateRange = (dateRange: ViewCalendarDateRangeInput) => {
@@ -1256,7 +1300,8 @@ export const getNotesByQueryWithDb = async (
         }),
     };
     const normalizedPagination = normalizeViewNotesPagination(pagination);
-    const where = buildViewNotesWhere(query);
+    const scopeWhere = await resolveWorkspaceWhere(input.scope, db);
+    const where = { ...scopeWhere, ...buildViewNotesWhere(query) };
 
     const [totalCount, notes] = await Promise.all([
         db.note.count({ where }),
@@ -1269,6 +1314,7 @@ export const getNotesByQueryWithDb = async (
     ]);
 
     return {
+        resolvedScope: resolvedWorkspaceScope(scopeWhere),
         query,
         totalCount,
         notes,
@@ -1299,12 +1345,15 @@ export const getNotesByProperties = async (
     return getNotesByPropertiesWithDb(models, input, pagination);
 };
 
-export const createViewGroup = async (title: string) => {
+export const createViewGroup = async (title: string, id: string | number = DEFAULT_WORKSPACE_ID) => {
+    const workspaceId = parseWorkspaceId(id);
     return models.$transaction(async (tx) => {
-        const workspace = await ensureViewWorkspace(tx);
-        const nextGroupOrder = await getNextGroupOrder(tx);
+        await requireWorkspace(workspaceId, tx, true);
+        const workspace = await ensureViewWorkspace(tx, workspaceId);
+        const nextGroupOrder = await getNextGroupOrder(tx, workspaceId);
         const createdGroup = await tx.viewGroup.create({
             data: {
+                workspaceId,
                 title: normalizeViewGroupTitle(title),
                 order: nextGroupOrder,
             },
@@ -1312,8 +1361,8 @@ export const createViewGroup = async (title: string) => {
         });
 
         if (workspace.activeGroupId === null) {
-            await tx.viewWorkspace.update({
-                where: { id: VIEW_WORKSPACE_ID },
+            await tx.viewDashboardState.update({
+                where: { workspaceId },
                 data: { activeGroupId: createdGroup.id },
             });
         }
@@ -1323,12 +1372,16 @@ export const createViewGroup = async (title: string) => {
 };
 
 export const updateViewGroup = async (id: string, title: string) => {
-    const updatedGroup = await models.viewGroup.update({
-        where: { id: parseViewId(id) },
-        data: {
-            title: normalizeViewGroupTitle(title),
-        },
-        include: orderedViewGroupViewsInclude,
+    const updatedGroup = await models.$transaction(async (tx) => {
+        const group = await tx.viewGroup.findUniqueOrThrow({ where: { id: parseViewId(id) } });
+        await requireWorkspace(group.workspaceId, tx, true);
+        return tx.viewGroup.update({
+            where: { id: parseViewId(id) },
+            data: {
+                title: normalizeViewGroupTitle(title),
+            },
+            include: orderedViewGroupViewsInclude,
+        });
     });
 
     return serializeViewGroup(updatedGroup);
@@ -1338,8 +1391,13 @@ export const deleteViewGroup = async (id: string) => {
     const groupId = parseViewId(id);
 
     return models.$transaction(async (tx) => {
-        const workspace = await ensureViewWorkspace(tx);
+        const original = await tx.viewGroup.findUnique({ where: { id: groupId } });
+        if (!original) return false;
+        const workspaceId = original.workspaceId;
+        await requireWorkspace(workspaceId, tx, true);
+        const workspace = await ensureViewWorkspace(tx, workspaceId);
         const groups = await tx.viewGroup.findMany({
+            where: { workspaceId },
             orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
             select: { id: true },
         });
@@ -1349,7 +1407,7 @@ export const deleteViewGroup = async (id: string) => {
         }
 
         await tx.viewGroup.delete({ where: { id: groupId } });
-        await resequenceViewGroups(tx);
+        await resequenceViewGroups(tx, workspaceId);
 
         const nextActiveGroupId = pickNextActiveViewGroupId(
             groups.map((group) => group.id),
@@ -1357,8 +1415,8 @@ export const deleteViewGroup = async (id: string) => {
             workspace.activeGroupId,
         );
 
-        await tx.viewWorkspace.update({
-            where: { id: VIEW_WORKSPACE_ID },
+        await tx.viewDashboardState.update({
+            where: { workspaceId },
             data: { activeGroupId: nextActiveGroupId },
         });
 
@@ -1370,30 +1428,33 @@ export const setActiveViewGroup = async (id: string) => {
     const groupId = parseViewId(id);
 
     return models.$transaction(async (tx) => {
-        const workspace = await ensureViewWorkspace(tx);
         const group = await tx.viewGroup.findUnique({
             where: { id: groupId },
-            select: { id: true },
+            select: { id: true, workspaceId: true },
         });
 
         if (!group) {
             throw new Error('View group not found.');
         }
 
-        await tx.viewWorkspace.update({
-            where: { id: workspace.id },
+        const workspace = await ensureViewWorkspace(tx, group.workspaceId);
+        await tx.viewDashboardState.update({
+            where: { workspaceId: workspace.workspaceId },
             data: { activeGroupId: groupId },
         });
 
-        return readViewWorkspace(tx);
+        return readViewWorkspace(tx, group.workspaceId);
     });
 };
 
-export const reorderViewGroups = async (groupIds: string[]) => {
+export const reorderViewGroups = async (groupIds: string[], id: string | number = DEFAULT_WORKSPACE_ID) => {
+    const workspaceId = parseWorkspaceId(id);
     const nextGroupIds = groupIds.map(parseViewId);
 
     return models.$transaction(async (tx) => {
+        await requireWorkspace(workspaceId, tx, true);
         const groups = await tx.viewGroup.findMany({
+            where: { workspaceId },
             orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
             select: { id: true },
         });
@@ -1410,14 +1471,16 @@ export const reorderViewGroups = async (groupIds: string[]) => {
             ),
         );
 
-        const reorderedGroups = await getOrderedViewGroups(tx);
+        const reorderedGroups = await getOrderedViewGroups(tx, workspaceId);
         return reorderedGroups.map(serializeViewGroup);
     });
 };
 
-const assertTemplateNoteExists = async (db: ViewDbClient, id?: string | null) => {
-    if (id && !(await db.note.findUnique({ where: { id: Number(id) }, select: { id: true } })))
-        throw new InvalidNotePropertyInputError('The selected template note is unavailable.');
+const assertTemplateNoteExists = async (db: ViewDbClient, workspaceId: number, id?: string | null) => {
+    if (!id) return;
+    const note = await db.note.findUnique({ where: { id: Number(id) } });
+    if (!note) throw new InvalidNotePropertyInputError('The selected template note is unavailable.');
+    assertSameWorkspace(note.workspaceId, workspaceId);
 };
 
 export const createView = async (groupId: string, input: ViewInput) => {
@@ -1427,16 +1490,17 @@ export const createView = async (groupId: string, input: ViewInput) => {
     return models.$transaction(async (tx) => {
         const group = await tx.viewGroup.findUnique({
             where: { id: numericGroupId },
-            select: { id: true },
+            select: { id: true, workspaceId: true },
         });
 
         if (!group) {
             throw new Error('View group not found.');
         }
 
+        await requireWorkspace(group.workspaceId, tx, true);
         const nextViewOrder = await getNextViewOrder(tx, numericGroupId);
-        await assertTemplateNoteExists(tx, nextView.defaultTemplateNoteId);
-        const query = await buildStoredViewQuery(tx, nextView);
+        await assertTemplateNoteExists(tx, group.workspaceId, nextView.defaultTemplateNoteId);
+        const query = await buildStoredViewQuery(tx, nextView, group.workspaceId);
 
         const createdView = await tx.view.create({
             data: {
@@ -1466,12 +1530,18 @@ export const updateView = async (id: string, input: ViewInput) => {
     const nextView = normalizeViewInput(input);
 
     return models.$transaction(async (tx) => {
-        const existing = await tx.view.findUniqueOrThrow({ where: { id: viewId }, select: { query: true } });
+        const existing = await tx.view.findUniqueOrThrow({ where: { id: viewId }, include: { group: true } });
+        await requireWorkspace(existing.group.workspaceId, tx, true);
         const previousTemplateId = parseStoredViewQuery(existing.query).defaultTemplateNoteId ?? null;
         const defaultTemplateNoteId =
             input.defaultTemplateNoteId === undefined ? previousTemplateId : input.defaultTemplateNoteId;
-        if (defaultTemplateNoteId !== previousTemplateId) await assertTemplateNoteExists(tx, defaultTemplateNoteId);
-        const query = await buildStoredViewQuery(tx, { ...nextView, defaultTemplateNoteId });
+        if (defaultTemplateNoteId !== previousTemplateId)
+            await assertTemplateNoteExists(tx, existing.group.workspaceId, defaultTemplateNoteId);
+        const query = await buildStoredViewQuery(
+            tx,
+            { ...nextView, defaultTemplateNoteId },
+            existing.group.workspaceId,
+        );
 
         const updatedView = await tx.view.update({
             where: { id: viewId },
@@ -1509,6 +1579,8 @@ export const deleteView = async (id: string) => {
             return false;
         }
 
+        const group = await tx.viewGroup.findUniqueOrThrow({ where: { id: view.groupId } });
+        await requireWorkspace(group.workspaceId, tx, true);
         await tx.view.delete({
             where: { id: viewId },
         });
@@ -1523,6 +1595,8 @@ export const reorderViews = async (groupId: string, viewIds: string[]) => {
     const nextViewIds = viewIds.map(parseViewId);
 
     return models.$transaction(async (tx) => {
+        const group = await tx.viewGroup.findUniqueOrThrow({ where: { id: numericGroupId } });
+        await requireWorkspace(group.workspaceId, tx, true);
         const views = await tx.view.findMany({
             where: { groupId: numericGroupId },
             orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],

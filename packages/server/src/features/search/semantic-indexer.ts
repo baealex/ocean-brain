@@ -19,7 +19,7 @@ export interface SemanticVectorIndex {
     removeNote: (noteId: number) => Promise<SemanticIndexStatus>;
     replaceAll: (profile: SemanticIndexProfile, chunks: IndexedNoteChunk[]) => Promise<SemanticIndexStatus>;
     replaceNote: (noteId: number, chunks: IndexedNoteChunk[]) => Promise<SemanticIndexStatus>;
-    search: (queryEmbedding: number[], limit: number) => Promise<SemanticVectorMatch[]>;
+    search: (queryEmbedding: number[], limit: number, eligibleNoteIds?: number[]) => Promise<SemanticVectorMatch[]>;
 }
 
 interface BuildSemanticIndexInput {
@@ -206,6 +206,7 @@ export const searchSemanticIndex = async (
     limit: number,
     embeddingClient: EmbeddingClient,
     vectorIndex: SemanticVectorIndex,
+    eligibleNoteIds?: number[],
 ) => {
     const status = await vectorIndex.getStatus();
     if (!status.ready) {
@@ -213,5 +214,7 @@ export const searchSemanticIndex = async (
     }
 
     const queryEmbedding = await embeddingClient.embedQuery(query);
-    return vectorIndex.search(queryEmbedding, limit);
+    return eligibleNoteIds === undefined
+        ? vectorIndex.search(queryEmbedding, limit)
+        : vectorIndex.search(queryEmbedding, limit, eligibleNoteIds);
 };

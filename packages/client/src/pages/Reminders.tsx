@@ -2,7 +2,6 @@ import { useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
 import dayjs from 'dayjs';
 import { useEffect, useState } from 'react';
-
 import { fetchOpenReminderOverview, fetchReminders, type ReminderListFilter } from '~/apis/reminder.api';
 import { QueryBoundary } from '~/components/app';
 import * as Icon from '~/components/icon';
@@ -11,6 +10,7 @@ import ReminderModal from '~/components/reminder/ReminderModal';
 import { Empty, PageLayout, Pagination, Skeleton } from '~/components/shared';
 import { Button, Select, SelectItem, Text, ToggleGroup, ToggleGroupItem, useConfirm } from '~/components/ui';
 import useReminderMutate from '~/hooks/resource/useReminderMutate';
+import { useWorkspaceScope } from '~/hooks/useWorkspaceScope';
 import type { Reminder, Reminders as ReminderCollection, ReminderPriority } from '~/models/reminder.model';
 import { queryKeys } from '~/modules/query-key-factory';
 import type { ReminderRouteSearch } from '~/modules/route-search';
@@ -183,7 +183,9 @@ function OpenReminderOverview({
     actions: ReminderActions;
     onViewAll: (scope: ReminderScope) => void;
 }) {
+    const workspaceScope = useWorkspaceScope();
     const queryParams = {
+        scope: workspaceScope,
         now: boundaries.now,
         tomorrow: boundaries.tomorrow,
         priority: getPriority(priority),
@@ -264,7 +266,9 @@ function PaginatedReminderList({
                   sortOrder: 'desc',
               }
             : buildOpenFilter(scope as ReminderScope, priority, boundaries);
+    const workspaceScope = useWorkspaceScope();
     const queryParams = {
+        scope: workspaceScope,
         filter,
         limit: PAGE_LIMIT,
         offset: (page - 1) * PAGE_LIMIT,
@@ -350,6 +354,7 @@ function PaginatedReminderList({
 }
 
 export default function Reminders() {
+    const workspaceScope = useWorkspaceScope();
     const navigate = Route.useNavigate();
     const { status, scope, priority, page } = Route.useSearch();
     const { onUpdate, onDelete } = useReminderMutate();
@@ -441,7 +446,15 @@ export default function Reminders() {
                     fallback={<ReminderListSkeleton />}
                     errorTitle="Failed to load reminders"
                     errorDescription="Retry loading the reminder workspace."
-                    resetKeys={[status, scope, priority, page, boundaries.now]}
+                    resetKeys={[
+                        workspaceScope.kind,
+                        workspaceScope.kind === 'workspace' ? workspaceScope.workspaceId : null,
+                        status,
+                        scope,
+                        priority,
+                        page,
+                        boundaries.now,
+                    ]}
                 >
                     {status === 'open' && scope === 'all' ? (
                         <OpenReminderOverview

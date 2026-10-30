@@ -1,54 +1,28 @@
 import { useQuery } from '@tanstack/react-query';
-
+import { fetchNotesInDateRange } from '~/apis/note.api';
+import { fetchRemindersInDateRange } from '~/apis/reminder.api';
+import { useWorkspaceScope } from '~/hooks/useWorkspaceScope';
 import type { Note } from '~/models/note.model';
 import type { Reminder } from '~/models/reminder.model';
-import { graphQuery } from '~/modules/graph-query';
+import type { WorkspaceScope } from '~/models/workspace.model';
 import { queryKeys } from '~/modules/query-key-factory';
 import { getCalendarMonthRange } from './calendar-data';
-
-const NOTES_QUERY = `
-    query NotesInDateRange($dateRange: DateRangeInput) {
-        notesInDateRange(dateRange: $dateRange) {
-            id
-            title
-            createdAt
-            updatedAt
-        }
-    }
-`;
-
-const REMINDERS_QUERY = `
-    query RemindersInDateRange($dateRange: DateRangeInput) {
-        remindersInDateRange(dateRange: $dateRange) {
-            id
-            noteId
-            reminderDate
-            completed
-            priority
-            content
-            note {
-                id
-                title
-            }
-        }
-    }
-`;
 
 interface DateRange {
     start: string;
     end: string;
 }
 
-const fetchNotesInRange = async (dateRange: DateRange): Promise<Note[]> => {
-    const response = await graphQuery<{ notesInDateRange: Note[] }>(NOTES_QUERY, { dateRange });
+const fetchNotesInRange = async (dateRange: DateRange, scope: WorkspaceScope): Promise<Note[]> => {
+    const response = await fetchNotesInDateRange(dateRange, scope);
     if (response.type === 'error') {
         throw response;
     }
     return response.notesInDateRange;
 };
 
-const fetchRemindersInRange = async (dateRange: DateRange): Promise<Reminder[]> => {
-    const response = await graphQuery<{ remindersInDateRange: Reminder[] }>(REMINDERS_QUERY, { dateRange });
+const fetchRemindersInRange = async (dateRange: DateRange, scope: WorkspaceScope): Promise<Reminder[]> => {
+    const response = await fetchRemindersInDateRange(dateRange, scope);
     if (response.type === 'error') {
         throw response;
     }
@@ -61,16 +35,17 @@ interface UseCalendarDataParams {
 }
 
 export const useCalendarData = ({ year, month }: UseCalendarDataParams) => {
+    const scope = useWorkspaceScope();
     const dateRange = getCalendarMonthRange(year, month);
 
     const notesQuery = useQuery({
-        queryKey: queryKeys.calendar.notesInDateRange(year, month),
-        queryFn: () => fetchNotesInRange(dateRange),
+        queryKey: queryKeys.calendar.notesInDateRange(year, month, scope),
+        queryFn: () => fetchNotesInRange(dateRange, scope),
     });
 
     const remindersQuery = useQuery({
-        queryKey: queryKeys.reminders.inDateRange(year, month),
-        queryFn: () => fetchRemindersInRange(dateRange),
+        queryKey: queryKeys.reminders.inDateRange(year, month, scope),
+        queryFn: () => fetchRemindersInRange(dateRange, scope),
     });
 
     return {

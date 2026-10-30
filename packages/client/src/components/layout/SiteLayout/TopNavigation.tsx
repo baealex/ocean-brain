@@ -14,9 +14,11 @@ import {
 } from '~/modules/navigation-preferences';
 import { queryKeys } from '~/modules/query-key-factory';
 import { HOME_ROUTE, INTEGRATION_ROUTE, SEARCH_ROUTE } from '~/modules/url';
+import { useWorkspace } from '~/store/workspace';
 import { CORE_NAVIGATION_ITEMS } from './navigation-items';
 
 const TopNavigation = () => {
+    const { workspaceId, multiple } = useWorkspace();
     const pathname = useLocation({ select: (location) => location.pathname });
     const searchShortcutLabel = getSearchShortcutLabel();
     const { data: settings } = useQuery({
@@ -54,6 +56,7 @@ const TopNavigation = () => {
                         {index > 0 && <span className="h-3.5 w-px shrink-0 bg-border-subtle" />}
                         <Link
                             to={item.path}
+                            search={multiple ? { workspace: workspaceId } : undefined}
                             params={connectionId ? { connectionId } : undefined}
                             aria-keyshortcuts={shortcut ? 'Meta+K Control+K' : undefined}
                             title={

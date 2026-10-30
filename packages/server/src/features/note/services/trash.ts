@@ -1,3 +1,4 @@
+import { DEFAULT_WORKSPACE_ID, requireWorkspace } from '~/features/workspace/scope.js';
 import models, { type NoteLayout, type PropertyValueType, type ReminderPriority } from '~/models.js';
 import {
     createRetentionCutoff,
@@ -26,6 +27,7 @@ interface LiveReminderRecord {
 }
 
 interface LiveNoteRecord {
+    workspaceId?: number;
     id: number;
     title: string;
     content: string;
@@ -57,6 +59,7 @@ interface LivePropertyRecord {
 }
 
 interface RestoredNoteRecord {
+    workspaceId?: number;
     id: number;
     title: string;
     content: string;
@@ -82,6 +85,7 @@ interface DeletedReminderRecord {
 }
 
 interface DeletedNoteRecord {
+    workspaceId?: number;
     id: number;
     title: string;
     content: string;
@@ -120,6 +124,7 @@ interface BlockNoteNode {
 }
 
 export interface TrashedNoteSummary {
+    workspaceId?: string;
     id: string;
     title: string;
     createdAt: string;
@@ -149,10 +154,10 @@ export class NoteRestoreConflictError extends Error {
 }
 
 interface NoteTrashServiceDeps {
-    countDeletedNotes: () => Promise<number>;
+    countDeletedNotes: (workspaceId?: number) => Promise<number>;
     findDeletedNote: (id: number) => Promise<DeletedNoteRecord | null>;
     findLiveNote: (id: number) => Promise<LiveNoteRecord | null>;
-    listDeletedNotes: (skip: number, take: number) => Promise<DeletedNoteRecord[]>;
+    listDeletedNotes: (skip: number, take: number, workspaceId?: number) => Promise<DeletedNoteRecord[]>;
     liveNoteExists: (id: number) => Promise<boolean>;
     moveNoteToTrash: (note: LiveNoteRecord) => Promise<DeletedNoteRecord>;
     purgeDeletedNote: (note: DeletedNoteRecord) => Promise<void>;
@@ -172,6 +177,7 @@ const buildTrashedNoteContentPreview = (content: string) => {
 
 const serializeTrashedNote = (note: DeletedNoteRecord): TrashedNoteSummary => {
     return {
+        ...(note.workspaceId !== undefined ? { workspaceId: String(note.workspaceId) } : {}),
         id: String(note.id),
         title: note.title,
         createdAt: note.createdAt.toISOString(),
@@ -222,12 +228,19 @@ const restoreTagIdsInContent = (content: string, tagIdByName: Map<string, number
 };
 
 export const createNoteTrashService = (deps: NoteTrashServiceDeps) => ({
-    listTrashedNotes: async (input?: { limit?: number; offset?: number }): Promise<TrashedNotesResult> => {
+    listTrashedNotes: async (input?: {
+        limit?: number;
+        offset?: number;
+        workspaceId?: number;
+    }): Promise<TrashedNotesResult> => {
         await deps.purgeExpiredDeletedNotes(createRetentionCutoff(TRASH_RETENTION_DAYS), RECOVERY_CLEANUP_BATCH_LIMIT);
 
         const limit = Math.max(1, Number(input?.limit ?? 25));
         const offset = Math.max(0, Number(input?.offset ?? 0));
-        const [totalCount, notes] = await Promise.all([deps.countDeletedNotes(), deps.listDeletedNotes(offset, limit)]);
+        const [totalCount, notes] = await Promise.all([
+            deps.countDeletedNotes(input?.workspaceId),
+            deps.listDeletedNotes(offset, limit, input?.workspaceId),
+        ]);
 
         return {
             totalCount,
@@ -320,7 +333,8 @@ const defaultPurgeExpiredDeletedNotes = async (before: Date, limit: number) => {
 };
 
 const noteTrashService = createNoteTrashService({
-    countDeletedNotes: async () => models.deletedNote.count(),
+    countDeletedNotes: async (workspaceId) =>
+        models.deletedNote.count({ where: workspaceId !== undefined ? { workspaceId } : undefined }),
     findDeletedNote: async (id) => {
         return models.deletedNote.findUnique({
             where: { id },
@@ -340,11 +354,12 @@ const noteTrashService = createNoteTrashService({
             },
         });
     },
-    listDeletedNotes: async (skip, take) => {
+    listDeletedNotes: async (skip, take, workspaceId) => {
         return models.deletedNote.findMany({
             skip,
             take,
             orderBy: { deletedAt: 'desc' },
+            ...(workspaceId !== undefined ? { where: { workspaceId } } : {}),
             include: includeDeletedNote,
         });
     },
@@ -357,12 +372,17 @@ const noteTrashService = createNoteTrashService({
     },
     purgeExpiredDeletedNotes: defaultPurgeExpiredDeletedNotes,
     purgeDeletedNote: async (deletedNote) => {
-        await models.deletedNote.delete({ where: { id: deletedNote.id } });
+        await models.$transaction(async (tx) => {
+            await requireWorkspace(deletedNote.workspaceId ?? DEFAULT_WORKSPACE_ID, tx, true);
+            await tx.deletedNote.delete({ where: { id: deletedNote.id } });
+        });
     },
     moveNoteToTrash: async (note) => {
         return models.$transaction(async (tx) => {
+            await requireWorkspace(note.workspaceId ?? DEFAULT_WORKSPACE_ID, tx, true);
             await tx.deletedNote.create({
                 data: {
+                    workspaceId: note.workspaceId ?? DEFAULT_WORKSPACE_ID,
                     id: note.id,
                     title: note.title,
                     content: note.content,
@@ -422,6 +442,7 @@ const noteTrashService = createNoteTrashService({
     },
     restoreDeletedNote: async (deletedNote) => {
         return models.$transaction(async (tx) => {
+            await requireWorkspace(deletedNote.workspaceId ?? DEFAULT_WORKSPACE_ID, tx, true);
             const tagNames = Array.from(new Set(deletedNote.tags.map((tag) => tag.name).filter(Boolean)));
 
             if (tagNames.length > 0) {
@@ -458,6 +479,7 @@ const noteTrashService = createNoteTrashService({
 
             const note = await tx.note.create({
                 data: {
+                    workspaceId: deletedNote.workspaceId ?? DEFAULT_WORKSPACE_ID,
                     id: deletedNote.id,
                     title: deletedNote.title,
                     content: restoredContent,
@@ -494,7 +516,8 @@ const noteTrashService = createNoteTrashService({
 
             for (const property of deletedNote.properties ?? []) {
                 const target = await resolveRestoredPropertyTarget(property, {
-                    findDefinitionByKey: (key) => tx.propertyDefinition.findUnique({ where: { key } }),
+                    findDefinitionByKey: (key) =>
+                        tx.propertyDefinition.findFirst({ where: { key, workspaceId: note.workspaceId } }),
                     findOptionByValue: (propertyDefinitionId, value) =>
                         tx.propertyOption.findUnique({
                             where: {

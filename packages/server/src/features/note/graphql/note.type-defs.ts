@@ -39,6 +39,7 @@ export const noteType = gql`
     }
 
     input NoteInput {
+        workspaceId: ID
         title: String
         content: String
         layout: NoteLayout
@@ -67,7 +68,8 @@ export const noteType = gql`
     }
 
     input NotePropertyDefinitionInput {
-        key: String!
+        workspaceId: ID
+        key: String
         name: String
         valueType: NotePropertyValueType!
         options: [NotePropertyOptionInput!]
@@ -96,6 +98,8 @@ export const noteType = gql`
     }
 
     type Note {
+        workspaceId: ID!
+        workspace: Workspace!
         id: ID!
         title: String!
         content: String!
@@ -143,6 +147,7 @@ export const noteType = gql`
     }
 
     type NotePropertyKey {
+        workspaceId: ID!
         key: String!
         name: String!
         valueType: NotePropertyValueType!
@@ -152,6 +157,7 @@ export const noteType = gql`
     }
 
     type NotePropertyKeys {
+        resolvedScope: WorkspaceReadScope!
         totalCount: Int!
         keys: [NotePropertyKey!]!
     }
@@ -247,6 +253,7 @@ export const noteType = gql`
     }
 
     type DeletedNote {
+        workspaceId: ID!
         id: ID!
         title: String!
         createdAt: String!
@@ -289,6 +296,7 @@ export const noteQuery = gql`
     type NoteHeadingCandidate { heading: String!, level: Int!, start: Int!, end: Int! }
     enum NoteLinkedViewStatus { available missing }
     type NoteLinkedView {
+        workspaceId: ID
         viewId: ID!
         title: String!
         groupId: ID
@@ -308,11 +316,11 @@ export const noteQuery = gql`
         linkedViews: [NoteLinkedView!]!
     }
     type Query {
-        allNotes(searchFilter: SearchFilterInput, pagination: PaginationInput): Notes!
-        tagNotes(searchFilter: SearchFilterInput, pagination: PaginationInput): Notes!
-        notesByTagNames(tagNames: [String!]!, mode: TagMatchMode!, pagination: PaginationInput): Notes!
-        notesInDateRange(dateRange: DateRangeInput): [Note!]!
-        pinnedNotes: [Note!]!
+        allNotes(searchFilter: SearchFilterInput, pagination: PaginationInput, scope: WorkspaceScopeInput): Notes!
+        tagNotes(searchFilter: SearchFilterInput, pagination: PaginationInput, scope: WorkspaceScopeInput): Notes!
+        notesByTagNames(tagNames: [String!]!, mode: TagMatchMode!, pagination: PaginationInput, scope: WorkspaceScopeInput): Notes!
+        notesInDateRange(dateRange: DateRangeInput, scope: WorkspaceScopeInput): [Note!]!
+        pinnedNotes(scope: WorkspaceScopeInput): [Note!]!
         imageNotes(src: String!): [Note!]!
         backReferences(id: ID!): [Note]!
         backReferenceDetails(id: ID!, limit: Int, offset: Int): BackReferencePage!
@@ -323,10 +331,10 @@ export const noteQuery = gql`
         noteSnapshots(id: ID!, limit: Int): [NoteSnapshot!]!
         noteSnapshot(id: ID!): NoteSnapshot
         noteSnapshotDiff(id: ID!, compareToSnapshotId: ID, target: NoteSnapshotDiffTarget, contextLines: Int): NoteSnapshotDiff
-        notePropertyKeys(query: String, pagination: PaginationInput): NotePropertyKeys!
+        notePropertyKeys(query: String, pagination: PaginationInput, scope: WorkspaceScopeInput): NotePropertyKeys!
         trashedNote(id: ID!): DeletedNote
-        trashedNotes(pagination: PaginationInput): DeletedNotes!
-        noteGraph: NoteGraph!
+        trashedNotes(pagination: PaginationInput, scope: WorkspaceScopeInput): DeletedNotes!
+        noteGraph(scope: WorkspaceScopeInput): NoteGraph!
     }
 `;
 
@@ -335,7 +343,7 @@ export const noteMutation = gql`
         createNote(note: NoteInput!): Note!
         updateNote(id: ID!, note: NoteInput!, editSessionId: String, expectedUpdatedAt: String, force: Boolean): Note!
         deleteNote(id: ID!): Boolean!
-        restoreNoteSnapshot(id: ID!, expectedUpdatedAt: String!): Note!
+        restoreNoteSnapshot(id: ID!, expectedUpdatedAt: String!, mappings: [PropertyWorkspaceMappingInput!]): Note!
         restoreTrashedNote(id: ID!): Note!
         purgeTrashedNote(id: ID!): Boolean!
         createNotePropertyKey(input: NotePropertyDefinitionInput!): NotePropertyKey!

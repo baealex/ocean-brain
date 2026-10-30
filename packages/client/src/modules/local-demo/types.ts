@@ -2,6 +2,7 @@ import type { Note, NotePropertyOption, NotePropertyValueType } from '~/models/n
 import type { Placeholder } from '~/models/placeholder.model';
 import type { Reminder } from '~/models/reminder.model';
 import type { ViewsWorkspace } from '~/models/view.model';
+import type { Workspace } from '~/models/workspace.model';
 import type { GraphQueryResponse } from '../graph-query-types';
 
 export interface LocalTag {
@@ -19,6 +20,7 @@ export interface LocalTrashNote extends Note {
 }
 
 export interface LocalPropertyDefinition {
+    workspaceId?: string;
     key: string;
     name: string;
     valueType: NotePropertyValueType;
@@ -27,7 +29,9 @@ export interface LocalPropertyDefinition {
 }
 
 export interface LocalDemoState {
-    version: 6;
+    version: 7;
+    workspaces: Workspace[];
+    viewActiveGroupIds: Record<string, string | null>;
     notes: Note[];
     trashedNotes: LocalTrashNote[];
     tags: LocalTag[];

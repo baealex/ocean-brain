@@ -1,5 +1,12 @@
 import type { Prisma } from '@prisma/client';
 import { InvalidNotePropertyInputError } from '~/features/note/services/properties.js';
+import {
+    assertSameWorkspace,
+    parseWorkspaceId,
+    resolvedWorkspaceScope,
+    resolveWorkspaceWhere,
+    type WorkspaceScopeInput,
+} from '~/features/workspace/scope.js';
 import models from '~/models.js';
 import {
     buildViewBoardColumnWhere,
@@ -12,11 +19,19 @@ import {
     type ViewCalendarDateRangeInput,
 } from './workspace.js';
 
-export const listViews = async (query = '', pagination?: { limit?: number; offset?: number }) => {
+export const listViews = async (
+    query = '',
+    pagination?: { limit?: number; offset?: number },
+    scope?: WorkspaceScopeInput,
+) => {
     const { limit, offset } = normalizeViewNotesPagination(pagination);
-    const where: Prisma.ViewWhereInput = query.trim()
-        ? { OR: [{ title: { contains: query.trim() } }, { group: { title: { contains: query.trim() } } }] }
-        : {};
+    const scopeWhere = await resolveWorkspaceWhere(scope);
+    const where: Prisma.ViewWhereInput = {
+        group: scopeWhere,
+        ...(query.trim()
+            ? { OR: [{ title: { contains: query.trim() } }, { group: { title: { contains: query.trim() } } }] }
+            : {}),
+    };
     const [totalCount, views] = await Promise.all([
         models.view.count({ where }),
         models.view.findMany({
@@ -28,12 +43,14 @@ export const listViews = async (query = '', pagination?: { limit?: number; offse
         }),
     ]);
     return {
+        resolvedScope: resolvedWorkspaceScope(scopeWhere),
         totalCount,
         views: views.map((view) => ({ view: serializeView(view), groupTitle: view.group.title })),
     };
 };
 
 export interface ReadViewInput {
+    workspaceId?: string;
     id: string;
     pagination?: { limit?: number; offset?: number };
     groupValue?: string | null;
@@ -41,9 +58,10 @@ export interface ReadViewInput {
     propertyKeys?: string[] | null;
 }
 
-export const readView = async ({ id, pagination, groupValue, dateRange, propertyKeys }: ReadViewInput) => {
+export const readView = async ({ id, pagination, groupValue, dateRange, propertyKeys, workspaceId }: ReadViewInput) => {
     const view = await getViewById(id);
     if (!view) throw new InvalidNotePropertyInputError('Saved view not found. Use list_views to find its ID.');
+    if (workspaceId !== undefined) assertSameWorkspace(Number(view.workspaceId), parseWorkspaceId(workspaceId));
     if (groupValue !== undefined && view.displayType !== 'board') {
         throw new InvalidNotePropertyInputError('groupValue is only valid for a board.');
     }

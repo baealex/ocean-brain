@@ -1,6 +1,7 @@
 import * as Icon from '~/components/icon';
 import { Text } from '~/components/ui';
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
+import { useWorkspace } from '~/store/workspace';
 
 const rootClassName = 'p-3 pb-0';
 const captureButtonClassName =
@@ -13,10 +14,17 @@ const trailingIconClassName = 'h-4 w-4 text-fg-tertiary transition-colors group-
 
 const SidebarPrimaryActions = () => {
     const { onCreate } = useNoteMutate();
+    const { multiple, activeWorkspace } = useWorkspace();
 
     return (
         <div className={rootClassName}>
-            <button type="button" className={captureButtonClassName} onClick={() => onCreate()}>
+            <button
+                type="button"
+                className={captureButtonClassName}
+                aria-label={multiple ? `Open a new note in ${activeWorkspace?.name ?? 'this workspace'}` : undefined}
+                disabled={Boolean(activeWorkspace?.archivedAt)}
+                onClick={() => onCreate()}
+            >
                 <span className={captureContentClassName}>
                     <span className={captureIconWrapClassName}>
                         <Icon.Pencil className="h-4.5 w-4.5" weight="bold" />
@@ -26,7 +34,7 @@ const SidebarPrimaryActions = () => {
                             Capture
                         </Text>
                         <Text variant="label" tone="secondary">
-                            Open a new note
+                            {multiple ? `New note in ${activeWorkspace?.name ?? 'this workspace'}` : 'Open a new note'}
                         </Text>
                     </span>
                 </span>

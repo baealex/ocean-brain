@@ -18,6 +18,7 @@ import ViewSortMenu from './ViewSortMenu';
 import ViewTableColumnsDialog from './ViewTableColumnsDialog';
 
 interface ViewCardProps {
+    readOnly?: boolean;
     view: View;
     onEdit: () => void;
     onDuplicate?: () => void;
@@ -36,6 +37,7 @@ interface ViewCardProps {
 }
 
 const ViewCard = ({
+    readOnly = false,
     view,
     onEdit,
     onDuplicate,
@@ -157,9 +159,9 @@ const ViewCard = ({
                     </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
-                    <ViewNoteCreateButton viewId={view.id} />
+                    {!readOnly && <ViewNoteCreateButton viewId={view.id} />}
                     <Dropdown
-                        button={<MoreButton label="View actions" />}
+                        button={<MoreButton label="View actions" disabled={readOnly} />}
                         items={[
                             ...(onMoveUp ? [{ name: 'Move up', onClick: onMoveUp }] : []),
                             ...(onMoveDown ? [{ name: 'Move down', onClick: onMoveDown }] : []),
@@ -189,7 +191,7 @@ const ViewCard = ({
                         disabled={isSavingSort}
                         onChange={setViewSort}
                     />
-                    {view.displayType === 'table' && onSaveColumns ? (
+                    {view.displayType === 'table' && onSaveColumns && !readOnly ? (
                         <Button
                             type="button"
                             variant="ghost"
@@ -203,7 +205,7 @@ const ViewCard = ({
                     ) : null}
                     {hasCustomSort ? (
                         <>
-                            {onSaveSort ? (
+                            {onSaveSort && !readOnly ? (
                                 <Button
                                     type="button"
                                     variant="subtle"
@@ -230,6 +232,7 @@ const ViewCard = ({
 
             <div className="flex flex-1 flex-col">
                 <ViewRenderer
+                    readOnly={readOnly}
                     view={view}
                     notes={notes}
                     isPending={isPending}

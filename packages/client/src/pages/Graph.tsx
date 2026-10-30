@@ -1,9 +1,9 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
-
 import { fetchNoteGraph } from '~/apis/note.api';
 import { QueryBoundary, QueryErrorView } from '~/components/app';
 import { Empty, PageLayout, Skeleton } from '~/components/shared';
+import { useWorkspaceScope } from '~/hooks/useWorkspaceScope';
 import { queryKeys } from '~/modules/query-key-factory';
 import { GraphCanvas } from './GraphCanvas';
 import { GraphCanvasControls } from './GraphCanvasControls';
@@ -26,13 +26,14 @@ const graphPageFallback = (
 );
 
 function GraphContent() {
+    const scope = useWorkspaceScope();
     const [focusedClusterId, setFocusedClusterId] = useState<string | null>(null);
     const { clearSelection, openNode, selectNode, selectedNodeId } = useGraphSelection();
 
     const { data } = useSuspenseQuery({
-        queryKey: queryKeys.notes.graph(),
+        queryKey: queryKeys.notes.graph(scope),
         queryFn: async () => {
-            const response = await fetchNoteGraph();
+            const response = await fetchNoteGraph(scope);
             if (response.type === 'error') {
                 throw response;
             }
@@ -146,9 +147,11 @@ function GraphContent() {
 }
 
 export default function Graph() {
+    const scope = useWorkspaceScope();
     return (
         <QueryBoundary
             fallback={graphPageFallback}
+            resetKeys={[scope.kind, scope.kind === 'workspace' ? scope.workspaceId : null]}
             errorTitle="Failed to load graph"
             errorDescription="Retry loading your linked note constellation"
             renderError={({ error, retry }) => (

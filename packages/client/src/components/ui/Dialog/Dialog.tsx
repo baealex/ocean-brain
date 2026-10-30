@@ -3,6 +3,7 @@ import classNames from 'classnames';
 import { createContext, forwardRef, useContext } from 'react';
 
 import * as Icon from '~/components/icon';
+import { DialogViewport } from './DialogViewport';
 import {
     type DialogVariant,
     dialogBodyVariants,
@@ -53,12 +54,13 @@ const DialogContent = forwardRef<
     React.ComponentRef<typeof DialogPrimitive.Content>,
     React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
         variant?: DialogVariant;
+        avoidKeyboard?: boolean;
     }
->(({ className, children, variant = 'default', ...props }, ref) => {
+>(({ className, children, variant = 'default', avoidKeyboard = false, ...props }, ref) => {
     return (
         <DialogPortal>
             <DialogOverlay />
-            <div className="pointer-events-none fixed inset-0 z-[1100] flex items-end justify-center p-0 sm:items-center sm:p-4">
+            <DialogViewport avoidKeyboard={avoidKeyboard}>
                 <DialogPrimitive.Content
                     ref={ref}
                     data-dialog-variant={variant}
@@ -70,7 +72,7 @@ const DialogContent = forwardRef<
                 >
                     <DialogVariantContext.Provider value={variant}>{children}</DialogVariantContext.Provider>
                 </DialogPrimitive.Content>
-            </div>
+            </DialogViewport>
         </DialogPortal>
     );
 });
@@ -122,6 +124,7 @@ const DialogBody = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
     return (
         <div
             ref={ref}
+            data-dialog-body=""
             className={dialogBodyVariants({
                 variant,
                 className,

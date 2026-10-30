@@ -400,6 +400,7 @@ export default function PropertiesSettings() {
 
             <Modal
                 isOpen={isCreateModalOpen}
+                avoidKeyboard
                 onClose={() => {
                     if (!createMutation.isPending) {
                         setIsCreateModalOpen(false);
@@ -564,6 +565,7 @@ export default function PropertiesSettings() {
 
             <Modal
                 isOpen={Boolean(propertyToEdit)}
+                avoidKeyboard
                 onClose={() => {
                     if (!updateMutation.isPending) closeEditModal();
                 }}

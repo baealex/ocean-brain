@@ -8,6 +8,8 @@ export const dialogContentVariants = cva(
         'min-h-0',
         'min-w-0',
         'w-full',
+        'max-h-[calc(var(--dialog-viewport-height,100dvh)-0.75rem)]',
+        'sm:max-h-[calc(100dvh-2rem)]',
         'flex-col',
         'overflow-hidden',
         'border',
@@ -23,14 +25,14 @@ export const dialogContentVariants = cva(
         variants: {
             variant: {
                 default:
-                    'max-h-[calc(100dvh-0.75rem)] max-w-none rounded-t-[20px] rounded-b-none border-b-0 bg-elevated shadow-[0_24px_64px_-32px_rgba(15,18,24,0.36)] sm:max-h-[calc(100dvh-2rem)] sm:max-w-[640px] sm:rounded-[20px] sm:border-b',
+                    'max-w-none rounded-t-[20px] rounded-b-none border-b-0 bg-elevated shadow-[0_24px_64px_-32px_rgba(15,18,24,0.36)] sm:max-w-[640px] sm:rounded-[20px] sm:border-b',
                 compact:
-                    'max-h-[calc(100dvh-0.75rem)] max-w-none rounded-t-[18px] rounded-b-none border-b-0 bg-surface shadow-[0_18px_44px_-28px_rgba(15,18,24,0.28)] sm:max-h-[calc(100dvh-2rem)] sm:max-w-[480px] sm:rounded-[18px] sm:border-b',
-                form: 'max-h-[calc(100dvh-0.75rem)] max-w-none rounded-t-[20px] rounded-b-none border-b-0 bg-elevated shadow-[0_22px_56px_-30px_rgba(15,18,24,0.32)] sm:max-h-[calc(100dvh-2rem)] sm:max-w-[560px] sm:rounded-[20px] sm:border-b',
+                    'max-w-none rounded-t-[18px] rounded-b-none border-b-0 bg-surface shadow-[0_18px_44px_-28px_rgba(15,18,24,0.28)] sm:max-w-[480px] sm:rounded-[18px] sm:border-b',
+                form: 'max-w-none rounded-t-[20px] rounded-b-none border-b-0 bg-elevated shadow-[0_22px_56px_-30px_rgba(15,18,24,0.32)] sm:max-w-[560px] sm:rounded-[20px] sm:border-b',
                 inspect:
-                    'max-h-[calc(100dvh-0.75rem)] max-w-none rounded-t-[20px] rounded-b-none border-b-0 bg-elevated shadow-[0_24px_64px_-30px_rgba(15,18,24,0.34)] sm:max-h-[calc(100dvh-2rem)] sm:max-w-[640px] sm:rounded-[20px] sm:border-b',
+                    'max-w-none rounded-t-[20px] rounded-b-none border-b-0 bg-elevated shadow-[0_24px_64px_-30px_rgba(15,18,24,0.34)] sm:max-w-[640px] sm:rounded-[20px] sm:border-b',
                 confirm:
-                    'max-h-[calc(100dvh-0.75rem)] max-w-none rounded-t-[18px] rounded-b-none border-b-0 bg-surface shadow-[0_16px_36px_-24px_rgba(15,18,24,0.24)] sm:max-h-[calc(100dvh-2rem)] sm:max-w-[336px] sm:rounded-[18px] sm:border-b',
+                    'max-w-none rounded-t-[18px] rounded-b-none border-b-0 bg-surface shadow-[0_16px_36px_-24px_rgba(15,18,24,0.24)] sm:max-w-[336px] sm:rounded-[18px] sm:border-b',
             },
         },
         defaultVariants: { variant: 'default' },

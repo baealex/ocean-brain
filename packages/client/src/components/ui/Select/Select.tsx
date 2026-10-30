@@ -14,8 +14,6 @@ const selectTriggerVariants = cva(
         'justify-between',
         'gap-2',
         'border',
-        'border-border-subtle',
-        'bg-elevated',
         'text-fg-default',
         'font-medium',
         'transition-colors',
@@ -29,7 +27,8 @@ const selectTriggerVariants = cva(
     {
         variants: {
             variant: {
-                default: ['border-border-subtle'],
+                default: ['border-border-control', 'bg-elevated'],
+                soft: ['border-border-secondary', 'bg-elevated', 'hover:bg-hover-subtle'],
                 ghost: ['border-transparent', 'bg-subtle', 'hover:bg-hover-subtle'],
             },
             size: {

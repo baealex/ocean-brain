@@ -65,6 +65,13 @@ export const buttonVariants = cva(
                     'hover:bg-accent-soft-success-hover',
                     'active:bg-accent-soft-success-hover',
                 ],
+                'ghost-danger': [
+                    'border-transparent',
+                    'bg-transparent',
+                    'text-fg-error',
+                    'hover:bg-accent-soft-danger',
+                    'active:bg-accent-soft-danger-hover',
+                ],
                 'soft-danger': [
                     'bg-accent-soft-danger',
                     'border-transparent',

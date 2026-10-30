@@ -24,7 +24,10 @@ export const textVariants = cva('', {
             muted: 'text-fg-muted',
             placeholder: 'text-fg-placeholder',
             error: 'text-fg-error',
+            success: 'text-fg-success',
+            weekend: 'text-fg-weekend',
             onFilled: 'text-fg-on-filled',
+            current: 'text-current',
         },
         tracking: {
             normal: '',

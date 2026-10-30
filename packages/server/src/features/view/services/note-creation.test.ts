@@ -138,6 +138,89 @@ for (const groupValue of ['doing', null]) {
     });
 }
 
+for (const { operator, value, expectedColumns } of [
+    { operator: 'exists', value: null, expectedColumns: [['Todo note'], ['Doing note'], []] },
+    { operator: 'notExists', value: null, expectedColumns: [[], [], ['Unassigned note']] },
+    { operator: 'equals', value: 'todo', expectedColumns: [['Todo note'], [], []] },
+    { operator: 'notEquals', value: 'todo', expectedColumns: [[], ['Doing note'], []] },
+] as const) {
+    test(`board columns apply ${operator} to the grouping property`, async () => {
+        const group = await createViewGroup('Tasks');
+        await createState();
+        await createNoteFromMarkdown({
+            title: 'Todo note',
+            properties: { set: [{ key: 'state', value: 'todo' }] },
+        });
+        await createNoteFromMarkdown({
+            title: 'Doing note',
+            properties: { set: [{ key: 'state', value: 'doing' }] },
+        });
+        await createNoteFromMarkdown({ title: 'Unassigned note' });
+        const view = await createView(group.id, {
+            displayType: 'board',
+            displayOptions: { boardGroupByPropertyKey: 'state' },
+            propertyFilters: [{ key: 'state', valueType: 'select', operator, value }],
+        });
+
+        const columns = await Promise.all(
+            ['todo', 'doing', null].map((groupValue) => getViewBoardColumn(view.id, groupValue, { limit: 10 })),
+        );
+
+        assert.deepEqual(
+            columns.map((column) => column?.notes.map((note) => note.title)),
+            expectedColumns,
+        );
+        assert.deepEqual(
+            columns.map((column) => column?.totalCount),
+            expectedColumns.map((titles) => titles.length),
+        );
+        assert.equal(
+            (await getViewNotes(view.id, { limit: 10, offset: 0 }))?.totalCount,
+            expectedColumns.flat().length,
+        );
+    });
+}
+
+test('an is-set board creates a note in its selected column', async () => {
+    const group = await createViewGroup('Tasks');
+    await createState();
+    const view = await createView(group.id, {
+        displayType: 'board',
+        displayOptions: { boardGroupByPropertyKey: 'state' },
+        propertyFilters: [{ key: 'state', valueType: 'select', operator: 'exists' }],
+    });
+
+    const note = await createNoteFromMarkdown({
+        title: 'Task',
+        viewContext: { viewId: view.id, groupValue: 'doing' },
+    });
+
+    assert.equal(note.properties?.find((property) => property.key === 'state')?.value, 'doing');
+    assert.deepEqual(
+        (await getViewBoardColumn(view.id, 'doing', { limit: 10 }))?.notes.map((item) => String(item.id)),
+        [note.id],
+    );
+    assert.equal((await getViewBoardColumn(view.id, null, { limit: 10 }))?.totalCount, 0);
+});
+
+test('an is-set board rejects unassigned creation without committing a note', async () => {
+    const group = await createViewGroup('Tasks');
+    await createState();
+    const view = await createView(group.id, {
+        displayType: 'board',
+        displayOptions: { boardGroupByPropertyKey: 'state' },
+        propertyFilters: [{ key: 'state', valueType: 'select', operator: 'exists' }],
+    });
+
+    await assert.rejects(
+        createNoteFromMarkdown({ title: 'Task', viewContext: { viewId: view.id, groupValue: null } }),
+        /match.*view/i,
+    );
+
+    assert.equal(await models.note.count(), 0);
+    assert.equal(await models.noteProperty.count(), 0);
+});
+
 test('stale creation input is rejected when the saved view filters have changed', async () => {
     const group = await createViewGroup('Tasks');
     await createState();

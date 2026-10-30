@@ -122,16 +122,16 @@ test('normalizeViewInput preserves a normalized date property as the calendar ax
     );
 });
 
-test('normalizeViewInput requires the board axis to differ from view filters', () => {
-    assert.throws(
-        () =>
-            normalizeViewInput({
-                displayType: 'board',
-                displayOptions: { boardGroupByPropertyKey: 'status' },
-                propertyFilters: [{ key: 'status', valueType: 'select', operator: 'notEquals', value: 'done' }],
-            }),
-        /cannot also be used as a view filter/,
-    );
+test('normalizeViewInput preserves filters on the board grouping property', () => {
+    const view = normalizeViewInput({
+        displayType: 'board',
+        displayOptions: { boardGroupByPropertyKey: 'status' },
+        propertyFilters: [{ key: 'status', valueType: 'select', operator: 'notEquals', value: 'done' }],
+    });
+
+    assert.equal(view.displayOptions.boardGroupByPropertyKey, 'status');
+    assert.equal(view.propertyFilters[0].operator, 'notEquals');
+    assert.equal(view.propertyFilters[0].value, 'done');
 });
 
 test('normalizeViewDisplayOptions keeps table title visible and normalizes property columns', () => {

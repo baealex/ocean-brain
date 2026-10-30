@@ -282,9 +282,9 @@ const TrashContent = () => {
             description={PAGE_DESCRIPTION}
         >
             <div className="flex flex-col gap-4">
-                <div className="grid gap-3">
+                <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
                     {data.notes.map((note) => (
-                        <SurfaceCard key={note.id} padding="compact">
+                        <SurfaceCard key={note.id} padding="compact" className="min-w-0">
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                 <div className="min-w-0 flex-1">
                                     <div className="flex min-w-0 items-start gap-1.5">
@@ -292,7 +292,7 @@ const TrashContent = () => {
                                             as="h2"
                                             variant="body"
                                             weight="medium"
-                                            className="min-w-0 flex-1 break-words leading-[1.25]"
+                                            className="min-w-0 flex-1 leading-[1.25] [overflow-wrap:anywhere]"
                                         >
                                             {note.title || 'Untitled note'}
                                         </Text>
@@ -332,7 +332,7 @@ const TrashContent = () => {
                                                 as="p"
                                                 variant="meta"
                                                 tone="secondary"
-                                                className="line-clamp-3 whitespace-pre-wrap break-words"
+                                                className="line-clamp-3 whitespace-pre-wrap [overflow-wrap:anywhere]"
                                             >
                                                 {note.contentPreview}
                                             </Text>
@@ -343,20 +343,16 @@ const TrashContent = () => {
                                     <Button
                                         variant="subtle"
                                         size="sm"
-                                        onClick={() => setSelectedContentNoteId(note.id)}
-                                    >
-                                        View content
-                                    </Button>
-                                    <Button
-                                        variant="subtle"
-                                        size="sm"
                                         isLoading={restoreMutation.isPending && restoreMutation.variables === note.id}
                                         onClick={() => restoreMutation.mutate(note.id)}
                                     >
                                         Restore
                                     </Button>
+                                    <Button variant="ghost" size="sm" onClick={() => setSelectedContentNoteId(note.id)}>
+                                        View content
+                                    </Button>
                                     <Button
-                                        variant="soft-danger"
+                                        variant="ghost-danger"
                                         size="sm"
                                         isLoading={purgeMutation.isPending && purgeMutation.variables === note.id}
                                         onClick={() => handlePurge(note.id)}

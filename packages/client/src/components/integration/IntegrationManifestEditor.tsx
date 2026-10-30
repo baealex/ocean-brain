@@ -166,9 +166,7 @@ export default function IntegrationManifestEditor({
                             id={`${fieldId}-proxy-url`}
                             type="url"
                             value={proxyUrl}
-                            placeholder={
-                                proxyConfigured ? 'Configured — enter a URL to replace it' : 'http://127.0.0.1:7778'
-                            }
+                            placeholder={proxyConfigured ? 'Configured — enter a URL to replace it' : undefined}
                             disabled={disabled || !draft}
                             onChange={(event) => setProxyUrl(event.target.value)}
                         />

@@ -115,7 +115,7 @@ describe('<ManageImageDetail />', () => {
             'href',
             'https://example.com/hero.jpg',
         );
-        expect(screen.getByRole('link', { name: 'Back to Images' })).toHaveAttribute(
+        expect(screen.getByRole('link', { name: 'Images' })).toHaveAttribute(
             'href',
             `${SETTINGS_MANAGE_IMAGE_ROUTE}?page=3`,
         );

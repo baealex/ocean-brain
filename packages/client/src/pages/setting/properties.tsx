@@ -8,6 +8,7 @@ import {
     type NotePropertyKeySummary,
     updateNotePropertyKey,
 } from '~/apis/note.api';
+import * as Icon from '~/components/icon';
 import { Button, Modal, ModalActionRow, PageLayout } from '~/components/shared';
 import { Input, Select, SelectItem, Text, useToast } from '~/components/ui';
 import { WorkspaceSettingsBackLink } from '~/components/workspace/WorkspaceSettingsBackLink';
@@ -292,13 +293,7 @@ export default function PropertiesSettings() {
         >
             <section className="flex flex-col gap-3" aria-labelledby="shared-properties-heading">
                 <div className="flex items-center justify-between gap-3">
-                    <Text
-                        id="shared-properties-heading"
-                        as="h2"
-                        variant="label"
-                        weight="medium"
-                        className="text-fg-tertiary"
-                    >
+                    <Text id="shared-properties-heading" as="h2" variant="label" weight="medium" tone="tertiary">
                         Shared fields
                     </Text>
                     {!propertyKeysQuery.isLoading && propertyKeys.length > 0 && (
@@ -334,7 +329,7 @@ export default function PropertiesSettings() {
                                     </Text>
                                     <details className="mt-1 text-xs text-fg-tertiary">
                                         <summary className="cursor-pointer">Field key</summary>
-                                        <Text as="p" variant="micro" tone="tertiary" className="break-all font-mono">
+                                        <Text as="p" variant="label" tone="secondary" className="break-all font-mono">
                                             {propertyKey.key}
                                         </Text>
                                     </details>
@@ -357,7 +352,7 @@ export default function PropertiesSettings() {
                                     )}
                                 </div>
                                 <div className="min-w-0">
-                                    <Text as="span" variant="micro" tone="tertiary" className="block md:hidden">
+                                    <Text as="span" variant="label" tone="tertiary" className="block md:hidden">
                                         Type
                                     </Text>
                                     <Text as="span" variant="label" tone="secondary" className="capitalize">
@@ -365,7 +360,7 @@ export default function PropertiesSettings() {
                                     </Text>
                                 </div>
                                 <div className="min-w-0">
-                                    <Text as="span" variant="micro" tone="tertiary" className="block md:hidden">
+                                    <Text as="span" variant="label" tone="tertiary" className="block md:hidden">
                                         Used in
                                     </Text>
                                     <Text as="span" variant="label" tone="tertiary">
@@ -385,7 +380,7 @@ export default function PropertiesSettings() {
                                     <Button
                                         type="button"
                                         size="sm"
-                                        variant="soft-danger"
+                                        variant="ghost-danger"
                                         disabled={readOnly || deleteMutation.isPending || updateMutation.isPending}
                                         onClick={() => setPropertyToDelete(propertyKey)}
                                     >
@@ -427,12 +422,7 @@ export default function PropertiesSettings() {
                                 <Text as="span" variant="label" weight="medium">
                                     Key
                                 </Text>
-                                <Input
-                                    size="md"
-                                    placeholder="status"
-                                    value={key}
-                                    onChange={(event) => setKey(event.target.value)}
-                                />
+                                <Input size="md" value={key} onChange={(event) => setKey(event.target.value)} />
                             </label>
                             <Text variant="meta" tone="tertiary">
                                 Optional. A permanent unique key is generated automatically.
@@ -442,12 +432,7 @@ export default function PropertiesSettings() {
                             <Text as="span" variant="label" weight="medium">
                                 Name
                             </Text>
-                            <Input
-                                size="md"
-                                placeholder="Status"
-                                value={name}
-                                onChange={(event) => setName(event.target.value)}
-                            />
+                            <Input size="md" value={name} onChange={(event) => setName(event.target.value)} />
                         </label>
                         <label className="flex flex-col gap-1.5">
                             <Text id="property-type-label" as="span" variant="label" weight="medium">
@@ -528,7 +513,7 @@ export default function PropertiesSettings() {
                                 </div>
                             </div>
                         )}
-                        <Text as="p" variant="micro" tone="tertiary">
+                        <Text as="p" variant="meta" tone="secondary">
                             {PROPERTY_TYPE_OPTIONS.find((option) => option.value === valueType)?.description}
                         </Text>
                     </div>
@@ -586,7 +571,7 @@ export default function PropertiesSettings() {
                             </Text>
                             <div className="grid gap-2 sm:grid-cols-2">
                                 <div className="rounded-[14px] border border-border-subtle bg-subtle/50 px-3 py-2">
-                                    <Text as="span" variant="micro" tone="tertiary" className="block">
+                                    <Text as="span" variant="label" tone="tertiary" className="block">
                                         Key
                                     </Text>
                                     <Text as="span" variant="label" weight="medium" className="font-mono">
@@ -594,7 +579,7 @@ export default function PropertiesSettings() {
                                     </Text>
                                 </div>
                                 <div className="rounded-[14px] border border-border-subtle bg-subtle/50 px-3 py-2">
-                                    <Text as="span" variant="micro" tone="tertiary" className="block">
+                                    <Text as="span" variant="label" tone="tertiary" className="block">
                                         Type
                                     </Text>
                                     <Text as="span" variant="label" weight="medium" className="capitalize">
@@ -608,7 +593,6 @@ export default function PropertiesSettings() {
                                 </Text>
                                 <Input
                                     size="md"
-                                    placeholder="Workflow state"
                                     value={editName}
                                     onChange={(event) => setEditName(event.target.value)}
                                 />
@@ -617,10 +601,10 @@ export default function PropertiesSettings() {
                                 <div className="rounded-[14px] border border-border-subtle bg-subtle/50 p-3">
                                     <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                                         <div>
-                                            <Text as="span" variant="label" weight="semibold">
+                                            <Text as="span" variant="meta" weight="semibold">
                                                 Options
                                             </Text>
-                                            <Text as="p" variant="micro" tone="tertiary" className="mt-0.5">
+                                            <Text as="p" variant="meta" tone="secondary" className="mt-0.5">
                                                 Existing option values are locked. Removing existing options needs an
                                                 impact-aware delete flow.
                                             </Text>
@@ -698,7 +682,7 @@ export default function PropertiesSettings() {
                                         ))}
                                     </div>
                                     {editValidationMessage && (
-                                        <Text as="p" variant="micro" tone="error" className="mt-2">
+                                        <Text as="p" variant="meta" tone="error" className="mt-2">
                                             {editValidationMessage}
                                         </Text>
                                     )}
@@ -752,18 +736,24 @@ export default function PropertiesSettings() {
                                 Delete “{propertyToDelete.name}”?
                             </Text>
                             {propertyToDelete.noteCount > 0 ? (
-                                <div className="rounded-[14px] border border-border-subtle bg-subtle p-3">
-                                    <Text as="p" variant="label" tone="secondary">
-                                        This property is used by {propertyToDelete.noteCount} note
-                                        {propertyToDelete.noteCount === 1 ? '' : 's'}.
-                                    </Text>
-                                    <Text as="p" variant="micro" tone="tertiary" className="mt-1 leading-5">
-                                        Deleting it removes this value from those notes. Future views using this
-                                        property will need configuration.
-                                    </Text>
+                                <div className="flex items-start gap-2.5 rounded-[14px] border border-border-error/70 bg-accent-soft-danger/60 p-3">
+                                    <Icon.WarningCircle
+                                        aria-hidden="true"
+                                        className="mt-0.5 h-4 w-4 shrink-0 text-fg-error"
+                                    />
+                                    <div className="space-y-1">
+                                        <Text as="p" variant="meta" weight="medium">
+                                            This property is used by {propertyToDelete.noteCount} note
+                                            {propertyToDelete.noteCount === 1 ? '' : 's'}.
+                                        </Text>
+                                        <Text as="p" variant="meta" tone="secondary">
+                                            Deleting it removes this value from those notes. Future views using this
+                                            property will need configuration.
+                                        </Text>
+                                    </div>
                                 </div>
                             ) : (
-                                <Text as="p" variant="label" tone="tertiary">
+                                <Text as="p" variant="meta" tone="secondary">
                                     This property is not used by any note yet.
                                 </Text>
                             )}

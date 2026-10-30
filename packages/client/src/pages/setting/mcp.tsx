@@ -220,7 +220,6 @@ const McpSetting = () => {
     );
     const copyLabel = 'Copy setup';
 
-    const sectionHeadingClassName = 'text-fg-tertiary';
     const fieldLabelClassName = 'font-medium text-fg-tertiary';
     const rowClassName = 'surface-base px-4 py-3.5';
     const fieldGroupClassName = 'space-y-2';
@@ -300,26 +299,14 @@ const McpSetting = () => {
                 <section className="flex flex-col gap-3" aria-labelledby="mcp-connect-heading">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="space-y-1">
-                            <Text
-                                id="mcp-connect-heading"
-                                as="h2"
-                                variant="label"
-                                weight="medium"
-                                className={sectionHeadingClassName}
-                            >
+                            <Text id="mcp-connect-heading" as="h2" variant="subheading" weight="semibold">
                                 Connect a client
                             </Text>
                             <Text as="p" variant="meta" tone="secondary">
                                 Save your token in a local file, then copy the command for your client.
                             </Text>
                         </div>
-                        <Text
-                            as="span"
-                            variant="meta"
-                            weight="medium"
-                            tone="tertiary"
-                            className="rounded-full border border-border-subtle bg-hover-subtle px-2.5 py-1"
-                        >
+                        <Text as="span" variant="meta" tone="secondary">
                             {mcpCompatibilityLabel}
                         </Text>
                     </div>
@@ -361,7 +348,7 @@ const McpSetting = () => {
                                 value={connectionOutput}
                                 className={outputTextAreaClassName}
                             />
-                            <Text as="p" variant="meta" tone="tertiary">
+                            <Text as="p" variant="meta" tone="secondary">
                                 {issuedToken
                                     ? 'The new token is already included in the token file step.'
                                     : 'Replace PASTE_TOKEN_HERE before running. The MCP client reads the token from that file.'}
@@ -422,7 +409,6 @@ const McpSetting = () => {
                                     </Label>
                                     <Input
                                         id="mcp-token-file-path"
-                                        placeholder="/absolute/path/to/ocean-brain/mcp-token"
                                         value={tokenFilePath}
                                         onChange={(event) => setTokenFilePath(event.target.value)}
                                     />
@@ -435,16 +421,10 @@ const McpSetting = () => {
                 <section className="flex flex-col gap-3" aria-labelledby="mcp-token-heading">
                     <div className={`${rowClassName} flex flex-wrap items-center justify-between gap-3`}>
                         <div className="min-w-0 space-y-1">
-                            <Text
-                                id="mcp-token-heading"
-                                as="h2"
-                                variant="label"
-                                weight="medium"
-                                className={sectionHeadingClassName}
-                            >
+                            <Text id="mcp-token-heading" as="h2" variant="subheading" weight="semibold">
                                 Token
                             </Text>
-                            <Text as="p" variant="meta" tone="tertiary">
+                            <Text as="p" variant="meta" tone="secondary">
                                 {tokenStatusText}. New tokens are shown once.
                             </Text>
                         </div>
@@ -461,7 +441,7 @@ const McpSetting = () => {
                             <Button
                                 type="button"
                                 size="sm"
-                                variant="soft-danger"
+                                variant="ghost-danger"
                                 onClick={handleRevokeToken}
                                 isLoading={revokeTokenMutation.isPending}
                                 disabled={!hasActiveToken}

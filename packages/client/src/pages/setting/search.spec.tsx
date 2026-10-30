@@ -196,6 +196,27 @@ describe('<SearchSetting />', () => {
         expect(screen.getByText('You can save this provider now and test it when you are ready.')).toBeInTheDocument();
     });
 
+    it('marks the form as unsaved after turning on meaning search', async () => {
+        const user = userEvent.setup();
+        vi.mocked(searchAdminApi.fetchSearchAdminStatus).mockResolvedValue(
+            createStatus({
+                config: {
+                    enabled: false,
+                    baseUrl: 'http://127.0.0.1:1234/v1',
+                    model: embeddingModel,
+                    queryInstruction: '',
+                },
+            }),
+        );
+        renderPage();
+        const meaningSearchSwitch = await screen.findByRole('switch', { name: 'Meaning search' });
+        await waitFor(() => expect(meaningSearchSwitch).toBeEnabled());
+
+        await user.click(meaningSearchSwitch);
+
+        expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
+    });
+
     it('warns without blocking a remote plain HTTP provider', async () => {
         const user = userEvent.setup();
         renderPage();

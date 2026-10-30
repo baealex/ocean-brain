@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
+import classNames from 'classnames';
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import {
     fetchNotePropertyKeys,
@@ -435,10 +436,15 @@ const NotePropertiesPanel = forwardRef<NotePropertiesPanelRef, NotePropertiesPan
                         </Text>
                     )}
                     {hasPropertyDefinitions && (
-                        <Button asChild size="sm" variant="ghost">
+                        <Button
+                            asChild
+                            size="icon-sm"
+                            variant="ghost"
+                            aria-label="Manage properties"
+                            title="Manage properties"
+                        >
                             <Link to={SETTINGS_PROPERTIES_ROUTE} search={{ page: 1, workspace: workspaceId }}>
-                                <Icon.Gear className="h-3 w-3" />
-                                Manage
+                                <Icon.Gear className="h-4 w-4" />
                             </Link>
                         </Button>
                     )}
@@ -465,7 +471,8 @@ const NotePropertiesPanel = forwardRef<NotePropertiesPanelRef, NotePropertiesPan
                                         id={propertyLabelId}
                                         as="span"
                                         variant="label"
-                                        tone="secondary"
+                                        weight="medium"
+                                        tone="tertiary"
                                         className="truncate"
                                     >
                                         {row.name}
@@ -474,7 +481,7 @@ const NotePropertiesPanel = forwardRef<NotePropertiesPanelRef, NotePropertiesPan
                                 {row.valueType === 'boolean' ? (
                                     <Select
                                         size="sm"
-                                        variant="ghost"
+                                        variant="soft"
                                         className="min-w-0"
                                         value={row.value || 'false'}
                                         disabled={disabled}
@@ -487,7 +494,7 @@ const NotePropertiesPanel = forwardRef<NotePropertiesPanelRef, NotePropertiesPan
                                 ) : row.valueType === 'select' ? (
                                     <Select
                                         size="sm"
-                                        variant="ghost"
+                                        variant="soft"
                                         className="min-w-0"
                                         value={row.value}
                                         placeholder="Select option"
@@ -509,7 +516,7 @@ const NotePropertiesPanel = forwardRef<NotePropertiesPanelRef, NotePropertiesPan
                                         <Input
                                             className="min-w-0"
                                             size="sm"
-                                            variant="ghost"
+                                            variant="soft"
                                             type="url"
                                             aria-label="Property value"
                                             placeholder="https://example.com"
@@ -539,7 +546,7 @@ const NotePropertiesPanel = forwardRef<NotePropertiesPanelRef, NotePropertiesPan
                                 ) : (
                                     <Input
                                         size="sm"
-                                        variant="ghost"
+                                        variant="soft"
                                         type={
                                             row.valueType === 'date'
                                                 ? 'date'
@@ -554,32 +561,38 @@ const NotePropertiesPanel = forwardRef<NotePropertiesPanelRef, NotePropertiesPan
                                         onChange={(event) => updateRow(row.id, { value: event.target.value })}
                                     />
                                 )}
-                                <Button
-                                    type="button"
-                                    size="icon-sm"
-                                    variant="ghost"
-                                    aria-label={`Remove ${row.name}`}
-                                    disabled={disabled}
-                                    className="justify-self-end text-fg-tertiary sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
-                                    onClick={() => removeRow(row)}
-                                >
-                                    <Icon.Close className="h-4 w-4" />
-                                </Button>
+                                {!disabled && (
+                                    <Button
+                                        type="button"
+                                        size="icon-sm"
+                                        variant="ghost"
+                                        aria-label={`Remove ${row.name}`}
+                                        className="justify-self-end text-fg-tertiary sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
+                                        onClick={() => removeRow(row)}
+                                    >
+                                        <Icon.Close className="h-4 w-4" />
+                                    </Button>
+                                )}
                             </div>
                         );
                     })}
                 </div>
             )}
 
-            <div className="mt-2 flex flex-wrap items-center gap-2">
+            <div
+                className={classNames(
+                    'flex flex-wrap items-center gap-2',
+                    rows.length > 0 ? 'mt-1 border-t border-border-subtle pt-3' : 'mt-2',
+                )}
+            >
                 {propertyKeysQuery.isLoading ? (
-                    <Button type="button" size="sm" variant="ghost" disabled>
+                    <Button type="button" size="sm" variant="subtle" disabled>
                         Loading properties...
                     </Button>
                 ) : visiblePropertyKeys.length > 0 ? (
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button type="button" size="sm" variant="ghost" disabled={disabled}>
+                            <Button type="button" size="sm" variant="subtle" disabled={disabled}>
                                 <Icon.Plus className="h-4 w-4" />
                                 Add property
                             </Button>
@@ -615,18 +628,16 @@ const NotePropertiesPanel = forwardRef<NotePropertiesPanelRef, NotePropertiesPan
                         </DropdownMenuContent>
                     </DropdownMenu>
                 ) : hasPropertyDefinitions ? (
-                    <Text as="span" variant="micro" tone="tertiary" className="px-1">
+                    <Text as="span" variant="label" tone="tertiary" className="px-1">
                         All shared properties are attached.
                     </Text>
                 ) : (
-                    <Link
-                        to={SETTINGS_PROPERTIES_ROUTE}
-                        search={{ page: 1, workspace: workspaceId }}
-                        className="focus-ring-soft inline-flex items-center gap-2 rounded-[12px] px-2.5 py-1.5 text-sm font-medium text-fg-secondary outline-none hover:bg-hover-subtle hover:text-fg-default"
-                    >
-                        <Icon.Plus className="h-4 w-4" />
-                        Create property definition
-                    </Link>
+                    <Button asChild size="sm" variant="subtle">
+                        <Link to={SETTINGS_PROPERTIES_ROUTE} search={{ page: 1, workspace: workspaceId }}>
+                            <Icon.Plus className="h-4 w-4" />
+                            Create property definition
+                        </Link>
+                    </Button>
                 )}
             </div>
         </AuxiliaryPanel>

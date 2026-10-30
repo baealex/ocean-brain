@@ -975,3 +975,86 @@ describe('<NoteContent /> external change handling', () => {
         await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     });
 });
+
+describe('<NoteContent /> property editing during note saves', () => {
+    const property = {
+        key: 'summary',
+        name: 'Summary',
+        value: 'Initial summary',
+        valueType: 'text' as const,
+        createdAt: '1779700000000',
+        updatedAt: '1779700000000',
+    };
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockUseBlocker.mockReset();
+        window.localStorage.clear();
+    });
+
+    it('keeps note properties editable while the note body is saving', async () => {
+        const user = userEvent.setup();
+        const delayedSave = createDeferred<Awaited<ReturnType<typeof updateNote>>>();
+        vi.mocked(updateNote).mockReturnValue(delayedSave.promise);
+        renderNote(createNote({ properties: [property] }));
+
+        await user.type(await screen.findByLabelText('Editor'), ' edited');
+        await user.click(screen.getByRole('button', { name: 'Save' }));
+        await waitFor(() => expect(updateNote).toHaveBeenCalledTimes(1));
+
+        expect(screen.getByRole('textbox', { name: 'Property value' })).toBeEnabled();
+    });
+
+    it('saves a property edited during a body save against the version that save returns', async () => {
+        const user = userEvent.setup();
+        const delayedSave = createDeferred<Awaited<ReturnType<typeof updateNote>>>();
+        vi.mocked(updateNote).mockReturnValue(delayedSave.promise);
+        vi.mocked(updateNoteProperties).mockResolvedValue({
+            type: 'success',
+            updateNoteProperties: {
+                id: '1',
+                updatedAt: '1779700002000',
+                properties: [{ ...property, value: 'Edited during save', updatedAt: '1779700002000' }],
+            },
+        });
+        renderNote(createNote({ properties: [property], updatedAt: '1779700000000' }));
+        await user.type(await screen.findByLabelText('Editor'), ' edited');
+        await user.click(screen.getByRole('button', { name: 'Save' }));
+        await waitFor(() => expect(updateNote).toHaveBeenCalledTimes(1));
+
+        const propertyInput = screen.getByRole('textbox', { name: 'Property value' });
+        await user.clear(propertyInput);
+        await user.type(propertyInput, 'Edited during save');
+        await act(async () => {
+            delayedSave.resolve({ type: 'success', updateNote: createNote({ updatedAt: '1779700001000' }) });
+            await delayedSave.promise;
+        });
+
+        await waitFor(() =>
+            expect(updateNoteProperties).toHaveBeenCalledWith({
+                id: '1',
+                set: [{ key: 'summary', name: 'Summary', value: 'Edited during save', valueType: 'text' }],
+                deleteKeys: [],
+                editSessionId: expect.any(String),
+                expectedUpdatedAt: '1779700001000',
+            }),
+        );
+        expect(updateNoteProperties).toHaveBeenCalledTimes(1);
+    });
+
+    it('locks property editing after a note save fails', async () => {
+        const user = userEvent.setup();
+        vi.mocked(updateNote).mockResolvedValue({
+            type: 'error',
+            category: 'network',
+            errors: [{ code: 'NETWORK_ERROR', message: 'Network request failed' }],
+        });
+        renderNote(createNote({ properties: [property] }));
+
+        await user.type(await screen.findByLabelText('Editor'), ' edited');
+        await user.click(screen.getByRole('button', { name: 'Save' }));
+        expect(await screen.findByText('Save failed. Try again.')).toBeInTheDocument();
+
+        expect(screen.getByRole('textbox', { name: 'Property value' })).toBeDisabled();
+    });
+});

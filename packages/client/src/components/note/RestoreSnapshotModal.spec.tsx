@@ -91,6 +91,17 @@ describe('<RestoreSnapshotModal />', () => {
         } as never);
     });
 
+    it('says plainly when the note has no previous versions', async () => {
+        vi.mocked(fetchNoteSnapshots).mockResolvedValue({
+            type: 'success',
+            noteSnapshots: [],
+        } as never);
+
+        renderModal();
+
+        expect(await screen.findByText('No previous versions yet')).toBeInTheDocument();
+    });
+
     it('shows a git-style snapshot diff', async () => {
         const user = userEvent.setup();
 

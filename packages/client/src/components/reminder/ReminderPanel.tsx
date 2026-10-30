@@ -6,8 +6,119 @@ import * as Icon from '~/components/icon';
 import { AuxiliaryPanel, Button, Dropdown } from '~/components/shared';
 import { Checkbox, MoreButton, Text } from '~/components/ui';
 import useReminderMutate from '~/hooks/resource/useReminderMutate';
-import type { Reminder } from '~/models/reminder.model';
+import type { Reminder, ReminderPriority } from '~/models/reminder.model';
+import { priorityColors } from '~/modules/color';
 import ReminderModal from './ReminderModal';
+import { formatReminderTimeRemaining, isReminderOverdue } from './reminder-time';
+
+const PRIORITY_LABELS: Record<ReminderPriority, string> = {
+    high: 'High',
+    medium: 'Medium',
+    low: 'Low',
+};
+
+const formatReminderDate = (dateString: string) => {
+    const date = dayjs(Number(dateString));
+    const now = dayjs();
+
+    if (date.isSame(now, 'day')) {
+        return `Today at ${date.format('HH:mm')}`;
+    } else if (date.isSame(now.add(1, 'day'), 'day')) {
+        return `Tomorrow at ${date.format('HH:mm')}`;
+    } else {
+        return date.format('YYYY-MM-DD HH:mm');
+    }
+};
+
+interface ReminderRowProps {
+    reminder: Reminder;
+    readOnly: boolean;
+    onToggleComplete: () => void;
+    onEdit: () => void;
+    onDelete: () => void;
+}
+
+function ReminderRow({ reminder, readOnly, onToggleComplete, onEdit, onDelete }: ReminderRowProps) {
+    const reminderTime = Number(reminder.reminderDate);
+    const reminderDateText = formatReminderDate(reminder.reminderDate);
+    const priority = reminder.priority ?? 'low';
+    const showsDateInMeta = Boolean(reminder.content);
+    const showsTimeRemaining = !reminder.completed;
+
+    return (
+        <div className="flex items-start gap-2.5 px-2 py-1.5 sm:items-center">
+            <span className="flex h-[1.6rem] shrink-0 items-center">
+                <Checkbox
+                    disabled={readOnly}
+                    checked={reminder.completed}
+                    onChange={onToggleComplete}
+                    size="sm"
+                    aria-label={`Reminder: ${reminder.content || reminderDateText}`}
+                />
+            </span>
+            {/* Phones stack the details under the content so the content keeps the full row width. */}
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-3">
+                <Text
+                    as="div"
+                    variant="body"
+                    weight="medium"
+                    className={classNames(
+                        'min-w-0 truncate sm:flex-1',
+                        reminder.completed && 'line-through opacity-40',
+                    )}
+                >
+                    {reminder.content || reminderDateText}
+                </Text>
+                <div
+                    className={classNames(
+                        'flex flex-wrap items-center gap-x-3 gap-y-0.5 sm:shrink-0',
+                        reminder.completed && 'opacity-40',
+                    )}
+                >
+                    <span className="inline-flex items-center gap-1.5">
+                        <span
+                            aria-hidden="true"
+                            className={`h-2.5 w-2.5 shrink-0 rounded-full border border-border-subtle ${priorityColors[priority]}`}
+                        />
+                        <Text as="span" variant="label" weight="medium" tone="secondary">
+                            {PRIORITY_LABELS[priority]}
+                        </Text>
+                        <span className="sr-only">priority</span>
+                    </span>
+                    {(showsDateInMeta || showsTimeRemaining) && (
+                        <span className="inline-flex items-center gap-2 whitespace-nowrap">
+                            {showsDateInMeta && (
+                                <Text as="span" variant="meta" tone="secondary">
+                                    {reminderDateText}
+                                </Text>
+                            )}
+                            {showsDateInMeta && showsTimeRemaining && (
+                                <span aria-hidden="true" className="h-1 w-1 rounded-full bg-border-secondary" />
+                            )}
+                            {showsTimeRemaining && (
+                                <Text
+                                    as="span"
+                                    variant="label"
+                                    weight="medium"
+                                    tone={isReminderOverdue(reminderTime) ? 'error' : 'tertiary'}
+                                >
+                                    {formatReminderTimeRemaining(reminderTime)}
+                                </Text>
+                            )}
+                        </span>
+                    )}
+                </div>
+            </div>
+            <Dropdown
+                button={<MoreButton label="Reminder actions" disabled={readOnly} />}
+                items={[
+                    { name: 'Edit', onClick: onEdit },
+                    { name: 'Delete', onClick: onDelete },
+                ]}
+            />
+        </div>
+    );
+}
 
 interface ReminderPanelProps {
     readOnly?: boolean;
@@ -22,6 +133,7 @@ export default function ReminderPanel({ noteId, readOnly = false }: ReminderPane
     const { onCreate, onUpdate, onDelete } = useReminderMutate();
 
     const handleOpenCreateModal = () => {
+        setIsCollapsed(false);
         setModalMode('create');
         setEditingReminder(undefined);
         setIsModalOpen(true);
@@ -64,40 +176,6 @@ export default function ReminderPanel({ noteId, readOnly = false }: ReminderPane
         onUpdate(reminder.id, noteId, { completed: !reminder.completed });
     };
 
-    const formatReminderDate = (dateString: string) => {
-        const date = dayjs(Number(dateString));
-        const now = dayjs();
-
-        if (date.isSame(now, 'day')) {
-            return `Today at ${date.format('HH:mm')}`;
-        } else if (date.isSame(now.add(1, 'day'), 'day')) {
-            return `Tomorrow at ${date.format('HH:mm')}`;
-        } else {
-            return date.format('YYYY-MM-DD HH:mm');
-        }
-    };
-
-    const calculateUrgency = (dateString: string) => {
-        const date = dayjs(Number(dateString));
-        const now = dayjs();
-        const diffHours = date.diff(now, 'hour');
-
-        if (diffHours <= 6) return 'high';
-        if (diffHours <= 24) return 'medium';
-        return 'low';
-    };
-
-    const getTimeRemaining = (dateString: string) => {
-        const date = dayjs(Number(dateString));
-        const now = dayjs();
-        const diffHours = date.diff(now, 'hour');
-        const diffMinutes = date.diff(now, 'minute') % 60;
-
-        if (diffHours < 0 || diffMinutes < 0) return 'Overdue';
-        if (diffHours === 0) return `${diffMinutes}m remaining`;
-        return `${diffHours}h ${diffMinutes}m remaining`;
-    };
-
     return (
         <>
             <AuxiliaryPanel
@@ -105,19 +183,18 @@ export default function ReminderPanel({ noteId, readOnly = false }: ReminderPane
                 icon={<Icon.Bell className="h-3.5 w-3.5" />}
                 action={
                     <>
-                        {!isCollapsed && !readOnly && (
-                            <Button size="sm" variant="ghost" onClick={handleOpenCreateModal}>
-                                <Icon.Plus className="w-3 h-3" />
-                                <Text as="span" variant="label" className="hidden sm:inline">
-                                    Add
-                                </Text>
+                        {!readOnly && (
+                            <Button type="button" size="sm" variant="subtle" onClick={handleOpenCreateModal}>
+                                <Icon.Plus className="h-3.5 w-3.5" />
+                                Add
                             </Button>
                         )}
                         <Button
                             type="button"
-                            size="sm"
+                            size="icon-sm"
                             variant="ghost"
                             aria-label={isCollapsed ? 'Expand reminders' : 'Collapse reminders'}
+                            title={isCollapsed ? 'Expand reminders' : 'Collapse reminders'}
                             aria-expanded={!isCollapsed}
                             onClick={() => setIsCollapsed(!isCollapsed)}
                         >
@@ -126,7 +203,6 @@ export default function ReminderPanel({ noteId, readOnly = false }: ReminderPane
                             ) : (
                                 <Icon.TriangleDown className="h-3.5 w-3.5" />
                             )}
-                            {isCollapsed ? 'Expand' : 'Collapse'}
                         </Button>
                     </>
                 }
@@ -147,90 +223,16 @@ export default function ReminderPanel({ noteId, readOnly = false }: ReminderPane
                                         </Text>
                                     ) : (
                                         <div className="flex flex-col">
-                                            {reminders.map((reminder) => {
-                                                const urgency =
-                                                    reminder.priority || calculateUrgency(reminder.reminderDate);
-                                                const timeRemaining = getTimeRemaining(reminder.reminderDate);
-                                                const isOverdue = timeRemaining === 'Overdue';
-
-                                                return (
-                                                    <div
-                                                        key={reminder.id}
-                                                        className={classNames('flex items-center gap-2.5 px-2 py-1.5')}
-                                                    >
-                                                        <Checkbox
-                                                            disabled={readOnly}
-                                                            checked={reminder.completed}
-                                                            onChange={() => handleToggleComplete(reminder)}
-                                                            size="sm"
-                                                            aria-label={`Reminder: ${
-                                                                reminder.content ||
-                                                                formatReminderDate(reminder.reminderDate)
-                                                            }`}
-                                                        />
-                                                        <Text
-                                                            as="div"
-                                                            variant="body"
-                                                            weight="medium"
-                                                            className={classNames(
-                                                                'truncate flex-1 min-w-0',
-                                                                reminder.completed && 'line-through opacity-40',
-                                                            )}
-                                                        >
-                                                            {reminder.content ||
-                                                                formatReminderDate(reminder.reminderDate)}
-                                                        </Text>
-                                                        <div
-                                                            className={classNames(
-                                                                'shrink-0 flex items-center gap-1',
-                                                                reminder.completed && 'opacity-40',
-                                                            )}
-                                                        >
-                                                            {reminder.content && (
-                                                                <Text as="span" variant="meta" tone="secondary">
-                                                                    {formatReminderDate(reminder.reminderDate)}
-                                                                </Text>
-                                                            )}
-                                                            {!reminder.completed && (
-                                                                <Text
-                                                                    as="span"
-                                                                    variant="label"
-                                                                    weight="medium"
-                                                                    tone={
-                                                                        isOverdue || urgency === 'high'
-                                                                            ? 'error'
-                                                                            : 'tertiary'
-                                                                    }
-                                                                    className={classNames(
-                                                                        reminder.content &&
-                                                                            'before:content-["·"] before:mr-1',
-                                                                    )}
-                                                                >
-                                                                    {timeRemaining}
-                                                                </Text>
-                                                            )}
-                                                        </div>
-                                                        <Dropdown
-                                                            button={
-                                                                <MoreButton
-                                                                    label="Reminder actions"
-                                                                    disabled={readOnly}
-                                                                />
-                                                            }
-                                                            items={[
-                                                                {
-                                                                    name: 'Edit',
-                                                                    onClick: () => handleOpenEditModal(reminder),
-                                                                },
-                                                                {
-                                                                    name: 'Delete',
-                                                                    onClick: () => onDelete(reminder.id, noteId),
-                                                                },
-                                                            ]}
-                                                        />
-                                                    </div>
-                                                );
-                                            })}
+                                            {reminders.map((reminder) => (
+                                                <ReminderRow
+                                                    key={reminder.id}
+                                                    reminder={reminder}
+                                                    readOnly={readOnly}
+                                                    onToggleComplete={() => handleToggleComplete(reminder)}
+                                                    onEdit={() => handleOpenEditModal(reminder)}
+                                                    onDelete={() => onDelete(reminder.id, noteId)}
+                                                />
+                                            ))}
                                         </div>
                                     )}
                                 </div>

@@ -17,7 +17,7 @@ export const noteFieldResolvers: NoteFieldResolvers = {
     tags: async (note: Note) => models.tag.findMany({ where: { notes: { some: { id: note.id } } } }),
     properties: async (note: Note & { selectedPropertyKeys?: string[] }, { keys }: { keys?: string[] | null }) =>
         listNoteProperties(note.id, keys ?? note.selectedPropertyKeys),
-    contentPreview: (note: Note) => buildNoteContentPreview(note.content),
+    contentPreview: (note: Note) => buildNoteContentPreview(note.content, note.title),
     contentAsMarkdown: async (note: Note) => {
         const { blocksToMarkdown } = await import('~/modules/blocknote.js');
         return blocksToMarkdown(note.content);

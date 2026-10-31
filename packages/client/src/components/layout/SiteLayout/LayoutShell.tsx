@@ -11,7 +11,7 @@ import GlobalSearchShortcut from './GlobalSearchShortcut';
 const rootClassName = 'flex h-dvh min-h-0 w-full flex-row overflow-hidden';
 const menuButtonClassName = classNames(
     'fixed',
-    'bottom-4',
+    'bottom-[calc(1rem+env(safe-area-inset-bottom))]',
     'left-4',
     'z-[1003]',
     'flex',
@@ -104,11 +104,12 @@ const contentClassName = classNames(
 interface LayoutShellProps {
     sidebar: ReactNode;
     topNavigation: ReactNode;
+    mobileAction?: ReactNode;
     children?: ReactNode;
     contentMode?: 'page' | 'app';
 }
 
-const LayoutShell = ({ sidebar, topNavigation, children, contentMode = 'page' }: LayoutShellProps) => {
+const LayoutShell = ({ sidebar, topNavigation, mobileAction, children, contentMode = 'page' }: LayoutShellProps) => {
     const pathname = useLocation({ select: (location) => location.pathname });
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const sidebarId = 'site-layout-sidebar';
@@ -131,6 +132,7 @@ const LayoutShell = ({ sidebar, topNavigation, children, contentMode = 'page' }:
                 >
                     <Icon.Menu className="h-6 w-6" />
                 </button>
+                {mobileAction}
             </div>
             <aside
                 id={sidebarId}

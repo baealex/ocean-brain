@@ -19,6 +19,8 @@ interface NoteEditorHeaderProps {
     saveConfirmationRevision: number;
     onTitleChange: (title: string) => void;
     onTitleEnter?: () => void;
+    onAddProperty: () => void;
+    onAddReminder: () => void;
     onCopyMarkdown: () => void;
     onDownloadDocument: () => void;
     onTogglePinned: () => void;
@@ -43,6 +45,8 @@ export default function NoteEditorHeader({
     saveConfirmationRevision,
     onTitleChange,
     onTitleEnter,
+    onAddProperty,
+    onAddReminder,
     onCopyMarkdown,
     onDownloadDocument,
     onTogglePinned,
@@ -52,6 +56,14 @@ export default function NoteEditorHeader({
     onDelete,
     onSave,
 }: NoteEditorHeaderProps) {
+    const addItems =
+        isNew || readOnly
+            ? []
+            : [
+                  { name: 'Add property', onClick: onAddProperty },
+                  { name: 'Add reminder', onClick: onAddReminder },
+                  { type: 'separator' as const, key: 'add-separator' },
+              ];
     const noteActionItems = [
         { type: 'separator' as const, key: 'export-separator' },
         ...(!readOnly
@@ -97,6 +109,7 @@ export default function NoteEditorHeader({
                         <Dropdown
                             button={<MoreButton label="Note actions" size="lg" />}
                             items={[
+                                ...addItems,
                                 { name: 'Copy Markdown', onClick: onCopyMarkdown },
                                 { name: 'Download document', onClick: onDownloadDocument },
                                 ...(isNew ? [] : noteActionItems),

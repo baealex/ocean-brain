@@ -59,7 +59,7 @@ test('the mobile capture button returns once the note body loses focus', async (
     await editor(page).click();
     await expect(captureButton(page)).toBeHidden();
 
-    await page.getByText('Properties', { exact: true }).click();
+    await page.getByText(/^Created \d/).click();
 
     await expect(captureButton(page)).toBeVisible();
     expect(runtimeErrors).toEqual([]);

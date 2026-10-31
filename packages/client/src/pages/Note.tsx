@@ -37,19 +37,17 @@ const notePageFallback = (
         <main className="mx-auto max-w-[896px]">
             <Skeleton className="mb-8" height={123} />
             <div className="flex flex-col gap-5">
-                <Skeleton height={135} />
                 <Skeleton className="ml-12" height={320} />
-                <Skeleton height={107} />
                 <Skeleton height={100} />
             </div>
         </main>
     </PageLayout>
 );
 
-function NoteReminders({ noteId, readOnly }: { noteId: string; readOnly?: boolean }) {
+function NoteReminders({ noteId, readOnly, addRequest }: { noteId: string; readOnly?: boolean; addRequest: number }) {
     return (
         <QueryBoundary
-            fallback={<Skeleton height={107} />}
+            fallback={null}
             errorTitle="Failed to load reminders"
             errorDescription="Retry loading reminder details for this note."
             renderError={({ error, retry }) => (
@@ -63,7 +61,7 @@ function NoteReminders({ noteId, readOnly }: { noteId: string; readOnly?: boolea
                 />
             )}
         >
-            <ReminderPanel noteId={noteId} readOnly={readOnly} />
+            <ReminderPanel noteId={noteId} readOnly={readOnly} addRequest={addRequest} />
         </QueryBoundary>
     );
 }
@@ -100,6 +98,15 @@ export function NoteContent({ id, onCreated }: NoteContentProps) {
     // Serialized note writes allow property edits during autosave.
     const isPropertyEditingLocked = isReadOnly || save.status === 'conflict' || save.status === 'error';
     const titleRef = document.titleRef;
+    const hasProperties = Boolean(document.properties?.length);
+    const [isPropertiesPanelOpen, setIsPropertiesPanelOpen] = useState(hasProperties);
+    const [propertyAddRequest, setPropertyAddRequest] = useState(0);
+    const [reminderAddRequest, setReminderAddRequest] = useState(0);
+
+    // Keep the panel once shown, so removing the last property does not pull the body up.
+    if (hasProperties && !isPropertiesPanelOpen) {
+        setIsPropertiesPanelOpen(true);
+    }
 
     // A note opened without a title (such as a fresh capture) starts typing in the title.
     useEffect(() => {
@@ -109,6 +116,11 @@ export function NoteContent({ id, onCreated }: NoteContentProps) {
 
         titleRef.current?.focus();
     }, []);
+
+    const handleAddProperty = () => {
+        setIsPropertiesPanelOpen(true);
+        setPropertyAddRequest((request) => request + 1);
+    };
 
     const openTrash = () =>
         navigate({
@@ -165,6 +177,8 @@ export function NoteContent({ id, onCreated }: NoteContentProps) {
                     saveConfirmationRevision={save.confirmationRevision}
                     onTitleChange={document.onTitleChange}
                     onTitleEnter={() => editor.ref.current?.focusStart()}
+                    onAddProperty={handleAddProperty}
+                    onAddReminder={() => setReminderAddRequest((request) => request + 1)}
                     onCopyMarkdown={() => void exportDocument.onCopyMarkdown()}
                     onDownloadDocument={() => setIsExportModalOpen(true)}
                     onTogglePinned={() => void document.onTogglePinned()}
@@ -185,18 +199,21 @@ export function NoteContent({ id, onCreated }: NoteContentProps) {
                 />
 
                 <div className="flex flex-col gap-5">
-                    <NotePropertiesPanel
-                        ref={properties.ref}
-                        noteId={noteId ?? ''}
-                        workspaceId={document.workspaceId}
-                        properties={document.properties}
-                        expectedUpdatedAt={properties.expectedUpdatedAt}
-                        editSessionId={properties.editSessionId}
-                        disabled={isPropertyEditingLocked || !noteId}
-                        saveProperties={properties.saveProperties}
-                        onPendingChange={properties.onPendingChange}
-                        onSaved={properties.onSaved}
-                    />
+                    {noteId && isPropertiesPanelOpen && (
+                        <NotePropertiesPanel
+                            ref={properties.ref}
+                            noteId={noteId}
+                            workspaceId={document.workspaceId}
+                            properties={document.properties}
+                            expectedUpdatedAt={properties.expectedUpdatedAt}
+                            editSessionId={properties.editSessionId}
+                            disabled={isPropertyEditingLocked}
+                            addRequest={propertyAddRequest}
+                            saveProperties={properties.saveProperties}
+                            onPendingChange={properties.onPendingChange}
+                            onSaved={properties.onSaved}
+                        />
+                    )}
 
                     <Editor
                         key={editor.key}
@@ -212,7 +229,7 @@ export function NoteContent({ id, onCreated }: NoteContentProps) {
 
                     {noteId && (
                         <>
-                            <NoteReminders noteId={noteId} readOnly={isReadOnly} />
+                            <NoteReminders noteId={noteId} readOnly={isReadOnly} addRequest={reminderAddRequest} />
                             <NoteBackReferences noteId={noteId} targetTitle={document.title} />
                         </>
                     )}

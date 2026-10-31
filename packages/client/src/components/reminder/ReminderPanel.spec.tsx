@@ -23,6 +23,7 @@ let mockReminderData: MockReminderRenderData = {
 
 vi.mock('~/components/icon', () => ({
     Bell: () => <span aria-hidden="true">Bell</span>,
+    Close: () => <span aria-hidden="true">Close</span>,
     TriangleRight: () => <span aria-hidden="true">TriangleRight</span>,
     TriangleDown: () => <span aria-hidden="true">TriangleDown</span>,
     Plus: () => <span aria-hidden="true">Plus</span>,
@@ -65,8 +66,6 @@ vi.mock('~/hooks/resource/useReminderMutate', () => ({
     }),
 }));
 
-vi.mock('./ReminderModal', () => ({ default: () => null }));
-
 describe('<ReminderPanel />', () => {
     beforeEach(() => {
         mockReminderData = {
@@ -75,12 +74,16 @@ describe('<ReminderPanel />', () => {
         };
     });
 
-    it('renders no reminder rows when a note has no reminders', () => {
+    it('shows no reminders panel for a note without reminders', () => {
         render(<ReminderPanel noteId="note-1" />);
 
-        expect(screen.getByText('No reminders yet')).toBeInTheDocument();
-        expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
-        expect(screen.queryByText('Follow up')).not.toBeInTheDocument();
+        expect(screen.queryByRole('region', { name: 'Reminders' })).not.toBeInTheDocument();
+    });
+
+    it('opens the reminder form when the note asks to add a reminder', async () => {
+        render(<ReminderPanel noteId="note-1" addRequest={1} />);
+
+        expect(await screen.findByRole('dialog', { name: 'Create Reminder' })).toBeInTheDocument();
     });
 
     it('renders reminder rows when reminders exist', () => {

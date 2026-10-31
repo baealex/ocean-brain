@@ -11,7 +11,7 @@ import ViewPropertyChip from './ViewPropertyChip';
 const AUTOMATIC_CARD_PROPERTY_LIMIT = 3;
 const VISIBLE_CARD_TAG_LIMIT = 3;
 
-const resolveBoardCardProperties =(view: View, note: ViewBoardNote): NoteProperty[] => {
+const resolveBoardCardProperties = (view: View, note: ViewBoardNote): NoteProperty[] => {
     const groupPropertyKey = view.displayOptions.boardGroupByPropertyKey;
     const noteProperties = (note.properties ?? []).filter((property) => property.key !== groupPropertyKey);
     const configuredKeys = normalizeViewTablePropertyKeys(view.displayOptions.tablePropertyKeys);

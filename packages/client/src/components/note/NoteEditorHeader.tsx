@@ -58,7 +58,7 @@ export default function NoteEditorHeader({
                             ref={titleRef}
                             aria-label="Note title"
                             placeholder="Title"
-                            className="w-full text-ellipsis bg-transparent text-[1.125rem] font-semibold leading-[1.25] tracking-[-0.02em] outline-none sm:text-[1.375rem]"
+                            className="text-heading w-full text-ellipsis bg-transparent font-semibold tracking-[-0.02em] outline-none"
                             type="text"
                             readOnly={readOnly}
                             value={title}

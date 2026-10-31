@@ -3,6 +3,7 @@ import {
     fetchAllNotePropertyKeys,
     fetchNoteSnapshot,
     fetchNoteSnapshots,
+    fetchNotes,
     fetchTrashedNote,
     fetchTrashedNotes,
     purgeTrashedNote,
@@ -31,6 +32,22 @@ describe('note.api', () => {
             type: 'success',
             purgeTrashedNote: true,
         });
+    });
+
+    it('requests the content preview field when the caller asks for it', async () => {
+        vi.mocked(graphQuery).mockResolvedValue({ type: 'success', allNotes: { totalCount: 0, notes: [] } } as never);
+
+        await fetchNotes({ fields: ['contentPreview'] });
+
+        expect(graphQuery).toHaveBeenCalledWith(expect.stringContaining('contentPreview'), expect.anything());
+    });
+
+    it('omits the content preview field when the caller does not ask for it', async () => {
+        vi.mocked(graphQuery).mockResolvedValue({ type: 'success', allNotes: { totalCount: 0, notes: [] } } as never);
+
+        await fetchNotes();
+
+        expect(graphQuery).toHaveBeenCalledWith(expect.not.stringContaining('contentPreview'), expect.anything());
     });
 
     it('requests trashed note content previews with pagination variables', async () => {

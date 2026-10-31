@@ -37,3 +37,19 @@ test('typing continues in the same editor when the first save creates the note',
     await expect(editor).toContainText('First line keeps going');
     expect(runtimeErrors).toEqual([]);
 });
+
+test('a note written in the editor shows its body preview on the home card', async ({ page }) => {
+    const runtimeErrors = collectRuntimeErrors(page);
+    await signIn(page);
+    await page.getByRole('button', { name: /Open a new note/ }).click();
+    await expect(page.getByRole('textbox', { name: 'Note title' })).toBeFocused();
+    await page.keyboard.type('Preview note');
+    await page.keyboard.press('Enter');
+    await page.keyboard.type('Body line for the home card');
+    await expect(page).toHaveURL((url) => /^\/[^/]+$/.test(url.pathname) && url.pathname !== '/new');
+
+    await page.getByRole('navigation', { name: 'Primary navigation' }).getByRole('link', { name: 'Notes' }).click();
+
+    await expect(page.getByText('Body line for the home card')).toBeVisible();
+    expect(runtimeErrors).toEqual([]);
+});

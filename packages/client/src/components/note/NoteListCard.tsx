@@ -23,7 +23,16 @@ interface Props extends Note {
     onDelete?: () => void;
 }
 
-export default function NoteListCard({ id, title, tags, pinned, updatedAt, onPinned, onDelete }: Props) {
+export default function NoteListCard({
+    id,
+    title,
+    contentPreview,
+    tags,
+    pinned,
+    updatedAt,
+    onPinned,
+    onDelete,
+}: Props) {
     const context = useWorkspace();
     const tagSearch = { page: 1, ...(context.multiple ? { workspace: context.workspaceId } : {}) };
     const updatedTimeSince = timeSince(Number(updatedAt));
@@ -67,6 +76,11 @@ export default function NoteListCard({ id, title, tags, pinned, updatedAt, onPin
                             {title || 'Untitled'}
                         </Link>
                     </Text>
+                    {contentPreview?.trim() && (
+                        <Text as="p" variant="meta" tone="secondary" className="line-clamp-2 break-words">
+                            {contentPreview}
+                        </Text>
+                    )}
                     {tags.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 pt-0.5">
                             {tags.map((tag) => (

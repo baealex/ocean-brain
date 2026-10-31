@@ -11,12 +11,13 @@ import { NOTE_ROUTE } from '~/modules/url';
 
 import NoteListCard from './NoteListCard';
 
-const renderCard = async (id: string, title: string) => {
+const renderCard = async (id: string, title: string, contentPreview?: string) => {
     const rootRoute = createRootRoute({
         component: () => (
             <NoteListCard
                 id={id}
                 title={title}
+                contentPreview={contentPreview}
                 tags={[]}
                 pinned={false}
                 createdAt={Date.now()}
@@ -52,5 +53,17 @@ describe('<NoteListCard />', () => {
         await renderCard('note-2', 'Accessible note');
 
         expect(screen.getByRole('button', { name: 'Note actions' })).toBeInTheDocument();
+    });
+
+    it('shows the body preview under the title when the note has body text', async () => {
+        await renderCard('note-3', 'Weekly plan', 'Ship the release notes before Friday');
+
+        expect(screen.getByText('Ship the release notes before Friday')).toBeInTheDocument();
+    });
+
+    it('renders no body preview when the preview is blank', async () => {
+        await renderCard('note-4', 'Empty note', '  ');
+
+        expect(document.querySelector('p')).toBeNull();
     });
 });

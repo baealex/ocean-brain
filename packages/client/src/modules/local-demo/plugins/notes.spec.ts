@@ -519,4 +519,22 @@ describe('note list previews', () => {
 
         expect(response[field].notes.find((note) => note.id === 'note-guide-a')?.contentPreview).toBe('Visible body');
     });
+
+    it('leaves out a first block that repeats the note title from the preview', () => {
+        const state = createState();
+        state.notes[0].content = JSON.stringify([
+            { type: 'heading', content: [{ type: 'text', text: state.notes[0].title, styles: {} }] },
+            { type: 'paragraph', content: [{ type: 'text', text: 'Visible body', styles: {} }] },
+        ]);
+
+        const response = notesLocalPlugin.graphHandlers?.FetchNotes?.({
+            state,
+            variables: { pagination: { limit: 25, offset: 0 } },
+            save: () => undefined,
+        }) as unknown as { allNotes: { notes: Array<{ id: string; contentPreview?: string }> } };
+
+        expect(response.allNotes.notes.find((note) => note.id === state.notes[0].id)?.contentPreview).toBe(
+            'Visible body',
+        );
+    });
 });

@@ -72,6 +72,36 @@ test('buildNoteContentPreview returns bounded visible text without Markdown conv
     assert.match(preview, /^Visible content/);
 });
 
+const createTextBlock = (type: string, text: string) => ({
+    id: `${type}-${text}`,
+    type,
+    props: {},
+    content: [{ type: 'text', text, styles: {} }],
+    children: [],
+});
+
+test('buildNoteContentPreview leaves out a first block that repeats the note title', () => {
+    const content = JSON.stringify([
+        createTextBlock('heading', 'Weekly plan'),
+        createTextBlock('paragraph', 'Ship the release notes'),
+    ]);
+
+    const preview = buildNoteContentPreview(content, 'Weekly plan');
+
+    assert.equal(preview, 'Ship the release notes');
+});
+
+test('buildNoteContentPreview keeps a first block that only starts with the note title', () => {
+    const content = JSON.stringify([
+        createTextBlock('paragraph', 'Weekly plan for the launch'),
+        createTextBlock('paragraph', 'Ship it'),
+    ]);
+
+    const preview = buildNoteContentPreview(content, 'Weekly plan');
+
+    assert.equal(preview, 'Weekly plan for the launch Ship it');
+});
+
 test('note search explicitly classifies every Ocean Brain custom BlockNote type', () => {
     const knownTypes = new Set([
         ...NOTE_SEARCH_EXTRACTOR_NODE_TYPES,

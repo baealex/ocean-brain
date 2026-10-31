@@ -218,10 +218,27 @@ export const contentAsBlockLines = (content: string) => {
     }
 };
 
-export const contentPreview = (content: string) => extractVisibleText(content).slice(0, 100);
+const visibleTextOf = (node: unknown) => {
+    const segments: string[] = [];
+    collectVisibleSegments(node, segments);
+    return normalizeVisibleText(segments.join(' '));
+};
+
+export const contentPreview = (content: string, title = '') => {
+    try {
+        const parsed = JSON.parse(content) as unknown;
+        const [firstBlock, ...restBlocks] = Array.isArray(parsed) ? parsed : [parsed];
+        const firstText = visibleTextOf(firstBlock);
+        const restText = visibleTextOf(restBlocks);
+        const repeatsTitle = firstText !== '' && firstText.toLowerCase() === normalizeVisibleText(title).toLowerCase();
+        return (repeatsTitle ? restText : normalizeVisibleText(`${firstText} ${restText}`)).slice(0, 100);
+    } catch {
+        return '';
+    }
+};
 
 export const withContentPreview = (notes: Note[]) =>
-    notes.map((note) => ({ ...note, contentPreview: contentPreview(note.content) }));
+    notes.map((note) => ({ ...note, contentPreview: contentPreview(note.content, note.title) }));
 
 const TRASHED_PREVIEW_MAX_LENGTH = 240;
 

@@ -198,14 +198,17 @@ export const parseNoteSearchQuery = (query: string): NoteSearchQuery => {
     };
 };
 
+const extractVisibleSearchText = (node: unknown) => {
+    const context: SearchProjectionContext = { segments: [] };
+
+    collectVisibleSearchSegments(node, context);
+
+    return normalizeSearchText(context.segments.join(' '));
+};
+
 export const extractVisibleSearchTextFromContent = (content: string) => {
     try {
-        const parsed = JSON.parse(content) as unknown;
-        const context: SearchProjectionContext = { segments: [] };
-
-        collectVisibleSearchSegments(parsed, context);
-
-        return normalizeSearchText(context.segments.join(' '));
+        return extractVisibleSearchText(JSON.parse(content) as unknown);
     } catch {
         return '';
     }
@@ -213,8 +216,20 @@ export const extractVisibleSearchTextFromContent = (content: string) => {
 
 const NOTE_CONTENT_PREVIEW_MAX_LENGTH = 100;
 
-export const buildNoteContentPreview = (content: string) => {
-    return extractVisibleSearchTextFromContent(content).slice(0, NOTE_CONTENT_PREVIEW_MAX_LENGTH);
+export const buildNoteContentPreview = (content: string, title = '') => {
+    try {
+        const parsed = JSON.parse(content) as unknown;
+        const [firstBlock, ...restBlocks] = Array.isArray(parsed) ? parsed : [parsed];
+        const firstText = extractVisibleSearchText(firstBlock);
+        const restText = extractVisibleSearchText(restBlocks);
+        // Cards already show the title, so a first block repeating it would show it twice.
+        const repeatsTitle = firstText !== '' && normalizeSearchToken(firstText) === normalizeSearchToken(title);
+        const text = repeatsTitle ? restText : normalizeSearchText(`${firstText} ${restText}`);
+
+        return text.slice(0, NOTE_CONTENT_PREVIEW_MAX_LENGTH);
+    } catch {
+        return '';
+    }
 };
 
 export const buildNoteSearchExcerpt = (note: Pick<SearchableNoteLike, 'title' | 'content'>, query: string) => {

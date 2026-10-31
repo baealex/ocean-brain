@@ -28,7 +28,7 @@ import { invalidateQueriesForNoteChange } from '~/modules/server-event-invalidat
 import { publishClientNoteUpdatedEvent, subscribeServerEvent } from '~/modules/server-events';
 import { useWorkspace } from '~/store/workspace';
 import { useNoteNavigationGuard } from './useNoteNavigationGuard';
-import { useNoteSaveController } from './useNoteSaveController';
+import { type CreatedNoteDraft, useNoteSaveController } from './useNoteSaveController';
 import { useNoteWriteCoordinator } from './useNoteWriteCoordinator';
 
 const NOTE_UPDATE_CONFLICT_CODE = 'NOTE_UPDATE_CONFLICT';
@@ -38,8 +38,10 @@ type Notify = (message: string) => void;
 type NavigateToNote = (noteId: string) => void | Promise<void>;
 
 interface UseNoteEditorSessionParams {
-    noteId: string;
+    noteId: string | null;
+    workspaceId?: string;
     navigateToNote: NavigateToNote;
+    onNoteCreated?: (noteId: string) => void | Promise<void>;
     notify: Notify;
 }
 
@@ -53,8 +55,35 @@ const getConflictUpdatedAt = (details: unknown) => {
     return (details as { extensions?: { currentUpdatedAt?: string } })?.extensions?.currentUpdatedAt;
 };
 
-export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNoteEditorSessionParams) {
+const createDraftNote = (workspaceId?: string): Note => {
+    const now = String(Date.now());
+
+    return {
+        ...(workspaceId ? { workspaceId } : {}),
+        id: '',
+        title: '',
+        content: '',
+        pinned: false,
+        order: 0,
+        layout: 'wide',
+        tags: [],
+        properties: [],
+        createdAt: now,
+        updatedAt: now,
+    };
+};
+
+export function useNoteEditorSession({
+    noteId: initialNoteId,
+    workspaceId: draftWorkspaceId,
+    navigateToNote,
+    onNoteCreated,
+    notify,
+}: UseNoteEditorSessionParams) {
     const queryClient = useQueryClient();
+    const [noteId, setNoteId] = useState(initialNoteId);
+    const [sessionKey] = useState(() => initialNoteId ?? `new-${nanoid()}`);
+    const [draftNote] = useState(() => createDraftNote(draftWorkspaceId));
     const { followNoteWorkspace, workspaces } = useWorkspace();
     const editorRef = useRef<EditorRef>(null);
     const titleRef = useRef<HTMLInputElement>(null);
@@ -66,8 +95,13 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
     const sessionGenerationRef = useRef(0);
 
     const noteQuery = useSuspenseQuery({
-        queryKey: queryKeys.notes.detail(noteId),
+        // Outside `notes` so note invalidations never refetch an unsaved new note.
+        queryKey: noteId ? queryKeys.notes.detail(noteId) : ['new-note', sessionKey],
         queryFn: async () => {
+            if (!noteId) {
+                return draftNote;
+            }
+
             const response = await fetchNote(noteId);
 
             if (response.type === 'error') {
@@ -76,6 +110,8 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
 
             return response.note;
         },
+        initialData: noteId ? undefined : draftNote,
+        staleTime: noteId ? 0 : Number.POSITIVE_INFINITY,
         gcTime: 0,
     });
     const note = noteQuery.data;
@@ -137,6 +173,10 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
             patch: Partial<NoteDetailCache>;
             confirmSave?: boolean;
         }) => {
+            if (!noteId) {
+                return false;
+            }
+
             const noteDetailQueryKey = queryKeys.notes.detail(noteId);
             const sessionGeneration = sessionGenerationRef.current;
 
@@ -183,8 +223,28 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
         );
     }, []);
 
+    const onNoteCreatedRef = useRef(onNoteCreated);
+    onNoteCreatedRef.current = onNoteCreated;
+
+    const handleNoteCreated = useCallback(
+        (created: CreatedNoteDraft) => {
+            queryClient.setQueryData<Note>(queryKeys.notes.detail(created.id), {
+                ...draftNote,
+                ...created,
+                layout: created.layout ?? layoutRef.current,
+            });
+            setNoteId(created.id);
+            allowNextNavigationRef.current = true;
+            void Promise.resolve(onNoteCreatedRef.current?.(created.id)).finally(() => {
+                allowNextNavigationRef.current = false;
+            });
+        },
+        [draftNote, queryClient],
+    );
+
     const saveController = useNoteSaveController({
         noteId,
+        workspaceId: draftNote.workspaceId,
         initialContent: note.content,
         // A refetch is not an accepted baseline until the session's dirty guards allow it.
         initialUpdatedAt: appliedNoteVersionRef.current,
@@ -198,6 +258,7 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
             layoutConflictRef.current = null;
             commitAcceptedVersion(updatedAt, { confirmSave: true });
         },
+        onCreated: handleNoteCreated,
         onConflict: (updatedAt) => {
             setExternalNoteChange({
                 type: 'updated',
@@ -349,6 +410,10 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
     useEffect(() => {
         let active = true;
         const unsubscribe = subscribeServerEvent((event) => {
+            if (!noteId) {
+                return;
+            }
+
             const decision = classifyExternalNoteEvent({
                 event,
                 noteId,
@@ -421,7 +486,7 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
 
             const flushResult = await flushPendingSave();
 
-            if (flushResult === 'error' || flushResult === 'conflict') {
+            if (flushResult === 'error' || flushResult === 'conflict' || !noteId) {
                 return;
             }
 
@@ -478,7 +543,7 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
     const handleTogglePinned = useCallback(async () => {
         const flushResult = await flushPendingSave();
 
-        if (flushResult === 'error' || flushResult === 'conflict') {
+        if (flushResult === 'error' || flushResult === 'conflict' || !noteId) {
             return;
         }
 
@@ -507,7 +572,7 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
 
     const getExportMetadata = useCallback(
         () => ({
-            id: noteId,
+            id: noteId ?? '',
             workspaceId: note.workspaceId,
             workspaceName: workspaces.find((workspace) => workspace.id === note.workspaceId)?.name,
             title,
@@ -570,7 +635,7 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
 
         const layoutConflict = layoutConflictRef.current;
 
-        if (!layoutConflict) {
+        if (!layoutConflict || !noteId) {
             setExternalNoteChange(null);
             await flushPendingSave({ ignoreConflict: true });
             return;
@@ -710,6 +775,8 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
 
     return {
         document: {
+            noteId,
+            isNew: noteId === null,
             workspaceId: note.workspaceId,
             title,
             titleRef,
@@ -724,7 +791,7 @@ export function useNoteEditorSession({ noteId, navigateToNote, notify }: UseNote
         },
         editor: {
             ref: editorRef,
-            key: `${noteId}:${editorRevision}`,
+            key: `${sessionKey}:${editorRevision}`,
             content: editorContentOverride ?? note.content,
             externalUpdate: externalEditorUpdate,
             onClearChangeMarks: handleClearChangeMarks,

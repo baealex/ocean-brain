@@ -40,6 +40,7 @@ test('a second workspace reveals separation and a mapped move preserves the note
     await page.getByRole('textbox', { name: 'Note title' }).fill('Diet journal');
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(page.getByRole('status')).toContainText('Saved');
+    await expect(page).not.toHaveURL(/\/new$/);
     const id = new URL(page.url()).pathname.slice(1);
 
     await page.getByRole('navigation', { name: 'Primary navigation' }).getByRole('link', { name: 'Setting', exact: true }).click();

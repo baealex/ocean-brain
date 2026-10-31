@@ -1,12 +1,13 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { updateNote } from '~/apis/note.api';
+import { createNote, updateNote } from '~/apis/note.api';
 import { getDraftStorageKey, type NoteSaveDraft } from '~/modules/note-draft-storage';
 import { queryKeys } from '~/modules/query-key-factory';
 import { useNoteSaveController } from './useNoteSaveController';
 
 vi.mock('~/apis/note.api', () => ({
+    createNote: vi.fn(),
     updateNote: vi.fn(),
 }));
 
@@ -554,5 +555,105 @@ describe('useNoteSaveController', () => {
             editSessionId: 'session-1',
             expectedUpdatedAt: '1770000001000',
         });
+    });
+});
+
+describe('useNoteSaveController for a new note', () => {
+    const createdNote = {
+        id: '9',
+        workspaceId: '2',
+        title: 'New note',
+        createdAt: '1770000001000',
+        updatedAt: '1770000001000',
+    };
+
+    const renderNewNoteController = (getContent: () => string) =>
+        renderHook(
+            ({ noteId }: { noteId: string | null }) =>
+                useNoteSaveController({
+                    noteId,
+                    workspaceId: '2',
+                    initialContent: '',
+                    initialUpdatedAt: '1770000000000',
+                    editSessionIdRef: { current: 'session-1' },
+                    getContent,
+                    onSaved: vi.fn(),
+                    onConflict: vi.fn(),
+                    onError: vi.fn(),
+                }),
+            { initialProps: { noteId: null as string | null }, wrapper: createWrapper() },
+        );
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        window.localStorage.clear();
+    });
+
+    it('creates the note in its workspace on the first save', async () => {
+        vi.mocked(createNote).mockResolvedValue({ type: 'success', createNote: createdNote });
+        const { result } = renderNewNoteController(() => 'First line');
+
+        await act(async () => {
+            result.current.queueSave(result.current.buildDraft('New note'), { immediate: true });
+        });
+
+        expect(createNote).toHaveBeenCalledWith({ workspaceId: '2', title: 'New note', content: 'First line' });
+    });
+
+    it('saves edits typed during creation to the created note', async () => {
+        const creation = createDeferred<Awaited<ReturnType<typeof createNote>>>();
+        vi.mocked(createNote).mockReturnValue(creation.promise);
+        vi.mocked(updateNote).mockResolvedValue({
+            type: 'success',
+            updateNote: { id: '9', title: 'New note title', updatedAt: '1770000002000' },
+        });
+        let content = 'First line';
+        const { result } = renderNewNoteController(() => content);
+        await act(async () => {
+            result.current.queueSave(result.current.buildDraft('New note'), { immediate: true });
+        });
+        act(() => {
+            content = 'First line and more';
+            result.current.queueSave(result.current.buildDraft('New note title'));
+        });
+
+        await act(async () => {
+            creation.resolve({ type: 'success', createNote: createdNote });
+        });
+
+        await waitFor(() =>
+            expect(updateNote).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    id: '9',
+                    title: 'New note title',
+                    content: 'First line and more',
+                    expectedUpdatedAt: '1770000001000',
+                }),
+            ),
+        );
+    });
+
+    it('keeps the version saved during creation when the page adopts the created id', async () => {
+        const creation = createDeferred<Awaited<ReturnType<typeof createNote>>>();
+        vi.mocked(createNote).mockReturnValue(creation.promise);
+        vi.mocked(updateNote).mockResolvedValue({
+            type: 'success',
+            updateNote: { id: '9', title: 'New note title', updatedAt: '1770000002000' },
+        });
+        const { result, rerender } = renderNewNoteController(() => 'First line and more');
+        await act(async () => {
+            result.current.queueSave(result.current.buildDraft('New note'), { immediate: true });
+        });
+        act(() => {
+            result.current.queueSave(result.current.buildDraft('New note title'));
+        });
+        await act(async () => {
+            creation.resolve({ type: 'success', createNote: createdNote });
+        });
+
+        rerender({ noteId: '9' });
+
+        await waitFor(() => expect(result.current.saveStatus).toBe('saved'));
+        expect(result.current.serverUpdatedAtRef.current).toBe('1770000002000');
     });
 });

@@ -1,6 +1,7 @@
+import { useNavigate } from '@tanstack/react-router';
 import * as Icon from '~/components/icon';
 import { Text } from '~/components/ui';
-import useNoteMutate from '~/hooks/resource/useNoteMutate';
+import { NEW_NOTE_ID, NOTE_ROUTE } from '~/modules/url';
 import { useWorkspace } from '~/store/workspace';
 
 const rootClassName = 'p-3 pb-0';
@@ -13,7 +14,7 @@ const captureTextWrapClassName = 'flex flex-col';
 const trailingIconClassName = 'h-4 w-4 text-fg-tertiary transition-colors group-hover:text-fg-default';
 
 const SidebarPrimaryActions = () => {
-    const { onCreate } = useNoteMutate();
+    const navigate = useNavigate();
     const { multiple, activeWorkspace } = useWorkspace();
 
     return (
@@ -23,7 +24,7 @@ const SidebarPrimaryActions = () => {
                 className={captureButtonClassName}
                 aria-label={multiple ? `Open a new note in ${activeWorkspace?.name ?? 'this workspace'}` : undefined}
                 disabled={Boolean(activeWorkspace?.archivedAt)}
-                onClick={() => onCreate()}
+                onClick={() => void navigate({ to: NOTE_ROUTE, params: { id: NEW_NOTE_ID } })}
             >
                 <span className={captureContentClassName}>
                     <span className={captureIconWrapClassName}>

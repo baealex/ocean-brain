@@ -8,6 +8,7 @@ import NoteSaveStatusIndicator from './NoteSaveStatusIndicator';
 interface NoteEditorHeaderProps {
     onMoveWorkspace?: () => void;
     readOnly?: boolean;
+    isNew?: boolean;
     title: string;
     titleRef: RefObject<HTMLInputElement | null>;
     isPinned: boolean;
@@ -32,6 +33,7 @@ export default function NoteEditorHeader({
     title,
     onMoveWorkspace,
     readOnly = false,
+    isNew = false,
     titleRef,
     isPinned,
     createdAt,
@@ -50,6 +52,22 @@ export default function NoteEditorHeader({
     onDelete,
     onSave,
 }: NoteEditorHeaderProps) {
+    const noteActionItems = [
+        { type: 'separator' as const, key: 'export-separator' },
+        ...(!readOnly
+            ? [
+                  { name: isPinned ? 'Unpin' : 'Pin', onClick: onTogglePinned },
+                  { name: 'Change layout', onClick: onChangeLayout },
+              ]
+            : []),
+        { type: 'separator' as const },
+        ...(!readOnly ? [{ name: 'Clone this note', onClick: onCloneNote }] : []),
+        ...(onMoveWorkspace && !readOnly ? [{ name: 'Move to workspace', onClick: onMoveWorkspace }] : []),
+        ...(!readOnly ? [{ name: 'Restore previous version', onClick: onRestoreVersion }] : []),
+        { type: 'separator' as const },
+        ...(!readOnly ? [{ name: 'Delete', onClick: onDelete }] : []),
+    ];
+
     return (
         // The opaque strip prevents scrolled content from showing between the navigation and sticky card.
         <div className="z-[1000] mb-7 sm:sticky sm:top-[calc(3.5625rem+2px)] sm:-mt-4 sm:bg-[var(--page-bg)] sm:pt-4">
@@ -81,21 +99,7 @@ export default function NoteEditorHeader({
                             items={[
                                 { name: 'Copy Markdown', onClick: onCopyMarkdown },
                                 { name: 'Download document', onClick: onDownloadDocument },
-                                { type: 'separator', key: 'export-separator' },
-                                ...(!readOnly
-                                    ? [
-                                          { name: isPinned ? 'Unpin' : 'Pin', onClick: onTogglePinned },
-                                          { name: 'Change layout', onClick: onChangeLayout },
-                                      ]
-                                    : []),
-                                { type: 'separator' },
-                                ...(!readOnly ? [{ name: 'Clone this note', onClick: onCloneNote }] : []),
-                                ...(onMoveWorkspace && !readOnly
-                                    ? [{ name: 'Move to workspace', onClick: onMoveWorkspace }]
-                                    : []),
-                                ...(!readOnly ? [{ name: 'Restore previous version', onClick: onRestoreVersion }] : []),
-                                { type: 'separator' },
-                                ...(!readOnly ? [{ name: 'Delete', onClick: onDelete }] : []),
+                                ...(isNew ? [] : noteActionItems),
                             ]}
                         />
                         <Button
@@ -123,22 +127,32 @@ export default function NoteEditorHeader({
                         </Text>
                     )}
                     {isPinned && <span className="h-1 w-1 rounded-full bg-border-secondary" />}
-                    <NoteSaveStatusIndicator
-                        status={saveStatus}
-                        savedAt={savedAt}
-                        savedVersion={savedVersion}
-                        confirmationRevision={saveConfirmationRevision}
-                    />
-                    <span className="hidden h-1 w-1 rounded-full bg-border-secondary sm:block" />
-                    <Text
-                        as="span"
-                        variant="label"
-                        weight="medium"
-                        tone="tertiary"
-                        className="basis-full sm:basis-auto"
-                    >
-                        Created {createdAt}
-                    </Text>
+                    {isNew && saveStatus === 'saved' ? (
+                        <Text as="span" variant="label" weight="medium" tone="tertiary">
+                            Saved once you start writing
+                        </Text>
+                    ) : (
+                        <NoteSaveStatusIndicator
+                            status={saveStatus}
+                            savedAt={savedAt}
+                            savedVersion={savedVersion}
+                            confirmationRevision={saveConfirmationRevision}
+                        />
+                    )}
+                    {!isNew && (
+                        <>
+                            <span className="hidden h-1 w-1 rounded-full bg-border-secondary sm:block" />
+                            <Text
+                                as="span"
+                                variant="label"
+                                weight="medium"
+                                tone="tertiary"
+                                className="basis-full sm:basis-auto"
+                            >
+                                Created {createdAt}
+                            </Text>
+                        </>
+                    )}
                 </div>
             </div>
         </div>

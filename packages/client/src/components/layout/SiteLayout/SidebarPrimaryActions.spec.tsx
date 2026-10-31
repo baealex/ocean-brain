@@ -3,22 +3,18 @@ import userEvent from '@testing-library/user-event';
 
 import SidebarPrimaryActions from './SidebarPrimaryActions';
 
-const mockCreate = vi.fn();
+const mockNavigate = vi.fn();
 
-vi.mock('~/hooks/resource/useNoteMutate', () => ({ default: () => ({ onCreate: mockCreate }) }));
+vi.mock('@tanstack/react-router', () => ({ useNavigate: () => mockNavigate }));
 
 describe('<SidebarPrimaryActions />', () => {
-    it('triggers note creation from the capture action', async () => {
+    it('opens a new note without creating it yet', async () => {
         const user = userEvent.setup();
 
         render(<SidebarPrimaryActions />);
 
-        const captureButton = screen.getByRole('button', { name: /capture/i });
+        await user.click(screen.getByRole('button', { name: /capture/i }));
 
-        expect(captureButton).toBeInTheDocument();
-
-        await user.click(captureButton);
-
-        expect(mockCreate).toHaveBeenCalled();
+        expect(mockNavigate).toHaveBeenCalledWith({ to: '/$id', params: { id: 'new' } });
     });
 });

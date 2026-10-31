@@ -1082,3 +1082,71 @@ describe('<NoteContent /> title focus', () => {
         expect(title).not.toHaveFocus();
     });
 });
+
+describe('<NoteContent /> new note', () => {
+    const renderNewNote = (onCreated = vi.fn()) => {
+        vi.mocked(fetchNotePropertyKeys).mockResolvedValue({
+            type: 'success',
+            notePropertyKeys: { keys: [], totalCount: 0 },
+        });
+        vi.mocked(createNoteApi).mockResolvedValue({
+            type: 'success',
+            createNote: {
+                id: '42',
+                workspaceId: '1',
+                title: 'Fresh idea',
+                createdAt: '1779700000000',
+                updatedAt: '1779700000000',
+            },
+        });
+        vi.mocked(fetchNote).mockResolvedValue({
+            type: 'success',
+            note: createNote({ id: '42', title: 'Fresh idea', content: 'First line' }),
+        });
+
+        render(
+            <QueryClientProvider client={createTestQueryClient()}>
+                <ToastProvider>
+                    <Suspense fallback={<div>Loading</div>}>
+                        <NoteContent id="new" onCreated={onCreated} />
+                    </Suspense>
+                </ToastProvider>
+            </QueryClientProvider>,
+        );
+
+        return onCreated;
+    };
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        window.localStorage.clear();
+    });
+
+    it('creates a new note from the title and body the user wrote', async () => {
+        const user = userEvent.setup();
+        renderNewNote();
+        await user.type(await screen.findByRole('textbox', { name: 'Note title' }), 'Fresh idea');
+        await user.type(screen.getByRole('textbox', { name: 'Editor' }), 'First line');
+
+        await user.click(screen.getByRole('button', { name: 'Save' }));
+
+        await waitFor(() =>
+            expect(createNoteApi).toHaveBeenCalledWith(
+                expect.objectContaining({ title: 'Fresh idea', content: 'First line' }),
+            ),
+        );
+    });
+
+    it('keeps the same editor when the first save creates the note', async () => {
+        const user = userEvent.setup();
+        const onCreated = renderNewNote();
+        await user.type(await screen.findByRole('textbox', { name: 'Note title' }), 'Fresh idea');
+        const editor = screen.getByRole('textbox', { name: 'Editor' });
+        await user.type(editor, 'First line');
+
+        await user.click(screen.getByRole('button', { name: 'Save' }));
+
+        await waitFor(() => expect(onCreated).toHaveBeenCalledWith('42'));
+        expect(screen.getByRole('textbox', { name: 'Editor' })).toBe(editor);
+    });
+});

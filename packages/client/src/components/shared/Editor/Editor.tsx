@@ -54,6 +54,7 @@ export interface EditorRef {
     getMarkdown: () => string;
     getHtml: () => string;
     captureViewport: () => EditorViewport;
+    focusStart: () => void;
 }
 
 const Editor = forwardRef<EditorRef, EditorProps>(
@@ -124,6 +125,11 @@ const Editor = forwardRef<EditorRef, EditorProps>(
         useImperativeHandle(ref, () => {
             return {
                 captureViewport: () => captureEditorViewport(editor.domElement),
+                focusStart: () => {
+                    const [firstBlock] = editor.document;
+                    if (firstBlock) editor.setTextCursorPosition(firstBlock, 'start');
+                    editor.focus();
+                },
                 getContent: () => {
                     return JSON.stringify(editor.document);
                 },

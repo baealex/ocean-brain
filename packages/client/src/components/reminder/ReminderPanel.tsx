@@ -1,6 +1,6 @@
 import classNames from 'classnames';
 import dayjs from 'dayjs';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Reminders } from '~/components/entities';
 import * as Icon from '~/components/icon';
 import { AuxiliaryPanel, Button, Dropdown } from '~/components/shared';
@@ -124,9 +124,10 @@ function ReminderRow({ reminder, readOnly, onToggleComplete, onEdit, onDelete }:
 interface ReminderPanelProps {
     readOnly?: boolean;
     noteId: string;
+    addRequest?: number;
 }
 
-export default function ReminderPanel({ noteId, readOnly = false }: ReminderPanelProps) {
+export default function ReminderPanel({ noteId, readOnly = false, addRequest = 0 }: ReminderPanelProps) {
     const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
     const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
@@ -139,6 +140,14 @@ export default function ReminderPanel({ noteId, readOnly = false }: ReminderPane
         setEditingReminder(undefined);
         setIsModalOpen(true);
     };
+
+    useEffect(() => {
+        if (addRequest === 0) {
+            return;
+        }
+
+        handleOpenCreateModal();
+    }, [addRequest]);
 
     const handleOpenEditModal = (reminder: Reminder) => {
         setModalMode('edit');
@@ -179,69 +188,66 @@ export default function ReminderPanel({ noteId, readOnly = false }: ReminderPane
 
     return (
         <>
-            <AuxiliaryPanel
-                title="Reminders"
-                icon={<Icon.Bell className="h-3.5 w-3.5" />}
-                action={
-                    <>
-                        {!readOnly && (
-                            <Button type="button" size="sm" variant="subtle" onClick={handleOpenCreateModal}>
-                                <Icon.Plus className="h-3.5 w-3.5" />
-                                Add
-                            </Button>
-                        )}
-                        <Button
-                            type="button"
-                            size="icon-sm"
-                            variant="ghost"
-                            aria-label={isCollapsed ? 'Expand reminders' : 'Collapse reminders'}
-                            title={isCollapsed ? 'Expand reminders' : 'Collapse reminders'}
-                            aria-expanded={!isCollapsed}
-                            onClick={() => setIsCollapsed(!isCollapsed)}
-                        >
-                            {isCollapsed ? (
-                                <Icon.TriangleRight className="h-3.5 w-3.5" />
-                            ) : (
-                                <Icon.TriangleDown className="h-3.5 w-3.5" />
-                            )}
-                        </Button>
-                    </>
-                }
-            >
-                {!isCollapsed && (
-                    <Reminders
-                        noteId={noteId}
-                        searchParams={{
-                            offset: 0,
-                            limit: 9999,
-                        }}
-                        render={({ reminders, totalCount }) => {
-                            return (
-                                <div className="flex flex-col gap-2">
-                                    {reminders.length === 0 ? (
-                                        <Text as="p" variant="meta" tone="secondary" className="py-3 text-center">
-                                            {totalCount === 0 ? 'No reminders yet' : 'All reminders complete'}
-                                        </Text>
-                                    ) : (
-                                        <div className="flex flex-col">
-                                            {reminders.map((reminder) => (
-                                                <ReminderRow
-                                                    key={reminder.id}
-                                                    reminder={reminder}
-                                                    readOnly={readOnly}
-                                                    onToggleComplete={() => handleToggleComplete(reminder)}
-                                                    onEdit={() => handleOpenEditModal(reminder)}
-                                                    onDelete={() => onDelete(reminder.id, noteId)}
-                                                />
-                                            ))}
-                                        </div>
+            <Reminders
+                noteId={noteId}
+                searchParams={{
+                    offset: 0,
+                    limit: 9999,
+                }}
+                render={({ reminders }) =>
+                    reminders.length > 0 && (
+                        <AuxiliaryPanel
+                            title="Reminders"
+                            icon={<Icon.Bell className="h-3.5 w-3.5" />}
+                            action={
+                                <>
+                                    {!readOnly && (
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="subtle"
+                                            onClick={handleOpenCreateModal}
+                                        >
+                                            <Icon.Plus className="h-3.5 w-3.5" />
+                                            Add
+                                        </Button>
                                     )}
+                                    <Button
+                                        type="button"
+                                        size="icon-sm"
+                                        variant="ghost"
+                                        aria-label={isCollapsed ? 'Expand reminders' : 'Collapse reminders'}
+                                        title={isCollapsed ? 'Expand reminders' : 'Collapse reminders'}
+                                        aria-expanded={!isCollapsed}
+                                        onClick={() => setIsCollapsed(!isCollapsed)}
+                                    >
+                                        {isCollapsed ? (
+                                            <Icon.TriangleRight className="h-3.5 w-3.5" />
+                                        ) : (
+                                            <Icon.TriangleDown className="h-3.5 w-3.5" />
+                                        )}
+                                    </Button>
+                                </>
+                            }
+                        >
+                            {!isCollapsed && (
+                                <div className="flex flex-col">
+                                    {reminders.map((reminder) => (
+                                        <ReminderRow
+                                            key={reminder.id}
+                                            reminder={reminder}
+                                            readOnly={readOnly}
+                                            onToggleComplete={() => handleToggleComplete(reminder)}
+                                            onEdit={() => handleOpenEditModal(reminder)}
+                                            onDelete={() => onDelete(reminder.id, noteId)}
+                                        />
+                                    ))}
                                 </div>
-                            );
-                        }}
-                    />
-                )}
-            </AuxiliaryPanel>
+                            )}
+                        </AuxiliaryPanel>
+                    )
+                }
+            />
             <ReminderModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}

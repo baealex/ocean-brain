@@ -7,6 +7,7 @@ import {
     fetchNote,
     fetchNotePropertyKeys,
     fetchNoteSnapshots,
+    type NotePropertyKeySummary,
     pinNote,
     restoreNoteSnapshot,
     updateNote,
@@ -153,7 +154,7 @@ const createDeferred = <T,>() => {
     return { promise, resolve };
 };
 
-const renderNote = (note: Note) => {
+const renderNote = (note: Note, propertyKeys: NotePropertyKeySummary[] = []) => {
     const queryClient = createTestQueryClient();
 
     vi.mocked(fetchNote).mockResolvedValue({
@@ -163,8 +164,8 @@ const renderNote = (note: Note) => {
     vi.mocked(fetchNotePropertyKeys).mockResolvedValue({
         type: 'success',
         notePropertyKeys: {
-            keys: [],
-            totalCount: 0,
+            keys: propertyKeys,
+            totalCount: propertyKeys.length,
         },
     });
 
@@ -1059,6 +1060,61 @@ describe('<NoteContent /> property editing during note saves', () => {
     });
 });
 
+describe('<NoteContent /> properties panel', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        window.localStorage.clear();
+    });
+
+    it('shows no properties panel on a note without property values', async () => {
+        renderNote(createNote({ properties: [] }));
+
+        await screen.findByRole('textbox', { name: 'Note title' });
+
+        expect(screen.queryByRole('region', { name: 'Note properties' })).not.toBeInTheDocument();
+    });
+
+    it('shows the properties panel on a note that has property values', async () => {
+        renderNote(
+            createNote({
+                properties: [
+                    {
+                        key: 'status',
+                        name: 'Status',
+                        value: 'Open',
+                        valueType: 'text',
+                        createdAt: '1779700000000',
+                        updatedAt: '1779700000000',
+                    },
+                ],
+            }),
+        );
+
+        const panel = await screen.findByRole('region', { name: 'Note properties' });
+
+        expect(panel).toHaveTextContent('Status');
+    });
+
+    it('opens the property picker when Add property is chosen from the note actions', async () => {
+        const user = userEvent.setup();
+        renderNote(createNote({ properties: [] }), [
+            {
+                key: 'status',
+                name: 'Status',
+                valueType: 'text',
+                noteCount: 0,
+                options: [],
+                updatedAt: '1779700000000',
+            },
+        ]);
+        await user.click(await screen.findByRole('button', { name: 'Note actions' }));
+
+        await user.click(screen.getByRole('menuitem', { name: 'Add property' }));
+
+        expect(await screen.findByRole('menuitem', { name: /^Status/ })).toBeInTheDocument();
+    });
+});
+
 describe('<NoteContent /> title focus', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -1135,6 +1191,14 @@ describe('<NoteContent /> new note', () => {
                 expect.objectContaining({ title: 'Fresh idea', content: 'First line' }),
             ),
         );
+    });
+
+    it('shows no properties panel before a new note is first saved', async () => {
+        renderNewNote();
+
+        await screen.findByRole('textbox', { name: 'Note title' });
+
+        expect(screen.queryByRole('region', { name: 'Note properties' })).not.toBeInTheDocument();
     });
 
     it('keeps the same editor when the first save creates the note', async () => {

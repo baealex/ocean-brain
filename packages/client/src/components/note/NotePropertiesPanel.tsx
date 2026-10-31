@@ -62,6 +62,8 @@ const createEditablePropertyRow = (property?: NoteProperty): EditableNotePropert
     persistedKey: property?.key,
 });
 
+const getPropertyValueId = (rowId: string) => `note-property-${rowId}-value`;
+
 const normalizePropertyKeySummaries = (value: unknown): NotePropertyKeySummary[] => {
     if (Array.isArray(value)) {
         return value as NotePropertyKeySummary[];
@@ -147,6 +149,7 @@ interface NotePropertiesPanelProps {
     expectedUpdatedAt: string;
     editSessionId: string;
     disabled?: boolean;
+    addRequest?: number;
     saveProperties?: (
         input: UpdateNotePropertiesRequestData,
     ) => Promise<Awaited<ReturnType<typeof updateNoteProperties>> | undefined>;
@@ -162,6 +165,7 @@ const NotePropertiesPanel = forwardRef<NotePropertiesPanelRef, NotePropertiesPan
         expectedUpdatedAt,
         editSessionId,
         disabled,
+        addRequest = 0,
         saveProperties = updateNoteProperties,
         onPendingChange,
         onSaved,
@@ -176,6 +180,10 @@ const NotePropertiesPanel = forwardRef<NotePropertiesPanelRef, NotePropertiesPan
     const [rows, setRows] = useState<EditableNotePropertyRow[]>(() => getNormalizedRows(properties));
     const [deletedKeys, setDeletedKeys] = useState<string[]>([]);
     const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+    const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
+    const addControlsRef = useRef<HTMLDivElement>(null);
+    const handledAddRequestRef = useRef(0);
+    const addedRowIdRef = useRef<string | null>(null);
     const rowsRef = useRef(rows);
     const deletedKeysRef = useRef(deletedKeys);
     const expectedUpdatedAtRef = useRef(expectedUpdatedAt);
@@ -226,6 +234,19 @@ const NotePropertiesPanel = forwardRef<NotePropertiesPanelRef, NotePropertiesPan
     );
     const hasPropertyDefinitions = propertyKeySummaries.length > 0;
     const hasPendingChanges = getPropertyRowsPatchSignature(rows, deletedKeys) !== savedSignatureRef.current;
+
+    useEffect(() => {
+        if (addRequest === handledAddRequestRef.current || propertyKeysQuery.isLoading) {
+            return;
+        }
+
+        handledAddRequestRef.current = addRequest;
+        addControlsRef.current?.scrollIntoView?.({ block: 'center' });
+
+        if (!disabled && visiblePropertyKeys.length > 0) {
+            setIsAddMenuOpen(true);
+        }
+    }, [addRequest, propertyKeysQuery.isLoading]);
 
     const saveCurrentRows = useCallback(
         async ({
@@ -380,6 +401,7 @@ const NotePropertiesPanel = forwardRef<NotePropertiesPanelRef, NotePropertiesPan
     }, [deletedKeys, disabled, rows, saveCurrentRows]);
 
     const addKnownProperty = (propertyKey: NotePropertyKeySummary) => {
+        addedRowIdRef.current = propertyKey.key;
         setRows((current) => [
             ...current,
             {
@@ -392,6 +414,18 @@ const NotePropertiesPanel = forwardRef<NotePropertiesPanelRef, NotePropertiesPan
             },
         ]);
         setDeletedKeys((current) => current.filter((key) => key !== propertyKey.key));
+    };
+
+    const focusAddedProperty = (event: Event) => {
+        const addedRowId = addedRowIdRef.current;
+        addedRowIdRef.current = null;
+        const valueControl = addedRowId && document.getElementById(getPropertyValueId(addedRowId));
+
+        if (valueControl) {
+            // Keep the closing menu from returning focus to its trigger.
+            event.preventDefault();
+            valueControl.focus();
+        }
     };
 
     const updateRow = (rowId: string, patch: Partial<EditableNotePropertyRow>) => {
@@ -459,6 +493,7 @@ const NotePropertiesPanel = forwardRef<NotePropertiesPanelRef, NotePropertiesPan
                 <div className="divide-y divide-border-subtle">
                     {rows.map((row) => {
                         const propertyLabelId = `note-property-${row.id}-label`;
+                        const propertyValueId = getPropertyValueId(row.id);
                         const safeExternalUrl = row.valueType === 'url' ? getSafeExternalUrl(row.value) : null;
 
                         return (
@@ -480,6 +515,7 @@ const NotePropertiesPanel = forwardRef<NotePropertiesPanelRef, NotePropertiesPan
                                 </div>
                                 {row.valueType === 'boolean' ? (
                                     <Select
+                                        id={propertyValueId}
                                         size="sm"
                                         variant="soft"
                                         className="min-w-0"
@@ -493,6 +529,7 @@ const NotePropertiesPanel = forwardRef<NotePropertiesPanelRef, NotePropertiesPan
                                     </Select>
                                 ) : row.valueType === 'select' ? (
                                     <Select
+                                        id={propertyValueId}
                                         size="sm"
                                         variant="soft"
                                         className="min-w-0"
@@ -514,6 +551,7 @@ const NotePropertiesPanel = forwardRef<NotePropertiesPanelRef, NotePropertiesPan
                                 ) : row.valueType === 'url' ? (
                                     <div className="flex min-w-0 items-center gap-1">
                                         <Input
+                                            id={propertyValueId}
                                             className="min-w-0"
                                             size="sm"
                                             variant="soft"
@@ -545,6 +583,7 @@ const NotePropertiesPanel = forwardRef<NotePropertiesPanelRef, NotePropertiesPan
                                     </div>
                                 ) : (
                                     <Input
+                                        id={propertyValueId}
                                         size="sm"
                                         variant="soft"
                                         type={
@@ -580,6 +619,7 @@ const NotePropertiesPanel = forwardRef<NotePropertiesPanelRef, NotePropertiesPan
             )}
 
             <div
+                ref={addControlsRef}
                 className={classNames(
                     'flex flex-wrap items-center gap-2',
                     rows.length > 0 ? 'mt-1 border-t border-border-subtle pt-3' : 'mt-2',
@@ -590,7 +630,7 @@ const NotePropertiesPanel = forwardRef<NotePropertiesPanelRef, NotePropertiesPan
                         Loading properties...
                     </Button>
                 ) : visiblePropertyKeys.length > 0 ? (
-                    <DropdownMenu>
+                    <DropdownMenu open={isAddMenuOpen} onOpenChange={setIsAddMenuOpen}>
                         <DropdownMenuTrigger asChild>
                             <Button type="button" size="sm" variant="subtle" disabled={disabled}>
                                 <Icon.Plus className="h-4 w-4" />
@@ -602,6 +642,7 @@ const NotePropertiesPanel = forwardRef<NotePropertiesPanelRef, NotePropertiesPan
                             sideOffset={6}
                             className="max-h-80 w-[min(22rem,calc(100vw-2rem))]"
                             style={{ overflowY: 'auto' }}
+                            onCloseAutoFocus={focusAddedProperty}
                         >
                             <DropdownMenuLabel>
                                 <Text as="span" variant="label" weight="semibold">

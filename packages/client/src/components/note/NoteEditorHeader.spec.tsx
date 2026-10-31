@@ -1,9 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createRef } from 'react';
+import { type ComponentProps, createRef } from 'react';
 import NoteEditorHeader from './NoteEditorHeader';
 
-const renderHeader = (onTitleEnter = vi.fn()) => {
+const renderHeader = (props: Partial<ComponentProps<typeof NoteEditorHeader>> = {}) => {
+    const onTitleEnter = vi.fn();
+
     render(
         <NoteEditorHeader
             title="Draft"
@@ -16,6 +18,8 @@ const renderHeader = (onTitleEnter = vi.fn()) => {
             saveConfirmationRevision={0}
             onTitleChange={vi.fn()}
             onTitleEnter={onTitleEnter}
+            onAddProperty={vi.fn()}
+            onAddReminder={vi.fn()}
             onCopyMarkdown={vi.fn()}
             onDownloadDocument={vi.fn()}
             onTogglePinned={vi.fn()}
@@ -24,6 +28,7 @@ const renderHeader = (onTitleEnter = vi.fn()) => {
             onRestoreVersion={vi.fn()}
             onDelete={vi.fn()}
             onSave={vi.fn()}
+            {...props}
         />,
     );
 
@@ -57,5 +62,37 @@ describe('<NoteEditorHeader />', () => {
         fireEvent.keyDown(title, { key: 'Enter', keyCode: 229 });
 
         expect(onTitleEnter).not.toHaveBeenCalled();
+    });
+
+    it('asks to add a property when Add property is chosen from the note actions', async () => {
+        const user = userEvent.setup();
+        const onAddProperty = vi.fn();
+        renderHeader({ onAddProperty });
+        await user.click(screen.getByRole('button', { name: 'Note actions' }));
+
+        await user.click(screen.getByRole('menuitem', { name: 'Add property' }));
+
+        expect(onAddProperty).toHaveBeenCalledTimes(1);
+    });
+
+    it('asks to add a reminder when Add reminder is chosen from the note actions', async () => {
+        const user = userEvent.setup();
+        const onAddReminder = vi.fn();
+        renderHeader({ onAddReminder });
+        await user.click(screen.getByRole('button', { name: 'Note actions' }));
+
+        await user.click(screen.getByRole('menuitem', { name: 'Add reminder' }));
+
+        expect(onAddReminder).toHaveBeenCalledTimes(1);
+    });
+
+    it('offers no add actions before a new note is first saved', async () => {
+        const user = userEvent.setup();
+        renderHeader({ isNew: true });
+
+        await user.click(screen.getByRole('button', { name: 'Note actions' }));
+
+        expect(screen.getByRole('menuitem', { name: 'Copy Markdown' })).toBeInTheDocument();
+        expect(screen.queryByRole('menuitem', { name: /^Add / })).not.toBeInTheDocument();
     });
 });

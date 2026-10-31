@@ -43,14 +43,16 @@ const renderPanel = (
         disabled?: boolean;
         onPendingChange?: (pending: boolean) => void;
         ref?: Ref<NotePropertiesPanelRef>;
+        propertyKeys?: NoteProperty[];
     } = {},
 ) => {
     const queryClient = createTestQueryClient();
+    const propertyKeys = options.propertyKeys ?? properties;
 
     vi.mocked(fetchNotePropertyKeys).mockResolvedValue({
         type: 'success',
         notePropertyKeys: {
-            keys: properties.map((property) => ({
+            keys: propertyKeys.map((property) => ({
                 key: property.key,
                 name: property.name,
                 valueType: property.valueType,
@@ -58,7 +60,7 @@ const renderPanel = (
                 options: [],
                 updatedAt: property.updatedAt,
             })),
-            totalCount: properties.length,
+            totalCount: propertyKeys.length,
         },
     });
 
@@ -205,6 +207,16 @@ describe('<NotePropertiesPanel />', () => {
         await flushPromise;
 
         expect(onSaved).not.toHaveBeenCalled();
+    });
+
+    it('focuses the value of a property picked from the add menu', async () => {
+        const user = userEvent.setup();
+        renderPanel([], vi.fn(), { propertyKeys: [createProperty()] });
+        await user.click(await screen.findByRole('button', { name: 'Add property' }));
+
+        await user.click(screen.getByRole('menuitem', { name: /^Summary/ }));
+
+        await waitFor(() => expect(screen.getByRole('textbox', { name: 'Property value' })).toHaveFocus());
     });
 
     it('does not offer property removal while editing is locked', async () => {

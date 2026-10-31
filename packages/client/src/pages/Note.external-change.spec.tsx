@@ -1065,7 +1065,7 @@ describe('<NoteContent /> title focus', () => {
         window.localStorage.clear();
     });
 
-    it('starts typing in the title of a note that has no title yet', async () => {
+    it('focuses the title when a note with an empty title is opened', async () => {
         renderNote(createNote({ title: '' }));
 
         const title = await screen.findByRole('textbox', { name: 'Note title' });
@@ -1073,7 +1073,7 @@ describe('<NoteContent /> title focus', () => {
         await waitFor(() => expect(title).toHaveFocus());
     });
 
-    it('leaves focus alone when the note already has a title', async () => {
+    it('keeps focus off the title when a note with a title is opened', async () => {
         renderNote(createNote({ title: 'Existing title' }));
 
         const title = await screen.findByRole('textbox', { name: 'Note title' });

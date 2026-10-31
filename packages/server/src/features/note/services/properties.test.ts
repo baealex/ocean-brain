@@ -116,7 +116,7 @@ test('property definitions require valid select option datasets before write', a
     );
 });
 
-test('property definition option updates keep used options', () => {
+test('a property definition update may drop an option that no note uses', () => {
     assert.doesNotThrow(() =>
         assertPropertyOptionUpdateKeepsUsedValues({
             existingOptions: [
@@ -126,7 +126,9 @@ test('property definition option updates keep used options', () => {
             nextOptions: [{ id: 2 }],
         }),
     );
+});
 
+test('a property definition update cannot drop an option that notes use', () => {
     assert.throws(
         () =>
             assertPropertyOptionUpdateKeepsUsedValues({

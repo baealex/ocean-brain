@@ -1,6 +1,7 @@
 import { getRouteApi } from '@tanstack/react-router';
 import classNames from 'classnames';
-import { useEffect, useState } from 'react';
+import { nanoid } from 'nanoid';
+import { useCallback, useEffect, useState } from 'react';
 import { QueryBoundary, QueryErrorView } from '~/components/app';
 import {
     LayoutModal,
@@ -20,7 +21,7 @@ import { MoveNoteWorkspaceModal } from '~/components/workspace/MoveNoteWorkspace
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
 import { useNoteEditorSession } from '~/hooks/useNoteEditorSession';
 import type { NoteLayout } from '~/models/note.model';
-import { NOTE_ROUTE, SETTINGS_TRASH_ROUTE } from '~/modules/url';
+import { NEW_NOTE_ID, NOTE_ROUTE, SETTINGS_TRASH_ROUTE } from '~/modules/url';
 import { useWorkspace } from '~/store/workspace';
 
 const Route = getRouteApi(NOTE_ROUTE);
@@ -69,9 +70,10 @@ function NoteReminders({ noteId, readOnly }: { noteId: string; readOnly?: boolea
 
 interface NoteContentProps {
     id: string;
+    onCreated?: (noteId: string) => void | Promise<void>;
 }
 
-export function NoteContent({ id }: NoteContentProps) {
+export function NoteContent({ id, onCreated }: NoteContentProps) {
     const { block } = Route.useSearch();
     const { multiple, activeWorkspace, workspaceId } = useWorkspace();
     const isReadOnly = Boolean(activeWorkspace?.archivedAt);
@@ -82,7 +84,9 @@ export function NoteContent({ id }: NoteContentProps) {
     const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
     const [isExportModalOpen, setIsExportModalOpen] = useState(false);
     const session = useNoteEditorSession({
-        noteId: id,
+        noteId: id === NEW_NOTE_ID ? null : id,
+        workspaceId,
+        onNoteCreated: onCreated,
         notify,
         navigateToNote: (noteId) =>
             navigate({
@@ -92,6 +96,7 @@ export function NoteContent({ id }: NoteContentProps) {
     });
     const { onCreate, onDelete, deleteWarningDialog } = useNoteMutate();
     const { document, editor, save, recovery, externalChange, properties, exportDocument, snapshots } = session;
+    const { noteId } = document;
     // Serialized note writes allow property edits during autosave.
     const isPropertyEditingLocked = isReadOnly || save.status === 'conflict' || save.status === 'error';
     const titleRef = document.titleRef;
@@ -114,11 +119,11 @@ export function NoteContent({ id }: NoteContentProps) {
     const handleDelete = async () => {
         const flushResult = await save.flushPendingChanges();
 
-        if (flushResult === 'error' || flushResult === 'conflict') {
+        if (flushResult === 'error' || flushResult === 'conflict' || !noteId) {
             return;
         }
 
-        await onDelete(id, openTrash);
+        await onDelete(noteId, openTrash);
     };
 
     const handleCloneNote = async () => {
@@ -142,6 +147,7 @@ export function NoteContent({ id }: NoteContentProps) {
                 <NoteEditorHeader
                     title={document.title}
                     readOnly={isReadOnly}
+                    isNew={document.isNew}
                     onMoveWorkspace={
                         multiple
                             ? () =>
@@ -181,12 +187,12 @@ export function NoteContent({ id }: NoteContentProps) {
                 <div className="flex flex-col gap-5">
                     <NotePropertiesPanel
                         ref={properties.ref}
-                        noteId={id}
+                        noteId={noteId ?? ''}
                         workspaceId={document.workspaceId}
                         properties={document.properties}
                         expectedUpdatedAt={properties.expectedUpdatedAt}
                         editSessionId={properties.editSessionId}
-                        disabled={isPropertyEditingLocked}
+                        disabled={isPropertyEditingLocked || !noteId}
                         saveProperties={properties.saveProperties}
                         onPendingChange={properties.onPendingChange}
                         onSaved={properties.onSaved}
@@ -197,20 +203,24 @@ export function NoteContent({ id }: NoteContentProps) {
                         ref={editor.ref}
                         content={editor.content}
                         editable={!isReadOnly}
-                        currentNoteId={id}
+                        currentNoteId={noteId ?? undefined}
                         focusBlockId={block}
                         onChange={editor.onChange}
                         externalUpdate={editor.externalUpdate}
                         onClearChangeMarks={editor.onClearChangeMarks}
                     />
 
-                    <NoteReminders noteId={id} readOnly={isReadOnly} />
-                    <NoteBackReferences noteId={id} targetTitle={document.title} />
+                    {noteId && (
+                        <>
+                            <NoteReminders noteId={noteId} readOnly={isReadOnly} />
+                            <NoteBackReferences noteId={noteId} targetTitle={document.title} />
+                        </>
+                    )}
                 </div>
 
-                {isMoveOpen && (
+                {isMoveOpen && noteId && (
                     <MoveNoteWorkspaceModal
-                        noteId={id}
+                        noteId={noteId}
                         sourceWorkspaceId={document.workspaceId ?? workspaceId}
                         onClose={() => setIsMoveOpen(false)}
                     />
@@ -240,20 +250,45 @@ export function NoteContent({ id }: NoteContentProps) {
                     getMarkdown={editor.getMarkdown}
                     onClose={() => setIsExportModalOpen(false)}
                 />
-                <RestoreSnapshotModal
-                    isOpen={isRestoreModalOpen}
-                    noteId={id}
-                    onClose={() => setIsRestoreModalOpen(false)}
-                    restoreSnapshot={snapshots.restore}
-                />
+                {noteId && (
+                    <RestoreSnapshotModal
+                        isOpen={isRestoreModalOpen}
+                        noteId={noteId}
+                        onClose={() => setIsRestoreModalOpen(false)}
+                        restoreSnapshot={snapshots.restore}
+                    />
+                )}
                 {deleteWarningDialog}
             </main>
         </PageLayout>
     );
 }
 
+const createContentKey = (id: string) => (id === NEW_NOTE_ID ? `${NEW_NOTE_ID}-${nanoid()}` : id);
+
 export default function Note() {
     const { id } = Route.useParams();
+    const navigate = Route.useNavigate();
+    // Keep the editor mounted when a new note's URL switches to its created id.
+    const [content, setContent] = useState(() => ({
+        key: createContentKey(id),
+        id,
+        createdId: null as string | null,
+    }));
+    let current = content;
+
+    if (id !== content.id) {
+        current = id === content.createdId ? { ...content, id } : { key: createContentKey(id), id, createdId: null };
+        setContent(current);
+    }
+
+    const handleCreated = useCallback(
+        (createdId: string) => {
+            setContent((value) => ({ ...value, createdId }));
+            return navigate({ to: NOTE_ROUTE, params: { id: createdId }, replace: true });
+        },
+        [navigate],
+    );
 
     if (!id) {
         throw new Error('Note id is required.');
@@ -276,7 +311,7 @@ export default function Note() {
                 </PageLayout>
             )}
         >
-            <NoteContent key={id} id={id} />
+            <NoteContent key={current.key} id={id} onCreated={handleCreated} />
         </QueryBoundary>
     );
 }

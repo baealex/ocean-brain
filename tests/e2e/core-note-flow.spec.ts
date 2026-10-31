@@ -10,9 +10,7 @@ test('users can capture with the keyboard, save, find, and reopen a note', async
     await expect(page).toHaveURL((url) => url.pathname === '/');
 
     await page.getByRole('button', { name: /Open a new note/ }).click();
-    await expect(page).toHaveURL((url) => /^\/[^/]+$/.test(url.pathname));
 
-    const notePath = new URL(page.url()).pathname;
     const noteTitle = 'Core flow field journal';
     const searchablePhrase = 'violet lighthouse rendezvous';
     const titleInput = page.getByRole('textbox', { name: 'Note title' });
@@ -26,6 +24,8 @@ test('users can capture with the keyboard, save, find, and reopen a note', async
     await expect(titleInput).toHaveValue(noteTitle);
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(page.getByRole('status')).toContainText('Saved');
+    await expect(page).not.toHaveURL(/\/new$/);
+    const notePath = new URL(page.url()).pathname;
 
     await page.getByRole('button', { name: 'Open detailed search' }).click();
     await expect(page).toHaveURL((url) => url.pathname === '/search');

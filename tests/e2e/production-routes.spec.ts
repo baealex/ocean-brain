@@ -14,14 +14,14 @@ test('production note chunks render after navigation and a direct hard refresh',
     await signIn(page);
 
     await page.getByRole('button', { name: /Open a new note/ }).click();
-    await expect(page).toHaveURL((url) => /^\/[^/]+$/.test(url.pathname));
     await expect(page.getByRole('textbox', { name: 'Note title' })).toBeVisible();
     await expect(page.locator('[contenteditable="true"]').first()).toBeVisible();
 
-    const notePath = new URL(page.url()).pathname;
     await page.getByRole('textbox', { name: 'Note title' }).fill('Production bundle smoke');
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(page.getByRole('status')).toContainText('Saved');
+    await expect(page).not.toHaveURL(/\/new$/);
+    const notePath = new URL(page.url()).pathname;
 
     await page.goto(notePath);
     await expect(page.getByRole('textbox', { name: 'Note title' })).toHaveValue('Production bundle smoke');

@@ -527,7 +527,7 @@ export interface CreateNoteRequestData {
 export function createNote(note: CreateNoteRequestData) {
     return graphQuery<
         {
-            createNote: Pick<Note, 'id' | 'workspaceId'>;
+            createNote: Pick<Note, 'id' | 'workspaceId' | 'title' | 'createdAt' | 'updatedAt'>;
         },
         { note: CreateNoteRequestData }
     >(
@@ -535,6 +535,9 @@ export function createNote(note: CreateNoteRequestData) {
             createNote(note: $note) {
                 workspaceId
                 id
+                title
+                createdAt
+                updatedAt
             }
         }`,
         { note },

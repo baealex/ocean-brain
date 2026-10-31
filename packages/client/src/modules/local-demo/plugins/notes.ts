@@ -217,7 +217,15 @@ export const notesLocalPlugin: LocalDemoPlugin = {
             };
             state.notes.unshift(note);
             save();
-            return success({ createNote: { id: note.id, workspaceId } });
+            return success({
+                createNote: {
+                    id: note.id,
+                    workspaceId,
+                    title: note.title,
+                    createdAt: note.createdAt,
+                    updatedAt: note.updatedAt,
+                },
+            });
         },
         UpdateNote: ({ state, variables, save }) => {
             const note = findNote(state, variables.id);

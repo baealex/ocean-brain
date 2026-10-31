@@ -28,6 +28,8 @@ export const APP_ROUTE_PATHS = {
     SETTINGS_PROPERTIES_ROUTE: '/setting/properties',
 } as const;
 
+export const NEW_NOTE_ID = 'new';
+
 export const {
     HOME_ROUTE,
     VIEWS_ROUTE,

@@ -1,5 +1,6 @@
 import type { AuthSessionResponse } from '@baejino/auth';
 import { redirectToLogin } from './auth-navigation';
+import { isLocalOnlyDemoMode } from './demo-mode';
 
 const AUTH_SESSION_GENERATION_HEADER = 'X-Ocean-Brain-Session-Generation';
 
@@ -50,6 +51,10 @@ export const reloadForSessionGenerationChange = (location: RedirectLocation = wi
 export const redirectToLoginIfSessionExpired = async (
     fetchImpl: typeof fetch = fetch,
 ): Promise<SessionRecoveryResult> => {
+    if (isLocalOnlyDemoMode()) {
+        return 'unavailable';
+    }
+
     const response = await fetchImpl('/api/auth/session').catch(() => undefined);
 
     if (!response?.ok) {

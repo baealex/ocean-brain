@@ -265,4 +265,20 @@ describe('viewsLocalPlugin', () => {
 
         expect(response?.viewCalendarNotes).toEqual([{ id: 'note-2', title: 'Beta', calendarDate: '2026-08-12' }]);
     });
+
+    it('lists visible text as the preview of a view note', () => {
+        const state = createState(createView('title', 'asc'));
+        state.notes[1].content = JSON.stringify([
+            { type: 'paragraph', content: [{ type: 'text', text: 'Visible body', styles: {} }] },
+        ]);
+
+        const response = viewsLocalPlugin.graphHandlers?.FetchViewNotes?.({
+            state,
+            variables: { id: 'view-1', pagination: { limit: 5, offset: 0 } },
+            save: () => undefined,
+        });
+        const result = response?.viewNotes as { notes: Array<{ id: string; contentPreview?: string }> } | undefined;
+
+        expect(result?.notes.find((note) => note.id === 'note-1')?.contentPreview).toBe('Visible body');
+    });
 });

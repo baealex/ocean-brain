@@ -4,7 +4,7 @@ import type { View, ViewNoteCreationContext } from '~/models/view.model';
 import { replaceFixedPlaceholder } from '~/modules/fixed-placeholder';
 import { localError, success } from '../response';
 import type { LocalDemoPlugin, LocalDemoState } from '../types';
-import { applyPropertyFilters, createLocalId, listNotesByTags, now, paginate } from '../utils';
+import { applyPropertyFilters, createLocalId, listNotesByTags, now, paginate, withContentPreview } from '../utils';
 import { localViewNotes, localViewWorkspace, localWorkspace } from '../workspace';
 
 const copyTemplateBody = (value: unknown): unknown => {
@@ -241,7 +241,9 @@ export const viewsLocalPlugin: LocalDemoPlugin = {
                       },
                   )
                 : [];
-            return success({ viewNotes: { totalCount: notes.length, notes: paginate(notes, variables) } });
+            return success({
+                viewNotes: { totalCount: notes.length, notes: withContentPreview(paginate(notes, variables)) },
+            });
         },
         FetchViewCalendarNotes: ({ state, variables }) => {
             const view = state.viewWorkspace.groups
@@ -327,7 +329,7 @@ export const viewsLocalPlugin: LocalDemoPlugin = {
             });
 
             return success({
-                viewBoardColumn: { totalCount: notes.length, notes: paginate(notes, variables) },
+                viewBoardColumn: { totalCount: notes.length, notes: withContentPreview(paginate(notes, variables)) },
             });
         },
         CreateViewGroup: ({ state, variables, save }) => {

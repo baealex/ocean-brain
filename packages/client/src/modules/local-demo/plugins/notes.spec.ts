@@ -431,11 +431,53 @@ describe('trashed note payload', () => {
         expect(note.deletedAt).toBe('2024-03-09T16:00:00.000Z');
     });
 
+    it('shows one line per block as the content of a trashed note detail', () => {
+        const state = createTrashedState(
+            JSON.stringify([...paragraph('First line'), ...paragraph('Second line')]),
+            '1710000000000',
+        );
+
+        const response = notesLocalPlugin.graphHandlers?.FetchTrashedNote?.({
+            state,
+            variables: { id: 'note-trashed' },
+            save: () => undefined,
+        }) as unknown as { trashedNote: { contentAsMarkdown: string } };
+
+        expect(response.trashedNote.contentAsMarkdown).toBe('First line\nSecond line');
+    });
+
     it('lists millisecond created and updated timestamps of a trashed note as ISO strings', () => {
         const state = createTrashedState('[]', '1710000000000');
 
         const note = fetchTrashedNote(state);
 
         expect([note.createdAt, note.updatedAt]).toEqual(['2024-03-09T16:00:00.000Z', '2024-03-09T16:00:00.000Z']);
+    });
+});
+
+describe('note list previews', () => {
+    const createPreviewState = () => {
+        const state = createState();
+        state.notes[0].content = JSON.stringify([
+            { type: 'paragraph', content: [{ type: 'text', text: 'Visible body', styles: {} }] },
+        ]);
+        return state;
+    };
+
+    it.each([
+        ['FetchNotes', 'allNotes', {}],
+        ['FetchSearchNotes', 'searchNotes', { query: 'Guide A' }],
+        ['FetchTagNotes', 'tagNotes', { searchFilter: { query: 'tag-guide' } }],
+        ['FetchNotesByTagNames', 'notesByTagNames', { tagNames: ['@guide'], mode: 'and' }],
+    ])('%s lists visible text as the preview of a note', (handlerName, field, variables) => {
+        const state = createPreviewState();
+
+        const response = notesLocalPlugin.graphHandlers?.[handlerName]?.({
+            state,
+            variables: { pagination: { limit: 25, offset: 0 }, ...variables },
+            save: () => undefined,
+        }) as unknown as Record<string, { notes: Array<{ id: string; contentPreview?: string }> }>;
+
+        expect(response[field].notes.find((note) => note.id === 'note-guide-a')?.contentPreview).toBe('Visible body');
     });
 });

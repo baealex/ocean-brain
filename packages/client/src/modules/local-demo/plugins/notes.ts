@@ -4,6 +4,7 @@ import { localBackReferenceContexts } from '../back-reference-context';
 import { localError, success } from '../response';
 import type { LocalDemoPlugin, LocalDemoState, LocalTrashNote } from '../types';
 import {
+    contentAsBlockLines,
     createLocalId,
     extractNoteReferences,
     findNote,
@@ -16,6 +17,7 @@ import {
     sortNotes,
     toIsoTimestamp,
     trashedContentPreview,
+    withContentPreview,
 } from '../utils';
 import { localScopedNotes, localScopeId, localWorkspace } from '../workspace';
 
@@ -25,7 +27,7 @@ const toTrashedNotePayload = (note: LocalTrashNote) => ({
     updatedAt: toIsoTimestamp(note.updatedAt),
     deletedAt: toIsoTimestamp(note.deletedAt),
     contentPreview: trashedContentPreview(note.content),
-    contentAsMarkdown: note.content,
+    contentAsMarkdown: contentAsBlockLines(note.content),
     tagNames: note.tags.map((tag) => tag.name),
 });
 
@@ -87,7 +89,9 @@ export const notesLocalPlugin: LocalDemoPlugin = {
                 localScopedNotes(state, variables).filter((note) => noteMatchesQuery(note, getQueryText(variables))),
                 variables,
             );
-            return success({ allNotes: { totalCount: filtered.length, notes: paginate(filtered, variables) } });
+            return success({
+                allNotes: { totalCount: filtered.length, notes: withContentPreview(paginate(filtered, variables)) },
+            });
         },
         FetchSearchNotes: ({ state, variables }) => {
             const mode = variables.mode as 'HYBRID' | 'LEXICAL' | 'SEMANTIC' | undefined;
@@ -108,7 +112,7 @@ export const notesLocalPlugin: LocalDemoPlugin = {
                 localScopedNotes(state, variables).filter((note) => noteMatchesQuery(note, getQueryText(variables))),
                 { ...variables, searchFilter: { sortBy: 'updatedAt', sortOrder: 'desc' } },
             );
-            const notes = paginate(filtered, variables);
+            const notes = withContentPreview(paginate(filtered, variables));
             return success({
                 searchNotes: {
                     totalCount: filtered.length,
@@ -174,7 +178,9 @@ export const notesLocalPlugin: LocalDemoPlugin = {
                 ),
                 { ...variables, searchFilter: { sortBy: 'updatedAt', sortOrder: 'desc' } },
             );
-            return success({ tagNotes: { totalCount: filtered.length, notes: paginate(filtered, variables) } });
+            return success({
+                tagNotes: { totalCount: filtered.length, notes: withContentPreview(paginate(filtered, variables)) },
+            });
         },
         FetchNotesByTagNames: ({ state, variables }) => {
             const filtered = listNotesByTags(
@@ -182,7 +188,12 @@ export const notesLocalPlugin: LocalDemoPlugin = {
                 (variables.tagNames as string[] | undefined) ?? [],
                 (variables.mode as 'and' | 'or' | undefined) ?? 'and',
             );
-            return success({ notesByTagNames: { totalCount: filtered.length, notes: paginate(filtered, variables) } });
+            return success({
+                notesByTagNames: {
+                    totalCount: filtered.length,
+                    notes: withContentPreview(paginate(filtered, variables)),
+                },
+            });
         },
         FetchNote: ({ state, variables }) => {
             const note = findNote(state, variables.id);

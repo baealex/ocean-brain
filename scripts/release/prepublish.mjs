@@ -4,7 +4,7 @@ import { execSync } from 'child_process';
 import { cpSync, mkdirSync, rmSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { preparePrismaBundle } from './prepare-prisma-bundle.mjs';
+import { prepareRuntimeBundle } from './prepare-runtime-bundle.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..', '..');
@@ -67,8 +67,8 @@ runPnpm(['--filter', 'ocean-brain', 'build']);
 console.log('=== Copy artifacts to CLI package ===');
 copyArtifacts();
 
-console.log('=== Prepare and audit patched Prisma runtime bundle ===');
-preparePrismaBundle();
+console.log('=== Prepare and audit patched runtime bundle ===');
+prepareRuntimeBundle();
 
 console.log('=== Done ===');
 console.log('CLI package is ready to publish.');

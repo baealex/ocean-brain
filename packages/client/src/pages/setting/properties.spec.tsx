@@ -117,4 +117,24 @@ describe('<PropertiesSettings />', () => {
             });
         });
     });
+    it('saves a reordered option list from the edit dialog', async () => {
+        renderPage();
+
+        await screen.findByText('State');
+        await userEvent.click(screen.getByRole('button', { name: /edit/i }));
+        await userEvent.click(screen.getByRole('button', { name: 'Actions for Doing option' }));
+        await userEvent.click(screen.getByRole('menuitem', { name: 'Move up' }));
+        await userEvent.click(screen.getByRole('button', { name: /save changes/i }));
+
+        await waitFor(() => {
+            expect(updateNotePropertyKey).toHaveBeenCalledWith({
+                key: 'state',
+                name: 'State',
+                options: [
+                    { id: '2', label: 'Doing', value: 'doing', color: null, order: 0 },
+                    { id: '1', label: 'Todo', value: 'todo', color: null, order: 1 },
+                ],
+            });
+        });
+    });
 });

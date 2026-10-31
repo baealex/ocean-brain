@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 
-import { updateNoteProperties } from '~/apis/note.api';
+import { updateNoteProperties, updateNotePropertyKey } from '~/apis/note.api';
 import { fetchViewBoardColumn } from '~/apis/view.api';
 import { ToastProvider } from '~/components/ui';
 import type { NoteProperty } from '~/models/note.model';
@@ -16,7 +16,7 @@ vi.mock('@tanstack/react-router', () => ({
     Link: ({ children, ...props }: { children: React.ReactNode }) => <a {...props}>{children}</a>,
 }));
 
-vi.mock('~/apis/note.api', () => ({ updateNoteProperties: vi.fn() }));
+vi.mock('~/apis/note.api', () => ({ updateNoteProperties: vi.fn(), updateNotePropertyKey: vi.fn() }));
 vi.mock('~/apis/view.api', () => ({ fetchViewBoardColumn: vi.fn() }));
 
 const view: View = {
@@ -102,6 +102,27 @@ const renderBadgeBoard = (displayOptions: Partial<View['displayOptions']>) => {
     );
 };
 
+const renderEditableBoard = () => {
+    vi.mocked(fetchViewBoardColumn).mockResolvedValue({
+        type: 'success',
+        viewBoardColumn: { totalCount: 0, notes: [] },
+    });
+    const { Wrapper: QueryWrapper } = createQueryClientWrapper();
+    const Wrapper = ({ children }: { children: React.ReactNode }) => (
+        <QueryWrapper>
+            <ToastProvider>{children}</ToastProvider>
+        </QueryWrapper>
+    );
+
+    render(<ViewBoardRenderer view={view} groupProperty={statusProperty} />, { wrapper: Wrapper });
+};
+
+const getColumnOrder = () =>
+    screen
+        .getAllByRole('region')
+        .map((region) => region.getAttribute('aria-label'))
+        .filter((label): label is string => Boolean(label?.endsWith(' column')));
+
 describe('<ViewBoardRenderer />', () => {
     it('shows cards without move controls when embedded in a read-only note', async () => {
         vi.mocked(fetchViewBoardColumn).mockImplementation(async (_id, { optionValue }) => ({
@@ -135,6 +156,8 @@ describe('<ViewBoardRenderer />', () => {
         expect(screen.queryByRole('button', { name: /Drag Read-only task/ })).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Move Read-only task' })).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: /New note/ })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Reorder To do column' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Actions for To do column' })).not.toBeInTheDocument();
     });
 
     it('moves a card to another column by updating the grouping property', async () => {
@@ -291,5 +314,45 @@ describe('<ViewBoardRenderer />', () => {
         const card = await screen.findByRole('article');
         expect(within(card).getByText('@product')).toBeInTheDocument();
         expect(within(card).queryByText('Ocean Brain')).not.toBeInTheDocument();
+    });
+    it('moves a column from its menu and saves the option order', async () => {
+        vi.mocked(updateNotePropertyKey).mockResolvedValue({
+            type: 'success',
+            updateNotePropertyKey: statusProperty,
+        } as never);
+        const user = userEvent.setup();
+        renderEditableBoard();
+
+        expect(getColumnOrder()).toEqual(['To do column', 'Doing column', 'Unassigned column']);
+        expect(screen.queryByRole('button', { name: 'Actions for Unassigned column' })).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: 'Actions for To do column' }));
+        await user.click(screen.getByRole('menuitem', { name: 'Move right' }));
+
+        await waitFor(() =>
+            expect(updateNotePropertyKey).toHaveBeenCalledWith({
+                key: 'status',
+                options: [
+                    { id: 'doing', label: 'Doing', value: 'doing', color: '#f0a45d', order: 0 },
+                    { id: 'todo', label: 'To do', value: 'todo', color: '#5b8def', order: 1 },
+                ],
+            }),
+        );
+        expect(getColumnOrder()).toEqual(['Doing column', 'To do column', 'Unassigned column']);
+    });
+
+    it('restores the column order when saving the option order fails', async () => {
+        vi.mocked(updateNotePropertyKey).mockResolvedValue({
+            type: 'error',
+            errors: [{ message: 'Could not save the order.' }],
+        } as never);
+        const user = userEvent.setup();
+        renderEditableBoard();
+
+        await user.click(screen.getByRole('button', { name: 'Actions for Doing column' }));
+        await user.click(screen.getByRole('menuitem', { name: 'Move left' }));
+
+        expect(await screen.findByText('Could not save the order.')).toBeInTheDocument();
+        expect(getColumnOrder()).toEqual(['To do column', 'Doing column', 'Unassigned column']);
     });
 });

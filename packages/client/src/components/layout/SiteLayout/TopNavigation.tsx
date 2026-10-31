@@ -17,6 +17,12 @@ import { HOME_ROUTE, INTEGRATION_ROUTE, SEARCH_ROUTE } from '~/modules/url';
 import { useWorkspace } from '~/store/workspace';
 import { CORE_NAVIGATION_ITEMS } from './navigation-items';
 
+const revealLink = (link: HTMLAnchorElement | null) => {
+    if (typeof link?.scrollIntoView === 'function') {
+        link.scrollIntoView({ inline: 'center', block: 'nearest' });
+    }
+};
+
 const TopNavigation = () => {
     const { workspaceId, multiple } = useWorkspace();
     const pathname = useLocation({ select: (location) => location.pathname });
@@ -47,18 +53,22 @@ const TopNavigation = () => {
     const isItemActive = (path: string) =>
         pathname === path || (path !== HOME_ROUTE && pathname.startsWith(`${path}/`));
     const activeItemId = items.find((item) => isItemActive(getItemPath(item)))?.id;
-    const activeLinkRef = useRef<HTMLAnchorElement>(null);
+    // A page without its own tab, such as a note, keeps the Search tab in view on narrow screens.
+    const revealedItemId = activeItemId ?? items.find((item) => item.path === SEARCH_ROUTE)?.id;
+    const revealedLinkRef = useRef<HTMLAnchorElement>(null);
 
     useEffect(() => {
-        if (!activeItemId) {
-            return;
-        }
-
-        const activeLink = activeLinkRef.current;
-        if (typeof activeLink?.scrollIntoView === 'function') {
-            activeLink.scrollIntoView({ inline: 'center', block: 'nearest' });
+        if (activeItemId) {
+            revealLink(revealedLinkRef.current);
         }
     }, [activeItemId, pathname]);
+
+    // Only on entry: a new note's URL changes while the user is typing in it.
+    useEffect(() => {
+        if (!activeItemId) {
+            revealLink(revealedLinkRef.current);
+        }
+    }, [activeItemId]);
 
     return (
         <nav aria-label="Primary navigation" className="flex items-center gap-1 px-4 py-2.5">
@@ -71,7 +81,7 @@ const TopNavigation = () => {
                     <Fragment key={item.id}>
                         {index > 0 && <span className="h-3.5 w-px shrink-0 bg-border-subtle" />}
                         <Link
-                            ref={isActive ? activeLinkRef : undefined}
+                            ref={item.id === revealedItemId ? revealedLinkRef : undefined}
                             to={item.path}
                             search={multiple ? { workspace: workspaceId } : undefined}
                             params={connectionId ? { connectionId } : undefined}

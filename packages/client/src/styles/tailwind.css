@@ -2,6 +2,17 @@
 
 @custom-variant dark (&:where(html.dark *));
 
+/* Text entry has focus, including BlockNote toolbars that take focus from the editor. */
+@custom-variant editing {
+    :root:has(
+            :is(input:not([type="checkbox"], [type="radio"], [type="file"]), textarea, [contenteditable]):focus,
+            .bn-root:focus-within
+        )
+        & {
+        @slot;
+    }
+}
+
 @keyframes save-ring-spin {
     to {
         transform: rotate(360deg);

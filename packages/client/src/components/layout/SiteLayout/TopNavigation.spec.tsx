@@ -8,7 +8,7 @@ import {
     RouterProvider,
 } from '@tanstack/react-router';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
-import { GRAPH_ROUTE, HOME_ROUTE, SEARCH_ROUTE, VIEWS_ROUTE } from '~/modules/url';
+import { GRAPH_ROUTE, HOME_ROUTE, NOTE_ROUTE, SEARCH_ROUTE, VIEWS_ROUTE } from '~/modules/url';
 import { createTestQueryClient } from '~/test/test-utils';
 
 import TopNavigation from './TopNavigation';
@@ -55,8 +55,14 @@ const renderNavigation = async (initialPath: string) => {
         component: () => <div>Graph</div>,
     });
 
+    const noteRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: NOTE_ROUTE,
+        component: () => <div>Note</div>,
+    });
+
     const router = createRouter({
-        routeTree: rootRoute.addChildren([homeRoute, graphRoute]),
+        routeTree: rootRoute.addChildren([homeRoute, graphRoute, noteRoute]),
         history: createMemoryHistory({ initialEntries: [initialPath] }),
     });
 
@@ -109,5 +115,29 @@ describe('<TopNavigation />', () => {
         await waitFor(() => {
             expect(scrollIntoView.mock.contexts.at(-1)).toBe(notesLink);
         });
+    });
+
+    it('scrolls the Search tab into view when a note opens from another tab', async () => {
+        const { router, navigation } = await renderNavigation(GRAPH_ROUTE);
+
+        await act(async () => {
+            await router.navigate({ to: NOTE_ROUTE, params: { id: '42' } });
+        });
+
+        const searchLink = within(navigation).getByRole('link', { name: /search/i });
+        await waitFor(() => {
+            expect(scrollIntoView.mock.contexts.at(-1)).toBe(searchLink);
+        });
+    });
+
+    it('keeps the tabs still when a new note moves to its saved address', async () => {
+        const { router } = await renderNavigation('/new');
+        scrollIntoView.mockClear();
+
+        await act(async () => {
+            await router.navigate({ to: NOTE_ROUTE, params: { id: '42' }, replace: true });
+        });
+
+        expect(scrollIntoView).not.toHaveBeenCalled();
     });
 });

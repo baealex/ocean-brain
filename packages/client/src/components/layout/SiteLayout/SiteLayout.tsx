@@ -5,6 +5,7 @@ import { WorkspaceSwitcher } from '~/components/workspace/WorkspaceSwitcher';
 import { INTEGRATION_ROUTE } from '~/modules/url';
 
 import LayoutShell from './LayoutShell';
+import MobileCaptureButton from './MobileCaptureButton';
 import SidebarHeroBanner from './SidebarHeroBanner';
 import SidebarPinnedNotes from './SidebarPinnedNotes';
 import SidebarPrimaryActions from './SidebarPrimaryActions';
@@ -34,6 +35,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
                 </>
             }
             topNavigation={<TopNavigation />}
+            mobileAction={<MobileCaptureButton />}
         >
             {children}
         </LayoutShell>

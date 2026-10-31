@@ -92,19 +92,37 @@ describe('<PropertiesSettings />', () => {
         } as never);
     });
 
-    it('edits a shared property definition from the settings page', async () => {
+    it('shows existing option values as editable when the edit dialog opens', async () => {
+        const user = userEvent.setup();
         renderPage();
-
         await screen.findByText('State');
-        await userEvent.click(screen.getByRole('button', { name: /edit/i }));
+
+        await user.click(screen.getByRole('button', { name: /edit/i }));
 
         expect(screen.getByDisplayValue('todo')).toBeEnabled();
         expect(screen.getAllByText('Existing')).toHaveLength(2);
+    });
+
+    it('keeps Save changes disabled when the edit dialog opens without changes', async () => {
+        const user = userEvent.setup();
+        renderPage();
+        await screen.findByText('State');
+
+        await user.click(screen.getByRole('button', { name: /edit/i }));
+
         expect(screen.getByRole('button', { name: /save changes/i })).toBeDisabled();
+    });
+
+    it('saves a renamed property from the edit dialog', async () => {
+        const user = userEvent.setup();
+        renderPage();
+        await screen.findByText('State');
+        await user.click(screen.getByRole('button', { name: /edit/i }));
         const nameInput = screen.getByLabelText(/name/i);
-        await userEvent.clear(nameInput);
-        await userEvent.type(nameInput, 'Workflow state');
-        await userEvent.click(screen.getByRole('button', { name: /save changes/i }));
+        await user.clear(nameInput);
+        await user.type(nameInput, 'Workflow state');
+
+        await user.click(screen.getByRole('button', { name: /save changes/i }));
 
         await waitFor(() => {
             expect(updateNotePropertyKey).toHaveBeenCalledWith({
@@ -117,6 +135,7 @@ describe('<PropertiesSettings />', () => {
             });
         });
     });
+
     it('saves a reordered option list from the edit dialog', async () => {
         renderPage();
 
@@ -137,31 +156,68 @@ describe('<PropertiesSettings />', () => {
             });
         });
     });
-    it('asks for confirmation before changing an existing option value', async () => {
-        vi.mocked(updateNotePropertyKey).mockClear();
-        renderPage();
 
-        await screen.findByText('State');
-        await userEvent.click(screen.getByRole('button', { name: /edit/i }));
-        const valueInput = screen.getByDisplayValue('todo');
-        await userEvent.clear(valueInput);
-        await userEvent.type(valueInput, 'to-do');
-        await userEvent.click(screen.getByRole('button', { name: /save changes/i }));
+    describe('after changing an existing option value', () => {
+        const changeTodoValue = async (user: ReturnType<typeof userEvent.setup>) => {
+            await screen.findByText('State');
+            await user.click(screen.getByRole('button', { name: /edit/i }));
+            const valueInput = screen.getByDisplayValue('todo');
+            await user.clear(valueInput);
+            await user.type(valueInput, 'to-do');
+        };
 
-        expect(updateNotePropertyKey).not.toHaveBeenCalled();
-        expect(await screen.findByText('todo → to-do')).toBeInTheDocument();
-        expect(screen.getByText(/MCP queries and scripts that use the old values are not updated/)).toBeInTheDocument();
+        it('shows the old and new value when Save changes is clicked', async () => {
+            const user = userEvent.setup();
+            renderPage();
+            await changeTodoValue(user);
 
-        await userEvent.click(screen.getByRole('button', { name: 'Change values' }));
+            await user.click(screen.getByRole('button', { name: /save changes/i }));
 
-        await waitFor(() => {
-            expect(updateNotePropertyKey).toHaveBeenCalledWith({
-                key: 'state',
-                name: 'State',
-                options: [
-                    { id: '1', label: 'Todo', value: 'to-do', color: null, order: 0 },
-                    { id: '2', label: 'Doing', value: 'doing', color: null, order: 1 },
-                ],
+            expect(await screen.findByText('todo → to-do')).toBeInTheDocument();
+        });
+
+        it('warns that MCP queries and scripts using the old values are not updated when Save changes is clicked', async () => {
+            const user = userEvent.setup();
+            renderPage();
+            await changeTodoValue(user);
+
+            await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+            expect(
+                await screen.findByText(/MCP queries and scripts that use the old values are not updated/),
+            ).toBeInTheDocument();
+        });
+
+        it('does not save before the change is confirmed', async () => {
+            const user = userEvent.setup();
+            vi.mocked(updateNotePropertyKey).mockClear();
+            renderPage();
+            await changeTodoValue(user);
+
+            await user.click(screen.getByRole('button', { name: /save changes/i }));
+            await screen.findByText('todo → to-do');
+
+            expect(updateNotePropertyKey).not.toHaveBeenCalled();
+        });
+
+        it('saves the new value when Change values is clicked', async () => {
+            const user = userEvent.setup();
+            vi.mocked(updateNotePropertyKey).mockClear();
+            renderPage();
+            await changeTodoValue(user);
+            await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+            await user.click(await screen.findByRole('button', { name: 'Change values' }));
+
+            await waitFor(() => {
+                expect(updateNotePropertyKey).toHaveBeenCalledWith({
+                    key: 'state',
+                    name: 'State',
+                    options: [
+                        { id: '1', label: 'Todo', value: 'to-do', color: null, order: 0 },
+                        { id: '2', label: 'Doing', value: 'doing', color: null, order: 1 },
+                    ],
+                });
             });
         });
     });

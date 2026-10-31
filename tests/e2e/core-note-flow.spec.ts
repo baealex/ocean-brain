@@ -1,7 +1,30 @@
 import { expect, test } from './fixtures';
 import { collectRuntimeErrors } from './helpers/runtime-errors';
 
-test('users can capture with the keyboard, save, find, and reopen a note', async ({ page }) => {
+test('pressing Enter in the title of a new note moves typing into the body', async ({ page }) => {
+    const runtimeErrors = collectRuntimeErrors(page);
+    const noteTitle = 'Keyboard capture journal';
+    const bodyText = 'amber harbor signal';
+    const titleInput = page.getByRole('textbox', { name: 'Note title' });
+    const editor = page.locator('.bn-editor[contenteditable="true"]');
+    await page.goto('/');
+    await page.getByLabel('Password').fill('e2e-password');
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await expect(page).toHaveURL((url) => url.pathname === '/');
+    await page.getByRole('button', { name: /Open a new note/ }).click();
+    await expect(titleInput).toBeFocused();
+    await page.keyboard.type(noteTitle);
+
+    await page.keyboard.press('Enter');
+    await expect(editor).toBeFocused();
+    await page.keyboard.type(bodyText);
+
+    await expect(titleInput).toHaveValue(noteTitle);
+    await expect(editor).toContainText(bodyText);
+    expect(runtimeErrors).toEqual([]);
+});
+
+test('users can capture, save, find, and reopen a note', async ({ page }) => {
     const runtimeErrors = collectRuntimeErrors(page);
 
     await page.goto('/');
@@ -16,12 +39,9 @@ test('users can capture with the keyboard, save, find, and reopen a note', async
     const titleInput = page.getByRole('textbox', { name: 'Note title' });
     const editor = page.locator('.bn-editor[contenteditable="true"]');
 
-    await expect(titleInput).toBeFocused();
-    await page.keyboard.type(noteTitle);
-    await page.keyboard.press('Enter');
-    await expect(editor).toBeFocused();
+    await titleInput.fill(noteTitle);
+    await editor.click();
     await page.keyboard.type(searchablePhrase);
-    await expect(titleInput).toHaveValue(noteTitle);
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(page.getByRole('status')).toContainText('Saved');
     await expect(page).not.toHaveURL(/\/new$/);

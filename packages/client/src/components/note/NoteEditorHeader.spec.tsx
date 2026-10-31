@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
 import NoteEditorHeader from './NoteEditorHeader';
 
@@ -30,18 +31,29 @@ const renderHeader = (onTitleEnter = vi.fn()) => {
 };
 
 describe('<NoteEditorHeader />', () => {
-    it('moves on to the body when Enter is pressed in the title', () => {
+    it('moves on to the body when Enter is pressed in the focused title', async () => {
+        const user = userEvent.setup();
         const { onTitleEnter, title } = renderHeader();
+        await user.click(title);
 
-        fireEvent.keyDown(title, { key: 'Enter' });
+        await user.keyboard('{Enter}');
 
         expect(onTitleEnter).toHaveBeenCalledTimes(1);
     });
 
-    it('keeps the title focused while Enter confirms an IME composition', () => {
+    it('stays in the title when Enter confirms an IME composition reported by isComposing', () => {
         const { onTitleEnter, title } = renderHeader();
 
+        // userEvent cannot simulate IME composition.
         fireEvent.keyDown(title, { key: 'Enter', isComposing: true });
+
+        expect(onTitleEnter).not.toHaveBeenCalled();
+    });
+
+    it('stays in the title when Enter confirms an IME composition reported by keyCode 229', () => {
+        const { onTitleEnter, title } = renderHeader();
+
+        // userEvent cannot simulate IME composition.
         fireEvent.keyDown(title, { key: 'Enter', keyCode: 229 });
 
         expect(onTitleEnter).not.toHaveBeenCalled();

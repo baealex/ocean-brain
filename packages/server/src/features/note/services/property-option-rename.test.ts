@@ -39,31 +39,34 @@ const readFilterValues = async (viewId: string) => {
     return (query.propertyFilters ?? []).map((filter) => filter.value);
 };
 
-test('renaming an option value keeps notes, saved views, trash and snapshots on the same option', async () => {
+const createRenameScenario = async () => {
     const state = await createState();
     const [todo, doing] = state.options;
-    const kept = await createNoteInState('Kept', 'todo');
-    await captureNoteBaseline({ noteId: kept.id, force: true });
-    const snapshot = await models.noteSnapshot.findFirstOrThrow({
-        where: { noteId: kept.id },
-        orderBy: { id: 'desc' },
-    });
-    const trashed = await createNoteInState('Trashed', 'todo');
-    await trashNoteById(trashed.id);
+    const rename = () =>
+        updateNotePropertyDefinition({
+            key: 'state',
+            input: {
+                options: [
+                    { id: todo.id, label: 'Task', value: 'task', order: 0 },
+                    { id: doing.id, label: 'Doing', value: 'doing', order: 1 },
+                ],
+            },
+        });
+
+    return { todo, doing, rename };
+};
+
+const createTodoFilterView = async () => {
     const group = await createViewGroup('Tasks');
-    const view = await createView(group.id, {
+    return createView(group.id, {
         propertyFilters: [{ key: 'state', valueType: 'select', operator: 'equals', value: 'todo' }],
     });
+};
 
-    const updated = await updateNotePropertyDefinition({
-        key: 'state',
-        input: {
-            options: [
-                { id: todo.id, label: 'Task', value: 'task', order: 0 },
-                { id: doing.id, label: 'Doing', value: 'doing', order: 1 },
-            ],
-        },
-    });
+test('renaming an option value keeps the option id', async () => {
+    const { todo, doing, rename } = await createRenameScenario();
+
+    const updated = await rename();
 
     assert.deepEqual(
         updated?.options.map((option) => [option.id, option.value]),
@@ -72,42 +75,89 @@ test('renaming an option value keeps notes, saved views, trash and snapshots on 
             [doing.id, 'doing'],
         ],
     );
-    assert.equal(await readStateValue(kept.id), 'task');
-    assert.deepEqual(await readFilterValues(view.id), ['task']);
-
-    await restoreTrashedNoteById(trashed.id);
-    assert.equal(await readStateValue(trashed.id), 'task');
-
-    const current = await models.note.findUniqueOrThrow({ where: { id: kept.id } });
-    await models.noteProperty.deleteMany({ where: { noteId: kept.id } });
-    await restoreNoteSnapshot(snapshot.id, { expectedUpdatedAt: current.updatedAt.toISOString() });
-    assert.equal(await readStateValue(kept.id), 'task');
 });
 
-test('two options can swap values in one update', async () => {
+test('renaming an option value updates the value on notes that use the option', async () => {
+    const { rename } = await createRenameScenario();
+    const note = await createNoteInState('Kept', 'todo');
+
+    await rename();
+
+    assert.equal(await readStateValue(note.id), 'task');
+});
+
+test('renaming an option value updates saved view filters that match the option', async () => {
+    const { rename } = await createRenameScenario();
+    const view = await createTodoFilterView();
+
+    await rename();
+
+    assert.deepEqual(await readFilterValues(view.id), ['task']);
+});
+
+test('a trashed note restored after renaming its option value carries the new value', async () => {
+    const { rename } = await createRenameScenario();
+    const trashed = await createNoteInState('Trashed', 'todo');
+    await trashNoteById(trashed.id);
+    await rename();
+
+    await restoreTrashedNoteById(trashed.id);
+
+    assert.equal(await readStateValue(trashed.id), 'task');
+});
+
+test('a snapshot restored after renaming its option value carries the new value', async () => {
+    const { rename } = await createRenameScenario();
+    const note = await createNoteInState('Kept', 'todo');
+    await captureNoteBaseline({ noteId: note.id, force: true });
+    const snapshot = await models.noteSnapshot.findFirstOrThrow({
+        where: { noteId: note.id },
+        orderBy: { id: 'desc' },
+    });
+    await rename();
+    const current = await models.note.findUniqueOrThrow({ where: { id: note.id } });
+    await models.noteProperty.deleteMany({ where: { noteId: note.id } });
+
+    await restoreNoteSnapshot(snapshot.id, { expectedUpdatedAt: current.updatedAt.toISOString() });
+
+    assert.equal(await readStateValue(note.id), 'task');
+});
+
+const swapTodoAndDoingValues = async () => {
     const state = await createState();
     const [todo, doing] = state.options;
-    const note = await createNoteInState('Swapped', 'todo');
-    const group = await createViewGroup('Tasks');
-    const view = await createView(group.id, {
-        propertyFilters: [{ key: 'state', valueType: 'select', operator: 'equals', value: 'todo' }],
-    });
 
-    await updateNotePropertyDefinition({
-        key: 'state',
-        input: {
-            options: [
-                { id: todo.id, label: 'Todo', value: 'doing', order: 0 },
-                { id: doing.id, label: 'Doing', value: 'todo', order: 1 },
-            ],
-        },
-    });
+    return () =>
+        updateNotePropertyDefinition({
+            key: 'state',
+            input: {
+                options: [
+                    { id: todo.id, label: 'Todo', value: 'doing', order: 0 },
+                    { id: doing.id, label: 'Doing', value: 'todo', order: 1 },
+                ],
+            },
+        });
+};
+
+test('swapping the values of two options in one update moves notes to the swapped value', async () => {
+    const swap = await swapTodoAndDoingValues();
+    const note = await createNoteInState('Swapped', 'todo');
+
+    await swap();
 
     assert.equal(await readStateValue(note.id), 'doing');
+});
+
+test('swapping the values of two options in one update moves saved view filters to the swapped value', async () => {
+    const swap = await swapTodoAndDoingValues();
+    const view = await createTodoFilterView();
+
+    await swap();
+
     assert.deepEqual(await readFilterValues(view.id), ['doing']);
 });
 
-test('an option cannot be renamed to a value another option keeps', async () => {
+test('an update that gives two options the same value is rejected', async () => {
     const state = await createState();
     const [todo, doing] = state.options;
 

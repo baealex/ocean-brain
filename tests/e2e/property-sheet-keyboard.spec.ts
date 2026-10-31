@@ -80,10 +80,7 @@ test('a long select-property draft keeps later inputs above the keyboard without
     expect(errors).toEqual([]);
 });
 
-test('editing select options renames an existing value and saves a new option after keyboard navigation', async ({ page }) => {
-    const errors = collectRuntimeErrors(page);
-    await page.setViewportSize({ width: 390, height: 844 });
-    await signIn(page);
+const createChoiceProperty = async (page: Page) => {
     const csrf = (await page.context().cookies()).find((cookie) => cookie.name === 'XSRF-TOKEN')?.value;
     if (!csrf) throw new Error('Missing session CSRF token.');
     const response = await page.request.post('/graphql', {
@@ -99,6 +96,13 @@ test('editing select options renames an existing value and saves a new option af
     expect(response.ok(), await response.text()).toBeTruthy();
     const setup = await response.json();
     expect(setup.errors).toBeUndefined();
+};
+
+test('a new select option added in the edit dialog is saved after keyboard navigation', async ({ page }) => {
+    const errors = collectRuntimeErrors(page);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await signIn(page);
+    await createChoiceProperty(page);
     await page.goto('/setting/properties');
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await page.getByRole('button', { name: 'Add option', exact: true }).click();
@@ -113,16 +117,35 @@ test('editing select options renames an existing value and saves a new option af
     await values.last().fill('new-option');
     await expectFocusedInputVisible(page);
     await expect(values).toHaveCount(7);
-    await values.first().fill('option-one');
     await setVisibleArea(page, 844);
+
     await page.getByRole('button', { name: 'Save changes', exact: true }).click();
-    await expect(page.getByText('option-1 → option-one', { exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Change values', exact: true }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
+
     await page.reload();
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await expect(page.getByPlaceholder('Label', { exact: true }).last()).toHaveValue('New option');
     await expect(values.last()).toHaveValue('new-option');
+    expect(errors).toEqual([]);
+});
+
+test('an existing select option value renamed in the edit dialog is saved after confirmation', async ({ page }) => {
+    const errors = collectRuntimeErrors(page);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await signIn(page);
+    await createChoiceProperty(page);
+    await page.goto('/setting/properties');
+    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    const values = page.getByPlaceholder('value', { exact: true });
+    await values.first().fill('option-one');
+    await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+    await expect(page.getByText('option-1 → option-one', { exact: true })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Change values', exact: true }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+
+    await page.reload();
+    await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await expect(values.first()).toHaveValue('option-one');
     expect(errors).toEqual([]);
 });

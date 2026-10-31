@@ -17,6 +17,7 @@ interface NoteEditorHeaderProps {
     savedVersion: string;
     saveConfirmationRevision: number;
     onTitleChange: (title: string) => void;
+    onTitleEnter?: () => void;
     onCopyMarkdown: () => void;
     onDownloadDocument: () => void;
     onTogglePinned: () => void;
@@ -39,6 +40,7 @@ export default function NoteEditorHeader({
     savedVersion,
     saveConfirmationRevision,
     onTitleChange,
+    onTitleEnter,
     onCopyMarkdown,
     onDownloadDocument,
     onTogglePinned,
@@ -63,6 +65,14 @@ export default function NoteEditorHeader({
                             readOnly={readOnly}
                             value={title}
                             onChange={(event) => onTitleChange(event.target.value)}
+                            onKeyDown={(event) => {
+                                // Enter that confirms an IME composition (e.g. Hangul) must stay in the title.
+                                if (event.key !== 'Enter' || event.nativeEvent.isComposing || event.keyCode === 229) {
+                                    return;
+                                }
+                                event.preventDefault();
+                                onTitleEnter?.();
+                            }}
                         />
                     </div>
                     <div className="flex shrink-0 items-center gap-2">

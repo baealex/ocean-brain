@@ -1,7 +1,7 @@
 import { expect, test } from './fixtures';
 import { collectRuntimeErrors } from './helpers/runtime-errors';
 
-test('users can capture, save, find, and reopen a note', async ({ page }) => {
+test('users can capture with the keyboard, save, find, and reopen a note', async ({ page }) => {
     const runtimeErrors = collectRuntimeErrors(page);
 
     await page.goto('/');
@@ -18,9 +18,12 @@ test('users can capture, save, find, and reopen a note', async ({ page }) => {
     const titleInput = page.getByRole('textbox', { name: 'Note title' });
     const editor = page.locator('.bn-editor[contenteditable="true"]');
 
-    await titleInput.fill(noteTitle);
-    await editor.click();
+    await expect(titleInput).toBeFocused();
+    await page.keyboard.type(noteTitle);
+    await page.keyboard.press('Enter');
+    await expect(editor).toBeFocused();
     await page.keyboard.type(searchablePhrase);
+    await expect(titleInput).toHaveValue(noteTitle);
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(page.getByRole('status')).toContainText('Saved');
 

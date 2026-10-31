@@ -1058,3 +1058,27 @@ describe('<NoteContent /> property editing during note saves', () => {
         expect(screen.getByRole('textbox', { name: 'Property value' })).toBeDisabled();
     });
 });
+
+describe('<NoteContent /> title focus', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        window.localStorage.clear();
+    });
+
+    it('starts typing in the title of a note that has no title yet', async () => {
+        renderNote(createNote({ title: '' }));
+
+        const title = await screen.findByRole('textbox', { name: 'Note title' });
+
+        await waitFor(() => expect(title).toHaveFocus());
+    });
+
+    it('leaves focus alone when the note already has a title', async () => {
+        renderNote(createNote({ title: 'Existing title' }));
+
+        const title = await screen.findByRole('textbox', { name: 'Note title' });
+
+        expect(title).toHaveValue('Existing title');
+        expect(title).not.toHaveFocus();
+    });
+});

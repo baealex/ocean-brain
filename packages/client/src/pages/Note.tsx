@@ -1,6 +1,6 @@
 import { getRouteApi } from '@tanstack/react-router';
 import classNames from 'classnames';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { QueryBoundary, QueryErrorView } from '~/components/app';
 import {
     LayoutModal,
@@ -94,6 +94,16 @@ export function NoteContent({ id }: NoteContentProps) {
     const { document, editor, save, recovery, externalChange, properties, exportDocument, snapshots } = session;
     // Serialized note writes allow property edits during autosave.
     const isPropertyEditingLocked = isReadOnly || save.status === 'conflict' || save.status === 'error';
+    const titleRef = document.titleRef;
+
+    // A note opened without a title (such as a fresh capture) starts typing in the title.
+    useEffect(() => {
+        if (isReadOnly || block || titleRef.current?.value) {
+            return;
+        }
+
+        titleRef.current?.focus();
+    }, []);
 
     const openTrash = () =>
         navigate({
@@ -148,6 +158,7 @@ export function NoteContent({ id }: NoteContentProps) {
                     savedVersion={save.lastSavedVersion}
                     saveConfirmationRevision={save.confirmationRevision}
                     onTitleChange={document.onTitleChange}
+                    onTitleEnter={() => editor.ref.current?.focusStart()}
                     onCopyMarkdown={() => void exportDocument.onCopyMarkdown()}
                     onDownloadDocument={() => setIsExportModalOpen(true)}
                     onTogglePinned={() => void document.onTogglePinned()}

@@ -61,8 +61,8 @@
     overflow-wrap: anywhere !important;
 }
 
-// Touch screens have no hover, so the block side menu is dropped to give the text its width.
-@media (max-width: 639px) {
+// Narrow touch screens have no hover, so drop the side menu and its gutter; a mouse keeps both.
+@media (max-width: 639px) and (pointer: coarse) {
     .bn-editor {
         padding-inline: 4px 0 !important;
     }

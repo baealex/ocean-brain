@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import * as Icon from '~/components/icon';
-import { Checkbox, Label, Select, SelectItem, Text } from '~/components/ui';
+import { Button, Checkbox, Label, Select, SelectItem, Text } from '~/components/ui';
 import { HOME_LIMIT_OPTIONS, type HomeLimit, isHomeLimit } from '~/modules/home-pagination';
 
 export type SortBy = 'updatedAt' | 'createdAt';
@@ -28,9 +29,26 @@ export default function NoteFilters({
     pinnedFirst,
     onPinnedFirstChange,
 }: Props) {
+    const [isOpen, setIsOpen] = useState(false);
+
     return (
-        <div className="flex justify-end">
-            <div className="surface-base inline-flex flex-wrap items-center gap-3 rounded-[16px] px-3.5 py-2.5">
+        <div className="flex flex-col items-end gap-2 sm:flex-row sm:justify-end">
+            <div className="sm:hidden">
+                <Button
+                    variant="subtle"
+                    size="sm"
+                    aria-expanded={isOpen}
+                    aria-controls="note-filters-panel"
+                    onClick={() => setIsOpen((open) => !open)}
+                >
+                    <Icon.SortAscending className="h-4 w-4 shrink-0" />
+                    Display settings
+                </Button>
+            </div>
+            <div
+                id="note-filters-panel"
+                className={`surface-base ${isOpen ? 'flex' : 'hidden'} w-full flex-wrap items-center gap-3 rounded-[16px] px-3.5 py-2.5 sm:inline-flex sm:w-auto`}
+            >
                 <div className="flex items-center gap-2">
                     <Icon.Grid className="h-4 w-4 shrink-0 text-fg-tertiary" />
                     <Text id="note-filters-limit-label" as="span" variant="label" weight="medium" tone="tertiary">

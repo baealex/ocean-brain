@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import NoteFilters from './NoteFilters';
 
@@ -21,5 +22,20 @@ describe('<NoteFilters />', () => {
         renderFilters();
 
         expect(screen.getByRole('combobox', { name: 'Per page' })).toHaveTextContent(/^28$/);
+    });
+
+    it('starts with the settings collapsed behind one control', () => {
+        renderFilters();
+
+        expect(screen.getByRole('button', { name: 'Display settings' })).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    it('expands the settings when the display settings control is pressed', async () => {
+        const user = userEvent.setup();
+        renderFilters();
+
+        await user.click(screen.getByRole('button', { name: 'Display settings' }));
+
+        expect(screen.getByRole('button', { name: 'Display settings' })).toHaveAttribute('aria-expanded', 'true');
     });
 });

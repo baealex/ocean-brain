@@ -61,6 +61,17 @@
     overflow-wrap: anywhere !important;
 }
 
+// Narrow touch screens have no hover, so drop the side menu and its gutter; a mouse keeps both.
+@media (max-width: 639px) and (pointer: coarse) {
+    .bn-editor {
+        padding-inline: 4px 0 !important;
+    }
+
+    .bn-side-menu {
+        display: none !important;
+    }
+}
+
 html.dark .bn-editor {
     --external-change-gradient: linear-gradient(
         90deg,

@@ -222,7 +222,7 @@ export function fetchViewCalendarNotes(id: string, dateRange: ViewCalendarDateRa
     );
 }
 
-export type ViewBoardNote = Pick<Note, 'id' | 'title' | 'updatedAt'>;
+export type ViewBoardNote = Pick<Note, 'id' | 'title' | 'tags' | 'properties' | 'createdAt' | 'updatedAt'>;
 
 export interface ViewBoardColumnResult {
     totalCount: number;
@@ -252,7 +252,21 @@ export function fetchViewBoardColumn(id: string, { optionValue, limit = 5, offse
                 notes {
                     id
                     title
+                    tags {
+                        id
+                        name
+                    }
+                    createdAt
                     updatedAt
+                    properties {
+                        key
+                        name
+                        value
+                        valueType
+                        option { id label value color order }
+                        createdAt
+                        updatedAt
+                    }
                 }
             }
         }`,

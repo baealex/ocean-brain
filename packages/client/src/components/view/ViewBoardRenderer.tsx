@@ -24,9 +24,9 @@ import type { NotePropertyOption } from '~/models/note.model';
 import type { View } from '~/models/view.model';
 import { queryKeys } from '~/modules/query-key-factory';
 import { invalidateQueriesForNoteChange } from '~/modules/server-event-invalidation';
-import { timeSince } from '~/modules/time';
 import { NOTE_ROUTE } from '~/modules/url';
 import type { ViewNavigationState, ViewRouteStateUpdater } from '~/modules/view-route-state';
+import ViewBoardCardFields from './ViewBoardCardFields';
 import ViewNoteCreateButton from './ViewNoteCreateButton';
 
 const UNASSIGNED_COLUMN_ID = 'view-board-column:unassigned';
@@ -48,6 +48,7 @@ interface ViewBoardRendererProps {
 
 interface BoardCardProps {
     readOnly: boolean;
+    view: View;
     note: ViewBoardNote;
     column: BoardColumnDefinition;
     columns: BoardColumnDefinition[];
@@ -89,7 +90,7 @@ const getBoardColumns = (options: NotePropertyOption[]): BoardColumnDefinition[]
     },
 ];
 
-const BoardCard = ({ note, column, columns, isMoving, onMove, readOnly }: BoardCardProps) => {
+const BoardCard = ({ view, note, column, columns, isMoving, onMove, readOnly }: BoardCardProps) => {
     const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, isDragging } = useDraggable({
         id: `view-board-note:${note.id}`,
         data: { note, sourceValue: column.value },
@@ -129,9 +130,7 @@ const BoardCard = ({ note, column, columns, isMoving, onMove, readOnly }: BoardC
                             {note.title || 'Untitled'}
                         </Link>
                     </Text>
-                    <Text as="p" variant="meta" tone="tertiary" className="mt-2">
-                        Updated {timeSince(Number(note.updatedAt))}
-                    </Text>
+                    <ViewBoardCardFields view={view} note={note} />
                 </div>
                 {!readOnly ? (
                     <Dropdown
@@ -332,6 +331,7 @@ const BoardColumn = ({
                     notes.map((note) => (
                         <BoardCard
                             readOnly={readOnly}
+                            view={view}
                             key={note.id}
                             note={note}
                             column={column}

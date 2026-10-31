@@ -103,15 +103,9 @@ export const viewType = gql`
         calendarDatePropertyKey: String
     }
 
-    type ViewBoardNote {
-        id: ID!
-        title: String!
-        updatedAt: String!
-    }
-
     type ViewBoardColumnNotes {
         totalCount: Int!
-        notes: [ViewBoardNote!]!
+        notes: [Note!]!
     }
 
     type ViewCalendarNote {

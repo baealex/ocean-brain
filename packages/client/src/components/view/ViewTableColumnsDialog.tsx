@@ -24,6 +24,10 @@ export default function ViewTableColumnsDialog({
     onClose,
     onSave,
 }: ViewTableColumnsDialogProps) {
+    const isBoard = view.displayType === 'board';
+    const editorProperties = isBoard
+        ? availableProperties.filter((property) => property.key !== view.displayOptions.boardGroupByPropertyKey)
+        : availableProperties;
     const [columns, setColumns] = useState<ViewTableColumn[]>(view.displayOptions.tableColumns);
     const [propertyKeys, setPropertyKeys] = useState(view.displayOptions.tablePropertyKeys);
     const [isSaving, setIsSaving] = useState(false);
@@ -43,7 +47,7 @@ export default function ViewTableColumnsDialog({
 
     return (
         <Modal isOpen onClose={close} variant="form" className="sm:max-w-[560px]">
-            <Modal.Header title="Table columns" onClose={close} />
+            <Modal.Header title={isBoard ? 'Card fields' : 'Table columns'} onClose={close} />
             <Modal.Body>
                 {isPropertiesLoading ? (
                     <Text as="p" variant="meta" tone="tertiary" className="mb-3">
@@ -62,9 +66,10 @@ export default function ViewTableColumnsDialog({
                 ) : null}
                 <fieldset disabled={isSaving}>
                     <ViewTableColumnsEditor
+                        target={isBoard ? 'board' : 'table'}
                         columns={columns}
                         propertyKeys={propertyKeys}
-                        availableProperties={availableProperties}
+                        availableProperties={editorProperties}
                         onColumnsChange={setColumns}
                         onPropertyKeysChange={setPropertyKeys}
                     />
@@ -76,7 +81,7 @@ export default function ViewTableColumnsDialog({
                         Cancel
                     </Button>
                     <Button type="button" size="sm" onClick={() => void save()} isLoading={isSaving}>
-                        Save columns
+                        {isBoard ? 'Save fields' : 'Save columns'}
                     </Button>
                 </ModalActionRow>
             </Modal.Footer>

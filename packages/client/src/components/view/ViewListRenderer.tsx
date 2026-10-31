@@ -3,10 +3,11 @@ import classNames from 'classnames';
 
 import * as Icon from '~/components/icon';
 import { Button, Text } from '~/components/ui';
-import type { Note, NoteProperty } from '~/models/note.model';
+import type { Note } from '~/models/note.model';
 import { timeSince } from '~/modules/time';
 import { NOTE_ROUTE } from '~/modules/url';
 import ViewChip from './ViewChip';
+import ViewPropertyChip from './ViewPropertyChip';
 
 interface ViewListRendererProps {
     compact?: boolean;
@@ -18,18 +19,6 @@ interface ViewListRendererProps {
 
 const viewPreviewRowClassName =
     'focus-ring-soft group flex items-center justify-between gap-3 outline-none transition-colors hover:bg-hover-subtle focus-visible:bg-hover-subtle';
-
-const formatPropertyValue = (property: NoteProperty) => {
-    if (property.valueType === 'select') {
-        return property.option?.label ?? property.value;
-    }
-
-    if (property.valueType === 'boolean') {
-        return property.value === 'true' ? 'True' : 'False';
-    }
-
-    return property.value;
-};
 
 const renderTagSummary = (note: Note) => {
     const visibleTags = note.tags.slice(0, 2);
@@ -71,22 +60,7 @@ const renderPropertySummary = (note: Note) => {
     return (
         <>
             {visibleProperties.map((property) => (
-                <ViewChip
-                    key={property.key}
-                    size="compact"
-                    truncateContent={false}
-                    className="max-w-[220px] gap-1.5 border-border-subtle bg-subtle/55 text-fg-secondary"
-                >
-                    {property.valueType === 'select' ? (
-                        <span
-                            className="size-2 shrink-0 rounded-full border border-black/5"
-                            style={{ backgroundColor: property.option?.color ?? 'var(--color-fg-tertiary)' }}
-                            aria-hidden="true"
-                        />
-                    ) : null}
-                    <span className="max-w-[72px] shrink truncate text-fg-tertiary">{property.name}</span>
-                    <span className="min-w-0 truncate">{formatPropertyValue(property) || '—'}</span>
-                </ViewChip>
+                <ViewPropertyChip key={property.key} property={property} />
             ))}
             {hiddenPropertyCount > 0 ? (
                 <ViewChip size="compact" className="shrink-0 border-border-subtle bg-subtle text-fg-tertiary">

@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { updateNoteProperties } from '~/apis/note.api';
 import { fetchViewBoardColumn } from '~/apis/view.api';
 import { ToastProvider } from '~/components/ui';
+import type { NoteProperty } from '~/models/note.model';
 import type { View } from '~/models/view.model';
 import type { ViewNavigationState, ViewRouteStateUpdater } from '~/modules/view-route-state';
 import { createQueryClientWrapper } from '~/test/test-utils';
@@ -51,6 +52,56 @@ const statusProperty = {
     ],
 };
 
+const createNoteProperty = (
+    patch: Partial<NoteProperty> & Pick<NoteProperty, 'key' | 'name' | 'value'>,
+): NoteProperty => ({
+    valueType: 'select',
+    option: null,
+    createdAt: '1785679200000',
+    updatedAt: '1785679200000',
+    ...patch,
+});
+
+const badgeNote = {
+    id: 'note-1',
+    title: 'Badge task',
+    tags: [{ id: 'tag-1', name: '@product' }],
+    createdAt: '1785679200000',
+    updatedAt: '1785679200000',
+    properties: [
+        createNoteProperty({ key: 'status', name: 'Status', value: 'todo', option: statusProperty.options[0] }),
+        createNoteProperty({
+            key: 'project',
+            name: 'Project',
+            value: 'ocean-brain',
+            option: { id: 'ocean-brain', label: 'Ocean Brain', value: 'ocean-brain', color: '#3b82f6', order: 0 },
+        }),
+        createNoteProperty({ key: 'due', name: 'Due', value: '2026-11-01', valueType: 'date' }),
+    ],
+};
+
+const renderBadgeBoard = (displayOptions: Partial<View['displayOptions']>) => {
+    vi.mocked(fetchViewBoardColumn).mockImplementation(async (_id, { optionValue }) => ({
+        type: 'success',
+        viewBoardColumn: optionValue === 'todo' ? { totalCount: 1, notes: [badgeNote] } : { totalCount: 0, notes: [] },
+    }));
+    const { Wrapper: QueryWrapper } = createQueryClientWrapper();
+    const Wrapper = ({ children }: { children: React.ReactNode }) => (
+        <QueryWrapper>
+            <ToastProvider>{children}</ToastProvider>
+        </QueryWrapper>
+    );
+
+    render(
+        <ViewBoardRenderer
+            view={{ ...view, displayOptions: { ...view.displayOptions, ...displayOptions } }}
+            groupProperty={statusProperty}
+            readOnly
+        />,
+        { wrapper: Wrapper },
+    );
+};
+
 describe('<ViewBoardRenderer />', () => {
     it('shows cards without move controls when embedded in a read-only note', async () => {
         vi.mocked(fetchViewBoardColumn).mockImplementation(async (_id, { optionValue }) => ({
@@ -59,7 +110,15 @@ describe('<ViewBoardRenderer />', () => {
                 optionValue === 'todo'
                     ? {
                           totalCount: 1,
-                          notes: [{ id: 'note-1', title: 'Read-only task', updatedAt: '1785679200000' }],
+                          notes: [
+                              {
+                                  id: 'note-1',
+                                  title: 'Read-only task',
+                                  tags: [],
+                                  createdAt: '1785679200000',
+                                  updatedAt: '1785679200000',
+                              },
+                          ],
                       }
                     : { totalCount: 0, notes: [] },
         }));
@@ -87,7 +146,15 @@ describe('<ViewBoardRenderer />', () => {
                 optionValue === currentOptionValue
                     ? {
                           totalCount: 1,
-                          notes: [{ id: 'note-1', title: 'Ocean task', updatedAt: '1785679200000' }],
+                          notes: [
+                              {
+                                  id: 'note-1',
+                                  title: 'Ocean task',
+                                  tags: [],
+                                  createdAt: '1785679200000',
+                                  updatedAt: '1785679200000',
+                              },
+                          ],
                       }
                     : { totalCount: 0, notes: [] },
         }));
@@ -142,8 +209,24 @@ describe('<ViewBoardRenderer />', () => {
                           totalCount: 2,
                           notes:
                               offset === 0
-                                  ? [{ id: 'note-1', title: 'First task', updatedAt: '1785679200000' }]
-                                  : [{ id: 'note-2', title: 'Second task', updatedAt: '1785679201000' }],
+                                  ? [
+                                        {
+                                            id: 'note-1',
+                                            title: 'First task',
+                                            tags: [],
+                                            createdAt: '1785679200000',
+                                            updatedAt: '1785679200000',
+                                        },
+                                    ]
+                                  : [
+                                        {
+                                            id: 'note-2',
+                                            title: 'Second task',
+                                            tags: [],
+                                            createdAt: '1785679201000',
+                                            updatedAt: '1785679201000',
+                                        },
+                                    ],
                       }
                     : { totalCount: 0, notes: [] },
         }));
@@ -179,5 +262,34 @@ describe('<ViewBoardRenderer />', () => {
             limit: 1,
             offset: 1,
         });
+    });
+    it('shows the view card fields and leaves the column property out of the card', async () => {
+        renderBadgeBoard({ tableColumns: ['title', 'tags', 'properties'], tablePropertyKeys: [] });
+
+        const card = await screen.findByRole('article');
+        expect(within(card).getByText('Badge task')).toBeInTheDocument();
+        expect(within(card).getByText('@product')).toBeInTheDocument();
+        expect(within(card).getByText('Ocean Brain')).toBeInTheDocument();
+        expect(within(card).getByTitle('Due: 2026-11-01')).toBeInTheDocument();
+        expect(within(card).queryByText('To do')).not.toBeInTheDocument();
+        expect(within(card).queryByText(/Updated/)).not.toBeInTheDocument();
+    });
+
+    it('shows only the chosen properties with the selected date fields', async () => {
+        renderBadgeBoard({ tableColumns: ['title', 'properties', 'updatedAt'], tablePropertyKeys: ['due'] });
+
+        const card = await screen.findByRole('article');
+        expect(within(card).getByTitle('Due: 2026-11-01')).toBeInTheDocument();
+        expect(within(card).queryByText('Ocean Brain')).not.toBeInTheDocument();
+        expect(within(card).queryByText('@product')).not.toBeInTheDocument();
+        expect(within(card).getByText(/^Updated /)).toBeInTheDocument();
+    });
+
+    it('hides property badges when the properties field is turned off', async () => {
+        renderBadgeBoard({ tableColumns: ['title', 'tags'], tablePropertyKeys: [] });
+
+        const card = await screen.findByRole('article');
+        expect(within(card).getByText('@product')).toBeInTheDocument();
+        expect(within(card).queryByText('Ocean Brain')).not.toBeInTheDocument();
     });
 });

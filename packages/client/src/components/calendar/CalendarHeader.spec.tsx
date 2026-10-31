@@ -27,4 +27,20 @@ describe('<CalendarHeader />', () => {
         expect(handlePrevMonth).toHaveBeenCalledTimes(1);
         expect(handleNextMonth).toHaveBeenCalledTimes(1);
     });
+
+    it('names the last-updated placement explicitly', () => {
+        render(
+            <CalendarHeader
+                month={6}
+                year={2026}
+                type="update"
+                onPrevMonth={vi.fn()}
+                onNextMonth={vi.fn()}
+                onToday={vi.fn()}
+                onTypeChange={vi.fn()}
+            />,
+        );
+
+        expect(screen.getByRole('combobox', { name: 'Note date' })).toHaveTextContent('Last updated');
+    });
 });

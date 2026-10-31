@@ -114,4 +114,33 @@ describe('<Calendar />', () => {
             expect(router.state.location.search).toMatchObject({ year: 2025, month: 12, type: 'create' });
         });
     });
+
+    it('opens the next month with the chosen date when a trailing date is selected', async () => {
+        const user = userEvent.setup();
+        const router = await renderPage('/calendar?year=2026&month=10&type=create');
+
+        await user.click(screen.getByRole('button', { name: 'Sunday, November 1, 2026, go to November' }));
+
+        await waitFor(() => {
+            expect(router.state.location.search).toMatchObject({ year: 2026, month: 11 });
+        });
+        expect(await screen.findByRole('heading', { name: 'Sunday, November 1' })).toBeInTheDocument();
+    });
+
+    it('selects the first day with activity in a month without today', async () => {
+        const marchFifth = new Date(2030, 2, 5, 10).getTime();
+        calendarMocks.useCalendarData.mockReturnValue({
+            notes: [createNoteFixture(marchFifth, marchFifth)],
+            reminders: [],
+            isLoading: false,
+            isError: false,
+        });
+
+        await renderPage('/calendar?year=2030&month=3&type=create');
+
+        expect(screen.getByRole('button', { name: 'Tuesday, March 5, 2030, 1 note, 0 reminders' })).toHaveAttribute(
+            'aria-pressed',
+            'true',
+        );
+    });
 });

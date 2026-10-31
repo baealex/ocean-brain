@@ -2,9 +2,15 @@ import type { Note, NotePropertyOption, NotePropertyValueType } from '~/models/n
 import type { PropertyWorkspaceMapping, WorkspaceScope } from '~/models/workspace.model';
 import { type GraphQueryResponse, graphQuery } from '~/modules/graph-query';
 
-type NoteAdditionalField = 'content' | 'order' | 'layout' | 'properties';
+type NoteAdditionalField = 'content' | 'contentPreview' | 'order' | 'layout' | 'properties';
 
-const NOTE_ADDITIONAL_FIELDS = new Set<NoteAdditionalField>(['content', 'order', 'layout', 'properties']);
+const NOTE_ADDITIONAL_FIELDS = new Set<NoteAdditionalField>([
+    'content',
+    'contentPreview',
+    'order',
+    'layout',
+    'properties',
+]);
 
 const FETCH_NOTES_QUERY = `query FetchNotes(
             $searchFilter: SearchFilterInput,

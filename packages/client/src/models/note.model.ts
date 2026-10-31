@@ -24,6 +24,7 @@ export interface Note {
     id: string;
     title: string;
     content: string;
+    contentPreview?: string;
     pinned: boolean;
     order: number;
     layout: NoteLayout;

@@ -87,6 +87,7 @@ export default function Home() {
                             sortBy,
                             sortOrder,
                             pinnedFirst,
+                            fields: ['contentPreview'],
                         }}
                         render={({ notes, totalCount }) => (
                             <FallbackRender

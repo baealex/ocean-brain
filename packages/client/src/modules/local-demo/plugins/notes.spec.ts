@@ -154,6 +154,97 @@ describe('notesLocalPlugin', () => {
         expect(save).not.toHaveBeenCalled();
     });
 
+    it('carries renamed select option values into notes, trash and saved view filters', () => {
+        const state = createState();
+        const todo = { id: 'option-todo', label: 'Todo', value: 'todo', color: null, order: 0 };
+        const done = { id: 'option-done', label: 'Done', value: 'done', color: null, order: 1 };
+        const selectProperty = (option: typeof todo) => ({
+            key: 'status',
+            name: 'Status',
+            value: option.value,
+            valueType: 'select' as const,
+            option,
+            createdAt: '1710000000000',
+            updatedAt: '1710000000000',
+        });
+        state.propertyDefinitions = [
+            {
+                key: 'status',
+                name: 'Status',
+                valueType: 'select',
+                options: [todo, done],
+                updatedAt: '2026-08-13T00:00:00.000Z',
+            },
+        ];
+        state.notes[0].properties = [selectProperty(todo)];
+        state.notes[1].properties = [selectProperty(done)];
+        state.trashedNotes = [
+            {
+                ...createNote({ id: 'note-trashed', title: 'Trashed', tags: [] }),
+                properties: [selectProperty(todo)],
+                deletedAt: '1710000000000',
+            },
+        ];
+        state.viewWorkspace = {
+            activeGroupId: 'tab-1',
+            groups: [
+                {
+                    id: 'tab-1',
+                    title: 'Planning',
+                    order: 0,
+                    views: [
+                        {
+                            id: 'section-1',
+                            groupId: 'tab-1',
+                            title: 'Open work',
+                            displayType: 'list',
+                            displayOptions: {
+                                tableColumns: ['title'],
+                                tablePropertyKeys: [],
+                                boardGroupByPropertyKey: null,
+                                calendarDateField: 'updatedAt',
+                                calendarDatePropertyKey: null,
+                            },
+                            tagNames: [],
+                            mode: 'and',
+                            propertyFilters: [
+                                {
+                                    key: 'status',
+                                    name: 'Status',
+                                    valueType: 'select',
+                                    operator: 'equals',
+                                    value: 'todo',
+                                },
+                            ],
+                            sortBy: 'updatedAt',
+                            sortOrder: 'desc',
+                            limit: 5,
+                            order: 0,
+                        },
+                    ],
+                },
+            ],
+        };
+        const save = vi.fn();
+        const handler = notesLocalPlugin.graphHandlers?.UpdateNotePropertyKey;
+
+        const response = handler?.({
+            state,
+            variables: {
+                key: 'status',
+                input: { options: [{ ...todo, label: 'Task', value: 'task' }, done] },
+            },
+            save,
+        });
+
+        expect(response).toMatchObject({ type: 'success' });
+        expect(save).toHaveBeenCalled();
+        expect(state.notes[0].properties[0]).toMatchObject({ value: 'task', option: { label: 'Task' } });
+        expect(state.notes[1].properties[0]).toMatchObject({ value: 'done', option: { label: 'Done' } });
+        expect(state.trashedNotes[0].properties[0]).toMatchObject({ value: 'task', option: { id: 'option-todo' } });
+        expect(state.viewWorkspace.groups[0].views[0].propertyFilters[0].value).toBe('task');
+    });
+
     it('filters tagged notes by tag id for the tag notes page', () => {
         const handler = notesLocalPlugin.graphHandlers?.FetchTagNotes;
         expect(handler).toBeDefined();

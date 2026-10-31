@@ -250,24 +250,37 @@ const normalizePropertyOptionUpdates = (
     }
 
     const existingOptionById = new Map(existingOptions.map((option) => [String(option.id), option]));
+    const existingOptionByValue = new Map(existingOptions.map((option) => [option.value, option]));
+    const claimedIds = new Set<number>();
+
+    for (const option of normalizedOptions) {
+        if (option.id === undefined || option.id === null) {
+            continue;
+        }
+
+        const existingOption = existingOptionById.get(String(option.id));
+
+        if (!existingOption) {
+            throw new InvalidNotePropertyInputError('Property option does not belong to this property.');
+        }
+
+        if (claimedIds.has(existingOption.id)) {
+            throw new InvalidNotePropertyInputError('Property options contain duplicate options.');
+        }
+
+        claimedIds.add(existingOption.id);
+    }
+
     const seenValues = new Set<string>();
 
     return normalizedOptions.map((option, index) => {
         const label = normalizeOptionLabel(option.label);
+        const optionById =
+            option.id === undefined || option.id === null ? null : (existingOptionById.get(String(option.id)) ?? null);
+        const value = normalizeOptionValue(option.value ?? optionById?.value ?? label);
+        const optionByValue = optionById ? null : (existingOptionByValue.get(value) ?? null);
         const existingOption =
-            option.id === undefined || option.id === null ? null : existingOptionById.get(String(option.id));
-
-        if (option.id !== undefined && option.id !== null && !existingOption) {
-            throw new InvalidNotePropertyInputError('Property option does not belong to this property.');
-        }
-
-        const value = normalizeOptionValue(option.value ?? existingOption?.value ?? label);
-
-        if (existingOption && value !== existingOption.value) {
-            throw new InvalidNotePropertyInputError(
-                `Property option ${existingOption.value} value cannot be changed. Create a new option instead.`,
-            );
-        }
+            optionById ?? (optionByValue && !claimedIds.has(optionByValue.id) ? optionByValue : null);
 
         if (seenValues.has(value)) {
             throw new InvalidNotePropertyInputError('Property options contain duplicate values.');
@@ -275,8 +288,13 @@ const normalizePropertyOptionUpdates = (
 
         seenValues.add(value);
 
+        if (existingOption) {
+            claimedIds.add(existingOption.id);
+        }
+
         return {
             id: existingOption?.id,
+            previousValue: existingOption?.value ?? null,
             label,
             value,
             color: option.color?.trim() || null,
@@ -416,13 +434,11 @@ export const assertPropertyOptionUpdateKeepsUsedValues = ({
     existingOptions,
     nextOptions,
 }: {
-    existingOptions: Array<{ value: string; _count: { properties: number } }>;
-    nextOptions: Array<{ value: string }>;
+    existingOptions: Array<{ id: number; value: string; _count: { properties: number } }>;
+    nextOptions: Array<{ id?: number }>;
 }) => {
-    const nextValues = new Set(nextOptions.map((option) => option.value));
-    const removedUsedOption = existingOptions.find(
-        (option) => option._count.properties > 0 && !nextValues.has(option.value),
-    );
+    const keptIds = new Set(nextOptions.map((option) => option.id));
+    const removedUsedOption = existingOptions.find((option) => option._count.properties > 0 && !keptIds.has(option.id));
 
     if (removedUsedOption) {
         throw new InvalidNotePropertyInputError(
@@ -499,6 +515,97 @@ export const renamePropertyFiltersInViewQuery = ({
         ...parsed,
         propertyFilters,
     });
+};
+
+export const renamePropertyOptionValuesInViewQuery = ({
+    query,
+    key,
+    renamedValues,
+}: {
+    query: string | null;
+    key: string;
+    renamedValues: Map<string, string>;
+}) => {
+    const parsed = parseViewQueryRecord(query);
+
+    if (!parsed || !Array.isArray(parsed.propertyFilters)) {
+        return null;
+    }
+
+    let changed = false;
+    const propertyFilters = parsed.propertyFilters.map((filter) => {
+        if (
+            !isRecord(filter) ||
+            getNormalizedViewFilterKey(filter) !== key ||
+            filter.valueType !== 'select' ||
+            typeof filter.value !== 'string'
+        ) {
+            return filter;
+        }
+
+        const nextValue = renamedValues.get(filter.value);
+
+        if (nextValue === undefined) {
+            return filter;
+        }
+
+        changed = true;
+        return { ...filter, value: nextValue };
+    });
+
+    if (!changed) {
+        return null;
+    }
+
+    return JSON.stringify({
+        ...parsed,
+        propertyFilters,
+    });
+};
+
+export const renamePropertyOptionValuesInSnapshotPayload = ({
+    payload,
+    key,
+    renamedValues,
+}: {
+    payload: string;
+    key: string;
+    renamedValues: Map<string, string>;
+}) => {
+    let parsed: unknown;
+
+    try {
+        parsed = JSON.parse(payload);
+    } catch {
+        return null;
+    }
+
+    if (!isRecord(parsed) || !Array.isArray(parsed.properties)) {
+        return null;
+    }
+
+    let changed = false;
+    const properties = parsed.properties.map((property) => {
+        if (
+            !isRecord(property) ||
+            property.key !== key ||
+            property.valueType !== 'select' ||
+            typeof property.optionValue !== 'string'
+        ) {
+            return property;
+        }
+
+        const nextValue = renamedValues.get(property.optionValue);
+
+        if (nextValue === undefined) {
+            return property;
+        }
+
+        changed = true;
+        return { ...property, optionValue: nextValue };
+    });
+
+    return changed ? JSON.stringify({ ...parsed, properties }) : null;
 };
 
 const normalizeReferencedOptionValue = (value: unknown) => {
@@ -943,6 +1050,57 @@ export const createNotePropertyDefinition = async (input: NotePropertyDefinition
     }
 };
 
+const RENAMING_OPTION_VALUE_PREFIX = '__renaming__';
+
+const renameStoredPropertyOptionValues = async (
+    tx: Prisma.TransactionClient,
+    key: string,
+    renamedValues: Map<string, string>,
+) => {
+    const views = await tx.view.findMany({
+        where: { query: { contains: key } },
+        select: { id: true, query: true },
+    });
+
+    for (const view of views) {
+        const nextQuery = renamePropertyOptionValuesInViewQuery({ query: view.query, key, renamedValues });
+
+        if (nextQuery) {
+            await tx.view.update({ where: { id: view.id }, data: { query: nextQuery } });
+        }
+    }
+
+    const deletedProperties = await tx.deletedNoteProperty.findMany({
+        where: { key, valueType: 'select', optionValue: { in: [...renamedValues.keys()] } },
+        select: { id: true, optionValue: true },
+    });
+
+    for (const property of deletedProperties) {
+        const nextValue = property.optionValue === null ? undefined : renamedValues.get(property.optionValue);
+
+        if (nextValue !== undefined) {
+            await tx.deletedNoteProperty.update({ where: { id: property.id }, data: { optionValue: nextValue } });
+        }
+    }
+
+    const snapshots = await tx.noteSnapshot.findMany({
+        where: { payload: { contains: `"key":${JSON.stringify(key)}` } },
+        select: { id: true, payload: true },
+    });
+
+    for (const snapshot of snapshots) {
+        const nextPayload = renamePropertyOptionValuesInSnapshotPayload({
+            payload: snapshot.payload,
+            key,
+            renamedValues,
+        });
+
+        if (nextPayload) {
+            await tx.noteSnapshot.update({ where: { id: snapshot.id }, data: { payload: nextPayload } });
+        }
+    }
+};
+
 export const updateNotePropertyDefinition = async ({
     key,
     input,
@@ -989,9 +1147,9 @@ export const updateNotePropertyDefinition = async ({
                 nextOptions,
             });
 
-            const nextValues = new Set(nextOptions.map((option) => option.value));
+            const keptIds = new Set(nextOptions.map((option) => option.id));
             const removedValues = new Set(
-                definition.options.filter((option) => !nextValues.has(option.value)).map((option) => option.value),
+                definition.options.filter((option) => !keptIds.has(option.id)).map((option) => option.value),
             );
 
             if (removedValues.size > 0) {
@@ -1044,11 +1202,14 @@ export const updateNotePropertyDefinition = async ({
         }
 
         if (nextOptions) {
-            const existingOptionByValue = new Map(definition.options.map((option) => [option.value, option]));
-            const nextValues = new Set(nextOptions.map((option) => option.value));
+            const keptIds = new Set(nextOptions.map((option) => option.id));
             const removableOptionIds = definition.options
-                .filter((option) => !nextValues.has(option.value) && option._count.properties === 0)
+                .filter((option) => !keptIds.has(option.id) && option._count.properties === 0)
                 .map((option) => option.id);
+            const renamedOptions = nextOptions.filter(
+                (option): option is typeof option & { id: number; previousValue: string } =>
+                    option.id !== undefined && option.previousValue !== null && option.previousValue !== option.value,
+            );
 
             if (removableOptionIds.length > 0) {
                 await tx.propertyOption.deleteMany({
@@ -1058,14 +1219,20 @@ export const updateNotePropertyDefinition = async ({
                 });
             }
 
-            for (const option of nextOptions) {
-                const existingOption = existingOptionByValue.get(option.value);
+            for (const option of renamedOptions) {
+                await tx.propertyOption.update({
+                    where: { id: option.id },
+                    data: { value: `${RENAMING_OPTION_VALUE_PREFIX}${option.id}` },
+                });
+            }
 
-                if (existingOption) {
+            for (const option of nextOptions) {
+                if (option.id !== undefined) {
                     await tx.propertyOption.update({
-                        where: { id: existingOption.id },
+                        where: { id: option.id },
                         data: {
                             label: option.label,
+                            value: option.value,
                             color: option.color,
                             order: option.order,
                         },
@@ -1083,6 +1250,16 @@ export const updateNotePropertyDefinition = async ({
                     },
                 });
             }
+        }
+
+        const renamedValues = new Map(
+            (nextOptions ?? [])
+                .filter((option) => option.previousValue !== null && option.previousValue !== option.value)
+                .map((option) => [option.previousValue as string, option.value]),
+        );
+
+        if (renamedValues.size > 0) {
+            await renameStoredPropertyOptionValues(tx, definition.key, renamedValues);
         }
 
         const updatedDefinition = await tx.propertyDefinition.findUniqueOrThrow({

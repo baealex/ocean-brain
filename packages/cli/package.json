@@ -59,7 +59,12 @@
     },
     "bundleDependencies": [
         "prisma",
-        "@prisma/client"
+        "@prisma/client",
+        "@fastify/static",
+        "mercurius",
+        "graphql",
+        "@graphql-tools/schema",
+        "@graphql-tools/utils"
     ],
     "oceanBrain": {
         "mcpCompatibilityVersion": "0.17.0"

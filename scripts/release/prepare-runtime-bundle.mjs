@@ -8,11 +8,14 @@ import { fileURLToPath } from 'node:url';
 const rootDir = fileURLToPath(new URL('../../', import.meta.url));
 const require = createRequire(new URL('../../package.json', import.meta.url));
 
-export const preparePrismaBundle = () => {
+export const prepareRuntimeBundle = () => {
     const root = JSON.parse(readFileSync(path.join(rootDir, 'package.json'), 'utf8'));
-    const prisma = JSON.parse(readFileSync(require.resolve('prisma/package.json'), 'utf8'));
-    const client = JSON.parse(readFileSync(require.resolve('@prisma/client/package.json'), 'utf8'));
-    const temporaryDirectory = mkdtempSync(path.join(os.tmpdir(), 'cli-prisma-bundle-'));
+    const cli = JSON.parse(readFileSync(path.join(rootDir, 'packages', 'cli', 'package.json'), 'utf8'));
+    const dependencies = Object.fromEntries(cli.bundleDependencies.map(name => {
+        const installed = JSON.parse(readFileSync(require.resolve(`${name}/package.json`), 'utf8'));
+        return [name, installed.version];
+    }));
+    const temporaryDirectory = mkdtempSync(path.join(os.tmpdir(), 'cli-runtime-bundle-'));
     const runNpm = (args) => execFileSync(process.platform === 'win32' ? 'npm.cmd' : 'npm', args, {
         cwd: temporaryDirectory,
         stdio: 'inherit',
@@ -21,7 +24,7 @@ export const preparePrismaBundle = () => {
     try {
         writeFileSync(path.join(temporaryDirectory, 'package.json'), JSON.stringify({
             private: true,
-            dependencies: { prisma: prisma.version, '@prisma/client': client.version },
+            dependencies,
             overrides: root.pnpm.overrides,
         }));
         // Ship JavaScript only; Prisma generates/downloads engines for the installation platform.
@@ -35,4 +38,4 @@ export const preparePrismaBundle = () => {
     }
 };
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) preparePrismaBundle();
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) prepareRuntimeBundle();

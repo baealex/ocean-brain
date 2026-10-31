@@ -1,6 +1,6 @@
 # Ocean Brain Deployment and Release Strategy
 
-Updated: 2026-10-24
+Updated: 2026-10-31
 
 ## 1. Current Deployment Channels
 1. npm distribution
@@ -103,7 +103,7 @@ git push origin v0.3.1
 3. Builds `ocean-brain` (CLI)
 4. Copies artifacts into `packages/cli/server/**`
 - Result: only CLI is published to npm, with bundled server/client artifacts and registry-compatible dependency ranges.
-- Prepublish bundles the patched Prisma CLI and client dependency trees using the workspace security overrides, so npm/npx installations retain patched transitive dependencies. Keeping both packages together also keeps generated client resolution within the bundled tree. Native engines are downloaded/generated for the installation platform by the existing Prisma postinstall.
+- Prepublish bundles the runtime dependency trees listed in the CLI's `bundleDependencies`, using their installed workspace versions and the workspace security overrides. Prisma CLI/client, `@fastify/static` and Mercurius are included so npm/npx installations retain patched transitive dependencies, including `glob` and `minimatch`. Mercurius also depends on `@fastify/static`; bundling both prevents npm from installing a second, unpatched dependency tree. GraphQL and the GraphQL Tools packages are bundled with Mercurius so local and global npm installations use one shared GraphQL instance. Keeping both Prisma packages together also keeps generated client resolution within the bundled tree. Native engines are downloaded/generated for the installation platform by the existing Prisma postinstall.
 - `CLI_SMOKE` audits an isolated installation of the packed tarball before testing it across platforms.
 
 ## 6. Release Preparation Runbook

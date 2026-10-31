@@ -525,6 +525,25 @@ const ViewDialog = ({
                                         </Text>
                                     ) : null}
                                 </div>
+                                <details className="mt-3 border-t border-border-subtle/80 pt-3">
+                                    <summary className="focus-ring-soft cursor-pointer rounded-[8px] text-sm font-medium text-fg-secondary outline-none">
+                                        Card fields
+                                    </summary>
+                                    <div className="mt-3">
+                                        <ViewTableColumnsEditor
+                                            target="board"
+                                            columns={tableColumns}
+                                            propertyKeys={tablePropertyKeys}
+                                            availableProperties={availableProperties.filter(
+                                                (property) => property.key !== boardGroupByPropertyKey,
+                                            )}
+                                            onColumnsChange={(tableColumns) => updateDraft({ tableColumns })}
+                                            onPropertyKeysChange={(tablePropertyKeys) =>
+                                                updateDraft({ tablePropertyKeys })
+                                            }
+                                        />
+                                    </div>
+                                </details>
                             </div>
                         ) : null}
                         {displayType === 'calendar' ? (

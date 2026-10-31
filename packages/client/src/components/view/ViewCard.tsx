@@ -190,6 +190,9 @@ const ViewCard = ({
                                 name: 'Edit view',
                                 onClick: onEdit,
                             },
+                            ...(isBoard && onSaveColumns
+                                ? [{ name: 'Card fields', onClick: () => setIsColumnsOpen(true) }]
+                                : []),
                             ...(onDuplicate ? [{ name: 'Duplicate view', onClick: onDuplicate }] : []),
                             ...(onDelete
                                 ? [{ type: 'separator' as const }, { name: 'Delete view', onClick: onDelete }]

@@ -130,7 +130,7 @@ export interface ViewNotesResult {
 
 export interface ViewBoardColumnNotesResult {
     totalCount: number;
-    notes: Array<Pick<Note, 'id' | 'title' | 'updatedAt'>>;
+    notes: Note[];
 }
 
 export type ViewCalendarNote = Pick<Note, 'id' | 'title'> & {
@@ -1265,11 +1265,6 @@ export const getViewBoardColumn = async (
             where,
             take: normalizedPagination.limit,
             skip: normalizedPagination.offset,
-            select: {
-                id: true,
-                title: true,
-                updatedAt: true,
-            },
         }),
     ]);
 

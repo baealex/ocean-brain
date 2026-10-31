@@ -219,6 +219,53 @@ describe('<ViewDialog />', () => {
         );
     });
 
+    it('chooses board card properties without offering the column property', async () => {
+        const user = userEvent.setup();
+        const onSubmit = vi.fn();
+        const statusProperty = createProperty({
+            key: 'status',
+            name: 'Status',
+            valueType: 'select',
+            options: [{ id: 'todo', label: 'To do', value: 'todo', order: 0 }],
+        });
+        const projectProperty = createProperty({
+            key: 'project',
+            name: 'Project',
+            valueType: 'select',
+            options: [{ id: 'ocean-brain', label: 'Ocean Brain', value: 'ocean-brain', order: 0 }],
+        });
+
+        render(
+            <ViewDialog
+                open
+                mode="edit"
+                initialView={createView({
+                    displayType: 'board',
+                    displayOptions: { ...createView().displayOptions, boardGroupByPropertyKey: 'status' },
+                })}
+                availableTags={[]}
+                availableProperties={[statusProperty, projectProperty]}
+                onClose={vi.fn()}
+                onSubmit={onSubmit}
+            />,
+        );
+
+        await user.click(screen.getByText('Card fields', { selector: 'summary' }));
+        await user.click(screen.getByRole('radio', { name: 'Choose properties' }));
+
+        expect(screen.getByRole('checkbox', { name: 'Show Project field' })).toBeChecked();
+        expect(screen.queryByRole('checkbox', { name: 'Show Status field' })).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: 'Save view' }));
+
+        expect(onSubmit).toHaveBeenCalledWith(
+            expect.objectContaining({
+                displayType: 'board',
+                displayOptions: expect.objectContaining({ tablePropertyKeys: ['project'] }),
+            }),
+        );
+    });
+
     it('creates a board with an is-set filter on its grouping property', async () => {
         const user = userEvent.setup();
         const onSubmit = vi.fn();

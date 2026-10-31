@@ -13,6 +13,49 @@ import {
     MAX_VIEW_TABLE_PROPERTY_COLUMNS,
 } from '~/modules/view-dashboard';
 
+type ColumnsEditorTarget = 'table' | 'board';
+
+const COPY: Record<
+    ColumnsEditorTarget,
+    {
+        noun: string;
+        orderHeading: string;
+        orderPreviewLabel: string;
+        reorderHint: string;
+        visibleListLabel: string;
+        hiddenHeading: string;
+        propertySelectionLabel: string;
+        chooseProperties: string;
+        automaticHint: string;
+        selectedPropertiesLabel: string;
+    }
+> = {
+    table: {
+        noun: 'column',
+        orderHeading: 'Left to right',
+        orderPreviewLabel: 'Column order preview',
+        reorderHint: 'Drag to reorder. The title column is always visible.',
+        visibleListLabel: 'Visible table columns',
+        hiddenHeading: 'Hidden columns',
+        propertySelectionLabel: 'Property column selection',
+        chooseProperties: 'Choose columns',
+        automaticHint: 'Shows up to three properties relevant to the notes.',
+        selectedPropertiesLabel: 'Selected property columns',
+    },
+    board: {
+        noun: 'field',
+        orderHeading: 'Card order',
+        orderPreviewLabel: 'Card field order preview',
+        reorderHint: 'Drag to reorder. The title is always visible, and the column property stays on the board.',
+        visibleListLabel: 'Visible card fields',
+        hiddenHeading: 'Hidden fields',
+        propertySelectionLabel: 'Card property selection',
+        chooseProperties: 'Choose properties',
+        automaticHint: 'Shows up to three properties set on each note.',
+        selectedPropertiesLabel: 'Selected card properties',
+    },
+};
+
 interface ColumnItem {
     id: string;
     label: string;
@@ -22,6 +65,7 @@ interface ColumnItem {
 
 interface ColumnListProps {
     label: string;
+    noun: string;
     items: ColumnItem[];
     onMove: (from: number, to: number) => void;
     onHide: (id: string) => void;
@@ -29,12 +73,14 @@ interface ColumnListProps {
 
 const SortableColumn = ({
     item,
+    noun,
     index,
     count,
     onMove,
     onHide,
 }: {
     item: ColumnItem;
+    noun: string;
     index: number;
     count: number;
     onMove: ColumnListProps['onMove'];
@@ -56,7 +102,7 @@ const SortableColumn = ({
                     ref={setActivatorNodeRef}
                     {...attributes}
                     {...listeners}
-                    aria-label={`Reorder ${item.label} column`}
+                    aria-label={`Reorder ${item.label} ${noun}`}
                     className="focus-ring-soft flex size-11 shrink-0 touch-none items-center justify-center rounded-[10px] text-fg-tertiary outline-none hover:bg-hover-subtle cursor-grab active:cursor-grabbing sm:size-9"
                 >
                     <Icon.DragHandle className="size-4" />
@@ -66,7 +112,7 @@ const SortableColumn = ({
                     size="sm"
                     checked
                     disabled={item.required}
-                    aria-label={`Show ${item.label} column`}
+                    aria-label={`Show ${item.label} ${noun}`}
                     onChange={() => onHide(item.id)}
                 />
                 <label htmlFor={inputId} className="min-w-0 flex-1 truncate text-sm text-fg-secondary">
@@ -74,13 +120,13 @@ const SortableColumn = ({
                 </label>
                 {count > 1 || !item.required ? (
                     <Dropdown
-                        button={<MoreButton label={`Actions for ${item.label} column`} size="sm" />}
+                        button={<MoreButton label={`Actions for ${item.label} ${noun}`} size="sm" />}
                         items={[
                             ...(index > 0 ? [{ name: 'Move up', onClick: () => onMove(index, index - 1) }] : []),
                             ...(index < count - 1
                                 ? [{ name: 'Move down', onClick: () => onMove(index, index + 1) }]
                                 : []),
-                            ...(!item.required ? [{ name: 'Hide column', onClick: () => onHide(item.id) }] : []),
+                            ...(!item.required ? [{ name: `Hide ${noun}`, onClick: () => onHide(item.id) }] : []),
                         ]}
                     />
                 ) : null}
@@ -90,7 +136,7 @@ const SortableColumn = ({
     );
 };
 
-const ColumnList = ({ label, items, onMove, onHide }: ColumnListProps) => {
+const ColumnList = ({ label, noun, items, onMove, onHide }: ColumnListProps) => {
     return (
         <VerticalSortable
             items={items.map((item) => item.id)}
@@ -109,6 +155,7 @@ const ColumnList = ({ label, items, onMove, onHide }: ColumnListProps) => {
                     <SortableColumn
                         key={item.id}
                         item={item}
+                        noun={noun}
                         index={index}
                         count={items.length}
                         onMove={onMove}
@@ -120,7 +167,17 @@ const ColumnList = ({ label, items, onMove, onHide }: ColumnListProps) => {
     );
 };
 
-const HiddenColumn = ({ label, disabled, onShow }: { label: string; disabled?: boolean; onShow: () => void }) => {
+const HiddenColumn = ({
+    label,
+    noun,
+    disabled,
+    onShow,
+}: {
+    label: string;
+    noun: string;
+    disabled?: boolean;
+    onShow: () => void;
+}) => {
     const inputId = useId();
     return (
         <div className="flex min-h-11 items-center gap-2 px-3">
@@ -129,7 +186,7 @@ const HiddenColumn = ({ label, disabled, onShow }: { label: string; disabled?: b
                 size="sm"
                 checked={false}
                 disabled={disabled}
-                aria-label={`Show ${label} column`}
+                aria-label={`Show ${label} ${noun}`}
                 onChange={onShow}
             />
             <label htmlFor={inputId} className="min-w-0 flex-1 truncate text-sm text-fg-secondary">
@@ -140,6 +197,7 @@ const HiddenColumn = ({ label, disabled, onShow }: { label: string; disabled?: b
 };
 
 export interface ViewTableColumnsEditorProps {
+    target?: ColumnsEditorTarget;
     columns: ViewTableColumn[];
     propertyKeys: string[];
     availableProperties: NotePropertyKeySummary[];
@@ -148,12 +206,14 @@ export interface ViewTableColumnsEditorProps {
 }
 
 const ViewTableColumnsEditor = ({
+    target = 'table',
     columns,
     propertyKeys,
     availableProperties,
     onColumnsChange,
     onPropertyKeysChange,
 }: ViewTableColumnsEditorProps) => {
+    const copy = COPY[target];
     const propertyByKey = new Map(availableProperties.map((property) => [property.key, property]));
     const previewColumns = columns.flatMap((column) =>
         column === 'properties'
@@ -171,7 +231,7 @@ const ViewTableColumnsEditor = ({
                 value={propertyKeys.length > 0 ? 'choose' : 'auto'}
                 variant="quiet"
                 size="sm"
-                aria-label="Property column selection"
+                aria-label={copy.propertySelectionLabel}
                 onValueChange={(value) => {
                     if (value === 'auto') onPropertyKeysChange([]);
                     if (value === 'choose' && propertyKeys.length === 0)
@@ -180,17 +240,18 @@ const ViewTableColumnsEditor = ({
             >
                 <ToggleGroupItem value="auto">Automatic</ToggleGroupItem>
                 <ToggleGroupItem value="choose" disabled={availableProperties.length === 0}>
-                    Choose columns
+                    {copy.chooseProperties}
                 </ToggleGroupItem>
             </ToggleGroup>
             {propertyKeys.length === 0 ? (
                 <Text as="p" variant="meta" tone="tertiary" className="mt-2">
-                    Shows up to three properties relevant to the notes.
+                    {copy.automaticHint}
                 </Text>
             ) : (
                 <div className="mt-3 flex flex-col gap-2">
                     <ColumnList
-                        label="Selected property columns"
+                        label={copy.selectedPropertiesLabel}
+                        noun={copy.noun}
                         items={propertyKeys.map((key) => ({ id: key, label: propertyByKey.get(key)?.name ?? key }))}
                         onMove={(from, to) => onPropertyKeysChange(arrayMove(propertyKeys, from, to))}
                         onHide={(key) => {
@@ -208,6 +269,7 @@ const ViewTableColumnsEditor = ({
                                 <HiddenColumn
                                     key={property.key}
                                     label={property.name}
+                                    noun={copy.noun}
                                     disabled={propertyKeys.length >= MAX_VIEW_TABLE_PROPERTY_COLUMNS}
                                     onShow={() => onPropertyKeysChange([...propertyKeys, property.key])}
                                 />
@@ -223,9 +285,9 @@ const ViewTableColumnsEditor = ({
         <div className="flex flex-col gap-3">
             <div>
                 <Text as="p" variant="meta" tone="tertiary">
-                    Left to right
+                    {copy.orderHeading}
                 </Text>
-                <ol aria-label="Column order preview" className="mt-2 flex gap-1 overflow-x-auto pb-1">
+                <ol aria-label={copy.orderPreviewLabel} className="mt-2 flex gap-1 overflow-x-auto pb-1">
                     {previewColumns.map((label, index) => (
                         <li
                             key={`${index}-${label}`}
@@ -237,10 +299,11 @@ const ViewTableColumnsEditor = ({
                 </ol>
             </div>
             <Text as="p" variant="meta" tone="tertiary">
-                Drag to reorder. The title column is always visible.
+                {copy.reorderHint}
             </Text>
             <ColumnList
-                label="Visible table columns"
+                label={copy.visibleListLabel}
+                noun={copy.noun}
                 items={columns.map((column) => ({
                     id: column,
                     label: getViewTableColumnLabel(column),
@@ -253,12 +316,13 @@ const ViewTableColumnsEditor = ({
             {hiddenColumns.length > 0 ? (
                 <div>
                     <Text as="p" variant="meta" tone="tertiary" className="px-3">
-                        Hidden columns
+                        {copy.hiddenHeading}
                     </Text>
                     {hiddenColumns.map((column) => (
                         <HiddenColumn
                             key={column}
                             label={getViewTableColumnLabel(column)}
+                            noun={copy.noun}
                             onShow={() => onColumnsChange([...columns, column])}
                         />
                     ))}

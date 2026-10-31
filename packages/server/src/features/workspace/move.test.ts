@@ -48,6 +48,23 @@ test('a mapped move retains the original note, links and values, and records bot
     assert.equal(JSON.parse(snapshots[0].payload).properties[0].key, originalField.key);
 });
 
+test('a note without properties moves without any mappings', async () => {
+    const target = await createWorkspace('Diet');
+    const note = await createNoteWithContent({ title: 'Plain memo', content: '[]' });
+
+    const preview = await previewNoteWorkspaceMove(String(note.id), String(target.id));
+    const moved = await moveNoteToWorkspace({
+        id: String(note.id),
+        targetWorkspaceId: String(target.id),
+        expectedUpdatedAt: preview.expectedUpdatedAt,
+        mappings: [],
+    });
+
+    assert.equal(moved.workspaceId, target.id);
+    assert.deepEqual(await listNoteProperties(note.id), []);
+    assert.equal(await models.noteSnapshot.count({ where: { noteId: note.id } }), 2);
+});
+
 test('an invalid mapping leaves the note, properties and snapshots unchanged', async () => {
     const target = await createWorkspace('Diet');
     const source = await createNotePropertyDefinition({ key: 'weight', valueType: 'number' });

@@ -128,7 +128,7 @@ export const moveNoteToWorkspace = async (input: {
                 updatedAt: new Date(Math.max(Date.now(), note.updatedAt.getTime() + 1)),
             },
         });
-        await setNotePropertyValues(tx, note.id, { set: values });
+        if (values.length) await setNotePropertyValues(tx, note.id, { set: values });
         const moved = await tx.note.findUniqueOrThrow({ where: { id: note.id }, include: includeProperties });
         await captureMoveVersion(tx, moved, 'After workspace move');
         return { note: moved, previousWorkspaceId: note.workspaceId };

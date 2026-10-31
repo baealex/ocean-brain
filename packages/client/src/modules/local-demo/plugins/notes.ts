@@ -2,7 +2,7 @@ import type { Note, NoteLayout, NoteProperty, NotePropertyOption, NotePropertyVa
 import type { View } from '~/models/view.model';
 import { localBackReferenceContexts } from '../back-reference-context';
 import { localError, success } from '../response';
-import type { LocalDemoPlugin, LocalTrashNote } from '../types';
+import type { LocalDemoPlugin, LocalDemoState, LocalTrashNote } from '../types';
 import {
     contentPreview,
     createLocalId,
@@ -39,6 +39,40 @@ const viewReferencesProperty = (view: View, key: string) => {
     }
 
     return view.displayType === 'calendar' && view.displayOptions.calendarDatePropertyKey === key;
+};
+
+const syncLocalSelectOptionReferences = (
+    state: LocalDemoState,
+    key: string,
+    options: NotePropertyOption[],
+    renamedValues: Map<string, string>,
+) => {
+    const optionByValue = new Map(options.map((option) => [option.value, option]));
+
+    for (const note of [...state.notes, ...state.trashedNotes]) {
+        note.properties = note.properties?.map((property) => {
+            if (property.key !== key || property.valueType !== 'select') {
+                return property;
+            }
+
+            const value = renamedValues.get(property.value) ?? property.value;
+            return { ...property, value, option: optionByValue.get(value) ?? property.option };
+        });
+    }
+
+    if (renamedValues.size === 0) {
+        return;
+    }
+
+    for (const view of state.viewWorkspace.groups.flatMap((group) => group.views)) {
+        view.propertyFilters = view.propertyFilters.map((filter) => {
+            const nextValue =
+                filter.key === key && filter.valueType === 'select' && filter.value
+                    ? renamedValues.get(filter.value)
+                    : undefined;
+            return nextValue === undefined ? filter : { ...filter, value: nextValue };
+        });
+    }
 };
 
 export const notesLocalPlugin: LocalDemoPlugin = {
@@ -363,7 +397,17 @@ export const notesLocalPlugin: LocalDemoPlugin = {
 
             const input = variables.input as { name?: string; options?: NotePropertyOption[] };
             if (input.name) definition.name = input.name;
-            if (input.options) definition.options = input.options;
+            if (input.options) {
+                const previousOptionById = new Map(definition.options.map((option) => [option.id, option]));
+                const renamedValues = new Map(
+                    input.options.flatMap((option) => {
+                        const previous = option.id ? previousOptionById.get(option.id) : undefined;
+                        return previous && previous.value !== option.value ? [[previous.value, option.value]] : [];
+                    }),
+                );
+                definition.options = input.options;
+                syncLocalSelectOptionReferences(state, definition.key, input.options, renamedValues);
+            }
             definition.updatedAt = now();
             save();
             return success({ updateNotePropertyKey: { ...definition, noteCount: 0 } });

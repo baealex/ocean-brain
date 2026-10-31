@@ -116,22 +116,22 @@ test('property definitions require valid select option datasets before write', a
     );
 });
 
-test('property definition option updates keep used option values', () => {
+test('property definition option updates keep used options', () => {
     assert.doesNotThrow(() =>
         assertPropertyOptionUpdateKeepsUsedValues({
             existingOptions: [
-                { value: 'todo', _count: { properties: 0 } },
-                { value: 'doing', _count: { properties: 2 } },
+                { id: 1, value: 'todo', _count: { properties: 0 } },
+                { id: 2, value: 'doing', _count: { properties: 2 } },
             ],
-            nextOptions: [{ value: 'doing' }],
+            nextOptions: [{ id: 2 }],
         }),
     );
 
     assert.throws(
         () =>
             assertPropertyOptionUpdateKeepsUsedValues({
-                existingOptions: [{ value: 'doing', _count: { properties: 2 } }],
-                nextOptions: [{ value: 'done' }],
+                existingOptions: [{ id: 2, value: 'doing', _count: { properties: 2 } }],
+                nextOptions: [{}],
             }),
         InvalidNotePropertyInputError,
     );

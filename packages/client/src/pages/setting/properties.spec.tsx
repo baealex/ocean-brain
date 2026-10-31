@@ -98,8 +98,8 @@ describe('<PropertiesSettings />', () => {
         await screen.findByText('State');
         await userEvent.click(screen.getByRole('button', { name: /edit/i }));
 
-        expect(screen.getByDisplayValue('todo')).toBeDisabled();
-        expect(screen.getAllByText('Locked')).toHaveLength(2);
+        expect(screen.getByDisplayValue('todo')).toBeEnabled();
+        expect(screen.getAllByText('Existing')).toHaveLength(2);
         expect(screen.getByRole('button', { name: /save changes/i })).toBeDisabled();
         const nameInput = screen.getByLabelText(/name/i);
         await userEvent.clear(nameInput);
@@ -133,6 +133,34 @@ describe('<PropertiesSettings />', () => {
                 options: [
                     { id: '2', label: 'Doing', value: 'doing', color: null, order: 0 },
                     { id: '1', label: 'Todo', value: 'todo', color: null, order: 1 },
+                ],
+            });
+        });
+    });
+    it('asks for confirmation before changing an existing option value', async () => {
+        vi.mocked(updateNotePropertyKey).mockClear();
+        renderPage();
+
+        await screen.findByText('State');
+        await userEvent.click(screen.getByRole('button', { name: /edit/i }));
+        const valueInput = screen.getByDisplayValue('todo');
+        await userEvent.clear(valueInput);
+        await userEvent.type(valueInput, 'to-do');
+        await userEvent.click(screen.getByRole('button', { name: /save changes/i }));
+
+        expect(updateNotePropertyKey).not.toHaveBeenCalled();
+        expect(await screen.findByText('todo → to-do')).toBeInTheDocument();
+        expect(screen.getByText(/MCP queries and scripts that use the old values are not updated/)).toBeInTheDocument();
+
+        await userEvent.click(screen.getByRole('button', { name: 'Change values' }));
+
+        await waitFor(() => {
+            expect(updateNotePropertyKey).toHaveBeenCalledWith({
+                key: 'state',
+                name: 'State',
+                options: [
+                    { id: '1', label: 'Todo', value: 'to-do', color: null, order: 0 },
+                    { id: '2', label: 'Doing', value: 'doing', color: null, order: 1 },
                 ],
             });
         });

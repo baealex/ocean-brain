@@ -80,7 +80,7 @@ test('a long select-property draft keeps later inputs above the keyboard without
     expect(errors).toEqual([]);
 });
 
-test('editing select options keeps locked values and saves a new option after keyboard navigation', async ({ page }) => {
+test('editing select options renames an existing value and saves a new option after keyboard navigation', async ({ page }) => {
     const errors = collectRuntimeErrors(page);
     await page.setViewportSize({ width: 390, height: 844 });
     await signIn(page);
@@ -103,25 +103,27 @@ test('editing select options keeps locked values and saves a new option after ke
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await page.getByRole('button', { name: 'Add option', exact: true }).click();
     const label = page.getByPlaceholder('Label', { exact: true }).last();
-    const value = page.getByPlaceholder('value', { exact: true });
+    const values = page.getByPlaceholder('value', { exact: true });
     await label.focus();
     await label.fill('New option');
     await setVisibleArea(page, 430);
     await expectFocusedInputVisible(page);
     await label.press('Tab');
-    await expect(value).toBeFocused();
-    await value.fill('new-option');
+    await expect(values.last()).toBeFocused();
+    await values.last().fill('new-option');
     await expectFocusedInputVisible(page);
-    await expect(page.getByPlaceholder('Locked value', { exact: true })).toHaveCount(6);
-    await expect(page.getByPlaceholder('Locked value', { exact: true }).first()).toBeDisabled();
+    await expect(values).toHaveCount(7);
+    await values.first().fill('option-one');
     await setVisibleArea(page, 844);
     await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+    await expect(page.getByText('option-1 → option-one', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Change values', exact: true }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await page.reload();
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     await expect(page.getByPlaceholder('Label', { exact: true }).last()).toHaveValue('New option');
-    await expect(page.getByPlaceholder('Locked value', { exact: true }).last()).toHaveValue('new-option');
-    await expect(page.getByPlaceholder('Locked value', { exact: true }).first()).toHaveValue('option-1');
+    await expect(values.last()).toHaveValue('new-option');
+    await expect(values.first()).toHaveValue('option-one');
     expect(errors).toEqual([]);
 });
 

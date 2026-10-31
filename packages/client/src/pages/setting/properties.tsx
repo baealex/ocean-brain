@@ -136,6 +136,7 @@ export default function PropertiesSettings() {
     const [propertyToEdit, setPropertyToEdit] = useState<NotePropertyKeySummary | null>(null);
     const [editName, setEditName] = useState('');
     const [editOptions, setEditOptions] = useState<PropertyOptionDraft[]>(() => [createEditOptionDraft()]);
+    const [isValueChangeConfirmOpen, setIsValueChangeConfirmOpen] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
     const resetCreateForm = () => {
@@ -166,6 +167,7 @@ export default function PropertiesSettings() {
         setPropertyToEdit(null);
         setEditName('');
         setEditOptions([createEditOptionDraft()]);
+        setIsValueChangeConfirmOpen(false);
     };
 
     const propertyKeysQuery = useQuery({
@@ -317,6 +319,22 @@ export default function PropertiesSettings() {
                     })),
             );
     const hasEditChanges = hasEditNameChanged || Boolean(hasEditOptionsChanged);
+    const editOptionValueChanges =
+        propertyToEdit?.valueType === 'select'
+            ? editableEditOptions.flatMap((option) => {
+                  const original = propertyToEdit.options.find((candidate) => candidate.id === option.id);
+                  const nextValue = normalizeDraftOptionValue(option);
+                  return original && original.value !== nextValue ? [{ from: original.value, to: nextValue }] : [];
+              })
+            : [];
+    const saveEditChanges = () => {
+        if (editOptionValueChanges.length > 0 && !isValueChangeConfirmOpen) {
+            setIsValueChangeConfirmOpen(true);
+            return;
+        }
+
+        updateMutation.mutate();
+    };
     const editValidationMessage = hasBlankExistingOptionLabel
         ? 'Existing option labels cannot be empty.'
         : hasIncompleteNewOption
@@ -628,8 +646,8 @@ export default function PropertiesSettings() {
                     {propertyToEdit && (
                         <div className="flex flex-col gap-3">
                             <Text as="p" variant="label" tone="tertiary">
-                                Rename the display label or add select options. Key, type, and existing option values
-                                stay fixed so notes and views remain stable.
+                                Rename the display label or edit select options. Key and type stay fixed so notes and
+                                views remain stable.
                             </Text>
                             <div className="grid gap-2 sm:grid-cols-2">
                                 <div className="rounded-[14px] border border-border-subtle bg-subtle/50 px-3 py-2">
@@ -667,9 +685,9 @@ export default function PropertiesSettings() {
                                                 Options
                                             </Text>
                                             <Text as="p" variant="meta" tone="secondary" className="mt-0.5">
-                                                Drag to reorder. Boards show their columns in this order. Existing
-                                                option values are locked, and removing existing options needs an
-                                                impact-aware delete flow.
+                                                Drag to reorder. Boards show their columns in this order. Changing a
+                                                value updates the notes and saved views that use it. Removing existing
+                                                options needs an impact-aware delete flow.
                                             </Text>
                                         </div>
                                         <Button
@@ -724,9 +742,8 @@ export default function PropertiesSettings() {
                                                         />
                                                         <Input
                                                             size="sm"
-                                                            placeholder={option.id ? 'Locked value' : 'value'}
+                                                            placeholder="value"
                                                             value={option.value}
-                                                            disabled={Boolean(option.id)}
                                                             onChange={(event) =>
                                                                 setEditOptions((current) =>
                                                                     current.map((item, itemIndex) =>
@@ -744,7 +761,7 @@ export default function PropertiesSettings() {
                                                                 tone="tertiary"
                                                                 className="flex h-8 items-center px-3"
                                                             >
-                                                                Locked
+                                                                Existing
                                                             </Text>
                                                         ) : (
                                                             <Button
@@ -799,9 +816,67 @@ export default function PropertiesSettings() {
                                 updateMutation.isPending
                             }
                             isLoading={updateMutation.isPending}
-                            onClick={() => updateMutation.mutate()}
+                            onClick={saveEditChanges}
                         >
                             Save changes
+                        </Button>
+                    </ModalActionRow>
+                </Modal.Footer>
+            </Modal>
+
+            <Modal
+                isOpen={isValueChangeConfirmOpen}
+                onClose={() => {
+                    if (!updateMutation.isPending) setIsValueChangeConfirmOpen(false);
+                }}
+                variant="confirm"
+            >
+                <Modal.Header title="Change option values" onClose={() => setIsValueChangeConfirmOpen(false)} />
+                <Modal.Body>
+                    <div className="space-y-3">
+                        <ul className="space-y-1">
+                            {editOptionValueChanges.map((change) => (
+                                <li key={change.from}>
+                                    <Text as="span" variant="label" className="font-mono">
+                                        {change.from} → {change.to}
+                                    </Text>
+                                </li>
+                            ))}
+                        </ul>
+                        <Text as="p" variant="meta" tone="secondary">
+                            Notes, saved view filters, snapshots and trash keep pointing to the same option.
+                        </Text>
+                        <div className="flex items-start gap-2.5 rounded-[14px] border border-border-subtle bg-subtle/60 p-3">
+                            <Icon.WarningCircle
+                                aria-hidden="true"
+                                className="mt-0.5 h-4 w-4 shrink-0 text-fg-tertiary"
+                            />
+                            <Text as="p" variant="meta" tone="secondary">
+                                Agent notes, MCP queries and scripts that use the old values are not updated. Change
+                                them by hand.
+                            </Text>
+                        </div>
+                    </div>
+                </Modal.Body>
+                <Modal.Footer>
+                    <ModalActionRow>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={updateMutation.isPending}
+                            onClick={() => setIsValueChangeConfirmOpen(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="primary"
+                            size="sm"
+                            isLoading={updateMutation.isPending}
+                            onClick={saveEditChanges}
+                        >
+                            Change values
                         </Button>
                     </ModalActionRow>
                 </Modal.Footer>

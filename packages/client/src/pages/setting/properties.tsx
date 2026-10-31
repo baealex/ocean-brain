@@ -1,6 +1,10 @@
+import { arrayMove, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
-import { useState } from 'react';
+import classNames from 'classnames';
+import { nanoid } from 'nanoid';
+import { type ReactNode, useState } from 'react';
 import {
     createNotePropertyKey,
     deleteNotePropertyKey,
@@ -9,7 +13,7 @@ import {
     updateNotePropertyKey,
 } from '~/apis/note.api';
 import * as Icon from '~/components/icon';
-import { Button, Modal, ModalActionRow, PageLayout } from '~/components/shared';
+import { Button, Dropdown, Modal, ModalActionRow, MoreButton, PageLayout, VerticalSortable } from '~/components/shared';
 import { Input, Select, SelectItem, Text, useToast } from '~/components/ui';
 import { WorkspaceSettingsBackLink } from '~/components/workspace/WorkspaceSettingsBackLink';
 import type { NotePropertyValueType } from '~/models/note.model';
@@ -31,6 +35,7 @@ const PROPERTY_TYPE_OPTIONS: { value: NotePropertyValueType; label: string; desc
 
 interface PropertyOptionDraft {
     id?: string;
+    draftKey?: string;
     label: string;
     value: string;
     color?: string | null;
@@ -55,8 +60,62 @@ const buildOptionPayload = (options: PropertyOptionDraft[]) => {
             label: option.label.trim(),
             value: option.value.trim() || option.label.trim(),
             color: option.color ?? null,
-            order: option.order ?? index,
+            order: index,
         }));
+};
+
+const createEditOptionDraft = (): PropertyOptionDraft => ({ label: '', value: '', draftKey: nanoid() });
+
+const getOptionDraftKey = (option: PropertyOptionDraft, index: number) =>
+    option.draftKey ?? option.id ?? `option-${index}`;
+
+const SortableOptionRow = ({
+    id,
+    label,
+    index,
+    count,
+    onMove,
+    children,
+}: {
+    id: string;
+    label: string;
+    index: number;
+    count: number;
+    onMove: (from: number, to: number) => void;
+    children: ReactNode;
+}) => {
+    const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
+        id,
+    });
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={{ transform: CSS.Translate.toString(transform), transition }}
+            className={classNames('flex items-start gap-1.5', isDragging && 'relative z-10 opacity-70')}
+        >
+            <button
+                type="button"
+                ref={setActivatorNodeRef}
+                {...attributes}
+                {...listeners}
+                aria-label={`Reorder ${label} option`}
+                className="focus-ring-soft flex size-8 shrink-0 cursor-grab touch-none items-center justify-center rounded-[10px] text-fg-tertiary outline-none hover:bg-hover-subtle active:cursor-grabbing"
+            >
+                <Icon.DragHandle className="size-4" />
+            </button>
+            <div className="min-w-0 flex-1">{children}</div>
+            {count > 1 ? (
+                <Dropdown
+                    button={<MoreButton label={`Actions for ${label} option`} size="sm" />}
+                    items={[
+                        ...(index > 0 ? [{ name: 'Move up', onClick: () => onMove(index, index - 1) }] : []),
+                        ...(index < count - 1 ? [{ name: 'Move down', onClick: () => onMove(index, index + 1) }] : []),
+                    ]}
+                />
+            ) : null}
+        </div>
+    );
 };
 
 export default function PropertiesSettings() {
@@ -76,7 +135,7 @@ export default function PropertiesSettings() {
     const [propertyToDelete, setPropertyToDelete] = useState<NotePropertyKeySummary | null>(null);
     const [propertyToEdit, setPropertyToEdit] = useState<NotePropertyKeySummary | null>(null);
     const [editName, setEditName] = useState('');
-    const [editOptions, setEditOptions] = useState<PropertyOptionDraft[]>([{ label: '', value: '' }]);
+    const [editOptions, setEditOptions] = useState<PropertyOptionDraft[]>(() => [createEditOptionDraft()]);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
     const resetCreateForm = () => {
@@ -93,19 +152,20 @@ export default function PropertiesSettings() {
             propertyKey.options.length > 0
                 ? propertyKey.options.map((option) => ({
                       id: option.id,
+                      draftKey: option.id,
                       label: option.label,
                       value: option.value,
                       color: option.color,
                       order: option.order,
                   }))
-                : [{ label: '', value: '' }],
+                : [createEditOptionDraft()],
         );
     };
 
     const closeEditModal = () => {
         setPropertyToEdit(null);
         setEditName('');
-        setEditOptions([{ label: '', value: '' }]);
+        setEditOptions([createEditOptionDraft()]);
     };
 
     const propertyKeysQuery = useQuery({
@@ -246,13 +306,15 @@ export default function PropertiesSettings() {
         propertyToEdit?.valueType === 'select' &&
         JSON.stringify(buildOptionPayload(editOptions)) !==
             JSON.stringify(
-                propertyToEdit.options.map((option) => ({
-                    id: option.id,
-                    label: option.label,
-                    value: option.value,
-                    color: option.color ?? null,
-                    order: option.order,
-                })),
+                [...propertyToEdit.options]
+                    .sort((left, right) => left.order - right.order)
+                    .map((option, index) => ({
+                        id: option.id,
+                        label: option.label,
+                        value: option.value,
+                        color: option.color ?? null,
+                        order: index,
+                    })),
             );
     const hasEditChanges = hasEditNameChanged || Boolean(hasEditOptionsChanged);
     const editValidationMessage = hasBlankExistingOptionLabel
@@ -605,7 +667,8 @@ export default function PropertiesSettings() {
                                                 Options
                                             </Text>
                                             <Text as="p" variant="meta" tone="secondary" className="mt-0.5">
-                                                Existing option values are locked. Removing existing options needs an
+                                                Drag to reorder. Boards show their columns in this order. Existing
+                                                option values are locked, and removing existing options needs an
                                                 impact-aware delete flow.
                                             </Text>
                                         </div>
@@ -614,73 +677,96 @@ export default function PropertiesSettings() {
                                             size="sm"
                                             variant="subtle"
                                             onClick={() =>
-                                                setEditOptions((current) => [...current, { label: '', value: '' }])
+                                                setEditOptions((current) => [...current, createEditOptionDraft()])
                                             }
                                         >
                                             Add option
                                         </Button>
                                     </div>
-                                    <div className="flex flex-col gap-2">
-                                        {editOptions.map((option, index) => (
-                                            <div
-                                                key={option.id ?? `new-${index}`}
-                                                className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]"
-                                            >
-                                                <Input
-                                                    size="sm"
-                                                    placeholder="Label"
-                                                    value={option.label}
-                                                    onChange={(event) =>
-                                                        setEditOptions((current) =>
-                                                            current.map((item, itemIndex) =>
-                                                                itemIndex === index
-                                                                    ? { ...item, label: event.target.value }
-                                                                    : item,
-                                                            ),
-                                                        )
+                                    <VerticalSortable
+                                        items={editOptions.map(getOptionDraftKey)}
+                                        onDragEnd={({ active, over }) => {
+                                            if (!over || active.id === over.id) return;
+                                            const keys = editOptions.map(getOptionDraftKey);
+                                            const from = keys.indexOf(String(active.id));
+                                            const to = keys.indexOf(String(over.id));
+                                            if (from >= 0 && to >= 0) {
+                                                setEditOptions((current) => arrayMove(current, from, to));
+                                            }
+                                        }}
+                                    >
+                                        <div className="flex flex-col gap-2">
+                                            {editOptions.map((option, index) => (
+                                                <SortableOptionRow
+                                                    key={getOptionDraftKey(option, index)}
+                                                    id={getOptionDraftKey(option, index)}
+                                                    label={option.label.trim() || 'new'}
+                                                    index={index}
+                                                    count={editOptions.length}
+                                                    onMove={(from, to) =>
+                                                        setEditOptions((current) => arrayMove(current, from, to))
                                                     }
-                                                />
-                                                <Input
-                                                    size="sm"
-                                                    placeholder={option.id ? 'Locked value' : 'value'}
-                                                    value={option.value}
-                                                    disabled={Boolean(option.id)}
-                                                    onChange={(event) =>
-                                                        setEditOptions((current) =>
-                                                            current.map((item, itemIndex) =>
-                                                                itemIndex === index
-                                                                    ? { ...item, value: event.target.value }
-                                                                    : item,
-                                                            ),
-                                                        )
-                                                    }
-                                                />
-                                                {option.id ? (
-                                                    <Text
-                                                        as="span"
-                                                        variant="meta"
-                                                        tone="tertiary"
-                                                        className="flex h-8 items-center px-3"
-                                                    >
-                                                        Locked
-                                                    </Text>
-                                                ) : (
-                                                    <Button
-                                                        type="button"
-                                                        size="sm"
-                                                        variant="soft-danger"
-                                                        onClick={() =>
-                                                            setEditOptions((current) =>
-                                                                current.filter((_, itemIndex) => itemIndex !== index),
-                                                            )
-                                                        }
-                                                    >
-                                                        Remove
-                                                    </Button>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
+                                                >
+                                                    <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                                                        <Input
+                                                            size="sm"
+                                                            placeholder="Label"
+                                                            value={option.label}
+                                                            onChange={(event) =>
+                                                                setEditOptions((current) =>
+                                                                    current.map((item, itemIndex) =>
+                                                                        itemIndex === index
+                                                                            ? { ...item, label: event.target.value }
+                                                                            : item,
+                                                                    ),
+                                                                )
+                                                            }
+                                                        />
+                                                        <Input
+                                                            size="sm"
+                                                            placeholder={option.id ? 'Locked value' : 'value'}
+                                                            value={option.value}
+                                                            disabled={Boolean(option.id)}
+                                                            onChange={(event) =>
+                                                                setEditOptions((current) =>
+                                                                    current.map((item, itemIndex) =>
+                                                                        itemIndex === index
+                                                                            ? { ...item, value: event.target.value }
+                                                                            : item,
+                                                                    ),
+                                                                )
+                                                            }
+                                                        />
+                                                        {option.id ? (
+                                                            <Text
+                                                                as="span"
+                                                                variant="meta"
+                                                                tone="tertiary"
+                                                                className="flex h-8 items-center px-3"
+                                                            >
+                                                                Locked
+                                                            </Text>
+                                                        ) : (
+                                                            <Button
+                                                                type="button"
+                                                                size="sm"
+                                                                variant="soft-danger"
+                                                                onClick={() =>
+                                                                    setEditOptions((current) =>
+                                                                        current.filter(
+                                                                            (_, itemIndex) => itemIndex !== index,
+                                                                        ),
+                                                                    )
+                                                                }
+                                                            >
+                                                                Remove
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </SortableOptionRow>
+                                            ))}
+                                        </div>
+                                    </VerticalSortable>
                                     {editValidationMessage && (
                                         <Text as="p" variant="meta" tone="error" className="mt-2">
                                             {editValidationMessage}

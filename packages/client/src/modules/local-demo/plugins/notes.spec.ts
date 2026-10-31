@@ -382,3 +382,60 @@ it('local demo backlinks preserve the source block and distinguish equally named
         },
     });
 });
+
+describe('trashed note payload', () => {
+    const paragraph = (text: string) => [{ type: 'paragraph', content: [{ type: 'text', text, styles: {} }] }];
+    const createTrashedState = (content: string, deletedAt: string) => {
+        const state = createState();
+        state.trashedNotes = [
+            {
+                ...createNote({ id: 'note-trashed', title: 'Trashed', tags: [] }),
+                content,
+                deletedAt,
+            },
+        ];
+        return state;
+    };
+    const fetchTrashedNote = (state: LocalDemoState) => {
+        const response = notesLocalPlugin.graphHandlers?.FetchTrashedNotes?.({
+            state,
+            variables: { pagination: { limit: 25, offset: 0 } },
+            save: () => undefined,
+        });
+        if (response?.type !== 'success') throw new Error('Expected a successful response');
+        return (response as unknown as { trashedNotes: { notes: Array<Record<string, unknown>> } }).trashedNotes
+            .notes[0];
+    };
+
+    it('lists visible text instead of BlockNote JSON as the preview of a trashed note', () => {
+        const state = createTrashedState(JSON.stringify(paragraph('Visible body')), '1710000000000');
+
+        const note = fetchTrashedNote(state);
+
+        expect(note.contentPreview).toBe('Visible body');
+    });
+
+    it('truncates the preview of a long trashed note with an ellipsis like the server', () => {
+        const state = createTrashedState(JSON.stringify(paragraph('a'.repeat(300))), '1710000000000');
+
+        const note = fetchTrashedNote(state);
+
+        expect(note.contentPreview).toBe(`${'a'.repeat(240)}…`);
+    });
+
+    it('lists a millisecond deletion timestamp as an ISO string', () => {
+        const state = createTrashedState('[]', '1710000000000');
+
+        const note = fetchTrashedNote(state);
+
+        expect(note.deletedAt).toBe('2024-03-09T16:00:00.000Z');
+    });
+
+    it('lists millisecond created and updated timestamps of a trashed note as ISO strings', () => {
+        const state = createTrashedState('[]', '1710000000000');
+
+        const note = fetchTrashedNote(state);
+
+        expect([note.createdAt, note.updatedAt]).toEqual(['2024-03-09T16:00:00.000Z', '2024-03-09T16:00:00.000Z']);
+    });
+});

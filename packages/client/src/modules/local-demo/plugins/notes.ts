@@ -4,7 +4,6 @@ import { localBackReferenceContexts } from '../back-reference-context';
 import { localError, success } from '../response';
 import type { LocalDemoPlugin, LocalDemoState, LocalTrashNote } from '../types';
 import {
-    contentPreview,
     createLocalId,
     extractNoteReferences,
     findNote,
@@ -15,12 +14,17 @@ import {
     now,
     paginate,
     sortNotes,
+    toIsoTimestamp,
+    trashedContentPreview,
 } from '../utils';
 import { localScopedNotes, localScopeId, localWorkspace } from '../workspace';
 
 const toTrashedNotePayload = (note: LocalTrashNote) => ({
     ...note,
-    contentPreview: contentPreview(note.content),
+    createdAt: toIsoTimestamp(note.createdAt),
+    updatedAt: toIsoTimestamp(note.updatedAt),
+    deletedAt: toIsoTimestamp(note.deletedAt),
+    contentPreview: trashedContentPreview(note.content),
     contentAsMarkdown: note.content,
     tagNames: note.tags.map((tag) => tag.name),
 });

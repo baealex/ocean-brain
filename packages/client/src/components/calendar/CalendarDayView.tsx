@@ -18,11 +18,27 @@ interface CalendarDayViewProps {
     overflowCount: number;
     density?: 'comfortable' | 'compact';
     showReminderSummary?: boolean;
+    adjacentMonthLabel?: string;
     onSelect: () => void;
 }
 
-const NOTE_PREVIEW_TONE = 'bg-surface shadow-[inset_0_0_0_1px_var(--border-subtle)]';
-const REMINDER_PREVIEW_TONE = 'bg-emphasis';
+const PRIORITY_ICON_CLASS_NAMES: Record<string, string> = {
+    high: 'text-priority-high',
+    medium: 'text-priority-medium',
+    low: 'text-priority-low',
+};
+
+const getPreviewToneClassName = (item: CalendarDayPreviewItem) => {
+    if (item.type === 'reminder' && item.isOverdue) return 'bg-accent-soft-danger';
+    if (item.type === 'reminder' && item.isCompleted) return 'bg-accent-soft-success';
+    return 'bg-emphasis/80';
+};
+
+const getPreviewIconClassName = (item: CalendarDayPreviewItem) => {
+    if (item.type === 'note' || item.isCompleted) return 'text-fg-tertiary';
+    if (item.isOverdue) return 'text-fg-error';
+    return PRIORITY_ICON_CLASS_NAMES[item.priority ?? 'low'] ?? PRIORITY_ICON_CLASS_NAMES.low;
+};
 
 const itemLabel = (count: number, singular: string) => `${count} ${count === 1 ? singular : `${singular}s`}`;
 
@@ -40,12 +56,16 @@ export const CalendarDayView = ({
     overflowCount,
     density = 'comfortable',
     showReminderSummary = true,
+    adjacentMonthLabel,
     onSelect,
 }: CalendarDayViewProps) => {
     const totalCount = noteCount + reminderCount;
-    const accessibleLabel = showReminderSummary
-        ? `${dateLabel}, ${itemLabel(noteCount, 'note')}, ${itemLabel(reminderCount, 'reminder')}`
-        : `${dateLabel}, ${itemLabel(noteCount, 'note')}`;
+    const opensAdjacentMonth = !isCurrentMonth && Boolean(adjacentMonthLabel);
+    const accessibleLabel = opensAdjacentMonth
+        ? `${dateLabel}, ${adjacentMonthLabel}`
+        : showReminderSummary
+          ? `${dateLabel}, ${itemLabel(noteCount, 'note')}, ${itemLabel(reminderCount, 'reminder')}`
+          : `${dateLabel}, ${itemLabel(noteCount, 'note')}`;
     const densityClassName =
         density === 'compact'
             ? 'min-h-16 p-1 sm:min-h-20 sm:p-2 lg:min-h-[142px] lg:p-1.5 2xl:p-2.5'
@@ -54,13 +74,13 @@ export const CalendarDayView = ({
     return (
         <button
             type="button"
-            disabled={!isCurrentMonth}
+            disabled={!isCurrentMonth && !opensAdjacentMonth}
             aria-label={accessibleLabel}
             aria-pressed={isCurrentMonth ? isSelected : undefined}
             aria-current={isCurrentMonth && isToday ? 'date' : undefined}
             onClick={onSelect}
             className={classNames(
-                'focus-ring-soft relative flex min-w-0 flex-col text-left outline-none focus-visible:z-10',
+                'focus-ring-soft relative flex min-w-0 flex-col rounded-[10px] border text-left outline-none transition-colors focus-visible:z-10 sm:rounded-[12px]',
                 densityClassName,
                 cellClassName,
             )}
@@ -114,15 +134,15 @@ export const CalendarDayView = ({
                             <span
                                 key={item.key}
                                 className={classNames(
-                                    'flex min-h-7 min-w-0 items-center rounded-[7px] px-1 py-1 2xl:px-1.5',
-                                    item.type === 'reminder' ? REMINDER_PREVIEW_TONE : NOTE_PREVIEW_TONE,
+                                    'flex min-h-7 min-w-0 items-center rounded-[8px] px-1.5 py-1',
+                                    getPreviewToneClassName(item),
                                 )}
                             >
                                 <Text
                                     as="span"
                                     variant="micro"
                                     weight="medium"
-                                    tone="secondary"
+                                    tone={item.isOverdue ? 'error' : item.isCompleted ? 'tertiary' : 'default'}
                                     className={classNames(
                                         'line-clamp-2 min-w-0 !text-[11px] !leading-4 wrap-anywhere',
                                         item.isCompleted && 'line-through',
@@ -131,12 +151,19 @@ export const CalendarDayView = ({
                                     {/* Inline so a wrapped second line can use the width under the icon. */}
                                     {item.type === 'reminder' ? (
                                         <Icon.Bell
-                                            className="mr-1 inline-block align-[-1px] text-fg-tertiary"
+                                            className={classNames(
+                                                'mr-1 inline-block align-[-1px]',
+                                                getPreviewIconClassName(item),
+                                            )}
                                             size={11}
+                                            weight={item.isOverdue || item.isCompleted ? 'regular' : 'fill'}
                                         />
                                     ) : (
                                         <Icon.FileNote
-                                            className="mr-1 inline-block align-[-1px] text-fg-tertiary"
+                                            className={classNames(
+                                                'mr-1 inline-block align-[-1px]',
+                                                getPreviewIconClassName(item),
+                                            )}
                                             size={11}
                                         />
                                     )}

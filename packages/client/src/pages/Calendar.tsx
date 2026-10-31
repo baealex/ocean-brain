@@ -61,7 +61,9 @@ export default function Calendar() {
         });
     }, [year, month, notes, reminders, type]);
 
-    const defaultSelectedDayKey = calendarDayViews.find((day) => day.isCurrentMonth && day.isToday)?.key;
+    const defaultSelectedDayKey =
+        calendarDayViews.find((day) => day.isCurrentMonth && day.isToday)?.key ??
+        calendarDayViews.find((day) => day.isCurrentMonth && day.notes.length + day.reminders.length > 0)?.key;
     const selectedDayKey =
         calendarSelection.monthKey === currentMonthKey
             ? (calendarSelection.dayKey ?? defaultSelectedDayKey)
@@ -119,7 +121,21 @@ export default function Calendar() {
     };
 
     const handleSelectedDayChange = (dayKey: string) => {
-        setCalendarSelection({ monthKey: currentMonthKey, dayKey });
+        const selectedDay = calendarDayViews.find((day) => day.key === dayKey);
+
+        if (!selectedDay || selectedDay.isCurrentMonth) {
+            setCalendarSelection({ monthKey: currentMonthKey, dayKey });
+            return;
+        }
+
+        setCalendarSelection({ monthKey: `${selectedDay.year}-${selectedDay.month}`, dayKey });
+        navigate({
+            search: (prev) => ({
+                ...prev,
+                month: selectedDay.month,
+                year: selectedDay.year,
+            }),
+        });
     };
 
     return (

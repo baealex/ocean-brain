@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 
 import * as Icon from '~/components/icon';
 import { Text } from '~/components/ui';
+import { toCalendarTimestamp } from './calendar-data';
 import { NoteCard } from './NoteCard';
 import { ReminderCard } from './ReminderCard';
 import type { CalendarDayData, CalendarDisplayType, CalendarItem } from './types';
@@ -24,6 +25,11 @@ const renderItems = (items: CalendarItem[], type: CalendarDisplayType) =>
     );
 
 const formatCount = (count: number, singular: string) => `${count} ${count === 1 ? singular : `${singular}s`}`;
+
+const getItemTimestamp = (calendarItem: CalendarItem, type: CalendarDisplayType) =>
+    calendarItem.type === 'note'
+        ? toCalendarTimestamp(type === 'create' ? calendarItem.item.createdAt : calendarItem.item.updatedAt)
+        : toCalendarTimestamp(calendarItem.item.reminderDate);
 const RAIL_ACTIVITY_CLASS_NAME =
     'mt-3 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-y-contain pr-2 [scrollbar-color:var(--border-secondary)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border-secondary [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-1.5';
 
@@ -34,17 +40,19 @@ export const CalendarDayDetail = ({ day, type, isLoading, presentation = 'rail' 
     const sortedItems = useMemo<CalendarItem[]>(() => {
         if (!day) return [];
 
-        const noteItems: CalendarItem[] = day.notes.map((note) => ({ type: 'note', item: note }));
-        const reminderItems: CalendarItem[] = day.reminders.map((reminder) => ({ type: 'reminder', item: reminder }));
+        const items: CalendarItem[] = [
+            ...day.notes.map((note): CalendarItem => ({ type: 'note', item: note })),
+            ...day.reminders.map((reminder): CalendarItem => ({ type: 'reminder', item: reminder })),
+        ];
 
-        return day.isPast ? [...noteItems, ...reminderItems] : [...reminderItems, ...noteItems];
-    }, [day]);
+        return items.sort((left, right) => getItemTimestamp(left, type) - getItemTimestamp(right, type));
+    }, [day, type]);
 
     if (!day) {
         return (
             <section aria-label="Day details" className="flex h-full min-h-40 items-center justify-center text-center">
                 <Text as="p" variant="meta" weight="medium" tone="secondary">
-                    Select a day to see its activity.
+                    {isLoading ? 'Loading activity...' : 'No notes or reminders this month.'}
                 </Text>
             </section>
         );

@@ -44,7 +44,10 @@ describe('<CalendarDay />', () => {
         expect(handleSelect).toHaveBeenCalledTimes(1);
     });
 
-    it('keeps adjacent-month dates unavailable in the current month overview', () => {
+    it('lets an adjacent-month date open its own month', async () => {
+        const user = userEvent.setup();
+        const handleSelect = vi.fn();
+
         render(
             <CalendarDay
                 year={2026}
@@ -57,14 +60,12 @@ describe('<CalendarDay />', () => {
                 isPast
                 notes={[]}
                 reminders={[]}
-                onSelect={vi.fn()}
+                onSelect={handleSelect}
             />,
         );
 
-        expect(
-            screen.getByRole('button', {
-                name: 'Sunday, March 29, 2026, 0 notes, 0 reminders',
-            }),
-        ).toBeDisabled();
+        await user.click(screen.getByRole('button', { name: 'Sunday, March 29, 2026, go to March' }));
+
+        expect(handleSelect).toHaveBeenCalledTimes(1);
     });
 });

@@ -35,7 +35,8 @@ describe('<CalendarDayDetail />', () => {
         expect(screen.queryByTestId(/calendar-(note|reminder)-card/)).not.toBeInTheDocument();
     });
 
-    it('shows every item with reminders first for an upcoming day', () => {
+    it('lists notes and reminders of the day in time order', () => {
+        const at = (hour: number) => String(new Date(2026, 3, 2, hour).getTime());
         const day = {
             key: '2026-4-2',
             year: 2026,
@@ -44,28 +45,31 @@ describe('<CalendarDayDetail />', () => {
             isCurrentMonth: true,
             isSunday: false,
             isToday: false,
-            isPast: false,
+            isPast: true,
             notes: [
-                { id: 'n1', title: 'Note one' },
-                { id: 'n2', title: 'Note two' },
+                { id: 'n1', title: 'Morning note', createdAt: at(9), updatedAt: at(20) },
+                { id: 'n2', title: 'Afternoon note', createdAt: at(15), updatedAt: at(16) },
             ],
-            reminders: [
-                { id: 'r1', content: 'Reminder one' },
-                { id: 'r2', content: 'Reminder two' },
-            ],
+            reminders: [{ id: 'r1', content: 'Noon reminder', reminderDate: at(12) }],
         } as CalendarDayData;
 
         render(<CalendarDayDetail day={day} type="create" isLoading={false} />);
 
         const items = screen.getAllByTestId(/calendar-(note|reminder)-card/).map((element) => element.textContent);
 
-        expect(items).toEqual(['Reminder one', 'Reminder two', 'Note one', 'Note two']);
-        expect(screen.getByRole('heading', { name: 'Thursday, April 2' })).toBeInTheDocument();
+        expect(items).toEqual(['Morning note', 'Noon reminder', 'Afternoon note']);
     });
 
-    it('asks for a date before showing day details', () => {
+    it('explains when the month has no activity to select', () => {
         render(<CalendarDayDetail type="update" isLoading={false} />);
 
-        expect(screen.getByText('Select a day to see its activity.')).toBeInTheDocument();
+        expect(screen.getByText('No notes or reminders this month.')).toBeInTheDocument();
+    });
+
+    it('waits for activity before explaining an empty month', () => {
+        render(<CalendarDayDetail type="update" isLoading />);
+
+        expect(screen.getByText('Loading activity...')).toBeInTheDocument();
+        expect(screen.queryByText('No notes or reminders this month.')).not.toBeInTheDocument();
     });
 });

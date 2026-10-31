@@ -18,7 +18,7 @@ export const CalendarGrid = ({
 }: CalendarGridProps) => (
     <section aria-label={ariaLabel} aria-busy={isLoading} className={`min-w-0 ${className}`}>
         <div className="overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="min-w-[19rem]">
+            <div className="min-w-[19rem] p-0.5">
                 <div className="mb-2 grid grid-cols-7 gap-px">
                     {DAYS_OF_WEEK.map((day, index) => (
                         <Text
@@ -39,9 +39,7 @@ export const CalendarGrid = ({
                     ))}
                 </div>
 
-                <div className="grid grid-cols-7 gap-px overflow-hidden rounded-[12px] border border-border-subtle/80 bg-border-subtle/70">
-                    {children}
-                </div>
+                <div className="grid grid-cols-7 gap-1 sm:gap-1.5">{children}</div>
             </div>
         </div>
     </section>

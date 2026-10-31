@@ -16,6 +16,7 @@ import {
     getCalendarMonthRange,
     toCalendarTimestamp,
 } from '~/components/calendar/calendar-data';
+import { getCalendarCellClassName, getCalendarDayNumberClassName } from '~/components/calendar/calendar-styles';
 import * as Icon from '~/components/icon';
 import { Button, Modal, Text } from '~/components/ui';
 import type { View } from '~/models/view.model';
@@ -71,30 +72,6 @@ const getTimestampDayKey = (value: string) => {
 
     const date = dayjs(timestamp);
     return `${date.year()}-${date.month() + 1}-${date.date()}`;
-};
-
-const getCellClassName = (day: ViewCalendarDay, isSelected: boolean) => {
-    if (!day.isCurrentMonth) {
-        return 'cursor-default bg-[var(--page-bg)] text-fg-disabled';
-    }
-
-    if (isSelected) {
-        return 'bg-elevated shadow-[inset_0_0_0_1px_var(--border-secondary)] hover:bg-surface';
-    }
-
-    return 'bg-surface hover:bg-muted';
-};
-
-const getDayNumberClassName = (day: ViewCalendarDay) => {
-    if (day.isToday) {
-        return 'bg-cta font-semibold text-fg-on-filled';
-    }
-
-    if (!day.isCurrentMonth) {
-        return 'font-medium text-fg-tertiary';
-    }
-
-    return day.isSunday ? 'font-semibold text-fg-weekend' : 'font-semibold text-fg-secondary';
 };
 
 export default function ViewCalendarRenderer({
@@ -232,8 +209,11 @@ export default function ViewCalendarRenderer({
                                     dateLabel={dayjs(new Date(day.year, day.month - 1, day.day)).format(
                                         'dddd, MMMM D, YYYY',
                                     )}
-                                    cellClassName={getCellClassName(day, isSelected)}
-                                    dayNumberClassName={getDayNumberClassName(day)}
+                                    cellClassName={getCalendarCellClassName({
+                                        isCurrentMonth: day.isCurrentMonth,
+                                        isSelected,
+                                    })}
+                                    dayNumberClassName={getCalendarDayNumberClassName(day)}
                                     isCurrentMonth={day.isCurrentMonth}
                                     isToday={day.isToday}
                                     isSelected={isSelected}

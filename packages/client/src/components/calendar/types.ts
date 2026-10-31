@@ -10,6 +10,8 @@ export interface CalendarDayPreviewItem {
     type: CalendarItem['type'];
     title: string;
     isCompleted?: boolean;
+    isOverdue?: boolean;
+    priority?: string;
 }
 
 export interface CalendarGridDay {

@@ -144,11 +144,97 @@ export const applyPropertyFilters = (notes: Note[], filters: ViewPropertyFilter[
     );
 };
 
-export const contentPreview = (content: string) =>
-    content
-        .replace(/[#*_`>-]/g, '')
-        .trim()
-        .slice(0, 180);
+const VISIBLE_PROP_KEYS: Record<string, string[]> = {
+    tag: ['tag'],
+    reference: ['title'],
+    linkedView: ['viewTitle'],
+    image: ['name', 'caption'],
+    video: ['name', 'caption'],
+    audio: ['name', 'caption'],
+    file: ['name', 'caption'],
+};
+
+const normalizeVisibleText = (value: string) => value.replace(/\s+/g, ' ').trim();
+
+const collectVisibleSegments = (node: unknown, segments: string[]) => {
+    if (Array.isArray(node)) {
+        node.forEach((item) => collectVisibleSegments(item, segments));
+        return;
+    }
+    if (typeof node !== 'object' || node === null) return;
+
+    const record = node as Record<string, unknown>;
+    const push = (value: unknown) => {
+        const text = typeof value === 'string' ? normalizeVisibleText(value) : '';
+        if (text) segments.push(text);
+    };
+
+    if (record.type === 'text') push(record.text);
+    const propKeys = typeof record.type === 'string' ? VISIBLE_PROP_KEYS[record.type] : undefined;
+    if (propKeys && typeof record.props === 'object' && record.props !== null) {
+        const props = record.props as Record<string, unknown>;
+        propKeys.forEach((key) => push(props[key]));
+    }
+
+    for (const key of ['content', 'children', 'rows', 'cells']) {
+        if (key in record) collectVisibleSegments(record[key], segments);
+    }
+};
+
+const extractVisibleText = (content: string) => {
+    try {
+        const segments: string[] = [];
+        collectVisibleSegments(JSON.parse(content), segments);
+        return normalizeVisibleText(segments.join(' '));
+    } catch {
+        return '';
+    }
+};
+
+const collectBlockLines = (blocks: unknown, lines: string[]) => {
+    if (!Array.isArray(blocks)) return;
+
+    for (const block of blocks) {
+        if (typeof block !== 'object' || block === null) continue;
+        const { content, children } = block as Record<string, unknown>;
+        const segments: string[] = [];
+        collectVisibleSegments(
+            { type: (block as { type?: unknown }).type, props: (block as { props?: unknown }).props, content },
+            segments,
+        );
+        const line = normalizeVisibleText(segments.join(' '));
+        if (line) lines.push(line);
+        collectBlockLines(children, lines);
+    }
+};
+
+export const contentAsBlockLines = (content: string) => {
+    try {
+        const lines: string[] = [];
+        collectBlockLines(JSON.parse(content), lines);
+        return lines.join('\n');
+    } catch {
+        return '';
+    }
+};
+
+export const contentPreview = (content: string) => extractVisibleText(content).slice(0, 100);
+
+export const withContentPreview = (notes: Note[]) =>
+    notes.map((note) => ({ ...note, contentPreview: contentPreview(note.content) }));
+
+const TRASHED_PREVIEW_MAX_LENGTH = 240;
+
+export const trashedContentPreview = (content: string) => {
+    const text = extractVisibleText(content);
+    return text.length <= TRASHED_PREVIEW_MAX_LENGTH ? text : `${text.slice(0, TRASHED_PREVIEW_MAX_LENGTH).trimEnd()}…`;
+};
+
+export const toIsoTimestamp = (value: string) => {
+    const numericValue = Number(value);
+    const date = new Date(Number.isFinite(numericValue) ? numericValue : value);
+    return Number.isNaN(date.getTime()) ? value : date.toISOString();
+};
 
 interface LocalReference {
     id: string;

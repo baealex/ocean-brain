@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useLocation, useMatches } from '@tanstack/react-router';
+import { useMatches } from '@tanstack/react-router';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 import { fetchWorkspaces } from '~/apis/workspace.api';
 import type { Workspace } from '~/models/workspace.model';
@@ -34,16 +34,18 @@ const readLastWorkspace = () => {
 };
 
 export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
-    const search = useLocation({ select: (location) => location.search });
-    const isSettings = useMatches({
-        select: (matches) =>
-            matches.some(
+    // Keep the search and route identity on the same rendered navigation snapshot.
+    const { search, isSettings, isNote } = useMatches({
+        select: (matches) => ({
+            search: matches.at(-1)?.search ?? {},
+            isSettings: matches.some(
                 (match) => match.pathname === SETTINGS_ROUTE || match.pathname.startsWith(`${SETTINGS_ROUTE}/`),
             ),
+            isNote: matches.some((match) => match.routeId === NOTE_ROUTE),
+        }),
     });
     const [rememberedId, setRememberedId] = useState(readLastWorkspace);
     const [noteWorkspaceId, setNoteWorkspaceId] = useState<string>();
-    const isNote = useMatches({ select: (matches) => matches.some((match) => match.routeId === NOTE_ROUTE) });
     const explicitId =
         'workspace' in search && search.workspace !== undefined ? validateWorkspaceId(search.workspace) : undefined;
     const workspaceId =

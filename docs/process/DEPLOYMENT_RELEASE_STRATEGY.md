@@ -1,6 +1,6 @@
 # Ocean Brain Deployment and Release Strategy
 
-Updated: 2026-10-31
+Updated: 2026-11-01
 
 ## 1. Current Deployment Channels
 1. npm distribution
@@ -68,6 +68,8 @@ git push origin v0.3.1
 - Runs after successful `build-package`, independently of npm publishing and verification.
 - Installs the shared tarball directly inside each architecture's image; it does not wait for this package version to be published on npm.
 - Uses the tarball directory as the Docker build context and passes its mounted path as `PACKAGE_SPEC`. Local builds can still use `VERSION` to install an existing npm release.
+- Removes installed files the server never loads, such as Prisma engines for other databases. A missing target is skipped, so a dependency layout change only increases image size.
+- Before the runtime stage, runs `prisma migrate deploy` and a Prisma Client query without network access or the install-time Prisma cache. The build fails before any push if the trimmed installation cannot migrate or query SQLite.
 - Extracts version from tag (`vX.Y.Z` -> `X.Y.Z`)
 - Builds and pushes per architecture via DockerHub
 - Requires `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`
@@ -88,6 +90,8 @@ git push origin v0.3.1
 - Runs on native amd64 and arm64 runners; both must pass.
 - Pulls `baealex/ocean-brain:<version>` with retry to tolerate registry propagation delay.
 - Runs the published Docker image and verifies the web shell, auth session endpoint, and GraphQL endpoint.
+- Starts the image without network access and requires it to become ready without writing files into the installed application.
+- Creates a note through GraphQL and reads it back as Markdown.
 - Checks the final image's Node.js version and Brotli security fix before startup, and verifies the native SQLite vector extension.
 
 8. `create-release`

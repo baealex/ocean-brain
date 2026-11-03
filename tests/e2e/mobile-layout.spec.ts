@@ -64,4 +64,15 @@ test.describe('narrow window with a mouse', () => {
         expect(left).toBeGreaterThanOrEqual(54);
         expect(runtimeErrors).toEqual([]);
     });
+
+    test('the page keeps scrollbar space only on wide screens', async ({ page }) => {
+        const runtimeErrors = collectRuntimeErrors(page);
+        await signIn(page);
+        const scrollbarGutter = () => page.locator('main').first().evaluate((element) => getComputedStyle(element).scrollbarGutter);
+
+        expect(await scrollbarGutter()).toBe('auto');
+        await page.setViewportSize({ width: 1280, height: 844 });
+        expect(await scrollbarGutter()).toBe('stable');
+        expect(runtimeErrors).toEqual([]);
+    });
 });

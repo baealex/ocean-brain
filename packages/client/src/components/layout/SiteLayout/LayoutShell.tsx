@@ -61,7 +61,7 @@ const centerClassName = classNames(
     'flex-1',
     'flex-col',
     'overscroll-contain',
-    '[scrollbar-gutter:stable]',
+    'min-[1000px]:[scrollbar-gutter:stable]',
 );
 const topClassName = classNames(
     'shrink-0',

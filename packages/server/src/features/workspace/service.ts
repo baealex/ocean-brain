@@ -8,11 +8,16 @@ const normalizeName = (value: string) => {
     return name;
 };
 
-export const listWorkspaces = () => models.workspace.findMany({ orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] });
+const workspaceOrder = [{ order: 'asc' as const }, { createdAt: 'asc' as const }, { id: 'asc' as const }];
+
+export const listWorkspaces = () => models.workspace.findMany({ orderBy: workspaceOrder });
 
 export const createWorkspace = (name: string) =>
     models.$transaction(async (tx) => {
-        const workspace = await tx.workspace.create({ data: { name: normalizeName(name) } });
+        const last = await tx.workspace.aggregate({ _max: { order: true } });
+        const workspace = await tx.workspace.create({
+            data: { name: normalizeName(name), order: (last._max.order ?? -1) + 1 },
+        });
         await tx.viewDashboardState.create({ data: { workspaceId: workspace.id } });
         return workspace;
     });
@@ -34,4 +39,19 @@ export const updateWorkspace = (id: string, input: { name?: string; archived?: b
                 ...(input.archived !== undefined ? { archivedAt: input.archived ? new Date() : null } : {}),
             },
         });
+    });
+
+export const reorderWorkspaces = (ids: string[]) =>
+    models.$transaction(async (tx) => {
+        const nextIds = ids.map(parseWorkspaceId);
+        const currentIds = new Set((await tx.workspace.findMany({ select: { id: true } })).map(({ id }) => id));
+        if (
+            nextIds.length !== currentIds.size ||
+            new Set(nextIds).size !== nextIds.length ||
+            !nextIds.every((id) => currentIds.has(id))
+        ) {
+            throw new WorkspaceError('INVALID_WORKSPACE_ORDER', 'Include every workspace exactly once.');
+        }
+        await Promise.all(nextIds.map((id, order) => tx.workspace.update({ where: { id }, data: { order } })));
+        return tx.workspace.findMany({ orderBy: workspaceOrder });
     });

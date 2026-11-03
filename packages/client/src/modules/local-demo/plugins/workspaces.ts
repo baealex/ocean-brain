@@ -61,6 +61,15 @@ export const workspacesLocalPlugin: LocalDemoPlugin = {
             save();
             return success({ updateWorkspace: workspace });
         },
+        ReorderWorkspaces: ({ state, variables, save }) => {
+            const ids = Array.isArray(variables.ids) ? variables.ids.map(String) : [];
+            const workspaces = ids.flatMap((id) => state.workspaces.filter((workspace) => workspace.id === id));
+            if (new Set(ids).size !== ids.length || workspaces.length !== state.workspaces.length)
+                return localError('Include every workspace exactly once.');
+            state.workspaces = workspaces;
+            save();
+            return success({ reorderWorkspaces: workspaces });
+        },
         PreviewNoteWorkspaceMove: ({ state, variables }) =>
             success({
                 previewNoteWorkspaceMove: preview(state, String(variables.id), String(variables.targetWorkspaceId)),

@@ -23,6 +23,14 @@ export const updateWorkspace = (id: string, input: { name?: string; archived?: b
         { id, input },
     );
 
+export const reorderWorkspaces = (ids: string[]) =>
+    graphQuery<{ reorderWorkspaces: Workspace[] }>(
+        `mutation ReorderWorkspaces($ids: [ID!]!) {
+    reorderWorkspaces(ids: $ids) { id name archivedAt createdAt updatedAt }
+}`,
+        { ids },
+    );
+
 export const fetchNoteWorkspaceMovePreview = (id: string, targetWorkspaceId: string) =>
     graphQuery<{ previewNoteWorkspaceMove: WorkspaceMovePreview }>(
         `query PreviewNoteWorkspaceMove($id: ID!, $targetWorkspaceId: ID!) {

@@ -15,14 +15,13 @@ const trailingIconClassName = 'h-4 w-4 text-fg-tertiary transition-colors group-
 
 const SidebarPrimaryActions = () => {
     const navigate = useNavigate();
-    const { multiple, activeWorkspace } = useWorkspace();
+    const { activeWorkspace } = useWorkspace();
 
     return (
         <div className={rootClassName}>
             <button
                 type="button"
                 className={captureButtonClassName}
-                aria-label={multiple ? `Open a new note in ${activeWorkspace?.name ?? 'this workspace'}` : undefined}
                 disabled={Boolean(activeWorkspace?.archivedAt)}
                 onClick={() => void navigate({ to: NOTE_ROUTE, params: { id: NEW_NOTE_ID } })}
             >
@@ -35,7 +34,7 @@ const SidebarPrimaryActions = () => {
                             Capture
                         </Text>
                         <Text variant="label" tone="secondary">
-                            {multiple ? `New note in ${activeWorkspace?.name ?? 'this workspace'}` : 'Open a new note'}
+                            Open a new note
                         </Text>
                     </span>
                 </span>

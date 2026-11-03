@@ -7,7 +7,7 @@ import { createHybridNoteSearch, searchNotesHybrid } from '~/features/search/hyb
 import { createView, createViewGroup, getViewNotes, getViewWorkspace } from '~/features/view/services/workspace.js';
 import models from '~/models.js';
 import schema from '~/schema/index.js';
-import { createWorkspace, updateWorkspace } from './service.js';
+import { createWorkspace, listWorkspaces, reorderWorkspaces, updateWorkspace } from './service.js';
 
 test('workspace search selects lexical and semantic candidates before ranking and pagination', async () => {
     const workspace = await createWorkspace('Diet');
@@ -172,4 +172,36 @@ test('parallel scoped queries keep notes, property catalogs, views and tag count
     assert.equal((dietResult.data?.notePropertyKeys as { totalCount: number }).totalCount, 1);
     assert.equal((taskResult.data?.views as { totalCount: number }).totalCount, 1);
     assert.equal((allResult.data?.notePropertyKeys as { totalCount: number }).totalCount, 2);
+});
+
+test('workspaces are listed in the order the user arranged', async () => {
+    const diet = await createWorkspace('Diet');
+    const tasks = await createWorkspace('Tasks');
+
+    await reorderWorkspaces([String(tasks.id), '1', String(diet.id)]);
+
+    assert.deepEqual(
+        (await listWorkspaces()).map((workspace) => workspace.name),
+        ['Tasks', 'Notes', 'Diet'],
+    );
+});
+
+test('a new workspace joins the end of the arranged list', async () => {
+    const diet = await createWorkspace('Diet');
+    await reorderWorkspaces([String(diet.id), '1']);
+
+    await createWorkspace('Tasks');
+
+    assert.deepEqual(
+        (await listWorkspaces()).map((workspace) => workspace.name),
+        ['Diet', 'Notes', 'Tasks'],
+    );
+});
+
+test('reordering workspaces requires every workspace exactly once', async () => {
+    const diet = await createWorkspace('Diet');
+
+    await assert.rejects(reorderWorkspaces([String(diet.id)]), {
+        extensions: { code: 'INVALID_WORKSPACE_ORDER' },
+    });
 });

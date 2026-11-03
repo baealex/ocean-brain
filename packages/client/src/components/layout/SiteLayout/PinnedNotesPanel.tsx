@@ -1,12 +1,5 @@
 import type { DragEndEvent } from '@dnd-kit/core';
-import { closestCenter, DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
-import {
-    SortableContext,
-    sortableKeyboardCoordinates,
-    useSortable,
-    verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
+import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useLocation } from '@tanstack/react-router';
@@ -17,7 +10,7 @@ import { reorderNotes } from '~/apis/note.api';
 import { QueryBoundary, QueryErrorView } from '~/components/app';
 import PinnedNotes from '~/components/entities/PinnedNotes';
 import * as Icon from '~/components/icon';
-import { Skeleton } from '~/components/shared';
+import { Skeleton, VerticalSortable } from '~/components/shared';
 import { Text } from '~/components/ui';
 import type { Note } from '~/models/note.model';
 import { queryKeys } from '~/modules/query-key-factory';
@@ -31,20 +24,19 @@ interface SortablePinnedNoteProps {
     id: string;
     title?: string;
     isActive?: boolean;
+    readOnly: boolean;
     children: ReactNode;
 }
 
 interface PinnedNotesListProps {
     notes: PinnedNote[];
     pathname: string;
+    readOnly: boolean;
     pinnedItems: PinnedNote[];
     setPinnedItems: Dispatch<SetStateAction<PinnedNote[]>>;
     handleDragEnd: (event: DragEndEvent) => void;
-    sensors: ReturnType<typeof useSensors>;
 }
 
-const dragHandleBaseClassName =
-    'focus-ring-soft flex h-8 w-8 items-center justify-center rounded-[10px] text-fg-tertiary outline-none transition-colors hover:bg-hover-subtle hover:text-fg-default active:cursor-grabbing touch-none';
 const pinnedLinkBaseClassName =
     'focus-ring-soft block truncate rounded-[10px] px-1.5 py-1 outline-none transition-colors';
 
@@ -82,9 +74,7 @@ export const buildPinnedNoteReorderPayload = (
     };
 };
 
-function SortablePinnedNote({ id, title, isActive = false, children }: SortablePinnedNoteProps) {
-    const { activeWorkspace } = useWorkspace();
-    const readOnly = Boolean(activeWorkspace?.archivedAt);
+function SortablePinnedNote({ id, title, isActive = false, readOnly, children }: SortablePinnedNoteProps) {
     const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
         id,
         disabled: readOnly,
@@ -100,26 +90,28 @@ function SortablePinnedNote({ id, title, isActive = false, children }: SortableP
         <div
             ref={setNodeRef}
             style={style}
+            {...listeners}
             className={classNames(
-                'group flex min-h-[38px] items-center gap-1.5 rounded-[12px] px-1.5 py-1 transition-colors',
+                'group flex min-h-[38px] select-none items-center gap-1.5 rounded-[12px] px-1.5 py-1 transition-colors [-webkit-touch-callout:none]',
                 isActive ? 'bg-hover-subtle' : 'hover:bg-hover-subtle/70',
+                isDragging && 'cursor-grabbing',
             )}
         >
+            <Text as="div" truncate variant="meta" weight="medium" className="min-w-0 flex-1">
+                {children}
+            </Text>
             <button
                 type="button"
                 ref={setActivatorNodeRef}
                 disabled={readOnly}
                 aria-label={`Reorder note ${title ?? 'Untitled'}`}
-                title="Drag to reorder"
                 {...attributes}
-                {...listeners}
-                className={classNames(dragHandleBaseClassName, isDragging ? 'cursor-grabbing' : 'cursor-grab')}
+                className="focus-ring-soft sr-only rounded-[8px] text-fg-tertiary outline-none focus-visible:not-sr-only"
             >
-                <Icon.DragHandle className="size-4" />
+                <span className="flex h-6 w-6 items-center justify-center">
+                    <Icon.DragHandle className="size-4" />
+                </span>
             </button>
-            <Text as="div" truncate variant="meta" weight="medium" className="min-w-0 flex-1">
-                {children}
-            </Text>
         </div>
     );
 }
@@ -127,10 +119,10 @@ function SortablePinnedNote({ id, title, isActive = false, children }: SortableP
 function PinnedNotesList({
     notes,
     pathname,
+    readOnly,
     pinnedItems,
     setPinnedItems,
     handleDragEnd,
-    sensors,
 }: PinnedNotesListProps) {
     useEffect(() => {
         setPinnedItems(notes);
@@ -143,42 +135,49 @@ function PinnedNotesList({
     }
 
     return (
-        <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
+        <VerticalSortable
+            items={items.map((item) => item.id)}
+            longPressOnTouch
+            restrictToList
             onDragEnd={handleDragEnd}
-            modifiers={[restrictToVerticalAxis]}
         >
-            <SortableContext items={items.map((item) => item.id)} strategy={verticalListSortingStrategy}>
-                {items.map((note) => (
-                    <SortablePinnedNote
-                        key={note.id}
-                        id={note.id}
-                        title={note.title || 'Untitled'}
-                        isActive={pathname === `/${note.id}`}
+            {items.map((note) => (
+                <SortablePinnedNote
+                    key={note.id}
+                    id={note.id}
+                    title={note.title || 'Untitled'}
+                    isActive={pathname === `/${note.id}`}
+                    readOnly={readOnly}
+                >
+                    <Link
+                        aria-current={pathname === `/${note.id}` ? 'page' : undefined}
+                        className={classNames(
+                            pinnedLinkBaseClassName,
+                            pathname === `/${note.id}` ? 'text-fg-default' : 'text-fg-secondary hover:text-fg-default',
+                        )}
+                        to={NOTE_ROUTE}
+                        params={{ id: note.id }}
                     >
-                        <Link
-                            aria-current={pathname === `/${note.id}` ? 'page' : undefined}
-                            className={classNames(
-                                pinnedLinkBaseClassName,
-                                pathname === `/${note.id}`
-                                    ? 'text-fg-default'
-                                    : 'text-fg-secondary hover:text-fg-default',
-                            )}
-                            to={NOTE_ROUTE}
-                            params={{ id: note.id }}
-                        >
-                            {note.title || 'Untitled'}
-                        </Link>
-                    </SortablePinnedNote>
-                ))}
-            </SortableContext>
-        </DndContext>
+                        {note.title || 'Untitled'}
+                    </Link>
+                </SortablePinnedNote>
+            ))}
+        </VerticalSortable>
     );
 }
 
-const PinnedNotesPanel = () => {
-    const { workspaceId } = useWorkspace();
+interface PinnedNotesPanelProps {
+    workspaceId?: string;
+    emptyMessage?: string;
+}
+
+const PinnedNotesPanel = ({
+    workspaceId: sectionWorkspaceId,
+    emptyMessage = 'Pin a note from the note toolbar to keep it here.',
+}: PinnedNotesPanelProps) => {
+    const { workspaceId: currentWorkspaceId, workspaces } = useWorkspace();
+    const workspaceId = sectionWorkspaceId ?? currentWorkspaceId;
+    const readOnly = Boolean(workspaces.find((workspace) => workspace.id === workspaceId)?.archivedAt);
     const pathname = useLocation({ select: (location) => location.pathname });
     const queryClient = useQueryClient();
     const [pinnedItems, setPinnedItems] = useState<PinnedNote[]>([]);
@@ -192,11 +191,6 @@ const PinnedNotesPanel = () => {
             });
         },
     });
-
-    const sensors = useSensors(
-        useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-    );
 
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
@@ -240,19 +234,20 @@ const PinnedNotesPanel = () => {
                 )}
             >
                 <PinnedNotes
+                    workspaceId={workspaceId}
                     render={(notes) =>
                         notes.length > 0 ? (
                             <PinnedNotesList
                                 notes={notes}
                                 pathname={pathname}
+                                readOnly={readOnly}
                                 pinnedItems={pinnedItems}
                                 setPinnedItems={setPinnedItems}
                                 handleDragEnd={handleDragEnd}
-                                sensors={sensors}
                             />
                         ) : (
-                            <Text as="div" variant="meta" tone="secondary" className="px-2 py-2.5 leading-6">
-                                Pin a note from the note toolbar to keep it here.
+                            <Text as="div" variant="meta" tone="tertiary" className="px-2 py-2.5 leading-6">
+                                {emptyMessage}
                             </Text>
                         )
                     }

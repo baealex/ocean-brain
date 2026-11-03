@@ -4,22 +4,32 @@ import {
     type DragEndEvent,
     type KeyboardCoordinateGetter,
     KeyboardSensor,
+    MouseSensor,
     PointerSensor,
     pointerWithin,
+    TouchSensor,
     useSensor,
     useSensors,
 } from '@dnd-kit/core';
-import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
+import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 
 interface VerticalSortableProps {
     items: string[];
     children: ReactNode;
+    longPressOnTouch?: boolean;
+    restrictToList?: boolean;
     onDragEnd: (event: DragEndEvent) => void;
 }
 
-export default function VerticalSortable({ items, children, onDragEnd }: VerticalSortableProps) {
+export default function VerticalSortable({
+    items,
+    children,
+    longPressOnTouch = false,
+    restrictToList = false,
+    onDragEnd,
+}: VerticalSortableProps) {
     const keyboardCoordinates: KeyboardCoordinateGetter = (event, { context }) => {
         const direction = event.code === 'ArrowDown' ? 1 : event.code === 'ArrowUp' ? -1 : 0;
         if (!direction) return;
@@ -36,20 +46,36 @@ export default function VerticalSortable({ items, children, onDragEnd }: Vertica
             y: nextRect.top + (nextRect.height - context.collisionRect.height) / 2,
         };
     };
+    const pointerSensor = useSensor(PointerSensor, { activationConstraint: { distance: 6 } });
+    const mouseSensor = useSensor(MouseSensor, { activationConstraint: { distance: 6 } });
+    const touchSensor = useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } });
+    const keyboardSensor = useSensor(KeyboardSensor, { coordinateGetter: keyboardCoordinates });
     const sensors = useSensors(
-        useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-        useSensor(KeyboardSensor, { coordinateGetter: keyboardCoordinates }),
+        longPressOnTouch ? null : pointerSensor,
+        longPressOnTouch ? mouseSensor : null,
+        longPressOnTouch ? touchSensor : null,
+        keyboardSensor,
     );
+    const preventDropClick = useRef((event: MouseEvent) => event.preventDefault()).current;
+    const allowClicksAfterDrop = () =>
+        window.setTimeout(() => window.removeEventListener('click', preventDropClick, true), 50);
+
+    useEffect(() => () => window.removeEventListener('click', preventDropClick, true), [preventDropClick]);
 
     return (
         <DndContext
             sensors={sensors}
-            modifiers={[restrictToVerticalAxis]}
+            modifiers={restrictToList ? [restrictToVerticalAxis, restrictToParentElement] : [restrictToVerticalAxis]}
             collisionDetection={(args) => {
                 const pointedItems = pointerWithin(args);
                 return pointedItems.length > 0 ? pointedItems : closestCenter(args);
             }}
-            onDragEnd={onDragEnd}
+            onDragStart={() => window.addEventListener('click', preventDropClick, true)}
+            onDragEnd={(event) => {
+                allowClicksAfterDrop();
+                onDragEnd(event);
+            }}
+            onDragCancel={allowClicksAfterDrop}
         >
             <SortableContext items={items} strategy={verticalListSortingStrategy}>
                 {children}

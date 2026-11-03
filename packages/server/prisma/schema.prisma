@@ -54,6 +54,7 @@ model IntegrationCredential {
 model Workspace {
   id           Int                  @id @default(autoincrement())
   name         String
+  order        Int                  @default(0)
   archivedAt   DateTime?
   createdAt    DateTime             @default(now())
   updatedAt    DateTime             @updatedAt

@@ -6,12 +6,13 @@ import { workspaceScope } from '~/modules/workspace-scope';
 import { useWorkspace } from '~/store/workspace';
 
 interface PinnedNotesProps {
+    workspaceId?: string;
     render: (notes: Pick<Note, 'id' | 'title' | 'order'>[]) => React.ReactNode;
 }
 
 const PinnedNotes = (props: PinnedNotesProps) => {
-    const { workspaceId } = useWorkspace();
-    const scope = workspaceScope(workspaceId);
+    const { workspaceId: currentWorkspaceId } = useWorkspace();
+    const scope = workspaceScope(props.workspaceId ?? currentWorkspaceId);
     const { data: pinnedNotes } = useSuspenseQuery({
         queryKey: queryKeys.notes.pinned(scope),
         async queryFn() {

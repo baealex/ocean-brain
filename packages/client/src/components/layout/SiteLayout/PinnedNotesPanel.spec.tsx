@@ -26,8 +26,11 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('@dnd-kit/core', () => ({
     DndContext: ({ children }: { children: ReactNode }) => <div data-testid="dnd-context">{children}</div>,
     KeyboardSensor: class KeyboardSensor {},
+    MouseSensor: class MouseSensor {},
     PointerSensor: class PointerSensor {},
+    TouchSensor: class TouchSensor {},
     closestCenter: vi.fn(),
+    pointerWithin: vi.fn(),
     useSensor: vi.fn((sensor: unknown, options?: unknown) => ({
         sensor,
         options,
@@ -35,7 +38,7 @@ vi.mock('@dnd-kit/core', () => ({
     useSensors: vi.fn((...sensors: unknown[]) => sensors),
 }));
 
-vi.mock('@dnd-kit/modifiers', () => ({ restrictToVerticalAxis: vi.fn() }));
+vi.mock('@dnd-kit/modifiers', () => ({ restrictToParentElement: vi.fn(), restrictToVerticalAxis: vi.fn() }));
 
 vi.mock('@dnd-kit/sortable', () => ({
     SortableContext: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -84,7 +87,7 @@ describe('<PinnedNotesPanel />', () => {
         expect(screen.queryByRole('button', { name: /reorder note/i })).not.toBeInTheDocument();
     });
 
-    it('renders pinned notes with a drag handle affordance', () => {
+    it('renders pinned notes with a reorder control for keyboard users', () => {
         mockPinnedNotes = [
             {
                 id: 'note-2',

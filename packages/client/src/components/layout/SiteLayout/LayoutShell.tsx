@@ -110,13 +110,13 @@ interface LayoutShellProps {
 }
 
 const LayoutShell = ({ sidebar, topNavigation, mobileAction, children, contentMode = 'page' }: LayoutShellProps) => {
-    const pathname = useLocation({ select: (location) => location.pathname });
+    const href = useLocation({ select: (location) => location.href });
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const sidebarId = 'site-layout-sidebar';
 
     useEffect(() => {
         setIsMenuOpen(false);
-    }, [pathname]);
+    }, [href]);
 
     return (
         <div className={rootClassName}>

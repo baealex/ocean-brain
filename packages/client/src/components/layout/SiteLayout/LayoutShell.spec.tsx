@@ -77,4 +77,19 @@ describe('<LayoutShell />', () => {
             expect(toggleButton).toHaveAttribute('aria-expanded', 'false');
         });
     });
+
+    it('closes the mobile sidebar after switching workspace on the same page', async () => {
+        const user = userEvent.setup();
+        const router = await renderLayout();
+        const toggleButton = screen.getByRole('button', { name: 'Toggle sidebar' });
+        await user.click(toggleButton);
+
+        await act(async () => {
+            await router.navigate({ to: '/', search: { workspace: '2' } });
+        });
+
+        await waitFor(() => {
+            expect(toggleButton).toHaveAttribute('aria-expanded', 'false');
+        });
+    });
 });

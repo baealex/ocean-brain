@@ -4,7 +4,7 @@ import { getNoteSnapshotRestoreContext } from '~/features/note/services/snapshot
 import { isNoteVersionConflictError } from '~/features/note/services/write-conflict.js';
 import { moveNoteToWorkspace, type PropertyWorkspaceMapping, previewNoteWorkspaceMove } from './move.js';
 import { requireWorkspace } from './scope.js';
-import { createWorkspace, listWorkspaces, updateWorkspace } from './service.js';
+import { createWorkspace, listWorkspaces, reorderWorkspaces, updateWorkspace } from './service.js';
 
 export const workspaceTypeDefs = `
     enum WorkspaceScopeKind { all workspace }
@@ -27,6 +27,7 @@ export const workspaceTypeDefs = `
     extend type Mutation {
         createWorkspace(name: String!): Workspace!
         updateWorkspace(id: ID!, input: WorkspaceUpdateInput!): Workspace!
+        reorderWorkspaces(ids: [ID!]!): [Workspace!]!
         moveNoteToWorkspace(id: ID!, targetWorkspaceId: ID!, expectedUpdatedAt: String!, mappings: [PropertyWorkspaceMappingInput!]!): Note!
     }
 `;
@@ -42,6 +43,7 @@ export const workspaceResolvers: IResolvers = {
         createWorkspace: (_, { name }: { name: string }) => createWorkspace(name),
         updateWorkspace: (_, { id, input }: { id: string; input: { name?: string; archived?: boolean } }) =>
             updateWorkspace(id, input),
+        reorderWorkspaces: (_, { ids }: { ids: string[] }) => reorderWorkspaces(ids),
         moveNoteToWorkspace: async (
             _,
             input: {

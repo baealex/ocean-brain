@@ -1,6 +1,7 @@
 import {
     buildNoteSearchText,
     NOTE_SEARCH_TEXT_SCHEMA_VERSION,
+    type NoteSearchQuery,
     parseNoteSearchQuery,
 } from '~/features/note/services/search.js';
 import {
@@ -125,8 +126,7 @@ export const matchesHybridLexicalQuery = (searchableText: string, query: string)
     return includesAnyTerm && parsedQuery.excluded.every((term) => !normalizedSearchableText.includes(term));
 };
 
-const scoreLexicalCandidate = (candidate: LexicalCandidate, query: string) => {
-    const parsedQuery = parseNoteSearchQuery(query);
+const scoreLexicalCandidate = (candidate: LexicalCandidate, parsedQuery: NoteSearchQuery) => {
     const phrase = parsedQuery.included.join(' ');
     const title = candidate.title.toLowerCase();
     const searchableText = candidate.searchableText.toLowerCase();
@@ -160,15 +160,19 @@ const scoreLexicalCandidate = (candidate: LexicalCandidate, query: string) => {
 };
 
 export const rankLexicalCandidates = (candidates: LexicalCandidate[], query: string) => {
-    return [...candidates].sort((left, right) => {
-        const scoreDifference = scoreLexicalCandidate(right, query) - scoreLexicalCandidate(left, query);
-        if (scoreDifference !== 0) {
-            return scoreDifference;
-        }
+    // Score each candidate once. Scoring inside the comparator lowercases every note body on each comparison.
+    const parsedQuery = parseNoteSearchQuery(query);
+    return candidates
+        .map((candidate) => ({ candidate, score: scoreLexicalCandidate(candidate, parsedQuery) }))
+        .sort((left, right) => {
+            if (left.score !== right.score) {
+                return right.score - left.score;
+            }
 
-        const updatedAtDifference = right.updatedAt.getTime() - left.updatedAt.getTime();
-        return updatedAtDifference !== 0 ? updatedAtDifference : left.id - right.id;
-    });
+            const updatedAtDifference = right.candidate.updatedAt.getTime() - left.candidate.updatedAt.getTime();
+            return updatedAtDifference !== 0 ? updatedAtDifference : left.candidate.id - right.candidate.id;
+        })
+        .map(({ candidate }) => candidate);
 };
 
 const listDefaultLexicalCandidates = async (

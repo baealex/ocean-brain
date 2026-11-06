@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Note } from '~/models.js';
-import { createHybridNoteSearch, matchesHybridLexicalQuery, rankLexicalCandidates } from './hybrid-search.js';
+import {
+    createHybridNoteSearch,
+    getLexicalTermCoverage,
+    matchesHybridLexicalQuery,
+    rankLexicalCandidates,
+} from './hybrid-search.js';
 
 const createNote = (id: number): Note =>
     ({
@@ -16,6 +21,8 @@ const createNote = (id: number): Note =>
         order: 0,
         layout: 'wide',
     }) as Note;
+
+const fullLexicalMatches = (...noteIds: number[]) => noteIds.map((noteId) => ({ noteId, termCoverage: 1 }));
 
 test('ranks exact title and phrase matches ahead of content-only matches', () => {
     const candidates = rankLexicalCandidates(
@@ -84,7 +91,7 @@ test('ranks candidates containing every term ahead of partial content matches', 
 
 test('returns a semantic-only note through the same Ocean Brain note result surface', async () => {
     const search = createHybridNoteSearch({
-        listLexicalNoteIds: async () => [],
+        listLexicalCandidates: async () => [],
         trySemanticSearch: async () => ({
             available: true,
             used: true,
@@ -105,7 +112,7 @@ test('returns a semantic-only note through the same Ocean Brain note result surf
 
 test('keeps lexical search usable when the embedding API is unavailable', async () => {
     const search = createHybridNoteSearch({
-        listLexicalNoteIds: async () => [2, 1],
+        listLexicalCandidates: async () => fullLexicalMatches(2, 1),
         trySemanticSearch: async () => ({
             available: true,
             used: false,
@@ -127,7 +134,7 @@ test('keeps lexical search usable when the embedding API is unavailable', async 
 
 test('keeps lexical search usable when semantic search initialization throws', async () => {
     const search = createHybridNoteSearch({
-        listLexicalNoteIds: async () => [2, 1],
+        listLexicalCandidates: async () => fullLexicalMatches(2, 1),
         trySemanticSearch: async () => {
             throw new Error('SQLite vector extension is unavailable.');
         },
@@ -148,7 +155,7 @@ test('keeps lexical search usable when semantic search initialization throws', a
 test('lexical mode does not call the embedding search dependency', async () => {
     let semanticCalls = 0;
     const search = createHybridNoteSearch({
-        listLexicalNoteIds: async () => [2],
+        listLexicalCandidates: async () => fullLexicalMatches(2),
         trySemanticSearch: async () => {
             semanticCalls += 1;
             return {
@@ -174,9 +181,9 @@ test('lexical mode does not call the embedding search dependency', async () => {
 test('semantic mode does not call the lexical search dependency', async () => {
     let lexicalCalls = 0;
     const search = createHybridNoteSearch({
-        listLexicalNoteIds: async () => {
+        listLexicalCandidates: async () => {
             lexicalCalls += 1;
-            return [2];
+            return fullLexicalMatches(2);
         },
         trySemanticSearch: async () => ({
             available: true,
@@ -200,7 +207,7 @@ test('semantic mode does not call the lexical search dependency', async () => {
 test('keeps the hybrid semantic window focused on the strongest matches', async () => {
     let requestedSemanticLimit = 0;
     const search = createHybridNoteSearch({
-        listLexicalNoteIds: async () => [1],
+        listLexicalCandidates: async () => fullLexicalMatches(1),
         trySemanticSearch: async (_query, limit) => {
             requestedSemanticLimit = limit;
             return {
@@ -226,9 +233,9 @@ test('keeps the hybrid semantic window focused on the strongest matches', async 
 test('keeps every result within the ranked candidate window reachable through pagination', async () => {
     let requestedCandidateLimit = 0;
     const search = createHybridNoteSearch({
-        listLexicalNoteIds: async (_query, limit) => {
+        listLexicalCandidates: async (_query, limit) => {
             requestedCandidateLimit = limit;
-            return Array.from({ length: limit }, (_, index) => index + 1);
+            return fullLexicalMatches(...Array.from({ length: limit }, (_, index) => index + 1));
         },
         trySemanticSearch: async () => ({
             available: false,
@@ -246,5 +253,83 @@ test('keeps every result within the ranked candidate window reachable through pa
     assert.deepEqual(
         result.notes.map((note) => note.id),
         [41, 42, 43, 44, 45, 46, 47, 48, 49, 50],
+    );
+});
+
+test('measures how many search terms a note contains', () => {
+    assert.equal(getLexicalTermCoverage('A Fortune story', 'fortune teller death'), 1 / 3);
+    assert.equal(getLexicalTermCoverage('fortune teller death', 'Fortune Teller'), 1);
+    assert.equal(getLexicalTermCoverage('anything', '-spoilers'), 1);
+});
+
+test('hybrid ranking leaves out weak keyword matches when meaning matches exist', async () => {
+    const search = createHybridNoteSearch({
+        listLexicalCandidates: async () => [
+            { noteId: 1, termCoverage: 0.25 },
+            { noteId: 2, termCoverage: 0.5 },
+        ],
+        trySemanticSearch: async () => ({
+            available: true,
+            used: true,
+            matches: [{ noteId: 3, distance: 0.2 }],
+            error: null,
+        }),
+        findNotesByIds: async (ids) => ids.map(createNote),
+    });
+
+    const result = await search({ query: 'what did I decide about the release', limit: 10, offset: 0 });
+
+    assert.deepEqual(
+        result.notes.map((note) => note.id),
+        [3, 2],
+    );
+    assert.equal(result.totalCount, 2);
+});
+
+test('hybrid ranking keeps weak keyword matches when meaning search returns nothing', async () => {
+    const search = createHybridNoteSearch({
+        listLexicalCandidates: async () => [
+            { noteId: 1, termCoverage: 0.25 },
+            { noteId: 2, termCoverage: 1 },
+        ],
+        trySemanticSearch: async () => ({
+            available: false,
+            used: false,
+            matches: [],
+            error: 'Semantic search is unavailable.',
+        }),
+        findNotesByIds: async (ids) => ids.map(createNote),
+    });
+
+    const result = await search({ query: 'what did I decide about the release', limit: 10, offset: 0 });
+
+    assert.deepEqual(
+        result.notes.map((note) => note.id),
+        [1, 2],
+    );
+});
+
+test('keyword mode keeps weak keyword matches', async () => {
+    const search = createHybridNoteSearch({
+        listLexicalCandidates: async () => [{ noteId: 1, termCoverage: 0.25 }],
+        trySemanticSearch: async () => ({
+            available: true,
+            used: true,
+            matches: [{ noteId: 3, distance: 0.2 }],
+            error: null,
+        }),
+        findNotesByIds: async (ids) => ids.map(createNote),
+    });
+
+    const result = await search({
+        query: 'what did I decide about the release',
+        limit: 10,
+        offset: 0,
+        mode: 'lexical',
+    });
+
+    assert.deepEqual(
+        result.notes.map((note) => note.id),
+        [1],
     );
 });

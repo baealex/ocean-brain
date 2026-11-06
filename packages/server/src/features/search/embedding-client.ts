@@ -1,10 +1,12 @@
+import { DEFAULT_EMBEDDING_INPUT_FORMAT, renderQueryInput } from './embedding-input-format.js';
 import { stripTrailingSlashes } from './url-normalization.js';
 
 export interface EmbeddingProviderConfig {
     baseUrl: string;
     model: string;
     apiKey?: string;
-    queryInstruction?: string;
+    queryTemplate?: string;
+    inputSuffix?: string;
 }
 
 export interface EmbeddingClient {
@@ -180,15 +182,6 @@ export const listOpenAiCompatibleEmbeddingModels = async (
         });
 };
 
-const buildQueryInput = (query: string, instruction?: string) => {
-    const normalizedInstruction = instruction?.trim();
-    if (!normalizedInstruction) {
-        return query;
-    }
-
-    return `Instruct: ${normalizedInstruction}\nQuery: ${query}`;
-};
-
 export const createOpenAiCompatibleEmbeddingClient = (
     config: EmbeddingProviderConfig,
     options: EmbeddingClientOptions = {},
@@ -244,7 +237,15 @@ export const createOpenAiCompatibleEmbeddingClient = (
                 throw new Error('Embedding query must not be empty.');
             }
 
-            const [embedding] = await embed([buildQueryInput(normalizedQuery, config.queryInstruction)]);
+            const [embedding] = await embed([
+                renderQueryInput(
+                    {
+                        queryTemplate: config.queryTemplate ?? DEFAULT_EMBEDDING_INPUT_FORMAT.queryTemplate,
+                        inputSuffix: config.inputSuffix ?? DEFAULT_EMBEDDING_INPUT_FORMAT.inputSuffix,
+                    },
+                    normalizedQuery,
+                ),
+            ]);
             return embedding;
         },
     };

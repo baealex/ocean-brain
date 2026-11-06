@@ -1,4 +1,5 @@
 import { normalizeEmbeddingApiUrl } from './embedding-client.js';
+import { DEFAULT_EMBEDDING_INPUT_FORMAT, type EmbeddingInputFormat } from './embedding-input-format.js';
 import { stripTrailingSlashes } from './url-normalization.js';
 
 export const SEMANTIC_SEARCH_CONFIG_CACHE_KEY = 'SEMANTIC_SEARCH_CONFIG_V1';
@@ -6,11 +7,10 @@ export const SEMANTIC_SEARCH_VALIDATED_CONNECTION_CACHE_KEY = 'SEMANTIC_SEARCH_V
 const LEGACY_KOREAN_QUERY_INSTRUCTION =
     'Given a vague Korean memory query, retrieve relevant passages from personal notes.';
 
-export interface SemanticSearchConfig {
+export interface SemanticSearchConfig extends EmbeddingInputFormat {
     enabled: boolean;
     baseUrl: string;
     model: string;
-    queryInstruction: string;
 }
 
 export interface ValidatedSemanticSearchConnection {
@@ -33,17 +33,28 @@ export const DEFAULT_SEMANTIC_SEARCH_CONFIG: SemanticSearchConfig = {
     enabled: false,
     baseUrl: '',
     model: '',
-    queryInstruction: '',
+    ...DEFAULT_EMBEDDING_INPUT_FORMAT,
+};
+
+const MAX_TEMPLATE_LENGTH = 1_000;
+const MAX_INPUT_SUFFIX_LENGTH = 200;
+
+/** Settings saved before input formats existed stored only an optional Qwen3-style query instruction. */
+const queryTemplateFromInstruction = (instruction: unknown) => {
+    const trimmed = typeof instruction === 'string' ? instruction.trim() : '';
+    if (!trimmed || trimmed === LEGACY_KOREAN_QUERY_INSTRUCTION) {
+        return DEFAULT_EMBEDDING_INPUT_FORMAT.queryTemplate;
+    }
+    return `Instruct: ${trimmed}\nQuery: {query}`;
 };
 
 const parseStoredConfig = (value: string): SemanticSearchConfig | null => {
     try {
-        const parsed = JSON.parse(value) as Partial<SemanticSearchConfig>;
+        const parsed = JSON.parse(value) as Partial<SemanticSearchConfig> & { queryInstruction?: unknown };
         if (
             typeof parsed.enabled !== 'boolean' ||
             typeof parsed.baseUrl !== 'string' ||
-            typeof parsed.model !== 'string' ||
-            typeof parsed.queryInstruction !== 'string'
+            typeof parsed.model !== 'string'
         ) {
             return null;
         }
@@ -52,7 +63,18 @@ const parseStoredConfig = (value: string): SemanticSearchConfig | null => {
             enabled: parsed.enabled,
             baseUrl: parsed.baseUrl,
             model: parsed.model,
-            queryInstruction: parsed.queryInstruction,
+            queryTemplate:
+                typeof parsed.queryTemplate === 'string'
+                    ? parsed.queryTemplate
+                    : queryTemplateFromInstruction(parsed.queryInstruction),
+            documentTemplate:
+                typeof parsed.documentTemplate === 'string'
+                    ? parsed.documentTemplate
+                    : DEFAULT_EMBEDDING_INPUT_FORMAT.documentTemplate,
+            inputSuffix:
+                typeof parsed.inputSuffix === 'string'
+                    ? parsed.inputSuffix
+                    : DEFAULT_EMBEDDING_INPUT_FORMAT.inputSuffix,
         };
     } catch {
         return null;
@@ -108,7 +130,9 @@ export const normalizeSemanticSearchConfig = (input: SemanticSearchConfig): Sema
         enabled: input.enabled,
         baseUrl: stripTrailingSlashes(input.baseUrl.trim()),
         model: input.model.trim(),
-        queryInstruction: input.queryInstruction.trim(),
+        queryTemplate: input.queryTemplate.trim() || DEFAULT_EMBEDDING_INPUT_FORMAT.queryTemplate,
+        documentTemplate: input.documentTemplate.trim() || DEFAULT_EMBEDDING_INPUT_FORMAT.documentTemplate,
+        inputSuffix: input.inputSuffix.trim(),
     };
 
     if (config.baseUrl) {
@@ -123,8 +147,20 @@ export const normalizeSemanticSearchConfig = (input: SemanticSearchConfig): Sema
         throw new Error('Embedding model name is too long.');
     }
 
-    if (config.queryInstruction.length > 1_000) {
-        throw new Error('Embedding query instruction is too long.');
+    if (config.queryTemplate.length > MAX_TEMPLATE_LENGTH || config.documentTemplate.length > MAX_TEMPLATE_LENGTH) {
+        throw new Error('Embedding input templates are too long.');
+    }
+
+    if (!config.queryTemplate.includes('{query}')) {
+        throw new Error('The query template must include {query}.');
+    }
+
+    if (!config.documentTemplate.includes('{content}')) {
+        throw new Error('The document template must include {content}.');
+    }
+
+    if (config.inputSuffix.length > MAX_INPUT_SUFFIX_LENGTH) {
+        throw new Error('The input suffix is too long.');
     }
 
     return config;
@@ -136,15 +172,7 @@ export class SemanticSearchConfigStore {
     async get() {
         const row = await this.cache.findUnique({ where: { key: SEMANTIC_SEARCH_CONFIG_CACHE_KEY } });
         const config = row ? parseStoredConfig(row.value) : null;
-        if (!config) {
-            return DEFAULT_SEMANTIC_SEARCH_CONFIG;
-        }
-
-        if (config.queryInstruction.trim() === LEGACY_KOREAN_QUERY_INSTRUCTION) {
-            return this.set({ ...config, queryInstruction: '' });
-        }
-
-        return config;
+        return config ?? DEFAULT_SEMANTIC_SEARCH_CONFIG;
     }
 
     async set(input: SemanticSearchConfig) {

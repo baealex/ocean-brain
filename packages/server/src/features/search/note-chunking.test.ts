@@ -50,3 +50,27 @@ test('indexes a title-only note instead of dropping it', () => {
         [{ noteId: 3, chunkIndex: 0, text: 'Title: A title-only note\nContent:' }],
     );
 });
+
+test('renders chunks with the configured document template and input suffix', () => {
+    const format = { documentTemplate: 'title: {title} | text: {content}', inputSuffix: '<|endoftext|>' };
+
+    assert.deepEqual(
+        buildNoteEmbeddingChunks({ id: 1, title: 'Plan', content: paragraphContent('Ship on Friday') }, { format }).map(
+            (chunk) => chunk.text,
+        ),
+        ['title: Plan | text: Ship on Friday<|endoftext|>'],
+    );
+    assert.deepEqual(
+        buildNoteEmbeddingChunks({ id: 2, title: '', content: paragraphContent('No title here') }, { format }).map(
+            (chunk) => chunk.text,
+        ),
+        ['No title here<|endoftext|>'],
+    );
+    assert.deepEqual(
+        buildNoteEmbeddingChunks(
+            { id: 3, title: 'About {content}', content: paragraphContent('Body') },
+            { format },
+        ).map((chunk) => chunk.text),
+        ['title: About {content} | text: Body<|endoftext|>'],
+    );
+});

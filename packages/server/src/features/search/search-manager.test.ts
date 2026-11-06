@@ -224,7 +224,9 @@ const enabledConfig: SemanticSearchConfig = {
     enabled: true,
     baseUrl: 'http://127.0.0.1:1234/v1',
     model: 'qwen-embedding',
-    queryInstruction: 'Retrieve relevant notes.',
+    queryTemplate: 'Instruct: Retrieve relevant notes.\nQuery: {query}',
+    documentTemplate: 'Title: {title}\nContent: {content}',
+    inputSuffix: '',
 };
 
 const validateAndSaveConfig = async (manager: SemanticSearchManager, config = enabledConfig) => {
@@ -247,7 +249,7 @@ test('saves enabled search before a provider is reachable', async () => {
 
     const updatedStatus = await manager.saveConfig({
         ...enabledConfig,
-        queryInstruction: 'Updated while the provider is still offline.',
+        queryTemplate: 'Instruct: Updated while the provider is still offline.\nQuery: {query}',
     });
     assert.equal(updatedStatus.connectionValidated, false);
     assert.equal(updatedStatus.phase, 'needs-connection');
@@ -324,7 +326,7 @@ test('builds an index in the background and enables semantic queries when comple
     assert.deepEqual(search.matches, [{ noteId: 1, distance: 0.1 }]);
 });
 
-test('changing only the optional query instruction keeps the document index usable', async () => {
+test('changing only the query template keeps the document index usable', async () => {
     const { manager } = createManagerFixture();
     await validateAndSaveConfig(manager);
     await manager.startReindex();
@@ -332,12 +334,32 @@ test('changing only the optional query instruction keeps the document index usab
 
     const status = await manager.saveConfig({
         ...enabledConfig,
-        queryInstruction: 'Find a related personal memory.',
+        queryTemplate: 'task: search result | query: {query}',
     });
 
     assert.equal(status.phase, 'ready');
     assert.equal(status.available, true);
     assert.equal(status.needsReindex, false);
+});
+
+test('changing the document template or input suffix requires a rebuild', async () => {
+    const { manager } = createManagerFixture();
+    await validateAndSaveConfig(manager);
+    await manager.startReindex();
+    await manager.waitForActiveReindex();
+
+    const documentStatus = await manager.saveConfig({
+        ...enabledConfig,
+        documentTemplate: 'title: {title} | text: {content}',
+    });
+    assert.equal(documentStatus.phase, 'needs-index');
+    assert.equal(documentStatus.needsReindex, true);
+
+    const suffixStatus = await manager.saveConfig({ ...enabledConfig, inputSuffix: '<|endoftext|>' });
+    assert.equal(suffixStatus.phase, 'needs-index');
+
+    const restoredStatus = await manager.saveConfig(enabledConfig);
+    assert.equal(restoredStatus.phase, 'ready');
 });
 
 test('reuses a previously validated connection after disabling it', async () => {

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { FastifyReply } from 'fastify';
 import { createApp } from '~/app.js';
+import { DEFAULT_EMBEDDING_INPUT_FORMAT } from '~/features/search/embedding-input-format.js';
 import { AUTH_SESSION_COOKIE_NAME, type AuthConfig } from '~/modules/auth-mode.js';
 import {
     createSearchAdminListModelsHandler,
@@ -42,7 +43,7 @@ test('semantic search administration endpoints require an authenticated session'
         enabled: true,
         baseUrl: 'http://127.0.0.1:1234/v1',
         model: 'qwen-embedding',
-        queryInstruction: '',
+        ...DEFAULT_EMBEDDING_INPUT_FORMAT,
     };
     const requests: Array<[string, RequestInit?]> = [
         ['/api/search-admin/status'],
@@ -109,7 +110,7 @@ test('search config handler saves an enabled connection without requiring a prio
         enabled: true,
         baseUrl: 'http://127.0.0.1:1234/v1',
         model: 'qwen-embedding',
-        queryInstruction: '',
+        ...DEFAULT_EMBEDDING_INPUT_FORMAT,
     };
 
     await handler(
@@ -149,7 +150,8 @@ test('connection test forces validation without persisting the supplied settings
             body: {
                 baseUrl: 'http://127.0.0.1:1234/v1',
                 model: 'qwen-embedding',
-                queryInstruction: 'Retrieve relevant notes.',
+                ...DEFAULT_EMBEDDING_INPUT_FORMAT,
+                queryTemplate: 'Instruct: Retrieve relevant notes.\nQuery: {query}',
                 apiKey: 'provider-secret',
             },
         } as never,
@@ -160,7 +162,8 @@ test('connection test forces validation without persisting the supplied settings
         enabled: true,
         baseUrl: 'http://127.0.0.1:1234/v1',
         model: 'qwen-embedding',
-        queryInstruction: 'Retrieve relevant notes.',
+        ...DEFAULT_EMBEDDING_INPUT_FORMAT,
+        queryTemplate: 'Instruct: Retrieve relevant notes.\nQuery: {query}',
     });
     assert.deepEqual(receivedApiKeyInput, { provided: true, apiKey: 'provider-secret' });
     assert.equal(response.statusCode, 200);

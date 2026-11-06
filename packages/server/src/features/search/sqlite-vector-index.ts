@@ -3,16 +3,16 @@ import path from 'node:path';
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
 import { setImmediate as yieldToEventLoop } from 'node:timers/promises';
 import { getLoadablePath } from 'sqlite-vec';
+import { DEFAULT_EMBEDDING_INPUT_FORMAT, type DocumentInputFormat } from './embedding-input-format.js';
 import type { NoteEmbeddingChunk } from './note-chunking.js';
 
 export const SEMANTIC_INDEX_SCHEMA_VERSION = 2;
 export const SEARCH_DATABASE_SCHEMA_VERSION = 1;
 
-export interface SemanticIndexProfile {
+export interface SemanticIndexProfile extends DocumentInputFormat {
     model: string;
     baseUrl: string;
     dimensions: number;
-    queryInstruction: string;
     textSchemaVersion: number;
 }
 
@@ -251,26 +251,41 @@ const insertChunks = async (database: DatabaseSync, chunks: IndexedNoteChunk[]) 
     }
 };
 
-const isSemanticIndexProfile = (value: unknown): value is SemanticIndexProfile => {
-    if (!value || typeof value !== 'object') {
-        return false;
-    }
-
-    const profile = value as Partial<SemanticIndexProfile>;
-    return (
-        typeof profile.model === 'string' &&
-        typeof profile.baseUrl === 'string' &&
-        Number.isInteger(profile.dimensions) &&
-        Number(profile.dimensions) > 0 &&
-        typeof profile.queryInstruction === 'string' &&
-        Number.isInteger(profile.textSchemaVersion)
-    );
-};
-
-const parseProfile = (profileJson: string) => {
+const parseProfile = (profileJson: string): SemanticIndexProfile | null => {
     try {
-        const profile = JSON.parse(profileJson) as unknown;
-        return isSemanticIndexProfile(profile) ? profile : null;
+        const profile: unknown = JSON.parse(profileJson);
+        if (!profile || typeof profile !== 'object') {
+            return null;
+        }
+
+        const { model, baseUrl, dimensions, textSchemaVersion, documentTemplate, inputSuffix } = profile as Record<
+            string,
+            unknown
+        >;
+        if (
+            typeof model !== 'string' ||
+            typeof baseUrl !== 'string' ||
+            typeof dimensions !== 'number' ||
+            !Number.isInteger(dimensions) ||
+            dimensions <= 0 ||
+            typeof textSchemaVersion !== 'number' ||
+            !Number.isInteger(textSchemaVersion)
+        ) {
+            return null;
+        }
+
+        // Indexes built before input formats were configurable used the default document format.
+        return {
+            model,
+            baseUrl,
+            dimensions,
+            textSchemaVersion,
+            documentTemplate:
+                typeof documentTemplate === 'string'
+                    ? documentTemplate
+                    : DEFAULT_EMBEDDING_INPUT_FORMAT.documentTemplate,
+            inputSuffix: typeof inputSuffix === 'string' ? inputSuffix : DEFAULT_EMBEDDING_INPUT_FORMAT.inputSuffix,
+        };
     } catch {
         return null;
     }

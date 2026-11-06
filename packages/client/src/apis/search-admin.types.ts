@@ -2,7 +2,12 @@ export interface SemanticSearchConfig {
     enabled: boolean;
     baseUrl: string;
     model: string;
-    queryInstruction: string;
+    /** Wraps the search query. Must contain `{query}`. */
+    queryTemplate: string;
+    /** Wraps each chunk of a titled note. Must contain `{content}`. Changing it requires rebuilding the index. */
+    documentTemplate: string;
+    /** Appended to every query and note chunk. Changing it requires rebuilding the index. */
+    inputSuffix: string;
 }
 
 export interface SemanticSearchConfigInput extends SemanticSearchConfig {

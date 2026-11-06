@@ -47,14 +47,18 @@ test('persists a normalized OpenAI-compatible embedding configuration', async ()
         enabled: true,
         baseUrl: ' http://127.0.0.1:1234/v1/ ',
         model: ' qwen-embedding ',
-        queryInstruction: ' Retrieve relevant notes. ',
+        queryTemplate: ' task: search result | query: {query} ',
+        documentTemplate: 'title: {title} | text: {content}',
+        inputSuffix: ' <|endoftext|> ',
     });
 
     assert.deepEqual(await store.get(), {
         enabled: true,
         baseUrl: 'http://127.0.0.1:1234/v1',
         model: 'qwen-embedding',
-        queryInstruction: 'Retrieve relevant notes.',
+        queryTemplate: 'task: search result | query: {query}',
+        documentTemplate: 'title: {title} | text: {content}',
+        inputSuffix: '<|endoftext|>',
     });
 });
 
@@ -97,7 +101,7 @@ test('invalidates a saved connection when its API key fingerprint changes', asyn
     assert.equal(await store.isConnectionValidated(connection, 'fingerprint-b'), false);
 });
 
-test('removes the retired Korean-specific default instruction from stored settings', async () => {
+test('reads the retired Korean-specific default instruction as the default query template', async () => {
     const { cache, values } = createCache();
     const store = new SemanticSearchConfigStore(cache);
     values.set(
@@ -112,8 +116,51 @@ test('removes the retired Korean-specific default instruction from stored settin
 
     const config = await store.get();
 
-    assert.equal(config.queryInstruction, '');
-    assert.equal(JSON.parse(values.get(SEMANTIC_SEARCH_CONFIG_CACHE_KEY) ?? '{}').queryInstruction, '');
+    assert.equal(config.queryTemplate, '{query}');
+    assert.equal(config.documentTemplate, 'Title: {title}\nContent: {content}');
+    assert.equal(config.inputSuffix, '');
+});
+
+test('turns a saved query instruction into the matching query template', async () => {
+    const { cache, values } = createCache();
+    const store = new SemanticSearchConfigStore(cache);
+    values.set(
+        SEMANTIC_SEARCH_CONFIG_CACHE_KEY,
+        JSON.stringify({
+            enabled: true,
+            baseUrl: 'http://127.0.0.1:1234/v1',
+            model: 'qwen-embedding',
+            queryInstruction: 'Retrieve relevant notes.',
+        }),
+    );
+
+    assert.deepEqual(await store.get(), {
+        enabled: true,
+        baseUrl: 'http://127.0.0.1:1234/v1',
+        model: 'qwen-embedding',
+        queryTemplate: 'Instruct: Retrieve relevant notes.\nQuery: {query}',
+        documentTemplate: 'Title: {title}\nContent: {content}',
+        inputSuffix: '',
+    });
+});
+
+test('rejects templates without their required placeholder and falls back to defaults when empty', () => {
+    const base = {
+        enabled: false,
+        baseUrl: '',
+        model: '',
+        queryTemplate: '{query}',
+        documentTemplate: 'Title: {title}\nContent: {content}',
+        inputSuffix: '',
+    };
+
+    assert.throws(() => normalizeSemanticSearchConfig({ ...base, queryTemplate: 'query: ' }), /\{query\}/);
+    assert.throws(() => normalizeSemanticSearchConfig({ ...base, documentTemplate: 'title: {title}' }), /\{content\}/);
+    assert.equal(normalizeSemanticSearchConfig({ ...base, queryTemplate: '  ' }).queryTemplate, '{query}');
+    assert.equal(
+        normalizeSemanticSearchConfig({ ...base, documentTemplate: '' }).documentTemplate,
+        'Title: {title}\nContent: {content}',
+    );
 });
 
 test('requires an API URL and model only when semantic search is enabled', () => {

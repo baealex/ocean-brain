@@ -93,6 +93,8 @@ const profileMatchesConfig = (
         profile &&
             profile.baseUrl === config.baseUrl &&
             profile.model === config.model &&
+            profile.documentTemplate === config.documentTemplate &&
+            profile.inputSuffix === config.inputSuffix &&
             profile.textSchemaVersion === NOTE_EMBEDDING_TEXT_SCHEMA_VERSION,
     );
 };
@@ -247,7 +249,7 @@ export class SemanticSearchManager {
                 vectorIndex: this.dependencies.vectorIndex,
                 model: config.model,
                 baseUrl: config.baseUrl,
-                queryInstruction: config.queryInstruction,
+                format: { documentTemplate: config.documentTemplate, inputSuffix: config.inputSuffix },
                 onProgress: (progress) => {
                     this.progress = progress;
                 },
@@ -325,6 +327,10 @@ export class SemanticSearchManager {
                     removedNoteIds,
                     embeddingClient: this.createClient(status.config),
                     vectorIndex: this.dependencies.vectorIndex,
+                    format: {
+                        documentTemplate: status.config.documentTemplate,
+                        inputSuffix: status.config.inputSuffix,
+                    },
                 });
                 await this.dependencies.vectorIndex.completeNoteSyncs(entries, this.now());
                 this.lastQueueError = null;

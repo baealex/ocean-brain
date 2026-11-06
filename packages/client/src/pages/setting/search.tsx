@@ -25,12 +25,22 @@ const DEFAULT_INPUT_FORMAT: InputFormat = {
     inputSuffix: '',
 };
 
-// Formats recommended by each model family's documentation.
-const INPUT_FORMAT_PRESETS: Array<{ id: string; label: string; format: InputFormat }> = [
+interface InputFormatPreset {
+    id: string;
+    label: string;
+    format: InputFormat;
+    /** Model IDs this format is suggested for. Providers prefix IDs differently, so match the family name anywhere. */
+    modelPattern?: RegExp;
+}
+
+// Formats recommended by each model family's model card.
+const INPUT_FORMAT_PRESETS: InputFormatPreset[] = [
     { id: 'default', label: 'Default', format: DEFAULT_INPUT_FORMAT },
     {
-        id: 'qwen3',
-        label: 'Qwen3-Embedding',
+        // E5-instruct models use the same query instruction format as Qwen3-Embedding.
+        id: 'instruct',
+        label: 'Qwen3-Embedding / E5-instruct',
+        modelPattern: /qwen3[-_.]?embedding|(^|[^a-z0-9])e5[^a-z0-9].*instruct/i,
         format: {
             ...DEFAULT_INPUT_FORMAT,
             queryTemplate:
@@ -40,6 +50,7 @@ const INPUT_FORMAT_PRESETS: Array<{ id: string; label: string; format: InputForm
     {
         id: 'embeddinggemma',
         label: 'EmbeddingGemma',
+        modelPattern: /embedding[-_.]?gemma/i,
         format: {
             queryTemplate: 'task: search result | query: {query}',
             documentTemplate: 'title: {title} | text: {content}',
@@ -49,6 +60,7 @@ const INPUT_FORMAT_PRESETS: Array<{ id: string; label: string; format: InputForm
     {
         id: 'e5',
         label: 'E5',
+        modelPattern: /(^|[^a-z0-9])e5([^a-z0-9]|$)(?!.*instruct)/i,
         format: {
             queryTemplate: 'query: {query}',
             documentTemplate: 'passage: Title: {title}\nContent: {content}',
@@ -57,7 +69,8 @@ const INPUT_FORMAT_PRESETS: Array<{ id: string; label: string; format: InputForm
     },
     {
         id: 'nomic',
-        label: 'nomic-embed-text (English only)',
+        label: 'nomic-embed-text',
+        modelPattern: /nomic[-_.]?embed[-_.]?text/i,
         format: {
             queryTemplate: 'search_query: {query}',
             documentTemplate: 'search_document: Title: {title}\nContent: {content}',
@@ -73,6 +86,11 @@ const findInputFormatPreset = (format: InputFormat) =>
             preset.format.documentTemplate === format.documentTemplate.trim() &&
             preset.format.inputSuffix === format.inputSuffix.trim(),
     );
+
+const findModelInputFormatPreset = (modelId: string) => {
+    const model = modelId.trim();
+    return model ? INPUT_FORMAT_PRESETS.find((preset) => preset.modelPattern?.test(model)) : undefined;
+};
 
 const EMPTY_CONFIG: SemanticSearchConfig = {
     enabled: false,
@@ -321,6 +339,11 @@ const SearchSetting = () => {
     const phaseDotClassName = status ? phaseDotClassNames[status.phase] : 'bg-fg-tertiary';
     const inputFormatPreset = findInputFormatPreset(form);
     const inputFormatLabel = inputFormatPreset?.label ?? 'Customized';
+    // Only suggest over a preset format: a customized format is the user's own choice.
+    const modelInputFormatPreset = findModelInputFormatPreset(form.model);
+    const suggestedInputFormatPreset =
+        inputFormatPreset && modelInputFormatPreset?.id !== inputFormatPreset.id ? modelInputFormatPreset : undefined;
+    const showModelCardFormatHint = Boolean(form.model.trim() && inputFormatPreset && !modelInputFormatPreset);
     const meaningSearchHint = getMeaningSearchHint({
         hasConnectionFields,
         enabled: form.enabled,
@@ -598,6 +621,28 @@ const SearchSetting = () => {
                                 <Text as="p" variant="meta" tone="tertiary" className="leading-relaxed">
                                     None of these model names clearly identifies an embedding model. Choose one only if
                                     your provider documents it as an embedding model, then run the test.
+                                </Text>
+                            )}
+                            {suggestedInputFormatPreset && (
+                                <div className="flex flex-wrap items-center justify-between gap-2 rounded-[12px] border border-border-subtle bg-muted px-3 py-2">
+                                    <Text as="p" variant="meta" tone="secondary" className="leading-relaxed">
+                                        {suggestedInputFormatPreset.label} models have a recommended input format.
+                                    </Text>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="subtle"
+                                        disabled={!hasInitialized || isIndexing || isCheckingProvider}
+                                        onClick={() => applyInputFormatPreset(suggestedInputFormatPreset.id)}
+                                    >
+                                        Use recommended format
+                                    </Button>
+                                </div>
+                            )}
+                            {showModelCardFormatHint && (
+                                <Text as="p" variant="meta" tone="tertiary" className="leading-relaxed">
+                                    No preset matches this model. Check its model card, and if it asks for query or
+                                    document prefixes, enter them under Advanced input format.
                                 </Text>
                             )}
                         </div>

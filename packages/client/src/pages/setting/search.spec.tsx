@@ -325,4 +325,50 @@ describe('<SearchSetting />', () => {
         });
         expect(screen.getByRole('combobox', { name: 'Model preset' })).toHaveTextContent('EmbeddingGemma');
     });
+
+    it('suggests the recommended input format for a known model family', async () => {
+        const user = userEvent.setup();
+        vi.mocked(searchAdminApi.fetchSearchAdminStatus).mockResolvedValue(
+            createStatus({
+                config: {
+                    ...defaultConfig,
+                    baseUrl: 'http://127.0.0.1:1234/v1',
+                    model: 'text-embedding-embeddinggemma-300m',
+                },
+            }),
+        );
+
+        renderPage();
+
+        expect(await screen.findByText('EmbeddingGemma models have a recommended input format.')).toBeInTheDocument();
+        const useFormatButton = screen.getByRole('button', { name: 'Use recommended format' });
+        await waitFor(() => expect(useFormatButton).toBeEnabled());
+        await user.click(useFormatButton);
+
+        expect(screen.getByLabelText('Query template')).toHaveValue('task: search result | query: {query}');
+        expect(screen.getByLabelText('Document template')).toHaveValue('title: {title} | text: {content}');
+        expect(screen.queryByRole('button', { name: 'Use recommended format' })).not.toBeInTheDocument();
+        expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
+    });
+
+    it('points to the model card when no preset matches the model', async () => {
+        const user = userEvent.setup();
+        vi.mocked(searchAdminApi.fetchSearchAdminStatus).mockResolvedValue(
+            createStatus({
+                config: { ...defaultConfig, baseUrl: 'http://127.0.0.1:1234/v1', model: 'bge-m3' },
+            }),
+        );
+
+        renderPage();
+
+        expect(await screen.findByText(/No preset matches this model\. Check its model card/)).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Use recommended format' })).not.toBeInTheDocument();
+
+        const queryTemplate = screen.getByLabelText('Query template');
+        await waitFor(() => expect(queryTemplate).toBeEnabled());
+        await user.clear(queryTemplate);
+        await user.type(queryTemplate, 'Represent this query: {{query}');
+
+        expect(screen.queryByText(/No preset matches this model/)).not.toBeInTheDocument();
+    });
 });

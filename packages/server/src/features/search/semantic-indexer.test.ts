@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { EmbeddingClient } from './embedding-client.js';
+import { DEFAULT_EMBEDDING_INPUT_FORMAT } from './embedding-input-format.js';
 import {
     buildSemanticSearchIndex,
     type SemanticVectorIndex,
@@ -93,7 +94,7 @@ test('embeds note chunks in batches and replaces the index only after every batc
         vectorIndex,
         model: 'qwen-embedding',
         baseUrl: 'http://127.0.0.1:1234/v1',
-        queryInstruction: 'Retrieve relevant notes.',
+        format: DEFAULT_EMBEDDING_INPUT_FORMAT,
         batchSize: 1,
         onProgress: ({ processedChunks, totalChunks }) => progress.push([processedChunks, totalChunks]),
     });
@@ -134,7 +135,7 @@ test('does not replace a usable index when embedding a later batch fails', async
             vectorIndex,
             model: 'qwen-embedding',
             baseUrl: 'http://127.0.0.1:1234/v1',
-            queryInstruction: 'Retrieve relevant notes.',
+            format: DEFAULT_EMBEDDING_INPUT_FORMAT,
             batchSize: 1,
         }),
         /provider unavailable/,
@@ -180,7 +181,7 @@ test('embeds changed notes together while skipping content already in the index'
         vectorIndex,
         model: 'qwen-embedding',
         baseUrl: 'http://127.0.0.1:1234/v1',
-        queryInstruction: '',
+        format: DEFAULT_EMBEDDING_INPUT_FORMAT,
     });
     requestedBatches.length = 0;
 
@@ -193,6 +194,7 @@ test('embeds changed notes together while skipping content already in the index'
         removedNoteIds: [],
         embeddingClient,
         vectorIndex,
+        format: DEFAULT_EMBEDDING_INPUT_FORMAT,
     });
 
     assert.equal(requestedBatches.length, 1);

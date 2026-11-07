@@ -10,7 +10,8 @@ const profile = {
     model: 'test-embedding',
     baseUrl: 'http://127.0.0.1:1234/v1',
     dimensions: 2,
-    queryInstruction: 'Retrieve relevant notes.',
+    documentTemplate: 'Title: {title}\nContent: {content}',
+    inputSuffix: '',
     textSchemaVersion: 1,
 };
 
@@ -326,4 +327,43 @@ test('recreates disposable search tables when the database schema version change
     assert.equal(status.noteCount, 0);
     assert.equal(queueStatus.pendingNoteCount, 0);
     await reopenedIndex.close();
+});
+
+test('reads an index profile saved before input formats as the default document format', async (t) => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), 'ocean-brain-search-index-'));
+    const databasePath = path.join(directory, 'search.sqlite3');
+    const index = new SqliteSemanticVectorIndex(databasePath);
+
+    t.after(async () => {
+        await rm(directory, { recursive: true, force: true });
+    });
+
+    await index.replaceAll(profile, [
+        { noteId: 1, chunkIndex: 0, sourceHash: 'note-1', text: 'Saved before input formats', embedding: [1, 0] },
+    ]);
+    await index.close();
+
+    const database = new DatabaseSync(databasePath);
+    try {
+        database.prepare('UPDATE search_index_state SET profile_json = ? WHERE id = 1').run(
+            JSON.stringify({
+                model: profile.model,
+                baseUrl: profile.baseUrl,
+                dimensions: profile.dimensions,
+                queryInstruction: 'Retrieve relevant notes.',
+                textSchemaVersion: profile.textSchemaVersion,
+            }),
+        );
+    } finally {
+        database.close();
+    }
+
+    const reopenedIndex = new SqliteSemanticVectorIndex(databasePath);
+    t.after(async () => {
+        await reopenedIndex.close();
+    });
+    const status = await reopenedIndex.getStatus();
+
+    assert.equal(status.ready, true);
+    assert.deepEqual(status.profile, profile);
 });

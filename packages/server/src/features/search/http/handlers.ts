@@ -47,12 +47,14 @@ const parseConfig = (value: unknown): SemanticSearchConfig => {
         typeof config.enabled !== 'boolean' ||
         typeof config.baseUrl !== 'string' ||
         typeof config.model !== 'string' ||
-        typeof config.queryInstruction !== 'string'
+        typeof config.queryTemplate !== 'string' ||
+        typeof config.documentTemplate !== 'string' ||
+        typeof config.inputSuffix !== 'string'
     ) {
         throw createAppError(
             400,
             'INVALID_SEARCH_CONFIG',
-            'enabled, baseUrl, model, and queryInstruction are required.',
+            'enabled, baseUrl, model, queryTemplate, documentTemplate, and inputSuffix are required.',
         );
     }
 

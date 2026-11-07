@@ -92,13 +92,14 @@ test('sends document text unchanged and preserves response index order', async (
     ]);
 });
 
-test('adds the configured instruction only to query embeddings', async () => {
+test('applies the query template and input suffix only to query embeddings', async () => {
     const inputs: string[][] = [];
     const client = createOpenAiCompatibleEmbeddingClient(
         {
             baseUrl: 'http://127.0.0.1:1234/v1',
             model: 'qwen-embedding',
-            queryInstruction: 'Retrieve relevant personal notes.',
+            queryTemplate: 'Instruct: Retrieve relevant personal notes.\nQuery: {query}',
+            inputSuffix: '<|endoftext|>',
         },
         {
             fetch: async (_input, init) => {
@@ -114,7 +115,7 @@ test('adds the configured instruction only to query embeddings', async () => {
 
     assert.deepEqual(inputs, [
         ['Document'],
-        ['Instruct: Retrieve relevant personal notes.\nQuery: fortune teller death'],
+        ['Instruct: Retrieve relevant personal notes.\nQuery: fortune teller death<|endoftext|>'],
     ]);
 });
 

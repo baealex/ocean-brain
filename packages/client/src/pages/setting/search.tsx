@@ -17,11 +17,86 @@ import { Button, Callout, PageLayout, Progress } from '~/components/shared';
 import { Input, Label, Select, SelectItem, Switch, Text, Textarea, useToast } from '~/components/ui';
 import { queryKeys } from '~/modules/query-key-factory';
 
+type InputFormat = Pick<SemanticSearchConfig, 'queryTemplate' | 'documentTemplate' | 'inputSuffix'>;
+
+const DEFAULT_INPUT_FORMAT: InputFormat = {
+    queryTemplate: '{query}',
+    documentTemplate: 'Title: {title}\nContent: {content}',
+    inputSuffix: '',
+};
+
+interface InputFormatPreset {
+    id: string;
+    label: string;
+    format: InputFormat;
+    /** Model IDs this format is suggested for. Providers prefix IDs differently, so match the family name anywhere. */
+    modelPattern?: RegExp;
+}
+
+// Formats recommended by each model family's model card.
+const INPUT_FORMAT_PRESETS: InputFormatPreset[] = [
+    { id: 'default', label: 'Default', format: DEFAULT_INPUT_FORMAT },
+    {
+        // E5-instruct models use the same query instruction format as Qwen3-Embedding.
+        id: 'instruct',
+        label: 'Qwen3-Embedding / E5-instruct',
+        modelPattern: /qwen3[-_.]?embedding|(^|[^a-z0-9])e5[^a-z0-9].*instruct/i,
+        format: {
+            ...DEFAULT_INPUT_FORMAT,
+            queryTemplate:
+                'Instruct: Given a search query, retrieve relevant passages from personal notes that answer the query\nQuery: {query}',
+        },
+    },
+    {
+        id: 'embeddinggemma',
+        label: 'EmbeddingGemma',
+        modelPattern: /embedding[-_.]?gemma/i,
+        format: {
+            queryTemplate: 'task: search result | query: {query}',
+            documentTemplate: 'title: {title} | text: {content}',
+            inputSuffix: '',
+        },
+    },
+    {
+        id: 'e5',
+        label: 'E5',
+        modelPattern: /(^|[^a-z0-9])e5([^a-z0-9]|$)(?!.*instruct)/i,
+        format: {
+            queryTemplate: 'query: {query}',
+            documentTemplate: 'passage: Title: {title}\nContent: {content}',
+            inputSuffix: '',
+        },
+    },
+    {
+        id: 'nomic',
+        label: 'nomic-embed-text',
+        modelPattern: /nomic[-_.]?embed[-_.]?text/i,
+        format: {
+            queryTemplate: 'search_query: {query}',
+            documentTemplate: 'search_document: Title: {title}\nContent: {content}',
+            inputSuffix: '',
+        },
+    },
+];
+
+const findInputFormatPreset = (format: InputFormat) =>
+    INPUT_FORMAT_PRESETS.find(
+        (preset) =>
+            preset.format.queryTemplate === format.queryTemplate.trim() &&
+            preset.format.documentTemplate === format.documentTemplate.trim() &&
+            preset.format.inputSuffix === format.inputSuffix.trim(),
+    );
+
+const findModelInputFormatPreset = (modelId: string) => {
+    const model = modelId.trim();
+    return model ? INPUT_FORMAT_PRESETS.find((preset) => preset.modelPattern?.test(model)) : undefined;
+};
+
 const EMPTY_CONFIG: SemanticSearchConfig = {
     enabled: false,
     baseUrl: '',
     model: '',
-    queryInstruction: '',
+    ...DEFAULT_INPUT_FORMAT,
 };
 
 const phaseLabels: Record<SemanticSearchPhase, string> = {
@@ -46,7 +121,9 @@ const configsMatch = (left: SemanticSearchConfig, right: SemanticSearchConfig) =
     left.enabled === right.enabled &&
     left.baseUrl === right.baseUrl &&
     left.model === right.model &&
-    left.queryInstruction === right.queryInstruction;
+    left.queryTemplate === right.queryTemplate &&
+    left.documentTemplate === right.documentTemplate &&
+    left.inputSuffix === right.inputSuffix;
 
 const normalizeBaseUrl = (baseUrl: string) => {
     const value = baseUrl.trim();
@@ -260,7 +337,13 @@ const SearchSetting = () => {
     const progress = status?.progress;
     const phaseLabel = status ? phaseLabels[status.phase] : isLoading ? 'Loading' : 'Unavailable';
     const phaseDotClassName = status ? phaseDotClassNames[status.phase] : 'bg-fg-tertiary';
-    const queryInstructionLabel = form.queryInstruction.trim() ? 'Customized' : 'Optional';
+    const inputFormatPreset = findInputFormatPreset(form);
+    const inputFormatLabel = inputFormatPreset?.label ?? 'Customized';
+    // Only suggest over a preset format: a customized format is the user's own choice.
+    const modelInputFormatPreset = findModelInputFormatPreset(form.model);
+    const suggestedInputFormatPreset =
+        inputFormatPreset && modelInputFormatPreset?.id !== inputFormatPreset.id ? modelInputFormatPreset : undefined;
+    const showModelCardFormatHint = Boolean(form.model.trim() && inputFormatPreset && !modelInputFormatPreset);
     const meaningSearchHint = getMeaningSearchHint({
         hasConnectionFields,
         enabled: form.enabled,
@@ -281,6 +364,13 @@ const SearchSetting = () => {
 
     const updateForm = <Key extends keyof SemanticSearchConfig>(key: Key, value: SemanticSearchConfig[Key]) => {
         setForm((current) => ({ ...current, [key]: value }));
+    };
+
+    const applyInputFormatPreset = (presetId: string) => {
+        const preset = INPUT_FORMAT_PRESETS.find((item) => item.id === presetId);
+        if (preset) {
+            setForm((current) => ({ ...current, ...preset.format }));
+        }
     };
 
     const resetConnectionTest = () => {
@@ -533,6 +623,28 @@ const SearchSetting = () => {
                                     your provider documents it as an embedding model, then run the test.
                                 </Text>
                             )}
+                            {suggestedInputFormatPreset && (
+                                <div className="flex flex-wrap items-center justify-between gap-2 rounded-[12px] border border-border-subtle bg-muted px-3 py-2">
+                                    <Text as="p" variant="meta" tone="secondary" className="leading-relaxed">
+                                        {suggestedInputFormatPreset.label} models have a recommended input format.
+                                    </Text>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="subtle"
+                                        disabled={!hasInitialized || isIndexing || isCheckingProvider}
+                                        onClick={() => applyInputFormatPreset(suggestedInputFormatPreset.id)}
+                                    >
+                                        Use recommended format
+                                    </Button>
+                                </div>
+                            )}
+                            {showModelCardFormatHint && (
+                                <Text as="p" variant="meta" tone="tertiary" className="leading-relaxed">
+                                    No preset matches this model. Check its model card, and if it asks for query or
+                                    document prefixes, enter them under Advanced input format.
+                                </Text>
+                            )}
                         </div>
 
                         {isCurrentConnectionTested && connectionMutation.data && (
@@ -588,11 +700,11 @@ const SearchSetting = () => {
                             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 marker:hidden">
                                 <div className="min-w-0">
                                     <Text as="span" variant="meta" weight="medium" tone="secondary">
-                                        Advanced query instruction
+                                        Advanced input format
                                     </Text>
                                     <Text as="span" variant="meta" tone="tertiary">
                                         {' · '}
-                                        {queryInstructionLabel}
+                                        {inputFormatLabel}
                                     </Text>
                                 </div>
                                 <Icon.ChevronDown
@@ -602,42 +714,102 @@ const SearchSetting = () => {
                             </summary>
                             <div className="space-y-3 border-t border-border-subtle px-3 py-3">
                                 <Text as="p" variant="meta" tone="secondary" className="leading-relaxed">
-                                    Leave this blank unless your embedding model documentation explicitly recommends a
-                                    query instruction. Ocean Brain does not assume a language or retrieval prompt.
+                                    Use the input format your embedding model documentation recommends. A preset fills
+                                    the fields below; save the settings to apply it.
                                 </Text>
                                 <div className="space-y-2">
                                     <Label
-                                        htmlFor="semantic-search-instruction"
+                                        htmlFor="semantic-search-format-preset"
                                         className="font-medium text-fg-tertiary"
                                     >
-                                        Query instruction
+                                        Model preset
+                                    </Label>
+                                    <Select
+                                        id="semantic-search-format-preset"
+                                        ariaLabel="Model preset"
+                                        value={inputFormatPreset?.id ?? ''}
+                                        placeholder="Custom"
+                                        disabled={!hasInitialized || isIndexing || isCheckingProvider}
+                                        onValueChange={applyInputFormatPreset}
+                                        className="w-full min-w-0"
+                                    >
+                                        {INPUT_FORMAT_PRESETS.map((preset) => (
+                                            <SelectItem key={preset.id} value={preset.id}>
+                                                {preset.label}
+                                            </SelectItem>
+                                        ))}
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label
+                                        htmlFor="semantic-search-query-template"
+                                        className="font-medium text-fg-tertiary"
+                                    >
+                                        Query template
                                     </Label>
                                     <Textarea
-                                        id="semantic-search-instruction"
-                                        rows={3}
-                                        placeholder="Leave blank unless your model recommends an instruction."
-                                        value={form.queryInstruction}
+                                        id="semantic-search-query-template"
+                                        rows={2}
+                                        value={form.queryTemplate}
                                         disabled={!hasInitialized || isIndexing || isCheckingProvider}
-                                        onChange={(event) => updateForm('queryInstruction', event.target.value)}
+                                        onChange={(event) => updateForm('queryTemplate', event.target.value)}
                                     />
+                                    <Text as="p" variant="meta" tone="tertiary" className="leading-relaxed">
+                                        Put {'{query}'} where the search text goes. Changing it does not require
+                                        rebuilding the index.
+                                    </Text>
                                 </div>
-                                {form.queryInstruction && (
+                                <div className="space-y-2">
+                                    <Label
+                                        htmlFor="semantic-search-document-template"
+                                        className="font-medium text-fg-tertiary"
+                                    >
+                                        Document template
+                                    </Label>
+                                    <Textarea
+                                        id="semantic-search-document-template"
+                                        rows={2}
+                                        value={form.documentTemplate}
+                                        disabled={!hasInitialized || isIndexing || isCheckingProvider}
+                                        onChange={(event) => updateForm('documentTemplate', event.target.value)}
+                                    />
+                                    <Text as="p" variant="meta" tone="tertiary" className="leading-relaxed">
+                                        Put {'{title}'} and {'{content}'} where each note chunk goes. Notes without a
+                                        title use their content only. Changing it requires rebuilding the index.
+                                    </Text>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label
+                                        htmlFor="semantic-search-input-suffix"
+                                        className="font-medium text-fg-tertiary"
+                                    >
+                                        Input suffix
+                                    </Label>
+                                    <Input
+                                        id="semantic-search-input-suffix"
+                                        value={form.inputSuffix}
+                                        placeholder="Leave empty unless your server needs it"
+                                        disabled={!hasInitialized || isIndexing || isCheckingProvider}
+                                        onChange={(event) => updateForm('inputSuffix', event.target.value)}
+                                    />
+                                    <Text as="p" variant="meta" tone="tertiary" className="leading-relaxed">
+                                        Added to the end of every query and note chunk, for example {'<|endoftext|>'}{' '}
+                                        for some llama.cpp setups. Changing it requires rebuilding the index.
+                                    </Text>
+                                </div>
+                                {inputFormatPreset?.id !== 'default' && (
                                     <div className="flex flex-wrap gap-2">
                                         <Button
                                             type="button"
                                             size="sm"
-                                            variant="ghost"
+                                            variant="subtle"
                                             disabled={isIndexing || isCheckingProvider}
-                                            onClick={() => updateForm('queryInstruction', '')}
+                                            onClick={() => applyInputFormatPreset('default')}
                                         >
-                                            Clear
+                                            Reset to default
                                         </Button>
                                     </div>
                                 )}
-                                <Text as="p" variant="meta" tone="tertiary" className="leading-relaxed">
-                                    This is added only to the search query, never to note chunks. Changing it does not
-                                    require rebuilding the index.
-                                </Text>
                             </div>
                         </details>
                     </div>

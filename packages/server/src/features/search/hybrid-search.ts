@@ -1,6 +1,7 @@
 import {
     buildNoteSearchText,
     NOTE_SEARCH_TEXT_SCHEMA_VERSION,
+    type NoteSearchQuery,
     parseNoteSearchQuery,
 } from '~/features/note/services/search.js';
 import {
@@ -26,8 +27,14 @@ interface StaleLexicalCandidate extends LexicalCandidate {
     content: string;
 }
 
+export interface LexicalCandidateMatch {
+    noteId: number;
+    /** Share of the query's search terms found in the note. */
+    termCoverage: number;
+}
+
 interface HybridNoteSearchDependencies {
-    listLexicalNoteIds: (query: string, limit: number, workspaceId?: number) => Promise<number[]>;
+    listLexicalCandidates: (query: string, limit: number, workspaceId?: number) => Promise<LexicalCandidateMatch[]>;
     trySemanticSearch: (query: string, limit: number, eligibleNoteIds?: number[]) => Promise<SemanticSearchAttempt>;
     listEligibleNoteIds?: (workspaceId: number) => Promise<number[]>;
     findNotesByIds: (ids: number[], workspaceId?: number) => Promise<Note[]>;
@@ -64,6 +71,11 @@ const MAX_HYBRID_CANDIDATES = 80;
 // Keep the larger lexical window for literal recall, but use only the strongest
 // semantic matches when the two sources are fused.
 const MAX_HYBRID_SEMANTIC_CANDIDATES = 30;
+// A natural-language query shares at least one common word with most notes. Those weak keyword
+// matches outnumber the meaning matches in rank fusion and push the closest note down, so hybrid
+// ranking fuses only keyword candidates that contain at least half of the search terms. Without
+// meaning matches, hybrid and keyword modes keep every partial keyword match.
+const HYBRID_LEXICAL_MIN_TERM_COVERAGE = 0.5;
 
 const unavailableSemanticAttempt = (error: unknown): SemanticSearchAttempt => ({
     available: false,
@@ -93,6 +105,17 @@ const buildLexicalWhere = (query: string): Prisma.NoteWhereInput | undefined => 
     };
 };
 
+/** Share of the query's search terms found in the text. Queries with only excluded terms count as full coverage. */
+export const getLexicalTermCoverage = (searchableText: string, query: string) => {
+    const { included } = parseNoteSearchQuery(query);
+    if (included.length === 0) {
+        return 1;
+    }
+
+    const normalizedSearchableText = searchableText.toLowerCase();
+    return included.filter((term) => normalizedSearchableText.includes(term)).length / included.length;
+};
+
 export const matchesHybridLexicalQuery = (searchableText: string, query: string) => {
     const parsedQuery = parseNoteSearchQuery(query);
     const normalizedSearchableText = searchableText.toLowerCase();
@@ -103,8 +126,7 @@ export const matchesHybridLexicalQuery = (searchableText: string, query: string)
     return includesAnyTerm && parsedQuery.excluded.every((term) => !normalizedSearchableText.includes(term));
 };
 
-const scoreLexicalCandidate = (candidate: LexicalCandidate, query: string) => {
-    const parsedQuery = parseNoteSearchQuery(query);
+const scoreLexicalCandidate = (candidate: LexicalCandidate, parsedQuery: NoteSearchQuery) => {
     const phrase = parsedQuery.included.join(' ');
     const title = candidate.title.toLowerCase();
     const searchableText = candidate.searchableText.toLowerCase();
@@ -138,18 +160,26 @@ const scoreLexicalCandidate = (candidate: LexicalCandidate, query: string) => {
 };
 
 export const rankLexicalCandidates = (candidates: LexicalCandidate[], query: string) => {
-    return [...candidates].sort((left, right) => {
-        const scoreDifference = scoreLexicalCandidate(right, query) - scoreLexicalCandidate(left, query);
-        if (scoreDifference !== 0) {
-            return scoreDifference;
-        }
+    // Score each candidate once. Scoring inside the comparator lowercases every note body on each comparison.
+    const parsedQuery = parseNoteSearchQuery(query);
+    return candidates
+        .map((candidate) => ({ candidate, score: scoreLexicalCandidate(candidate, parsedQuery) }))
+        .sort((left, right) => {
+            if (left.score !== right.score) {
+                return right.score - left.score;
+            }
 
-        const updatedAtDifference = right.updatedAt.getTime() - left.updatedAt.getTime();
-        return updatedAtDifference !== 0 ? updatedAtDifference : left.id - right.id;
-    });
+            const updatedAtDifference = right.candidate.updatedAt.getTime() - left.candidate.updatedAt.getTime();
+            return updatedAtDifference !== 0 ? updatedAtDifference : left.candidate.id - right.candidate.id;
+        })
+        .map(({ candidate }) => candidate);
 };
 
-const listDefaultLexicalNoteIds = async (query: string, limit: number, workspaceId?: number) => {
+const listDefaultLexicalCandidates = async (
+    query: string,
+    limit: number,
+    workspaceId?: number,
+): Promise<LexicalCandidateMatch[]> => {
     const where = buildLexicalWhere(query);
     if (!where) {
         return [];
@@ -193,11 +223,14 @@ const listDefaultLexicalNoteIds = async (query: string, limit: number, workspace
 
     return rankLexicalCandidates([...freshCandidates, ...matchingStaleCandidates], query)
         .slice(0, limit)
-        .map((candidate) => candidate.id);
+        .map((candidate) => ({
+            noteId: candidate.id,
+            termCoverage: getLexicalTermCoverage(candidate.searchableText, query),
+        }));
 };
 
 const defaultDependencies: HybridNoteSearchDependencies = {
-    listLexicalNoteIds: listDefaultLexicalNoteIds,
+    listLexicalCandidates: listDefaultLexicalCandidates,
     trySemanticSearch: (query, limit, eligibleNoteIds) =>
         getDefaultSemanticSearchManager().trySearch(query, limit, eligibleNoteIds),
     listEligibleNoteIds: async (workspaceId) =>
@@ -238,12 +271,12 @@ export const createHybridNoteSearch = (dependencies: HybridNoteSearchDependencie
 
         const candidateLimit = MAX_HYBRID_CANDIDATES;
         const semanticCandidateLimit = mode === 'hybrid' ? MAX_HYBRID_SEMANTIC_CANDIDATES : MAX_HYBRID_CANDIDATES;
-        const [lexicalNoteIds, semanticAttempt] = await Promise.all([
+        const [lexicalCandidates, semanticAttempt] = await Promise.all([
             mode === 'semantic'
                 ? Promise.resolve([])
                 : workspaceId === undefined
-                  ? dependencies.listLexicalNoteIds(normalizedQuery, candidateLimit)
-                  : dependencies.listLexicalNoteIds(normalizedQuery, candidateLimit, workspaceId),
+                  ? dependencies.listLexicalCandidates(normalizedQuery, candidateLimit)
+                  : dependencies.listLexicalCandidates(normalizedQuery, candidateLimit, workspaceId),
             mode === 'lexical'
                 ? Promise.resolve({
                       available: false,
@@ -255,10 +288,14 @@ export const createHybridNoteSearch = (dependencies: HybridNoteSearchDependencie
                       .trySemanticSearch(normalizedQuery, semanticCandidateLimit, eligibleNoteIds)
                       .catch((error) => unavailableSemanticAttempt(error)),
         ]);
-        const rankedCandidates = fuseHybridSearchRanks({
-            lexicalNoteIds,
-            semanticNoteIds: semanticAttempt.matches.slice(0, semanticCandidateLimit).map((match) => match.noteId),
-        });
+        const semanticNoteIds = semanticAttempt.matches.slice(0, semanticCandidateLimit).map((match) => match.noteId);
+        const filtersWeakLexicalMatches = mode === 'hybrid' && semanticNoteIds.length > 0;
+        const lexicalNoteIds = lexicalCandidates
+            .filter(
+                (candidate) => !filtersWeakLexicalMatches || candidate.termCoverage >= HYBRID_LEXICAL_MIN_TERM_COVERAGE,
+            )
+            .map((candidate) => candidate.noteId);
+        const rankedCandidates = fuseHybridSearchRanks({ lexicalNoteIds, semanticNoteIds });
         const pageCandidates = rankedCandidates.slice(offset, offset + limit);
         const ids = pageCandidates.map((candidate) => candidate.noteId);
         const notes =

@@ -29,7 +29,7 @@ test('workspace search selects lexical and semantic candidates before ranking an
     assert.equal(lexical.totalCount, 1);
 
     const semantic = createHybridNoteSearch({
-        listLexicalNoteIds: async () => [],
+        listLexicalCandidates: async () => [],
         listEligibleNoteIds: async (id) => {
             assert.equal(id, workspace.id);
             return [local.id];

@@ -1,5 +1,10 @@
 import { createHash } from 'node:crypto';
 import { extractVisibleSearchTextFromContent } from '~/features/note/services/search.js';
+import {
+    DEFAULT_EMBEDDING_INPUT_FORMAT,
+    type DocumentInputFormat,
+    renderDocumentInput,
+} from './embedding-input-format.js';
 
 export const NOTE_EMBEDDING_TEXT_SCHEMA_VERSION = 1;
 export const DEFAULT_NOTE_CHUNK_MAX_LENGTH = 900;
@@ -21,6 +26,10 @@ export interface NoteEmbeddingChunk {
 interface NoteChunkingOptions {
     maxLength?: number;
     overlap?: number;
+}
+
+interface NoteEmbeddingChunkOptions extends NoteChunkingOptions {
+    format?: DocumentInputFormat;
 }
 
 const normalizeText = (value: string) => value.replace(/\s+/g, ' ').trim();
@@ -91,18 +100,19 @@ const buildSourceHash = (title: string, body: string) => {
 
 export const buildNoteEmbeddingChunks = (
     note: SemanticSearchNoteInput,
-    options: NoteChunkingOptions = {},
+    options: NoteEmbeddingChunkOptions = {},
 ): NoteEmbeddingChunk[] => {
     const title = normalizeText(note.title);
     const body = normalizeText(extractVisibleSearchTextFromContent(note.content));
     const bodyChunks = splitSearchText(body, options);
     const searchableChunks = bodyChunks.length > 0 ? bodyChunks : title ? [''] : [];
     const sourceHash = buildSourceHash(title, body);
+    const format = options.format ?? DEFAULT_EMBEDDING_INPUT_FORMAT;
 
     return searchableChunks.map((chunk, chunkIndex) => ({
         noteId: note.id,
         chunkIndex,
         sourceHash,
-        text: title ? `Title: ${title}\nContent: ${chunk}`.trimEnd() : chunk,
+        text: renderDocumentInput(format, title, chunk),
     }));
 };

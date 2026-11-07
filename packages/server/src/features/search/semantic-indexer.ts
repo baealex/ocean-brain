@@ -1,4 +1,5 @@
 import type { EmbeddingClient } from './embedding-client.js';
+import type { DocumentInputFormat } from './embedding-input-format.js';
 import {
     buildNoteEmbeddingChunks,
     NOTE_EMBEDDING_TEXT_SCHEMA_VERSION,
@@ -28,7 +29,7 @@ interface BuildSemanticIndexInput {
     vectorIndex: SemanticVectorIndex;
     model: string;
     baseUrl: string;
-    queryInstruction: string;
+    format: DocumentInputFormat;
     batchSize?: number;
     onProgress?: (progress: SemanticIndexBuildProgress) => void;
 }
@@ -87,13 +88,13 @@ export const buildSemanticSearchIndex = async ({
     vectorIndex,
     model,
     baseUrl,
-    queryInstruction,
+    format,
     batchSize = DEFAULT_EMBEDDING_BATCH_SIZE,
     onProgress,
 }: BuildSemanticIndexInput) => {
     validateBatchSize(batchSize);
 
-    const chunks = notes.flatMap((note) => buildNoteEmbeddingChunks(note));
+    const chunks = notes.flatMap((note) => buildNoteEmbeddingChunks(note, { format }));
     const totalChunks = chunks.length;
     onProgress?.({ processedChunks: 0, totalChunks });
 
@@ -115,7 +116,8 @@ export const buildSemanticSearchIndex = async ({
             model,
             baseUrl,
             dimensions,
-            queryInstruction,
+            documentTemplate: format.documentTemplate,
+            inputSuffix: format.inputSuffix,
             textSchemaVersion: NOTE_EMBEDDING_TEXT_SCHEMA_VERSION,
         },
         indexedChunks,
@@ -126,15 +128,17 @@ export const updateSemanticSearchNote = async ({
     note,
     embeddingClient,
     vectorIndex,
+    format,
     batchSize = DEFAULT_EMBEDDING_BATCH_SIZE,
 }: {
     note: SemanticSearchNoteInput;
     embeddingClient: EmbeddingClient;
     vectorIndex: SemanticVectorIndex;
+    format: DocumentInputFormat;
     batchSize?: number;
 }) => {
     validateBatchSize(batchSize);
-    const chunks = buildNoteEmbeddingChunks(note);
+    const chunks = buildNoteEmbeddingChunks(note, { format });
     const sourceHash = chunks[0]?.sourceHash ?? null;
     const indexedSourceHash = await vectorIndex.getNoteSourceHash(note.id);
 
@@ -155,12 +159,14 @@ export const updateSemanticSearchNotes = async ({
     removedNoteIds,
     embeddingClient,
     vectorIndex,
+    format,
     batchSize = DEFAULT_EMBEDDING_BATCH_SIZE,
 }: {
     notes: SemanticSearchNoteInput[];
     removedNoteIds: number[];
     embeddingClient: EmbeddingClient;
     vectorIndex: SemanticVectorIndex;
+    format: DocumentInputFormat;
     batchSize?: number;
 }) => {
     validateBatchSize(batchSize);
@@ -170,7 +176,7 @@ export const updateSemanticSearchNotes = async ({
     }> = [];
 
     for (const note of notes) {
-        const chunks = buildNoteEmbeddingChunks(note);
+        const chunks = buildNoteEmbeddingChunks(note, { format });
         const sourceHash = chunks[0]?.sourceHash ?? null;
         const indexedSourceHash = await vectorIndex.getNoteSourceHash(note.id);
 

@@ -16,14 +16,29 @@ vi.mock('~/apis/search-admin.api', () => ({
     testSemanticSearchConnection: vi.fn(),
 }));
 
+const defaultInputFormat = {
+    queryTemplate: '{query}',
+    documentTemplate: 'Title: {title}\nContent: {content}',
+    inputSuffix: '',
+};
+
 const defaultConfig: SemanticSearchConfig = {
     enabled: false,
     baseUrl: '',
     model: '',
-    queryInstruction: '',
+    ...defaultInputFormat,
 };
 
 const embeddingModel = 'text-embedding-qwen3-embedding-0.6b';
+
+beforeAll(() => {
+    Object.defineProperties(HTMLElement.prototype, {
+        hasPointerCapture: { configurable: true, value: () => false },
+        setPointerCapture: { configurable: true, value: () => undefined },
+        releasePointerCapture: { configurable: true, value: () => undefined },
+        scrollIntoView: { configurable: true, value: () => undefined },
+    });
+});
 
 const createStatus = (overrides: Partial<SearchAdminStatus> = {}): SearchAdminStatus => ({
     config: defaultConfig,
@@ -93,7 +108,9 @@ describe('<SearchSetting />', () => {
                     enabled: input.enabled,
                     baseUrl: input.baseUrl,
                     model: input.model,
-                    queryInstruction: input.queryInstruction,
+                    queryTemplate: input.queryTemplate,
+                    documentTemplate: input.documentTemplate,
+                    inputSuffix: input.inputSuffix,
                 },
                 apiKeyConfigured: Boolean(input.apiKey),
                 connectionValidated: false,
@@ -117,7 +134,7 @@ describe('<SearchSetting />', () => {
                 enabled: true,
                 baseUrl: 'http://127.0.0.1:1234/v1',
                 model: embeddingModel,
-                queryInstruction: '',
+                ...defaultInputFormat,
                 apiKey: 'provider-secret',
             });
         });
@@ -131,7 +148,7 @@ describe('<SearchSetting />', () => {
             enabled: true,
             baseUrl: 'http://127.0.0.1:1234/v1',
             model: embeddingModel,
-            queryInstruction: '',
+            ...defaultInputFormat,
         };
 
         vi.mocked(searchAdminApi.fetchSearchAdminStatus).mockResolvedValue(
@@ -181,7 +198,7 @@ describe('<SearchSetting />', () => {
                     enabled: false,
                     baseUrl: 'http://127.0.0.1:1234/v1',
                     model: embeddingModel,
-                    queryInstruction: '',
+                    ...defaultInputFormat,
                 },
                 connectionValidated: false,
             }),
@@ -204,7 +221,7 @@ describe('<SearchSetting />', () => {
                     enabled: false,
                     baseUrl: 'http://127.0.0.1:1234/v1',
                     model: embeddingModel,
-                    queryInstruction: '',
+                    ...defaultInputFormat,
                 },
             }),
         );
@@ -251,7 +268,7 @@ describe('<SearchSetting />', () => {
                     enabled: true,
                     baseUrl: 'http://127.0.0.1:1234/v1',
                     model: embeddingModel,
-                    queryInstruction: '',
+                    ...defaultInputFormat,
                 },
                 connectionValidated: true,
                 phase: 'ready',
@@ -270,5 +287,88 @@ describe('<SearchSetting />', () => {
         expect(await screen.findByText(/2 notes are waiting to sync/)).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Index is up to date' })).toBeDisabled();
         expect(screen.queryByText(/Build the index once/)).not.toBeInTheDocument();
+    });
+    it('fills the input format from a model preset and saves it', async () => {
+        const user = userEvent.setup();
+        vi.mocked(searchAdminApi.saveSemanticSearchConfig).mockImplementation(async (input) =>
+            createStatus({
+                config: {
+                    enabled: input.enabled,
+                    baseUrl: input.baseUrl,
+                    model: input.model,
+                    queryTemplate: input.queryTemplate,
+                    documentTemplate: input.documentTemplate,
+                    inputSuffix: input.inputSuffix,
+                },
+            }),
+        );
+
+        renderPage();
+
+        await user.click(await screen.findByText('Advanced input format'));
+        const presetSelect = screen.getByRole('combobox', { name: 'Model preset' });
+        await waitFor(() => expect(presetSelect).toBeEnabled());
+        await user.click(presetSelect);
+        await user.click(await screen.findByRole('option', { name: 'EmbeddingGemma' }));
+
+        expect(screen.getByLabelText('Query template')).toHaveValue('task: search result | query: {query}');
+        expect(screen.getByLabelText('Document template')).toHaveValue('title: {title} | text: {content}');
+
+        await user.click(screen.getByRole('button', { name: 'Save settings' }));
+
+        await waitFor(() => {
+            expect(vi.mocked(searchAdminApi.saveSemanticSearchConfig).mock.calls[0]?.[0]).toMatchObject({
+                queryTemplate: 'task: search result | query: {query}',
+                documentTemplate: 'title: {title} | text: {content}',
+                inputSuffix: '',
+            });
+        });
+        expect(screen.getByRole('combobox', { name: 'Model preset' })).toHaveTextContent('EmbeddingGemma');
+    });
+
+    it('suggests the recommended input format for a known model family', async () => {
+        const user = userEvent.setup();
+        vi.mocked(searchAdminApi.fetchSearchAdminStatus).mockResolvedValue(
+            createStatus({
+                config: {
+                    ...defaultConfig,
+                    baseUrl: 'http://127.0.0.1:1234/v1',
+                    model: 'text-embedding-embeddinggemma-300m',
+                },
+            }),
+        );
+
+        renderPage();
+
+        expect(await screen.findByText('EmbeddingGemma models have a recommended input format.')).toBeInTheDocument();
+        const useFormatButton = screen.getByRole('button', { name: 'Use recommended format' });
+        await waitFor(() => expect(useFormatButton).toBeEnabled());
+        await user.click(useFormatButton);
+
+        expect(screen.getByLabelText('Query template')).toHaveValue('task: search result | query: {query}');
+        expect(screen.getByLabelText('Document template')).toHaveValue('title: {title} | text: {content}');
+        expect(screen.queryByRole('button', { name: 'Use recommended format' })).not.toBeInTheDocument();
+        expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
+    });
+
+    it('points to the model card when no preset matches the model', async () => {
+        const user = userEvent.setup();
+        vi.mocked(searchAdminApi.fetchSearchAdminStatus).mockResolvedValue(
+            createStatus({
+                config: { ...defaultConfig, baseUrl: 'http://127.0.0.1:1234/v1', model: 'bge-m3' },
+            }),
+        );
+
+        renderPage();
+
+        expect(await screen.findByText(/No preset matches this model\. Check its model card/)).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Use recommended format' })).not.toBeInTheDocument();
+
+        const queryTemplate = screen.getByLabelText('Query template');
+        await waitFor(() => expect(queryTemplate).toBeEnabled());
+        await user.clear(queryTemplate);
+        await user.type(queryTemplate, 'Represent this query: {{query}');
+
+        expect(screen.queryByText(/No preset matches this model/)).not.toBeInTheDocument();
     });
 });

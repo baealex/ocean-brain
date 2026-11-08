@@ -2,12 +2,14 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { fetchMcpAdminStatus } from '~/apis/mcp-admin.api';
 import * as Icon from '~/components/icon';
-import { PageLayout } from '~/components/shared';
+import { Badge, PageLayout } from '~/components/shared';
 import { Text } from '~/components/ui';
 import { WorkspaceSettingsLink } from '~/components/workspace/WorkspaceSettingsLink';
 import { formatVersionLabel, OCEAN_BRAIN_RELEASES_URL } from '~/modules/app-version';
+import { IS_LOCAL_ONLY_DEMO_MODE } from '~/modules/demo-mode';
 import { queryKeys } from '~/modules/query-key-factory';
 import {
+    SETTINGS_IMPORT_ROUTE,
     SETTINGS_INTEGRATIONS_ROUTE,
     SETTINGS_MANAGE_IMAGE_ROUTE,
     SETTINGS_NAVIGATION_ROUTE,
@@ -162,6 +164,27 @@ const Setting = () => {
                             <Icon.ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-fg-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-fg-secondary" />
                         </Link>
                         {!multiple && <WorkspaceSettingsLink kind="trash" />}
+                        {!IS_LOCAL_ONLY_DEMO_MODE && (
+                            <Link to={SETTINGS_IMPORT_ROUTE} search={workspaceSearch} className={itemClassName}>
+                                <div className="flex min-w-0 items-start gap-3">
+                                    <span className={leadingClassName}>
+                                        <Icon.Upload className={iconClassName} />
+                                    </span>
+                                    <div className={contentClassName}>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <Text as="div" variant="body" weight="medium">
+                                                Import Markdown
+                                            </Text>
+                                            <Badge name="Beta" />
+                                        </div>
+                                        <Text as="div" variant="meta" tone="secondary">
+                                            Upload Obsidian, Notion or Markdown notes.
+                                        </Text>
+                                    </div>
+                                </div>
+                                <Icon.ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-fg-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-fg-secondary" />
+                            </Link>
+                        )}
                     </div>
                 </section>
 

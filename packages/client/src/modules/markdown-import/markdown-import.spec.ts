@@ -388,4 +388,26 @@ describe('Markdown import preprocessing', () => {
 
         expect(renderImportMarkdown(plan.notes[0], { 'b.md': '300' }, {})).toBe('[[Old]](note:300)');
     });
+    it('keeps an already escaped pipe in a table image description inside its cell', () => {
+        const plan = analyzeImport([
+            { path: 'A.md', text: '| Item | Preview |\n| --- | --- |\n| First | ![a \\| b](photo.png) |' },
+            { path: 'photo.png', bytes: png },
+        ]);
+
+        expect(plan.notes[0].markdown).toContain('| First | a \\| b |');
+    });
+    it('removes supported HTML tags that only form after an inner tag is removed', () => {
+        const plan = analyzeImport([{ path: 'A.md', text: 'Before <di<b>v>Middle</div> after' }]);
+
+        expect(plan.notes[0].markdown).not.toMatch(/(?:<|&lt;)\/?(?:b|div)>/);
+        expect(plan.notes[0].markdown).toContain('Middle');
+        expect(plan.issues).toEqual([]);
+    });
+    it('reads a frontmatter list with many backslashes without runaway backtracking', () => {
+        const started = performance.now();
+        const plan = analyzeImport([{ path: 'A.md', text: `---\naliases: ["${'\\!'.repeat(28)}]\n---\nBody` }]);
+
+        expect(performance.now() - started).toBeLessThan(1000);
+        expect(plan.notes[0].markdown).toBe('Body');
+    });
 });

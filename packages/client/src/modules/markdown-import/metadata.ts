@@ -46,7 +46,7 @@ export function parseFrontmatter(text: string) {
         if (!raw && following.every((item) => /^\s*-\s/.test(item))) {
             properties[key] = following.map((item) => unquote(item.replace(/^\s*-\s*/, '').trim())).filter(Boolean);
         } else if (/^\[.*\]$/.test(raw)) {
-            properties[key] = (raw.slice(1, -1).match(/(?:"(?:\\.|[^"])*"|'(?:''|[^'])*'|[^,])+/g) ?? [])
+            properties[key] = (raw.slice(1, -1).match(/(?:"(?:\\.|[^"\\])*"|'(?:''|[^'])*'|[^,])+/g) ?? [])
                 .map((item) => unquote(item.trim()))
                 .filter(Boolean);
         } else {

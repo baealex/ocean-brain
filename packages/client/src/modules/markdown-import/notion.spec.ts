@@ -83,3 +83,11 @@ it('interprets English calendar dates without a timezone-dependent day shift', (
     expect(parseImportDate('October 26, 2026')).toBe('2026-10-26T00:00:00.000Z');
     expect(parseImportDate('2025-02-31')).toBeUndefined();
 });
+
+it('keeps backslashes, pipes and brackets inside their CSV table cells', () => {
+    const plan = analyzeImport([
+        { path: `Paths ${id}_all.csv`, text: 'Name,Location\n[Draft] notes,"C:\\temp|logs"\n' },
+    ]);
+
+    expect(plan.notes[0].markdown).toContain('| \\[Draft\\] notes | C:\\\\temp\\|logs |');
+});

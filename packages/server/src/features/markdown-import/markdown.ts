@@ -22,7 +22,7 @@ export async function importMarkdownToBlocksJson(
             inlineTicks
                 ? text
                 : text.replace(
-                      /!\[(?:\\.|[^\]\n])*\]\(([^\s)]+)(?: "ocean-import-width:(\d+)")?\)/g,
+                      /!\[(?:\\.|[^\\\]\n])*\]\(([^\s)]+)(?: "ocean-import-width:(\d+)")?\)/g,
                       (raw, url: string, width: string | undefined) => {
                           const sizes = imageWidths.get(url) ?? [];
                           sizes.push(width ? Number(width) : undefined);
@@ -70,7 +70,7 @@ export async function importMarkdownToBlocksJson(
                 return line;
             const images = imageHints(line);
             return images.replace(
-                /`+[^`]*`+|\[\[((?:\\.|[^\]])*)\]\]\(note:([1-9]\d*)\)/g,
+                /`+[^`]*`+|\[\[((?:\\.|[^\\\]])*)\]\]\(note:([1-9]\d*)\)/g,
                 (raw, label: string | undefined, id: string | undefined) => {
                     if (!id || label === undefined) return raw;
                     if (!references.has(id)) return raw;

@@ -39,6 +39,19 @@ const COMMENT = /%%([\s\S]*?)%%|<!--([\s\S]*?)-->/g;
 const escapeLabel = (text: string) => text.replace(/[|[\]\\]/g, '\\$&').replace(/\n/g, ' ');
 const noteUrl = (path: string) => `ocean-import-note:${encodeURIComponent(path)}`;
 const assetUrl = (path: string) => `ocean-import-asset:${encodeURIComponent(path)}`;
+/** Repeat a removal until the text stops changing, so removed pieces cannot join into new markup. */
+const replaceUntilStable = (
+    text: string,
+    pattern: RegExp,
+    replacer: (match: string, ...groups: (string | undefined)[]) => string,
+) => {
+    let previous: string;
+    do {
+        previous = text;
+        text = text.replace(pattern, replacer);
+    } while (text !== previous);
+    return text;
+};
 
 /** Keep code completely opaque to import syntax rules, including comments and tags. */
 export function protectCode(text: string) {
@@ -302,7 +315,7 @@ function relocateTableImages(text: string, moved: () => void) {
         const retain = (raw: string, label: string, target: string) => {
             images.push(raw);
             moved();
-            return (label || basename(decodePath(target.split('#')[0]))).replace(/\|/g, '\\|');
+            return (label || basename(decodePath(target.split('#')[0]))).replace(/\\?\|/g, '\\|');
         };
         const wiki = table.replace(/!\[\[([^\]\n]+)\]\]/g, (raw, inner: string) => {
             const [target, alias] = inner.replace(/\\\|/g, '|').split('|');
@@ -435,7 +448,7 @@ function transformComments(
     code: ReturnType<typeof protectCode>,
     { report, count }: TransformDiagnostics,
 ) {
-    text = text.replace(COMMENT, (_, obsidianComment: string | undefined, htmlComment: string | undefined) => {
+    text = replaceUntilStable(text, COMMENT, (_, obsidianComment, htmlComment) => {
         const comment = obsidianComment ?? htmlComment ?? '';
         if ((comments.get(commentKey(code.restore(comment))) ?? 0) >= COMMENT_REPEAT_NOTES) {
             report('repeated-comment', code.restore(comment), `same comment in at least ${COMMENT_REPEAT_NOTES} notes`);
@@ -501,7 +514,7 @@ function transformHtml(text: string, { report, count }: TransformDiagnostics) {
     );
     text = text.replace(/<a\b[^>]*\bhref=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, (_, url: string, label: string) => {
         count('html-link');
-        return `[${label.replace(/<[^>]*>/g, '')}](${url})`;
+        return `[${replaceUntilStable(label, /<[^>]*>/g, () => '')}](${url})`;
     });
     text = text.replace(/<img\b[^>]*>/gi, (tag) => {
         const src = /\bsrc=["']([^"']+)["']/i.exec(tag)?.[1];
@@ -513,7 +526,8 @@ function transformHtml(text: string, { report, count }: TransformDiagnostics) {
         count('html-image');
         return `![${escapeLabel(alt)}](${src})`;
     });
-    text = text.replace(
+    text = replaceUntilStable(
+        text,
         /<\/?(?:address|article|aside|b|blockquote|br|button|caption|center|code|dd|del|details|div|dl|dt|em|figcaption|figure|font|h[1-6]|hr|i|kbd|li|mark|ol|p|pre|rect|s|section|small|span|strong|sub|summary|sup|svg|table|tbody|td|th|thead|tr|u|ul)\b[^>]*>/gi,
         (tag) => {
             count('html');

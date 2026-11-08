@@ -86,3 +86,24 @@ test('multiline inline code never becomes an active imported reference', async (
     assert.doesNotMatch(content, /OBIMPORT/);
     assert.match(await blocksToMarkdown(content), /Example/);
 });
+
+test('backslash-heavy image and reference text is processed without runaway backtracking', async () => {
+    const started = performance.now();
+    const content = await importMarkdownToBlocksJson(
+        `![${'\\\\'.repeat(26)}\n\n[[${'\\\\'.repeat(30)}`,
+        new Map([['10', { id: '10', title: 'Target' }]]),
+    );
+
+    assert.ok(performance.now() - started < 2000);
+    assert.doesNotMatch(content, /OBIMPORT/);
+});
+
+test('escaped brackets and backslashes stay inside an imported reference label', async () => {
+    const content = await importMarkdownToBlocksJson(
+        '[[Draft \\[v2\\] C:\\\\temp]](note:10)',
+        new Map([['10', { id: '10', title: 'Target' }]]),
+    );
+
+    assert.match(content, /"type":"reference"/);
+    assert.match(await blocksToMarkdown(content), /Draft \[v2\] C:\\temp \(\[\[Target\]\]\(note:10\)\)/);
+});

@@ -36,7 +36,7 @@ export function parseCsv(source: string): string[][] {
 }
 
 const notionId = (path: string) => / ([a-f\d]{32})(?:_all)?\.(?:md|csv)$/i.exec(path)?.[1].toLowerCase();
-const cellText = (value: string) => value.replace(/\|/g, '\\|').replace(/\n/g, ' / ');
+const cellText = (value: string) => value.replace(/[\\|[\]]/g, '\\$&').replace(/\n/g, ' / ');
 
 export function prepareNotion(
     files: ImportFile[],

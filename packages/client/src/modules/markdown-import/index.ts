@@ -249,8 +249,8 @@ function prepareNotes(files: ImportFile[], issues: ImportIssue[], syntax: Record
                 for (const key of keys) {
                     const raw = asList(properties[key])[0];
                     if (!raw) continue;
-                    const parsed = parseImportDate(raw);
-                    if (parsed) return parsed;
+                    const value = parseImportDate(raw);
+                    if (value) return { key, value };
                     issues.push({
                         kind: 'invalid-date',
                         path: file.path,
@@ -260,8 +260,10 @@ function prepareNotes(files: ImportFile[], issues: ImportIssue[], syntax: Record
                 }
                 return undefined;
             };
-            const createdAt = date(['created', 'created_at', 'date']);
-            const updatedAt = date(['updated', 'updated_at']);
+            const created = date(['created', 'created_at', 'date']);
+            const updated = date(['updated', 'updated_at']);
+            // Only the field that became the note timestamp leaves the properties.
+            const timestampKeys = new Set([created?.key, updated?.key]);
             const userProperties = Object.fromEntries(
                 Object.entries(properties).filter(([key, value]) => {
                     if (['title', 'tags', 'aliases'].includes(key)) {
@@ -278,10 +280,7 @@ function prepareNotes(files: ImportFile[], issues: ImportIssue[], syntax: Record
                         recordSyntax(syntax, 'export-metadata', 'dropped');
                         return false;
                     }
-                    if (
-                        ['created', 'created_at', 'date', 'updated', 'updated_at'].includes(key) &&
-                        parseImportDate(asList(value)[0])
-                    ) {
+                    if (timestampKeys.has(key)) {
                         recordSyntax(syntax, 'dates', 'changed');
                         return false;
                     }
@@ -302,8 +301,8 @@ function prepareNotes(files: ImportFile[], issues: ImportIssue[], syntax: Record
                     .flatMap((tag) => tag.split(/[,\s]+/))
                     .map((tag) => tag.replace(/^[#@]/, '')),
                 properties: userProperties,
-                createdAt,
-                updatedAt,
+                createdAt: created?.value,
+                updatedAt: updated?.value,
                 originalId: asList(properties.note_id)[0],
             };
         });

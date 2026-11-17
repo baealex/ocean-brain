@@ -198,6 +198,19 @@ describe('Markdown import preprocessing', () => {
         expect(renderImportMarkdown(plan.notes[0], { 'B.md': '10' }, {})).toContain('Chosen \\| Extended decision');
     });
 
+    it('keeps date fields that were not used as the original creation or update time', () => {
+        const plan = analyzeImport([
+            {
+                path: 'A.md',
+                text: '---\ncreated: 2024-01-01\ndate: 2023-05-05\nupdated: 2024-02-01\nupdated_at: 2024-03-01\n---\nBody',
+            },
+        ]);
+
+        expect(plan.notes[0].createdAt).toBe('2024-01-01T00:00:00.000Z');
+        expect(plan.notes[0].updatedAt).toBe('2024-02-01T00:00:00.000Z');
+        expect(plan.notes[0].properties).toEqual({ date: '2023-05-05', updated_at: '2024-03-01' });
+    });
+
     it('reports generated edit/copy/download footers instead of importing repeated boilerplate', () => {
         const plan = analyzeImport([
             {

@@ -339,6 +339,7 @@ interface ImportLinkContext extends TransformDiagnostics {
     byOriginalId: Map<string, ImportNote[]>;
     byPath: Map<string, ImportNote>;
     assetPaths: Set<string>;
+    assetReferences: Map<string, Set<ImportNote>>;
     usedFiles: Set<string>;
     links: ImportPlan['links'];
     images: ImportPlan['images'];
@@ -538,8 +539,20 @@ function transformHtml(text: string, { report, count }: TransformDiagnostics) {
 }
 
 function transformImportLinks(text: string, context: ImportLinkContext) {
-    const { note, report, count, resolve, notion, byOriginalId, byPath, assetPaths, usedFiles, links, images } =
-        context;
+    const {
+        note,
+        report,
+        count,
+        resolve,
+        notion,
+        byOriginalId,
+        byPath,
+        assetPaths,
+        assetReferences,
+        usedFiles,
+        links,
+        images,
+    } = context;
     text = relocateTableImages(text, () => count('table-image'));
     const link = (
         target: string,
@@ -613,6 +626,7 @@ function transformImportLinks(text: string, context: ImportLinkContext) {
         if (assetPaths.has(path)) {
             count(image ? 'image' : 'image-link');
             if (image) images.push({ from: note.path, to: path });
+            assetReferences.set(path, (assetReferences.get(path) ?? new Set()).add(note));
             const hint = width ? ` "ocean-import-width:${width}"` : '';
             const assetLabel = label ? markdownLabel : escapeLabel(basename(path));
             const markdown = `${image ? '!' : ''}[${assetLabel}](${assetUrl(path)}${hint})`;
@@ -821,6 +835,7 @@ export function analyzeImport(input: ImportFile[], options: ImportOptions = {}):
         return contentType ? [{ path: file.path, contentType }] : [];
     });
     const assetPaths = new Set(assets.map((asset) => asset.path));
+    const assetReferences = new Map<string, Set<ImportNote>>();
     const links: ImportPlan['links'] = [];
     const images: ImportPlan['images'] = [];
     const usedFiles = new Set([...notes.map((note) => note.path), ...notion.consumed]);
@@ -856,6 +871,7 @@ export function analyzeImport(input: ImportFile[], options: ImportOptions = {}):
             byOriginalId,
             byPath,
             assetPaths,
+            assetReferences,
             usedFiles,
             links,
             images,
@@ -898,12 +914,15 @@ export function analyzeImport(input: ImportFile[], options: ImportOptions = {}):
         });
     const titles = new Map<string, number>();
     for (const note of importedNotes) titles.set(note.title, (titles.get(note.title) ?? 0) + 1);
+    const imported = new Set(importedNotes);
     return {
         files,
         notes: importedNotes,
-        assets: assets.filter(
-            (asset) =>
-                usedFiles.has(asset.path) && importedNotes.some((note) => note.markdown.includes(assetUrl(asset.path))),
+        // Search only the notes that referenced each image, not every note in the import.
+        assets: assets.filter((asset) =>
+            [...(assetReferences.get(asset.path) ?? [])].some(
+                (note) => imported.has(note) && note.markdown.includes(assetUrl(asset.path)),
+            ),
         ),
         issues,
         syntax,

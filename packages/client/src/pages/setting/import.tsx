@@ -292,8 +292,8 @@ function ImportPage() {
             ]),
         );
     const currentChoices = context.data ? selectedChoices(context.data) : {};
-    const extraDuplicates =
-        context.data?.titles.filter((existing) => plan.notes.some((note) => note.title === existing.title)) ?? [];
+    const importTitles = useMemo(() => new Set(plan.notes.map((note) => note.title)), [plan]);
+    const extraDuplicates = context.data?.titles.filter((existing) => importTitles.has(existing.title)) ?? [];
     const newTags = plan.tags.filter((tag) => !context.data?.tags.includes(`@${tag}`));
     const activeWorkspaces = (
         workspace.workspaces.length ? workspace.workspaces : [{ id: target, name: 'Default', archivedAt: null }]

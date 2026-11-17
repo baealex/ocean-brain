@@ -6,6 +6,7 @@ import {
     createNotePropertyDefinition,
     InvalidNotePropertyInputError,
     type NotePropertySetInput,
+    PROPERTY_PATCH_SET_LIMIT,
     setNotePropertyValues,
     validateNotePropertiesPatchValues,
 } from '~/features/note/services/properties.js';
@@ -302,6 +303,15 @@ export function createMarkdownImportService() {
                     const accepted: NotePropertySetInput[] = [];
                     const dropped: typeof droppedProperties = [];
                     for (const property of properties) {
+                        if (accepted.some((input) => input.key === property.input.key)) {
+                            dropped.push({
+                                path: note.path,
+                                property: property.source,
+                                value: property.value,
+                                message: 'Another field in this note already filled this property.',
+                            });
+                            continue;
+                        }
                         try {
                             await validateNotePropertiesPatchValues({ set: [property.input] });
                             accepted.push(property.input);
@@ -329,7 +339,11 @@ export function createMarkdownImportService() {
                                 updatedAt: note.updatedAt ?? current.updatedAt,
                             },
                         });
-                        if (accepted.length) await setNotePropertyValues(tx, note.id, { set: accepted });
+                        // One property update accepts a limited number of values; a note may map more fields.
+                        for (let start = 0; start < accepted.length; start += PROPERTY_PATCH_SET_LIMIT)
+                            await setNotePropertyValues(tx, note.id, {
+                                set: accepted.slice(start, start + PROPERTY_PATCH_SET_LIMIT),
+                            });
                         await replaceNoteReferences(tx, note.id, content);
                     });
                     note.saved = true;

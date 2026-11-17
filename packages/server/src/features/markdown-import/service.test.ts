@@ -187,6 +187,56 @@ test('a property value that does not fit its destination is reported without blo
     );
 });
 
+test('a second field mapped to the same property is reported while the note is saved', async () => {
+    await createNotePropertyDefinition({ workspaceId: 1, key: 'status', name: 'Status', valueType: 'text' });
+    const service = createMarkdownImportService();
+    const session = await service.start({
+        workspaceId: '1',
+        mappings: [
+            { source: 'Status', mode: 'existing', key: 'status' },
+            { source: 'state', mode: 'existing', key: 'status' },
+        ],
+    });
+    const created = await service.create({ token: session.token, notes: [{ path: 'a.md', title: 'A' }] });
+
+    const result = await service.save({
+        token: session.token,
+        notes: [{ path: 'a.md', markdown: 'Body', properties: { Status: 'Done', state: 'Draft' } }],
+    });
+
+    assert.deepEqual(result.saved, ['a.md']);
+    assert.deepEqual(
+        result.droppedProperties.map(({ property, value }) => ({ property, value })),
+        [{ property: 'state', value: 'Draft' }],
+    );
+    const properties = await models.noteProperty.findMany({ where: { noteId: Number(created.notes[0].id) } });
+    assert.deepEqual(
+        properties.map((property) => property.textValue),
+        ['Done'],
+    );
+});
+
+test('a note with more properties than one property update allows is saved with all of them', async () => {
+    const names = Array.from({ length: 60 }, (_, index) => `Field ${index}`);
+    const service = createMarkdownImportService();
+    const session = await service.start({
+        workspaceId: '1',
+        mappings: names.map((source) => ({ source, mode: 'new', valueType: 'text' })),
+    });
+    const created = await service.create({ token: session.token, notes: [{ path: 'a.md', title: 'A' }] });
+
+    const result = await service.save({
+        token: session.token,
+        notes: [
+            { path: 'a.md', markdown: 'Body', properties: Object.fromEntries(names.map((name) => [name, 'value'])) },
+        ],
+    });
+
+    assert.deepEqual(result.saved, ['a.md']);
+    assert.deepEqual(result.errors, []);
+    assert.equal(await models.noteProperty.count({ where: { noteId: Number(created.notes[0].id) } }), 60);
+});
+
 test('archived workspaces and files outside the import are rejected', async () => {
     const archived = await models.workspace.create({ data: { name: 'Archive', archivedAt: new Date() } });
     const service = createMarkdownImportService();

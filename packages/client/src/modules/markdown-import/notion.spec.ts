@@ -72,6 +72,47 @@ it('does not interpret ordinary Markdown key/value prose as Notion row propertie
     expect(plan.notes[0].markdown).toContain('Purpose: Keep this as prose.');
 });
 
+it('keeps opening key/value prose on Notion pages that are not database rows', () => {
+    const plan = analyzeImport([
+        { path: `Plan ${id}.md`, text: '# Plan\n\nTODO: buy milk\nhttps://example.com\n\nRest' },
+    ]);
+
+    expect(plan.notes[0].properties).toEqual({});
+    expect(plan.notes[0].markdown).toBe('TODO: buy milk\nhttps://example.com\n\nRest');
+});
+
+it('takes only database columns from a row page and keeps the following body text', () => {
+    const page = `Tasks/Decision ${rowId}.md`;
+    const plan = analyzeImport([
+        { path: `Tasks ${id}_all.csv`, text: 'Name,Status\nDecision,Done\n' },
+        { path: page, text: '# Decision\n\nStatus: Done\nNote: call Ada first' },
+    ]);
+
+    const row = plan.notes.find((note) => note.path === page);
+    expect(row?.properties).toEqual({ Name: 'Decision', Status: 'Done' });
+    expect(row?.markdown).toBe('Note: call Ada first');
+});
+
+it('matches row pages in a database folder named with the full Notion ID', () => {
+    const page = `Habits ${id}/@December 4, 2024 ${rowId}.md`;
+    const plan = analyzeImport([
+        {
+            path: `Habits ${id}_all.csv`,
+            text: '\uFEFFDate,Ran today,Full date\n"@December 4, 2024 ",No,"December 4, 2024 8:45 AM"\n',
+        },
+        { path: page, text: '# @December 4, 2024\n\nRan today: No\nFull date: December 4, 2024 8:45 AM' },
+    ]);
+
+    const row = plan.notes.find((note) => note.path === page);
+    expect(row?.properties).toEqual({
+        Date: '@December 4, 2024',
+        'Ran today': 'No',
+        'Full date': 'December 4, 2024 8:45 AM',
+    });
+    expect(row?.markdown).toBe('');
+    expect(plan.issues.some((issue) => issue.kind === 'csv-row-unmatched')).toBe(false);
+});
+
 it('parses BOM, commas, quotes and multiline CSV values', () => {
     expect(parseCsv('\uFEFFName,Text\r\nA,"say ""yes"",\nand continue"\r\n')).toEqual([
         ['Name', 'Text'],

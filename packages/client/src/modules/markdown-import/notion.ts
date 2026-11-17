@@ -37,6 +37,13 @@ export function parseCsv(source: string): string[][] {
 
 const notionId = (path: string) => / ([a-f\d]{32})(?:_all)?\.(?:md|csv)$/i.exec(path)?.[1].toLowerCase();
 const cellText = (value: string) => value.replace(/[\\|[\]]/g, '\\$&').replace(/\n/g, ' / ');
+/** Notion exports a database's row pages into a folder named after the database, beside its CSV. */
+const databaseRowFolders = (csvPath: string, id: string) => {
+    const name = basename(csvPath).replace(/ [a-f\d]{32}(?:_all)?\.csv$/i, '');
+    return [name, `${name} ${id}`, `${name} ${id.slice(0, 4)}-${id.slice(-4)}`].map((folder) =>
+        `${dirname(csvPath)}/${folder}`.replace(/^\//, ''),
+    );
+};
 
 export function prepareNotion(
     files: ImportFile[],
@@ -46,20 +53,38 @@ export function prepareNotion(
 ) {
     const csvTargets = new Map<string, string>();
     const consumed = new Set<string>();
+    // Only database row pages carry exported properties, and only under that database's column names.
+    const rowColumns = new Map<string, Set<string>>();
+    for (const file of files) {
+        const id = /\.csv$/i.test(file.path) ? notionId(file.path) : undefined;
+        if (!id || file.text === undefined) continue;
+        let headers: string[];
+        try {
+            headers = parseCsv(file.text)[0] ?? [];
+        } catch {
+            continue; // The database pass below reports unreadable CSV files.
+        }
+        for (const folder of databaseRowFolders(file.path, id)) {
+            const columns = rowColumns.get(folder) ?? new Set<string>();
+            for (const header of headers) if (header.trim()) columns.add(header.trim());
+            rowColumns.set(folder, columns);
+        }
+    }
     for (const note of notes) {
         if (!notionId(note.path)) continue;
-        // Export row metadata is only the initial contiguous key/value block after the H1.
-        const heading = /^\s*# [^\n]+\n\s*\n/.exec(note.markdown);
-        const offset = heading?.[0].length ?? 0;
-        const body = note.markdown.slice(offset);
-        const match = /^(?:[^\n:#<>]+:[ \t]*[^\n]*(?:\n|$))+/.exec(body);
-        if (match && !/^(?:filters|sort):/.test(match[0])) {
-            const lines = match[0].trimEnd().split('\n');
-            for (const line of lines) {
+        const columns = rowColumns.get(dirname(note.path));
+        if (columns) {
+            // Export row metadata is the initial block of `Column: value` lines after the H1.
+            const heading = /^\s*# [^\n]+\n\s*\n/.exec(note.markdown);
+            const offset = heading?.[0].length ?? 0;
+            const lines = note.markdown.slice(offset).split('\n');
+            let metadataLines = 0;
+            for (; metadataLines < lines.length; metadataLines++) {
+                const line = lines[metadataLines];
                 const colon = line.indexOf(':');
                 const key = line.slice(0, colon).trim();
+                if (colon < 1 || !columns.has(key)) break;
                 const value = line.slice(colon + 1).trim();
-                if (/^(filters|sort)$/.test(key)) continue;
                 if (value) note.properties[key] = value;
                 else
                     issues.push({
@@ -70,9 +95,9 @@ export function prepareNotion(
                     });
                 recordSyntax(syntax, 'notion-row-property', 'changed');
             }
-            // Do not eat view settings with the row metadata matcher.
-            if (!lines.some((line) => /^(?:filters|sort):/.test(line)))
-                note.markdown = note.markdown.slice(0, offset) + body.slice(match[0].length).replace(/^\n/, '');
+            if (metadataLines)
+                note.markdown =
+                    note.markdown.slice(0, offset) + lines.slice(metadataLines).join('\n').replace(/^\n/, '');
         }
         note.markdown = note.markdown.replace(
             /^(?:filters|sort):[^\n]*(?:\n(?!\n|(?:filters|sort):)[^\n]+)*/gm,
@@ -103,10 +128,7 @@ export function prepareNotion(
             continue;
         }
         const [headers, ...values] = rows;
-        const folders = [
-            `${dirname(file.path)}/${name}`,
-            `${dirname(file.path)}/${name} ${id.slice(0, 4)}-${id.slice(-4)}`,
-        ].map((folder) => folder.replace(/^\//, ''));
+        const folders = databaseRowFolders(file.path, id);
         const candidates = notes.filter((note) => folders.includes(dirname(note.path)));
         const usedRows = new Set<string>();
         const table: string[] = [

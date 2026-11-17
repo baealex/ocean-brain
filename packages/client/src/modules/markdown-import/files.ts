@@ -33,14 +33,29 @@ export async function readImportFiles(selected: File[]): Promise<ImportFile[]> {
             throw new Error(`Cannot read UTF-8 text: ${path}. Save this file as UTF-8 and select it again.`);
         }
     };
+    const readZip = async (data: ArrayBuffer | Uint8Array, folder: string, openParts: boolean) => {
+        const zip = await JSZip.loadAsync(data);
+        const entries = Object.values(zip.files)
+            .filter((entry) => !entry.dir)
+            .map((entry) => ({
+                entry,
+                path: `${folder}${(entry as typeof entry & { unsafeOriginalName?: string }).unsafeOriginalName ?? entry.name}`,
+            }));
+        const isPart = (path: string) => /\.zip$/i.test(path) && !hidden(path);
+        // Notion's download holds only `Export-…-Part-N.zip` archives; zips stored beside notes stay attachments.
+        const parts =
+            openParts &&
+            entries.some(({ path }) => isPart(path)) &&
+            entries.every(({ path }) => isPart(path) || hidden(path));
+        for (const { entry, path } of entries) {
+            if (parts && isPart(path))
+                await readZip(await entry.async('uint8array'), path.slice(0, path.lastIndexOf('/') + 1), false);
+            else await add(path, () => entry.async('uint8array'));
+        }
+    };
     if (selected.length === 1 && /\.zip$/i.test(selected[0].name)) {
         if (selected[0].size > MAX_TOTAL_BYTES) throw new Error('Choose a zip smaller than 512 MB.');
-        const zip = await JSZip.loadAsync(await selected[0].arrayBuffer());
-        for (const entry of Object.values(zip.files)) {
-            if (entry.dir) continue;
-            const original = (entry as typeof entry & { unsafeOriginalName?: string }).unsafeOriginalName ?? entry.name;
-            await add(original, () => entry.async('uint8array'));
-        }
+        await readZip(await selected[0].arrayBuffer(), '', true);
     } else {
         if (selected.reduce((sum, file) => sum + file.size, 0) > MAX_TOTAL_BYTES)
             throw new Error('Choose files smaller than 512 MB in total.');

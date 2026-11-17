@@ -47,6 +47,45 @@ it('decodes mixed UTF-8 zip names with JSZip', async () => {
     expect(files[0].text).toBe('# 한글');
 });
 
+const zipFile = async (entries: Array<[string, string | Uint8Array]>, name = 'notes.zip') => {
+    const zip = new JSZip();
+    for (const [path, content] of entries) zip.file(path, content);
+    const bytes = await zip.generateAsync({ type: 'uint8array' });
+    const file = new File([bytes], name);
+    Object.defineProperty(file, 'arrayBuffer', { value: async () => bytes.buffer });
+    return { file, bytes };
+};
+
+it('opens the export parts inside a zip that wraps only zip files, as Notion downloads do', async () => {
+    const id = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    const part1 = await zipFile([[`Home ${id}.md`, `# Home\n\n[Plan](Home%20${id}/Plan%20${id}.md)`]]);
+    const part2 = await zipFile([[`Home ${id}/Plan ${id}.md`, '# Plan\n\nBody']]);
+    const { file } = await zipFile(
+        [
+            ['Export-1234-Part-1.zip', part1.bytes],
+            ['Export-1234-Part-2.zip', part2.bytes],
+        ],
+        'Export-1234.zip',
+    );
+
+    const plan = analyzeImport(await readImportFiles([file]));
+
+    expect(plan.notes.map((note) => note.title)).toEqual(['Home', 'Plan']);
+    expect(plan.links).toHaveLength(1);
+});
+
+it('keeps a zip stored next to notes as an attachment instead of opening it', async () => {
+    const attachment = await zipFile([['Inside.md', 'Not part of the vault']]);
+    const { file } = await zipFile([
+        ['Start.md', 'Body'],
+        ['attachments/archive.zip', attachment.bytes],
+    ]);
+
+    const files = await readImportFiles([file]);
+
+    expect(files.map((item) => item.path)).toEqual(['Start.md', 'attachments/archive.zip']);
+});
+
 it('uses UTF-8 byte sizes when splitting batches', () => {
     const items = [{ text: '가'.repeat(20) }, { text: '나'.repeat(20) }];
 

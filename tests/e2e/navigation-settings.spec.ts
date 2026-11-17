@@ -132,6 +132,12 @@ test('menu layout persists mixed order and visibility, shares app pins and reset
     await expect(navigation.getByRole('link').first()).toHaveText('Inbox');
 
     await page.setViewportSize({ width: 390, height: 844 });
+    // The page receives the resize event after setViewportSize resolves. The keyboard sensor cancels an active
+    // drag on resize, so let the event land before starting the keyboard reorder below.
+    await page.waitForFunction(() => window.innerWidth === 390);
+    await page.evaluate(
+        () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(undefined)))),
+    );
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
     // Saving disables drag handles until cache refresh and editor remount have finished.
     await expect(inboxHandle).toBeEnabled();

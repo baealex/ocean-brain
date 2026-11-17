@@ -1,12 +1,14 @@
-import { getRouteApi } from '@tanstack/react-router';
+import { getRouteApi, Link } from '@tanstack/react-router';
 import { QueryBoundary } from '~/components/app';
 import Notes from '~/components/entities/Notes';
+import * as Icon from '~/components/icon';
 import NoteListCard from '~/components/note/NoteListCard';
-import { Empty, FallbackRender, NoteFilters, PageLayout, Pagination, Skeleton } from '~/components/shared';
+import { Button, Empty, FallbackRender, NoteFilters, PageLayout, Pagination, Skeleton } from '~/components/shared';
 import useNoteMutate from '~/hooks/resource/useNoteMutate';
 import { useWorkspaceScope } from '~/hooks/useWorkspaceScope';
+import { IS_LOCAL_ONLY_DEMO_MODE } from '~/modules/demo-mode';
 import type { HomeRouteSearch } from '~/modules/route-search';
-import { HOME_ROUTE } from '~/modules/url';
+import { HOME_ROUTE, SETTINGS_IMPORT_ROUTE } from '~/modules/url';
 
 const Route = getRouteApi(HOME_ROUTE);
 
@@ -92,10 +94,22 @@ export default function Home() {
                         render={({ notes, totalCount }) => (
                             <FallbackRender
                                 fallback={
-                                    <Empty
-                                        title="Ocean is calm"
-                                        description="Capture anything and make waves in the ocean!"
-                                    />
+                                    <div>
+                                        <Empty
+                                            title="Ocean is calm"
+                                            description="Capture anything and make waves in the ocean!"
+                                        />
+                                        {!IS_LOCAL_ONLY_DEMO_MODE && (
+                                            <div className="mt-4 flex justify-center">
+                                                <Button asChild variant="subtle">
+                                                    <Link to={SETTINGS_IMPORT_ROUTE}>
+                                                        <Icon.Upload className="h-4 w-4" />
+                                                        Import Markdown
+                                                    </Link>
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
                                 }
                             >
                                 {notes.length > 0 && (

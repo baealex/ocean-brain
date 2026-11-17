@@ -41,6 +41,7 @@ const normalizePlaceholderFields = (fields?: FetchPlaceholdersParams['fields']) 
 };
 
 export const queryKeys = {
+    markdownImport: { context: (workspaceId: string) => ['markdown-import', 'context', { workspaceId }] as const },
     workspaces: {
         all: () => ['workspaces'] as const,
         list: () => ['workspaces', 'list'] as const,

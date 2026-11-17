@@ -25,6 +25,8 @@ The demo keeps workspace edits in your browser. It does not include server-backe
 
 Notes can be copied as Markdown or downloaded as Markdown or HTML. Local image assets can be bundled with an export when the document needs to stand on its own.
 
+Notes from Markdown folders, Obsidian vaults, and Notion exports can be brought in through **Settings → Import Markdown** (beta).
+
 ## Quick start
 
 These commands enable password mode and bind Ocean Brain to your own machine. Choose a strong password; each example generates a session secret for the current run.

@@ -33,6 +33,7 @@ import {
     NOTE_ROUTE,
     REMINDERS_ROUTE,
     SEARCH_ROUTE,
+    SETTINGS_IMPORT_ROUTE,
     SETTINGS_INTEGRATION_CONNECT_ROUTE,
     SETTINGS_INTEGRATION_DETAIL_ROUTE,
     SETTINGS_INTEGRATIONS_ROUTE,
@@ -210,6 +211,12 @@ const navigationSettingsRoute = createRoute({
     path: SETTINGS_NAVIGATION_ROUTE,
     component: lazyRouteComponent(() => import('~/pages/setting/navigation')),
 });
+
+const markdownImportRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: SETTINGS_IMPORT_ROUTE,
+    component: lazyRouteComponent(() => import('~/pages/setting/import')),
+});
 const integrationRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: INTEGRATION_ROUTE,
@@ -311,6 +318,7 @@ const routeTree = rootRoute.addChildren([
     tagNotesRoute,
     viewNotesRoute,
     settingsRoute,
+    markdownImportRoute,
     navigationSettingsRoute,
     searchSettingsRoute,
     mcpRoute,

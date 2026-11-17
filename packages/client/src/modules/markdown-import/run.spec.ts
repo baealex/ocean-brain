@@ -20,6 +20,7 @@ beforeEach(() => {
     vi.mocked(api.saveImportNotes).mockImplementation(async (_token, notes) => ({
         saved: notes.map((note) => note.path),
         errors: [],
+        droppedProperties: [],
     }));
 });
 afterEach(() => vi.useRealTimers());
@@ -52,6 +53,26 @@ it('continues saving other notes when a rendered request exceeds the per-note li
             .mock.calls.flatMap(([, notes]) => notes)
             .map((note) => note.path),
     ).toContain('Small.md');
+});
+
+it('reports property values the server could not store while counting the note as saved', async () => {
+    vi.mocked(api.saveImportNotes).mockImplementation(async (_token, notes) => ({
+        saved: notes.map((note) => note.path),
+        errors: [],
+        droppedProperties: [
+            { path: 'A.md', property: 'Status', value: 'draft', message: 'Property option draft is not defined.' },
+        ],
+    }));
+
+    const result = await execute(analyzeImport([{ path: 'A.md', text: 'Body' }]));
+
+    expect(result.saved).toBe(1);
+    expect(result.issues).toContainEqual({
+        kind: 'property-value-dropped',
+        path: 'A.md',
+        value: 'Status: draft',
+        reason: 'Property option draft is not defined.',
+    });
 });
 
 it.each(['start', 'create', 'save', 'image'] as const)('retries a 429 during %s after Retry-After', async (stage) => {

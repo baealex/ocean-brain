@@ -202,6 +202,13 @@ export async function runMarkdownImport({
             for (const path of response.saved) savedPaths.add(path);
             for (const error of response.errors) failedSaves.add(error.path);
             addErrors('note-save-failed', response.errors);
+            for (const dropped of response.droppedProperties)
+                result.issues.push({
+                    kind: 'property-value-dropped',
+                    path: dropped.path,
+                    value: `${dropped.property}: ${dropped.value}`,
+                    reason: dropped.message,
+                });
             processed += notes.length;
             onProgress('Saving contents and backlinks', processed, bodies.length);
             checkpoint();

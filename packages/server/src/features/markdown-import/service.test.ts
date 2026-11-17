@@ -141,23 +141,50 @@ test('trash all affects only notes created by this import', async () => {
     assert.equal(await models.deletedNote.count(), 2);
 });
 
-test('invalid property values leave the created note recoverable and report its file', async () => {
+test('a property value that does not fit its destination is reported without blocking the note content', async () => {
+    await createNotePropertyDefinition({
+        workspaceId: 1,
+        key: 'status',
+        name: 'Status',
+        valueType: 'select',
+        options: [{ value: 'done', label: 'Done' }],
+    });
     const service = createMarkdownImportService();
     const session = await service.start({
         workspaceId: '1',
-        mappings: [{ source: 'Score', mode: 'new', valueType: 'number' }],
+        mappings: [
+            { source: 'Score', mode: 'new', valueType: 'number' },
+            { source: 'Status', mode: 'existing', key: 'status' },
+            { source: 'Rating', mode: 'new', valueType: 'number' },
+        ],
     });
-    await service.create({ token: session.token, notes: [{ path: 'a.md', title: 'A' }] });
+    const created = await service.create({ token: session.token, notes: [{ path: 'a.md', title: 'A' }] });
 
     const result = await service.save({
         token: session.token,
-        notes: [{ path: 'a.md', markdown: 'Body', properties: { Score: 'invalid' } }],
+        notes: [{ path: 'a.md', markdown: 'Body', properties: { Score: '42', Status: 'draft', Rating: 'high' } }],
     });
 
-    assert.equal(result.saved.length, 0);
-    assert.equal(result.errors[0].path, 'a.md');
-    assert.match(result.errors[0].message, /finite/);
-    assert.equal((await models.note.findFirstOrThrow()).content, '[]');
+    assert.deepEqual(result.saved, ['a.md']);
+    assert.deepEqual(result.errors, []);
+    assert.deepEqual(
+        result.droppedProperties.map(({ path, property, value }) => ({ path, property, value })),
+        [
+            { path: 'a.md', property: 'Status', value: 'draft' },
+            { path: 'a.md', property: 'Rating', value: 'high' },
+        ],
+    );
+    assert.match(result.droppedProperties[0].message, /option/);
+    assert.match(result.droppedProperties[1].message, /finite/);
+    const note = await models.note.findUniqueOrThrow({
+        where: { id: Number(created.notes[0].id) },
+        include: { properties: { include: { definition: true } } },
+    });
+    assert.match(await blocksToMarkdown(note.content), /Body/);
+    assert.deepEqual(
+        note.properties.map((property) => [property.definition.name, property.numberValue]),
+        [['Score', 42]],
+    );
 });
 
 test('archived workspaces and files outside the import are rejected', async () => {

@@ -78,6 +78,10 @@ const descriptions: Record<string, [string, string]> = {
         'Note creation failures',
         'These files did not become notes; other files may have succeeded.',
     ],
+    'property-value-dropped': [
+        'Property values not imported',
+        'These values do not fit the chosen property type or options; the rest of each note was imported.',
+    ],
     'note-save-failed': [
         'Content save failures',
         'These created notes could not receive their content; trash-all remains available.',

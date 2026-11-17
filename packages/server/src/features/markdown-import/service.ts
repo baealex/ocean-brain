@@ -4,6 +4,7 @@ import { createNoteWithContent } from '~/features/note/services/create.js';
 import { replaceNoteReferences } from '~/features/note/services/note-reference-index.js';
 import {
     createNotePropertyDefinition,
+    InvalidNotePropertyInputError,
     type NotePropertySetInput,
     setNotePropertyValues,
     validateNotePropertiesPatchValues,
@@ -266,10 +267,15 @@ export function createMarkdownImportService() {
             if (typeof raw.markdown !== 'string' || raw.markdown.length > 700_000)
                 return invalid('Invalid Markdown body.');
             const rawProperties = raw.properties === undefined ? {} : record(raw.properties);
-            const properties: NotePropertySetInput[] = Object.entries(rawProperties).map(([source, value]) => {
+            const properties = Object.entries(rawProperties).map(([source, value]) => {
                 const mapping = session.mappings.find((item) => item.source === source);
                 if (!mapping || typeof value !== 'string') return invalid('Unknown or invalid mapped property.');
-                return { key: mapping.key, valueType: mapping.valueType, value: mapping.values?.[value] ?? value };
+                const input: NotePropertySetInput = {
+                    key: mapping.key,
+                    valueType: mapping.valueType,
+                    value: mapping.values?.[value] ?? value,
+                };
+                return { source, value, input };
             });
             return { note, markdown: raw.markdown, properties };
         });
@@ -282,6 +288,7 @@ export function createMarkdownImportService() {
             );
             const saved: string[] = [];
             const errors: Array<{ path: string; message: string }> = [];
+            const droppedProperties: Array<{ path: string; property: string; value: string; message: string }> = [];
             for (const { note, markdown, properties } of notes) {
                 try {
                     const current = await models.note.findUnique({ where: { id: note.id } });
@@ -291,7 +298,23 @@ export function createMarkdownImportService() {
                         saved.push(note.path);
                         continue;
                     }
-                    if (properties.length) await validateNotePropertiesPatchValues({ set: properties });
+                    // A value that does not fit its destination property must not cost the note its content.
+                    const accepted: NotePropertySetInput[] = [];
+                    const dropped: typeof droppedProperties = [];
+                    for (const property of properties) {
+                        try {
+                            await validateNotePropertiesPatchValues({ set: [property.input] });
+                            accepted.push(property.input);
+                        } catch (error) {
+                            if (!(error instanceof InvalidNotePropertyInputError)) throw error;
+                            dropped.push({
+                                path: note.path,
+                                property: property.source,
+                                value: property.value,
+                                message: error.message,
+                            });
+                        }
+                    }
                     const content = await importMarkdownToBlocksJson(markdown, references);
                     const tagIds = extractTagIdsFromContentJson(content).map(Number);
                     await models.$transaction(async (tx) => {
@@ -306,17 +329,18 @@ export function createMarkdownImportService() {
                                 updatedAt: note.updatedAt ?? current.updatedAt,
                             },
                         });
-                        if (properties.length) await setNotePropertyValues(tx, note.id, { set: properties });
+                        if (accepted.length) await setNotePropertyValues(tx, note.id, { set: accepted });
                         await replaceNoteReferences(tx, note.id, content);
                     });
                     note.saved = true;
                     emitNoteChange({ type: 'note.updated', noteId: note.id, workspaceId: session.workspaceId });
                     saved.push(note.path);
+                    droppedProperties.push(...dropped);
                 } catch (error) {
                     errors.push({ path: note.path, message: error instanceof Error ? error.message : String(error) });
                 }
             }
-            return { saved, errors };
+            return { saved, errors, droppedProperties };
         });
     };
     const trash = async (input: unknown) => {

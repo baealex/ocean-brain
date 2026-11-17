@@ -28,6 +28,7 @@ export interface ImportBatchResult {
 export interface ImportSaveResult {
     saved: string[];
     errors: Array<{ path: string; message: string }>;
+    droppedProperties: Array<{ path: string; property: string; value: string; message: string }>;
 }
 export const fetchImportContext = async (workspaceId: string) =>
     (await axios.get<ImportContext>('/api/markdown-import/context', { params: { workspaceId } })).data;

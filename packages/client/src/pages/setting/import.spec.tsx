@@ -70,6 +70,7 @@ beforeEach(() => {
     vi.mocked(api.saveImportNotes).mockImplementation(async (_token, notes) => ({
         saved: notes.map((note) => note.path),
         errors: [],
+        droppedProperties: [],
     }));
     vi.mocked(api.trashImportedNotes).mockResolvedValue({ trashed: 3, errors: [] });
 });
@@ -166,6 +167,7 @@ it('reports save failures and keeps trash-all available for partial imports', as
     vi.mocked(api.saveImportNotes).mockResolvedValue({
         saved: [],
         errors: [{ path: 'A.md', message: 'Property value is invalid' }],
+        droppedProperties: [],
     });
     const user = userEvent.setup();
     renderPage();

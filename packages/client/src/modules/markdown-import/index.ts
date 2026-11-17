@@ -37,6 +37,7 @@ const COMMENT_REPEAT_NOTES = 3;
 const commentKey = (text: string) => text.replace(/\s+/g, ' ').trim();
 const COMMENT = /%%([\s\S]*?)%%|<!--([\s\S]*?)-->/g;
 const escapeLabel = (text: string) => text.replace(/[|[\]\\]/g, '\\$&').replace(/\n/g, ' ');
+const unescapeMarkdown = (text: string) => text.replace(/\\([!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~])/g, '$1');
 const noteUrl = (path: string) => `ocean-import-note:${encodeURIComponent(path)}`;
 const assetUrl = (path: string) => `ocean-import-asset:${encodeURIComponent(path)}`;
 /** Repeat a removal until the text stops changing, so removed pieces cannot join into new markup. */
@@ -540,7 +541,17 @@ function transformImportLinks(text: string, context: ImportLinkContext) {
     const { note, report, count, resolve, notion, byOriginalId, byPath, assetPaths, usedFiles, links, images } =
         context;
     text = relocateTableImages(text, () => count('table-image'));
-    const link = (target: string, label: string, raw: string, image: boolean, relative: boolean, width?: number) => {
+    const link = (
+        target: string,
+        label: string,
+        raw: string,
+        image: boolean,
+        syntax: 'wikilink' | 'markdown',
+        width?: number,
+    ) => {
+        // Markdown link labels are Markdown source, while wikilink aliases are already plain text.
+        const plainLabel = syntax === 'markdown' ? unescapeMarkdown(label) : label;
+        const markdownLabel = syntax === 'markdown' ? label.replace(/\n/g, ' ') : escapeLabel(label);
         const hash = target.indexOf('#');
         const dest = hash < 0 ? target : target.slice(0, hash);
         if (!dest) {
@@ -569,7 +580,7 @@ function transformImportLinks(text: string, context: ImportLinkContext) {
             count(image ? 'external-image' : 'external-link', 'kept');
             return image ? `\n\n${raw}\n\n` : raw;
         }
-        const result = resolve(dest, note.path, relative);
+        const result = resolve(dest, note.path, syntax === 'markdown');
         if (!result.path) {
             report(
                 image ? 'unresolved-image' : 'unresolved-link',
@@ -595,20 +606,22 @@ function transformImportLinks(text: string, context: ImportLinkContext) {
             count('link-anchor', 'dropped');
         }
         if (byPath.has(path)) {
-            links.push({ from: note.path, to: path, label });
+            links.push({ from: note.path, to: path, label: plainLabel });
             count(image ? 'note-embed' : 'note-link');
-            return `[${escapeLabel(label || byPath.get(path)!.title)}](${noteUrl(path)})`;
+            return `[${escapeLabel(plainLabel || byPath.get(path)!.title)}](${noteUrl(path)})`;
         }
         if (assetPaths.has(path)) {
             count(image ? 'image' : 'image-link');
             if (image) images.push({ from: note.path, to: path });
             const hint = width ? ` "ocean-import-width:${width}"` : '';
-            const markdown = `${image ? '!' : ''}[${escapeLabel(label || basename(path))}](${assetUrl(path)}${hint})`;
+            const assetLabel = label ? markdownLabel : escapeLabel(basename(path));
+            const markdown = `${image ? '!' : ''}[${assetLabel}](${assetUrl(path)}${hint})`;
             return image ? `\n\n${markdown}\n\n` : markdown;
         }
         report('unsupported-attachment', target, 'existing upload API does not accept this format');
         count('attachment', 'changed');
-        const attachmentLabel = label && label !== basename(path) ? `${label} (${basename(path)})` : basename(path);
+        const attachmentLabel =
+            plainLabel && plainLabel !== basename(path) ? `${label} (${basename(path)})` : basename(path);
         return ` ${attachmentLabel} `;
     };
     text = text.replace(/(!?)\[\[([^\]\n]+)\]\](?!\(note:\d+\))/g, (raw, embed: string, inner: string) => {
@@ -629,7 +642,7 @@ function transformImportLinks(text: string, context: ImportLinkContext) {
                 : (alias ?? (withoutMarkdown(basename(target.split('#')[0])) || target.slice(1))),
             raw,
             Boolean(embed),
-            false,
+            'wikilink',
             size,
         );
     });
@@ -660,7 +673,7 @@ function transformImportLinks(text: string, context: ImportLinkContext) {
             ? target.replace(/[ \t]/g, (space) => encodeURIComponent(space))
             : target;
         const withoutTitle = `${image ? '!' : ''}[${label}](${destination})`;
-        return link(target, label, withoutTitle, image, true);
+        return link(target, label, withoutTitle, image, 'markdown');
     });
     // Resolve reference-style Markdown using the same path rules.
     const definitions = new Map<string, string>();
@@ -677,7 +690,7 @@ function transformImportLinks(text: string, context: ImportLinkContext) {
         const target = definitions.get(key);
         if (!target) return raw;
         usedDefinitions.add(key);
-        return link(target, label, raw, Boolean(image), true);
+        return link(target, label, raw, Boolean(image), 'markdown');
     });
     text = text.replace(/^ {0,3}\[([^\]]+)\]:[^\n]*$/gm, (raw, key: string) =>
         usedDefinitions.has(key.toLowerCase()) ? '' : raw,

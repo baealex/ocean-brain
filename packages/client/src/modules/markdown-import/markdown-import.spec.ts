@@ -198,6 +198,25 @@ describe('Markdown import preprocessing', () => {
         expect(renderImportMarkdown(plan.notes[0], { 'B.md': '10' }, {})).toContain('Chosen \\| Extended decision');
     });
 
+    it('reads escaped Markdown link labels as their visible text', () => {
+        const plan = analyzeImport([
+            { path: 'A.md', text: '[Spec \\[v2\\]](<Spec [v2].md>) [a\\_b](a_b.md)\n\n![a\\_b](photo.png)' },
+            { path: 'Spec [v2].md', text: 'Spec' },
+            { path: 'a_b.md', text: 'Underscore' },
+            { path: 'photo.png', bytes: png },
+        ]);
+        const rendered = renderImportMarkdown(
+            plan.notes[0],
+            { 'Spec [v2].md': '1', 'a_b.md': '2' },
+            { 'photo.png': '/assets/images/photo.png' },
+        );
+
+        expect(plan.links.map((link) => link.label)).toEqual(['Spec [v2]', 'a_b']);
+        expect(rendered).toContain('[[Spec \\[v2\\]]](note:1)');
+        expect(rendered).toContain('[[a_b]](note:2)');
+        expect(rendered).toContain('![a\\_b](/assets/images/photo.png)');
+    });
+
     it('keeps date fields that were not used as the original creation or update time', () => {
         const plan = analyzeImport([
             {

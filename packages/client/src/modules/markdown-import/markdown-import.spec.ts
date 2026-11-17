@@ -217,6 +217,19 @@ describe('Markdown import preprocessing', () => {
         expect(rendered).toContain('![a\\_b](/assets/images/photo.png)');
     });
 
+    it('reads the escaped label of an image that links to a note as its visible text', () => {
+        const plan = analyzeImport([
+            { path: 'A.md', text: '[![a\\_b](p.png)](B.md)' },
+            { path: 'B.md', text: 'Target' },
+            { path: 'p.png', bytes: png },
+        ]);
+
+        const rendered = renderImportMarkdown(plan.notes[0], { 'B.md': '1' }, { 'p.png': '/assets/images/p.png' });
+
+        expect(rendered).toContain('[[a_b]](note:1)');
+        expect(rendered).toContain('![a\\_b](/assets/images/p.png)');
+    });
+
     it('keeps date fields that were not used as the original creation or update time', () => {
         const plan = analyzeImport([
             {

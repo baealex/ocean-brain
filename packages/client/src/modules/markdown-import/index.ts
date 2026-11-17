@@ -676,7 +676,8 @@ function transformImportLinks(text: string, context: ImportLinkContext) {
             count('link-title', 'dropped');
         }
         if (child.target === target) return child.raw;
-        return `${child.raw}\n\n[${escapeLabel(child.label || 'Image')}](${target})`;
+        // The image alt is already Markdown source; the link pass below reads it as a Markdown label.
+        return `${child.raw}\n\n[${child.label.replace(/\n/g, ' ') || 'Image'}](${target})`;
     });
     text = transformMarkdownLinks(text, ({ raw, label, target, image, title }) => {
         if (target.startsWith('ocean-import-')) return raw;

@@ -48,6 +48,21 @@ it('keeps only the written text of an Excalidraw drawing and reports the drawing
     expect(plan.links).toContainEqual(expect.objectContaining({ from: 'Start.md', to: 'Flow.excalidraw.md' }));
 });
 
+it('keeps text after an author comment written above the drawing data', () => {
+    const plan = analyzeImport([
+        {
+            path: 'Flow.excalidraw.md',
+            text: '---\nexcalidraw-plugin: parsed\n---\nIntro line\n%%\nprivate comment\n%%\nAfter comment\n\n# Excalidraw Data\n\n## Text Elements\nLabel ^t1\n\n%%\n## Drawing\n```json\n{}\n```\n%%',
+        },
+    ]);
+
+    expect(plan.notes[0].markdown).toContain('Intro line');
+    expect(plan.notes[0].markdown).toContain('private comment');
+    expect(plan.notes[0].markdown).toContain('After comment');
+    expect(plan.notes[0].markdown).toContain('Label');
+    expect(plan.notes[0].markdown).not.toContain('## Drawing');
+});
+
 it('leaves ordinary notes that mention Excalidraw untouched', () => {
     const plan = analyzeImport([{ path: 'Tools.md', text: '## Text Elements\nKeep this ^anchor1' }]);
 

@@ -55,6 +55,10 @@ const descriptions: Record<string, [string, string]> = {
     ],
     'disabled-tag': ['Tags turned off', 'These tags will not be created; original body text remains visible.'],
     'unsupported-tag': ['Tag values kept as text', 'Values that cannot be tag names remain visible in the note.'],
+    'excalidraw-drawing': [
+        'Excalidraw drawings',
+        'Only the text written in these drawings was imported; the drawings themselves are not supported.',
+    ],
     'notion-icon': [
         'Removed Notion icons',
         'Tool-generated callout icons were removed while the callout text remains.',

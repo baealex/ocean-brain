@@ -1,3 +1,4 @@
+import { prepareExcalidraw } from './excalidraw';
 import { IMPORT_MARKDOWN_CHARS, IMPORT_REQUEST_BYTES, importJsonBytes } from './limits';
 import {
     asList,
@@ -808,6 +809,7 @@ export function analyzeImport(input: ImportFile[], options: ImportOptions = {}):
     }
     const notes = prepareNotes(files, issues, syntax);
     const notion = prepareNotion(files, notes, issues, syntax);
+    prepareExcalidraw(notes, issues, syntax);
     const obsidian =
         input.some((file) => file.path.split('/').includes('.obsidian')) ||
         notes.some((note) => /!?\[\[/.test(protectCode(note.markdown).text));

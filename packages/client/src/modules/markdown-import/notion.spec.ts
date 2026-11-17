@@ -1,4 +1,4 @@
-import { analyzeImport, parseImportDate, renderImportMarkdown } from './index';
+import { analyzeImport, normalizePropertyValue, parseImportDate, renderImportMarkdown } from './index';
 import { parseCsv } from './notion';
 
 const id = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
@@ -123,6 +123,14 @@ it('parses BOM, commas, quotes and multiline CSV values', () => {
 it('interprets English calendar dates without a timezone-dependent day shift', () => {
     expect(parseImportDate('October 26, 2026')).toBe('2026-10-26T00:00:00.000Z');
     expect(parseImportDate('2025-02-31')).toBeUndefined();
+});
+
+it('stores date property values as the calendar day written in the source', () => {
+    expect(normalizePropertyValue('2024-01-15', 'date')).toBe('2024-01-15');
+    expect(normalizePropertyValue('2024-01-15T01:00:00+09:00', 'date')).toBe('2024-01-15');
+    expect(normalizePropertyValue('2024-01-15T23:30:00-05:00', 'date')).toBe('2024-01-15');
+    expect(normalizePropertyValue('January 15, 2024 8:00 AM', 'date')).toBe('2024-01-15');
+    expect(normalizePropertyValue('not a date', 'date')).toBe('not a date');
 });
 
 it('keeps backslashes, pipes and brackets inside their CSV table cells', () => {

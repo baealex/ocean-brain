@@ -95,5 +95,8 @@ export function recommendPropertyType(values: string[]): PropertyType {
 
 export function normalizePropertyValue(value: MetadataValue, type: PropertyType) {
     const text = Array.isArray(value) ? value.join(', ') : value;
-    return type === 'date' ? (parseImportDate(text)?.slice(0, 10) ?? text) : text;
+    if (type !== 'date' || !parseImportDate(text)) return text;
+    // Keep the day as written; converting a time or offset to UTC can move it to another day.
+    const englishDay = /^[A-Za-z]+ \d{1,2}, \d{4}/.exec(text)?.[0];
+    return englishDay ? (parseImportDate(englishDay)?.slice(0, 10) ?? text) : text.slice(0, 10);
 }
